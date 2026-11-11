@@ -16,6 +16,7 @@
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: MobFinder
 ## AddonCompartmentFunc: GulliMobFinder_Toggle
+## Category: Gulli
 ## X-License: GPL-3.0
 
 Locales.lua
