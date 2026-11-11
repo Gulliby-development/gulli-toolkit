@@ -10,7 +10,8 @@ Toolkit.modules = Toolkit.modules or {}
 Toolkit.api = 1
 
 -- Modules we make, shown in the hub even before they are installed.
-ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs" }
+ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
+             "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock" }
 
 -- Game API wrappers: the C_AddOns namespace with a fallback to the old globals.
 local A = C_AddOns or {}
@@ -40,6 +41,53 @@ function Toolkit.Register(a, b)
     Toolkit.modules[info.key] = info
     if ns.Refresh then ns.Refresh() end
     return true
+end
+
+-- Items no module may sell, delete or move: GulliToolkitDB.protected[itemID] = true.
+-- A module asks with GulliToolkit.IsProtected(itemID) before it touches a bag item.
+local function itemID(item)
+    if type(item) == "number" then return item end
+    if type(item) == "string" then return tonumber(item:match("item:(%d+)") or item) end
+end
+
+function Toolkit.IsProtected(item)
+    local id = itemID(item)
+    local db = GulliToolkitDB
+    return id ~= nil and db ~= nil and db.protected ~= nil and db.protected[id] == true
+end
+
+function Toolkit.Protect(item, on)
+    local id = itemID(item)
+    if not id then return false end
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.protected = GulliToolkitDB.protected or {}
+    GulliToolkitDB.protected[id] = on and true or nil
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+function ns.Protected()
+    local ids = {}
+    for id in pairs((GulliToolkitDB and GulliToolkitDB.protected) or {}) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return ids
+end
+
+-- A short line from a module for the hub ("2 dungeon entries left"). The newest come first.
+ns.FEED_MAX = 20
+function Toolkit.Notify(key, text)
+    if type(text) ~= "string" or text == "" then return false end
+    GulliToolkitDB = GulliToolkitDB or {}
+    local feed = GulliToolkitDB.feed or {}
+    GulliToolkitDB.feed = feed
+    table.insert(feed, 1, { t = time(), key = key, text = text })
+    while #feed > ns.FEED_MAX do table.remove(feed) end
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+function ns.Feed()
+    return (GulliToolkitDB and GulliToolkitDB.feed) or {}
 end
 
 function Toolkit.Open(key)
@@ -149,6 +197,13 @@ SlashCmdList.GULLITOOLKIT = function(msg)
     msg = (msg or ""):match("^%s*(.-)%s*$")
     if msg == "" then
         ns.Toggle()
+    elseif msg:lower():match("^protect") then
+        local link = msg:match("^%S+%s+(.+)$")
+        local id = link and itemID(link)
+        if not id then ns.Print(L.PROTECT_HINT); return end
+        local on = not Toolkit.IsProtected(id)
+        Toolkit.Protect(id, on)
+        ns.Print((on and L.PROTECT_ON or L.PROTECT_OFF):format(link))
     elseif msg:lower() == "help" then
         ns.Print(L.HELP)
     elseif not ns.OpenModule(msg) then

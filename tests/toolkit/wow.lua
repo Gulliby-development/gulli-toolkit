@@ -43,6 +43,10 @@ function Fake(spec)
     CreateFrame = function() local f = stub(); W.frames[#W.frames + 1] = f; return f end
     UIParent, GameTooltip, UISpecialFrames = stub(), stub(), {}
     tinsert = table.insert
+    time = function() return 1000 end
+    GetCursorInfo = function() end
+    ClearCursor = function() end
+    C_Item = { GetItemInfo = function() end }
     ReloadUI = function() W.reloaded = true end
     Settings = nil
     print = function(...) W.printed[#W.printed + 1] = table.concat({ ... }, " ") end
