@@ -49,6 +49,14 @@ Gulli Toolkit is a set of our own small World of Warcraft addons for WoW Forever
 - With a merchant open (`MERCHANT_SHOW`), `ns.Run` sells an item that has a price instead of deleting it. It saves what it removed in `last` for `/gqc last`. When the log is two quests from full, `QUEST_ACCEPTED` prints one chat hint; it never removes anything.
 - Removing things runs inside the **OK** click, because the game lets an addon delete a picked-up item only inside a hardware event. The game confirms a delete later, so the cursor can still hold the item right after `DeleteCursorItem`: `ns.Run` never stops on that, it clears the cursor and goes on, so one **OK** tries every ticked item. A second later `ns.Leftover` shows what the game really refused, and the player presses **OK** again only for that.
 
+### Gulli-GroupBuffs
+
+- `Gulli-GroupBuffs.toc` loads `Locales.lua`, `Buffs.lua`, `Core.lua`, `Skin.lua`, `UI.lua`. It keeps `GulliGroupBuffsCharDB` per character (`who`, `show`, `combat`, `low`, `groupMin`, `thorns`, `shield`, `weapon`, `locked`, `key`, `point`, `watch` by buff key, `bless` by class or role). A new setting gets a default in `ns.DEFAULTS`.
+- It is a clean-room take on HealKit's Quick Buff. HealKit is "All Rights Reserved": never copy its code, texts or icons.
+- `Buffs.lua` lists the buffs per class by rank 1 spell id (`who`: `all`, `mana`, `self`, `thorns`, `blessing`; `group`: the party-wide spell). Names come from the game (`ns.SpellName`), so spells need no translation. A new buff or class goes here, with a spell name in `W.SPELLS` and a case in `tests/groupbuffs/test.lua`.
+- `Core.lua` holds the rules and reads the game; it never casts. `ns.Plan` returns the missing buffs in casting order (you first, then the group in roster order, then a friendly target) and, as a second value, the ones out of range. A group spell replaces the single casts of one party when `groupMin` of it need the buff and the spell is usable (has its reagent). A unit whose auras the game hides (secret values) is skipped, never nagged.
+- `UI.lua` holds the secure buttons: `GulliGroupBuffsButton` (the big one, also on the key through `SetOverrideBindingClick`) and its small buttons. Their attributes change only out of combat. On `PLAYER_REGEN_DISABLED` the plan goes into `gb-spell<i>`/`gb-unit<i>`/`gb-count` of the big button, and `ns.COMBAT_SNIPPET`, wrapped on its `OnClick`, aims it at the next living unit of that list on each press, wrapping at the end. The snippet may use only what the restricted environment has (`PlayerInCombat`, `SecureCmdOptionParse`, the frame handle); the test runs it with only those. In combat the insecure code changes only textures and texts.
+
 ### The smaller modules
 
 Each one loads `Locales.lua`, `Core.lua`, `Skin.lua`, `UI.lua` (DungeonPrep adds `Data.lua` after `Locales.lua`). `Core.lua` holds the rules and the game calls, `UI.lua` only shows them. Every module is tested in `tests/<name>/`.
@@ -140,6 +148,7 @@ The tag names, asset names and `release.json` are what Runeloader and its index 
 
 - `Gulli-Toolkit/`: the core (hub). `Gulli-<Name>/`: one module each. `icon.tga` (64x64) in each folder is its icon in the game's addon list and in Runeloader; the game reads TGA or BLP, not PNG.
 - `tests/<name>/`: `wow.lua` (a fake WoW client with only the calls that addon makes) and `test.lua` (its tests), one folder per addon (`toolkit`, `questcleaner`, ...).
+- `Gulli-GroupBuffs/`: the HealKit-style Quick Buff bar; see its section above.
 - `tools/questcleaner/`: `build_data.py` (the generator of QuestCleaner's `Data.lua`) and `luadata.py` (its reader of Lua table literals).
 - `tools/dungeonprep/build_data.py`: the generator of DungeonPrep's `Data.lua` (it reuses `luadata.py`).
 - `docs/<name>/`: each module's player page and images. The logo and wordmarks come from Codex CLI image generation; the prompts are in `docs/<name>/PROMPTS.md`. QuestCleaner's window pictures are drawn from the layout in HTML, not taken in the game.
