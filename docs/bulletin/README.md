@@ -1,0 +1,61 @@
+<p align="center"><img src="icon.png" alt="" width="96"></p>
+
+<h1 align="center">Gulli-Bulletin</h1>
+
+<p align="center"><b>Reads the trade and group chat for you and sorts it into a clear board: groups by dungeon, selling, buying, crafting and guilds.</b></p>
+
+<p align="center">
+  <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=Bulletin-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
+  <img src="https://img.shields.io/badge/WoW-Forever-17302d?style=for-the-badge" alt="For WoW Forever">
+  <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
+</p>
+
+---
+
+Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and sorts every message into tabs, so you find a group or a seller in a few seconds.
+
+## Features
+
+- **Tabs instead of a wall of text.** Groups, Selling, Buying, Crafting, Guilds and Other.
+- **Groups by dungeon.** LFG and LFM messages are grouped under the dungeon they name (Deadmines, SM Library, Strat...). Tick **Only dungeons for my level** to hide the rest.
+- **One line per player.** When a player posts again, the old line is replaced, so nobody floods the board.
+- **Whisper and Invite** on every row, with big buttons for touch.
+- **Old messages go away** after 15 minutes.
+- **Reads many languages.** It knows WTS, WTB, LFG, LFM and the usual words in English, German, Spanish, French, Polish, Russian and Chinese.
+
+## Install
+
+**With [Runeloader](https://github.com/Gulliby-development/runeloader)** (Android): install **Gulli Toolkit**. Bulletin Board comes with it.
+
+**By hand:** download `Gulli-Bulletin-<version>-forever.zip` from the [releases](https://github.com/Gulliby-development/gulli-toolkit/releases) and unpack it into `Interface/AddOns`. Then type `/reload`.
+
+## How to use it
+
+1. Type `/gbul`, or open it from `/gulli`.
+2. Pick a tab. In **Groups**, the dungeon name is a header and the groups are under it.
+3. Press **Whisper** to write to the player, or **Invite** to invite them.
+4. `/gbul clear` empties the board.
+
+## FAQ
+
+<details>
+<summary><b>The board is empty</b></summary>
+
+It shows messages from Trade, General, LookingForGroup, /say and /yell that come after you log in. Join the channels, wait a minute, and the board fills up.
+</details>
+
+<details>
+<summary><b>A message is in the wrong tab</b></summary>
+
+The addon sorts by words such as WTS, WTB, LFG, LFM, "selling" or "recruiting". A message with unusual words goes to **Other**.
+</details>
+
+<details>
+<summary><b>Is it tested in the game?</b></summary>
+
+Not yet in WoW Forever itself. It is tested on a fake game client. If something does not work, tell us on GitHub.
+</details>
+
+---
+
+<p align="center"><sub>Part of <a href="../../README.md">Gulli Toolkit</a>. A fan project, not affiliated with Blizzard Entertainment. Free software under the <a href="../../LICENSE">GPLv3</a>.</sub></p>
