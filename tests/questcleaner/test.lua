@@ -1,5 +1,5 @@
--- Run from the repository root: lua5.1 tests/test.lua
-local W = dofile("tests/wow.lua")
+-- Run from the repository root: lua5.1 tests/questcleaner/test.lua
+local W = dofile("tests/questcleaner/wow.lua")
 local failed, count = 0, 0
 
 local function test(name, fn)
@@ -358,6 +358,20 @@ test("a nearly full log gets one chat hint", function()
     eq(w.printed[#w.printed]:find("3 of 5", 1, true) ~= nil, true, "hint: " .. w.printed[#w.printed])
     Fire("QUEST_ACCEPTED", 2)
     eq(#w.printed, before + 1, "only once")
+end)
+
+test("registers with Gulli Toolkit when it is loaded, works without it", function()
+    Fake { quests = QUESTS, bag = bag() }
+    local got
+    GulliToolkit = { Register = function(info) got = info end }
+    local ns = Load()
+    GulliToolkit = nil
+    assert(got, "registered")
+    eq(got.key, "QuestCleaner")
+    eq(got.slash, "/gqc")
+    eq(type(got.open), "function")
+    Fake { quests = QUESTS, bag = bag() }
+    assert(Load().PlanQuests, "loads without the toolkit")
 end)
 
 io.write(count - failed, "/", count, " passed\n")

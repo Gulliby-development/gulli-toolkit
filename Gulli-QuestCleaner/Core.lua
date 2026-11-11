@@ -576,3 +576,13 @@ end
 function GulliQuestCleaner_Toggle()
     ns.Toggle()
 end
+
+-- In the Gulli Toolkit hub when it is installed; the addon works the same without it.
+if GulliToolkit and GulliToolkit.Register then
+    GulliToolkit.Register({
+        key = "QuestCleaner",
+        icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon",
+        slash = "/gqc",
+        open = function() ns.Toggle() end,
+    })
+end

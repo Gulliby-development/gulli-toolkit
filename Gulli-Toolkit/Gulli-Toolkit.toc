@@ -1,0 +1,23 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r Toolkit
+## Notes: Our small Gulli addons in one place: open, switch on and off. /gulli
+## Notes-ruRU: Все наши маленькие аддоны Gulli в одном месте: открыть, включить, выключить. /gulli
+## Notes-deDE: Unsere kleinen Gulli-Addons an einem Ort: öffnen, ein- und ausschalten. /gulli
+## Notes-esES: Nuestros pequeños addons Gulli en un solo lugar: abrir, activar y desactivar. /gulli
+## Notes-esMX: Nuestros pequeños addons Gulli en un solo lugar: abrir, activar y desactivar. /gulli
+## Notes-frFR: Nos petits addons Gulli au même endroit : ouvrir, activer, désactiver. /gulli
+## Notes-ptBR: Nossos pequenos addons Gulli em um só lugar: abrir, ligar e desligar. /gulli
+## Notes-zhCN: 我们的 Gulli 小插件集中在一处：打开、启用、停用。/gulli
+## Notes-zhTW: 我们的 Gulli 小插件集中在一处：打开、启用、停用。/gulli
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Toolkit\icon
+## SavedVariables: GulliToolkitDB
+## AddonCompartmentFunc: GulliToolkit_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

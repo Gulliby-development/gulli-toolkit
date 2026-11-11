@@ -1,6 +1,6 @@
 ---
 name: file-issue
-description: Use every time you open or update a GitHub issue for a Gulli-QuestCleaner bug. Finds the root cause, sweeps the code for every other place with the same or a neighbouring defect, and files issues that cover all of them.
+description: Use every time you open or update a GitHub issue for a Gulli Toolkit bug (the core or any module). Finds the root cause, sweeps the code for every other place with the same or a neighbouring defect, and files issues that cover all of them.
 ---
 
 # File an issue with a sibling sweep
@@ -46,7 +46,7 @@ Follow the rules in `AGENTS.md`: the issue type, the labels and the `Priority: P
 - **Scenario:** the quest log, the bags and the clicks that lead to the wrong behaviour.
 - **Sweep:** what you searched, the same-defect places, the linked related issues, and the places checked and not affected.
 - **Suggested fix:** prefer one shared rule that all places use over a separate patch at each place.
-- **Tests:** a case in `tests/test.lua` that fails without the fix, or the steps in the game for a window bug.
+- **Tests:** a case in `tests/<name>/test.lua` that fails without the fix, or the steps in the game for a window bug.
 - **Maintainability:** when the fix adds a shared rule or a table that later code must use or extend, name the rule for `AGENTS.md`. Otherwise write `None`.
 
 ## 5. When you fix an issue filed this way

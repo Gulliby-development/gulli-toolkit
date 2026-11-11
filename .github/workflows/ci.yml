@@ -22,18 +22,30 @@ jobs:
         run: sudo apt-get install -y lua5.1 > /dev/null
 
       - name: Lua syntax
-        run: for f in Gulli-QuestCleaner/*.lua tests/*.lua; do luac5.1 -p "$f"; done
+        run: for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
 
       - name: Tests on a fake WoW client
-        run: lua5.1 tests/test.lua
-
-      - name: TOC lists every Lua file and a Forever interface
         run: |
-          toc=Gulli-QuestCleaner/Gulli-QuestCleaner.toc
-          grep -q '^## Interface: 160' "$toc" || { echo "::error::$toc has no ## Interface: 160xx"; exit 1; }
-          grep -qE '^## Version: [0-9]+\.[0-9]+\.[0-9]+' "$toc" || { echo "::error::$toc has no ## Version: x.y.z"; exit 1; }
-          for f in Gulli-QuestCleaner/*.lua; do
-            grep -qx "$(basename "$f")" "$toc" || { echo "::error::$f is not listed in $toc"; exit 1; }
+          rc=0
+          for t in tests/*/test.lua; do echo "== $t"; lua5.1 "$t" || rc=1; done
+          exit $rc
+
+      - name: Each addon folder has a Forever TOC that lists every Lua file
+        run: |
+          for dir in Gulli-*/; do
+            name=${dir%/}
+            toc="$dir$name.toc"
+            [ -f "$toc" ] || { echo "::error::$toc is missing"; exit 1; }
+            grep -q '^## Interface: 160' "$toc" || { echo "::error::$toc has no ## Interface: 160xx"; exit 1; }
+            grep -qE '^## Version: [0-9]+\.[0-9]+\.[0-9]+' "$toc" || { echo "::error::$toc has no ## Version: x.y.z"; exit 1; }
+            if [ "$name" != "Gulli-Toolkit" ]; then
+              grep -q '^## X-Gulli-Module: ' "$toc" || { echo "::error::$toc has no ## X-Gulli-Module"; exit 1; }
+              grep -q '^## OptionalDeps:.*Gulli-Toolkit' "$toc" || { echo "::error::$toc does not list Gulli-Toolkit in ## OptionalDeps"; exit 1; }
+              [ -d "tests/$(echo "${name#Gulli-}" | tr 'A-Z' 'a-z')" ] || { echo "::error::$name has no tests/<module> folder"; exit 1; }
+            fi
+            for f in "$dir"*.lua; do
+              grep -qx "$(basename "$f")" "$toc" || { echo "::error::$f is not listed in $toc"; exit 1; }
+            done
           done
 
   # Branch names follow AGENTS.md: feature/<name> or bugfix/<name>.
