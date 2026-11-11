@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-QuickChat
+## Notes: Chat without a keyboard: ready phrases on big buttons, a group message from a quest, missed whispers. /gqk
+## Notes-ruRU: Чат без клавиатуры: готовые фразы на крупных кнопках, сообщение о сборе группы по квесту, пропущенные шёпоты. /gqk
+## Notes-deDE: Chatten ohne Tastatur: fertige Sätze auf großen Knöpfen, eine Gruppensuche aus einer Quest, verpasste Flüstern. /gqk
+## Notes-esES: Chat sin teclado: frases listas en botones grandes, un mensaje de grupo desde una misión, susurros perdidos. /gqk
+## Notes-esMX: Chat sin teclado: frases listas en botones grandes, un mensaje de grupo desde una misión, susurros perdidos. /gqk
+## Notes-frFR: Discuter sans clavier : phrases prêtes sur de grands boutons, une recherche de groupe depuis une quête, chuchotements manqués. /gqk
+## Notes-ptBR: Chat sem teclado: frases prontas em botões grandes, uma mensagem de grupo a partir de uma missão, sussurros perdidos. /gqk
+## Notes-zhCN: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
+## Notes-zhTW: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-QuickChat\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: QuickChat
+## SavedVariables: GulliQuickChatDB
+## AddonCompartmentFunc: GulliQuickChat_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
