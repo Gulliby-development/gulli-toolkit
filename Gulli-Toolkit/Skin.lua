@@ -162,3 +162,67 @@ function S.Scroll(parent)
     sf.child, sf.bar = child, bar
     return sf
 end
+
+-- A button filled with the accent colour, for the one main action of a view.
+function S.Primary(b)
+    local a = S.Accent()
+    S.Fill(b, { a[1], a[2], a[3], 0.9 })
+    b.text:SetTextColor(0.05, 0.05, 0.06, 1)
+    return b
+end
+
+-- A flat pill that can be selected, for filters such as All / On / Off.
+function S.Pill(parent, width, height)
+    local b = S.Button(parent, width, height or 28)
+    b.text:SetFont(FONT, 12, "")
+    function b:SetSelected(on)
+        self.selected = on
+        local a = S.Accent()
+        if on then
+            S.Fill(self, { a[1], a[2], a[3], 0.22 })
+            S.SetBorder(self, a)
+            self.text:SetTextColor(a[1], a[2], a[3], 1)
+        else
+            S.Fill(self, S.PANEL)
+            S.SetBorder(self, S.BORDER)
+            self.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
+        end
+    end
+    b:SetScript("OnLeave", function(self) self:SetSelected(self.selected) end)
+    return b
+end
+
+-- An on/off switch: a track that fills with the accent colour and a knob that slides over.
+-- The button is 44 by 28 so it is easy to hit by touch.
+function S.Switch(parent)
+    local s = CreateFrame("Button", nil, parent)
+    s:SetSize(44, 28)
+    local track = CreateFrame("Frame", nil, s)
+    track:SetSize(36, 18)
+    track:SetPoint("CENTER")
+    S.Box(track, { 0.02, 0.02, 0.02, 1 }, { 0.25, 0.25, 0.27, 1 })
+    s.track = track
+    s.knob = tex(track, "ARTWORK", 0, S.TEXT)
+    s.knob:SetSize(14, 14)
+    function s:SetChecked(on)
+        self.on = on and true or false
+        local a = S.Accent()
+        self.knob:ClearAllPoints()
+        if self.on then
+            self.knob:SetPoint("RIGHT", -2, 0)
+            self.knob:SetVertexColor(1, 1, 1, 1)
+            S.Fill(self.track, { a[1], a[2], a[3], 0.85 })
+        else
+            self.knob:SetPoint("LEFT", 2, 0)
+            self.knob:SetVertexColor(0.45, 0.45, 0.48, 1)
+            S.Fill(self.track, { 0.02, 0.02, 0.02, 1 })
+        end
+    end
+    function s:GetChecked() return self.on end
+    s:SetScript("OnEnter", function(self) S.SetBorder(self.track, S.Accent()) end)
+    s:SetScript("OnLeave", function(self) S.SetBorder(self.track, { 0.25, 0.25, 0.27, 1 }) end)
+    s:SetScript("OnDisable", function(self) self:SetAlpha(0.4) end)
+    s:SetScript("OnEnable", function(self) self:SetAlpha(1) end)
+    s:SetChecked(false)
+    return s
+end
