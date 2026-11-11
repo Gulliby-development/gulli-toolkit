@@ -1,0 +1,24 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-MobFinder
+## Notes: Plays a sound when a mob from your list shows its nameplate. /gmf
+## Notes-ruRU: Играет звук, когда моб из вашего списка показывает неймплейт. /gmf
+## Notes-deDE: Spielt einen Ton, wenn ein Mob aus deiner Liste seine Namensplakette zeigt. /gmf
+## Notes-esES: Suena cuando un bicho de tu lista muestra su placa de nombre. /gmf
+## Notes-esMX: Suena cuando un bicho de tu lista muestra su placa de nombre. /gmf
+## Notes-frFR: Joue un son quand un monstre de ta liste affiche sa barre de nom. /gmf
+## Notes-ptBR: Toca um som quando um monstro da sua lista mostra a placa de nome. /gmf
+## Notes-zhCN: 列表中的怪物显示姓名板时播放声音。/gmf
+## Notes-zhTW: 列表中的怪物显示姓名板时播放声音。/gmf
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-MobFinder\icon
+## SavedVariables: GulliMobFinderDB
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: MobFinder
+## AddonCompartmentFunc: GulliMobFinder_Toggle
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
