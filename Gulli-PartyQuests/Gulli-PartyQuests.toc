@@ -10,7 +10,7 @@
 ## Notes-zhCN: 比较队伍任务：谁有哪个任务，一键共享。 /gpq
 ## Notes-zhTW: 比较队伍任务：谁有哪个任务，一键共享。 /gpq
 ## Author: Gulliby
-## Version: 1.0.0
+## Version: 1.0.1
 ## IconTexture: Interface\AddOns\Gulli-PartyQuests\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: PartyQuests
