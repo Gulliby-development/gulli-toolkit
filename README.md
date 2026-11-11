@@ -15,7 +15,7 @@
 | Module | What it does | Open it |
 |---|---|---|
 | [Quest Cleaner](docs/questcleaner/README.md) | Abandons low-level quests and deletes leftover quest items from your bags. You see a list before anything goes. | `/gqc` |
-| Mob Finder | Plays a sound when a mob you look for shows its nameplate. | `/gmf` |
+| [Mob Finder](docs/mobfinder/README.md) | Plays a sound when a mob you look for shows its nameplate. | `/gmf` |
 | [Group Buffs](docs/groupbuffs/README.md) | Casts the buffs your group is missing, one press at a time, also in combat. | `/ggb` |
 | [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds. | `/gbul` |
 | [Party Quests](docs/partyquests/README.md) | Shows which quests your group shares and who still needs one. Share in one tap. | `/gpq` |
@@ -34,8 +34,6 @@
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
 | [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
 | [Reminders](docs/reminders/README.md) | Icons for missing class buffs, poisons, ammo and soul shards. | `/grm` |
-
-Mob Finder is coming soon.
 
 ## Features
 

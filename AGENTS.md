@@ -49,6 +49,10 @@ Gulli Toolkit is a set of our own small World of Warcraft addons for WoW Forever
 - With a merchant open (`MERCHANT_SHOW`), `ns.Run` sells an item that has a price instead of deleting it. It saves what it removed in `last` for `/gqc last`. When the log is two quests from full, `QUEST_ACCEPTED` prints one chat hint; it never removes anything.
 - Removing things runs inside the **OK** click, because the game lets an addon delete a picked-up item only inside a hardware event. The game confirms a delete later, so the cursor can still hold the item right after `DeleteCursorItem`: `ns.Run` never stops on that, it clears the cursor and goes on, so one **OK** tries every ticked item. A second later `ns.Leftover` shows what the game really refused, and the player presses **OK** again only for that.
 
+### Gulli-MobFinder
+
+- `Gulli-MobFinder.toc` loads `Locales.lua`, `Core.lua`, `Skin.lua`, `UI.lua` (`/gmf`). It reads the names of visible nameplates (`NAME_PLATE_UNIT_ADDED` and a poll every N seconds) and plays the chosen sound when one matches the list. A nameplate whose name is a secret value (WoW 12, inside instances) is skipped (`issecretvalue`). It never targets.
+
 ### Gulli-GroupBuffs
 
 - `Gulli-GroupBuffs.toc` loads `Locales.lua`, `Buffs.lua`, `Core.lua`, `Skin.lua`, `UI.lua`. It keeps `GulliGroupBuffsCharDB` per character (`who`, `show`, `combat`, `low`, `groupMin`, `thorns`, `shield`, `weapon`, `locked`, `key`, `point`, `watch` by buff key, `bless` by class or role). A new setting gets a default in `ns.DEFAULTS`.

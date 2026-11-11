@@ -6,7 +6,7 @@ local L = ns.L
 local S = ns.Skin
 
 local WIDTH, ROW_H, PAD = 500, 58, 12
-local frame, list, footer, reloadBtn, reloadText, feedBox, protectBtn, protectFrame
+local frame, scroll, list, footer, reloadBtn, reloadText, feedBox, protectBtn, protectFrame
 local rows, feedLines = {}, {}
 local FEED_LINES = 3
 
@@ -96,7 +96,8 @@ function ns.Refresh()
         if row.state == "missing" then anyMissing = true end
     end
     for i = #data + 1, #rows do rows[i]:Hide() end
-    list:SetHeight(#data * (ROW_H + 4))
+    local contentH = #data * (ROW_H + 4)
+    list:SetHeight(contentH)
     local reload = ns.NeedsReload()
     reloadBtn:SetShown(reload)
     reloadText:SetText(reload and L.RELOAD_HINT or (anyMissing and L.GET or L.HELP))
@@ -113,7 +114,12 @@ function ns.Refresh()
     feedBox:SetShown(shown > 0)
     feedBox:SetHeight(22 + shown * 16)
     local feedH = shown > 0 and (22 + shown * 16 + 8) or 0
-    frame:SetHeight(60 + #data * (ROW_H + 4) + feedH + 50)
+    -- Twenty modules do not fit a handheld screen: the list scrolls inside 85% of the screen.
+    local screen = (UIParent.GetHeight and tonumber(UIParent:GetHeight())) or 768
+    local listH = math.max(ROW_H + 4, math.min(contentH, screen * 0.85 - 60 - feedH - 50))
+    scroll:SetHeight(listH)
+    scroll:Update(contentH)
+    frame:SetHeight(60 + listH + feedH + 50)
     if protectFrame and protectFrame:IsShown() then ns.RefreshProtected() end
 end
 
@@ -223,9 +229,11 @@ local function build()
     close:SetText("X")
     close:SetScript("OnClick", function() frame:Hide() end)
 
-    list = CreateFrame("Frame", nil, frame)
-    list:SetPoint("TOPLEFT", PAD, -60)
-    list:SetPoint("TOPRIGHT", -PAD, -60)
+    scroll = S.Scroll(frame)
+    scroll:SetPoint("TOPLEFT", PAD, -60)
+    scroll:SetPoint("TOPRIGHT", -PAD - 12, -60)
+    list = scroll.child
+    list:SetWidth(WIDTH - 2 * PAD - 12)
 
     footer = CreateFrame("Frame", nil, frame)
     footer:SetPoint("BOTTOMLEFT", PAD, PAD)

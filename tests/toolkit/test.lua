@@ -109,6 +109,17 @@ test("the hub window builds its rows", function()
     eq(#ns.List(), #ns.KNOWN + 1)
 end)
 
+test("the hub fits the screen: the module list scrolls", function()
+    Fake({})
+    local ns = Load()
+    ns.Toggle()
+    ns.Refresh()
+    local hub = GulliToolkitFrame or (function()
+        for _, f in ipairs(W.frames) do if rawget(f, "_OnShow") then return f end end
+    end)()
+    assert(hub:GetHeight() <= 768 * 0.85 + 1, "hub is " .. hub:GetHeight() .. " high")
+end)
+
 test("protected items: by id or link, saved, listed, switched off again", function()
     Fake({})
     local ns = Load()
