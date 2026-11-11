@@ -1,4 +1,9 @@
-<h1 align="center">Gulli Toolkit</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/toolkit/wordmark-dark.png">
+    <img src="docs/toolkit/wordmark-light.png" alt="Gulli Toolkit" width="560">
+  </picture>
+</p>
 
 <p align="center"><b>Small, handy addons for WoW Forever in one set. Install the toolkit and get them all, or take only the ones you like.</b></p>
 
@@ -9,6 +14,8 @@
 </p>
 
 ---
+
+<p align="center"><img src="docs/toolkit/preview.png" alt="Gulli Toolkit" width="860"></p>
 
 ## The modules
 
