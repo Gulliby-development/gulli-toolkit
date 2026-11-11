@@ -11,7 +11,8 @@ Toolkit.api = 1
 
 -- Modules we make, shown in the hub even before they are installed.
 ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
-             "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock" }
+             "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
+             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders" }
 
 -- Game API wrappers: the C_AddOns namespace with a fallback to the old globals.
 local A = C_AddOns or {}

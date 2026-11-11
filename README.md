@@ -26,12 +26,21 @@
 | [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons, a group message from a quest, whispers you missed. | `/gqk` |
 | [Chores](docs/chores/README.md) | A to-do list for each character: cooldowns, mail, trainer, rested XP, repairs. | `/gch` |
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
+| [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
+| [Mail](docs/mail/README.md) | Take all from the mailbox, and your characters and recent recipients as names to tap. | `/gml` |
+| [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. | `/gaq` |
+| [Tooltip](docs/tooltip/README.md) | Full stack price, the quests that need an item, item and NPC ids. | `/gtt` |
+| [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
+| [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
+| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
+| [Reminders](docs/reminders/README.md) | Icons for missing class buffs, poisons, ammo and soul shards. | `/grm` |
 
 Mob Finder and Group Buffs are coming soon.
 
 ## Features
 
 - **One window for all.** Type `/gulli`, or click the toolkit in the addon button on the minimap. You see every module, can open it, or switch it off.
+- **Switch off what you do not need.** Untick a module in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
