@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Merchant
+## Notes: Sells gray items and repairs at a vendor, with guild money when allowed. /gmc
+## Notes-ruRU: Продаёт серое и чинит снаряжение у торговца, за счёт гильдии, если можно. /gmc
+## Notes-deDE: Verkauft Graues und repariert beim Händler, mit Gildengeld, wenn erlaubt. /gmc
+## Notes-esES: Vende lo gris y repara en el vendedor, con dinero de la hermandad si se permite. /gmc
+## Notes-esMX: Vende lo gris y repara en el vendedor, con dinero de la hermandad si se permite. /gmc
+## Notes-frFR: Vend les objets gris et répare chez le marchand, avec l'argent de la guilde si permis. /gmc
+## Notes-ptBR: Vende itens cinza e repara no vendedor, com dinheiro da guilda quando permitido. /gmc
+## Notes-zhCN: 在商人处出售灰色物品并修理，允许时使用公会资金。 /gmc
+## Notes-zhTW: 在商人处出售灰色物品并修理，允许时使用公会资金。 /gmc
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Merchant\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Merchant
+## SavedVariables: GulliMerchantDB
+## AddonCompartmentFunc: GulliMerchant_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
