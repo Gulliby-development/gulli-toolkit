@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Attune
+## Notes: Raid attunements for all your characters: what is done and the next step. /gat
+## Notes-ruRU: Допуски к рейдам у всех персонажей: что сделано и какой шаг следующий. /gat
+## Notes-deDE: Schlachtzugszugänge aller Charaktere: was erledigt ist und der nächste Schritt. /gat
+## Notes-esES: Accesos a bandas de todos tus personajes: lo hecho y el siguiente paso. /gat
+## Notes-esMX: Accesos a bandas de todos tus personajes: lo hecho y el siguiente paso. /gat
+## Notes-frFR: Les accès aux raids de tous vos personnages : ce qui est fait et l'étape suivante. /gat
+## Notes-ptBR: Sintonizações de raide de todos os personagens: o que está feito e o próximo passo. /gat
+## Notes-zhCN: 所有角色的团队副本资格：已完成的部分和下一步。 /gat
+## Notes-zhTW: 所有角色的团队副本资格：已完成的部分和下一步。 /gat
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Attune\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Attune
+## SavedVariables: GulliAttuneDB
+## AddonCompartmentFunc: GulliAttune_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

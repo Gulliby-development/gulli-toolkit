@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-GroupBuffs
+## Notes: Casts the buffs your group is missing, one key press at a time, also in combat. /ggb
+## Notes-ruRU: Накладывает баффы, которых не хватает группе, по одному за нажатие, и в бою тоже. /ggb
+## Notes-deDE: Wirkt die Buffs, die deiner Gruppe fehlen, einen pro Tastendruck, auch im Kampf. /ggb
+## Notes-esES: Lanza los beneficios que le faltan a tu grupo, uno por pulsación, también en combate. /ggb
+## Notes-esMX: Lanza los beneficios que le faltan a tu grupo, uno por pulsación, también en combate. /ggb
+## Notes-frFR: Lance les améliorations qui manquent à ton groupe, une par appui, même en combat. /ggb
+## Notes-ptBR: Lança os bônus que faltam ao seu grupo, um por toque, também em combate. /ggb
+## Notes-zhCN: 每按一次为队伍补上一个缺少的增益，战斗中也可以。/ggb
+## Notes-zhTW: 每按一次为队伍补上一个缺少的增益，战斗中也可以。/ggb
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-GroupBuffs\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: GroupBuffs
+## SavedVariablesPerCharacter: GulliGroupBuffsCharDB
+## AddonCompartmentFunc: GulliGroupBuffs_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Buffs.lua
+Core.lua
+Skin.lua
+UI.lua

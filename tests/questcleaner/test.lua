@@ -63,6 +63,15 @@ test("items: leftovers go, items of quests that stay and permanent items stay", 
     end
 end)
 
+test("an item protected in Gulli Toolkit is never offered", function()
+    Fake { quests = QUESTS, bag = bag(), done = { [55] = true } }
+    local ns = Load()
+    GulliToolkit = { IsProtected = function(id) return id == 4 end }
+    local items = ns.PlanItems(ns.PlanQuests(10))
+    GulliToolkit = nil
+    eq(names(items), "Done Starter,Sealed Letter,Wolf Pelt")
+end)
+
 test("unticking a quest keeps its items", function()
     Fake { quests = QUESTS, bag = bag() }
     local ns = Load()

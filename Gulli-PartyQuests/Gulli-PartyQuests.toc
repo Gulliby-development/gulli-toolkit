@@ -1,0 +1,24 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-PartyQuests
+## Notes: Compares the quests of your group: who has which quest, share it in one click. /gpq
+## Notes-ruRU: Сравнивает квесты группы: у кого какой квест, поделиться в один клик. /gpq
+## Notes-deDE: Vergleicht die Quests deiner Gruppe: wer welche Quest hat, mit einem Klick teilen. /gpq
+## Notes-esES: Compara las misiones del grupo: quién tiene cada una, compártela con un clic. /gpq
+## Notes-esMX: Compara las misiones del grupo: quién tiene cada una, compártela con un clic. /gpq
+## Notes-frFR: Compare les quêtes du groupe : qui a quelle quête, partage en un clic. /gpq
+## Notes-ptBR: Compara as missões do grupo: quem tem qual missão, compartilhe com um clique. /gpq
+## Notes-zhCN: 比较队伍任务：谁有哪个任务，一键共享。 /gpq
+## Notes-zhTW: 比较队伍任务：谁有哪个任务，一键共享。 /gpq
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-PartyQuests\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: PartyQuests
+## AddonCompartmentFunc: GulliPartyQuests_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

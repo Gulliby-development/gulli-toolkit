@@ -371,7 +371,8 @@ function ns.PlanItems(planned, maxLevel)
 
     local out, future = {}, {}
     for _, it in ipairs(bagQuestItems()) do
-        if not PERMANENT[it.itemID] and not D.keep[it.itemID] and not keep[it.itemID] then
+        local protected = GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(it.itemID)
+        if not PERMANENT[it.itemID] and not D.keep[it.itemID] and not keep[it.itemID] and not protected then
             it.links = {}
             local known = not it.starts and fromData(it)
             if known == "future" then

@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Bulletin
+## Notes: Sorts trade and group chat into groups by dungeon, selling, buying, crafting and guilds. /gbul
+## Notes-ruRU: Раскладывает торговый чат и поиск группы: группы по подземельям, продажа, покупка, ремесло, гильдии. /gbul
+## Notes-deDE: Sortiert Handels- und Gruppenchat: Gruppen nach Dungeon, Verkauf, Ankauf, Handwerk, Gilden. /gbul
+## Notes-esES: Ordena el chat de comercio y grupos: grupos por mazmorra, venta, compra, oficios, hermandades. /gbul
+## Notes-esMX: Ordena el chat de comercio y grupos: grupos por mazmorra, venta, compra, oficios, hermandades. /gbul
+## Notes-frFR: Trie le commerce et les groupes : groupes par donjon, ventes, achats, artisanat, guildes. /gbul
+## Notes-ptBR: Organiza o chat de comércio e grupos: grupos por masmorra, venda, compra, profissões, guildas. /gbul
+## Notes-zhCN: 整理交易和组队频道：按副本分组、出售、收购、制造、公会。/gbul
+## Notes-zhTW: 整理交易和组队频道：按副本分组、出售、收购、制造、公会。/gbul
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Bulletin\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Bulletin
+## SavedVariables: GulliBulletinDB
+## AddonCompartmentFunc: GulliBulletin_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

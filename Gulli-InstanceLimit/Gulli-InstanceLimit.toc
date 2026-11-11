@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-InstanceLimit
+## Notes: Counts your dungeon entries this hour and today, and shows when the next one is free. /gil
+## Notes-ruRU: Считает входы в подземелья за час и за день и показывает, когда освободится следующий. /gil
+## Notes-deDE: Zählt deine Dungeon-Betretungen dieser Stunde und heute und zeigt, wann die nächste frei ist. /gil
+## Notes-esES: Cuenta tus entradas a mazmorras en esta hora y hoy, y muestra cuándo queda libre la siguiente. /gil
+## Notes-esMX: Cuenta tus entradas a mazmorras en esta hora y hoy, y muestra cuándo queda libre la siguiente. /gil
+## Notes-frFR: Compte vos entrées en donjon cette heure et aujourd'hui, et indique quand la suivante se libère. /gil
+## Notes-ptBR: Conta suas entradas em masmorras nesta hora e hoje, e mostra quando a próxima fica livre. /gil
+## Notes-zhCN: 统计本小时和今天进入副本的次数，并显示下一次何时可用。 /gil
+## Notes-zhTW: 统计本小时和今天进入副本的次数，并显示下一次何时可用。 /gil
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-InstanceLimit\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: InstanceLimit
+## SavedVariables: GulliInstanceLimitDB
+## AddonCompartmentFunc: GulliInstanceLimit_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

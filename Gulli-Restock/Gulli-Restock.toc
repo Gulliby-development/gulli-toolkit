@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Restock
+## Notes: Keeps reagents, ammo, food and water at the amount you set. Buys at a vendor after a preview. /grs
+## Notes-ruRU: Держит реагенты, боеприпасы, еду и воду в нужном количестве. Покупает у торговца после просмотра. /grs
+## Notes-deDE: Hält Reagenzien, Munition, Essen und Wasser auf deiner Menge. Kauft beim Händler nach einer Vorschau. /grs
+## Notes-esES: Mantiene componentes, munición, comida y agua en la cantidad que elijas. Compra al vendedor tras una vista previa. /grs
+## Notes-esMX: Mantiene componentes, munición, comida y agua en la cantidad que elijas. Compra al vendedor tras una vista previa. /grs
+## Notes-frFR: Garde composants, munitions, nourriture et eau à la quantité choisie. Achète chez le marchand après un aperçu. /grs
+## Notes-ptBR: Mantém reagentes, munição, comida e água na quantidade escolhida. Compra no vendedor após uma prévia. /grs
+## Notes-zhCN: 把材料、弹药、食物和水保持在你设定的数量。预览后从商人处购买。 /grs
+## Notes-zhTW: 把材料、弹药、食物和水保持在你设定的数量。预览后从商人处购买。 /grs
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Restock\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Restock
+## SavedVariables: GulliRestockDB
+## SavedVariablesPerCharacter: GulliRestockCharDB
+## AddonCompartmentFunc: GulliRestock_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

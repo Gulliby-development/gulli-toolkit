@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Social
+## Notes: Invite on a whispered word, accept friends and guild, turn away strangers, duels and guild invites. /gso
+## Notes-ruRU: Инвайт по слову в шёпоте, приём приглашений от друзей и гильдии, отказ незнакомцам, дуэлям и гильдиям. /gso
+## Notes-deDE: Einladen auf ein geflüstertes Wort, Freunde und Gilde annehmen, Fremde, Duelle und Gilden ablehnen. /gso
+## Notes-esES: Invita con una palabra susurrada, acepta amigos y hermandad, rechaza desconocidos, duelos y hermandades. /gso
+## Notes-esMX: Invita con una palabra susurrada, acepta amigos y hermandad, rechaza desconocidos, duelos y hermandades. /gso
+## Notes-frFR: Invite sur un mot chuchoté, accepte amis et guilde, refuse inconnus, duels et guildes. /gso
+## Notes-ptBR: Convida por palavra sussurrada, aceita amigos e guilda, recusa desconhecidos, duelos e guildas. /gso
+## Notes-zhCN: 密语关键词自动邀请，接受好友和公会邀请，拒绝陌生人、决斗和公会邀请。 /gso
+## Notes-zhTW: 密语关键词自动邀请，接受好友和公会邀请，拒绝陌生人、决斗和公会邀请。 /gso
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Social\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Social
+## SavedVariables: GulliSocialDB
+## AddonCompartmentFunc: GulliSocial_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

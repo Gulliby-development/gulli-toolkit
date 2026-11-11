@@ -15,16 +15,34 @@
 | Module | What it does | Open it |
 |---|---|---|
 | [Quest Cleaner](docs/questcleaner/README.md) | Abandons low-level quests and deletes leftover quest items from your bags. You see a list before anything goes. | `/gqc` |
-| Mob Finder | Plays a sound when a mob you look for shows its nameplate. | `/gmf` |
-| Group Buffs | Shows who in your group misses your buffs and buffs them in one click. | `/ggb` |
-
-Mob Finder and Group Buffs are coming soon.
+| [Mob Finder](docs/mobfinder/README.md) | Plays a sound when a mob you look for shows its nameplate. | `/gmf` |
+| [Group Buffs](docs/groupbuffs/README.md) | Casts the buffs your group is missing, one press at a time, also in combat. | `/ggb` |
+| [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds. | `/gbul` |
+| [Party Quests](docs/partyquests/README.md) | Shows which quests your group shares and who still needs one. Share in one tap. | `/gpq` |
+| [Instance Limit](docs/instancelimit/README.md) | Counts your dungeon entries this hour and today, and shows when the next one is free. | `/gil` |
+| [Attunements](docs/attune/README.md) | Raid attunement steps for all your characters, with the next step and where it starts. | `/gat` |
+| [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
+| [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests you have and can still take, plus a checklist before you go. | `/gdp` |
+| [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons, a group message from a quest, whispers you missed. | `/gqk` |
+| [Chores](docs/chores/README.md) | A to-do list for each character: cooldowns, mail, trainer, rested XP, repairs. | `/gch` |
+| [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
+| [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
+| [Mail](docs/mail/README.md) | Take all from the mailbox, and your characters and recent recipients as names to tap. | `/gml` |
+| [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. | `/gaq` |
+| [Tooltip](docs/tooltip/README.md) | Full stack price, the quests that need an item, item and NPC ids. | `/gtt` |
+| [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
+| [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
+| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
+| [Reminders](docs/reminders/README.md) | Icons for missing class buffs, poisons, ammo and soul shards. | `/grm` |
 
 ## Features
 
 - **One window for all.** Type `/gulli`, or click the toolkit in the addon button on the minimap. You see every module, can open it, or switch it off.
+- **Switch off what you do not need.** Untick a module in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
+- **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
+- **Recent news.** The toolkit window shows the last messages from the modules, such as how many dungeon entries are left or what waits on your other characters.
 - **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI.
 - **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.

@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-BagSpace
+## Notes: Frees the bag slots you ask for: merges stacks, then sells or deletes the cheapest junk. Shows a list first. /gbs
+## Notes-ruRU: Освобождает нужное число ячеек: объединяет стопки, потом продаёт или удаляет самый дешёвый хлам. Сначала показывает список. /gbs
+## Notes-deDE: Macht die gewünschten Taschenplätze frei: stapelt, dann verkauft oder löscht den billigsten Kram. Zeigt erst eine Liste. /gbs
+## Notes-esES: Libera los huecos que pidas: junta montones y vende o borra la basura más barata. Antes muestra una lista. /gbs
+## Notes-esMX: Libera los huecos que pidas: junta montones y vende o borra la basura más barata. Antes muestra una lista. /gbs
+## Notes-frFR: Libère les emplacements voulus : regroupe les piles, puis vend ou supprime le bric-à-brac le moins cher. Affiche d'abord une liste. /gbs
+## Notes-ptBR: Libera os espaços que você pedir: junta pilhas e vende ou apaga o lixo mais barato. Mostra uma lista antes. /gbs
+## Notes-zhCN: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
+## Notes-zhTW: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-BagSpace\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: BagSpace
+## SavedVariables: GulliBagSpaceDB
+## AddonCompartmentFunc: GulliBagSpace_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

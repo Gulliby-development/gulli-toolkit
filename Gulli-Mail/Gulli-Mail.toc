@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Mail
+## Notes: Take all from the mailbox, and one-tap names of your characters and recent recipients. /gml
+## Notes-ruRU: Забрать всё из почты и имена ваших персонажей и недавних получателей в одно нажатие. /gml
+## Notes-deDE: Alles aus dem Briefkasten nehmen, und Namen deiner Charaktere und letzten Empfänger mit einem Tipp. /gml
+## Notes-esES: Recoge todo del buzón, y nombres de tus personajes y destinatarios recientes con un toque. /gml
+## Notes-esMX: Recoge todo del buzón, y nombres de tus personajes y destinatarios recientes con un toque. /gml
+## Notes-frFR: Tout prendre dans la boîte, et les noms de vos personnages et destinataires récents en un toucher. /gml
+## Notes-ptBR: Pegue tudo do correio, e nomes dos seus personagens e destinatários recentes num toque. /gml
+## Notes-zhCN: 一键收取邮箱，并一键选择你的角色和最近的收件人。 /gml
+## Notes-zhTW: 一键收取邮箱，并一键选择你的角色和最近的收件人。 /gml
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Mail\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Mail
+## SavedVariables: GulliMailDB
+## AddonCompartmentFunc: GulliMail_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

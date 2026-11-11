@@ -10,6 +10,10 @@ local function stub()
         if k == "Show" then return function() rawset(t, "_shown", true) end end
         if k == "Hide" then return function() rawset(t, "_shown", false) end end
         if k == "SetShown" then return function(_, v) rawset(t, "_shown", v and true or false) end end
+        if k == "GetHeight" then return function() return rawget(t, "_height") or 768 end end
+        if k == "SetHeight" then return function(_, v) rawset(t, "_height", v) end end
+        if k == "GetWidth" then return function() return 500 end end
+        if k == "GetValue" then return function() return 0 end end
         if k == "GetText" then return function() return rawget(t, "_text") end end
         if k == "SetText" then return function(_, v) rawset(t, "_text", v) end end
         if k == "SetEnabled" then return function(_, v) rawset(t, "_enabled", v) end end
@@ -43,6 +47,10 @@ function Fake(spec)
     CreateFrame = function() local f = stub(); W.frames[#W.frames + 1] = f; return f end
     UIParent, GameTooltip, UISpecialFrames = stub(), stub(), {}
     tinsert = table.insert
+    time = function() return 1000 end
+    GetCursorInfo = function() end
+    ClearCursor = function() end
+    C_Item = { GetItemInfo = function() end }
     ReloadUI = function() W.reloaded = true end
     Settings = nil
     print = function(...) W.printed[#W.printed + 1] = table.concat({ ... }, " ") end

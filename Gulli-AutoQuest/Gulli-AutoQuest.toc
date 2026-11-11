@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-AutoQuest
+## Notes: Takes and hands in quests for you. You still pick the reward when there is a choice. /gaq
+## Notes-ruRU: Сам берёт и сдаёт квесты. Награду с выбором выбираете вы. /gaq
+## Notes-deDE: Nimmt Quests an und gibt sie ab. Bei einer Auswahl wählst du die Belohnung. /gaq
+## Notes-esES: Acepta y entrega misiones por ti. Si hay que elegir recompensa, eliges tú. /gaq
+## Notes-esMX: Acepta y entrega misiones por ti. Si hay que elegir recompensa, eliges tú. /gaq
+## Notes-frFR: Accepte et rend les quêtes pour vous. Vous choisissez la récompense s'il y a un choix. /gaq
+## Notes-ptBR: Aceita e entrega missões por você. Você escolhe a recompensa quando há escolha. /gaq
+## Notes-zhCN: 自动接受和交付任务。有多个奖励时仍由你选择。 /gaq
+## Notes-zhTW: 自动接受和交付任务。有多个奖励时仍由你选择。 /gaq
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-AutoQuest\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: AutoQuest
+## SavedVariables: GulliAutoQuestDB
+## AddonCompartmentFunc: GulliAutoQuest_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

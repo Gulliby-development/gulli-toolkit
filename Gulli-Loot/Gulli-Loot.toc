@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Loot
+## Notes: Rolls Need, Greed or Pass by your rules for each quality and item. Bind-on-pickup stays yours. /glt
+## Notes-ruRU: Нажимает «Нужно», «Не откажусь» или «Отказ» по вашим правилам. Персональные предметы разыгрываете вы. /glt
+## Notes-deDE: Würfelt Bedarf, Gier oder Passen nach deinen Regeln je Qualität und Gegenstand. /glt
+## Notes-esES: Tira Necesidad, Codicia o Pasar según tus reglas por calidad y objeto. /glt
+## Notes-esMX: Tira Necesidad, Codicia o Pasar según tus reglas por calidad y objeto. /glt
+## Notes-frFR: Tire Besoin, Cupidité ou Passer selon vos règles par qualité et par objet. /glt
+## Notes-ptBR: Rola Necessidade, Ganância ou Passar pelas suas regras por qualidade e item. /glt
+## Notes-zhCN: 按你为品质和物品设定的规则自动需求、贪婪或放弃。拾取绑定的物品仍由你决定。 /glt
+## Notes-zhTW: 按你为品质和物品设定的规则自动需求、贪婪或放弃。拾取绑定的物品仍由你决定。 /glt
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Loot\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Loot
+## SavedVariables: GulliLootDB
+## AddonCompartmentFunc: GulliLoot_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
