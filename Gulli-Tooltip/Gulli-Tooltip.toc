@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Tooltip
+## Notes: Adds to tooltips: the price of a full stack, the quests that need the item, item and NPC ids. /gtt
+## Notes-ruRU: Добавляет в подсказки цену полной стопки, квесты, которым нужен предмет, ID предметов и NPC. /gtt
+## Notes-deDE: Ergänzt Tooltips: Preis eines vollen Stapels, Quests, die den Gegenstand brauchen, IDs. /gtt
+## Notes-esES: Añade a los tooltips: precio de un montón, misiones que necesitan el objeto, IDs. /gtt
+## Notes-esMX: Añade a los tooltips: precio de un montón, misiones que necesitan el objeto, IDs. /gtt
+## Notes-frFR: Ajoute aux infobulles : prix d'une pile pleine, quêtes qui demandent l'objet, IDs. /gtt
+## Notes-ptBR: Adiciona às dicas: preço de uma pilha, missões que precisam do item, IDs. /gtt
+## Notes-zhCN: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
+## Notes-zhTW: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Tooltip\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Tooltip
+## SavedVariables: GulliTooltipDB
+## AddonCompartmentFunc: GulliTooltip_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
