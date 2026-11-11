@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-DungeonPrep
+## Notes: Before a dungeon: its quests you have and can still take, where to get them, and a checklist. /gdp
+## Notes-ruRU: Перед подземельем: его квесты, которые есть и которые ещё можно взять, где их взять, и чек-лист. /gdp
+## Notes-deDE: Vor dem Dungeon: seine Quests, die du hast und noch annehmen kannst, wo es sie gibt, und eine Checkliste. /gdp
+## Notes-esES: Antes de una mazmorra: sus misiones que tienes y aún puedes coger, dónde y una lista de control. /gdp
+## Notes-esMX: Antes de una mazmorra: sus misiones que tienes y aún puedes coger, dónde y una lista de control. /gdp
+## Notes-frFR: Avant un donjon : ses quêtes que vous avez ou pouvez prendre, où les trouver, et une liste. /gdp
+## Notes-ptBR: Antes de uma masmorra: as missões que você tem e ainda pode pegar, onde, e uma lista. /gdp
+## Notes-zhCN: 进副本前：已有和还能接的副本任务、在哪接，以及检查清单。 /gdp
+## Notes-zhTW: 进副本前：已有和还能接的副本任务、在哪接，以及检查清单。 /gdp
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-DungeonPrep\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: DungeonPrep
+## SavedVariables: GulliDungeonPrepDB
+## AddonCompartmentFunc: GulliDungeonPrep_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Data.lua
+Core.lua
+Skin.lua
+UI.lua
