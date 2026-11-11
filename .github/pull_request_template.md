@@ -6,7 +6,8 @@ Closes #
 
 ## Verification
 
-- [ ] `lua5.1 tests/test.lua`
+- [ ] `for t in tests/*/test.lua; do lua5.1 "$t"; done`
+- [ ] A changed folder has its `
 - [ ] A new UI text is in all 8 languages in `Locales.lua`
 - [ ] Tried in WoW Forever (client and device: ), or said why not
 - [ ] Screenshots of a changed window attached

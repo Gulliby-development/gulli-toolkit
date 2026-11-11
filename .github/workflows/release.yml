@@ -1,19 +1,24 @@
 name: Release
 
-# Zip the addon and publish GitHub Release v<version> with a release.json for the
-# "forever" flavor, so Runeloader and its index find the Forever build. The version
-# comes from "## Version" in the TOC. Start it with "Run workflow" on main (it tags the
-# commit it built) or by pushing the tag v<version>.
+# Release one addon folder of the toolkit on its own tag, so Runeloader and its index see the
+# repository as one package: the core on Core-v<version>, each module on <Module>-v<version>
+# (QuestCleaner-v1.3.0). The version comes from "## Version" in that folder's TOC. Start it
+# with "Run workflow" on main and pick the module (it tags the commit it built), or push the tag.
 on:
   push:
-    tags: ["v*"]
+    tags: ["*-v*"]
   workflow_dispatch:
+    inputs:
+      module:
+        description: "What to release: Core (Gulli-Toolkit) or a module folder without Gulli- (QuestCleaner)"
+        required: true
+        default: Core
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref }}-${{ inputs.module }}
   cancel-in-progress: false
 
 jobs:
@@ -24,6 +29,7 @@ jobs:
     env:
       EVENT: ${{ github.event_name }}
       REF_NAME: ${{ github.ref_name }}
+      INPUT_MODULE: ${{ inputs.module }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,26 +40,37 @@ jobs:
 
       - name: Tests
         run: |
-          for f in Gulli-QuestCleaner/*.lua tests/*.lua; do luac5.1 -p "$f"; done
-          lua5.1 tests/test.lua
+          for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
+          for t in tests/*/test.lua; do lua5.1 "$t"; done
 
-      - name: Version from the TOC
+      - name: Module, folder and version
         run: |
-          v=$(sed -n 's/^## Version: *//p' Gulli-QuestCleaner/Gulli-QuestCleaner.toc | tr -d '\r')
-          echo "TOC version: $v, ref: $REF_NAME ($EVENT)"
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$REF_NAME" != "main" ]; then
               echo "::error::Run the release workflow on main, not $REF_NAME."; exit 1
             fi
-          elif [ "$REF_NAME" != "v$v" ]; then
-            echo "::error::Tag $REF_NAME does not match ## Version $v. Tag the release v$v."; exit 1
+            module=$INPUT_MODULE
+          else
+            module=${REF_NAME%%-v*}
           fi
-          echo "VERSION=$v" >> "$GITHUB_ENV"
+          if ! [[ "$module" =~ ^[A-Za-z][A-Za-z0-9]*$ ]]; then
+            echo "::error::'$module' is not a module name."; exit 1
+          fi
+          if [ "$module" = "Core" ]; then folder=Gulli-Toolkit; else folder=Gulli-$module; fi
+          toc="$folder/$folder.toc"
+          [ -f "$toc" ] || { echo "::error::No $toc. Pick Core or a module folder name without Gulli-."; exit 1; }
+          v=$(sed -n 's/^## Version: *//p' "$toc" | tr -d '\r')
+          tag="$module-v$v"
+          echo "Module $module, folder $folder, version $v, tag $tag, ref $REF_NAME ($EVENT)"
+          if [ "$EVENT" != "workflow_dispatch" ] && [ "$REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $REF_NAME does not match ## Version $v of $folder. Tag the release $tag."; exit 1
+          fi
+          { echo "MODULE=$module"; echo "FOLDER=$folder"; echo "VERSION=$v"; echo "TAG=$tag"; } >> "$GITHUB_ENV"
 
       - name: Package
         run: |
-          zip -r "Gulli-QuestCleaner-$VERSION-forever.zip" Gulli-QuestCleaner
-          printf '{"releases":[{"name":"Gulli-QuestCleaner","version":"%s","filename":"Gulli-QuestCleaner-%s-forever.zip","nolib":false,"metadata":[{"flavor":"forever","interface":16001}]}]}\n' "$VERSION" "$VERSION" > release.json
+          zip -r "$FOLDER-$VERSION-forever.zip" "$FOLDER"
+          printf '{"releases":[{"name":"%s","version":"%s","filename":"%s-%s-forever.zip","nolib":false,"metadata":[{"flavor":"forever","interface":16001}]}]}\n' "$FOLDER" "$VERSION" "$FOLDER" "$VERSION" > release.json
           cat release.json
 
       - name: Publish
@@ -61,8 +78,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          if gh release view "v$VERSION" --repo "$REPO" > /dev/null 2>&1; then
-            echo "::error::Release v$VERSION already exists. Bump ## Version in the TOC."; exit 1
+          if gh release view "$TAG" --repo "$REPO" > /dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Bump ## Version in $FOLDER/$FOLDER.toc."; exit 1
           fi
-          gh release create "v$VERSION" "Gulli-QuestCleaner-$VERSION-forever.zip" release.json \
-            --repo "$REPO" --target "$GITHUB_SHA" --title "Gulli-QuestCleaner $VERSION" --generate-notes
+          gh release create "$TAG" "$FOLDER-$VERSION-forever.zip" release.json \
+            --repo "$REPO" --target "$GITHUB_SHA" --title "$FOLDER $VERSION" --generate-notes
