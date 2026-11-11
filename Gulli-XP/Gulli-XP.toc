@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-XP
+## Notes: XP per hour, the time and kills to the next level, and where your XP came from. /gxp
+## Notes-ruRU: Опыт в час, сколько времени и убийств до уровня и откуда пришёл опыт. /gxp
+## Notes-deDE: EP pro Stunde, Zeit und Kills bis zur nächsten Stufe, und woher die EP kamen. /gxp
+## Notes-esES: PX por hora, tiempo y muertes hasta el siguiente nivel, y de dónde vienen tus PX. /gxp
+## Notes-esMX: PX por hora, tiempo y muertes hasta el siguiente nivel, y de dónde vienen tus PX. /gxp
+## Notes-frFR: XP par heure, temps et victimes jusqu'au niveau suivant, et d'où vient votre XP. /gxp
+## Notes-ptBR: XP por hora, tempo e abates até o próximo nível, e de onde veio seu XP. /gxp
+## Notes-zhCN: 每小时经验、升级所需时间和击杀数，以及经验来源。 /gxp
+## Notes-zhTW: 每小时经验、升级所需时间和击杀数，以及经验来源。 /gxp
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-XP\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: XP
+## SavedVariables: GulliXPDB
+## AddonCompartmentFunc: GulliXP_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
