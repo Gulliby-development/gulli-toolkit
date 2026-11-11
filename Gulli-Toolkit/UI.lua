@@ -1,129 +1,394 @@
--- The hub window: one row per module with its icon, name, a line about it, an on/off switch
--- and Open. It only shows ns.List() and calls ns.OpenModule and ns.SetEnabled.
+-- The hub window, in three columns: a search and the categories with their counts on the left,
+-- the modules of the chosen category with an on/off switch in the middle, the chosen module with
+-- its switches and Open on the right. It only shows what Core.lua gives (ns.List, ns.Filter,
+-- ns.Groups, ns.Counts) and calls ns.OpenModule, ns.SetEnabled and the module's own options.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local WIDTH, ROW_H, PAD = 500, 58, 12
-local frame, scroll, list, footer, reloadBtn, reloadText, feedBox, protectBtn, protectFrame
-local rows, feedLines = {}, {}
-local FEED_LINES = 3
+local W, H, PAD, HEAD = 940, 580, 12, 48
+local SIDE, DETAIL = 200, 272
+local MID = W - SIDE - DETAIL - 4 * PAD
+local LIST_W = MID - 14
+local ROW_H, GROUP_H, CAT_H = 54, 30, 30
+local FEED_LINES, MAX_OPTIONS = 3, 6
+
+local GOOD = { 0.45, 0.85, 0.50, 1 }
+local WAIT = { 1.00, 0.72, 0.30, 1 }
+local BAD = { 0.90, 0.42, 0.40, 1 }
+local LINE = { 1, 1, 1, 0.07 }
+local HOVER = { 1, 1, 1, 0.06 }
+
+local view = { cat = "All", state = "all", query = "" }
+local frame, side, mid, detail, search, placeholder, midTitle, scroll, list, empty
+local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, recent
+local cats, pills, rows, heads, recentLines, optRows = {}, {}, {}, {}, {}, {}
+
+local function catName(key)
+    if key == "All" then return L.ALL_MODULES end
+    return L["CAT_" .. key]
+end
+
+local function line(parent, color)
+    local t = parent:CreateTexture(nil, "ARTWORK")
+    t:SetTexture("Interface\\Buttons\\WHITE8X8")
+    local c = color or LINE
+    t:SetVertexColor(c[1], c[2], c[3], c[4])
+    return t
+end
+
+local function stateText(row)
+    if row.state == "ready" then return L.STATE_ON, GOOD end
+    if row.state == "off" then return L.OFF, S.MUTED end
+    if row.state == "reload" then return L.STATE_RELOAD, WAIT end
+    return L.NOT_INSTALLED, BAD
+end
+
+local function canOpen(row)
+    return row.state == "ready" and row.info and type(row.info.open) == "function"
+end
+
+local function open(row)
+    if row and ns.OpenModule(row.key) then frame:Hide() end
+end
+
+local function select(row)
+    view.selected = row and row.key
+    ns.Refresh()
+end
+
+-- Left column ----------------------------------------------------------------------------------
+
+local function makeCat(i)
+    local b = CreateFrame("Button", nil, side)
+    b:SetHeight(CAT_H)
+    b:SetPoint("TOPLEFT", 6, -(48 + (i - 1) * (CAT_H + 2)))
+    b:SetPoint("TOPRIGHT", -6, -(48 + (i - 1) * (CAT_H + 2)))
+    S.Box(b, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
+    b.bar = line(b, S.Accent())
+    b.bar:SetPoint("TOPLEFT")
+    b.bar:SetPoint("BOTTOMLEFT")
+    b.bar:SetWidth(3)
+    b.countBox = CreateFrame("Frame", nil, b)
+    b.countBox:SetSize(46, 20)
+    b.countBox:SetPoint("RIGHT", -4, 0)
+    S.Box(b.countBox, { 0.02, 0.02, 0.02, 1 }, { 0, 0, 0, 0 })
+    b.count = S.Text(b.countBox, 11, S.MUTED)
+    b.count:SetPoint("CENTER")
+    b.count:SetJustifyH("CENTER")
+    b.text = S.Text(b, 12)
+    b.text:SetPoint("LEFT", 12, 0)
+    b.text:SetPoint("RIGHT", b.countBox, "LEFT", -4, 0)
+    b.text:SetWordWrap(false)
+    b:SetScript("OnClick", function(self)
+        view.cat = self.key
+        view.selected = nil
+        search:SetText("")
+        search:ClearFocus()
+        scroll:Top()
+        ns.Refresh()
+    end)
+    b:SetScript("OnEnter", function(self) if view.cat ~= self.key then S.Fill(self, HOVER) end end)
+    b:SetScript("OnLeave", function(self) if view.cat ~= self.key then S.Fill(self, { 0, 0, 0, 0 }) end end)
+    cats[i] = b
+    return b
+end
+
+local function fillCats(counts)
+    local keys = { "All" }
+    for _, k in ipairs(ns.CATEGORIES) do keys[#keys + 1] = k end
+    if counts.Other then keys[#keys + 1] = "Other" end
+    local a = S.Accent()
+    local searching = view.query ~= ""
+    for i, key in ipairs(keys) do
+        local b = cats[i] or makeCat(i)
+        b.key = key
+        local c = counts[key] or { on = 0, total = 0 }
+        b.text:SetText(catName(key))
+        b.count:SetText(c.on .. "/" .. c.total)
+        local sel = view.cat == key and not searching
+        b.bar:SetShown(sel)
+        S.Fill(b, sel and { a[1], a[2], a[3], 0.14 } or { 0, 0, 0, 0 })
+        local tc = sel and a or ((c.total > 0) and S.TEXT or S.MUTED)
+        b.text:SetTextColor(tc[1], tc[2], tc[3], 1)
+        b:Show()
+    end
+    for i = #keys + 1, #cats do cats[i]:Hide() end
+end
+
+-- Middle column --------------------------------------------------------------------------------
 
 local function makeRow(i)
-    local r = CreateFrame("Frame", nil, list)
+    local r = CreateFrame("Button", nil, list)
     r:SetHeight(ROW_H)
-    r:SetPoint("TOPLEFT", 0, -(i - 1) * (ROW_H + 4))
-    r:SetPoint("TOPRIGHT", 0, -(i - 1) * (ROW_H + 4))
-    S.Box(r, S.PANEL)
+    S.Box(r, S.ROW, { 0, 0, 0, 0 })
+    r.bar = line(r, S.Accent())
+    r.bar:SetPoint("TOPLEFT")
+    r.bar:SetPoint("BOTTOMLEFT")
+    r.bar:SetWidth(3)
 
     r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(36, 36)
-    r.icon:SetPoint("LEFT", 10, 0)
+    r.icon:SetSize(32, 32)
+    r.icon:SetPoint("LEFT", 12, 0)
 
-    r.open = S.Button(r, 96, 30)
-    r.open:SetPoint("RIGHT", -10, 0)
-    r.open:SetText(L.OPEN)
-
-    r.check = S.Check(r, 28)
-    r.check:SetPoint("RIGHT", r.open, "LEFT", -6, 0)
-    r.check:SetScript("OnClick", function(self)
-        if self.row then ns.SetEnabled(self.row, not self.row.on) end
+    r.go = CreateFrame("Button", nil, r)
+    r.go:SetSize(28, ROW_H)
+    r.go:SetPoint("RIGHT", 0, 0)
+    r.go.text = S.Text(r.go, 18, S.MUTED)
+    r.go.text:SetPoint("CENTER")
+    r.go.text:SetText(">")
+    r.go:SetScript("OnClick", function(self) open(self:GetParent().row) end)
+    r.go:SetScript("OnEnter", function(self)
+        local a = S.Accent()
+        self.text:SetTextColor(a[1], a[2], a[3], 1)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L.OPEN, 1, 1, 1, 1, true)
+        GameTooltip:Show()
     end)
-    r.check:HookScript("OnEnter", function(self)
+    r.go:SetScript("OnLeave", function(self)
+        self.text:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+        GameTooltip:Hide()
+    end)
+
+    r.switch = S.Switch(r)
+    r.switch:SetPoint("RIGHT", r.go, "LEFT", -2, 0)
+    r.switch:SetScript("OnClick", function(self)
+        local row = self:GetParent().row
+        if row then
+            view.selected = row.key
+            ns.SetEnabled(row, not row.on)
+        end
+    end)
+    r.switch:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L.ON_TIP, 1, 1, 1, 1, true)
         GameTooltip:Show()
     end)
-    r.check:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    r.switch:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
-    r.status = S.Text(r, 12, S.MUTED)
+    r.status = S.Text(r, 11, BAD)
     r.status:SetPoint("RIGHT", -12, 0)
     r.status:SetJustifyH("RIGHT")
 
-    r.title = S.Text(r, 14)
-    r.title:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 0)
-    r.title:SetPoint("RIGHT", r.check, "LEFT", -8, 0)
+    r.title = S.Text(r, 13)
+    r.title:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 1)
     r.title:SetWordWrap(false)
-
     r.desc = S.Text(r, 11, S.MUTED)
-    r.desc:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -3)
-    r.desc:SetPoint("RIGHT", r.check, "LEFT", -8, 0)
-    r.desc:SetMaxLines(2)
-    r.desc:SetJustifyV("TOP")
+    r.desc:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -5)
+    r.desc:SetWordWrap(false)
 
-    r.open:SetScript("OnClick", function(self)
-        local row = self:GetParent().row
-        if row and ns.OpenModule(row.key) then frame:Hide() end
-    end)
+    r:SetScript("OnClick", function(self) select(self.row) end)
+    r:SetScript("OnDoubleClick", function(self) open(self.row) end)
+    r:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
+    r:SetScript("OnLeave", function(self) if not self.selected then S.Fill(self, S.ROW) end end)
     rows[i] = r
     return r
 end
 
-local function fill(r, row)
+local function fillRow(r, row)
     r.row = row
-    r.check.row = row
     r.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     r.icon:SetDesaturated(row.state ~= "ready")
     local slash = row.slash and ("  " .. S.Hex(S.MUTED) .. row.slash .. "|r") or ""
     r.title:SetText(row.title .. slash)
+    local tc = row.state == "ready" and S.TEXT or S.MUTED
+    r.title:SetTextColor(tc[1], tc[2], tc[3], 1)
     r.desc:SetText(row.desc)
     local missing = row.state == "missing"
-    r.check:SetShown(not missing)
-    r.open:SetShown(not missing)
+    r.switch:SetShown(not missing)
+    r.go:SetShown(not missing)
+    r.go:SetEnabled(canOpen(row) and true or false)
+    r.go:SetAlpha(canOpen(row) and 1 or 0.3)
     r.status:SetShown(missing)
     r.status:SetText(missing and L.NOT_INSTALLED or "")
-    if missing then
-        r.title:SetPoint("RIGHT", r.status, "LEFT", -8, 0)
-        r.desc:SetPoint("RIGHT", r.status, "LEFT", -8, 0)
-    else
-        r.title:SetPoint("RIGHT", r.check, "LEFT", -8, 0)
-        r.desc:SetPoint("RIGHT", r.check, "LEFT", -8, 0)
-    end
-    r.check:SetChecked(row.on and true or false)
-    local canOpen = row.state == "ready" and row.info and type(row.info.open) == "function"
-    r.open:SetEnabled(canOpen and true or false)
-    r.title:SetTextColor(unpack(row.state == "ready" and S.TEXT or S.MUTED))
+    local right = missing and r.status or r.switch
+    r.title:SetPoint("RIGHT", right, "LEFT", -8, 0)
+    r.desc:SetPoint("RIGHT", right, "LEFT", -8, 0)
+    r.switch:SetChecked(row.on)
+    r.selected = view.selected == row.key
+    local a = S.Accent()
+    S.Fill(r, r.selected and { a[1], a[2], a[3], 0.12 } or S.ROW)
+    r.bar:SetShown(r.selected)
     r:Show()
+end
+
+local function makeHead(i)
+    local h = CreateFrame("Frame", nil, list)
+    h:SetHeight(GROUP_H)
+    h.text = S.Text(h, 12, S.Accent())
+    h.text:SetPoint("BOTTOMLEFT", 2, 7)
+    h.rule = line(h)
+    h.rule:SetHeight(1)
+    h.rule:SetPoint("BOTTOMLEFT", 0, 2)
+    h.rule:SetPoint("BOTTOMRIGHT", 0, 2)
+    heads[i] = h
+    return h
+end
+
+local function place(f, y)
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", 0, -y)
+    f:SetPoint("TOPRIGHT", 0, -y)
+end
+
+local function fillRecent()
+    local feed = ns.Feed()
+    local n = math.min(#feed, FEED_LINES)
+    for i = 1, FEED_LINES do
+        local e = feed[i]
+        local who = e and tostring(e.key or "")
+        if who and ns.T.en["M_" .. who] then who = L["M_" .. who] end
+        recentLines[i]:SetText(e and (S.Hex(S.Accent()) .. who .. "|r  " .. e.text) or "")
+    end
+    return n
+end
+
+local function fillList(data)
+    local shown = ns.Filter(data, view.cat, view.state, view.query)
+    local searching = view.query ~= ""
+    local y, ri, hi = 0, 0, 0
+
+    local n = (view.cat == "All" and not searching and view.state == "all") and fillRecent() or 0
+    recent:SetShown(n > 0)
+    if n > 0 then
+        local h = 30 + n * 17
+        recent:SetHeight(h)
+        place(recent, y)
+        y = y + h + 8
+    end
+
+    local found
+    for _, g in ipairs(ns.Groups(shown)) do
+        if view.cat == "All" or searching then
+            hi = hi + 1
+            local h = heads[hi] or makeHead(hi)
+            h.text:SetText(catName(g.key))
+            place(h, y)
+            h:Show()
+            y = y + GROUP_H + 4
+        end
+        for _, row in ipairs(g.rows) do
+            ri = ri + 1
+            local r = rows[ri] or makeRow(ri)
+            fillRow(r, row)
+            place(r, y)
+            y = y + ROW_H + 4
+            if row.key == view.selected then found = row end
+        end
+        y = y + 4
+    end
+    for i = ri + 1, #rows do rows[i]:Hide() end
+    for i = hi + 1, #heads do heads[i]:Hide() end
+    empty:SetShown(ri == 0)
+    list:SetHeight(math.max(1, y))
+    scroll:Update(y)
+    return found or shown[1]
+end
+
+-- Right column ---------------------------------------------------------------------------------
+
+local function makeOption(i)
+    local o = CreateFrame("Frame", nil, detail)
+    o:SetHeight(32)
+    o:SetPoint("TOPLEFT", detail.setHead, "BOTTOMLEFT", 0, -4 - (i - 1) * 32)
+    o:SetPoint("RIGHT", detail, "RIGHT", -8, 0)
+    o.switch = S.Switch(o)
+    o.switch:SetPoint("RIGHT")
+    o.switch:SetScript("OnClick", function(self)
+        local opt = self:GetParent().opt
+        if opt then
+            local ok, cur = pcall(opt.get)
+            pcall(opt.set, not (ok and cur))
+            ns.Refresh()
+        end
+    end)
+    o.label = S.Text(o, 11)
+    o.label:SetPoint("LEFT")
+    o.label:SetPoint("RIGHT", o.switch, "LEFT", -6, 0)
+    o.label:SetMaxLines(2)
+    optRows[i] = o
+    return o
+end
+
+local function fillDetail(row)
+    detail.body:SetShown(row ~= nil)
+    if not row then return end
+    detail.row = row
+    detail.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    detail.icon:SetDesaturated(row.state ~= "ready")
+    detail.title:SetText(row.title)
+    detail.cat:SetText(catName(row.category))
+    local st, color = stateText(row)
+    detail.state:SetText(st)
+    detail.state:SetTextColor(color[1], color[2], color[3], 1)
+    detail.desc:SetText(row.desc)
+    detail.slash:SetText(row.slash and L.COMMAND:format(row.slash) or "")
+
+    local opts = row.state == "ready" and row.options or {}
+    local count = math.min(#opts, MAX_OPTIONS)
+    for i = 1, count do
+        local o = optRows[i] or makeOption(i)
+        o.opt = opts[i]
+        o.label:SetText(opts[i].label)
+        local ok, on = pcall(opts[i].get)
+        o.switch:SetChecked(ok and on)
+        o:Show()
+    end
+    for i = count + 1, #optRows do optRows[i]:Hide() end
+    if row.state == "missing" then
+        detail.none:SetText(L.MISSING_HINT)
+    elseif row.state ~= "ready" then
+        detail.none:SetText(L.RELOAD_HINT)
+    else
+        detail.none:SetText(L.NO_SETTINGS)
+    end
+    detail.none:SetShown(count == 0)
+
+    detail.open:SetText(row.state == "missing" and L.NOT_INSTALLED or L.OPEN_MODULE:format(row.title))
+    detail.open:SetEnabled(canOpen(row) and true or false)
+    detail.open:SetAlpha(canOpen(row) and 1 or 0.5)
+end
+
+-- The whole window -----------------------------------------------------------------------------
+
+local function applyScale()
+    local sw = tonumber(UIParent:GetWidth()) or W
+    local sh = tonumber(UIParent:GetHeight()) or H
+    local user = (GulliToolkitDB and GulliToolkitDB.scale) or 1
+    frame:SetScale(ns.HubScale(user, sw, sh, W, H))
+    scaleText:SetText(math.floor(user * 100 + 0.5) .. "%")
+end
+
+local function nudgeScale(step)
+    GulliToolkitDB = GulliToolkitDB or {}
+    local v = (GulliToolkitDB.scale or 1) + step
+    GulliToolkitDB.scale = math.max(0.7, math.min(1.3, math.floor(v * 10 + 0.5) / 10))
+    applyScale()
 end
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local data = ns.List()
-    local anyMissing = false
-    for i, row in ipairs(data) do
-        fill(rows[i] or makeRow(i), row)
-        if row.state == "missing" then anyMissing = true end
+    fillCats(ns.Counts(data))
+    midTitle:SetText(view.query ~= "" and L.RESULTS or catName(view.cat))
+    for key, p in pairs(pills) do p:SetSelected(view.state == key) end
+    local row = fillList(data)
+    view.selected = row and row.key
+    -- fillList drew the rows before the selection was known when it fell back to the first one.
+    for _, r in ipairs(rows) do
+        if r:IsShown() and r.row then fillRow(r, r.row) end
     end
-    for i = #data + 1, #rows do rows[i]:Hide() end
-    local contentH = #data * (ROW_H + 4)
-    list:SetHeight(contentH)
+    fillDetail(row)
+
     local reload = ns.NeedsReload()
     reloadBtn:SetShown(reload)
-    reloadText:SetText(reload and L.RELOAD_HINT or (anyMissing and L.GET or L.HELP))
+    reloadHint:SetShown(reload)
     protectBtn:SetText(L.PROTECTED_N:format(#ns.Protected()))
-
-    local feed = ns.Feed()
-    local shown = math.min(#feed, FEED_LINES)
-    for i = 1, FEED_LINES do
-        local e = feed[i]
-        local who = e and tostring(e.key or "")
-        if who and ns.T.en["M_" .. who] then who = L["M_" .. who] end
-        feedLines[i]:SetText(e and (S.Hex(S.Accent()) .. who .. "|r  " .. e.text) or "")
-    end
-    feedBox:SetShown(shown > 0)
-    feedBox:SetHeight(22 + shown * 16)
-    local feedH = shown > 0 and (22 + shown * 16 + 8) or 0
-    -- Twenty modules do not fit a handheld screen: the list scrolls inside 85% of the screen.
-    local screen = (UIParent.GetHeight and tonumber(UIParent:GetHeight())) or 768
-    local listH = math.max(ROW_H + 4, math.min(contentH, screen * 0.85 - 60 - feedH - 50))
-    scroll:SetHeight(listH)
-    scroll:Update(contentH)
-    frame:SetHeight(60 + listH + feedH + 50)
     if protectFrame and protectFrame:IsShown() then ns.RefreshProtected() end
 end
 
--- The list of protected items with a drop zone: drag an item from the bags onto it.
+-- Protected items: shown over the right column, with a drop zone for items from the bags.
 local protRows = {}
 function ns.RefreshProtected()
     local ids = ns.Protected()
@@ -134,12 +399,12 @@ function ns.RefreshProtected()
             r:SetHeight(30)
             r:SetPoint("TOPLEFT", 0, -(i - 1) * 32)
             r:SetPoint("TOPRIGHT", 0, -(i - 1) * 32)
-            S.Box(r, S.PANEL)
+            S.Box(r, S.ROW, { 0, 0, 0, 0 })
             r.icon = r:CreateTexture(nil, "ARTWORK")
             r.icon:SetSize(22, 22)
             r.icon:SetPoint("LEFT", 4, 0)
-            r.remove = S.Button(r, 80, 26)
-            r.remove:SetPoint("RIGHT", -2, 0)
+            r.remove = S.Button(r, 76, 28)
+            r.remove:SetPoint("RIGHT", -1, 0)
             r.remove:SetText(L.REMOVE)
             r.remove:SetScript("OnClick", function(self) GulliToolkit.Protect(self:GetParent().id, false) end)
             r.name = S.Text(r, 12)
@@ -156,7 +421,7 @@ function ns.RefreshProtected()
     end
     for i = #ids + 1, #protRows do protRows[i]:Hide() end
     protectFrame.list:SetHeight(math.max(1, #ids * 32))
-    protectFrame:SetHeight(130 + #ids * 32)
+    protectFrame.scroll:Update(#ids * 32)
 end
 
 local function dropItem()
@@ -168,41 +433,262 @@ local function dropItem()
 end
 
 local function buildProtected()
-    protectFrame = CreateFrame("Frame", "GulliToolkitProtected", frame)
-    protectFrame:SetWidth(360)
-    protectFrame:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
-    S.Box(protectFrame)
-    local title = S.Text(protectFrame, 14, S.Accent())
-    title:SetPoint("TOPLEFT", PAD, -PAD)
+    protectFrame = CreateFrame("Frame", "GulliToolkitProtected", detail)
+    protectFrame:SetAllPoints(detail)
+    protectFrame:EnableMouse(true)
+    S.Box(protectFrame, S.PANEL)
+    local title = S.Text(protectFrame, 15, S.Accent())
+    title:SetPoint("TOPLEFT", 12, -14)
     title:SetText(L.PROTECTED)
-    local close = S.Button(protectFrame, 32, 28)
-    close:SetPoint("TOPRIGHT", -PAD + 4, -PAD + 4)
+    local close = S.Button(protectFrame, 30, 28)
+    close:SetPoint("TOPRIGHT", -8, -8)
     close:SetText("X")
     close:SetScript("OnClick", function() protectFrame:Hide() end)
     local hint = S.Text(protectFrame, 11, S.MUTED)
-    hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    hint:SetPoint("RIGHT", -PAD, 0)
+    hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    hint:SetPoint("RIGHT", -12, 0)
+    hint:SetMaxLines(5)
     hint:SetText(L.PROTECT_HINT)
     local drop = CreateFrame("Button", nil, protectFrame)
-    drop:SetHeight(34)
-    drop:SetPoint("TOPLEFT", PAD, -70)
-    drop:SetPoint("TOPRIGHT", -PAD, -70)
-    S.Box(drop, { 0.02, 0.02, 0.02, 1 }, { 0.25, 0.25, 0.27, 1 })
+    drop:SetHeight(40)
+    drop:SetPoint("TOPLEFT", 8, -118)
+    drop:SetPoint("TOPRIGHT", -8, -118)
+    S.Box(drop, { 0.02, 0.02, 0.02, 1 }, { 0.30, 0.30, 0.32, 1 })
     local dropText = S.Text(drop, 12, S.MUTED)
     dropText:SetPoint("CENTER")
     dropText:SetText(L.DROP)
     drop:SetScript("OnReceiveDrag", dropItem)
     drop:SetScript("OnClick", dropItem)
-    protectFrame.list = CreateFrame("Frame", nil, protectFrame)
-    protectFrame.list:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -8)
-    protectFrame.list:SetPoint("TOPRIGHT", drop, "BOTTOMRIGHT", 0, -8)
+    drop:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
+    drop:SetScript("OnLeave", function(self) S.SetBorder(self, { 0.30, 0.30, 0.32, 1 }) end)
+    protectFrame.scroll = S.Scroll(protectFrame)
+    protectFrame.scroll:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -8)
+    protectFrame.scroll:SetPoint("BOTTOMRIGHT", -20, 8)
+    protectFrame.list = protectFrame.scroll.child
+    protectFrame.list:SetWidth(DETAIL - 28)
     protectFrame:SetScript("OnShow", ns.RefreshProtected)
     protectFrame:Hide()
 end
 
+local function buildHeader()
+    local icon = frame:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(28, 28)
+    icon:SetPoint("TOPLEFT", PAD, -10)
+    icon:SetTexture("Interface\\AddOns\\Gulli-Toolkit\\icon")
+    local title = S.Text(frame, 18, S.Accent())
+    title:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+    title:SetText(L.TITLE)
+    local ver = CreateFrame("Frame", nil, frame)
+    ver:SetSize(58, 20)
+    ver:SetPoint("LEFT", title, "RIGHT", 10, 0)
+    S.Box(ver, S.PANEL, { 0.25, 0.25, 0.27, 1 })
+    local verText = S.Text(ver, 11, S.MUTED)
+    verText:SetPoint("CENTER")
+    verText:SetText(ns.Version())
+
+    local close = S.Button(frame, 32, 30)
+    close:SetPoint("TOPRIGHT", -PAD, -9)
+    close:SetText("X")
+    close:SetScript("OnClick", function() frame:Hide() end)
+    local plus = S.Button(frame, 30, 30)
+    plus:SetPoint("RIGHT", close, "LEFT", -12, 0)
+    plus:SetText("+")
+    plus:SetScript("OnClick", function() nudgeScale(0.1) end)
+    scaleText = S.Text(frame, 12, S.MUTED)
+    scaleText:SetWidth(46)
+    scaleText:SetJustifyH("CENTER")
+    scaleText:SetPoint("RIGHT", plus, "LEFT", -2, 0)
+    local minus = S.Button(frame, 30, 30)
+    minus:SetPoint("RIGHT", scaleText, "LEFT", -2, 0)
+    minus:SetText("-")
+    minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
+
+    local rule = line(frame)
+    rule:SetHeight(1)
+    rule:SetPoint("TOPLEFT", PAD, -HEAD + 1)
+    rule:SetPoint("TOPRIGHT", -PAD, -HEAD + 1)
+end
+
+local function buildSide()
+    side = CreateFrame("Frame", nil, frame)
+    side:SetWidth(SIDE)
+    side:SetPoint("TOPLEFT", PAD, -HEAD - 6)
+    side:SetPoint("BOTTOMLEFT", PAD, PAD)
+    S.Box(side, S.PANEL)
+
+    search = S.Edit(side, SIDE - 16)
+    search:SetHeight(30)
+    search:SetPoint("TOPLEFT", 8, -8)
+    search:SetJustifyH("LEFT")
+    search:SetTextInsets(26, 6, 0, 0)
+    search:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 13, "")
+    local glass = search:CreateTexture(nil, "OVERLAY")
+    glass:SetSize(14, 14)
+    glass:SetPoint("LEFT", 7, 0)
+    glass:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+    glass:SetVertexColor(0.7, 0.7, 0.72, 1)
+    placeholder = S.Text(search, 12, S.MUTED)
+    placeholder:SetPoint("LEFT", 26, 0)
+    placeholder:SetText(L.SEARCH)
+    local function hint(self)
+        placeholder:SetShown((self:GetText() or "") == "" and not self:HasFocus())
+    end
+    search:HookScript("OnEditFocusGained", hint)
+    search:HookScript("OnEditFocusLost", hint)
+    search:SetScript("OnTextChanged", function(self)
+        view.query = self:GetText() or ""
+        hint(self)
+        scroll:Top()
+        ns.Refresh()
+    end)
+    search:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+    end)
+    search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+
+    protectBtn = S.Button(side, SIDE - 16, 30)
+    protectBtn:SetPoint("BOTTOMLEFT", 8, 8)
+    protectBtn:SetScript("OnClick", function()
+        if not protectFrame then buildProtected() end
+        protectFrame:SetShown(not protectFrame:IsShown())
+    end)
+    reloadBtn = S.Primary(S.Button(side, SIDE - 16, 30))
+    reloadBtn:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 6)
+    reloadBtn:SetText(L.RELOAD)
+    reloadBtn:SetScript("OnClick", function() ReloadUI() end)
+    reloadHint = S.Text(side, 11, WAIT)
+    reloadHint:SetPoint("BOTTOMLEFT", reloadBtn, "TOPLEFT", 2, 6)
+    reloadHint:SetWidth(SIDE - 20)
+    reloadHint:SetMaxLines(3)
+    reloadHint:SetText(L.RELOAD_HINT)
+end
+
+local function buildMiddle()
+    mid = CreateFrame("Frame", nil, frame)
+    mid:SetWidth(MID)
+    mid:SetPoint("TOPLEFT", side, "TOPRIGHT", PAD, 0)
+    mid:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", PAD, 0)
+
+    local order = { { "all", L.ALL }, { "on", L.STATE_ON }, { "off", L.OFF } }
+    local prev
+    for i = #order, 1, -1 do
+        local key = order[i][1]
+        local p = S.Pill(mid, 58, 28)
+        p:SetText(order[i][2])
+        if prev then p:SetPoint("RIGHT", prev, "LEFT", -6, 0) else p:SetPoint("TOPRIGHT", 0, -2) end
+        p:SetScript("OnClick", function()
+            view.state = key
+            scroll:Top()
+            ns.Refresh()
+        end)
+        pills[key] = p
+        prev = p
+    end
+    midTitle = S.Text(mid, 18)
+    midTitle:SetPoint("TOPLEFT", 2, -6)
+    midTitle:SetPoint("RIGHT", prev, "LEFT", -8, 0)
+    midTitle:SetWordWrap(false)
+    local rule = line(mid)
+    rule:SetHeight(1)
+    rule:SetPoint("TOPLEFT", 0, -38)
+    rule:SetPoint("TOPRIGHT", 0, -38)
+
+    scroll = S.Scroll(mid)
+    scroll:SetPoint("TOPLEFT", 0, -46)
+    scroll:SetPoint("BOTTOMRIGHT", -14, 0)
+    list = scroll.child
+    list:SetWidth(LIST_W)
+
+    recent = CreateFrame("Frame", nil, list)
+    S.Box(recent, S.PANEL, { 0.25, 0.25, 0.27, 1 })
+    local accentBar = line(recent, S.Accent())
+    accentBar:SetPoint("TOPLEFT")
+    accentBar:SetPoint("BOTTOMLEFT")
+    accentBar:SetWidth(3)
+    local rt = S.Text(recent, 13, S.Accent())
+    rt:SetPoint("TOPLEFT", 12, -8)
+    rt:SetText(L.RECENT)
+    for i = 1, FEED_LINES do
+        local t = S.Text(recent, 11)
+        t:SetPoint("TOPLEFT", 12, -10 - i * 17)
+        t:SetPoint("RIGHT", -10, 0)
+        t:SetWordWrap(false)
+        recentLines[i] = t
+    end
+
+    empty = S.Text(mid, 12, S.MUTED)
+    empty:SetPoint("TOP", 0, -90)
+    empty:SetWidth(MID - 40)
+    empty:SetJustifyH("CENTER")
+    empty:SetText(L.NO_MATCH)
+end
+
+local function buildDetail()
+    detail = CreateFrame("Frame", nil, frame)
+    detail:SetWidth(DETAIL)
+    detail:SetPoint("TOPRIGHT", -PAD, -HEAD - 6)
+    detail:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+    S.Box(detail, S.PANEL)
+    local d = detail
+    d.body = CreateFrame("Frame", nil, d)
+    d.body:SetAllPoints()
+
+    local banner = CreateFrame("Frame", nil, d.body)
+    banner:SetHeight(100)
+    banner:SetPoint("TOPLEFT", 8, -8)
+    banner:SetPoint("TOPRIGHT", -8, -8)
+    S.Box(banner, { 0.03, 0.03, 0.04, 1 }, { 0.20, 0.20, 0.22, 1 })
+    local a = S.Accent()
+    local glow = line(banner, { a[1], a[2], a[3], 0.10 })
+    glow:SetDrawLayer("BACKGROUND", 1)
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("BOTTOMRIGHT", banner, "RIGHT", -1, 0)
+    local ring = CreateFrame("Frame", nil, banner)
+    ring:SetSize(68, 68)
+    ring:SetPoint("CENTER")
+    S.Box(ring, { 0.02, 0.02, 0.02, 1 }, a)
+    d.icon = ring:CreateTexture(nil, "ARTWORK")
+    d.icon:SetSize(56, 56)
+    d.icon:SetPoint("CENTER")
+
+    d.title = S.Text(d.body, 16)
+    d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", 4, -12)
+    d.title:SetPoint("RIGHT", -12, 0)
+    d.title:SetWordWrap(false)
+    d.cat = S.Text(d.body, 11, S.MUTED)
+    d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -4)
+    d.state = S.Text(d.body, 11)
+    d.state:SetPoint("LEFT", d.cat, "RIGHT", 10, 0)
+    d.desc = S.Text(d.body, 12)
+    d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -10)
+    d.desc:SetPoint("RIGHT", -12, 0)
+    d.desc:SetJustifyV("TOP")
+    d.desc:SetHeight(58)
+    d.desc:SetMaxLines(4)
+    d.slash = S.Text(d.body, 11, S.MUTED)
+    d.slash:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -6)
+
+    d.setHead = S.Text(d.body, 11, S.Accent())
+    d.setHead:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -14)
+    d.setHead:SetText(L.SETTINGS)
+    local rule = line(d.body)
+    rule:SetHeight(1)
+    rule:SetPoint("LEFT", d.setHead, "RIGHT", 8, 0)
+    rule:SetPoint("RIGHT", -12, 0)
+    d.none = S.Text(d.body, 11, S.MUTED)
+    d.none:SetPoint("TOPLEFT", d.setHead, "BOTTOMLEFT", 0, -8)
+    d.none:SetPoint("RIGHT", -12, 0)
+    d.none:SetMaxLines(3)
+
+    d.open = S.Primary(S.Button(d.body, DETAIL - 16, 34))
+    d.open:SetPoint("BOTTOMLEFT", 8, 8)
+    d.open:SetScript("OnClick", function() open(detail.row) end)
+end
+
 local function build()
     frame = CreateFrame("Frame", "GulliToolkitFrame", UIParent)
-    frame:SetSize(WIDTH, 300)
+    frame:SetSize(W, H)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true)
@@ -214,68 +700,30 @@ local function build()
     S.Box(frame)
     tinsert(UISpecialFrames, "GulliToolkitFrame")
 
-    local accent = S.Accent()
-    local title = S.Text(frame, 16, accent)
-    title:SetPoint("TOPLEFT", PAD, -PAD)
-    title:SetText(L.TITLE)
-    local sub = S.Text(frame, 11, S.MUTED)
-    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
-    sub:SetPoint("RIGHT", -60, 0)
-    sub:SetWordWrap(false)
-    sub:SetText(L.SUBTITLE)
+    buildHeader()
+    buildSide()
+    buildMiddle()
+    buildDetail()
 
-    local close = S.Button(frame, 32, 30)
-    close:SetPoint("TOPRIGHT", -PAD, -PAD + 2)
-    close:SetText("X")
-    close:SetScript("OnClick", function() frame:Hide() end)
-
-    scroll = S.Scroll(frame)
-    scroll:SetPoint("TOPLEFT", PAD, -60)
-    scroll:SetPoint("TOPRIGHT", -PAD - 12, -60)
-    list = scroll.child
-    list:SetWidth(WIDTH - 2 * PAD - 12)
-
-    footer = CreateFrame("Frame", nil, frame)
-    footer:SetPoint("BOTTOMLEFT", PAD, PAD)
-    footer:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-    footer:SetHeight(30)
-    reloadBtn = S.Button(footer, 130, 30)
-    reloadBtn:SetPoint("RIGHT")
-    reloadBtn:SetText(L.RELOAD)
-    reloadBtn:SetScript("OnClick", function() ReloadUI() end)
-    protectBtn = S.Button(footer, 170, 30)
-    protectBtn:SetPoint("LEFT")
-    protectBtn:SetScript("OnClick", function()
-        if not protectFrame then buildProtected() end
-        protectFrame:SetShown(not protectFrame:IsShown())
+    frame:SetScript("OnShow", function()
+        applyScale()
+        ns.Refresh()
     end)
-    reloadText = S.Text(footer, 11, S.MUTED)
-    reloadText:SetPoint("LEFT", protectBtn, "RIGHT", 8, 0)
-    reloadText:SetPoint("RIGHT", reloadBtn, "LEFT", -8, 0)
-    reloadText:SetMaxLines(2)
-
-    feedBox = CreateFrame("Frame", nil, frame)
-    feedBox:SetPoint("BOTTOMLEFT", footer, "TOPLEFT", 0, 8)
-    feedBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, 8)
-    S.Box(feedBox, S.PANEL)
-    local feedTitle = S.Text(feedBox, 11, S.MUTED)
-    feedTitle:SetPoint("TOPLEFT", 8, -5)
-    feedTitle:SetText(L.RECENT)
-    for i = 1, FEED_LINES do
-        local t = S.Text(feedBox, 11)
-        t:SetPoint("TOPLEFT", 8, -5 - i * 16)
-        t:SetPoint("RIGHT", -8, 0)
-        t:SetWordWrap(false)
-        feedLines[i] = t
-    end
-
-    frame:SetScript("OnShow", ns.Refresh)
     frame:Hide()
 end
 
 function ns.Toggle()
     if not frame then build() end
     frame:SetShown(not frame:IsShown())
+    if frame:IsShown() then
+        applyScale()
+        ns.Refresh()
+    end
+end
+
+-- The view the hub shows now, for the tests.
+function ns.View()
+    return view, frame
 end
 
 -- A page under Options > AddOns with a button that opens the hub.
@@ -288,10 +736,10 @@ function ns.RegisterSettings()
     local sub = S.Text(panel, 12, S.MUTED)
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
     sub:SetText(L.SUBTITLE .. " " .. L.HELP)
-    local open = S.Button(panel, 200, 30)
-    open:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -12)
-    open:SetText(L.OPEN_HUB)
-    open:SetScript("OnClick", function()
+    local btn = S.Button(panel, 200, 30)
+    btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -12)
+    btn:SetText(L.OPEN_HUB)
+    btn:SetScript("OnClick", function()
         if SettingsPanel and SettingsPanel.Close then SettingsPanel:Close(true) end
         if not frame or not frame:IsShown() then ns.Toggle() end
     end)

@@ -142,11 +142,22 @@ SlashCmdList.GULLITOOLTIP = function() ns.Toggle() end
 
 function GulliTooltip_Toggle() ns.Toggle() end
 
+-- The same switches as in the window, so the Gulli Toolkit hub can show them.
+local function option(key, label)
+    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.db[key] = on and true or false end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "Tooltip",
         icon = "Interface\\AddOns\\Gulli-Tooltip\\icon",
         slash = "/gtt",
         open = function() ns.Toggle() end,
+        options = {
+            option("price", ns.L.OPT_PRICE),
+            option("quest", ns.L.OPT_QUEST),
+            option("id", ns.L.OPT_ID),
+        },
     })
 end

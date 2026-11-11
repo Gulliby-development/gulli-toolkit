@@ -106,11 +106,25 @@ SlashCmdList.GULLISOCIAL = function() ns.Toggle() end
 
 function GulliSocial_Toggle() ns.Toggle() end
 
+-- The same switches as in the window, so the Gulli Toolkit hub can show them.
+local function option(key, label)
+    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.db[key] = on and true or false end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "Social",
         icon = "Interface\\AddOns\\Gulli-Social\\icon",
         slash = "/gso",
         open = function() ns.Toggle() end,
+        options = {
+            option("invite", ns.L.OPT_INVITE),
+            option("inviteKnown", ns.L.OPT_INVITE_KNOWN),
+            option("acceptKnown", ns.L.OPT_ACCEPT_KNOWN),
+            option("blockStrangers", ns.L.OPT_BLOCK),
+            option("noDuels", ns.L.OPT_DUELS),
+            option("noGuildInvites", ns.L.OPT_GUILD),
+        },
     })
 end

@@ -14,6 +14,17 @@ ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests
              "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
              "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders" }
 
+-- The hub's categories in sidebar order. A known module has its category here; another module
+-- names one of these keys in Register (category = "Items") or in its TOC (## X-Gulli-Category).
+ns.CATEGORIES = { "Quests", "Group", "Items", "Social", "Info" }
+ns.CATEGORY_OF = {
+    QuestCleaner = "Quests", AutoQuest = "Quests", PartyQuests = "Quests",
+    GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group",
+    BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items",
+    Bulletin = "Social", QuickChat = "Social", Social = "Social",
+    XP = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info",
+}
+
 -- Game API wrappers: the C_AddOns namespace with a fallback to the old globals.
 local A = C_AddOns or {}
 local function numAddOns() return (A.GetNumAddOns or GetNumAddOns)() end
@@ -25,6 +36,7 @@ local function enableState(name)
     if A.GetAddOnEnableState then return A.GetAddOnEnableState(name, player()) end
     return GetAddOnEnableState(player(), name)
 end
+local function version() return metadata(ADDON, "Version") end
 local function setEnabled(name, on)
     local f = on and (A.EnableAddOn or EnableAddOn) or (A.DisableAddOn or DisableAddOn)
     f(name)
@@ -35,7 +47,9 @@ function ns.Print(msg)
 end
 
 -- GulliToolkit.Register(info) or GulliToolkit:Register(info).
--- info: key (required, "QuestCleaner"), open (function), and optional title, desc, icon, slash.
+-- info: key (required, "QuestCleaner"), open (function), and optional title, desc, icon, slash,
+-- category (a key of ns.CATEGORIES) and options: switches the hub shows beside the module,
+-- { { label = "Sell gray items", get = function() return db.sell end, set = function(on) ... end } }.
 function Toolkit.Register(a, b)
     local info = (a == Toolkit) and b or a
     if type(info) ~= "table" or type(info.key) ~= "string" or info.key == "" then return false end
@@ -112,6 +126,31 @@ local function stripColors(s)
     return s and s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
 end
 
+local function isCategory(c)
+    for _, k in ipairs(ns.CATEGORIES) do if k == c then return true end end
+end
+
+local function categoryOf(key, info, addon)
+    if info and isCategory(info.category) then return info.category end
+    if ns.CATEGORY_OF[key] then return ns.CATEGORY_OF[key] end
+    local toc = addon and metadata(addon, "X-Gulli-Category")
+    if isCategory(toc) then return toc end
+    return "Other"
+end
+
+-- The module's switches that the hub can show: each needs a label, get and set.
+local function optionsOf(info)
+    local out = {}
+    if not info or type(info.options) ~= "table" then return out end
+    for _, o in ipairs(info.options) do
+        if type(o) == "table" and type(o.label) == "string" and type(o.get) == "function"
+            and type(o.set) == "function" then
+            out[#out + 1] = o
+        end
+    end
+    return out
+end
+
 local function known(key)
     for _, k in ipairs(ns.KNOWN) do if k == key then return true end end
 end
@@ -120,7 +159,8 @@ end
 ns.pending = {}
 
 -- One row per module for the hub, the known ones first:
--- { key, addon, title, desc, icon, slash, state = "ready" | "off" | "reload" | "missing", info }.
+-- { key, addon, title, desc, icon, slash, category, options,
+--   state = "ready" | "off" | "reload" | "missing", on, info }.
 function ns.List()
     local disk = installed()
     local keys, seen = {}, {}
@@ -143,6 +183,8 @@ function ns.List()
         row.desc = (info and info.desc) or (ns.T.en["D_" .. k] and L["D_" .. k]) or (addon and metadata(addon, "Notes")) or ""
         row.icon = (info and info.icon) or (addon and metadata(addon, "IconTexture"))
         row.slash = info and info.slash
+        row.category = categoryOf(k, info, addon)
+        row.options = optionsOf(info)
         if ns.pending[k] ~= nil then
             row.state = "reload"
             row.on = ns.pending[k]
@@ -157,6 +199,61 @@ function ns.List()
         rows[#rows + 1] = row
     end
     return rows
+end
+
+-- Rows grouped by category in sidebar order, "Other" last: { { key = "Quests", rows = {...} } }.
+function ns.Groups(rows)
+    local by, out = {}, {}
+    for _, r in ipairs(rows) do
+        by[r.category] = by[r.category] or {}
+        table.insert(by[r.category], r)
+    end
+    for _, c in ipairs(ns.CATEGORIES) do
+        if by[c] then out[#out + 1] = { key = c, rows = by[c] } end
+    end
+    if by.Other then out[#out + 1] = { key = "Other", rows = by.Other } end
+    return out
+end
+
+-- Switched-on and total modules per category and for "All": { All = { on = 3, total = 20 }, ... }.
+function ns.Counts(rows)
+    local c = { All = { on = 0, total = 0 } }
+    for _, r in ipairs(rows) do
+        c[r.category] = c[r.category] or { on = 0, total = 0 }
+        for _, t in ipairs({ c.All, c[r.category] }) do
+            t.total = t.total + 1
+            if r.on then t.on = t.on + 1 end
+        end
+    end
+    return c
+end
+
+-- The rows the hub shows: category ("All" or a key), state ("all", "on", "off") and a search
+-- over the name, the line about it, the key and the slash command.
+function ns.Filter(rows, category, state, query)
+    query = (query or ""):lower():match("^%s*(.-)%s*$")
+    local out = {}
+    for _, r in ipairs(rows) do
+        local ok = (query ~= "" or category == "All" or r.category == category)
+            and (state == "all" or (state == "on") == (r.on == true))
+        if ok and query ~= "" then
+            local text = table.concat({ r.title or "", r.desc or "", r.key, r.slash or "" }, "\n"):lower()
+            ok = text:find(query, 1, true) ~= nil
+        end
+        if ok then out[#out + 1] = r end
+    end
+    return out
+end
+
+-- The hub's scale: the player's own (0.7 to 1.3), made smaller when the window would not fit.
+function ns.HubScale(user, screenW, screenH, w, h)
+    user = math.max(0.7, math.min(1.3, tonumber(user) or 1))
+    local fit = math.min(1, (screenW or w) * 0.96 / w, (screenH or h) * 0.9 / h)
+    return user * fit
+end
+
+function ns.Version()
+    return version() or ""
 end
 
 function ns.OpenModule(key)

@@ -126,11 +126,22 @@ SlashCmdList.GULLIAUTOQUEST = function() ns.Toggle() end
 
 function GulliAutoQuest_Toggle() ns.Toggle() end
 
+-- The same switches as in the window, so the Gulli Toolkit hub can show them.
+local function option(key, label)
+    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.db[key] = on and true or false end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "AutoQuest",
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",
         slash = "/gaq",
         open = function() ns.Toggle() end,
+        options = {
+            option("accept", ns.L.OPT_ACCEPT),
+            option("turnIn", ns.L.OPT_TURNIN),
+            option("skipTrivial", ns.L.OPT_TRIVIAL),
+        },
     })
 end

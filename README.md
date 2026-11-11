@@ -37,14 +37,15 @@
 
 ## Features
 
-- **One window for all.** Type `/gulli`, or click the toolkit in the addon button on the minimap. You see every module, can open it, or switch it off.
-- **Switch off what you do not need.** Untick a module in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
+- **One window for all.** Type `/gulli`, or click the toolkit in the addon button on the minimap. Modules are sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with how many are on. Pick a module to see what it does, its command and its main switches, and press **Open**.
+- **Search.** Type in the search box to find a module by name, what it does or its command. **All**, **On** and **Off** show only the modules you want.
+- **Switch off what you do not need.** Flip a module's switch in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
 - **Recent news.** The toolkit window shows the last messages from the modules, such as how many dungeon entries are left or what waits on your other characters.
 - **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI.
-- **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android.
+- **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 
 ## Install
@@ -60,8 +61,9 @@
 ## How to use it
 
 1. Type `/gulli`.
-2. Press **Open** next to a module. Or use the module's own command, such as `/gqc`.
-3. To switch a module off, untick it and press **Reload**.
+2. Pick a group on the left, or type in **Search modules**.
+3. Click a module to see it on the right, and press **Open** (or **>** in its row). Or use the module's own command, such as `/gqc`.
+4. To switch a module off, flip its switch and press **Reload**.
 
 `/gulli questcleaner` opens a module directly.
 
@@ -97,7 +99,10 @@ A module registers with the toolkit when it is loaded:
 ```lua
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({ key = "QuestCleaner", open = function() ns.Toggle() end,
-                            icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon", slash = "/gqc" })
+                            icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon", slash = "/gqc",
+                            -- optional: a hub group and switches the hub shows beside the module
+                            category = "Quests",
+                            options = { { label = "...", get = function() ... end, set = function(on) ... end } } })
 end
 ```
 

@@ -109,15 +109,75 @@ test("the hub window builds its rows", function()
     eq(#ns.List(), #ns.KNOWN + 1)
 end)
 
-test("the hub fits the screen: the module list scrolls", function()
+test("the hub fits the screen: it shrinks on a small one, the module list scrolls", function()
     Fake({})
     local ns = Load()
+    eq(ns.HubScale(1, 1920, 1080, 940, 580), 1, "full size on a big screen")
+    local s = ns.HubScale(1, 800, 480, 940, 580)
+    assert(940 * s <= 800 * 0.96 + 0.01 and 580 * s <= 480 * 0.9 + 0.01, "fits a handheld: " .. s)
+    eq(ns.HubScale(5, 1920, 1080, 940, 580), 1.3, "the player's scale is capped")
+    eq(ns.HubScale(nil, 1920, 1080, 940, 580), 1)
+    assert(580 * ns.HubScale(1, 1024, 768, 940, 580) <= 768 * 0.85 + 1, "fits 85% of a 768 high screen")
+end)
+
+test("categories: known modules have one, others name one, the rest are Other", function()
+    Fake({ addons = { QC,
+        { name = "Gulli-Zeta", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Zeta", ["X-Gulli-Category"] = "Items" } },
+        { name = "Gulli-Eta", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Eta", ["X-Gulli-Category"] = "Nope" } } } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "Late", open = function() end, category = "Social" })
+    local r = byKey(ns.List())
+    eq(r.QuestCleaner.category, "Quests")
+    eq(r.Zeta.category, "Items", "from the TOC")
+    eq(r.Eta.category, "Other", "an unknown category")
+    eq(r.Late.category, "Social", "from Register")
+    for _, k in ipairs(ns.KNOWN) do
+        assert(ns.CATEGORY_OF[k], k .. " has no category")
+        assert(ns.T.en["CAT_" .. ns.CATEGORY_OF[k]], "no text for its category")
+    end
+    local groups = ns.Groups(ns.List())
+    eq(groups[1].key, "Quests", "sidebar order")
+    eq(groups[#groups].key, "Other", "Other last")
+end)
+
+test("counts, the On/Off filter and the search", function()
+    Fake({ addons = { QC, { name = "Gulli-Merchant", enabled = false, meta = { ["X-Gulli-Module"] = "Merchant" } } } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end, slash = "/gqc" })
+    local rows = ns.List()
+    local c = ns.Counts(rows)
+    eq(c.All.total, #ns.KNOWN)
+    eq(c.All.on, 1)
+    eq(c.Quests.on, 1)
+    eq(c.Items.on, 0)
+    eq(#ns.Filter(rows, "Quests", "all", ""), 3)
+    eq(#ns.Filter(rows, "All", "on", ""), 1)
+    eq(#ns.Filter(rows, "Quests", "off", ""), 2)
+    eq(ns.Filter(rows, "All", "all", "  GQC ")[1].key, "QuestCleaner", "by slash, any case")
+    eq(ns.Filter(rows, "Items", "all", "sells gray")[1].key, "Merchant", "by the line about it")
+    eq(ns.Filter(rows, "Social", "all", "quest cleaner")[1].key, "QuestCleaner", "a search looks in every category")
+    eq(#ns.Filter(rows, "All", "all", "zzz"), 0)
+end)
+
+test("a module's options are shown and switched from the hub", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local db = { sell = true }
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end, options = {
+        { label = "Sell", get = function() return db.sell end, set = function(on) db.sell = on end },
+        { label = "Broken" }, "nonsense" } })
+    local row = byKey(ns.List()).QuestCleaner
+    eq(#row.options, 1, "only options with a label, get and set")
     ns.Toggle()
+    local view = ns.View()
+    view.selected = "QuestCleaner"
     ns.Refresh()
-    local hub = GulliToolkitFrame or (function()
-        for _, f in ipairs(W.frames) do if rawget(f, "_OnShow") then return f end end
-    end)()
-    assert(hub:GetHeight() <= 768 * 0.85 + 1, "hub is " .. hub:GetHeight() .. " high")
+    eq(view.selected, "QuestCleaner")
+    view.query = "nothing like it"
+    ns.Refresh()
+    eq(view.selected, nil, "nothing selected when the search finds nothing")
+    view.query, view.state, view.cat = "", "off", "Group"
+    ns.Refresh()
 end)
 
 test("protected items: by id or link, saved, listed, switched off again", function()

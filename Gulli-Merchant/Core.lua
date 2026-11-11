@@ -143,11 +143,22 @@ end
 
 function GulliMerchant_Toggle() ns.Toggle() end
 
+-- The same switches as in the window, so the Gulli Toolkit hub can show them.
+local function option(key, label)
+    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.db[key] = on and true or false end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "Merchant",
         icon = "Interface\\AddOns\\Gulli-Merchant\\icon",
         slash = "/gmc",
         open = function() ns.Toggle() end,
+        options = {
+            option("sell", ns.L.OPT_SELL),
+            option("repair", ns.L.OPT_REPAIR),
+            option("guild", ns.L.OPT_GUILD),
+        },
     })
 end

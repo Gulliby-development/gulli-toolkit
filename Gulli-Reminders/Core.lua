@@ -143,11 +143,24 @@ SlashCmdList.GULLIREMINDERS = function() ns.Toggle() end
 
 function GulliReminders_Toggle() ns.Toggle() end
 
+-- The same switches as in the window, so the Gulli Toolkit hub can show them.
+local function option(key, label)
+    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.db[key] = on and true or false end; if ns.Refresh then ns.Refresh() end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "Reminders",
         icon = "Interface\\AddOns\\Gulli-Reminders\\icon",
         slash = "/grm",
         open = function() ns.Toggle() end,
+        options = {
+            option("buffs", ns.L.OPT_BUFFS),
+            option("weapon", ns.L.OPT_WEAPON),
+            option("ammo", ns.L.OPT_AMMO),
+            option("shards", ns.L.OPT_SHARDS),
+            option("notResting", ns.L.OPT_RESTING),
+        },
     })
 end
