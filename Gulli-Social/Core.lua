@@ -83,7 +83,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         local defaults = { invite = true, words = "inv, invite, 123", inviteKnown = false, acceptKnown = true,
                            blockStrangers = false, noDuels = false, noGuildInvites = false }
         for k, v in pairs(defaults) do if ns.db[k] == nil then ns.db[k] = v end end
-        for _, e in ipairs({ "CHAT_MSG_WHISPER", "CHAT_MSG_BN_WHISPER", "PARTY_INVITE_REQUEST", "DUEL_REQUESTED",
+        for _, e in ipairs({ "CHAT_MSG_WHISPER", "PARTY_INVITE_REQUEST", "DUEL_REQUESTED",
                              "GUILD_INVITE_REQUEST" }) do
             self:RegisterEvent(e)
         end

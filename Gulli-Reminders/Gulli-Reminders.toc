@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Reminders
+## Notes: Icons for what is missing before a fight: class buffs, poisons and imbues, ammo, soul shards. /grm
+## Notes-ruRU: Значки о том, чего не хватает перед боем: бафы класса, яды и чары, боеприпасы, осколки души. /grm
+## Notes-deDE: Symbole für das, was vor dem Kampf fehlt: Klassenbuffs, Gifte, Munition, Seelensplitter. /grm
+## Notes-esES: Iconos de lo que falta antes de luchar: buffs de clase, venenos, munición, fragmentos de alma. /grm
+## Notes-esMX: Iconos de lo que falta antes de luchar: buffs de clase, venenos, munición, fragmentos de alma. /grm
+## Notes-frFR: Icônes de ce qui manque avant un combat : buffs de classe, poisons, munitions, fragments d'âme. /grm
+## Notes-ptBR: Ícones do que falta antes da luta: bônus de classe, venenos, munição, fragmentos de alma. /grm
+## Notes-zhCN: 战斗前缺少什么一目了然：职业增益、毒药和附魔、弹药、灵魂碎片。 /grm
+## Notes-zhTW: 战斗前缺少什么一目了然：职业增益、毒药和附魔、弹药、灵魂碎片。 /grm
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Reminders\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Reminders
+## SavedVariables: GulliRemindersDB
+## AddonCompartmentFunc: GulliReminders_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
