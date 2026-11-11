@@ -104,7 +104,7 @@ function W.CheckLocales(ns)
     end
 end
 
--- A tiny test runner: W.test(name, fn), W.eq(a, b, what), W.done().
+-- A tiny test runner: W.test(name, fn), W.eq(a, b, what), W.finish().
 local failed, count = 0, 0
 function W.test(name, fn)
     count = count + 1
@@ -115,7 +115,7 @@ end
 function W.eq(a, b, what)
     if a ~= b then error((what or "value") .. ": expected " .. tostring(b) .. ", got " .. tostring(a), 2) end
 end
-function W.done()
+function W.finish()
     io.write(string.format("%d/%d passed\n", count - failed, count))
     os.exit(failed == 0 and 0 or 1)
 end

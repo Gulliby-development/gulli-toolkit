@@ -106,4 +106,4 @@ test("every language has every key, with the same placeholders", function()
     W.CheckLocales(Load())
 end)
 
-W.done()
+W.finish()
