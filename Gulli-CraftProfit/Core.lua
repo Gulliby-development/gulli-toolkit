@@ -1048,6 +1048,7 @@ local function build(flash)
     local oldLeg = v.legs and v.leg and v.legs[v.leg]
     out.legs = (not ns.EARN[out.mode] and out.plan and not out.plan.earn) and ns.Legs(state, P, out.plan) or {}
     out.leg = 1
+    out.legsBy = { [out.mode] = out.legs }
     if oldLeg then
         for i, l in ipairs(out.legs) do if l.from == oldLeg.from and l.unknown == oldLeg.unknown then out.leg = i end end
     end
@@ -1061,7 +1062,7 @@ local function build(flash)
     return out
 end
 
-local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta" }
+local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta", "legsBy" }
 local function apply(out)
     local v = ns.view
     for _, k in ipairs(FIELDS) do v[k] = out[k] end
@@ -1077,13 +1078,14 @@ function ns.Recalc(flash)
     return apply(build(flash))
 end
 
--- A calculation in steps: :Step(ms) works for about ms milliseconds and returns true when the
--- view is ready (or the calculation failed: then also the error). Without the game's frame
--- clock (debugprofilestop) a step runs to the end.
-function ns.RecalcJob(flash)
-    local co = coroutine.create(function() return build(flash) end)
-    job = co
-    local self = {}
+-- A job in steps: :Step(ms) works for about ms milliseconds and returns true when it is done
+-- (or failed: then also the error). Without the game's frame clock (debugprofilestop) a step
+-- runs to the end. `kind`: "all" (the whole result) or "legs" (the runs of one route).
+local jobKind
+local function newJob(kind, work, done)
+    local co = coroutine.create(work)
+    job, jobKind = co, kind
+    local self = { kind = kind }
     function self:Step(ms)
         if job ~= co then return true, "cancelled" end
         local now = clock()
@@ -1092,7 +1094,7 @@ function ns.RecalcJob(flash)
         if not ok then job = nil; return true, res end
         if coroutine.status(co) == "dead" then
             job = nil
-            apply(res)
+            done(res)
             return true
         end
         return false
@@ -1100,7 +1102,52 @@ function ns.RecalcJob(flash)
     function self:Cancel() if job == co then job = nil end end
     return self
 end
+
+function ns.RecalcJob(flash)
+    return newJob("all", function() return build(flash) end, apply)
+end
+
+-- The runs of the route `mode` of the current result, kept per route so switching back is instant.
+function ns.LegsJob(mode)
+    local v = ns.view
+    local plan, state, P = v.plan, v.state, v.prefs
+    return newJob("legs", function()
+        ns.progress.done = 0
+        ns.Phase(0, 1)
+        local legs = ns.Legs(state, P, plan)
+        ns.progress.done = 1
+        return legs
+    end, function(legs)
+        if ns.view.state ~= state then return end
+        ns.view.legsBy[mode] = legs
+        if ns.view.mode == mode then ns.view.legs, ns.view.leg = legs, 1 end
+    end)
+end
+
+-- Switches to another route of the current result without planning again: every route is
+-- already in `variants`, only its runs may still be missing. Returns false when the result has
+-- no such route (a full calculation is needed), else true and whether its runs must be built.
+function ns.PickMode(want)
+    local v = ns.view
+    if not v.variants or not v.state then return false end
+    local mode
+    for _, x in ipairs(v.variants) do
+        if x.plan and (x.mode == want or (want == "auto" and x.best)) then mode = x.mode end
+    end
+    if not mode then return false end
+    v.mode, v.auto = mode, want == "auto"
+    if v.prefs then v.prefs.mode = want end
+    for _, x in ipairs(v.variants) do if x.mode == mode then v.plan = x.plan end end
+    v.legsBy = v.legsBy or {}
+    if ns.EARN[mode] or v.plan.earn then v.legsBy[mode] = v.legsBy[mode] or {} end
+    v.legs, v.leg = v.legsBy[mode], 1
+    v.route = ns.Route(v.state, v.plan)
+    v.changed, v.delta = {}, nil
+    return true, v.legs == nil
+end
+
 function ns.Busy() return job ~= nil end
+function ns.BusyKind() return job and jobKind or nil end
 
 -- Rebuilds after a change. `why`: "open" or "event" (the window opened, bags or prices changed),
 -- else the player changed something. The window replaces this with a calculation in steps that

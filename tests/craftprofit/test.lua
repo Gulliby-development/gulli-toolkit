@@ -1155,4 +1155,75 @@ test("a big profession is planned in reasonable time", function()
     assert(secs < 4, "took " .. secs .. " s")
 end)
 
+test("a route tile switches at once from the result; the runs of each route are kept", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local calls = { v = 0, l = 0 }
+    local V, Lg = n.Variants, n.Legs
+    n.Variants = function(...) calls.v = calls.v + 1; return V(...) end
+    n.Legs = function(...) calls.l = calls.l + 1; return Lg(...) end
+    local first = n.view.mode
+    local other
+    for _, x in ipairs(n.view.variants) do if x.plan and x.mode ~= first then other = x.mode end end
+    assert(other, "a second route")
+    W.Click(n.ui.modes[other])
+    eq(n.view.mode, other)
+    eq(calls.v, 0, "no new plans for a tile click")
+    assert(#n.view.route > 0)
+    assert(n.ui.route:IsShown(), "the graph stays, no full calculation screen")
+    local legs = calls.l
+    W.Click(n.ui.modes[first])
+    W.Click(n.ui.modes[other])
+    eq(calls.l, legs, "switching back uses the kept runs")
+    eq(calls.v, 0)
+    eq(n.db.prefs.mode, other)
+    n.Variants, n.Legs = V, Lg
+end)
+
+test("the runs of a new route build in steps while its graph is shown", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local first = n.view.mode
+    local other
+    for _, x in ipairs(n.view.variants) do
+        if x.plan and x.mode ~= first and not n.EARN[x.mode] then other = x.mode end
+    end
+    if not other then return end
+    local t = 0
+    debugprofilestop = function() t = t + 5; return t end
+    W.Click(n.ui.modes[other])
+    local busy = n.BusyKind()
+    if busy then
+        eq(busy, "legs")
+        assert(n.ui.route:IsShown(), "the graph shows while the runs build")
+        assert(not n.ui.progress:IsShown(), "no full-screen progress")
+        assert(n.ui.chipNote:GetText():find("%%"), n.ui.chipNote:GetText())
+        eq(n.ui.calc:GetText(), n.L.RECALC)
+        for _ = 1, 10000 do if not n.Busy() then break end; W.Click(n.calcDriver, "OnUpdate") end
+    end
+    debugprofilestop = nil
+    assert(not n.Busy())
+    assert(n.view.legs and #n.view.legs > 0, "the runs are there")
+end)
+
+test("many routes page with arrows instead of squeezing the tiles", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local plan = n.view.plan
+    for _, x in ipairs(n.view.variants) do x.plan = x.plan or plan end
+    n.Refresh()
+    local shown = 0
+    for i = 1, #n.view.variants do
+        local b = n.ui.varTiles[i]
+        if b:IsShown() then shown = shown + 1; assert(b:GetWidth() >= 130, "tile width " .. b:GetWidth()) end
+    end
+    assert(shown < #n.view.variants, "not all tiles at once: " .. shown)
+    assert(n.ui.varNext:IsShown())
+    W.Click(n.ui.varNext)
+    assert(n.ui.varPrev:IsEnabled())
+    -- the chosen route comes into view
+    W.Click(n.ui.modes[n.MODES[#n.MODES]])
+    assert(n.ui.varTiles[#n.MODES]:IsShown())
+end)
+
 W.finish()
