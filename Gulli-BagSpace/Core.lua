@@ -5,33 +5,9 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local ITEM_WEAPON, ITEM_ARMOR, ITEM_QUEST, ITEM_KEY = 2, 4, 12, 13
-local FISHING_POLE = 20 -- weapon subclass
-local HEARTHSTONE = 6948
-local BATCH, STEP = 12, 0.25 -- the vendor buys back the last 12; sell in steps of that size
-
--- Profession tools are plain white items, but losing one hurts: never offer them.
-ns.TOOLS = {
-    [2901] = true,  -- Mining Pick
-    [7005] = true,  -- Skinning Knife
-    [5956] = true,  -- Blacksmith Hammer
-    [6219] = true,  -- Arclight Spanner
-    [10498] = true, -- Gyromatic Micro-Adjustor
-    [9149] = true,  -- Philosopher's Stone
-    [4471] = true,  -- Flint and Tinder
-    [6218] = true,  -- Runed Copper Rod
-    [6339] = true,  -- Runed Silver Rod
-    [11130] = true, -- Runed Golden Rod
-    [11145] = true, -- Runed Truesilver Rod
-    [16207] = true, -- Runed Arcanite Rod
-    [6256] = true,  -- Fishing Pole
-    [6365] = true,  -- Strong Fishing Pole
-    [6366] = true,  -- Darkwood Fishing Pole
-    [6367] = true,  -- Big Iron Fishing Pole
-    [12225] = true, -- Blump Family Fishing Pole
-    [19022] = true, -- Nat Pagle's Extreme Angler FC-5000
-    [19970] = true, -- Arcanite Fishing Pole
-}
+local J = ns.J
+local BATCH, STEP = J.BATCH, J.STEP
+local AH_FACTOR = 2 -- an auction price this many times the vendor price keeps an item off the ticks
 
 -- Game API wrappers.
 local C = C_Container or {}
@@ -40,36 +16,26 @@ local function freeSlots(bag)
     local free, family = (C.GetContainerNumFreeSlots or GetContainerNumFreeSlots)(bag)
     return free or 0, family or 0
 end
-local function slotInfo(bag, slot)
-    if C.GetContainerItemInfo then
-        local i = C.GetContainerItemInfo(bag, slot)
-        if not i then return nil end
-        return i.itemID, i.stackCount, i.isLocked, i.hyperlink, i.iconFileID, i.quality
-    end
-    local icon, count, locked, quality, _, _, link, _, _, id = GetContainerItemInfo(bag, slot)
-    return id, count, locked, link, icon, quality
-end
-local function itemInfo(id)
-    local name, link, quality, _, _, _, _, maxStack, _, icon, price, classID, subclassID =
-        ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
-    return name, quality, maxStack or 1, price or 0, classID, icon, subclassID
-end
-local function inSet(bag, slot)
-    local fn = C.GetContainerItemEquipmentSetInfo or GetContainerItemEquipmentSetInfo
-    return fn and fn(bag, slot) and true or false
-end
+local slotInfo = J.SlotInfo
 local function pickup(bag, slot) (C.PickupContainerItem or PickupContainerItem)(bag, slot) end
 local function split(bag, slot, n) (C.SplitContainerItem or SplitContainerItem)(bag, slot, n) end
-local function useItem(bag, slot) (C.UseContainerItem or UseContainerItem)(bag, slot) end
+local useItem = J.UseItem
 local function cursorItem()
     local kind, id = GetCursorInfo()
     return kind == "item" and id or nil
 end
-local function protected(id)
-    return id == HEARTHSTONE or (GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id)) or false
+local protected = J.Protected
+-- The auction price of one item from Auctionator, when it is loaded.
+local function ahPrice(id)
+    local api = Auctionator and Auctionator.API and Auctionator.API.v1
+    if not (api and api.GetAuctionPriceByItemID) then return nil end
+    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-BagSpace", id)
+    return ok and price or nil
 end
+local function sortBags() local fn = C.SortBags or SortBags if fn then fn() return true end end
 
-ns.BAGS = { 0, 1, 2, 3, 4 }
+ns.TOOLS = J.TOOLS
+ns.BAGS = J.BAGS
 
 -- Free and total slots in normal bags (a herb or soul bag does not help other items).
 function ns.Space()
@@ -84,25 +50,7 @@ function ns.Space()
     return free, total
 end
 
-function ns.Items()
-    local out = {}
-    for _, bag in ipairs(ns.BAGS) do
-        local _, family = freeSlots(bag)
-        if family == 0 then
-            for slot = 1, numSlots(bag) do
-                local id, count, locked, link, icon = slotInfo(bag, slot)
-                if id then
-                    local name, quality, maxStack, price, classID, icon2, subclassID = itemInfo(id)
-                    out[#out + 1] = { bag = bag, slot = slot, id = id, count = count or 1, locked = locked,
-                                      link = link, name = name or link or ("item:" .. id), quality = quality or 1,
-                                      maxStack = maxStack, price = price, classID = classID, subclassID = subclassID,
-                                      icon = icon or icon2, inSet = inSet(bag, slot) }
-                end
-            end
-        end
-    end
-    return out
-end
+function ns.Items() return J.Scan(true) end
 
 -- Stack merges: for each item with more stacks than it needs, the moves that fill the
 -- fullest stacks from the emptiest. Returns moves and the slots they free.
@@ -138,16 +86,12 @@ function ns.Merges(items)
     return moves, freed
 end
 
--- How sure we are an item is junk: 1 gray, 2 white gear, 3 other white items (offered
--- unticked). Quest items, keys, profession tools, items of an equipment set, better items and
--- protected items are never offered.
+-- How sure we are an item is junk (the shared rules in Junk.lua): 1 gray or "always sell",
+-- 2 white gear and bound gear the class cannot use, 3 other white items (offered unticked).
+-- Items the player unticked before (`keep`) are not offered until /gbs reset.
 function ns.Tier(it)
-    if protected(it.id) or it.classID == ITEM_QUEST or it.classID == ITEM_KEY then return nil end
-    if ns.TOOLS[it.id] or it.inSet or (it.classID == ITEM_WEAPON and it.subclassID == FISHING_POLE) then return nil end
-    if it.quality == 0 then return 1 end
-    if it.quality ~= 1 or it.price <= 0 then return nil end
-    if it.classID == ITEM_WEAPON or it.classID == ITEM_ARMOR then return 2 end
-    return 3
+    if ns.db and ns.db.keep[it.id] then return nil end
+    return J.Tier(it, { unusable = not ns.db or ns.db.unusable })
 end
 
 -- The plan for `want` free slots: { merges, freedByMerges, items (ticked or not), free, total }.
@@ -158,10 +102,16 @@ function ns.Plan(want)
     local need = math.max(0, want - free - merged)
     local cands = {}
     for _, it in ipairs(items) do
-        local tier = ns.Tier(it)
+        local tier, why = ns.Tier(it)
         if tier then
-            it.tier = tier
+            it.tier, it.why = tier, why
             it.value = it.price * it.count
+            -- Worth more at the auction house: offered, but never ticked.
+            if tier > 1 then
+                local ah = ahPrice(it.id)
+                if ah and ah > math.max(it.price * AH_FACTOR, it.price + 100) then it.ah = ah * it.count end
+            end
+            it.boe = it.bound == false and (it.classID == 2 or it.classID == 4)
             cands[#cands + 1] = it
         end
     end
@@ -174,7 +124,11 @@ function ns.Plan(want)
     -- (cloth, food, ...) only as a suggestion, unticked.
     local picked, extra = {}, 0
     for _, it in ipairs(cands) do
-        if it.tier == 1 or (it.tier == 2 and need > 0) then
+        if it.ah and (it.tier == 2 or (it.tier == 3 and need > 0 and extra < need + 3)) then
+            it.checked = false
+            if it.tier == 3 then extra = extra + 1 end
+            picked[#picked + 1] = it
+        elseif it.tier == 1 or (it.tier == 2 and need > 0) then
             it.checked = true
             need = need - 1
             picked[#picked + 1] = it
@@ -288,6 +242,38 @@ function ns.Money(copper)
     return string.format("%dc", c)
 end
 
+-- Unticking an item in the plan keeps it out of later plans, until /gbs reset; ticking it
+-- again takes it back.
+function ns.SetKept(it, kept)
+    ns.db.keep[it.id] = kept and true or nil
+end
+
+function ns.KeptCount()
+    local n = 0
+    for _ in pairs(ns.db.keep) do n = n + 1 end
+    return n
+end
+
+-- The one item "Free 1 slot" would sell or delete: the cheapest ticked candidate of a plan
+-- for one more slot (a gray item first, else white gear).
+function ns.OneItem()
+    local plan = ns.Plan(ns.Space() + 1)
+    for _, it in ipairs(plan.items) do
+        if it.checked and not it.ah then return it end
+    end
+end
+
+-- Runs inside the click of the Free 1 slot button.
+function ns.FreeOne()
+    local it = ns.OneItem()
+    if not it then return nil end
+    ns.Run({ items = { { bag = it.bag, slot = it.slot, id = it.id, price = it.price, checked = true } }, merges = {} })
+    return it
+end
+
+function ns.SortBags() return sortBags() end
+function ns.CanSort() return (C.SortBags or SortBags) ~= nil end
+
 -- A hint in the chat when the bags are nearly full; it never removes anything.
 local hinted = false
 local function checkFull()
@@ -302,21 +288,50 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1)
+f:SetScript("OnEvent", function(self, event, a1, ...)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliBagSpaceDB = GulliBagSpaceDB or {}
         ns.db = GulliBagSpaceDB
         ns.db.want = ns.db.want or 5
         ns.db.warnAt = ns.db.warnAt or 2
+        ns.db.keep = ns.db.keep or {}
+        ns.db.junk = ns.db.junk or {}
+        for k, v in pairs({ unusable = true, counter = true, popup = true }) do
+            if ns.db[k] == nil then ns.db[k] = v end
+        end
+        J.Attach(ns.db.junk)
+        J.OnChange(function() if ns.Refresh then ns.Refresh(true) end end)
+        J.InstallMarks({ JUNK_TIP = L.JUNK_TIP, ALWAYS_TIP = L.ALWAYS_TIP, MARKED = L.MARKED, UNMARKED = L.UNMARKED })
+        self:RegisterEvent("UI_ERROR_MESSAGE")
+        self:RegisterEvent("PLAYER_REGEN_DISABLED")
         self:RegisterEvent("MERCHANT_SHOW")
         self:RegisterEvent("MERCHANT_CLOSED")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
+        self:RegisterEvent("PLAYER_LOGIN")
+        return
+    end
+    if event == "PLAYER_LOGIN" then
+        if ns.UpdateCounter then ns.UpdateCounter() end
         return
     end
     if event == "BAG_UPDATE_DELAYED" then
         checkFull()
+        if ns.UpdateCounter then ns.UpdateCounter() end
         if ns.Refresh then ns.Refresh(true) end
+        return
+    end
+    if event == "UI_ERROR_MESSAGE" then
+        -- Retail sends (type, message), older clients only the message.
+        local msg = (...) or a1
+        if ns.db.popup and (msg == ERR_INV_FULL or msg == ERR_BAG_FULL) and not InCombatLockdown()
+            and ns.ShowPopup then
+            ns.ShowPopup()
+        end
+        return
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
+        if ns.HidePopup then ns.HidePopup() end
         return
     end
     ns.atMerchant = event == "MERCHANT_SHOW"
@@ -327,15 +342,41 @@ end)
 SLASH_GULLIBAGSPACE1 = "/gbs"
 SLASH_GULLIBAGSPACE2 = "/gullibagspace"
 SlashCmdList.GULLIBAGSPACE = function(msg)
-    local n = tonumber(strtrim(msg or ""))
+    msg = strtrim(msg or ""):lower()
+    if msg == "reset" then
+        wipe(ns.db.keep)
+        print("|cff9ad0ffGulli Bag Space|r: " .. L.RESET_DONE)
+        if ns.Refresh then ns.Refresh(true) end
+        return
+    end
+    if msg == "sort" then ns.SortBags() return end
+    local n = tonumber(msg)
     if n and n > 0 then ns.db.want = math.floor(n) end
     ns.Toggle()
 end
 
 function GulliBagSpace_Toggle() ns.Toggle() end
 
+-- The game icon of each switch, in the window and in the hub.
+ns.OPT_ICON = {
+    unusable = "Interface\\Icons\\INV_Gauntlets_04",
+    counter = "Interface\\Icons\\INV_Misc_Bag_08",
+    popup = "Interface\\Icons\\INV_Misc_Bag_10",
+}
+
+local function option(key, label)
+    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on)
+                 if not ns.db then return end
+                 ns.db[key] = on and true or false
+                 if key == "counter" and ns.UpdateCounter then ns.UpdateCounter() end
+             end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
+                    option("popup", ns.L.OPT_POPUP) },
         key = "BagSpace",
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",

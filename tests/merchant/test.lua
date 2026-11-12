@@ -15,7 +15,7 @@ test("at a vendor the gray items with a price are sold, nothing else", function(
     W.RunTimers()
     eq(#W.sold, 1)
     eq(W.sold[1], 10)
-    assert(W.printed[#W.printed]:find("sold 1 gray items for 15c", 1, true), W.printed[#W.printed])
+    assert(W.printed[#W.printed]:find("sold 1 junk items for 15c", 1, true), W.printed[#W.printed])
 end)
 
 test("protected items are never sold", function()
@@ -111,6 +111,86 @@ test("selling more than 12 says only the last 12 come back; the safe switch sell
     W.Drain()
     eq(#W.sold, 12)
     assert(not W.printed[#W.printed]:find("last 12", 1, true))
+end)
+
+test("the always-sell list: /gmc junk adds a white item, it sells, and protected items cannot join", function()
+    Fake({ slots = { { 0, 1, 10, 1, 1 }, { 0, 2, 11, 1, 1 } }, prices = { [10] = 5, [11] = 7 } })
+    local ns = Load()
+    SlashCmdList.GULLIMERCHANT("junk item:10")
+    eq(ns.db.junk[10], true)
+    SlashCmdList.GULLIMERCHANT("junk 10")
+    eq(ns.db.junk[10], nil, "a second time takes it off")
+    SlashCmdList.GULLIMERCHANT("junk 10")
+    GulliToolkit = { IsProtected = function(id) return id == 11 end }
+    SlashCmdList.GULLIMERCHANT("junk 11")
+    eq(ns.db.junk[11], nil)
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.sold, 1); eq(W.sold[1], 10)
+    GulliToolkit = nil
+end)
+
+test("both addons share the always-sell list", function()
+    Fake({})
+    local ns = Load()
+    local other = {}
+    ns.J.Attach(other)
+    ns.J.SetAlways(42, true)
+    eq(ns.db.junk[42], true); eq(other[42], true)
+    eq(ns.J.IsAlways(42), true)
+end)
+
+test("bound gear the class cannot use sells only with its switch", function()
+    -- A priest: plate (armour subclass 4) and an axe (weapon subclass 0) are no use; cloth is.
+    local info = { [20] = { classID = 4, subclassID = 4, quality = 2 }, [21] = { classID = 2, subclassID = 0, quality = 1 },
+                   [22] = { classID = 4, subclassID = 1, quality = 2 }, [23] = { classID = 4, subclassID = 4, quality = 2 } }
+    local slots = { { 0, 1, 20, 1, 2 }, { 0, 2, 21, 1, 1 }, { 0, 3, 22, 1, 2 }, { 0, 4, 23, 1, 2 } }
+    Fake({ slots = slots, info = info, prices = { [20] = 100, [21] = 50, [22] = 80, [23] = 90 },
+           bound = { [1] = true, [2] = true, [3] = true } })
+    local ns = Load()
+    eq(#ns.Junk(), 0, "off by default")
+    ns.db.unusable = true
+    local junk = ns.Junk()
+    eq(#junk, 2, "the unbound plate can still go to the auction house")
+    eq(junk[1].id, 20); eq(junk[2].id, 21)
+end)
+
+test("an item sold by hand twice is suggested, and can be added or dismissed", function()
+    Fake({ slots = { { 0, 1, 30, 1, 1 }, { 0, 2, 31, 1, 1 } }, prices = { [30] = 5, [31] = 5 } })
+    local ns = Load()
+    W.Fire("MERCHANT_SHOW")
+    W.hooks.UseContainerItem(0, 1)
+    eq(#ns.Suggestions(), 0)
+    W.hooks.UseContainerItem(0, 1)
+    W.hooks.UseContainerItem(0, 2)
+    W.hooks.UseContainerItem(0, 2)
+    eq(#ns.Suggestions(), 2)
+    ns.J.SetAlways(30, true)
+    ns.Dismiss(31)
+    eq(#ns.Suggestions(), 0)
+    W.Fire("MERCHANT_CLOSED")
+    W.hooks.UseContainerItem(0, 1)
+    eq(ns.db.manual[31], nil, "away from a vendor a right-click uses the item")
+end)
+
+test("an unticked row is kept this session", function()
+    Fake({ slots = { { 0, 1, 10, 1, 0 }, { 0, 2, 11, 1, 0 } }, prices = { [10] = 5, [11] = 5 } })
+    local ns = Load()
+    ns.skip[11] = true
+    local sell = ns.ToSell()
+    eq(#sell, 1); eq(sell[1].id, 10)
+    ns.Toggle()
+    local rows = ns.Rows()
+    eq(#rows, 2)
+end)
+
+test("one chat line per visit", function()
+    Fake({ slots = { { 0, 1, 10, 1, 0 } }, prices = { [10] = 5 }, repair = { 100 } })
+    Load()
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.printed, 1)
+    assert(W.printed[1]:find("sold 1 junk", 1, true) and W.printed[1]:find("repaired", 1, true), W.printed[1])
 end)
 
 test("no money, no repair", function()

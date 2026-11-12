@@ -37,6 +37,14 @@ local function enableState(name)
     return GetAddOnEnableState(player(), name)
 end
 local function version() return metadata(ADDON, "Version") end
+local function memoryKB(name)
+    local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
+    local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
+    if not (update and get) then return nil end
+    pcall(update)
+    local ok, kb = pcall(get, name)
+    return ok and tonumber(kb) or nil
+end
 -- Whether the game would load the addon for this character, and why not ("DISABLED",
 -- "INTERFACE_VERSION", "DEP_DISABLED"...).
 local function loadable(name)
@@ -68,7 +76,11 @@ end
 -- info: key (required, "QuestCleaner"), open (function), and optional title, desc, icon, slash,
 -- category (a key of ns.CATEGORIES) and options: switches the hub shows beside the module,
 -- { { label = "Sell gray items", get = function() return db.sell end, set = function(on) ... end,
---     icon = "Interface\\Icons\\INV_Misc_Coin_02" } } (icon optional: a game icon beside the switch).
+--     icon = "Interface\\Icons\\INV_Misc_Coin_02", tip = "Sells gray items at a vendor." } }
+-- (icon and tip optional). More optional fields: window (see AGENTS.md), summary = function()
+-- return text[, icon] end (one short line for the hub's home page), move = function(on) end
+-- (unlock or lock the module's frames on the screen, /gulli move) and reset = function() end
+-- (back to the defaults).
 function Toolkit.Register(a, b)
     local info = (a == Toolkit) and b or a
     if type(info) ~= "table" or type(info.key) ~= "string" or info.key == "" then return false end
@@ -122,6 +134,20 @@ end
 
 function ns.Feed()
     return (GulliToolkitDB and GulliToolkitDB.feed) or {}
+end
+
+function Toolkit.ClearFeed()
+    if GulliToolkitDB then GulliToolkitDB.feed = {} end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- How long ago a feed line came, short: "now", "5 min", "3 h", "2 d".
+function ns.Ago(t, now)
+    local s = math.max(0, (now or time()) - (tonumber(t) or 0))
+    if s < 60 then return L.AGO_NOW end
+    if s < 3600 then return L.AGO_MIN:format(math.floor(s / 60)) end
+    if s < 86400 then return L.AGO_H:format(math.floor(s / 3600)) end
+    return L.AGO_D:format(math.floor(s / 86400))
 end
 
 function Toolkit.Open(key)
@@ -201,6 +227,14 @@ function ns.List()
         row.slash = info and info.slash
         row.category = categoryOf(k, info, addon)
         row.options = optionsOf(info)
+        row.version = addon and metadata(addon, "Version") or nil
+        -- New after an update: the version differs from the one the player last opened. The
+        -- first version seen is only noted, so a fresh install does not mark everything.
+        local seenDB = GulliToolkitDB and GulliToolkitDB.seen
+        if row.version and seenDB then
+            if seenDB[k] == nil then seenDB[k] = row.version
+            elseif seenDB[k] ~= row.version then row.new = true end
+        end
         if addon then
             -- The switch is the game's enable state, never a copy of our own. A module that
             -- runs but is switched off, or is switched on but not running, waits for a reload.
@@ -255,7 +289,7 @@ function ns.Counts(rows)
 end
 
 -- The rows the hub shows: category ("All" or a key), state ("all", "on", "off") and a search
--- over the name, the line about it, the key and the slash command.
+-- over the name, the line about it, the key, the slash command and the module's switches.
 function ns.Filter(rows, category, state, query)
     query = (query or ""):lower():match("^%s*(.-)%s*$")
     local out = {}
@@ -263,7 +297,12 @@ function ns.Filter(rows, category, state, query)
         local ok = (query ~= "" or category == "All" or r.category == category)
             and (state == "all" or (state == "on") == (r.on == true))
         if ok and query ~= "" then
-            local text = table.concat({ r.title or "", r.desc or "", r.key, r.slash or "" }, "\n"):lower()
+            local parts = { r.title or "", r.desc or "", r.key, r.slash or "" }
+            for _, o in ipairs(r.options or {}) do
+                parts[#parts + 1] = o.label
+                if type(o.tip) == "string" then parts[#parts + 1] = o.tip end
+            end
+            local text = table.concat(parts, "\n"):lower()
             ok = text:find(query, 1, true) ~= nil
         end
         if ok then out[#out + 1] = r end
@@ -358,12 +397,353 @@ function ns.NeedsReload()
     return false
 end
 
+-- The home page ---------------------------------------------------------------------------------
+
+-- One short line per module that gives a summary ("Level 24 in 1 h 10 min"), for the hub's home
+-- page: { { row, text, icon } }. A summary that fails or says nothing is left out.
+function ns.Summaries(rows)
+    local out = {}
+    for _, r in ipairs(rows or ns.List()) do
+        local fn = r.state == "ready" and r.info and r.info.summary
+        if type(fn) == "function" then
+            local ok, text, icon = pcall(fn)
+            if ok and type(text) == "string" and text ~= "" then
+                out[#out + 1] = { row = r, text = text, icon = (type(icon) == "string" and icon) or r.icon }
+            end
+        end
+    end
+    return out
+end
+
+-- The module the hub showed last (it opens there next time), nil for the home page.
+function ns.Last()
+    return GulliToolkitDB and GulliToolkitDB.last
+end
+
+function ns.SetLast(key)
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.last = key
+end
+
+-- The player opened the module: it is no longer new.
+function ns.MarkSeen(row)
+    if not (row and row.version) then return end
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.seen = GulliToolkitDB.seen or {}
+    GulliToolkitDB.seen[row.key] = row.version
+end
+
+-- Sets of modules for a kind of play, switched on together; the other modules go off.
+ns.PRESETS = {
+    { key = "Quests", modules = { "QuestCleaner", "AutoQuest", "PartyQuests", "DungeonPrep", "Tooltip", "XP", "Merchant" } },
+    { key = "Trade", modules = { "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Tooltip", "Chores" } },
+    { key = "Dungeons", modules = { "GroupBuffs", "DungeonPrep", "InstanceLimit", "Attune", "Loot", "Bulletin",
+                                    "PartyQuests", "Reminders", "Merchant" } },
+    { key = "Minimum", modules = { "Merchant", "Tooltip", "XP" } },
+}
+
+local function presetOf(key)
+    for _, p in ipairs(ns.PRESETS) do if p.key == key then return p end end
+end
+
+-- Switches the preset's modules on and every other installed module off. Returns how many
+-- switches changed; they take effect after a reload.
+function ns.ApplyPreset(key)
+    local p = presetOf(key)
+    if not p then return 0 end
+    local want = {}
+    for _, k in ipairs(p.modules) do want[k] = true end
+    local n = 0
+    for _, row in ipairs(ns.List()) do
+        if row.addon and row.on ~= (want[row.key] == true) then
+            ns.SetEnabled(row, want[row.key] == true)
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- Every installed module of a category on or off at once.
+function ns.SetGroup(category, on)
+    local n = 0
+    for _, row in ipairs(ns.List()) do
+        if row.addon and row.category == category and row.on ~= on then
+            ns.SetEnabled(row, on)
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- One place to move every frame on the screen: each module with move(on) unlocks its frames.
+ns.moving = false
+function ns.SetMoving(on)
+    ns.moving = on and true or false
+    local n = 0
+    for _, info in pairs(Toolkit.modules) do
+        if type(info.move) == "function" and pcall(info.move, ns.moving) then n = n + 1 end
+    end
+    if ns.Refresh then ns.Refresh() end
+    return n
+end
+
+-- The module's own defaults again.
+function ns.Reset(row)
+    local fn = row and row.info and row.info.reset
+    if type(fn) ~= "function" then return false end
+    local ok = pcall(fn)
+    if ns.Refresh then ns.Refresh() end
+    return ok
+end
+
+function ns.Memory(row)
+    local kb = row and row.addon and memoryKB(row.addon)
+    if not kb then return nil end
+    if kb >= 1024 then return string.format("%.1f MB", kb / 1024) end
+    return string.format("%d KB", math.floor(kb + 0.5))
+end
+
+-- Export and import of every Gulli setting as one line of text --------------------------------
+
+-- The saved variables of the toolkit and every installed module.
+function ns.SavedNames()
+    local names, seen = { "GulliToolkitDB" }, { GulliToolkitDB = true }
+    local addons = { ADDON }
+    for _, a in pairs(installed()) do addons[#addons + 1] = a end
+    for _, a in ipairs(addons) do
+        for _, field in ipairs({ "SavedVariables", "SavedVariablesPerCharacter" }) do
+            for n in tostring(metadata(a, field) or ""):gmatch("[%w_]+") do
+                if n:match("^Gulli") and not seen[n] then seen[n] = true; names[#names + 1] = n end
+            end
+        end
+    end
+    table.sort(names)
+    return names
+end
+
+-- "|" starts an escape in the game's edit boxes, so it never appears in the text.
+local ESC = { ["\\"] = "\\\\", ['"'] = '\\"', ["\n"] = "\\n", ["|"] = "\\p" }
+local UNESC = { ["\\"] = "\\", ['"'] = '"', n = "\n", p = "|" }
+
+local function write(v, out, depth)
+    local t = type(v)
+    if t == "string" then
+        out[#out + 1] = '"' .. v:gsub('[\\"\n|]', ESC) .. '"'
+    elseif t == "number" then
+        out[#out + 1] = (v == math.floor(v) and math.abs(v) < 2 ^ 53) and string.format("%d", v)
+            or string.format("%.14g", v)
+    elseif t == "boolean" then
+        out[#out + 1] = v and "T" or "F"
+    elseif t == "table" and depth < 30 then
+        local keys = {}
+        for k in pairs(v) do
+            if type(k) == "string" or type(k) == "number" then keys[#keys + 1] = k end
+        end
+        table.sort(keys, function(a, b)
+            if type(a) == type(b) then return a < b end
+            return type(a) == "number"
+        end)
+        out[#out + 1] = "{"
+        for _, k in ipairs(keys) do
+            local before = #out
+            write(k, out, depth + 1)
+            out[#out + 1] = "="
+            write(v[k], out, depth + 1)
+            if out[#out] == "=" then
+                for i = #out, before + 1, -1 do out[i] = nil end
+            else
+                out[#out + 1] = ";"
+            end
+        end
+        out[#out + 1] = "}"
+    end
+end
+
+function ns.Serialize(v)
+    local out = {}
+    write(v, out, 0)
+    return table.concat(out)
+end
+
+-- Reads what ns.Serialize wrote; anything else is refused. Never runs the text.
+function ns.Deserialize(s)
+    local pos = 1
+    local function fail() error("bad", 0) end
+    local value
+    local function str()
+        local buf = {}
+        pos = pos + 1
+        while true do
+            local c = s:sub(pos, pos)
+            if c == "" then fail() end
+            if c == '"' then pos = pos + 1; return table.concat(buf) end
+            if c == "\\" then
+                local e = UNESC[s:sub(pos + 1, pos + 1)]
+                if not e then fail() end
+                buf[#buf + 1] = e
+                pos = pos + 2
+            else
+                buf[#buf + 1] = c
+                pos = pos + 1
+            end
+        end
+    end
+    value = function(depth)
+        if depth > 30 then fail() end
+        local c = s:sub(pos, pos)
+        if c == '"' then return str() end
+        if c == "T" then pos = pos + 1; return true end
+        if c == "F" then pos = pos + 1; return false end
+        if c == "{" then
+            pos = pos + 1
+            local t = {}
+            while s:sub(pos, pos) ~= "}" do
+                local k = value(depth + 1)
+                if type(k) ~= "string" and type(k) ~= "number" then fail() end
+                if s:sub(pos, pos) ~= "=" then fail() end
+                pos = pos + 1
+                t[k] = value(depth + 1)
+                if s:sub(pos, pos) ~= ";" then fail() end
+                pos = pos + 1
+            end
+            pos = pos + 1
+            return t
+        end
+        local num = s:match("^%-?[%d%.]+[eE]?[%-+]?%d*", pos)
+        if not num or not tonumber(num) then fail() end
+        pos = pos + #num
+        return tonumber(num)
+    end
+    local ok, v = pcall(value, 0)
+    if not ok or pos ~= #s + 1 then return nil end
+    return v
+end
+
+local PREFIX = "GULLI1:"
+
+-- Every Gulli setting as one line to copy to another computer, phone or handheld.
+function ns.Export()
+    local all = {}
+    for _, n in ipairs(ns.SavedNames()) do
+        if type(_G[n]) == "table" then all[n] = _G[n] end
+    end
+    return PREFIX .. ns.Serialize(all)
+end
+
+-- Loads a line from ns.Export. Returns the number of saved variables set, or nil when the text
+-- is not ours. The modules read them after a reload.
+function ns.Import(text)
+    text = tostring(text or ""):match("^%s*(.-)%s*$")
+    if text:sub(1, #PREFIX) ~= PREFIX then return nil end
+    local all = ns.Deserialize(text:sub(#PREFIX + 1))
+    if type(all) ~= "table" then return nil end
+    local n = 0
+    for name, v in pairs(all) do
+        if type(name) == "string" and name:match("^Gulli[%w_]*DB$") and type(v) == "table" then
+            _G[name] = v
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- Versions in the group --------------------------------------------------------------------------
+
+-- -1, 0 or 1 by the numbers of two versions ("1.10.0" is newer than "1.9.2").
+function ns.CompareVersions(a, b)
+    local pa, pb = {}, {}
+    for n in tostring(a or ""):gmatch("%d+") do pa[#pa + 1] = tonumber(n) end
+    for n in tostring(b or ""):gmatch("%d+") do pb[#pb + 1] = tonumber(n) end
+    for i = 1, math.max(#pa, #pb) do
+        local x, y = pa[i] or 0, pb[i] or 0
+        if x ~= y then return x < y and -1 or 1 end
+    end
+    return 0
+end
+
+ns.VERSION_PREFIX = "GulliTK"
+
+-- Our versions as addon messages, at most 240 characters each: "V|Core=1.6.0|XP=1.4.0".
+function ns.VersionMessages()
+    local parts = { "Core=" .. (version() or "0") }
+    for _, row in ipairs(ns.List()) do
+        if row.state == "ready" and row.version then parts[#parts + 1] = row.key .. "=" .. row.version end
+    end
+    local out, cur = {}, "V"
+    for _, p in ipairs(parts) do
+        if #cur + 1 + #p > 240 then out[#out + 1] = cur; cur = "V" end
+        cur = cur .. "|" .. p
+    end
+    out[#out + 1] = cur
+    return out
+end
+
+-- Newer versions a group member has: { { key, theirs, ours } }, each told once per session.
+local told = {}
+function ns.ReadVersions(msg)
+    local newer = {}
+    if type(msg) ~= "string" or msg:sub(1, 2) ~= "V|" then return newer end
+    local mine = { Core = version() }
+    for _, row in ipairs(ns.List()) do
+        if row.state == "ready" then mine[row.key] = row.version end
+    end
+    for key, ver in msg:gmatch("|([%w_]+)=([%d%.]+)") do
+        if mine[key] and ns.CompareVersions(ver, mine[key]) > 0
+            and (not told[key] or ns.CompareVersions(ver, told[key]) > 0) then
+            told[key] = ver
+            newer[#newer + 1] = { key = key, theirs = ver, ours = mine[key] }
+        end
+    end
+    return newer
+end
+
+local function sendVersions()
+    local C = C_ChatInfo
+    if not (C and C.SendAddonMessage) or not IsInGroup or not IsInGroup() then return end
+    local channel = (IsInRaid and IsInRaid()) and "RAID" or "PARTY"
+    for _, m in ipairs(ns.VersionMessages()) do pcall(C.SendAddonMessage, ns.VERSION_PREFIX, m, channel) end
+end
+
+function ns.OnVersions(msg)
+    for _, n in ipairs(ns.ReadVersions(msg)) do
+        local name = n.key == "Core" and L.TITLE or (ns.T.en["M_" .. n.key] and L["M_" .. n.key]) or n.key
+        ns.Print(L.NEWER_VERSION:format(name, n.theirs, n.ours))
+    end
+end
+
+-- /gulli help: the toolkit's commands, then each module's.
+function ns.HelpLines()
+    local lines = { L.HELP, L.HELP_MORE }
+    for _, row in ipairs(ns.List()) do
+        if row.slash and row.state == "ready" then lines[#lines + 1] = row.slash .. "  " .. row.title end
+    end
+    return lines
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
-events:SetScript("OnEvent", function(self, _, name)
-    if name ~= ADDON then return end
+events:RegisterEvent("GROUP_ROSTER_UPDATE")
+events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:RegisterEvent("CHAT_MSG_ADDON")
+local lastSent = 0
+events:SetScript("OnEvent", function(self, event, a, b, c, d)
+    if event == "CHAT_MSG_ADDON" then
+        local who = type(d) == "string" and d:match("^[^%-]+")
+        if a == ns.VERSION_PREFIX and who and who ~= player() then ns.OnVersions(b) end
+        return
+    end
+    if event ~= "ADDON_LOADED" then
+        -- At most once a minute, so a busy raid roster does not flood the channel.
+        if time() - lastSent >= 60 then lastSent = time(); sendVersions() end
+        return
+    end
+    if a ~= ADDON then return end
     self:UnregisterEvent("ADDON_LOADED")
     GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.seen = GulliToolkitDB.seen or {}
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+        pcall(C_ChatInfo.RegisterAddonMessagePrefix, ns.VERSION_PREFIX)
+    end
     if ns.RegisterSettings then ns.RegisterSettings() end
     if ns.BuildMinimap then ns.BuildMinimap() end
 end)
@@ -385,8 +765,11 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         local on = not ns.MinimapShown()
         ns.SetMinimap("hide", (not on) or nil)
         ns.Print(on and L.MINIMAP_ON or L.MINIMAP_OFF)
+    elseif msg:lower() == "move" then
+        local n = ns.SetMoving(not ns.moving)
+        ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
     elseif msg:lower() == "help" then
-        ns.Print(L.HELP)
+        for _, l in ipairs(ns.HelpLines()) do ns.Print(l) end
     elseif not ns.OpenModule(msg) then
         ns.Print(L.UNKNOWN:format(msg))
         ns.Print(L.HELP)

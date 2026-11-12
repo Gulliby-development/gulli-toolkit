@@ -1,32 +1,35 @@
--- The hub window, in three columns: a search and the categories with their counts on the left,
--- the modules of the chosen category with an on/off switch in the middle, the chosen module with
--- its switches and Open on the right. It only shows what Core.lua gives (ns.List, ns.Filter,
--- ns.Groups, ns.Counts) and calls ns.OpenModule, ns.SetEnabled and the module's own options.
--- A module that gives its window (Register's window) opens inside the hub: a narrow window
--- takes the place of the list and keeps the module card beside it, a wide one takes both.
+-- The hub window. On the left a narrow list of the modules with a small on/off switch each,
+-- grouped by category, with the search on top. In the centre always one page: the module the
+-- player clicked (its own window, docked; a narrow one keeps a card about the module beside
+-- it), or the home page with the modules' summaries, the Recent feed and quick setup.
+-- It only shows what Core.lua gives (ns.List, ns.Filter, ns.Groups, ns.Summaries, ns.Feed)
+-- and calls ns.SetEnabled, ns.SetGroup, ns.ApplyPreset and the module's own window.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local SIDE, DETAIL, GAP = 210, 280, S.GAP
+local SIDE, CARD, GAP = 210, 280, S.GAP
 local MID = S.NARROW_W
-local W = 2 * S.PAD + SIDE + GAP + MID + GAP + DETAIL
-local HOST_W = W - 2 * S.PAD - SIDE - GAP
+local HOST_W = MID + GAP + CARD
 local HOST_H = S.DOCK_H
+local W = 2 * S.PAD + SIDE + GAP + HOST_W
 local H = S.HEADER_H + 2 * S.PAD + HOST_H
-local LIST_W = MID - 12
-local ROW_H, GROUP_H, CAT_H = 52, 34, 32
-local FEED_LINES, MAX_OPTIONS = 3, 6
+local LIST_W = SIDE - 2 * S.INSET - 10
+local ROW_H, HEAD_H = 30, 30
+local TILE_COLS, TILE_MAX, TILE_H = 3, 9, 58
+local QUICK_W, LINE_H = 320, 24
 
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
+local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
 
-local view = { cat = "All", state = "all", query = "" }
-local frame, side, mid, detail, search, placeholder, midTitle, scroll, list, empty
-local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, recent, mapRow
-local host, hubSwitch, offWin, insideWin
-local cats, pills, rows, heads, recentLines, optRows = {}, {}, {}, {}, {}, {}
+-- page: "home", "module", "protect" or "transfer"; inside: the key of the docked module.
+local view = { page = "home", query = "" }
+local frame, side, search, placeholder, scroll, list, empty, foot
+local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, transfer
+local host, hubSwitch, offWin, insideWin, card, home, homeRow
+local rows, heads = {}, {}
 
 local function catName(key)
     if key == "All" then return L.ALL_MODULES end
@@ -49,19 +52,40 @@ local function stateText(row)
     return L.NOT_INSTALLED, BAD
 end
 
-local function canOpen(row)
-    return row.state == "ready" and row.info and type(row.info.open) == "function"
+local function moduleName(key)
+    for _, r in ipairs(ns.List()) do if r.key == key then return r.title, r end end
+    return key
 end
 
+local function findRow(key)
+    if not key then return nil end
+    for _, r in ipairs(ns.List()) do if r.key == key then return r end end
+end
+
+-- A tooltip: a white title and grey lines that wrap.
+local function tip(owner, title, lines, anchor)
+    GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
+    GameTooltip:SetText(title or "", 1, 1, 1, 1, true)
+    for _, l in ipairs(lines or {}) do
+        if l and l ~= "" then GameTooltip:AddLine(l, 0.6, 0.61, 0.66, true) end
+    end
+    GameTooltip:Show()
+end
+
+local function hideTip() GameTooltip:Hide() end
+
+local function place(f, y)
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", 0, -y)
+    f:SetPoint("TOPRIGHT", 0, -y)
+end
+
+-- A module that has no window for the hub opens alone and the hub steps aside.
 local function open(row)
     if row and ns.OpenModule(row.key) then frame:Hide() end
 end
 
--- Inside a module ------------------------------------------------------------------------------
-
-local function canEnter(row)
-    return row ~= nil and row.state ~= "missing"
-end
+-- The centre ------------------------------------------------------------------------------------
 
 -- The window a module gives the hub, when it can sit inside it.
 local function moduleWindow(row)
@@ -74,7 +98,7 @@ local function moduleWindow(row)
     return win
 end
 
--- The page for a module that is off or waits for a reload: it is not loaded, so it has no window.
+-- The page for a module that is not loaded (off, waiting for a reload, refused, not installed).
 local function offWindow(row)
     if not offWin then
         offWin = S.Window(nil, "", MID, HOST_H)
@@ -90,6 +114,8 @@ local function offWindow(row)
     if row.state == "blocked" then
         offWin.empty:Set(row.reason == "INTERFACE_VERSION" and L.INSIDE_OUTDATED
             or L.INSIDE_BLOCKED:format(ns.ReasonText(row.reason)))
+    elseif row.state == "missing" then
+        offWin.empty:Set(L.MISSING_HINT)
     else
         offWin.empty:Set(row.state == "reload" and L.INSIDE_RELOAD or L.INSIDE_OFF)
     end
@@ -97,26 +123,48 @@ local function offWindow(row)
     return offWin
 end
 
+local function hidePanels()
+    if protectFrame then protectFrame:Hide() end
+    if transfer then transfer:Hide() end
+end
+
+-- Takes the docked module out, without choosing another page.
 local function leave()
     local win = insideWin
-    if not win then return end
-    insideWin, view.inside, view.insideCat = nil, nil, nil
-    win:Undock()
-    mid:Show()
-    detail:Show()
+    insideWin, view.inside = nil, nil
+    if card then card:Hide() end
+    if win then win:Undock() end
+end
+
+local function showHome()
+    leave()
+    hidePanels()
+    view.page = "home"
+    home:Show()
     ns.Refresh()
+end
+
+-- The back button and the Home row: the hub opens on the home page next time.
+local function goHome()
+    ns.SetLast(nil)
+    showHome()
 end
 
 -- Takes the module out of the hub into its own window.
 local function popOut()
     local win = insideWin
     if not win or win == offWin then return end
-    leave()
+    showHome()
     win:Show()
 end
 
+-- The module closed its own window: back to the home page while the hub stays open.
+local function windowHidden()
+    if frame:IsShown() then showHome() else leave() end
+end
+
 local function enter(row)
-    if not canEnter(row) then return end
+    if not row then return end
     local win
     if row.state == "ready" then
         win = moduleWindow(row)
@@ -125,155 +173,90 @@ local function enter(row)
         win = offWindow(row)
     end
     if insideWin and insideWin ~= win then leave() end
-    if protectFrame then protectFrame:Hide() end
+    hidePanels()
+    home:Hide()
     local narrow = (win.size and win.size[1] or MID) <= MID
-    insideWin, view.inside, view.narrow, view.selected = win, row.key, narrow, row.key
-    view.insideCat = row.category
-    mid:Hide()
-    detail:SetShown(narrow)
+    insideWin, view.inside, view.narrow, view.page = win, row.key, narrow, "module"
+    if row.state == "ready" then ns.SetLast(row.key) end
+    ns.MarkSeen(row)
+    card:SetShown(narrow)
+    local switchable = row.state ~= "missing"
     hubSwitch:SetChecked(row.on)
     win:Dock(host, {
-        width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch },
-        back = leave, popOut = popOut, onHide = leave,
+        width = narrow and MID or HOST_W, height = HOST_H, right = switchable and { hubSwitch } or {},
+        back = goHome, popOut = popOut, onHide = windowHidden,
     })
+    if not switchable then hubSwitch:Hide() end
     ns.Refresh()
 end
 
-local function select(row)
-    view.selected = row and row.key
+local function showPanel(name)
+    leave()
+    hidePanels()
+    home:Hide()
+    view.page = name
+    if name == "protect" then protectFrame:Show() else transfer:Show() end
     ns.Refresh()
 end
 
 -- Left column ----------------------------------------------------------------------------------
 
-local function makeCat(i)
-    local b = CreateFrame("Button", nil, side)
-    b:SetHeight(CAT_H)
-    b:SetPoint("TOPLEFT", side.body, "TOPLEFT", 0, -(42 + (i - 1) * (CAT_H + 2)))
-    b:SetPoint("TOPRIGHT", side.body, "TOPRIGHT", 0, -(42 + (i - 1) * (CAT_H + 2)))
-    S.Box(b, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
-    b.bar = line(b, S.Accent())
-    b.bar:SetPoint("TOPLEFT")
-    b.bar:SetPoint("BOTTOMLEFT")
-    b.bar:SetWidth(2)
-    b.countBox = CreateFrame("Frame", nil, b)
-    b.countBox:SetSize(40, 20)
-    b.countBox:SetPoint("RIGHT", -6, 0)
-    b.count = S.Text(b.countBox, 11, S.FAINT)
-    b.count:SetPoint("RIGHT")
-    b.count:SetJustifyH("RIGHT")
-    b.text = S.Text(b, 12)
-    b.text:SetPoint("LEFT", 12, 0)
-    b.text:SetPoint("RIGHT", b.countBox, "LEFT", -4, 0)
-    b.text:SetWordWrap(false)
-    b:SetScript("OnClick", function(self)
-        leave()
-        view.cat = self.key
-        view.selected = nil
-        search:SetText("")
-        search:ClearFocus()
-        scroll:Top()
-        ns.Refresh()
-    end)
-    b:SetScript("OnEnter", function(self) if view.cat ~= self.key then S.Fill(self, HOVER) end end)
-    b:SetScript("OnLeave", function(self) if view.cat ~= self.key then S.Fill(self, { 0, 0, 0, 0 }) end end)
-    cats[i] = b
-    return b
+local function rowTip(self)
+    local row = self.row
+    if not row then return end
+    local st, c = stateText(row)
+    local lines = { row.desc, S.Hex(c) .. st .. "|r" }
+    if row.slash then lines[#lines + 1] = L.COMMAND:format(row.slash) end
+    if row.new then lines[#lines + 1] = S.Hex(S.Accent()) .. L.NEW_TIP .. "|r" end
+    tip(self, row.title, lines)
 end
 
-local function fillCats(counts)
-    local keys = { "All" }
-    for _, k in ipairs(ns.CATEGORIES) do keys[#keys + 1] = k end
-    if counts.Other then keys[#keys + 1] = "Other" end
-    local a = S.Accent()
-    local searching = view.query ~= ""
-    for i, key in ipairs(keys) do
-        local b = cats[i] or makeCat(i)
-        b.key = key
-        local c = counts[key] or { on = 0, total = 0 }
-        b.text:SetText(catName(key))
-        b.count:SetText(c.on .. "/" .. c.total)
-        -- Inside a module its group is marked.
-        local sel
-        if view.inside then sel = key == view.insideCat else sel = view.cat == key and not searching end
-        b.bar:SetShown(sel)
-        S.Fill(b, sel and S.RAISED or S.CLEAR)
-        local tc = sel and S.TEXT or ((c.total > 0) and S.MUTED or S.FAINT)
-        b.text:SetTextColor(tc[1], tc[2], tc[3], 1)
-        b:Show()
-    end
-    for i = #keys + 1, #cats do cats[i]:Hide() end
-end
-
--- Middle column --------------------------------------------------------------------------------
-
-local function makeRow(i)
-    local r = CreateFrame("Button", nil, list)
-    r:SetHeight(ROW_H)
+local function selectable(r)
     S.Box(r, S.CLEAR, S.CLEAR)
     r.bar = line(r, S.Accent())
     r.bar:SetPoint("TOPLEFT")
     r.bar:SetPoint("BOTTOMLEFT")
     r.bar:SetWidth(2)
-    r.rule = line(r)
-    r.rule:SetHeight(1)
-    r.rule:SetPoint("BOTTOMLEFT")
-    r.rule:SetPoint("BOTTOMRIGHT")
+    function r:SetSelected(on)
+        self.selected = on
+        S.Fill(self, on and S.RAISED or S.CLEAR)
+        self.bar:SetShown(on)
+    end
+    r:SetScript("OnLeave", function(self)
+        if not self.selected then S.Fill(self, S.CLEAR) end
+        hideTip()
+    end)
+end
 
+local function makeRow(i)
+    local r = CreateFrame("Button", nil, list)
+    r:SetHeight(ROW_H)
+    selectable(r)
     r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(30, 30)
-    r.icon:SetPoint("LEFT", 12, 0)
-
-    r.go = CreateFrame("Button", nil, r)
-    r.go:SetSize(28, ROW_H)
-    r.go:SetPoint("RIGHT", 0, 0)
-    r.go.text = S.Text(r.go, 18, S.MUTED)
-    r.go.text:SetPoint("CENTER")
-    r.go.text:SetText(">")
-    r.go:SetScript("OnClick", function(self) enter(self:GetParent().row) end)
-    r.go:SetScript("OnEnter", function(self)
-        local a = S.Accent()
-        self.text:SetTextColor(a[1], a[2], a[3], 1)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L.OPEN, 1, 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    r.go:SetScript("OnLeave", function(self)
-        self.text:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
-        GameTooltip:Hide()
-    end)
-
+    r.icon:SetSize(18, 18)
+    r.icon:SetPoint("LEFT", 8, 0)
+    -- A dot on the icon: updated since the player last opened it.
+    r.dot = line(r, S.Accent())
+    r.dot:SetDrawLayer("OVERLAY")
+    r.dot:SetSize(6, 6)
+    r.dot:SetPoint("CENTER", r.icon, "TOPRIGHT", 0, 0)
     r.switch = S.Switch(r)
-    r.switch:SetPoint("RIGHT", r.go, "LEFT", -2, 0)
+    r.switch:SetPoint("RIGHT", 0, 0)
     r.switch:SetScript("OnClick", function(self)
         local row = self:GetParent().row
-        if row then
-            view.selected = row.key
-            ns.SetEnabled(row, not row.on)
-        end
+        if row then ns.SetEnabled(row, not row.on) end
     end)
-    r.switch:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L.ON_TIP, 1, 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    r.switch:HookScript("OnLeave", function() GameTooltip:Hide() end)
-
-    r.status = S.Text(r, 11, S.FAINT)
-    r.status:SetPoint("RIGHT", -12, 0)
-    r.status:SetJustifyH("RIGHT")
-
-    r.title = S.Text(r, 13)
-    r.title:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 1)
+    r.switch:HookScript("OnEnter", function(self) tip(self, L.ON_TIP) end)
+    r.switch:HookScript("OnLeave", hideTip)
+    r.title = S.Text(r, 12)
+    r.title:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    r.title:SetPoint("RIGHT", r.switch, "LEFT", -2, 0)
     r.title:SetWordWrap(false)
-    r.desc = S.Text(r, 11, S.MUTED)
-    r.desc:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -5)
-    r.desc:SetWordWrap(false)
-
-    r:SetScript("OnClick", function(self) select(self.row) end)
-    r:SetScript("OnDoubleClick", function(self) enter(self.row) end)
-    r:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
-    r:SetScript("OnLeave", function(self) if not self.selected then S.Fill(self, S.CLEAR) end end)
+    r:SetScript("OnClick", function(self) enter(self.row) end)
+    r:SetScript("OnEnter", function(self)
+        if not self.selected then S.Fill(self, HOVER) end
+        rowTip(self)
+    end)
     rows[i] = r
     return r
 end
@@ -282,40 +265,35 @@ local function fillRow(r, row)
     r.row = row
     r.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     r.icon:SetDesaturated(row.state ~= "ready")
-    local slash = row.slash and ("  " .. S.Hex(S.MUTED) .. row.slash .. "|r") or ""
-    r.title:SetText(row.title .. slash)
-    local tc = row.state == "ready" and S.TEXT or S.MUTED
+    r.title:SetText(row.title)
+    -- The state shows in the colour of the name; the tooltip and the page say why.
+    local tc = S.TEXT
+    if row.state == "reload" then tc = WAIT
+    elseif row.state == "blocked" then tc = BAD
+    elseif row.state ~= "ready" then tc = S.FAINT end
     r.title:SetTextColor(tc[1], tc[2], tc[3], 1)
-    -- A module that is on but not loaded says why in its row, so a grey row with its switch on
-    -- is not a riddle.
-    if row.state == "reload" or row.state == "blocked" then
-        local st, c = stateText(row)
-        r.desc:SetText(S.Hex(c) .. st .. "|r")
-    else
-        r.desc:SetText(row.desc)
-    end
-    local missing = row.state == "missing"
-    r.switch:SetShown(not missing)
-    r.go:SetShown(not missing)
-    r.go:SetEnabled(canEnter(row))
-    r.go:SetAlpha(canOpen(row) and 1 or 0.5)
-    r.status:SetShown(missing)
-    r.status:SetText(missing and L.NOT_INSTALLED or "")
-    local right = missing and r.status or r.switch
-    r.title:SetPoint("RIGHT", right, "LEFT", -8, 0)
-    r.desc:SetPoint("RIGHT", right, "LEFT", -8, 0)
+    r.dot:SetShown(row.new == true)
+    r.switch:SetShown(row.state ~= "missing")
     r.switch:SetChecked(row.on)
-    r.selected = view.selected == row.key
-    S.Fill(r, r.selected and S.RAISED or S.CLEAR)
-    r.bar:SetShown(r.selected)
+    r:SetSelected(view.page == "module" and view.inside == row.key)
     r:Show()
 end
 
 local function makeHead(i)
     local h = CreateFrame("Frame", nil, list)
-    h:SetHeight(GROUP_H)
+    h:SetHeight(HEAD_H)
+    h.switch = S.Switch(h)
+    h.switch:SetPoint("BOTTOMRIGHT", 0, 1)
+    h.switch:SetScript("OnClick", function(self)
+        local p = self:GetParent()
+        ns.SetGroup(p.cat, not p.allOn)
+    end)
+    h.switch:HookScript("OnEnter", function(self) tip(self, L.GROUP_TIP) end)
+    h.switch:HookScript("OnLeave", hideTip)
     h.text = S.Text(h, 11, S.FAINT)
     h.text:SetPoint("BOTTOMLEFT", 2, 8)
+    h.text:SetPoint("RIGHT", h.switch, "LEFT", -4, 0)
+    h.text:SetWordWrap(false)
     h.rule = line(h, S.EDGE)
     h.rule:SetHeight(1)
     h.rule:SetPoint("BOTTOMLEFT", 0, 0)
@@ -324,149 +302,177 @@ local function makeHead(i)
     return h
 end
 
-local function place(f, y)
-    f:ClearAllPoints()
-    f:SetPoint("TOPLEFT", 0, -y)
-    f:SetPoint("TOPRIGHT", 0, -y)
-end
-
-local function fillRecent()
-    local feed = ns.Feed()
-    local n = math.min(#feed, FEED_LINES)
-    for i = 1, FEED_LINES do
-        local e = feed[i]
-        local who = e and tostring(e.key or "")
-        if who and ns.T.en["M_" .. who] then who = L["M_" .. who] end
-        recentLines[i]:SetText(e and (S.Hex(S.Accent()) .. who .. "|r  " .. e.text) or "")
-    end
-    return n
-end
-
-local function fillList(data)
-    local shown = ns.Filter(data, view.cat, view.state, view.query)
+local function fillSide(data)
     local searching = view.query ~= ""
-    local y, ri, hi = 0, 0, 0
-
-    local n = (view.cat == "All" and not searching and view.state == "all") and fillRecent() or 0
-    recent:SetShown(n > 0)
-    if n > 0 then
-        local h = 34 + n * 18
-        recent:SetHeight(h)
-        place(recent, y)
-        y = y + h + 4
-    end
-
-    local found
-    for _, g in ipairs(ns.Groups(shown)) do
-        if view.cat == "All" or searching then
-            hi = hi + 1
-            local h = heads[hi] or makeHead(hi)
-            h.text:SetText(catName(g.key))
-            place(h, y)
-            h:Show()
-            y = y + GROUP_H
+    local shown = ns.Filter(data, "All", "all", view.query)
+    -- The group switch: on when every installed module of the group is on.
+    local group = {}
+    for _, r in ipairs(data) do
+        if r.addon then
+            local g = group[r.category] or { n = 0, on = 0 }
+            group[r.category] = g
+            g.n = g.n + 1
+            if r.on then g.on = g.on + 1 end
         end
+    end
+    local counts = ns.Counts(data)
+    local y, ri, hi = 0, 0, 0
+    homeRow:SetShown(not searching)
+    if not searching then
+        place(homeRow, y)
+        homeRow:SetSelected(view.page == "home")
+        y = y + ROW_H
+    end
+    for _, g in ipairs(ns.Groups(shown)) do
+        hi = hi + 1
+        local h = heads[hi] or makeHead(hi)
+        local c = counts[g.key] or { on = 0, total = 0 }
+        h.cat = g.key
+        h.text:SetText(catName(g.key) .. "  " .. c.on .. "/" .. c.total)
+        local gs = group[g.key]
+        h.allOn = gs ~= nil and gs.on == gs.n
+        h.switch:SetShown(gs ~= nil and not searching)
+        h.switch:SetChecked(h.allOn)
+        place(h, y)
+        h:Show()
+        y = y + HEAD_H
         for _, row in ipairs(g.rows) do
             ri = ri + 1
             local r = rows[ri] or makeRow(ri)
             fillRow(r, row)
             place(r, y)
             y = y + ROW_H
-            if row.key == view.selected then found = row end
         end
     end
     for i = ri + 1, #rows do rows[i]:Hide() end
     for i = hi + 1, #heads do heads[i]:Hide() end
-    empty:SetShown(ri == 0)
+    empty:SetShown(#shown == 0)
     list:SetHeight(math.max(1, y))
     scroll:Update(y)
-    return found or shown[1]
+    return shown
 end
 
--- Right column ---------------------------------------------------------------------------------
+-- The card beside a narrow module window --------------------------------------------------------
 
-local function makeOption(i)
-    local o = CreateFrame("Frame", nil, detail)
-    o:SetHeight(36)
-    o:SetPoint("TOPLEFT", detail.setHead, "BOTTOMLEFT", 0, -6 - (i - 1) * 36)
-    o:SetPoint("RIGHT", detail, "RIGHT", -S.INSET, 0)
-    o.rule = line(o)
-    o.rule:SetHeight(1)
-    o.rule:SetPoint("BOTTOMLEFT")
-    o.rule:SetPoint("BOTTOMRIGHT")
-    o.switch = S.Switch(o)
-    o.switch:SetPoint("RIGHT")
-    o.switch:SetScript("OnClick", function(self)
-        local opt = self:GetParent().opt
-        if opt then
-            local ok, cur = pcall(opt.get)
-            pcall(opt.set, not (ok and cur))
-            ns.Refresh()
-        end
-    end)
-    o.icon = S.IconBox(o, 24)
-    o.icon:SetPoint("LEFT")
-    o.label = S.Text(o, 12)
-    o.label:SetPoint("LEFT", 34, 0)
-    o.label:SetPoint("RIGHT", o.switch, "LEFT", -6, 0)
-    o.label:SetMaxLines(2)
-    optRows[i] = o
-    return o
-end
-
-local function fillDetail(row)
-    detail.body:SetShown(row ~= nil)
-    if not row then return end
-    detail.row = row
-    detail.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-    detail.icon:SetDesaturated(row.state ~= "ready")
-    detail.title:SetText(row.title)
-    detail.cat:SetText(catName(row.category))
+local function fillCard(row)
+    local d = card
+    d.row = row
+    d.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    d.icon:SetDesaturated(row.state ~= "ready")
+    d.title:SetText(row.title)
+    d.cat:SetText(catName(row.category))
     local st, color = stateText(row)
-    detail.state:SetText(st)
-    detail.state:SetTextColor(color[1], color[2], color[3], 1)
-    detail.desc:SetText(row.desc)
-    detail.slash:SetText(row.slash and L.COMMAND:format(row.slash) or "")
-
-    -- Inside a module its own window shows the settings; the card only describes it.
-    local inside = view.inside == row.key
-    detail.setHead:SetShown(not inside)
-    detail.srule:SetShown(not inside)
-    local opts = (row.state == "ready" and not inside) and row.options or {}
-    local count = math.min(#opts, MAX_OPTIONS)
-    for i = 1, count do
-        local o = optRows[i] or makeOption(i)
-        o.opt = opts[i]
-        o.label:SetText(opts[i].label)
-        local icon = type(opts[i].icon) == "string" and opts[i].icon or nil
-        o.icon:SetShown(icon ~= nil)
-        if icon then o.icon:SetIcon(icon) end
-        o.label:SetPoint("LEFT", icon and 34 or 0, 0)
-        local ok, on = pcall(opts[i].get)
-        o.switch:SetChecked(ok and on)
-        o:Show()
+    d.state:SetText(st)
+    d.state:SetTextColor(color[1], color[2], color[3], 1)
+    d.desc:SetText(row.desc)
+    d.slash:SetText(row.slash and L.COMMAND:format(row.slash) or "")
+    local facts = {}
+    if row.version then facts[#facts + 1] = L.VERSION:format(row.version) end
+    local mem = row.state == "ready" and ns.Memory(row)
+    if mem then facts[#facts + 1] = L.MEMORY:format(mem) end
+    d.facts:SetText(table.concat(facts, "   "))
+    local canReset = row.state == "ready" and row.info and type(row.info.reset) == "function"
+    d.reset:SetShown(canReset)
+    if d.resetFor ~= row.key then
+        d.resetFor, d.armed = row.key, false
+        d.reset:SetText(L.RESET)
     end
-    for i = count + 1, #optRows do optRows[i]:Hide() end
-    if row.state == "missing" then
-        detail.none:SetText(L.MISSING_HINT)
-    elseif row.state == "off" then
-        detail.none:SetText(L.OFF_HINT)
-    elseif row.state == "blocked" then
-        detail.none:SetText(row.reason == "INTERFACE_VERSION" and L.INSIDE_OUTDATED
-            or L.INSIDE_BLOCKED:format(ns.ReasonText(row.reason)))
-    elseif row.state ~= "ready" then
-        detail.none:SetText(L.RELOAD_HINT)
-    else
-        detail.none:SetText(L.NO_SETTINGS)
-    end
-    detail.none:SetShown(count == 0 and not inside)
+    d.pop:SetEnabled(insideWin ~= offWin)
+end
 
-    -- Inside, the module's own main button stays the only filled one.
-    detail.open:SetShown(not inside)
-    detail.pop:SetShown(inside)
-    detail.pop:SetEnabled(insideWin ~= offWin)
-    detail.open:SetText(row.state == "missing" and L.NOT_INSTALLED or L.OPEN_MODULE:format(row.title))
-    detail.open:SetEnabled(canEnter(row))
+-- The home page ---------------------------------------------------------------------------------
+
+local tiles, feedLines = {}, {}
+
+local function makeTile(i)
+    local t = CreateFrame("Button", nil, home.summary)
+    t:SetSize(10, TILE_H)
+    S.Box(t, S.SURFACE, S.EDGE)
+    t.icon = S.IconBox(t, 28)
+    t.icon:SetPoint("LEFT", 10, 0)
+    t.name = S.Text(t, 11, S.MUTED)
+    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 2)
+    t.name:SetPoint("RIGHT", -10, 0)
+    t.name:SetWordWrap(false)
+    t.text = S.Text(t, 12)
+    t.text:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -4)
+    t.text:SetPoint("RIGHT", -10, 0)
+    t.text:SetJustifyV("TOP")
+    t.text:SetMaxLines(2)
+    t:SetScript("OnClick", function(self) enter(self.row) end)
+    t:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
+    t:SetScript("OnLeave", function(self) S.SetBorder(self, S.EDGE) end)
+    tiles[i] = t
+    return t
+end
+
+local function makeFeedLine(i)
+    local b = CreateFrame("Button", nil, home.recent.body)
+    b:SetHeight(LINE_H)
+    S.Box(b, S.CLEAR, S.CLEAR)
+    b.ago = S.Text(b, 11, S.FAINT)
+    b.ago:SetPoint("LEFT", 4, 0)
+    b.ago:SetWidth(52)
+    b.ago:SetWordWrap(false)
+    b.text = S.Text(b, 12, S.MUTED)
+    b.text:SetPoint("LEFT", b.ago, "RIGHT", 6, 0)
+    b.text:SetPoint("RIGHT", -4, 0)
+    b.text:SetWordWrap(false)
+    b:SetScript("OnClick", function(self) enter(findRow(self.key)) end)
+    b:SetScript("OnEnter", function(self)
+        S.Fill(self, HOVER)
+        tip(self, self.who, { self.full }, "ANCHOR_TOP")
+    end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR); hideTip() end)
+    feedLines[i] = b
+    return b
+end
+
+local function fillHome(data)
+    local list2 = ns.Summaries(data)
+    local n = math.min(#list2, TILE_MAX)
+    local w = math.floor((HOST_W - 2 * S.INSET - (TILE_COLS - 1) * 8) / TILE_COLS)
+    for i = 1, n do
+        local t = tiles[i] or makeTile(i)
+        local s = list2[i]
+        t.row = s.row
+        t.icon:SetIcon(s.icon or s.row.icon)
+        t.name:SetText(s.row.title)
+        t.text:SetText(s.text)
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", ((i - 1) % TILE_COLS) * (w + 8), -math.floor((i - 1) / TILE_COLS) * (TILE_H + 8))
+        t:SetSize(w, TILE_H)
+        t:Show()
+    end
+    for i = n + 1, #tiles do tiles[i]:Hide() end
+    home.noSummary:SetShown(n == 0)
+    local lines = math.max(1, math.ceil(n / TILE_COLS))
+    local inner = n == 0 and 36 or (lines * (TILE_H + 8) - 8)
+    local sh = 36 + inner + S.INSET
+    home.summaryCard:SetHeight(sh)
+    local lower = HOST_H - sh - GAP
+    home.recent:SetHeight(lower)
+    home.quick:SetHeight(lower)
+
+    local feed = ns.Feed()
+    local room = math.max(1, math.floor((lower - 36 - S.INSET) / LINE_H))
+    local now = time()
+    local shown = math.min(#feed, room)
+    for i = 1, shown do
+        local b = feedLines[i] or makeFeedLine(i)
+        local e = feed[i]
+        local who = tostring(e.key or "")
+        if ns.T.en["M_" .. who] then who = L["M_" .. who] end
+        b.key, b.who, b.full = e.key, who, e.text
+        b.ago:SetText(ns.Ago(e.t, now))
+        b.text:SetText(S.Hex(S.Accent()) .. who .. "|r  " .. e.text)
+        place(b, (i - 1) * LINE_H)
+        b:Show()
+    end
+    for i = shown + 1, #feedLines do feedLines[i]:Hide() end
+    home.noRecent:SetShown(#feed == 0)
+    home.clear:SetShown(#feed > 0)
+    home.move:SetText(ns.moving and L.MOVE_DONE or L.MOVE)
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -489,33 +495,40 @@ end
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local data = ns.List()
-    fillCats(ns.Counts(data))
-    midTitle:SetText(view.query ~= "" and L.RESULTS or catName(view.cat))
-    for key, p in pairs(pills) do p:SetSelected(view.state == key) end
-    local row = fillList(data)
+    fillSide(data)
     if view.inside then
+        local row
         for _, r in ipairs(data) do if r.key == view.inside then row = r end end
-        hubSwitch:SetChecked(row and row.on)
-        if row and insideWin == offWin then offWindow(row) end
+        if row then
+            hubSwitch:SetChecked(row.on)
+            if insideWin == offWin then offWindow(row) end
+            if card:IsShown() then fillCard(row) end
+        end
     end
-    view.selected = row and row.key
-    -- fillList drew the rows before the selection was known when it fell back to the first one.
-    for _, r in ipairs(rows) do
-        if r:IsShown() and r.row then fillRow(r, r.row) end
-    end
-    fillDetail(row)
+    if view.page == "home" then fillHome(data) end
 
     local reload = ns.NeedsReload()
     reloadBtn:SetShown(reload)
     reloadHint:SetShown(reload)
+    foot:SetHeight(reload and (30 + 8 + 30 + 8 + 40) or 30)
     protectBtn:SetText(L.PROTECTED_N:format(#ns.Protected()))
     if protectFrame and protectFrame:IsShown() then ns.RefreshProtected() end
 end
 
--- Protected items: shown over the right column, with a drop zone for items from the bags.
+-- Protected items: a page in the centre, with a drop zone for items from the bags.
 local protRows = {}
+local function itemInfo(id)
+    local name, _, _, _, _, _, _, _, _, icon = (C_Item and C_Item.GetItemInfo or GetItemInfo)(id)
+    return name, icon
+end
+
 function ns.RefreshProtected()
     local ids = ns.Protected()
+    table.sort(ids, function(a, b)
+        local na, nb = itemInfo(a) or "", itemInfo(b) or ""
+        if na ~= nb then return na < nb end
+        return a < b
+    end)
     for i, id in ipairs(ids) do
         local r = protRows[i]
         if not r then
@@ -538,7 +551,7 @@ function ns.RefreshProtected()
             protRows[i] = r
         end
         r.id = id
-        local name, _, _, _, _, _, _, _, _, icon = (C_Item and C_Item.GetItemInfo or GetItemInfo)(id)
+        local name, icon = itemInfo(id)
         r.name:SetText(name or ("item:" .. id))
         r.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         r:Show()
@@ -556,40 +569,86 @@ local function dropItem()
     end
 end
 
-local function buildProtected()
-    protectFrame = CreateFrame("Frame", "GulliToolkitProtected", detail)
-    protectFrame:SetAllPoints(detail)
-    protectFrame:EnableMouse(true)
-    S.Box(protectFrame, S.SURFACE, S.EDGE)
-    local title = S.Text(protectFrame, 14)
-    title:SetPoint("TOPLEFT", S.INSET, -14)
-    title:SetText(L.PROTECTED)
-    local close = S.Close(protectFrame, function() protectFrame:Hide() end)
+-- A page in the centre with a title and a close button that goes home.
+local function centrePage(name, title)
+    local p = CreateFrame("Frame", name, host)
+    p:SetAllPoints(host)
+    p:EnableMouse(true)
+    S.Box(p, S.SURFACE, S.EDGE)
+    p.title = S.Text(p, 14)
+    p.title:SetPoint("TOPLEFT", S.INSET, -14)
+    p.title:SetText(title)
+    local close = S.Close(p, function() showHome() end)
     close:SetPoint("TOPRIGHT", -6, -6)
-    local hint = S.Note(protectFrame, 11)
-    hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    hint:SetPoint("RIGHT", -S.INSET, 0)
-    hint:SetMaxLines(5)
-    hint:SetText(L.PROTECT_HINT)
-    local drop = CreateFrame("Button", nil, protectFrame)
-    drop:SetHeight(44)
-    drop:SetPoint("TOPLEFT", S.INSET, -122)
-    drop:SetPoint("TOPRIGHT", -S.INSET, -122)
-    S.Box(drop, S.INPUT, S.EDGE)
-    local dropText = S.Text(drop, 12, S.MUTED)
-    dropText:SetPoint("CENTER")
-    dropText:SetText(L.DROP)
-    drop:SetScript("OnReceiveDrag", dropItem)
-    drop:SetScript("OnClick", dropItem)
-    drop:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
-    drop:SetScript("OnLeave", function(self) S.SetBorder(self, S.EDGE) end)
+    p.hint = S.Note(p, 11)
+    p.hint:SetPoint("TOPLEFT", p.title, "BOTTOMLEFT", 0, -8)
+    p.hint:SetPoint("RIGHT", -S.INSET - 30, 0)
+    p.hint:SetMaxLines(3)
+    p:Hide()
+    return p
+end
+
+local function buildProtected()
+    protectFrame = centrePage("GulliToolkitProtected", L.PROTECTED)
+    protectFrame.hint:SetText(L.PROTECT_HINT)
+    local drop = S.DropZone(protectFrame, L.DROP, dropItem, 44)
+    drop:SetPoint("TOPLEFT", S.INSET, -84)
+    drop:SetPoint("TOPRIGHT", -S.INSET, -84)
     protectFrame.scroll = S.Scroll(protectFrame)
     protectFrame.scroll:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -S.GAP)
     protectFrame.scroll:SetPoint("BOTTOMRIGHT", -22, S.INSET)
     protectFrame.list = protectFrame.scroll.child
-    protectFrame.list:SetWidth(DETAIL - 2 * S.INSET - 10)
+    protectFrame.list:SetWidth(HOST_W - 2 * S.INSET - 10)
     protectFrame:SetScript("OnShow", ns.RefreshProtected)
-    protectFrame:Hide()
+end
+
+-- Export / import: one line of text with every Gulli setting.
+local function buildTransfer()
+    transfer = centrePage("GulliToolkitTransfer", L.TRANSFER)
+    transfer.hint:SetText(L.TRANSFER_HINT)
+    local memo = S.Memo(transfer, HOST_W - 2 * S.INSET, HOST_H - 84 - 64)
+    memo:SetPoint("TOPLEFT", S.INSET, -84)
+    transfer.memo = memo
+    local import = S.FitButton(transfer, L.IMPORT, 32, 120)
+    import:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    local export = S.Primary(S.FitButton(transfer, L.EXPORT, 32, 120))
+    export:SetPoint("RIGHT", import, "LEFT", -8, 0)
+    local reload = S.Primary(S.FitButton(transfer, L.RELOAD, 32, 120))
+    reload:SetPoint("RIGHT", export, "LEFT", -8, 0)
+    reload:SetScript("OnClick", function() ReloadUI() end)
+    reload:Hide()
+    transfer.status = S.Note(transfer, 11)
+    transfer.status:SetPoint("BOTTOMLEFT", S.INSET, S.INSET + 8)
+    transfer.status:SetPoint("RIGHT", reload, "LEFT", -12, 0)
+    transfer.status:SetMaxLines(2)
+    local function status(text, c)
+        c = c or S.MUTED
+        transfer.status:SetText(text)
+        transfer.status:SetTextColor(c[1], c[2], c[3], 1)
+    end
+    export:SetScript("OnClick", function()
+        memo.edit:SetText(ns.Export())
+        memo.edit:SetFocus()
+        memo.edit:HighlightText()
+        reload:Hide()
+        status(L.COPY_HINT)
+    end)
+    import:SetScript("OnClick", function()
+        local n = ns.Import(memo.edit:GetText())
+        if n then
+            status(L.IMPORT_OK:format(n), GOOD)
+            reload:Show()
+        else
+            status(L.IMPORT_BAD, BAD)
+            reload:Hide()
+        end
+    end)
+    transfer:SetScript("OnShow", function()
+        memo.edit:SetText("")
+        reload:Hide()
+        status("")
+    end)
+    transfer.export, transfer.import, transfer.reload = export, import, reload
 end
 
 -- The header: the window's own (icon, title, version), plus the size buttons.
@@ -607,7 +666,7 @@ local function buildHeader()
     minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
 end
 
--- A switch row for the minimap button: in the hub's side card and on the Options page.
+-- A switch row for the minimap button: on the home page and on the Options page.
 local mapSwitches = {}
 local function minimapRow(parent)
     local row = CreateFrame("Frame", nil, parent)
@@ -657,7 +716,6 @@ local function buildSide()
     search:HookScript("OnEditFocusLost", hint)
     search:SetScript("OnTextChanged", function(self)
         view.query = self:GetText() or ""
-        if view.query ~= "" then leave() end
         hint(self)
         scroll:Top()
         ns.Refresh()
@@ -666,91 +724,65 @@ local function buildSide()
         self:SetText("")
         self:ClearFocus()
     end)
-    search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    -- Enter opens the first module found.
+    search:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        local first = ns.Filter(ns.List(), "All", "all", view.query)[1]
+        if view.query ~= "" and first then enter(first) end
+    end)
 
-    protectBtn = S.Button(body, SIDE - 2 * S.INSET, 30)
+    foot = CreateFrame("Frame", nil, body)
+    foot:SetPoint("BOTTOMLEFT")
+    foot:SetPoint("BOTTOMRIGHT")
+    foot:SetHeight(30)
+    protectBtn = S.Button(foot, SIDE - 2 * S.INSET, 30)
     protectBtn:SetPoint("BOTTOMLEFT")
     protectBtn:SetPoint("BOTTOMRIGHT")
     protectBtn:SetScript("OnClick", function()
-        leave()
         if not protectFrame then buildProtected() end
-        protectFrame:SetShown(not protectFrame:IsShown())
+        if protectFrame:IsShown() then showHome() else showPanel("protect") end
     end)
-    mapRow = minimapRow(body)
-    mapRow:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 8)
-    mapRow:SetPoint("BOTTOMRIGHT", protectBtn, "TOPRIGHT", 0, 8)
-    reloadBtn = S.Primary(S.Button(body, SIDE - 2 * S.INSET, 30))
-    reloadBtn:SetPoint("BOTTOMLEFT", mapRow, "TOPLEFT", 0, 8)
-    reloadBtn:SetPoint("BOTTOMRIGHT", mapRow, "TOPRIGHT", 0, 8)
+    reloadBtn = S.Primary(S.Button(foot, SIDE - 2 * S.INSET, 30))
+    reloadBtn:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 8)
+    reloadBtn:SetPoint("BOTTOMRIGHT", protectBtn, "TOPRIGHT", 0, 8)
     reloadBtn:SetText(L.RELOAD)
     reloadBtn:SetScript("OnClick", function() ReloadUI() end)
-    reloadHint = S.Note(body, 11)
+    reloadHint = S.Note(foot, 11)
     reloadHint:SetTextColor(WAIT[1], WAIT[2], WAIT[3], 1)
     reloadHint:SetPoint("BOTTOMLEFT", reloadBtn, "TOPLEFT", 0, 8)
     reloadHint:SetPoint("BOTTOMRIGHT", reloadBtn, "TOPRIGHT", 0, 8)
     reloadHint:SetMaxLines(3)
     reloadHint:SetText(L.RELOAD_HINT)
-end
 
-local function buildMiddle()
-    mid = CreateFrame("Frame", nil, frame.body)
-    mid:SetWidth(MID)
-    mid:SetPoint("TOPLEFT", side, "TOPRIGHT", GAP, 0)
-    mid:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", GAP, 0)
-
-    local order = { { "all", L.ALL }, { "on", L.STATE_ON }, { "off", L.OFF } }
-    local labels = {}
-    for i, o in ipairs(order) do labels[i] = o[2] end
-    local seg = S.Tabs(mid, labels, nil, function(i)
-        view.state = order[i][1]
-        scroll:Top()
-        ns.Refresh()
-    end, 28)
-    seg.frame:ClearAllPoints()
-    seg.frame:SetPoint("TOPRIGHT", 0, 0)
-    for i, o in ipairs(order) do
-        local b = seg.buttons[i]
-        b.SetSelected = function(_, on) if on and seg.selected ~= i then seg:Select(i, true) end end
-        pills[o[1]] = b
-    end
-    midTitle = S.Text(mid, 16)
-    midTitle:SetPoint("LEFT", mid, "TOPLEFT", 2, -14)
-    midTitle:SetPoint("RIGHT", seg.frame, "LEFT", -8, 0)
-    midTitle:SetWordWrap(false)
-
-    scroll = S.Scroll(mid)
-    scroll:SetPoint("TOPLEFT", 0, -40)
-    scroll:SetPoint("BOTTOMRIGHT", -12, 0)
+    scroll = S.Scroll(body)
+    scroll:SetPoint("TOPLEFT", search, "BOTTOMLEFT", 0, -8)
+    scroll:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT", -10, 8)
     list = scroll.child
     list:SetWidth(LIST_W)
 
-    recent = CreateFrame("Frame", nil, list)
-    S.Box(recent, S.SURFACE, S.EDGE)
-    local accentBar = line(recent, S.Accent())
-    accentBar:SetPoint("TOPLEFT")
-    accentBar:SetPoint("BOTTOMLEFT")
-    accentBar:SetWidth(2)
-    local rt = S.Text(recent, 12)
-    rt:SetPoint("TOPLEFT", S.INSET, -10)
-    rt:SetText(L.RECENT)
-    for i = 1, FEED_LINES do
-        local t = S.Text(recent, 11, S.MUTED)
-        t:SetPoint("TOPLEFT", S.INSET, -12 - i * 18)
-        t:SetPoint("RIGHT", -S.INSET, 0)
-        t:SetWordWrap(false)
-        recentLines[i] = t
-    end
+    homeRow = CreateFrame("Button", nil, list)
+    homeRow:SetHeight(ROW_H)
+    selectable(homeRow)
+    local hi = homeRow:CreateTexture(nil, "ARTWORK")
+    hi:SetSize(18, 18)
+    hi:SetPoint("LEFT", 8, 0)
+    hi:SetTexture(TOOLKIT_ICON)
+    local ht = S.Text(homeRow, 12)
+    ht:SetPoint("LEFT", hi, "RIGHT", 8, 0)
+    ht:SetText(L.HOME)
+    homeRow:SetScript("OnClick", goHome)
+    homeRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
 
     empty = S.Empty(scroll)
     empty:Set(L.NO_MATCH)
 end
 
-local function buildDetail()
-    detail = S.Card(frame.body)
-    detail:SetWidth(DETAIL)
-    detail:SetPoint("TOPRIGHT")
-    detail:SetPoint("BOTTOMRIGHT")
-    local d = detail
+local function buildCard()
+    card = S.Card(host)
+    card:SetWidth(CARD)
+    card:SetPoint("TOPRIGHT")
+    card:SetPoint("BOTTOMRIGHT")
+    local d = card
     d.body:ClearAllPoints()
     d.body:SetAllPoints()
 
@@ -788,34 +820,113 @@ local function buildDetail()
     d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -12)
     d.desc:SetPoint("RIGHT", -S.INSET, 0)
     d.desc:SetJustifyV("TOP")
-    d.desc:SetHeight(58)
-    d.desc:SetMaxLines(4)
+    d.desc:SetHeight(74)
+    d.desc:SetMaxLines(5)
     d.slash = S.Text(d.body, 11, S.FAINT)
     d.slash:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -6)
+    d.slash:SetPoint("RIGHT", -S.INSET, 0)
+    d.facts = S.Text(d.body, 11, S.FAINT)
+    d.facts:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -6)
+    d.facts:SetPoint("RIGHT", -S.INSET, 0)
+    d.facts:SetWordWrap(false)
 
-    d.setHead = S.Text(d.body, 11, S.FAINT)
-    d.setHead:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -16)
-    d.setHead:SetText(L.SETTINGS)
-    local srule = line(d.body, S.EDGE)
-    srule:SetHeight(1)
-    srule:SetPoint("LEFT", d.setHead, "RIGHT", 8, 0)
-    srule:SetPoint("RIGHT", -S.INSET, 0)
-    d.srule = srule
-    d.none = S.Note(d.body, 11)
-    d.none:SetPoint("TOPLEFT", d.setHead, "BOTTOMLEFT", 0, -10)
-    d.none:SetPoint("RIGHT", -S.INSET, 0)
-    d.none:SetMaxLines(3)
-
-    d.open = S.Primary(S.Button(d.body, DETAIL - 2 * S.INSET, 34))
-    d.open:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
-    d.open:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
-    d.open:SetScript("OnClick", function() enter(detail.row) end)
-    d.pop = S.Button(d.body, DETAIL - 2 * S.INSET, 34)
+    d.pop = S.Button(d.body, CARD - 2 * S.INSET, 34)
     d.pop:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
     d.pop:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     d.pop:SetText(L.POP_OUT)
     d.pop:SetScript("OnClick", function() popOut() end)
-    d.pop:Hide()
+    -- Reset asks twice: the first press only arms it.
+    d.reset = S.Ghost(S.Button(d.body, CARD - 2 * S.INSET, 30))
+    d.reset:SetPoint("BOTTOMLEFT", d.pop, "TOPLEFT", 0, 8)
+    d.reset:SetPoint("BOTTOMRIGHT", d.pop, "TOPRIGHT", 0, 8)
+    d.reset:SetScript("OnClick", function(self)
+        if not d.armed then
+            d.armed = true
+            self:SetText(L.RESET_SURE)
+            return
+        end
+        d.armed = false
+        self:SetText(L.RESET)
+        if ns.Reset(d.row) then ns.Print(L.RESET_DONE:format(d.row.title)) end
+    end)
+    card:Hide()
+end
+
+local function buildHome()
+    home = CreateFrame("Frame", nil, host)
+    home:SetAllPoints(host)
+    home:Show()
+
+    local sc = S.Card(home, L.SUMMARY)
+    sc:SetPoint("TOPLEFT")
+    sc:SetPoint("TOPRIGHT")
+    sc:SetHeight(120)
+    home.summaryCard, home.summary = sc, sc.body
+    home.noSummary = S.Note(sc.body, 12)
+    home.noSummary:SetPoint("TOPLEFT")
+    home.noSummary:SetPoint("RIGHT")
+    home.noSummary:SetMaxLines(2)
+    home.noSummary:SetText(L.NO_SUMMARY)
+
+    local quick = S.Card(home, L.QUICK)
+    quick:SetWidth(QUICK_W)
+    quick:SetPoint("TOPRIGHT", sc, "BOTTOMRIGHT", 0, -GAP)
+    home.quick = quick
+    local q = quick.body
+    local bw = math.floor((QUICK_W - 2 * S.INSET - 8) / 2)
+    for i, p in ipairs(ns.PRESETS) do
+        local b = S.Button(q, bw, 30)
+        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 8), -math.floor((i - 1) / 2) * 38)
+        b:SetText(L["PRESET_" .. p.key])
+        b:SetScript("OnClick", function()
+            local n = ns.ApplyPreset(p.key)
+            ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
+        end)
+        b:HookScript("OnEnter", function(self)
+            local names = {}
+            for _, k in ipairs(p.modules) do names[#names + 1] = (moduleName(k)) end
+            tip(self, L["PRESET_" .. p.key], { L.PRESET_TIP, table.concat(names, ", ") })
+        end)
+        b:HookScript("OnLeave", hideTip)
+    end
+    local y = math.ceil(#ns.PRESETS / 2) * 38 + 8
+    home.move = S.Button(q, QUICK_W - 2 * S.INSET, 30)
+    home.move:SetPoint("TOPLEFT", 0, -y)
+    home.move:SetScript("OnClick", function()
+        local n = ns.SetMoving(not ns.moving)
+        ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
+    end)
+    local tr = S.Button(q, QUICK_W - 2 * S.INSET, 30)
+    tr:SetPoint("TOPLEFT", 0, -(y + 38))
+    tr:SetText(L.TRANSFER)
+    tr:SetScript("OnClick", function()
+        if not transfer then buildTransfer() end
+        showPanel("transfer")
+    end)
+    local map = minimapRow(q)
+    map:SetPoint("TOPLEFT", 0, -(y + 84))
+    map:SetPoint("TOPRIGHT", 0, -(y + 84))
+
+    local recent = S.Card(home, L.RECENT)
+    recent:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    recent:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    home.recent = recent
+    home.clear = S.Ghost(S.FitButton(recent, L.CLEAR, 24, 70))
+    home.clear:SetPoint("TOPRIGHT", -8, -6)
+    home.clear:SetScript("OnClick", function() GulliToolkit.ClearFeed() end)
+    home.noRecent = S.Note(recent.body, 12)
+    home.noRecent:SetPoint("TOPLEFT")
+    home.noRecent:SetText(L.NO_RECENT)
+end
+
+local function onOpen()
+    applyScale()
+    -- The hub opens where the player left it: the last module, or the home page.
+    if not view.inside and view.page == "home" then
+        local row = findRow(ns.Last())
+        if row and row.state == "ready" and moduleWindow(row) then return enter(row) end
+    end
+    ns.Refresh()
 end
 
 local function build()
@@ -823,40 +934,35 @@ local function build()
 
     buildHeader()
     buildSide()
-    buildMiddle()
-    buildDetail()
-
     host = CreateFrame("Frame", nil, frame.body)
     host:SetPoint("TOPLEFT", side, "TOPRIGHT", GAP, 0)
     host:SetPoint("BOTTOMRIGHT")
+    buildHome()
+    buildCard()
+
     hubSwitch = S.Switch(frame)
     hubSwitch:Hide()
     hubSwitch:SetScript("OnClick", function()
-        for _, r in ipairs(ns.List()) do
-            if r.key == view.inside then ns.SetEnabled(r, not r.on) end
-        end
+        local r = findRow(view.inside)
+        if r then ns.SetEnabled(r, not r.on) end
     end)
-    hubSwitch:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:SetText(L.ON_TIP, 1, 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    hubSwitch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    hubSwitch:HookScript("OnEnter", function(self) tip(self, L.ON_TIP, nil, "ANCHOR_BOTTOM") end)
+    hubSwitch:HookScript("OnLeave", hideTip)
 
-    frame:SetScript("OnShow", function()
-        applyScale()
-        ns.Refresh()
+    frame:SetScript("OnShow", onOpen)
+    -- Closing the hub leaves the module; it opens again from ns.Last().
+    frame:SetScript("OnHide", function()
+        leave()
+        hidePanels()
+        view.page = "home"
+        home:Show()
     end)
-    frame:SetScript("OnHide", function() leave() end)
 end
 
 function ns.Toggle()
     if not frame then build() end
     frame:SetShown(not frame:IsShown())
-    if frame:IsShown() then
-        applyScale()
-        ns.Refresh()
-    end
+    if frame:IsShown() then onOpen() end
 end
 
 -- The view the hub shows now, for the tests.
@@ -864,14 +970,20 @@ function ns.View()
     return view, frame
 end
 
--- Opens a module inside the hub (row key), or goes back to the list (nil). For the tests.
+-- Opens a module inside the hub (row key), or the home page (nil). For the tests.
 function ns.Enter(key)
-    if not key then return leave() end
-    for _, r in ipairs(ns.List()) do
-        if r.key == key then return enter(r) end
-    end
+    if not key then return goHome() end
+    return enter(findRow(key))
 end
 function ns.Inside() return insideWin end
+function ns.Home() return home end
+function ns.Card() return card end
+function ns.ShowPanel(name)
+    if name == "protect" and not protectFrame then buildProtected() end
+    if name == "transfer" and not transfer then buildTransfer() end
+    showPanel(name)
+    return name == "protect" and protectFrame or transfer
+end
 
 -- A page under Options > AddOns with a button that opens the hub.
 function ns.RegisterSettings()

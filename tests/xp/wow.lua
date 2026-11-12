@@ -129,6 +129,7 @@ function Fake(spec)
     GetXPExhaustion = function() return W.rested end
     GetMaxPlayerLevel = function() return 60 end
     GulliXPDB = spec.db
+    GulliXPCharDB = spec.cdb
     return W
 end
 
