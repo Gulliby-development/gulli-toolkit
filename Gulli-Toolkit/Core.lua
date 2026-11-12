@@ -107,12 +107,28 @@ end
 -- return text[, icon] end (one short line for the hub's home page), move = function(on) end
 -- (unlock or lock the module's frames on the screen, /gulli move) and reset = function() end
 -- (back to the defaults).
+-- pause = function(on) end stops the module at once (events, frames, anything it does on its own)
+-- and starts it again; the hub's switch then needs no reload.
 function Toolkit.Register(a, b)
     local info = (a == Toolkit) and b or a
     if type(info) ~= "table" or type(info.key) ~= "string" or info.key == "" then return false end
     Toolkit.modules[info.key] = info
+    if Toolkit.IsPaused(info.key) and type(info.pause) == "function" then pcall(info.pause, true) end
     if ns.Refresh then ns.Refresh() end
     return true
+end
+
+-- Paused modules: GulliToolkitDB.paused[key] = true. A paused module is loaded but does nothing.
+function Toolkit.IsPaused(key)
+    local db = GulliToolkitDB
+    return db ~= nil and db.paused ~= nil and db.paused[key] == true
+end
+
+local function setPaused(info, key, on)
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.paused = GulliToolkitDB.paused or {}
+    GulliToolkitDB.paused[key] = on or nil
+    if info and type(info.pause) == "function" then pcall(info.pause, on) end
 end
 
 -- Items no module may sell, delete or move: GulliToolkitDB.protected[itemID] = true.
@@ -267,8 +283,14 @@ function ns.List()
             local ok, reason = loadable(addon)
             local loaded = info ~= nil or isLoaded(addon)
             row.on, row.running = isOn(addon), loaded
+            row.loadOn = row.on
+            row.canPause = info ~= nil and type(info.pause) == "function"
             if loaded then
                 row.state = row.on and "ready" or "reload"
+                -- A paused module runs but does nothing: its switch is off, no reload needed.
+                if row.state == "ready" and row.canPause and Toolkit.IsPaused(k) then
+                    row.on, row.paused = false, true
+                end
             elseif not row.on then
                 row.state = "off"
             elseif ok ~= false then
@@ -415,6 +437,26 @@ function ns.SetEnabled(row, on)
     return took
 end
 
+-- The hub's switch: a module that runs and can pause stops or starts at once; any other module is
+-- switched in the game's AddOns list and waits for a reload. Switching on also ends a pause.
+function ns.Switch(row, on)
+    if not row then return false end
+    if row.canPause and row.loadOn then
+        setPaused(row.info, row.key, not on)
+        if ns.Refresh then ns.Refresh() end
+        return true
+    end
+    if on and Toolkit.IsPaused(row.key) then setPaused(row.info, row.key, false) end
+    if not row.addon then return false end
+    return ns.SetEnabled(row, on)
+end
+
+-- Load or do not load the module at all (the game's AddOns list, after a reload), for the card.
+function ns.SetLoaded(row, on)
+    if on and Toolkit.IsPaused(row.key) then setPaused(row.info, row.key, false) end
+    return ns.SetEnabled(row, on)
+end
+
 -- What the game answers about one module, for a bug report (/gulli debug <module>).
 function ns.Debug(key)
     local want = (key or ""):lower()
@@ -452,7 +494,7 @@ end
 function ns.Summaries(rows)
     local out = {}
     for _, r in ipairs(rows or ns.List()) do
-        local fn = r.info and r.info.summary
+        local fn = not r.paused and r.info and r.info.summary
         if type(fn) == "function" then
             local ok, text, icon = pcall(fn)
             if ok and type(text) == "string" and text ~= "" then
@@ -467,7 +509,7 @@ end
 -- a reload, which the game refuses, which were updated, and the memory they use (heaviest first).
 function ns.Overview(rows)
     rows = rows or ns.List()
-    local o = { on = 0, total = 0, running = 0, reload = {}, blocked = {}, new = {}, heavy = {}, kb = 0 }
+    local o = { on = 0, total = 0, running = 0, reload = {}, blocked = {}, new = {}, paused = {}, heavy = {}, kb = 0 }
     local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
     local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
     if update and get then pcall(update) end
@@ -475,10 +517,11 @@ function ns.Overview(rows)
         if r.state ~= "missing" or r.info then
             o.total = o.total + 1
             if r.on then o.on = o.on + 1 end
-            if r.running then o.running = o.running + 1 end
+            if r.running and not r.paused then o.running = o.running + 1 end
         end
         if r.state == "reload" then o.reload[#o.reload + 1] = r end
         if r.state == "blocked" then o.blocked[#o.blocked + 1] = r end
+        if r.paused then o.paused[#o.paused + 1] = r end
         if r.new and r.running then o.new[#o.new + 1] = r end
         if r.running and r.addon and get then
             local ok, kb = pcall(get, r.addon)
@@ -540,7 +583,7 @@ function ns.ApplyPreset(key)
     local n = 0
     for _, row in ipairs(ns.List()) do
         if row.addon and row.on ~= (want[row.key] == true) then
-            ns.SetEnabled(row, want[row.key] == true)
+            ns.Switch(row, want[row.key] == true)
             n = n + 1
         end
     end
@@ -552,7 +595,7 @@ function ns.SetGroup(category, on)
     local n = 0
     for _, row in ipairs(ns.List()) do
         if row.addon and row.category == category and row.on ~= on then
-            ns.SetEnabled(row, on)
+            ns.Switch(row, on)
             n = n + 1
         end
     end
@@ -826,6 +869,9 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
     GulliToolkitDB.seen = GulliToolkitDB.seen or {}
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ns.VERSION_PREFIX)
+    end
+    for key, info in pairs(Toolkit.modules) do
+        if Toolkit.IsPaused(key) and type(info.pause) == "function" then pcall(info.pause, true) end
     end
     if ns.RegisterSettings then ns.RegisterSettings() end
     if ns.BuildMinimap then ns.BuildMinimap() end

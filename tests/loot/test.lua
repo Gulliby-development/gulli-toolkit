@@ -170,4 +170,18 @@ test("item rules are sorted by name and can be searched; the window has three pa
     ns.Refresh()
 end)
 
+test("paused from the hub it rolls nothing", function()
+    Fake({ rolls = { { 1, 0 } } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Load()
+    GulliToolkit = nil
+    reg.pause(true)
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(W.rolled[1], nil, "paused")
+    reg.pause(false)
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(W.rolled[1], 0, "started again")
+end)
+
 W.finish()

@@ -380,6 +380,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         if a1 then ns.db.session = {} end
         return
     end
+    if ns.paused then return end
     ns.OnEvent(event, a1, ...)
 end)
 
@@ -428,6 +429,7 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on) ns.paused = on end,
         key = "AutoQuest",
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",
         slash = "/gaq",

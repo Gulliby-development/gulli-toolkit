@@ -189,7 +189,7 @@ end
 
 local function hookManualSales()
     local function onUse(bag, slot)
-        if not J.atVendor or J.selling then return end
+        if ns.paused or not J.atVendor or J.selling then return end
         ns.SoldByHand((J.SlotInfo(bag, slot)))
     end
     if C_Container and C_Container.UseContainerItem then hooksecurefunc(C_Container, "UseContainerItem", onUse)
@@ -218,6 +218,8 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         return
     end
+    -- Paused from the hub: only the closing events still run, so nothing stays open.
+    if ns.paused and not event:find("_CLOSED$") then return end
     if event == "MERCHANT_SHOW" then
         ns.atVendor = true
         J.atVendor = true
@@ -266,6 +268,10 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on)
+            ns.paused = on
+            if on and ns.HideVendorButton then ns.HideVendorButton() end
+        end,
         key = "Merchant",
         icon = "Interface\\AddOns\\Gulli-Merchant\\icon",
         slash = "/gmc",
