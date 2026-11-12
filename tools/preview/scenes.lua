@@ -256,13 +256,32 @@ S.groupbuffs = {
     shaman = { spec = { units = gbUnits("SHAMAN") }, open = gbOpen, crop = "GulliGroupBuffsSettings" },
 }
 
-S.chores = { default = {
-    spec = { level = 42 },
-    before = function(W)
-        W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
-        W.char.spells[17187], W.char.rested = true, 90000
-    end,
-} }
+local function choresChars(W)
+    W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
+    W.char.spells[17187], W.char.rested = true, 600
+    W.char.items[6948], W.char.bind = 1, "Goldshire"
+    W.char.profs = { { "Tailoring", 150, 150 }, { "Cooking", 112, 225 } }
+    W.char.inbox = { { 0, 0, 1.6, 2 } }
+    GulliChoresDB = { chars = {
+        ["Lirra-Realm"] = { name = "Lirra", class = "MAGE", level = 38, t = W.now - 30 * 3600, realm = "Realm",
+            faction = "Alliance", rested = 0.9, resting = true, money = 1234500, durability = 88, free = 9,
+            trainer = 38, cooldowns = { CD_MOONCLOTH = W.now - 60 } },
+        ["Bankie-Realm"] = { name = "Bankie", class = "ROGUE", level = 6, t = W.now - 5 * 86400, realm = "Realm",
+            faction = "Alliance", rested = 1.5, resting = true, money = 40000, durability = 100, free = 1,
+            trainer = 6, cooldowns = {}, note = "bank" },
+        ["Thorn-Realm"] = { name = "Thorn", class = "WARRIOR", level = 60, maxLevel = true, t = W.now - 2 * 86400,
+            realm = "Realm", faction = "Alliance", money = 8705000, durability = 54, free = 14, trainer = 60,
+            cooldowns = { CD_TRANSMUTE = W.now + 9 * 3600 } },
+    } }
+end
+local function choresTab(i)
+    return function(ns) ns.Toggle(); ns.ReadMail(); ns.Tabs():Select(i) end
+end
+S.chores = {
+    default = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(1) },
+    overview = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(2) },
+    settings = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(3) },
+}
 
 S.craftprofit = { default = {
     spec = {
