@@ -20,11 +20,13 @@ test("a fresh character has nothing to do and counts its trainer as visited", fu
     eq(#ns.Tasks(c), 0)
 end)
 
-test("a new level asks for the trainer until the trainer window opens", function()
+test("a new even level asks for the trainer until the trainer window opens", function()
     Fake({ level = 20 })
     local ns = Load()
     W.Fire("PLAYER_ENTERING_WORLD")
     W.level = 21
+    assert(not has(ns.Tasks(ns.Snapshot()), "TRAINER"), "an odd level brings no spells")
+    W.level = 22
     local c = ns.Snapshot()
     assert(has(ns.Tasks(c), "TRAINER"))
     W.Fire("TRAINER_SHOW")
@@ -145,6 +147,195 @@ test("the shared skin colours levels like the quest log and items by quality", f
     eq(S.LevelColor(30)[1], 0.1, "the game's rule wins")
     GetQuestDifficultyColor = nil
     eq(S.QualityHex(0), "|cff9d9d9d"); eq(S.QualityHex(4), "|cffa335ee"); eq(S.QualityHex(nil), "|cffffffff")
+end)
+
+test("mail with items that runs out soon is a task, and COD letters are counted", function()
+    Fake({})
+    local ns = Load()
+    W.char.inbox = { { 0, 0, 29, 0 }, { 0, 0, 2.5, 1 }, { 500, 0, 10, 0 }, { 0, 300, 20, 1 } }
+    local c = ns.ReadMail()
+    eq(c.mailItems, 3)
+    eq(c.cod, 1)
+    eq(c.mailUntil, W.now + math.floor(2.5 * 86400))
+    eq(has(ns.Tasks(c), "EXPIRE").text, "Mail runs out in 2 d")
+    eq(ns.Tasks(c)[1].key, "EXPIRE", "the most urgent first")
+    ns.SetPref("mailDays", 2)
+    assert(not has(ns.Tasks(c), "EXPIRE"))
+    -- The snapshot keeps what only the mailbox shows.
+    eq(ns.Snapshot().mailUntil, c.mailUntil)
+    W.char.inbox = {}
+    eq(ns.ReadMail().mailUntil, nil)
+end)
+
+test("each task has a switch and the limits are settings", function()
+    Fake({})
+    local ns = Load()
+    W.char.mail, W.char.free, W.char.durability = true, 4, { 45 }
+    local c = ns.Snapshot()
+    assert(has(ns.Tasks(c), "MAIL"))
+    ns.SetTask("MAIL", false)
+    assert(not has(ns.Tasks(c), "MAIL"))
+    assert(not has(ns.Tasks(c), "REPAIR"))
+    ns.SetPref("repairAt", 50)
+    assert(has(ns.Tasks(c), "REPAIR"))
+    assert(not has(ns.Tasks(c), "BAGS"))
+    ns.SetPref("bagsAt", 4)
+    assert(has(ns.Tasks(c), "BAGS"))
+    ns.Reset()
+    assert(has(ns.Tasks(c), "MAIL"))
+    eq(ns.db.repairAt, 30)
+end)
+
+test("rested XP says when it is full", function()
+    Fake({ level = 30 })
+    local ns = Load()
+    W.char.rested, W.char.resting = 1000, true -- one level, half a level to go
+    local c = ns.Snapshot()
+    eq(ns.RestedFullIn(c, W.now), 10 * 8 * 3600)
+    eq(ns.RestedFullIn(c, W.now + 10 * 8 * 3600), 0)
+    c.maxLevel = true
+    eq(ns.RestedFullIn(c, W.now), nil)
+end)
+
+test("bags, bank, hearthstone, professions, lockouts and played time are saved", function()
+    Fake({})
+    local ns = Load()
+    W.char.bags[0] = { { 7, 5 }, { 7, 3 } }
+    W.char.bank[-1] = { { 7, 10 } }
+    W.char.bank[5] = { { 8, 1 } }
+    W.char.items[6948] = 1
+    W.char.cooldowns[6948] = { W.now - 600, 3600 }
+    W.char.bind = "Goldshire"
+    W.char.profs = { { "Tailoring", 75, 75 }, { "Cooking", 300, 300 } }
+    W.char.saved = { { "Onyxia's Lair", 3 * 86400, true }, { "Old", 0, false } }
+    local c = ns.Snapshot()
+    eq(c.items[7], 8)
+    eq(c.bank, nil, "the bank only at the bank")
+    W.Fire("BANKFRAME_OPENED")
+    c = ns.db.chars[ns.CharKey()]
+    eq(c.bank[7], 10); eq(c.bank[8], 1)
+    eq(ns.Snapshot().bank[7], 10, "the bank stays")
+    c = ns.db.chars[ns.CharKey()]
+    eq(c.hearth, W.now + 3000)
+    eq(c.bind, "Goldshire")
+    eq(#c.lockouts, 1)
+    eq(has(ns.Tasks(c), "PROF").text, "Tailoring 75/75: learn the next rank")
+    local lines = table.concat(ns.InfoLines(c, ns.CharKey(), W.now), "\n")
+    assert(lines:find("Hearthstone: 50 min, home: Goldshire", 1, true), lines)
+    assert(lines:find("Saved: Onyxia's Lair 3 d", 1, true), lines)
+    -- Played time is asked without the chat lines.
+    ns.AskPlayed()
+    eq(W.playedAsked, 1)
+    ChatFrame_DisplayTimePlayed()
+    W.Fire("TIME_PLAYED_MSG", 7200, 600)
+    eq(ns.db.chars[ns.CharKey()].played, 7200)
+    ChatFrame_DisplayTimePlayed()
+    eq(W.printed[#W.printed], "played shown", "the game's own line works again")
+end)
+
+test("profession skill comes from Gulli Craft Profit when the game has no API", function()
+    Fake({})
+    local ns = Load()
+    GetProfessions = nil
+    GulliCraftProfitCharDB = { profs = { Leatherworking = { skill = 150, cap = 150 } } }
+    assert(has(ns.Tasks(ns.Snapshot()), "PROF"))
+end)
+
+test("alerts tell a cooldown or full rested XP once, not what was ready at login", function()
+    Fake({ name = "Me", db = { chars = {
+        ["Alt-Realm"] = { name = "Alt", level = 30, t = 1000, trainer = 30, cooldowns = { CD_MOONCLOTH = 100500 } },
+    } } })
+    local ns = Load()
+    local feed = {}
+    GulliToolkit = { Notify = function(key, text) feed[#feed + 1] = text end }
+    W.Fire("PLAYER_ENTERING_WORLD")
+    eq(#ns.CheckAlerts(W.now), 0, "nothing new yet")
+    local out = ns.CheckAlerts(100500)
+    eq(#out, 1)
+    eq(out[1], "Alt: Mooncloth is ready")
+    eq(#ns.CheckAlerts(100600), 0, "told once")
+    ns.SetPref("alerts", false)
+    ns.db.chars["Alt-Realm"].cooldowns.CD_MOONCLOTH = 200000
+    eq(#ns.CheckAlerts(200001), 0, "the switch stops it")
+    ns.SetPref("alerts", true)
+    -- Rested XP that becomes full.
+    local alt = ns.db.chars["Alt-Realm"]
+    alt.rested, alt.resting, alt.t = 1.4, true, 200001
+    eq(#ns.CheckAlerts(200001), 0)
+    eq(ns.CheckAlerts(200001 + 3 * 8 * 3600)[1], "Alt: Rested XP is full")
+end)
+
+test("the login line can be switched off", function()
+    Fake({ name = "Me", db = { login = false, chars = {
+        ["Alt-Realm"] = { name = "Alt", level = 30, t = 1000, trainer = 30, mail = true, cooldowns = {} },
+    } } })
+    local ns = Load()
+    eq(ns.LoginSummary(), nil)
+end)
+
+test("hidden characters and the realm and faction filters", function()
+    Fake({ name = "Me", db = { chars = {
+        ["Bank-Realm"] = { name = "Bank", level = 1, t = 1000, realm = "Realm", faction = "Alliance", mail = true, cooldowns = {} },
+        ["Orc-Realm"] = { name = "Orc", level = 20, t = 1000, realm = "Realm", faction = "Horde", cooldowns = {} },
+        ["Far-Other"] = { name = "Far", level = 30, t = 1000, realm = "Other", faction = "Alliance", money = 50000, cooldowns = {} },
+    } } })
+    local ns = Load()
+    ns.Snapshot()
+    eq(#ns.Chars(), 4)
+    ns.SetHidden("Bank-Realm", true)
+    eq(#ns.Chars(), 3)
+    eq(#ns.Chars(true), 4)
+    eq(ns.Chars(true)[4].key, "Bank-Realm", "hidden ones last")
+    eq(ns.Summary(), "Nothing waits on your characters")
+    ns.SetHidden("Bank-Realm", false)
+    eq(ns.Summary(), "1 tasks on 1 characters")
+    ns.SetPref("filter", "realm")
+    eq(#ns.Chars(), 3)
+    ns.SetPref("filter", "faction")
+    eq(#ns.Chars(), 3)
+    ns.SetPref("filter", "all")
+    local gold = ns.RealmGold()
+    eq(gold[1].realm, "Other"); eq(gold[1].money, 50000)
+    ns.SetNote("Orc-Realm", "  crafter  ")
+    eq(ns.db.chars["Orc-Realm"].note, "crafter")
+    ns.SetNote("Orc-Realm", "")
+    eq(ns.db.chars["Orc-Realm"].note, nil)
+end)
+
+test("the overview sorts by any column", function()
+    Fake({ name = "Me", level = 10, db = { chars = {
+        ["A-Realm"] = { name = "A", level = 50, t = 1000, money = 10, cooldowns = {} },
+        ["B-Realm"] = { name = "B", level = 30, t = 1000, money = 900, cooldowns = {} },
+    } } })
+    local ns = Load()
+    ns.Snapshot()
+    eq(ns.Overview("name")[1].name, "A")
+    eq(ns.Overview("level", true)[1].name, "A")
+    eq(ns.Overview("money", true)[1].name, "Me")
+    eq(ns.Overview("money")[1].name, "A")
+end)
+
+test("the window has three tabs and the hub gets a summary and options", function()
+    Fake({ name = "Me" })
+    local reg
+    GulliToolkit = { Register = function(info) reg = info end }
+    local ns = Load()
+    eq(reg.key, "Chores")
+    eq(#reg.options, 4)
+    assert(reg.summary())
+    reg.options[1].set(false)
+    eq(ns.db.login, false)
+    reg.options[3].set(false)
+    eq(ns.TaskOn("EXPIRE"), false)
+    reg.reset()
+    eq(ns.db.login, true)
+    eq(ns.TaskOn("EXPIRE"), true)
+    ns.Toggle()
+    ns.Window():GetScript("OnShow")()
+    for i = 1, 3 do ns.Tabs():Select(i) end
+    ns.Tabs():Select(2)
+    ns.SortBy("money")
+    ns.SortBy("money")
 end)
 
 W.finish()

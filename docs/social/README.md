@@ -18,9 +18,14 @@ Running a group or just tired of duel requests? Gulli Social handles the small s
 
 ## Features
 
-- **Invite on a word.** A player who whispers just `inv` (or your own words) gets an invite. Only friends and guild, if you like.
-- **Accept friends.** Invites from friends and guild members are accepted at once.
-- **Turn away strangers.** Group invites from players you do not know, duels and guild invites, each with its own switch. Off by default.
+- **Invite on a word.** A player who whispers just `inv` (or your own words) gets an invite. Pick **Starts with** to also take "inv please". Only friends and guild, if you like.
+- **A polite answer.** When you cannot invite (group full, you are not the leader, friends only), the player gets a short whisper back. A full party can turn into a raid on its own (off by default).
+- **Accept friends.** Invites from friends, Battle.net friends and guild members are accepted at once.
+- **Your own lists.** **Always allow** names count as friends. **Always turn away** names are never invited and always declined. Add a player from **Recent** with one tap.
+- **Turn away strangers.** Group invites, duels, guild invites, trades and guild charters from players you do not know, each with its own switch. Off by default.
+- **Hide spam.** Whispers from strangers with links or gold offers are hidden (off by default).
+- **Summons and resurrections** are accepted out of combat, if you turn them on.
+- **Recent.** The window shows whether you can invite now, what was turned away today, and the last 20 things the addon did. What it turned away also shows in the hub's Recent feed.
 
 ## Install
 
