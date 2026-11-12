@@ -19,7 +19,9 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 ## Features
 
 - **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. Tap a stop to see the list.
-- **Five routes side by side.** Three ways to level (cheapest, balanced, fastest) and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. Each tab shows the result in gold and the number of crafts, so you can compare them.
+- **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. Below the route you still see how far the whole way is.
+- **Routes side by side.** Up to four ways to level, from the cheapest to the fastest, and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. A money run is one recipe, crafted while it still pays and the market still takes it. Each tab shows the gold, so you can compare them.
+- **How much you may lose.** Set **Ready to lose**, and CraftProfit picks the fastest way to level that stays within it. Ways that cost more are marked.
 - **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
 - **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. The route changes at once, and the changed stops light up.
 - **Honest money.** The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
@@ -53,6 +55,12 @@ No, but without it only vendor prices count, and the route never buys or sells a
 <summary><b>Why are the numbers marked as estimates?</b></summary>
 
 The game shows only the colour a recipe has at your skill now (orange, yellow, green, grey). CraftProfit remembers the colours it sees and guesses when a recipe turns grey, on the careful side. The more you level, the better the guess.
+</details>
+
+<details>
+<summary><b>Why does the whole way take hundreds of crafts?</b></summary>
+
+Green and yellow recipes do not raise your skill every time, so one skill point can take several crafts. The number under the route is for the whole way to your target. You do not need to plan it: follow one run, and the next one is planned for you.
 </details>
 
 <details>

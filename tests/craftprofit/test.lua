@@ -341,11 +341,44 @@ test("nothing gains: the profit route says so", function()
     eq(e.warn[1], "WARN_EARN")
 end)
 
+test("the levelling routes run from the cheapest to the fastest", function()
+    local c, st = core(), state()
+    local f = c.Frontier(st, prefs({}))
+    assert(#f >= 2 and #f <= c.LEVEL_ROUTES, "routes: " .. #f)
+    for i = 2, #f do
+        assert(f[i].net <= f[i - 1].net + 1, "each one costs more")
+        assert(f[i].crafts < f[i - 1].crafts, "and takes fewer crafts")
+        eq(f[i].reached, f[1].reached)
+    end
+end)
+
+test("the loss budget: routes over it are marked, the fastest within it is the best", function()
+    local c, st = core(), state()
+    local f = c.Frontier(st, prefs({}))
+    local cheap, fast = -f[1].net, -f[#f].net
+    assert(fast > cheap)
+    local v = c.Variants(st, prefs({ budget = math.floor((cheap + fast) / 2) }))
+    local best, over = nil, 0
+    for i, x in ipairs(v) do
+        if x.best then best = i end
+        if x.over then over = over + 1 end
+    end
+    assert(best and best < #f, "a cheaper route is the best")
+    assert(over >= 1)
+    assert(not v[best].over)
+    -- no limit: the fastest is the best
+    local all = c.Variants(st, prefs({}))
+    assert(all[#f].best)
+    -- too small a budget: the cheapest, marked as over
+    local tiny = c.Variants(st, prefs({ budget = 1 }))
+    assert(tiny[1].best and tiny[1].over)
+end)
+
 test("every route side by side; with levelling off only the profit ones", function()
     local c, st = core(), state()
     local v = c.Variants(st, prefs({}))
     eq(#v, #c.MODES)
-    for _, x in ipairs(v) do assert(x.plan, x.mode) end
+    assert(v[1].plan and v[5].plan and v[6].plan)
     local off = c.Variants(st, prefs({ level = false }))
     for _, x in ipairs(off) do
         if c.EARN[x.mode] then assert(x.plan, x.mode) else eq(x.plan, nil, x.mode) end
@@ -387,6 +420,54 @@ local function game(extra)
     return n
 end
 
+test("the route is the next run: the first recipe of the whole way, planned again to there", function()
+    local c, st = core(), state()
+    st.cap = 300
+    local P = prefs({ target = 300 })
+    local full = c.Plan(st, P)
+    assert(#full.segs >= 2, "the whole way uses several recipes")
+    local run = c.NextRun(st, P, full)
+    assert(run.full == full)
+    eq(#run.segs, 1, "one recipe per run")
+    eq(run.segs[1].rid, full.segs[1].rid)
+    eq(run.reached, full.segs[1].to)
+    assert(run.crafts < full.crafts)
+    -- each levelling tile is its next run; the budget still counts the whole way
+    for _, x in ipairs(c.Variants(st, P)) do
+        if x.plan and not c.EARN[x.mode] then assert(x.plan.full and #x.plan.segs <= 1 + (x.plan.full == x.plan and 99 or 0)) end
+        if x.plan and c.EARN[x.mode] then assert(#x.plan.segs <= 1, "a profit run is one recipe") end
+    end
+end)
+
+test("a cap the game did not give is the rank the skill is in", function()
+    local c = core()
+    eq(c.Cap({ skill = 147, cap = 0 }), 150)
+    eq(c.Cap({ skill = 147, cap = 75 }), 150)
+    eq(c.Cap({ skill = 150, cap = 150 }), 150)
+    eq(c.Cap({ skill = 1, cap = 75 }), 75)
+    local st = state()
+    st.skill, st.cap = 147, 0
+    local p = c.Plan(st, prefs({}))
+    eq(p.target, 150)
+    eq(p.rank, nil, "no trainer rank below the skill")
+end)
+
+test("a window that reports 0 takes the skill from the spellbook; 0/0 is never saved", function()
+    local n = game({ prof = { name = "Tailoring", skill = 147, cap = 150, window0 = true, recipes = {
+            { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 1, grey = 145, out = 2, r = { [1] = 4 } } } },
+        spellbook = { { "Tailoring", 147, 150 } } })
+    eq(n.char.profs.Tailoring.skill, 147); eq(n.char.profs.Tailoring.cap, 150)
+    local m = game({ prof = { name = "Cooking", skill = 0, cap = 0, window0 = true, recipes = {} }, spellbook = {} })
+    eq(m.char.profs.Cooking, nil, "nothing saved at 0/0")
+    -- an old save at 0/0 is dropped and is not listed
+    Fake({ prof = nil })
+    GulliCraftProfitCharDB = { current = "Ghost", profs = { Ghost = { skill = 0, cap = 0, recipes = {} },
+        Tailoring = { skill = 147, cap = 150, recipes = {} } } }
+    local o = Load()
+    eq(#o.Professions(), 1)
+    eq(o.State().name, "Tailoring")
+end)
+
 test("the profession window is read with the modern API", function()
     local n = game()
     local p = n.char.profs.Tailoring
@@ -426,6 +507,7 @@ end)
 
 test("open window: route stops, a setting click rebuilds and lights what changed", function()
     local n = game()
+    n.db.prefs.useBags = false -- one run needs little: with the bags off it comes from the bank
     n.Toggle()
     assert(n.ui.frame:IsShown())
     local route = n.view.route
@@ -452,17 +534,20 @@ end)
 test("mode buttons, the target stepper and reset", function()
     local n = game()
     n.Toggle()
-    W.Click(n.ui.modes.speed)
-    eq(n.view.prefs.mode, "speed")
+    W.Click(n.ui.modes.l1)
+    eq(n.view.prefs.mode, "l1")
+    eq(n.view.mode, "l1")
+    W.Click(n.ui.budget.plus)
+    eq(n.view.prefs.budget, 10000)
     W.Click(n.ui.target.minus)
     eq(n.db.prefs.target, 220)
-    eq(n.view.plan.target, 220)
+    eq(n.view.plan.full.target, 220)
     W.Click(n.ui.chance.minus)
     eq(n.view.prefs.chance, 75)
     W.Click(n.ui.maxSell.plus)
     eq(n.view.prefs.maxSell, 6)
     W.Click(n.ui.reset)
-    eq(n.view.prefs.mode, "balance"); eq(n.view.plan.target, 225); eq(n.view.prefs.chance, 80)
+    eq(n.view.prefs.mode, "auto"); eq(n.view.plan.full.target, 225); eq(n.view.prefs.chance, 80); eq(n.view.prefs.budget, 0)
 end)
 
 test("every switch in the column rebuilds the plan", function()
@@ -496,10 +581,17 @@ test("the hub's switches change the same settings and rebuild the plan", functio
     eq(o.get(), before)
 end)
 
+test("an old saved choice still works", function()
+    local n = game()
+    n.db.prefs = { mode = "money" }
+    n.Recalc(false)
+    eq(n.view.mode, "l1")
+end)
+
 test("the levelling switch and the route tiles", function()
     local n = game()
     n.Toggle()
-    eq(n.view.mode, "balance")
+    assert(n.view.auto and n.view.mode:sub(1, 1) == "l", "the best levelling route")
     W.Click(n.ui.checks.level)
     eq(n.db.prefs.level, false)
     eq(n.view.mode, "earn", "only profit routes")
@@ -507,10 +599,11 @@ test("the levelling switch and the route tiles", function()
     assert(has(n.view.route, "STOP_EARN") or #n.view.route == 0)
     W.Click(n.ui.modes.own)
     eq(n.view.mode, "own")
-    W.Click(n.ui.modes.money)
+    W.Click(n.ui.modes.l1)
     eq(n.db.prefs.level, true, "a levelling tile turns levelling on")
-    eq(n.view.mode, "money")
-    assert(n.ui.graphCard.title:GetText():find(n.L.VAR_money, 1, true))
+    eq(n.view.mode, "l1")
+    eq(n.ui.graphCard.title:GetText(), n.L.VAR_cheap)
+    assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
 end)
 
 test("a stop click shows its lines; tabs show the lists", function()
