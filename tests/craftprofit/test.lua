@@ -309,6 +309,29 @@ test("the profit route crafts only what gains, and the market cap lowers the gai
     assert(has(c.Route(st, e), "STOP_EARN"), "a craft stop for sale")
 end)
 
+test("a profit run buys at most maxBuy of one item at the auction, and stops at EARN_MAX crafts", function()
+    local c = core()
+    -- cheap cloth at the auction, a bag that a vendor buys for more: the run would never end
+    local st = { skill = 100, cap = 150, level = 30, items = {
+        cloth = { name = "Linen Cloth", ah = 1, age = 0, vend = 1 },
+        bolt = { name = "Bolt of Linen Cloth", ah = 100, age = 0, vend = 1 },
+        bag = { name = "Linen Bag", ah = 400, age = 0, vend = 100 },
+    }, recipes = {
+        bolt = { name = "Bolt of Linen Cloth", skill = { 1, 25, 50 }, r = { cloth = 2 }, out = "bolt", learned = true },
+        bag = { name = "Linen Bag", skill = { 45, 70, 95 }, r = { bolt = 3 }, out = "bag", learned = true },
+    } }
+    local e = c.Earn(st, prefs({ maxBuy = 40 }))
+    assert(e.net > 0)
+    assert((e.ahBuy.cloth or 0) <= 40 + 6, "cloth bought: " .. tostring(e.ahBuy.cloth))
+    local more = c.Earn(st, prefs({ maxBuy = 200 }))
+    assert(more.crafts > e.crafts)
+    assert(more.crafts <= c.EARN_MAX + 3, "crafts with the bolts: " .. more.crafts)
+    -- without the auction, only own cloth counts
+    st.items.cloth.bags = 12
+    local own = c.Earn(st, prefs({}), true)
+    eq(own.ahBuy.cloth, nil)
+end)
+
 test("from my stock buys nothing at the auction and no recipe", function()
     local c, st = core(), state()
     local P = prefs({})
@@ -546,6 +569,8 @@ test("mode buttons, the target stepper and reset", function()
     eq(n.view.prefs.chance, 75)
     W.Click(n.ui.maxSell.plus)
     eq(n.view.prefs.maxSell, 6)
+    W.Click(n.ui.maxBuy.minus)
+    eq(n.view.prefs.maxBuy, 30)
     W.Click(n.ui.reset)
     eq(n.view.prefs.mode, "auto"); eq(n.view.plan.full.target, 225); eq(n.view.prefs.chance, 80); eq(n.view.prefs.budget, 0)
 end)
