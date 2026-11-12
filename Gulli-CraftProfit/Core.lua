@@ -4,7 +4,7 @@
 --
 -- state = {
 --   skill, cap, level,                    -- the profession's skill, its rank cap, the character level
---   items = { [id] = { name, ah, age, vend, buy, bags, bank, bop } },
+--   items = { [id] = { name, ah, age, vend, buy, bags, bank, bop, mail, alts, altWho, gather, lots } },
 --   recipes = { [rid] = { name, skill = { orange, yellow, grey }, r = { [id] = n }, out, count,
 --                         learned, src = { t = "trainer"|"vendor"|"ah", cost }, guess } },
 -- }
@@ -24,6 +24,8 @@ ns.DEFAULTS = {
     buyRecipes = true, trainer = true,
     sellAH = true, neutral = false, chance = 80, maxSell = 20, freshOnly = true,
     maxBuy = 40, -- units of one item a profit run buys at the auction: only a few sell at that price
+    useMail = true, -- items waiting in the mailbox count as own
+    useAlts = false, -- items on the other characters (Gulli Chores) count as own, sent by mail
 }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
@@ -51,7 +53,10 @@ ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 
 ns.STOPS = {
     bank = { 0.71, 0.55, 1.00 }, ah = { 0.95, 0.79, 0.30 }, vendor = { 0.36, 0.82, 0.48 },
     trainer = { 0.25, 0.78, 0.92 }, craft = { 1.00, 0.62, 0.26 }, sell = { 0.95, 0.79, 0.30 },
+    mail = { 0.83, 0.75, 0.55 }, gather = { 0.45, 0.80, 0.35 },
 }
+-- Auction lots a ladder price may use: newer than this, in seconds.
+ns.LOTS_FRESH = 24 * 3600
 ns.COLORS = { or_ = { 1, 0.5, 0.25 }, ye = { 1, 0.84, 0.25 }, gr = { 0.25, 0.75, 0.25 }, gy = { 0.55, 0.55, 0.55 } }
 
 local function ceil(n) return math.ceil(n - 1e-9) end
@@ -108,11 +113,18 @@ function ns.Stock(state, P)
     for id, it in pairs(state.items) do
         local b = P.useBags and (it.bags or 0) or 0
         local k = P.useBank and (it.bank or 0) or 0
-        if b + k > 0 then st[id] = { bags = b, bank = k } end
+        local m = P.useMail and (it.mail or 0) or 0
+        local a = P.useAlts and (it.alts or 0) or 0
+        -- an item the player gathers never runs out; it costs what it would sell for
+        local g = it.gather and math.huge or 0
+        if b + k + m + a + g > 0 then st[id] = { bags = b, bank = k, mail = m, alts = a, gather = g } end
     end
     return st
 end
-local function left(st, id) local s = st[id]; return s and (s.bags + s.bank) or 0 end
+local function left(st, id)
+    local s = st[id]
+    return s and (s.bags + s.bank + s.mail + s.alts + s.gather) or 0
+end
 
 -- Which recipe makes an item, among the recipes the plan may use.
 local function maker(state, known, id)
@@ -250,7 +262,16 @@ local function take(state, P, st, known, acc, id, n, depth)
     if s then
         local a = math.min(n, s.bags); s.bags = s.bags - a; n = n - a; add(acc.bags, id, a)
         local b = math.min(n, s.bank); s.bank = s.bank - b; n = n - b; add(acc.bank, id, b)
-        if a + b > 0 then acc.own = acc.own + (a + b) * ns.SellValue(state, P, id, 0) end
+        local used = a + b
+        for _, pool in ipairs({ "mail", "alts", "gather" }) do
+            local c = math.min(n, s[pool] or 0)
+            if c > 0 then
+                s[pool] = s[pool] - c; n = n - c; used = used + c
+                acc[pool] = acc[pool] or {}
+                add(acc[pool], id, c)
+            end
+        end
+        if used > 0 then acc.own = acc.own + used * ns.SellValue(state, P, id, 0) end
     end
     if n <= 1e-9 then return end
     local b, how = ns.BuyOption(state, P, id)
@@ -680,6 +701,14 @@ function ns.Route(state, plan)
     local function push(n)
         nodes[#nodes + 1] = n
     end
+    local gather = lines(state, plan.gather or {}, "gather")
+    if #gather > 0 then push({ kind = "gather", title = "STOP_GATHER", lines = gather }) end
+    local mail = lines(state, plan.mail or {}, "mail")
+    for _, l in ipairs(lines(state, plan.alts or {}, "alts")) do
+        l.who = (state.items[l.id] or {}).altWho
+        mail[#mail + 1] = l
+    end
+    if #mail > 0 then push({ kind = "mail", title = "STOP_MAIL", lines = mail }) end
     local bank = lines(state, plan.bank, "bank")
     if #bank > 0 then push({ kind = "bank", title = "STOP_BANK", lines = bank }) end
     local ah = lines(state, plan.ahBuy, "ah", function(it) return it.ah end)
@@ -746,6 +775,98 @@ function ns.Route(state, plan)
         n.sig = table.concat(parts, "|")
     end
     return nodes
+end
+
+-- ---------- the run outside the window ----------
+
+-- The cost of n units bought from auction lots { { unit price, count } }, cheapest first.
+-- Returns the cost and how many the lots cover; the rest is priced at the dearest lot.
+function ns.LadderCost(lots, n)
+    local sorted = {}
+    for _, l in ipairs(lots or {}) do if l[1] and l[1] > 0 and (l[2] or 0) > 0 then sorted[#sorted + 1] = l end end
+    table.sort(sorted, function(a, b) return a[1] < b[1] end)
+    local cost, got, last = 0, 0, nil
+    for _, l in ipairs(sorted) do
+        if got >= n then break end
+        local k = math.min(l[2], n - got)
+        cost, got, last = cost + k * l[1], got + k, l[1]
+    end
+    if got < n and last then cost = cost + (n - got) * last end
+    return cost, got
+end
+
+-- Buying many of one item takes the dearer lots too: the auction price of each item the plan
+-- buys becomes the mean over the lots it needs. Returns true when a price went up.
+function ns.ApplyLadder(state, plan, now)
+    local changed = false
+    for id, n in pairs(plan and plan.ahBuy or {}) do
+        local it = state.items[id]
+        local lots = it and it.lots
+        if lots and lots.l and (now or 0) - (lots.t or 0) <= ns.LOTS_FRESH and it.ah then
+            local k = ceil(n)
+            local cost, got = ns.LadderCost(lots.l, k)
+            if got > 0 then
+                local mean = math.floor(cost / k + 0.5)
+                if mean > it.ah * 1.01 then it.ah, it.ladder, changed = mean, true, true end
+            end
+        end
+    end
+    return changed
+end
+
+-- What the run buys at the auction, for an Auctionator shopping list: { { id, name, n } }.
+-- A pattern line has no item id but its name.
+function ns.Shopping(route)
+    local out, at = {}, {}
+    for _, node in ipairs(route or {}) do
+        if node.kind == "ah" then
+            for _, l in ipairs(node.lines or {}) do
+                local key = l.id or l.name
+                if at[key] then out[at[key]].n = out[at[key]].n + l.n
+                else out[#out + 1] = { id = l.id, name = l.name, n = l.n }; at[key] = #out end
+            end
+        end
+    end
+    return out
+end
+
+-- Units of each item the run needs: what it buys, takes and crafts with. For the tooltip.
+function ns.RunNeeds(state, route)
+    local out = {}
+    for _, node in ipairs(route or {}) do
+        if node.kind ~= "sell" and not (node.kind == "vendor" and node.title == "STOP_VENDOR_SELL") then
+            for _, l in ipairs(node.lines or {}) do
+                if l.id and node.kind ~= "craft" then out[l.id] = math.max(out[l.id] or 0, l.n) end
+            end
+        end
+        for _, sg in ipairs(node.segs or {}) do
+            local r = state.recipes[sg.rid]
+            for id, k in pairs(r and r.r or {}) do out[id] = (out[id] or 0) + ceil(k * sg.n) end
+        end
+    end
+    return out
+end
+
+-- The craft a craft stop starts with: the recipe and how many, for the "Make" button.
+function ns.NextCraft(node)
+    local sg = node and node.segs and node.segs[1]
+    if not sg then return nil end
+    return sg.rid, ceil(sg.n)
+end
+
+-- A run in the log: what the plan promised when it started.
+function ns.LogStart(v, money, now)
+    local plan = v and v.plan
+    if not plan or not v.state then return nil end
+    return { prof = v.state.name, mode = v.mode, from = v.state.skill, to = plan.reached or plan.target or v.state.skill,
+             net = plan.net or 0, crafts = ceil(plan.crafts or 0), money = money, t = now }
+end
+
+-- Ends a run: the skill reached and the money it really made or cost.
+function ns.LogFinish(e, skill, money, now)
+    e.skill, e.real, e.secs = skill, money - e.money, now - e.t
+    e.done = true
+    return e
 end
 
 -- Which stops of the new route were not on the old one, by index: the window lights them up.
@@ -854,6 +975,11 @@ function ns.Recalc(flash)
     local oldRoute = v.route
     v.state, v.prefs = state, P
     v.variants = ns.Variants(state, P)
+    -- dearer lots: price what the routes buy by the lots they take, then plan once more
+    local now = time and time() or 0
+    local raised = false
+    for _, x in ipairs(v.variants) do if x.plan and ns.ApplyLadder(state, x.plan, now) then raised = true end end
+    if raised then v.variants = ns.Variants(state, P) end
     -- nothing left to level: show the profit route, without changing the saved choice
     local want = ns.OLD_MODES[P.mode] or P.mode
     if not P.level and not ns.EARN[want] then want = "earn" end
@@ -934,6 +1060,17 @@ SlashCmdList.GULLICRAFTPROFIT = function(msg)
     msg = strtrim and strtrim(msg or ""):lower() or ""
     if msg == "probe" then
         if ns.Probe then for _, line in ipairs(ns.Probe()) do ns.Print(line) end end
+    elseif msg:match("^gather") then
+        -- /gcp gather <item link|id>: the plan counts it as gathered, never bought; again: off
+        local id = tonumber(msg:match("item:(%d+)")) or tonumber(msg:match("(%d+)"))
+        if id and ns.SetGather then
+            local on = not ns.db.gather[id]
+            ns.SetGather(id, on)
+            local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+            ns.Print((on and ns.L.GATHER_ON or ns.L.GATHER_OFF):format(name or ("#" .. id)))
+        else
+            ns.Print(ns.L.GATHER_HELP)
+        end
     elseif ns.Toggle then
         ns.Toggle()
     end
@@ -951,10 +1088,11 @@ ns.OPT_ICON = {
     budget = "Interface\\Icons\\INV_Misc_Coin_01",
     chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
     maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop",
+    useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
 }
 
 local function option(key)
-    return { label = ns.L["P_" .. key], icon = ns.OPT_ICON[key],
+    return { label = ns.L["P_" .. key], icon = ns.OPT_ICON[key], tip = ns.L["TIP_" .. key],
              get = function() return ns.Prefs(ns.db and ns.db.prefs)[key] == true end,
              set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
 end
@@ -969,5 +1107,17 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         options = { option("level"), option("useBank"), option("buyAH"), option("buyRecipes"), option("trainer"),
                     option("sellAH") },
+        -- the profession and its skill; the result of the last plan when the window made one
+        summary = function()
+            local c = ns.char and ns.char.profs and ns.char.current and ns.char.profs[ns.char.current]
+            if not c or (c.skill or 0) <= 0 then return nil end
+            local text = ns.L.SUMMARY:format(ns.char.current, c.skill, c.cap or 0)
+            local plan = ns.view and ns.view.plan
+            if plan and ns.view.state and ns.view.state.name == ns.char.current and ns.Money then
+                text = text .. "  ·  " .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net)
+            end
+            return text, c.icon
+        end,
+        reset = function() if ns.db then ns.ResetPrefs() end end,
     })
 end

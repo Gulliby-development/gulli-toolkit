@@ -857,4 +857,204 @@ test("probe lists what the client offers", function()
     assert(all:find("recipes: 4, learned 3", 1, true), all)
 end)
 
+-- ---------- the run outside the window ----------
+
+test("a ladder of lots: n units cost the cheapest lots first", function()
+    local c = core()
+    local cost, got = c.LadderCost({ { 200, 5 }, { 100, 10 }, { 0, 3 } }, 12)
+    eq(cost, 10 * 100 + 2 * 200); eq(got, 12)
+    cost, got = c.LadderCost({ { 100, 2 } }, 5)
+    eq(cost, 500, "past the lots: the dearest price"); eq(got, 2)
+    eq((c.LadderCost({}, 5)), 0)
+end)
+
+test("dear lots raise the auction price of what the plan buys, and the plan changes", function()
+    local c = core()
+    local st = state()
+    for _, it in pairs(st.items) do it.bags, it.bank = 0, 0 end
+    local P = prefs({ mode = "l1" })
+    local plan = c.Plan(st, P)
+    local id = next(plan.ahBuy)
+    assert(id, "the plan buys at the auction")
+    local before = st.items[id].ah
+    st.items[id].lots = { t = 1000, l = { { before, 1 }, { before * 3, 500 } } }
+    eq(c.ApplyLadder(st, plan, 1000 + 3600), true)
+    assert(st.items[id].ah > before * 2, "mean over the lots")
+    assert(st.items[id].ladder)
+    -- old lots are not used
+    st.items[id].ah = before
+    st.items[id].ladder = nil
+    eq(c.ApplyLadder(st, plan, 1000 + 2 * 86400), false)
+end)
+
+test("mail, other characters and gathering are own stock with their own stops", function()
+    local c = core()
+    local st = state()
+    for _, it in pairs(st.items) do it.bags, it.bank = 0, 0 end
+    st.items.silk.mail = 40
+    st.items.silk.alts, st.items.silk.altWho = 1000, "Banky"
+    local P = prefs({ mode = "l1" })
+    local route = c.Route(st, c.Plan(st, P))
+    local mail = has(route, "STOP_MAIL")
+    assert(mail, kinds(route))
+    eq(mail.lines[1].src, "mail"); eq(mail.lines[1].n, 40)
+    eq(#mail.lines, 1, "other characters are off by default")
+    P = prefs({ mode = "l1", useAlts = true })
+    mail = has(c.Route(st, c.Plan(st, P)), "STOP_MAIL")
+    eq(mail.lines[2].src, "alts"); eq(mail.lines[2].who, "Banky")
+    P = prefs({ mode = "l1", useMail = false })
+    eq(has(c.Route(st, c.Plan(st, P)), "STOP_MAIL"), nil)
+    -- gathered: never bought
+    st.items.mage.gather = true
+    P = prefs({ mode = "l1", target = 225 })
+    local plan = c.Plan(st, P)
+    eq(plan.ahBuy.mage, nil, "gathered mageweave is not bought")
+    local full = plan.full or plan
+    route = c.Route(st, full)
+    if full.gather and full.gather.mage then assert(has(route, "STOP_GATHER")) end
+end)
+
+test("shopping list, run needs and the next craft come from the route", function()
+    local c = core()
+    local st = state()
+    for _, it in pairs(st.items) do it.bags, it.bank = 0, 0 end
+    local route = c.Route(st, c.Plan(st, prefs({ mode = "l1" })))
+    local list = c.Shopping(route)
+    assert(#list > 0)
+    local needs = c.RunNeeds(st, route)
+    for _, e in ipairs(list) do if e.id then assert(needs[e.id] and needs[e.id] >= 1, e.name) end end
+    local craft
+    for _, n in ipairs(route) do if n.segs then craft = n end end
+    local rid, k = c.NextCraft(craft)
+    eq(rid, craft.segs[1].rid); assert(k >= 1)
+    eq(c.NextCraft({ kind = "ah" }), nil)
+end)
+
+test("the auction stop sends the list to Auctionator; a craft stop makes the crafts", function()
+    local n = game()
+    local made, list
+    Auctionator.API.v1.ConvertToSearchString = function(_, t) return t.searchString .. ";" .. t.quantity end
+    Auctionator.API.v1.CreateShoppingList = function(_, name, terms) list = { name = name, terms = terms } end
+    C_TradeSkillUI.CraftRecipe = function(rid, k) made = { rid, k } end
+    C_TradeSkillUI.OpenRecipe = function(rid) made = { rid, "open" } end
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle()
+    local ah, craft
+    for i, s in ipairs(n.view.route) do
+        if s.kind == "ah" and s.title == "STOP_AH_BUY" then ah = ah or i end
+        if s.segs then craft = craft or i end
+    end
+    assert(ah, kinds(n.view.route))
+    n.Select(ah)
+    assert(n.ui.act1:IsShown()); assert(not n.ui.act2:IsShown(), "no lots button away from the auction")
+    W.Click(n.ui.act1)
+    assert(list and #list.terms > 0 and list.terms[1]:find(";", 1, true))
+    n.atAH = true
+    n.Select(ah)
+    assert(n.ui.act2:IsShown())
+    n.atAH = false
+    n.Select(craft)
+    W.Click(n.ui.act1)
+    eq(made[1], n.view.route[craft].segs[1].rid)
+    eq(made[2], n.Ceil(n.view.route[craft].segs[1].n))
+    W.Click(n.ui.act2)
+    eq(made[2], "open")
+    -- a click on the recipe row opens it too; a right-click on a reagent marks it gathered
+    made = nil
+    local row = n.ui.detail.rows[1]
+    rawget(row.click, "_OnClick")(row.click, "LeftButton")
+    eq(made[2], "open")
+    local reagent = n.ui.detail.rows[2]
+    local id = reagent.entry.id
+    rawget(reagent.click, "_OnClick")(reagent.click, "RightButton")
+    eq(n.db.gather[id], true)
+    eq(n.view.state.items[id].gather, true)
+end)
+
+test("the lots of the run are read at the auction one item at a time", function()
+    local n = game()
+    local asked = {}
+    C_AuctionHouse = {
+        MakeItemKey = function(id) return { itemID = id } end,
+        SendSearchQuery = function(key) asked[#asked + 1] = key.itemID end,
+        GetNumCommoditySearchResults = function() return 2 end,
+        GetCommoditySearchResultInfo = function(_, i) return { unitPrice = i * 1000, quantity = 3 } end,
+    }
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle()
+    eq(n.ScanLots(n.view.route), 0, "only at the auction")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local k = n.ScanLots(n.view.route)
+    assert(k > 0)
+    eq(#asked, 1)
+    W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED")
+    local first = asked[1]
+    eq(n.db.lots[first].l[1][1], 1000); eq(n.db.lots[first].l[2][2], 3)
+    for _ = 1, 10 do W.RunTimers(); W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED") end
+    eq(#asked, k)
+    eq(n.State().items[first].lots.l[1][1], 1000)
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    eq(n.atAH, false)
+    C_AuctionHouse = nil
+end)
+
+test("the mailbox and other characters are read", function()
+    local n = game()
+    GetInboxNumItems = function() return 2 end
+    GetInboxHeaderInfo = function(i) return nil, nil, nil, nil, nil, i == 2 and 500 or 0 end
+    GetInboxItem = function(i, a) if a == 1 then return "x", 1, nil, 7 end end
+    W.Fire("MAIL_INBOX_UPDATE")
+    eq(n.char.mail[1], 7, "a letter with cash on delivery does not count")
+    GulliChoresDB = { chars = { ["Tester-Realm"] = { items = { [1] = 99 } },
+                                ["Alt-Realm"] = { name = "Alt", items = { [1] = 5 }, bank = { [1] = 10 } } } }
+    local alts, who = n.AltCount(1)
+    eq(alts, 15); eq(who, "Alt")
+    local it = n.State().items[1]
+    eq(it.mail, 7); eq(it.alts, 15)
+    GulliChoresDB, GetInboxNumItems, GetInboxHeaderInfo, GetInboxItem = nil, nil, nil, nil
+end)
+
+test("the run log compares the plan with the money and skill at the end", function()
+    local n = game()
+    n.Toggle()
+    W.money = 10000
+    GetMoney = function() return W.money end
+    W.Click(n.ui.logBtn)
+    assert(n.char.run, "a run started")
+    eq(n.ui.logBtn:GetText(), n.L.LOG_FINISH)
+    W.money = 7000
+    n.char.profs.Tailoring.skill = SKILL + 5
+    W.Click(n.ui.logBtn)
+    eq(n.char.run, nil)
+    local e = n.char.log[1]
+    eq(e.real, -3000); eq(e.skill, SKILL + 5)
+    assert(n.ui.logText:GetText():find(n.Money(-3000, true), 1, true))
+    GetMoney = nil
+end)
+
+test("/gcp gather marks an item and frees it again", function()
+    local n = game()
+    SlashCmdList.GULLICRAFTPROFIT("gather |Hitem:5:0|h")
+    eq(n.db.gather[5], true)
+    SlashCmdList.GULLICRAFTPROFIT("gather 5")
+    eq(n.db.gather[5], nil)
+end)
+
+test("the hub gets a summary, tips and reset", function()
+    local reg
+    Fake({})
+    GulliToolkit = { Register = function(t) reg = t end }
+    local n = Load()
+    GulliToolkit = nil
+    eq(reg.summary(), nil, "nothing read yet")
+    for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
+    n.char.profs.Tailoring = { skill = 150, cap = 225, recipes = {}, icon = "ticon" }
+    n.char.current = "Tailoring"
+    local text, icon = reg.summary()
+    eq(text, "Tailoring 150/225"); eq(icon, "ticon")
+    n.db.prefs.chance = 50
+    reg.reset()
+    eq(n.db.prefs.chance, nil)
+end)
+
 W.finish()

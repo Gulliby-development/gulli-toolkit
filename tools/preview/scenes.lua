@@ -333,6 +333,14 @@ S.craftprofit.recipes = { spec = S.craftprofit.default.spec, before = S.craftpro
 S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 
+S.craftprofit.auction = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.atAH = true; ns.Select(2) end }
+S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
+    end }
+
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
                        { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
