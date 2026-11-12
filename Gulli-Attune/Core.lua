@@ -577,16 +577,26 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
 end)
 
 -- The tooltip of a player: their attunements, when they told them.
+-- The world cursor tooltip can carry secret unit tokens and names (WoW 12): never pass one on.
+local function secret(v) return issecretvalue and issecretvalue(v) end
+local function safe(fn, ...)
+    if not fn then return nil end
+    local ok, v = pcall(fn, ...)
+    if ok and not secret(v) then return v end
+end
+function ns.UnitTooltip(tip)
+    if not (tip and tip.GetUnit) then return end
+    local ok, _, unit = pcall(tip.GetUnit, tip)
+    if not ok or not unit or secret(unit) or not safe(UnitIsPlayer, unit) then return end
+    local name = safe(UnitName, unit)
+    if not name then return end
+    for _, line in ipairs(ns.TooltipLines(name)) do tip:AddLine(line, 0.6, 0.8, 1) end
+end
 local hooked = false
 function ns.HookTooltip()
     if hooked then return end
     hooked = true
-    local function add(tip)
-        if not (tip and tip.GetUnit) then return end
-        local _, unit = tip:GetUnit()
-        if not (unit and UnitIsPlayer and UnitIsPlayer(unit)) then return end
-        for _, line in ipairs(ns.TooltipLines(UnitName(unit))) do tip:AddLine(line, 0.6, 0.8, 1) end
-    end
+    local add = ns.UnitTooltip
     if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, add)
     elseif GameTooltip and GameTooltip.HookScript then

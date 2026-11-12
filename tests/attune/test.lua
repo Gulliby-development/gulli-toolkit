@@ -256,4 +256,26 @@ test("every language has every key, with the same placeholders", function()
     W.CheckLocales(Load())
 end)
 
+test("a secret unit on the world cursor tooltip is skipped, a plain one gets its lines", function()
+    Fake({ party = { "Bob" } })
+    local ns = Load()
+    ns.Receive("GulliAT", "S\tONY=9/16", "PARTY", "Bob-Realm")
+    local SECRET = {}
+    issecretvalue = function(v) return v == SECRET end
+    local called = 0
+    UnitIsPlayer = function(u) called = called + 1; if u == SECRET then error("secret unit") end return true end
+    local added = {}
+    local function tip(unit) return { GetUnit = function() return nil, unit end,
+        AddLine = function(_, l) added[#added + 1] = l end } end
+    ns.UnitTooltip(tip(SECRET))
+    eq(called, 0, "a secret unit never reaches UnitIsPlayer"); eq(#added, 0)
+    UnitName = function() return SECRET end
+    ns.UnitTooltip(tip("mouseover"))
+    eq(#added, 0, "a secret name is skipped")
+    UnitName = function() return "Bob" end
+    ns.UnitTooltip(tip("mouseover"))
+    eq(added[1], "Onyxia's Lair: 9 of 16 steps")
+    issecretvalue = nil
+end)
+
 W.finish()

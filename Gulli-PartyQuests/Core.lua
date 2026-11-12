@@ -556,8 +556,10 @@ function ns.TrackForAll(id)
 end
 
 -- The tooltip: what the group has of a mob or an item that one of my quests asks for.
+local function secret(v) return issecretvalue and issecretvalue(v) end
+
 function ns.TooltipLines(name)
-    if not name or name == "" or not ns.Get("tooltip") then return {} end
+    if not name or secret(name) or type(name) ~= "string" or name == "" or not ns.Get("tooltip") then return {} end
     local party = members()
     if #party == 0 then return {} end
     local out = {}
@@ -589,18 +591,24 @@ local function addTooltip(tt, name)
     tt:Show()
 end
 
+-- The world cursor tooltip can carry a secret unit token or name (WoW 12): skip those.
+function ns.UnitTooltip(tt)
+    if not (tt and tt.GetUnit) then return end
+    local ok, _, unit = pcall(tt.GetUnit, tt)
+    if not ok or not unit or secret(unit) or not UnitName then return end
+    local okName, name = pcall(UnitName, unit)
+    if okName and name and not secret(name) then addTooltip(tt, name) end
+end
+
 local function hookTooltip()
     if TooltipDataProcessor and Enum and Enum.TooltipDataType then
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, data)
             if data and data.id then addTooltip(tt, itemName(data.id)) end
         end)
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tt)
-            local _, unit = tt:GetUnit()
-            if unit then addTooltip(tt, UnitName(unit)) end
-        end)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, ns.UnitTooltip)
     elseif GameTooltip and GameTooltip.HookScript then
         GameTooltip:HookScript("OnTooltipSetItem", function(tt) addTooltip(tt, (tt:GetItem())) end)
-        GameTooltip:HookScript("OnTooltipSetUnit", function(tt) addTooltip(tt, (tt:GetUnit())) end)
+        GameTooltip:HookScript("OnTooltipSetUnit", ns.UnitTooltip)
     end
 end
 

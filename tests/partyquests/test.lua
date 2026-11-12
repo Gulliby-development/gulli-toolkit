@@ -261,4 +261,33 @@ test("every language has every key, with the same placeholders", function()
     W.CheckLocales(Load())
 end)
 
+test("a secret unit or name on the world cursor tooltip is skipped", function()
+    Fake({ quests = LOG, party = PARTY,
+           objectives = { [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } } })
+    local ns = Load()
+    for _, p in ipairs({ "B", "Q153", "O153:4/15", "E" }) do ns.Receive(p, "Bob") end
+    local SECRET = setmetatable({}, { __eq = function() error("compared a secret") end,
+                                      __lt = function() error("compared a secret") end })
+    issecretvalue = function(v) return rawequal(v, SECRET) end
+    eq(#ns.TooltipLines(SECRET), 0, "a secret name is never compared")
+    local shown = 0
+    local function tip(unit) return { GetUnit = function() return nil, unit end,
+        AddDoubleLine = function() shown = shown + 1 end, Show = function() end } end
+    local names = 0
+    local real = UnitName
+    UnitName = function(u)
+        if u == "mouseover" or u == "nameplate1" or u == SECRET then
+            names = names + 1; return u == "mouseover" and "Red Leather Bandana" or SECRET
+        end
+        return real(u)
+    end
+    ns.UnitTooltip(tip(SECRET))
+    eq(names, 0, "a secret unit never reaches UnitName"); eq(shown, 0)
+    ns.UnitTooltip(tip("nameplate1"))
+    eq(shown, 0, "a secret name is skipped")
+    ns.UnitTooltip(tip("mouseover"))
+    eq(shown, 1)
+    issecretvalue = nil
+end)
+
 W.finish()
