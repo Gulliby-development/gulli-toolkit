@@ -18,6 +18,10 @@ ns.BUFFS = {
         { key = "INNER_FIRE", ids = { 588 } },
         { key = "SPIRIT", ids = { 14752, 27681 } },
         { key = "SHADOW_PROT", ids = { 976, 27683 }, on = false },
+        { key = "TOUCH", ids = { 2652 }, race = "Scourge" },      -- Touch of Weakness (Undead)
+        { key = "SHADOWGUARD", ids = { 18137 }, race = "Troll" },
+        { key = "FEAR_WARD", ids = { 6346 }, race = "Dwarf", on = false },
+        { key = "SHADOWFORM", ids = { 15473 }, on = false },
     },
     DRUID = {
         { key = "WILD", ids = { 1126, 21849 } },
@@ -219,15 +223,17 @@ local function weaponMacro(id)
 end
 
 -- The class's buffs for the settings: { key, ids, on, known (a spell id or nil), name, icon }.
+-- A racial buff (race = the second value of UnitRace) is listed only for that race or when known.
 function ns.ClassBuffs(class)
     local out = {}
+    local race = UnitRace and select(2, UnitRace("player"))
     for _, b in ipairs(ns.BUFFS[class or playerClass()] or {}) do
         local known
         for _, id in ipairs(b.ids) do
             if knows(id) then known = id; break end
         end
-        out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, tank = b.tank, known = known, name = L["BUFF_" .. b.key],
-                          icon = spellIcon(known or b.ids[1]) }
+        if not b.race or known or b.race == race then out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, tank = b.tank, known = known, name = L["BUFF_" .. b.key],
+                          icon = spellIcon(known or b.ids[1]) } end
     end
     return out
 end
