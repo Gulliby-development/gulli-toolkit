@@ -38,7 +38,9 @@ local function frame()
         if k == "SetText" then return function(self, v) self._text = v end end
         if k == "GetText" then return function(self) return self._text end end
         if k == "GetHeight" then return function() return 32 end end
-        if k == "GetValue" or k == "GetWidth" then return function() return 0 end end
+        if k == "SetWidth" then return function(self, v) self._w = v end end
+        if k == "GetWidth" then return function(self) return rawget(self, "_w") or 0 end end
+        if k == "GetValue" then return function() return 0 end end
         if k == "GetPoint" then return function() return "CENTER", nil, "CENTER", 0, -180 end end
         if k == "CreateTexture" or k == "CreateFontString" or k == "CreateLine" then return function() return frame() end end
         -- Widget methods are CamelCase; a lowercase key is a field the addon never set.

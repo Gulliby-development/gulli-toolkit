@@ -34,6 +34,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
   - Warrior: Battle Shout. Warlock: Demon Skin or Demon Armor. Hunter: the aspect you pick.
 - **Pets too.** Hunter and warlock pets get Fortitude and Mark of the Wild, and the mana buffs when they have mana. Turn **Buff pets** off if you do not want that.
 - **See it at a glance.** The big button shows how many buffs wait (**+3**). Its border is red when there is something to cast, yellow when the rest is out of range, green when everyone is done.
+- **Icons only, if you like.** Switch off **Buff names on the bar** and the bar shows only the icons, without the spell name and the player.
 - **Marks on your group frames.** A small icon on the game's party and raid frames shows who misses a buff, even when the bar is hidden.
 - **Smart about people.** No Intellect or Spirit for warriors and rogues. Dead, offline and far away players are skipped; the bar says how many are out of range. When a cast fails on someone (out of sight, a stronger buff), that player is skipped for 20 seconds, so the button does not get stuck.
 - **Mouseover and target first.** Point at a player, or target them, and the next press buffs them first.

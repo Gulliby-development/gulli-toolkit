@@ -335,6 +335,21 @@ test("where it shows: hidden in an inn when set, shown on a ready check with a s
     eq(GulliGroupBuffsBar.shown, true)
 end)
 
+test("the caption beside the big button can be switched off: icons only", function()
+    local units = party()
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local wide = GulliGroupBuffsBar:GetWidth()
+    ns.DB().labels = false
+    ns.Refresh()
+    assert(GulliGroupBuffsBar:GetWidth() < wide, "the bar gets narrower without the caption")
+    eq(GulliGroupBuffsBar.shown, true, "the icons stay")
+    ns.DB().labels = true
+    ns.Refresh()
+    eq(GulliGroupBuffsBar:GetWidth(), wide)
+end)
+
 test("marks on the game's party frames show the first missing buff", function()
     local units = party()
     units.party2.auras = { ["Power Word: Fortitude"] = 0 }

@@ -232,7 +232,9 @@ function layout()
             minis[i]:Hide()
         end
     end
-    bar:SetWidth(math.max(MAIN + (label:GetWidth() or 120) - 1, shown * (MINI + GAP)))
+    label:SetShown(d.labels ~= false)
+    local cap = label:IsShown() and (label:GetWidth() or 120) - 1 or 0
+    bar:SetWidth(math.max(MAIN + cap, shown * (MINI + GAP)))
     bar:SetHeight(MAIN + (shown > 0 and (GAP + 1 + MINI) or 0))
     local move = moving or not d.locked
     bar:SetMoving(move and not InCombatLockdown())
@@ -485,6 +487,7 @@ local function rowList()
             I .. "INV_Misc_Map_01"),
         option(L.READY, dbValue("readyCheck"), { true, false }, onOff, I .. "INV_Misc_Bell_01"),
         option(L.MARKS, dbValue("marks"), { true, false }, onOff, I .. "Ability_Hunter_MarkedForDeath"),
+        option(L.LABELS, dbValue("labels"), { true, false }, onOff, I .. "INV_Misc_Note_01"),
         { kind = "header", label = L.TARGETS },
         option(L.PETS, dbValue("pets"), { true, false }, onOff, I .. "Ability_Hunter_BeastCall"),
         option(L.FOCUS, dbValue("focus"), { true, false }, onOff, I .. "Ability_Hunter_SniperShot"),

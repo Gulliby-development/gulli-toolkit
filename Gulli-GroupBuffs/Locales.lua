@@ -96,6 +96,7 @@ T.en = {
     AURA = "Aura",
     ASPECT = "Aspect",
     AUTO = "Best known",
+    LABELS = "Buff names on the bar",
 }
 
 T.de = {
@@ -185,6 +186,7 @@ T.de = {
     AURA = "Aura",
     ASPECT = "Aspekt",
     AUTO = "Bester bekannter",
+    LABELS = "Buffnamen an der Leiste",
 }
 
 T.es = {
@@ -274,6 +276,7 @@ T.es = {
     AURA = "Aura",
     ASPECT = "Aspecto",
     AUTO = "El mejor que conozcas",
+    LABELS = "Nombres en la barra",
 }
 
 T.fr = {
@@ -363,6 +366,7 @@ T.fr = {
     AURA = "Aura",
     ASPECT = "Aspect",
     AUTO = "Le meilleur connu",
+    LABELS = "Noms sur la barre",
 }
 
 T.pl = {
@@ -452,6 +456,7 @@ T.pl = {
     AURA = "Aura",
     ASPECT = "Aspekt",
     AUTO = "Najlepszy znany",
+    LABELS = "Nazwy na pasku",
 }
 
 T.pt = {
@@ -541,6 +546,7 @@ T.pt = {
     AURA = "Aura",
     ASPECT = "Aspecto",
     AUTO = "O melhor conhecido",
+    LABELS = "Nomes na barra",
 }
 
 T.ru = {
@@ -630,6 +636,7 @@ T.ru = {
     AURA = "Аура",
     ASPECT = "Дух",
     AUTO = "Лучший из изученных",
+    LABELS = "Подписи на панели",
 }
 
 T.zh = {
@@ -719,6 +726,7 @@ T.zh = {
     AURA = "光环",
     ASPECT = "守护",
     AUTO = "已学最好的",
+    LABELS = "在栏上显示名称",
 }
 
 ns.T = T
