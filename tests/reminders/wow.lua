@@ -144,9 +144,58 @@ function Fake(spec)
     GetWeaponEnchantInfo = function() local w = W.weapon; return w[1], w[2], 0, 0, w[3], w[4], 0, 0 end
     GetInventoryItemCount = function() return W.ammo end
     GetInventoryItemID = function(_, slot) if slot == 17 then return W.offHand end end
-    C_Item = { GetItemCount = function() return W.shards end,
-               GetItemInfo = function(id) return "I", nil, 1, 1, 1, "", "", 1, "", 1, 0, id == 99 and 4 or 2 end }
+    -- W.items[id] = count in the bags; soul shards as before.
+    W.items = spec.items or {}
+    C_Item = { GetItemCount = function(id) if id == 6265 then return W.shards end return W.items[id] or 0 end,
+               GetItemInfo = function(id) return "I", nil, 1, 1, 1, "", "", 1, "", 1, 0, id == 99 and 4 or 2 end,
+               GetItemNameByID = function(id) return "Item" .. id end,
+               GetItemIconByID = function(id) return "icon" .. id end,
+               GetItemSpell = function(id) if W.itemSpells and W.itemSpells[id] then return W.itemSpells[id], 1 end end }
+    W.itemSpells = spec.itemSpells or {}
     IsResting = function() return W.resting end
+    W.instance, W.group, W.role, W.durability, W.free = spec.instance, spec.group or {}, spec.role, spec.durability, spec.free
+    IsInInstance = function() return W.instance ~= nil, W.instance or "none" end
+    IsInGroup = function() return #W.group > 0 end
+    IsInRaid = function() return false end
+    GetNumSubgroupMembers = function() return #W.group end
+    UnitClass = function(u)
+        if u == "player" then return "C", spec.class or "PRIEST" end
+        local m = W.group[tonumber((u or ""):match("%d+") or 0)]
+        return "C", m and m.class
+    end
+    UnitName = function(u)
+        if u == "player" then return "Tester" end
+        local m = W.group[tonumber((u or ""):match("%d+") or 0)]
+        return m and m.name
+    end
+    UnitIsUnit = function(a, b) return a == b end
+    UnitIsConnected = function() return true end
+    UnitGroupRolesAssigned = function() return W.role or "NONE" end
+    GetInventoryItemDurability = function(slot)
+        if W.durability and slot == 1 then return W.durability, 100 end
+    end
+    C_Container = { GetContainerNumFreeSlots = function(bag) if bag == 0 then return W.free or 20, 0 end return 0, 0 end }
+    W.sounds = {}
+    PlaySound = function(id) W.sounds[#W.sounds + 1] = id end
+    GetCVarBool = function() return false end
+    local base = CreateFrame
+    CreateFrame = function(kind, name, parent, template)
+        local f = base(kind, name, parent, template)
+        rawset(f, "_attrs", {})
+        rawset(f, "SetAttribute", function(self, k, v) rawget(self, "_attrs")[k] = v end)
+        rawset(f, "GetAttribute", function(self, k) return rawget(self, "_attrs")[k] end)
+        if name then _G[name] = f end
+        return f
+    end
+    -- A vendor: W.merchant = { { id, price, per, stack } }; W.bought = { { index, n } }.
+    W.merchant, W.bought, W.money = spec.merchant, {}, spec.money or 1000000
+    MerchantFrame = { IsShown = function() return W.merchant ~= nil end }
+    GetMerchantNumItems = function() return W.merchant and #W.merchant or 0 end
+    GetMerchantItemID = function(i) return W.merchant[i][1] end
+    GetMerchantItemInfo = function(i) local m = W.merchant[i]; return "x", 1, m[2], m[3] end
+    GetMerchantItemMaxStack = function(i) return W.merchant[i][4] end
+    BuyMerchantItem = function(i, n) W.bought[#W.bought + 1] = { i, n } end
+    GetMoney = function() return W.money end
     GulliRemindersDB = spec.db
     return W
 end
