@@ -7,18 +7,15 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local W, H, PAD, HEAD = 940, 580, 12, 48
-local SIDE, DETAIL = 200, 272
-local MID = W - SIDE - DETAIL - 4 * PAD
-local LIST_W = MID - 14
-local ROW_H, GROUP_H, CAT_H = 54, 30, 30
+local W, H = 960, 600
+local SIDE, DETAIL, GAP = 210, 280, S.GAP
+local MID = W - 2 * S.PAD - SIDE - DETAIL - 2 * GAP
+local LIST_W = MID - 12
+local ROW_H, GROUP_H, CAT_H = 52, 34, 32
 local FEED_LINES, MAX_OPTIONS = 3, 6
 
-local GOOD = { 0.45, 0.85, 0.50, 1 }
-local WAIT = { 1.00, 0.72, 0.30, 1 }
-local BAD = { 0.90, 0.42, 0.40, 1 }
-local LINE = { 1, 1, 1, 0.07 }
-local HOVER = { 1, 1, 1, 0.06 }
+local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
+local LINE, HOVER = S.LINE, S.HOVER
 
 local view = { cat = "All", state = "all", query = "" }
 local frame, side, mid, detail, search, placeholder, midTitle, scroll, list, empty
@@ -63,20 +60,19 @@ end
 local function makeCat(i)
     local b = CreateFrame("Button", nil, side)
     b:SetHeight(CAT_H)
-    b:SetPoint("TOPLEFT", 6, -(48 + (i - 1) * (CAT_H + 2)))
-    b:SetPoint("TOPRIGHT", -6, -(48 + (i - 1) * (CAT_H + 2)))
+    b:SetPoint("TOPLEFT", side.body, "TOPLEFT", 0, -(42 + (i - 1) * (CAT_H + 2)))
+    b:SetPoint("TOPRIGHT", side.body, "TOPRIGHT", 0, -(42 + (i - 1) * (CAT_H + 2)))
     S.Box(b, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
     b.bar = line(b, S.Accent())
     b.bar:SetPoint("TOPLEFT")
     b.bar:SetPoint("BOTTOMLEFT")
-    b.bar:SetWidth(3)
+    b.bar:SetWidth(2)
     b.countBox = CreateFrame("Frame", nil, b)
-    b.countBox:SetSize(46, 20)
-    b.countBox:SetPoint("RIGHT", -4, 0)
-    S.Box(b.countBox, { 0.02, 0.02, 0.02, 1 }, { 0, 0, 0, 0 })
-    b.count = S.Text(b.countBox, 11, S.MUTED)
-    b.count:SetPoint("CENTER")
-    b.count:SetJustifyH("CENTER")
+    b.countBox:SetSize(40, 20)
+    b.countBox:SetPoint("RIGHT", -6, 0)
+    b.count = S.Text(b.countBox, 11, S.FAINT)
+    b.count:SetPoint("RIGHT")
+    b.count:SetJustifyH("RIGHT")
     b.text = S.Text(b, 12)
     b.text:SetPoint("LEFT", 12, 0)
     b.text:SetPoint("RIGHT", b.countBox, "LEFT", -4, 0)
@@ -109,8 +105,8 @@ local function fillCats(counts)
         b.count:SetText(c.on .. "/" .. c.total)
         local sel = view.cat == key and not searching
         b.bar:SetShown(sel)
-        S.Fill(b, sel and { a[1], a[2], a[3], 0.14 } or { 0, 0, 0, 0 })
-        local tc = sel and a or ((c.total > 0) and S.TEXT or S.MUTED)
+        S.Fill(b, sel and S.RAISED or S.CLEAR)
+        local tc = sel and S.TEXT or ((c.total > 0) and S.MUTED or S.FAINT)
         b.text:SetTextColor(tc[1], tc[2], tc[3], 1)
         b:Show()
     end
@@ -122,14 +118,18 @@ end
 local function makeRow(i)
     local r = CreateFrame("Button", nil, list)
     r:SetHeight(ROW_H)
-    S.Box(r, S.ROW, { 0, 0, 0, 0 })
+    S.Box(r, S.CLEAR, S.CLEAR)
     r.bar = line(r, S.Accent())
     r.bar:SetPoint("TOPLEFT")
     r.bar:SetPoint("BOTTOMLEFT")
-    r.bar:SetWidth(3)
+    r.bar:SetWidth(2)
+    r.rule = line(r)
+    r.rule:SetHeight(1)
+    r.rule:SetPoint("BOTTOMLEFT")
+    r.rule:SetPoint("BOTTOMRIGHT")
 
     r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(32, 32)
+    r.icon:SetSize(30, 30)
     r.icon:SetPoint("LEFT", 12, 0)
 
     r.go = CreateFrame("Button", nil, r)
@@ -167,7 +167,7 @@ local function makeRow(i)
     end)
     r.switch:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
-    r.status = S.Text(r, 11, BAD)
+    r.status = S.Text(r, 11, S.FAINT)
     r.status:SetPoint("RIGHT", -12, 0)
     r.status:SetJustifyH("RIGHT")
 
@@ -181,7 +181,7 @@ local function makeRow(i)
     r:SetScript("OnClick", function(self) select(self.row) end)
     r:SetScript("OnDoubleClick", function(self) open(self.row) end)
     r:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
-    r:SetScript("OnLeave", function(self) if not self.selected then S.Fill(self, S.ROW) end end)
+    r:SetScript("OnLeave", function(self) if not self.selected then S.Fill(self, S.CLEAR) end end)
     rows[i] = r
     return r
 end
@@ -207,8 +207,7 @@ local function fillRow(r, row)
     r.desc:SetPoint("RIGHT", right, "LEFT", -8, 0)
     r.switch:SetChecked(row.on)
     r.selected = view.selected == row.key
-    local a = S.Accent()
-    S.Fill(r, r.selected and { a[1], a[2], a[3], 0.12 } or S.ROW)
+    S.Fill(r, r.selected and S.RAISED or S.CLEAR)
     r.bar:SetShown(r.selected)
     r:Show()
 end
@@ -216,12 +215,12 @@ end
 local function makeHead(i)
     local h = CreateFrame("Frame", nil, list)
     h:SetHeight(GROUP_H)
-    h.text = S.Text(h, 12, S.Accent())
-    h.text:SetPoint("BOTTOMLEFT", 2, 7)
-    h.rule = line(h)
+    h.text = S.Text(h, 11, S.FAINT)
+    h.text:SetPoint("BOTTOMLEFT", 2, 8)
+    h.rule = line(h, S.EDGE)
     h.rule:SetHeight(1)
-    h.rule:SetPoint("BOTTOMLEFT", 0, 2)
-    h.rule:SetPoint("BOTTOMRIGHT", 0, 2)
+    h.rule:SetPoint("BOTTOMLEFT", 0, 0)
+    h.rule:SetPoint("BOTTOMRIGHT", 0, 0)
     heads[i] = h
     return h
 end
@@ -252,10 +251,10 @@ local function fillList(data)
     local n = (view.cat == "All" and not searching and view.state == "all") and fillRecent() or 0
     recent:SetShown(n > 0)
     if n > 0 then
-        local h = 30 + n * 17
+        local h = 34 + n * 18
         recent:SetHeight(h)
         place(recent, y)
-        y = y + h + 8
+        y = y + h + 4
     end
 
     local found
@@ -266,17 +265,16 @@ local function fillList(data)
             h.text:SetText(catName(g.key))
             place(h, y)
             h:Show()
-            y = y + GROUP_H + 4
+            y = y + GROUP_H
         end
         for _, row in ipairs(g.rows) do
             ri = ri + 1
             local r = rows[ri] or makeRow(ri)
             fillRow(r, row)
             place(r, y)
-            y = y + ROW_H + 4
+            y = y + ROW_H
             if row.key == view.selected then found = row end
         end
-        y = y + 4
     end
     for i = ri + 1, #rows do rows[i]:Hide() end
     for i = hi + 1, #heads do heads[i]:Hide() end
@@ -290,9 +288,13 @@ end
 
 local function makeOption(i)
     local o = CreateFrame("Frame", nil, detail)
-    o:SetHeight(32)
-    o:SetPoint("TOPLEFT", detail.setHead, "BOTTOMLEFT", 0, -4 - (i - 1) * 32)
-    o:SetPoint("RIGHT", detail, "RIGHT", -8, 0)
+    o:SetHeight(36)
+    o:SetPoint("TOPLEFT", detail.setHead, "BOTTOMLEFT", 0, -6 - (i - 1) * 36)
+    o:SetPoint("RIGHT", detail, "RIGHT", -S.INSET, 0)
+    o.rule = line(o)
+    o.rule:SetHeight(1)
+    o.rule:SetPoint("BOTTOMLEFT")
+    o.rule:SetPoint("BOTTOMRIGHT")
     o.switch = S.Switch(o)
     o.switch:SetPoint("RIGHT")
     o.switch:SetScript("OnClick", function(self)
@@ -303,7 +305,7 @@ local function makeOption(i)
             ns.Refresh()
         end
     end)
-    o.label = S.Text(o, 11)
+    o.label = S.Text(o, 12)
     o.label:SetPoint("LEFT")
     o.label:SetPoint("RIGHT", o.switch, "LEFT", -6, 0)
     o.label:SetMaxLines(2)
@@ -347,7 +349,6 @@ local function fillDetail(row)
 
     detail.open:SetText(row.state == "missing" and L.NOT_INSTALLED or L.OPEN_MODULE:format(row.title))
     detail.open:SetEnabled(canOpen(row) and true or false)
-    detail.open:SetAlpha(canOpen(row) and 1 or 0.5)
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -436,99 +437,74 @@ local function buildProtected()
     protectFrame = CreateFrame("Frame", "GulliToolkitProtected", detail)
     protectFrame:SetAllPoints(detail)
     protectFrame:EnableMouse(true)
-    S.Box(protectFrame, S.PANEL)
-    local title = S.Text(protectFrame, 15, S.Accent())
-    title:SetPoint("TOPLEFT", 12, -14)
+    S.Box(protectFrame, S.SURFACE, S.EDGE)
+    local title = S.Text(protectFrame, 14)
+    title:SetPoint("TOPLEFT", S.INSET, -14)
     title:SetText(L.PROTECTED)
-    local close = S.Button(protectFrame, 30, 28)
-    close:SetPoint("TOPRIGHT", -8, -8)
-    close:SetText("X")
-    close:SetScript("OnClick", function() protectFrame:Hide() end)
-    local hint = S.Text(protectFrame, 11, S.MUTED)
+    local close = S.Close(protectFrame, function() protectFrame:Hide() end)
+    close:SetPoint("TOPRIGHT", -6, -6)
+    local hint = S.Note(protectFrame, 11)
     hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    hint:SetPoint("RIGHT", -12, 0)
+    hint:SetPoint("RIGHT", -S.INSET, 0)
     hint:SetMaxLines(5)
     hint:SetText(L.PROTECT_HINT)
     local drop = CreateFrame("Button", nil, protectFrame)
-    drop:SetHeight(40)
-    drop:SetPoint("TOPLEFT", 8, -118)
-    drop:SetPoint("TOPRIGHT", -8, -118)
-    S.Box(drop, { 0.02, 0.02, 0.02, 1 }, { 0.30, 0.30, 0.32, 1 })
+    drop:SetHeight(44)
+    drop:SetPoint("TOPLEFT", S.INSET, -122)
+    drop:SetPoint("TOPRIGHT", -S.INSET, -122)
+    S.Box(drop, S.INPUT, S.EDGE)
     local dropText = S.Text(drop, 12, S.MUTED)
     dropText:SetPoint("CENTER")
     dropText:SetText(L.DROP)
     drop:SetScript("OnReceiveDrag", dropItem)
     drop:SetScript("OnClick", dropItem)
     drop:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
-    drop:SetScript("OnLeave", function(self) S.SetBorder(self, { 0.30, 0.30, 0.32, 1 }) end)
+    drop:SetScript("OnLeave", function(self) S.SetBorder(self, S.EDGE) end)
     protectFrame.scroll = S.Scroll(protectFrame)
-    protectFrame.scroll:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -8)
-    protectFrame.scroll:SetPoint("BOTTOMRIGHT", -20, 8)
+    protectFrame.scroll:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -S.GAP)
+    protectFrame.scroll:SetPoint("BOTTOMRIGHT", -22, S.INSET)
     protectFrame.list = protectFrame.scroll.child
-    protectFrame.list:SetWidth(DETAIL - 28)
+    protectFrame.list:SetWidth(DETAIL - 2 * S.INSET - 10)
     protectFrame:SetScript("OnShow", ns.RefreshProtected)
     protectFrame:Hide()
 end
 
+-- The header: the window's own (icon, title, version), plus the size buttons.
 local function buildHeader()
-    local icon = frame:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(28, 28)
-    icon:SetPoint("TOPLEFT", PAD, -10)
-    icon:SetTexture("Interface\\AddOns\\Gulli-Toolkit\\icon")
-    local title = S.Text(frame, 18, S.Accent())
-    title:SetPoint("LEFT", icon, "RIGHT", 8, 0)
-    title:SetText(L.TITLE)
-    local ver = CreateFrame("Frame", nil, frame)
-    ver:SetSize(58, 20)
-    ver:SetPoint("LEFT", title, "RIGHT", 10, 0)
-    S.Box(ver, S.PANEL, { 0.25, 0.25, 0.27, 1 })
-    local verText = S.Text(ver, 11, S.MUTED)
-    verText:SetPoint("CENTER")
-    verText:SetText(ns.Version())
-
-    local close = S.Button(frame, 32, 30)
-    close:SetPoint("TOPRIGHT", -PAD, -9)
-    close:SetText("X")
-    close:SetScript("OnClick", function() frame:Hide() end)
-    local plus = S.Button(frame, 30, 30)
-    plus:SetPoint("RIGHT", close, "LEFT", -12, 0)
+    local plus = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
     plus:SetText("+")
     plus:SetScript("OnClick", function() nudgeScale(0.1) end)
-    scaleText = S.Text(frame, 12, S.MUTED)
-    scaleText:SetWidth(46)
+    scaleText = S.Text(frame.bar, 11, S.FAINT)
+    scaleText:SetWidth(40)
     scaleText:SetJustifyH("CENTER")
-    scaleText:SetPoint("RIGHT", plus, "LEFT", -2, 0)
-    local minus = S.Button(frame, 30, 30)
-    minus:SetPoint("RIGHT", scaleText, "LEFT", -2, 0)
+    scaleText:SetPoint("RIGHT", plus, "LEFT", 0, 0)
+    local minus = S.Ghost(S.Button(frame.bar, 28, 28))
+    minus:SetPoint("RIGHT", scaleText, "LEFT", 0, 0)
     minus:SetText("-")
     minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
-
-    local rule = line(frame)
-    rule:SetHeight(1)
-    rule:SetPoint("TOPLEFT", PAD, -HEAD + 1)
-    rule:SetPoint("TOPRIGHT", -PAD, -HEAD + 1)
 end
 
 local function buildSide()
-    side = CreateFrame("Frame", nil, frame)
+    side = S.Card(frame.body)
     side:SetWidth(SIDE)
-    side:SetPoint("TOPLEFT", PAD, -HEAD - 6)
-    side:SetPoint("BOTTOMLEFT", PAD, PAD)
-    S.Box(side, S.PANEL)
+    side:SetPoint("TOPLEFT")
+    side:SetPoint("BOTTOMLEFT")
+    local body = side.body
 
-    search = S.Edit(side, SIDE - 16)
-    search:SetHeight(30)
-    search:SetPoint("TOPLEFT", 8, -8)
+    search = S.Edit(body, SIDE - 2 * S.INSET, 30)
+    search:SetPoint("TOPLEFT")
+    search:SetPoint("TOPRIGHT")
     search:SetJustifyH("LEFT")
-    search:SetTextInsets(26, 6, 0, 0)
-    search:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 13, "")
+    search:SetTextInsets(28, 8, 0, 0)
     local glass = search:CreateTexture(nil, "OVERLAY")
     glass:SetSize(14, 14)
-    glass:SetPoint("LEFT", 7, 0)
+    glass:SetPoint("LEFT", 8, 0)
     glass:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
-    glass:SetVertexColor(0.7, 0.7, 0.72, 1)
-    placeholder = S.Text(search, 12, S.MUTED)
-    placeholder:SetPoint("LEFT", 26, 0)
+    glass:SetVertexColor(0.6, 0.6, 0.64, 1)
+    placeholder = S.Text(search, 12, S.FAINT)
+    placeholder:SetPoint("LEFT", 28, 0)
+    placeholder:SetPoint("RIGHT", -8, 0)
+    placeholder:SetWordWrap(false)
     placeholder:SetText(L.SEARCH)
     local function hint(self)
         placeholder:SetShown((self:GetText() or "") == "" and not self:HasFocus())
@@ -547,158 +523,147 @@ local function buildSide()
     end)
     search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
-    protectBtn = S.Button(side, SIDE - 16, 30)
-    protectBtn:SetPoint("BOTTOMLEFT", 8, 8)
+    protectBtn = S.Button(body, SIDE - 2 * S.INSET, 30)
+    protectBtn:SetPoint("BOTTOMLEFT")
+    protectBtn:SetPoint("BOTTOMRIGHT")
     protectBtn:SetScript("OnClick", function()
         if not protectFrame then buildProtected() end
         protectFrame:SetShown(not protectFrame:IsShown())
     end)
-    reloadBtn = S.Primary(S.Button(side, SIDE - 16, 30))
-    reloadBtn:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 6)
+    reloadBtn = S.Primary(S.Button(body, SIDE - 2 * S.INSET, 30))
+    reloadBtn:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 8)
+    reloadBtn:SetPoint("BOTTOMRIGHT", protectBtn, "TOPRIGHT", 0, 8)
     reloadBtn:SetText(L.RELOAD)
     reloadBtn:SetScript("OnClick", function() ReloadUI() end)
-    reloadHint = S.Text(side, 11, WAIT)
-    reloadHint:SetPoint("BOTTOMLEFT", reloadBtn, "TOPLEFT", 2, 6)
-    reloadHint:SetWidth(SIDE - 20)
+    reloadHint = S.Note(body, 11)
+    reloadHint:SetTextColor(WAIT[1], WAIT[2], WAIT[3], 1)
+    reloadHint:SetPoint("BOTTOMLEFT", reloadBtn, "TOPLEFT", 0, 8)
+    reloadHint:SetPoint("BOTTOMRIGHT", reloadBtn, "TOPRIGHT", 0, 8)
     reloadHint:SetMaxLines(3)
     reloadHint:SetText(L.RELOAD_HINT)
 end
 
 local function buildMiddle()
-    mid = CreateFrame("Frame", nil, frame)
+    mid = CreateFrame("Frame", nil, frame.body)
     mid:SetWidth(MID)
-    mid:SetPoint("TOPLEFT", side, "TOPRIGHT", PAD, 0)
-    mid:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", PAD, 0)
+    mid:SetPoint("TOPLEFT", side, "TOPRIGHT", GAP, 0)
+    mid:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", GAP, 0)
 
     local order = { { "all", L.ALL }, { "on", L.STATE_ON }, { "off", L.OFF } }
-    local prev
-    for i = #order, 1, -1 do
-        local key = order[i][1]
-        local p = S.Pill(mid, 58, 28)
-        p:SetText(order[i][2])
-        if prev then p:SetPoint("RIGHT", prev, "LEFT", -6, 0) else p:SetPoint("TOPRIGHT", 0, -2) end
-        p:SetScript("OnClick", function()
-            view.state = key
-            scroll:Top()
-            ns.Refresh()
-        end)
-        pills[key] = p
-        prev = p
+    local labels = {}
+    for i, o in ipairs(order) do labels[i] = o[2] end
+    local seg = S.Tabs(mid, labels, nil, function(i)
+        view.state = order[i][1]
+        scroll:Top()
+        ns.Refresh()
+    end, 28)
+    seg.frame:ClearAllPoints()
+    seg.frame:SetPoint("TOPRIGHT", 0, 0)
+    for i, o in ipairs(order) do
+        local b = seg.buttons[i]
+        b.SetSelected = function(_, on) if on and seg.selected ~= i then seg:Select(i, true) end end
+        pills[o[1]] = b
     end
-    midTitle = S.Text(mid, 18)
-    midTitle:SetPoint("TOPLEFT", 2, -6)
-    midTitle:SetPoint("RIGHT", prev, "LEFT", -8, 0)
+    midTitle = S.Text(mid, 16)
+    midTitle:SetPoint("LEFT", mid, "TOPLEFT", 2, -14)
+    midTitle:SetPoint("RIGHT", seg.frame, "LEFT", -8, 0)
     midTitle:SetWordWrap(false)
-    local rule = line(mid)
-    rule:SetHeight(1)
-    rule:SetPoint("TOPLEFT", 0, -38)
-    rule:SetPoint("TOPRIGHT", 0, -38)
 
     scroll = S.Scroll(mid)
-    scroll:SetPoint("TOPLEFT", 0, -46)
-    scroll:SetPoint("BOTTOMRIGHT", -14, 0)
+    scroll:SetPoint("TOPLEFT", 0, -40)
+    scroll:SetPoint("BOTTOMRIGHT", -12, 0)
     list = scroll.child
     list:SetWidth(LIST_W)
 
     recent = CreateFrame("Frame", nil, list)
-    S.Box(recent, S.PANEL, { 0.25, 0.25, 0.27, 1 })
+    S.Box(recent, S.SURFACE, S.EDGE)
     local accentBar = line(recent, S.Accent())
     accentBar:SetPoint("TOPLEFT")
     accentBar:SetPoint("BOTTOMLEFT")
-    accentBar:SetWidth(3)
-    local rt = S.Text(recent, 13, S.Accent())
-    rt:SetPoint("TOPLEFT", 12, -8)
+    accentBar:SetWidth(2)
+    local rt = S.Text(recent, 12)
+    rt:SetPoint("TOPLEFT", S.INSET, -10)
     rt:SetText(L.RECENT)
     for i = 1, FEED_LINES do
-        local t = S.Text(recent, 11)
-        t:SetPoint("TOPLEFT", 12, -10 - i * 17)
-        t:SetPoint("RIGHT", -10, 0)
+        local t = S.Text(recent, 11, S.MUTED)
+        t:SetPoint("TOPLEFT", S.INSET, -12 - i * 18)
+        t:SetPoint("RIGHT", -S.INSET, 0)
         t:SetWordWrap(false)
         recentLines[i] = t
     end
 
-    empty = S.Text(mid, 12, S.MUTED)
-    empty:SetPoint("TOP", 0, -90)
-    empty:SetWidth(MID - 40)
-    empty:SetJustifyH("CENTER")
-    empty:SetText(L.NO_MATCH)
+    empty = S.Empty(scroll)
+    empty:Set(L.NO_MATCH)
 end
 
 local function buildDetail()
-    detail = CreateFrame("Frame", nil, frame)
+    detail = S.Card(frame.body)
     detail:SetWidth(DETAIL)
-    detail:SetPoint("TOPRIGHT", -PAD, -HEAD - 6)
-    detail:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-    S.Box(detail, S.PANEL)
+    detail:SetPoint("TOPRIGHT")
+    detail:SetPoint("BOTTOMRIGHT")
     local d = detail
-    d.body = CreateFrame("Frame", nil, d)
+    d.body:ClearAllPoints()
     d.body:SetAllPoints()
 
     local banner = CreateFrame("Frame", nil, d.body)
-    banner:SetHeight(100)
-    banner:SetPoint("TOPLEFT", 8, -8)
-    banner:SetPoint("TOPRIGHT", -8, -8)
-    S.Box(banner, { 0.03, 0.03, 0.04, 1 }, { 0.20, 0.20, 0.22, 1 })
+    banner:SetHeight(92)
+    banner:SetPoint("TOPLEFT", 1, -1)
+    banner:SetPoint("TOPRIGHT", -1, -1)
+    S.Box(banner, S.HEAD, S.CLEAR)
     local a = S.Accent()
-    local glow = line(banner, { a[1], a[2], a[3], 0.10 })
+    local glow = line(banner, { a[1], a[2], a[3], 0.08 })
     glow:SetDrawLayer("BACKGROUND", 1)
-    glow:SetPoint("TOPLEFT", 1, -1)
-    glow:SetPoint("BOTTOMRIGHT", banner, "RIGHT", -1, 0)
+    glow:SetPoint("TOPLEFT")
+    glow:SetPoint("BOTTOMRIGHT", banner, "RIGHT", 0, 0)
+    local rule = line(banner, S.EDGE)
+    rule:SetHeight(1)
+    rule:SetPoint("BOTTOMLEFT")
+    rule:SetPoint("BOTTOMRIGHT")
     local ring = CreateFrame("Frame", nil, banner)
-    ring:SetSize(68, 68)
+    ring:SetSize(62, 62)
     ring:SetPoint("CENTER")
-    S.Box(ring, { 0.02, 0.02, 0.02, 1 }, a)
+    S.Box(ring, S.INPUT, a)
     d.icon = ring:CreateTexture(nil, "ARTWORK")
-    d.icon:SetSize(56, 56)
+    d.icon:SetSize(52, 52)
     d.icon:SetPoint("CENTER")
 
     d.title = S.Text(d.body, 16)
-    d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", 4, -12)
-    d.title:SetPoint("RIGHT", -12, 0)
+    d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", S.INSET - 1, -14)
+    d.title:SetPoint("RIGHT", -S.INSET, 0)
     d.title:SetWordWrap(false)
     d.cat = S.Text(d.body, 11, S.MUTED)
-    d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -4)
+    d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -6)
     d.state = S.Text(d.body, 11)
     d.state:SetPoint("LEFT", d.cat, "RIGHT", 10, 0)
     d.desc = S.Text(d.body, 12)
-    d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -10)
-    d.desc:SetPoint("RIGHT", -12, 0)
+    d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -12)
+    d.desc:SetPoint("RIGHT", -S.INSET, 0)
     d.desc:SetJustifyV("TOP")
     d.desc:SetHeight(58)
     d.desc:SetMaxLines(4)
-    d.slash = S.Text(d.body, 11, S.MUTED)
+    d.slash = S.Text(d.body, 11, S.FAINT)
     d.slash:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -6)
 
-    d.setHead = S.Text(d.body, 11, S.Accent())
-    d.setHead:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -14)
+    d.setHead = S.Text(d.body, 11, S.FAINT)
+    d.setHead:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -16)
     d.setHead:SetText(L.SETTINGS)
-    local rule = line(d.body)
-    rule:SetHeight(1)
-    rule:SetPoint("LEFT", d.setHead, "RIGHT", 8, 0)
-    rule:SetPoint("RIGHT", -12, 0)
-    d.none = S.Text(d.body, 11, S.MUTED)
-    d.none:SetPoint("TOPLEFT", d.setHead, "BOTTOMLEFT", 0, -8)
-    d.none:SetPoint("RIGHT", -12, 0)
+    local srule = line(d.body, S.EDGE)
+    srule:SetHeight(1)
+    srule:SetPoint("LEFT", d.setHead, "RIGHT", 8, 0)
+    srule:SetPoint("RIGHT", -S.INSET, 0)
+    d.none = S.Note(d.body, 11)
+    d.none:SetPoint("TOPLEFT", d.setHead, "BOTTOMLEFT", 0, -10)
+    d.none:SetPoint("RIGHT", -S.INSET, 0)
     d.none:SetMaxLines(3)
 
-    d.open = S.Primary(S.Button(d.body, DETAIL - 16, 34))
-    d.open:SetPoint("BOTTOMLEFT", 8, 8)
+    d.open = S.Primary(S.Button(d.body, DETAIL - 2 * S.INSET, 34))
+    d.open:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
+    d.open:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     d.open:SetScript("OnClick", function() open(detail.row) end)
 end
 
 local function build()
-    frame = CreateFrame("Frame", "GulliToolkitFrame", UIParent)
-    frame:SetSize(W, H)
-    frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    S.Box(frame)
-    tinsert(UISpecialFrames, "GulliToolkitFrame")
+    frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true })
 
     buildHeader()
     buildSide()
@@ -709,7 +674,6 @@ local function build()
         applyScale()
         ns.Refresh()
     end)
-    frame:Hide()
 end
 
 function ns.Toggle()
