@@ -752,6 +752,45 @@ function S.IconBox(parent, size, path)
     return b
 end
 
+-- An item in a game icon frame, with a stack count in the corner and the border in the
+-- item's quality colour: icon:Set(texture, count, quality).
+S.QUALITY = { [2] = { 0.12, 1, 0, 1 }, [3] = { 0, 0.44, 0.87, 1 }, [4] = { 0.64, 0.21, 0.93, 1 } }
+function S.ItemIcon(parent, size)
+    local b = S.IconBox(parent, size)
+    b.count = S.Text(b, math.max(8, math.floor((size or 26) * 0.45)), S.TEXT, "OUTLINE")
+    b.count:SetPoint("BOTTOMRIGHT", 0, 1)
+    function b:Set(texture, n, quality)
+        self:SetIcon(texture)
+        self.count:SetText((n and n > 1) and (n > 999 and (math.floor(n / 100) / 10 .. "k") or tostring(n)) or "")
+        S.SetBorder(self, S.QUALITY[quality or 1] or S.BORDER)
+        self:Show()
+    end
+    return b
+end
+
+-- A number with - and + buttons: get() reads it, set(value) writes it; fmt(value) shows it.
+-- stepper.minus, stepper.plus and stepper.value; stepper:Refresh() redraws the number.
+function S.Stepper(parent, get, set, step, min, max, fmt, width)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(width or 110, 28)
+    f.minus = S.Button(f, 28, 28)
+    f.minus:SetPoint("LEFT")
+    f.minus:SetText("-")
+    f.plus = S.Button(f, 28, 28)
+    f.plus:SetPoint("RIGHT")
+    f.plus:SetText("+")
+    f.value = S.Text(f, 12)
+    f.value:SetPoint("LEFT", f.minus, "RIGHT", 2, 0)
+    f.value:SetPoint("RIGHT", f.plus, "LEFT", -2, 0)
+    f.value:SetJustifyH("CENTER")
+    f.value:SetWordWrap(false)
+    function f:Refresh() self.value:SetText((fmt or tostring)(get())) end
+    f.minus:SetScript("OnClick", function() set(math.max(min, get() - step)); f:Refresh() end)
+    f.plus:SetScript("OnClick", function() set(math.min(max, get() + step)); f:Refresh() end)
+    f:Refresh()
+    return f
+end
+
 -- The module icon, from the addon folder.
 function S.Icon(parent, size)
     local t = parent:CreateTexture(nil, "ARTWORK")

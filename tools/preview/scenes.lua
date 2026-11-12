@@ -156,4 +156,42 @@ S.chores = { default = {
     end,
 } }
 
+S.craftprofit = { default = {
+    spec = {
+        items = {
+            [1] = { name = "Silk Cloth", ah = 160, sell = 38, bags = 120, bank = 80, icon = "Interface\\Icons\\INV_Fabric_Silk_01" },
+            [2] = { name = "Bolt of Silk Cloth", ah = 900, sell = 150, icon = "Interface\\Icons\\INV_Fabric_Silk_02" },
+            [3] = { name = "Blue Dye", sell = 12, icon = "Interface\\Icons\\INV_Potion_13" },
+            [4] = { name = "Azure Silk Hood", ah = 1500, sell = 420, quality = 2, icon = "Interface\\Icons\\INV_Helmet_29" },
+            [5] = { name = "Fine Thread", sell = 25, icon = "Interface\\Icons\\INV_Fabric_Linen_02" },
+            [6] = { name = "Silk Headband", ah = 2600, sell = 520, quality = 2, icon = "Interface\\Icons\\INV_Misc_Bandana_03" },
+            [7] = { name = "Pattern: Crimson Silk Vest", sell = 1, icon = "Interface\\Icons\\INV_Scroll_03" },
+        },
+        prof = { name = "Tailoring", skill = 150, cap = 225, recipes = {
+            { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+            { id = 102, name = "Azure Silk Hood", learned = true, diff = 0, grey = 175, out = 4, r = { [2] = 2, [3] = 2 } },
+            { id = 103, name = "Silk Headband", learned = true, diff = 0, grey = 185, out = 6, r = { [2] = 3, [5] = 2 } },
+            { id = 104, name = "Crimson Silk Vest", learned = false, out = 7, r = { [1] = 1 }, source = "Vendor: Somebody" },
+        } },
+        vendor = { { 3, 50 }, { 5, 100 } },
+        trainer = { { "Silk Headband", 300 } },
+    },
+    before = function()
+        GetProfessions = function() return 1, 2 end
+        GetProfessionInfo = function(i)
+            if i == 1 then return "Tailoring", "Interface\\Icons\\Trade_Tailoring", 150, 225 end
+            return "Enchanting", "Interface\\Icons\\Trade_Engraving", 92, 150
+        end
+    end,
+    open = function(ns, W)
+        W.Fire("MERCHANT_SHOW")
+        W.Fire("TRADE_SKILL_SHOW")
+        W.RunTimers()
+        ns.Toggle()
+    end,
+} }
+
+S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(2) end }
+
 return S
