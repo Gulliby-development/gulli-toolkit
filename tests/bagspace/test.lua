@@ -133,6 +133,47 @@ test("what the game did not delete is offered again", function()
     eq(left[1].name, "Torn Hide")
 end)
 
+test("an unticked item stays out of later plans until /gbs reset", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    local plan = ns.Plan(6)
+    eq(plan.items[1].name, "Broken Fang")
+    ns.SetKept(plan.items[1], true)
+    for _, it in ipairs(ns.Plan(6).items) do assert(it.name ~= "Broken Fang") end
+    eq(ns.KeptCount(), 1)
+    SlashCmdList.GULLIBAGSPACE("reset")
+    eq(ns.KeptCount(), 0)
+    eq(ns.Plan(6).items[1].name, "Broken Fang")
+end)
+
+test("always-sell items come first, ticked", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    ns.J.SetAlways(5, true)
+    local plan = ns.Plan(3)
+    local bread
+    for _, it in ipairs(plan.items) do if it.name == "Bread" then bread = it end end
+    assert(bread and bread.checked and bread.tier == 1, "bread is junk now")
+end)
+
+test("an item worth more at the auction house is never ticked", function()
+    Fake({ bags = bags(), items = ITEMS, ah = { [3] = 500 } })
+    local ns = Load()
+    local plan = ns.Plan(7)
+    for _, it in ipairs(plan.items) do
+        if it.name == "Worn Sword" then eq(it.checked, false); eq(it.ah, 500) end
+    end
+end)
+
+test("Free 1 slot takes the cheapest junk in one click", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    W.Fire("UI_ERROR_MESSAGE", 3, "Inventory is full.")
+    local it = ns.FreeOne()
+    eq(it.name, "Broken Fang")
+    eq(W.deleted[1], 1)
+end)
+
 test("nothing in combat", function()
     Fake({ bags = bags(), items = ITEMS, combat = true })
     local ns = Load()
