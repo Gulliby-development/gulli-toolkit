@@ -98,8 +98,24 @@ S.bagspace = { default = {
     }, db = { want = 6 } },
 } }
 
-S.attune = { default = { spec = { name = "Gulliby", done = { [7848] = true, [4182] = true, [4183] = true },
-    active = { [4184] = true } } } }
+local atSpec = { name = "Gulliby", faction = "Horde", party = { "Thorn", "Mirela" }, guild = true,
+    done = { [4903] = true, [4941] = true, [4974] = true, [6566] = true, [6567] = true, [6568] = true, [6569] = true,
+             [6570] = true, [6583] = true, [4742] = true, [3801] = true, [3802] = true },
+    db = { chars = {
+        ["Thorn-Realm"] = { name = "Thorn", class = "WARRIOR", level = 60, faction = "Horde", done = { [4742] = true, [4743] = true }, active = {} },
+        ["Bank-Realm"] = { name = "Bankalt", class = "MAGE", level = 12, faction = "Horde", done = {}, active = {} },
+    } } }
+local function atOthers(ns)
+    ns.Scan()
+    ns.Receive("GulliAT", "S\tONY=14/14,UBRS=R,BRD=R,SCHOLO=3/8,MARA=0/2", "PARTY", "Thorn")
+    ns.Receive("GulliAT", "S\tONY=R,UBRS=R,BRD=R,SCHOLO=R,MARA=R", "GUILD", "Oldguard")
+end
+S.attune = {
+    default = { spec = atSpec, open = function(ns) atOthers(ns); ns.Toggle() end },
+    all = { spec = atSpec, open = function(ns) atOthers(ns); ns.Toggle(); ns.ShowTab(2) end },
+    group = { spec = atSpec, open = function(ns) atOthers(ns); ns.Toggle(); ns.ShowTab(3) end },
+    settings = { spec = atSpec, open = function(ns) atOthers(ns); ns.Toggle(); ns.ShowTab(4) end },
+}
 
 local function xpQuests()
     local quests = { { questID = 1, xp = 2450 }, { questID = 2, xp = 1800 } }
