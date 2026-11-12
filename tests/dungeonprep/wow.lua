@@ -132,7 +132,30 @@ function Fake(spec)
         IsOnQuest = function(id) return W.active[id] == true end,
         GetTitleForQuestID = function() return nil end,
     }
-    C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
+    -- spec.map: { best = uiMapID, maps = { [id] = { name, mapType, parentMapID } }, pos = { x, y } }.
+    local map = spec.map or {}
+    W.pins = {}
+    C_Map = {
+        GetAreaInfo = function(id) return spec.areas and spec.areas[id] end,
+        GetBestMapForUnit = function() return map.best end,
+        GetMapInfo = function(id)
+            local m = map.maps and map.maps[id]
+            return m and { mapID = id, name = m[1], mapType = m[2], parentMapID = m[3] or 0 }
+        end,
+        GetPlayerMapPosition = function()
+            if map.pos then return { GetXY = function() return map.pos[1], map.pos[2] end } end
+        end,
+        GetMapChildrenInfo = function(parent)
+            local out = {}
+            for id, m in pairs(map.maps or {}) do
+                if m[3] == parent then out[#out + 1] = { mapID = id, name = m[1], mapType = m[2] } end
+            end
+            return out
+        end,
+        SetUserWaypoint = function(p) W.pins[#W.pins + 1] = p end,
+    }
+    UiMapPoint = { CreateFromCoordinates = function(id, x, y) return { map = id, x = x, y = y } end }
+    C_SuperTrack = { SetSuperTrackedUserWaypoint = function() end }
     local bags = spec.bags or {}
     C_Container = {
         GetContainerNumSlots = function(b) return bags[b] and bags[b].size or 0 end,

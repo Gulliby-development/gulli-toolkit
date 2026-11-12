@@ -61,6 +61,90 @@ test("where: who starts it and the zone in the game's language", function()
     end
 end)
 
+test("Gnomeregan for a Horde tauren: no Alliance quests, no repeatable or machine turn-ins", function()
+    Fake({ raceID = 6, faction = "Horde" })
+    local ns = Load()
+    local q = ns.Quests("GNOMER", 33)
+    local seen = {}
+    for _, list in ipairs({ q.take, q.later, q.log }) do
+        for _, x in ipairs(list) do seen[x.id] = true end
+    end
+    assert(seen[2841], "Rig Wars is a Horde quest")
+    assert(not seen[2922] and not seen[2929], "Alliance quests are left out")
+    for id, x in pairs(ns.Data.quest) do
+        assert(x[1] ~= "More Sparklematic Action" and x[1] ~= "The Sparklematic 5200!", "machine quest " .. id)
+    end
+end)
+
+test("a quest for one faction only is left out for the other, even with an open race mask", function()
+    Fake({ raceID = 1, faction = "Alliance" })
+    local ns = Load()
+    ns.Data.byDungeon.TEST = { 1 }
+    ns.Data.quest[1] = { "Horde only", 20, 15, 0, 0, "Someone", 1637, {}, {}, {}, "H", 50, 50 }
+    eq(#ns.Quests("TEST", 20).take, 0)
+    ns.Data.quest[1][11] = ""
+    eq(#ns.Quests("TEST", 20).take, 1)
+end)
+
+test("quest and dungeon colours follow the game's difficulty steps", function()
+    Fake({})
+    local ns = Load()
+    eq(ns.GrayLevel(30), 22)
+    eq(ns.Difficulty(35, 30), "IMPOSSIBLE")
+    eq(ns.Difficulty(33, 30), "VERYDIFFICULT")
+    eq(ns.Difficulty(28, 30), "DIFFICULT")
+    eq(ns.Difficulty(23, 30), "STANDARD")
+    eq(ns.Difficulty(22, 30), "TRIVIAL")
+    local d = { min = 29, max = 38 }
+    eq(ns.DungeonDifficulty(d, 25), "IMPOSSIBLE")
+    eq(ns.DungeonDifficulty(d, 28), "VERYDIFFICULT")
+    eq(ns.DungeonDifficulty(d, 30), "DIFFICULT")
+    eq(ns.DungeonDifficulty(d, 36), "STANDARD")
+    eq(ns.DungeonDifficulty(d, 40), "TRIVIAL")
+    for _, x in ipairs(ns.Dungeons(30)) do assert(ns.ICONS[x.key], "an icon for " .. x.key) end
+end)
+
+local MAPS = { [1414] = { "Kalimdor", 2 }, [1415] = { "Eastern Kingdoms", 2 },
+               [1454] = { "Orgrimmar", 3, 1414 }, [1413] = { "The Barrens", 3, 1414 },
+               [1434] = { "Stranglethorn Vale", 3, 1415 } }
+local AREAS = { [1637] = "Orgrimmar", [17] = "The Barrens", [33] = "Stranglethorn Vale" }
+
+test("where the player is: zone, place on its map, continent", function()
+    Fake({ map = { best = 1454, maps = MAPS, pos = { 0.5, 0.25 } } })
+    local ns = Load()
+    local h = ns.Here()
+    eq(h.zone, "Orgrimmar"); eq(h.x, 50); eq(h.y, 25); eq(h.kalimdor, true)
+    Fake({})
+    eq(Load().Here().zone, nil, "no map: nothing known")
+end)
+
+test("the way: your zone nearest first, then the same continent, the other one, inside last", function()
+    Fake({ areas = AREAS })
+    local ns = Load()
+    local function q(id, who, area, x, y) return { id = id, who = who, area = area, x = x, y = y } end
+    local take = { q(1, "Scooty", 33, 27, 77), q(2, "Nogg", 1637, 76, 25), q(3, "Sovik", 1637, 75, 25),
+                   q(4, "Far", 1637, 10, 10), q(5, "Barrens guy", 17, 50, 50), q(6, "Ring", 0, 0, 0) }
+    local stops = ns.Route(take, { zone = "Orgrimmar", x = 12, y = 12, kalimdor = true })
+    local names = {}
+    for _, s in ipairs(stops) do names[#names + 1] = s.inside and "inside" or s.who end
+    eq(table.concat(names, ","), "Far,Sovik,Nogg,Barrens guy,Scooty,inside")
+    eq(stops[1].here, true); eq(stops[4].here, false)
+    local two = 0
+    for _, s in ipairs(ns.Route({ q(1, "Nogg", 1637, 76, 25), q(2, "Nogg", 1637, 76, 25) }, {})) do
+        two = two + #s.quests
+    end
+    eq(two, 2, "one stop for two quests from the same NPC")
+end)
+
+test("a click on a stop sets a map pin in its zone", function()
+    local W = Fake({ areas = AREAS, map = { maps = MAPS } })
+    local ns = Load()
+    local stop = ns.Route({ { id = 1, who = "Nogg", area = 1637, x = 76, y = 25 } }, {})[1]
+    eq(ns.SetPin(stop), true)
+    eq(W.pins[1].map, 1454); eq(W.pins[1].x, 0.76)
+    eq(ns.SetPin({ inside = true, quests = {} }), false)
+end)
+
 test("checklist: gear, bags, food and drink, hearthstone", function()
     Fake({ durability = { [1] = { 30, 100 }, [5] = { 90, 100 } },
            bags = { [0] = { size = 16, slots = { [1] = { 4540, 12 }, [2] = { 25, 1 } } } },
@@ -74,10 +158,12 @@ test("checklist: gear, bags, food and drink, hearthstone", function()
 end)
 
 test("the window and /gdp <dungeon>", function()
-    Fake({ level = 30 })
+    Fake({ level = 30, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
     local ns = Load()
     SlashCmdList.GULLIDUNGEONPREP("sm")
     eq(ns.selected, "SM")
+    ns.Refresh()
+    SlashCmdList.GULLIDUNGEONPREP("gnomer")
     ns.Refresh()
 end)
 

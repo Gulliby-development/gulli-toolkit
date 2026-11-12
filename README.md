@@ -29,7 +29,7 @@
 | [Instance Limit](docs/instancelimit/README.md) | Counts your dungeon entries this hour and today, and shows when the next one is free. | `/gil` |
 | [Attunements](docs/attune/README.md) | Raid attunements and dungeon keys for all your characters, with the next step and where it starts. | `/gat` |
 | [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
-| [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests you have and can still take, plus a checklist before you go. | `/gdp` |
+| [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests for your faction, a way to pick them up from where you stand, and a checklist before you go. | `/gdp` |
 | [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons, a group message from a quest, whispers you missed. | `/gqk` |
 | [Chores](docs/chores/README.md) | A to-do list for each character: cooldowns, mail, trainer, rested XP, repairs. | `/gch` |
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |

@@ -232,4 +232,14 @@ S.mail = { panel = {
     crop = "GulliMailPanel",
 } }
 
+-- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.
+S.dungeonprep = { default = {
+    spec = { level = 33, raceID = 6, faction = "Horde",
+             areas = { [1637] = "Orgrimmar", [33] = "Stranglethorn Vale", [721] = "Gnomeregan", [1497] = "Undercity" },
+             map = { best = 1454, pos = { 0.70, 0.30 },
+                     maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } },
+             bags = { [0] = { size = 16, slots = { [1] = { 4540, 4 } } } } },
+    open = function(ns) ns.selected = "GNOMER"; ns.Toggle() end,
+} }
+
 return S
