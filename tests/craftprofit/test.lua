@@ -1233,4 +1233,24 @@ test("the stop card shows two rows without a scroll bar", function()
     assert(n.ui.detailH - 36 - 12 >= 2 * 28, "stop card body: " .. (n.ui.detailH - 48))
 end)
 
+test("an event the client does not know never stops the others from registering", function()
+    -- the Forever client has no TRADE_SKILL_UPDATE or AUCTION_ITEM_LIST_UPDATE
+    W.unknownEvents = { TRADE_SKILL_UPDATE = true, AUCTION_ITEM_LIST_UPDATE = true }
+    local ok, err = pcall(game)
+    W.unknownEvents = nil
+    assert(ok, err)
+    local f
+    for _, x in ipairs(W.frames) do if rawget(x, "_events").MERCHANT_SHOW then f = x end end
+    assert(f, "MERCHANT_SHOW registered")
+    local ev = rawget(f, "_events")
+    assert(ev.AUCTION_HOUSE_SHOW and ev.COMMODITY_SEARCH_RESULTS_UPDATED and ev.TRAINER_SHOW)
+    assert(not ev.TRADE_SKILL_UPDATE)
+    -- with C_EventUtils the unknown names are skipped before the call
+    C_EventUtils = { IsEventValid = function(e) return e ~= "TRADE_SKILL_UPDATE" end }
+    W.unknownEvents = { TRADE_SKILL_UPDATE = true }
+    ok, err = pcall(game)
+    W.unknownEvents, C_EventUtils = nil, nil
+    assert(ok, err)
+end)
+
 W.finish()

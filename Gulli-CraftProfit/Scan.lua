@@ -565,6 +565,15 @@ end
 
 -- ---------- events ----------
 
+-- Forever lacks some classic events (TRADE_SKILL_UPDATE, AUCTION_ITEM_LIST_UPDATE): an unknown
+-- name must not stop the rest of the list.
+function ns.Listen(frame, events)
+    local valid = C_EventUtils and C_EventUtils.IsEventValid
+    for _, e in ipairs(events) do
+        if not valid or valid(e) then pcall(frame.RegisterEvent, frame, e) end
+    end
+end
+
 local pending = false
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -583,12 +592,10 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.char.profs = ns.char.profs or {}
         ns.char.log = ns.char.log or {}
         for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
-        for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
-                             "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
-                             "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
-                             "AUCTION_ITEM_LIST_UPDATE" }) do
-            self:RegisterEvent(e)
-        end
+        ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
+                          "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
+                          "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
+                          "AUCTION_ITEM_LIST_UPDATE" })
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
             pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
