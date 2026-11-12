@@ -291,4 +291,18 @@ S.reminders = {
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
 
+S.instancelimit = { default = { spec = { name = "Gulliby" },
+    open = function(ns, W)
+        local now = W.now
+        ns.db.entries = {
+            { t = now - 3000, name = "The Deadmines", char = "Gulliby", class = "MAGE", out = now - 1500, secs = 1500, xp = 4200, money = 13250, kills = 41 },
+            { t = now - 1200, name = "Wailing Caverns", char = "Gulliby", class = "MAGE", out = now - 200, secs = 1000, xp = 3100, money = 870, kills = 28 },
+            { t = now - 900, name = "Shadowfang Keep", char = "Thorn", class = "WARRIOR", out = now - 100, secs = 800, xp = 2500, kills = 30 },
+            { t = now - 60, name = "Blackfathom Deeps", char = "Gulliby", class = "MAGE" },
+        }
+        ns.group = { Bob = { leftHour = 1, leftDay = 20, wait = 0, t = now } }
+        ns.Toggle()
+    end,
+}, settings = { open = function(ns) ns.ShowPage(2) end } }
+
 return S
