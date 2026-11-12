@@ -117,17 +117,25 @@ S.partyquests = { default = { spec = { level = 17,
     party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
 } } }
 
-S.bulletin = { default = { spec = { level = 56 },
+S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "PRIEST", P3 = "MAGE", P4 = "ROGUE" } },
     open = function(ns, W)
         local msgs = {
             { "LF2M Deadmines need tank and heal", "Thrall" }, { "Priest LFG Scholo or Strat", "Anduin" },
-            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" },
-            { "WTS [Linen Cloth] 20x 1g", "Gelbin" },
+            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" }, { "LF1M Strat UD need heals", "Sylvanas" },
+            { "WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g", "Gelbin" },
         }
-        for _, m in ipairs(msgs) do W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade") end
+        for i, m in ipairs(msgs) do
+            W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade", "", "", 0, 2, "Trade", nil, i, "P" .. i)
+        end
         ns.Toggle()
     end,
-}, setup = { spec = { level = 56 },
+}, trade = { spec = { level = 56 },
+    open = function(ns, W)
+        ns.Add("WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g, |cff1eff00|Hitem:7909::::::::|h[Aquamarine]|h|r 3g", "Gelbin")
+        ns.Add("WTS [Arcanite Bar] cheap, pst", "Rexxar")
+        ns.ShowTab(2)
+    end,
+}, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
     open = function(ns)
         ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
         ns.ShowTab(7)

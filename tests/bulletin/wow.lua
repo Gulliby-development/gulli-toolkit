@@ -126,6 +126,13 @@ function Fake(spec)
     C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
     C_PartyInfo = { InviteUnit = function(n) W.invited[#W.invited + 1] = n end }
     ChatFrame_OpenChat = function(t) W.opened[#W.opened + 1] = t end
+    W.said = {}
+    SendChatMessage = function(msg, kind, _, target) W.said[#W.said + 1] = kind .. ":" .. tostring(target) .. ":" .. msg end
+    GetPlayerInfoByGUID = function(guid) if spec.guids and spec.guids[guid] then return "Priest", spec.guids[guid] end end
+    GetChannelList = function() return unpack(spec.channels or { 1, "General", false, 2, "Trade", false, 4, "LookingForGroup", false }) end
+    GetItemIcon = function(id) return "icon" .. id end
+    UnitClass = function() return "Priest", "PRIEST" end
+    GulliQuickChat = spec.quickchat
     GulliBulletinDB = spec.db
     return W
 end
