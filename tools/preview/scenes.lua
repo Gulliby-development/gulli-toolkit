@@ -72,4 +72,28 @@ S.loot = { default = {
     end,
 } }
 
+S.partyquests = { default = { spec = {
+    quests = {
+        { title = "Westfall", isHeader = true },
+        { title = "The Defias Brotherhood", questID = 155, level = 18 },
+        { title = "Red Leather Bandanas", questID = 153, level = 15 },
+        { title = "Patrolling Westfall", questID = 102, level = 14 },
+        { title = "Redridge Mountains", isHeader = true },
+        { title = "Blackrock Menace", questID = 20, level = 21 },
+    },
+    party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
+} } }
+
+S.bulletin = { default = {
+    open = function(ns, W)
+        local msgs = {
+            { "LF2M Deadmines need tank and heal", "Thrall" }, { "Priest LFG Scholo or Strat", "Anduin" },
+            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" },
+            { "WTS [Linen Cloth] 20x 1g", "Gelbin" },
+        }
+        for _, m in ipairs(msgs) do W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade") end
+        ns.Toggle()
+    end,
+} }
+
 return S
