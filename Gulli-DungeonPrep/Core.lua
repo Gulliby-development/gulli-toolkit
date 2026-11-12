@@ -337,6 +337,18 @@ function ns.Checklist()
     local left = (start > 0 and duration > 0) and math.ceil(start + duration - GetTime()) or 0
     out[#out + 1] = { key = "HEARTH", ok = left <= 0,
                       text = left > 0 and L.CHECK_HEARTH_CD:format(math.ceil(left / 60)) or L.CHECK_HEARTH }
+
+    -- Gulli Restock, when it runs: what its keep list misses.
+    if GulliRestock and GulliRestock.Missing then
+        local miss = GulliRestock.Missing() or {}
+        local names = {}
+        for i, m in ipairs(miss) do
+            if i <= 2 then names[#names + 1] = m.name .. " " .. m.have .. "/" .. m.want end
+        end
+        if #miss > 2 then names[#names + 1] = "..." end
+        out[#out + 1] = { key = "RESTOCK", ok = #miss == 0,
+                          text = #miss == 0 and L.CHECK_RESTOCK_OK or L.CHECK_RESTOCK:format(table.concat(names, ", ")) }
+    end
     return out
 end
 

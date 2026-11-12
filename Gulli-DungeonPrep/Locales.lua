@@ -35,6 +35,8 @@ T.en = {
     DIFF_DIFFICULT = "Right for your level",
     DIFF_STANDARD = "Easy",
     DIFF_TRIVIAL = "Gray: little experience",
+    CHECK_RESTOCK_OK = "Restock list complete",
+    CHECK_RESTOCK = "Short: %s",
 }
 
 T.de = {
@@ -63,6 +65,8 @@ T.de = {
     DIFF_DIFFICULT = "Passt zu deiner Stufe",
     DIFF_STANDARD = "Leicht",
     DIFF_TRIVIAL = "Grau: wenig Erfahrung",
+    CHECK_RESTOCK_OK = "Vorratsliste vollständig",
+    CHECK_RESTOCK = "Fehlt: %s",
 }
 
 T.es = {
@@ -91,6 +95,8 @@ T.es = {
     DIFF_DIFFICULT = "Para tu nivel",
     DIFF_STANDARD = "Fácil",
     DIFF_TRIVIAL = "Gris: poca experiencia",
+    CHECK_RESTOCK_OK = "Lista de reposición completa",
+    CHECK_RESTOCK = "Falta: %s",
 }
 
 T.fr = {
@@ -119,6 +125,8 @@ T.fr = {
     DIFF_DIFFICULT = "À votre niveau",
     DIFF_STANDARD = "Facile",
     DIFF_TRIVIAL = "Grise : peu d'expérience",
+    CHECK_RESTOCK_OK = "Liste de réassort complète",
+    CHECK_RESTOCK = "Manque : %s",
 }
 
 T.pl = {
@@ -147,6 +155,8 @@ T.pl = {
     DIFF_DIFFICULT = "Na twój poziom",
     DIFF_STANDARD = "Łatwe",
     DIFF_TRIVIAL = "Szare: mało doświadczenia",
+    CHECK_RESTOCK_OK = "Lista zapasów pełna",
+    CHECK_RESTOCK = "Brakuje: %s",
 }
 
 T.pt = {
@@ -175,6 +185,8 @@ T.pt = {
     DIFF_DIFFICULT = "Para o seu nível",
     DIFF_STANDARD = "Fácil",
     DIFF_TRIVIAL = "Cinza: pouca experiência",
+    CHECK_RESTOCK_OK = "Lista de reposição completa",
+    CHECK_RESTOCK = "Falta: %s",
 }
 
 T.ru = {
@@ -203,6 +215,8 @@ T.ru = {
     DIFF_DIFFICULT = "По вашему уровню",
     DIFF_STANDARD = "Легко",
     DIFF_TRIVIAL = "Серый: мало опыта",
+    CHECK_RESTOCK_OK = "Запасы в норме",
+    CHECK_RESTOCK = "Не хватает: %s",
 }
 
 T.zh = {
@@ -231,6 +245,8 @@ T.zh = {
     DIFF_DIFFICULT = "适合你的等级",
     DIFF_STANDARD = "容易",
     DIFF_TRIVIAL = "灰色：经验很少",
+    CHECK_RESTOCK_OK = "补货清单已齐",
+    CHECK_RESTOCK = "缺少:%s",
 }
 
 ns.T = T
