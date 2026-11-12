@@ -201,4 +201,18 @@ test("the hub gets a summary and a reset", function()
     assert(#got.options <= 6)
 end)
 
+test("paused from the hub it answers no whisper", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Load()
+    GulliToolkit = nil
+    reg.pause(true)
+    W.Fire("CHAT_MSG_WHISPER", "inv", "Bob")
+    eq(#W.did, 0, "paused")
+    reg.pause(false)
+    W.Fire("CHAT_MSG_WHISPER", "inv", "Bob")
+    eq(W.did[1], "invite:Bob", "started again")
+end)
+
 W.finish()

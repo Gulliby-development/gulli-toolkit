@@ -558,9 +558,11 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("MAIL_CLOSED")
         self:RegisterEvent("MAIL_INBOX_UPDATE")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
-        if SendMail then hooksecurefunc("SendMail", function(name) ns.Remember(name) end) end
+        if SendMail then hooksecurefunc("SendMail", function(name) if not ns.paused then ns.Remember(name) end end) end
         return
     end
+    -- Paused from the hub: only the closing events still run, so nothing stays open.
+    if ns.paused and not event:find("_CLOSED$") then return end
     if event == "PLAYER_LOGIN" then
         local r, faction = realm(), UnitFactionGroup("player") or "?"
         ns.db.alts[r] = ns.db.alts[r] or {}
@@ -607,6 +609,15 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on)
+            ns.paused = on
+            if on then
+                ns.taking = nil
+                if ns.HidePanel then ns.HidePanel() end
+            elseif ns.open and ns.db and ns.db.panel and ns.ShowPanel then
+                ns.ShowPanel()
+            end
+        end,
         key = "Mail",
         icon = "Interface\\AddOns\\Gulli-Mail\\icon",
         slash = "/gml",

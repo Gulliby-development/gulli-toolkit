@@ -63,6 +63,51 @@ test("a registered module is ready, a disabled one is off, an unknown module is 
     eq(r.Zeta.title, "Gulli-Zeta", "the title from the TOC without colour codes")
 end)
 
+test("a module that can pause stops and starts at once; not loading it waits for a reload", function()
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    local calls = {}
+    GulliToolkit.Register({ key = "Loot", open = function() end, summary = function() return "12 rules" end,
+                            pause = function(on) calls[#calls + 1] = on end })
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end })
+    local r = byKey(ns.List())
+    eq(r.Loot.canPause, true)
+    eq(r.QuestCleaner.canPause, false, "a module without pause keeps the old switch")
+    eq(ns.Switch(r.Loot, false), true)
+    eq(calls[1], true, "paused at once")
+    eq(W.addons[2].enabled, true, "still loaded in the game")
+    r = byKey(ns.List())
+    eq(r.Loot.on, false, "the switch shows off")
+    eq(r.Loot.paused, true)
+    eq(r.Loot.state, "ready")
+    eq(ns.NeedsReload(), false, "a pause needs no reload")
+    eq(#ns.Summaries(), 0, "a paused module says nothing on the home page")
+    eq(#ns.Overview().paused, 1)
+    eq(GulliToolkit.IsPaused("Loot"), true)
+    ns.Switch(r.Loot, true)
+    eq(calls[2], false, "started again at once")
+    eq(byKey(ns.List()).Loot.on, true)
+    -- The pause is saved: after a reload the module pauses as soon as it registers.
+    ns.Switch(byKey(ns.List()).Loot, false)
+    local saved = GulliToolkitDB
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    GulliToolkitDB = saved
+    ns = Load()
+    local again
+    GulliToolkit.Register({ key = "Loot", open = function() end, pause = function(on) again = on end })
+    eq(again, true, "paused again after the reload")
+    -- Not loading it at all is the game's list and waits for a reload.
+    ns.SetLoaded(byKey(ns.List()).Loot, false)
+    eq(W.addons[2].enabled, false)
+    eq(byKey(ns.List()).Loot.state, "reload")
+    ns.SetLoaded(byKey(ns.List()).Loot, true)
+    eq(GulliToolkit.IsPaused("Loot"), false, "loading it again ends the pause")
+    -- A module without pause still goes through the game's list.
+    ns.Switch(byKey(ns.List()).QuestCleaner, false)
+    eq(W.addons[1].enabled, false)
+    eq(ns.NeedsReload(), true)
+end)
+
 test("switching a module waits for a reload", function()
     Fake({ addons = { QC, { name = "Gulli-MobFinder", enabled = false, meta = { ["X-Gulli-Module"] = "MobFinder" } } } })
     local ns = Load()
