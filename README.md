@@ -45,20 +45,20 @@
 
 ## Features
 
-- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of every module, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with a small on/off switch.
+- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of every module, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts). A grey name means the module is off or paused.
 - **Click a module, see it.** The module's own window opens in the middle of `/gulli` at once. Next to a small window you see what the module does, its command, its version and **Reset to defaults**. **<** goes back to **Home**, **Open in its own window** takes it out. The toolkit opens again where you left it.
 - **Home: everything at a glance.** Short news from every module that runs (XP to the next level, dungeon entries left, groups on the board, what waits on your other characters), a **Modules** card (how many are on, which wait for a reload, which the game does not load, which were updated, and which use the most memory), the **Recent** messages with how long ago they came (click one to open its module), **Quick setup** and the commands of your modules.
-- **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off. Each group in the list also has one switch for all its modules.
+- **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off.
 - **One look on the screen.** Buff buttons, reminders, counters and notices of every module share one look: game icons with a coloured ring (red pulses: do it now, yellow: runs out soon), and notice cards that stack at the top of the screen instead of covering each other.
 - **Move frames.** **Move frames** on the home page (or `/gulli move`) unlocks the bars and panels of every module at once, such as the XP bar and the buff button, so you can drag them. A grid and a **Lock frames** bar show while it is on; right click puts a frame back. Press it again to lock them.
 - **Take your settings along.** **Export / import** gives one line of text with every Gulli setting. Paste it on another computer, phone or handheld and press **Import**.
 - **A button on the minimap.** The toolkit icon sits on the edge of the minimap: click it to open `/gulli`, drag it to move it around the minimap. Turn off **Minimap button** in `/gulli` (or type `/gulli minimap`) to hide it.
 - **Search.** Type in the search box to find a module by name, what it does, its command or one of its settings. **Enter** opens the first one found.
 - **Updates.** A dot on a module's icon means it was updated since you last opened it. When someone in your group has a newer version, the toolkit tells you once in chat.
-- **Switch off what you do not need.** Flip a module's switch in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
+- **Switch off what you do not need, at once.** Open a module in `/gulli` and flip the switch at the top right. Merchant, Loot, Auto Quest, Social, Mail and Restock stop and start right away, with no reload. To free its memory too, press **Do not load in the game** on the module's card and reload. Other modules still switch after a reload; they get the instant switch step by step. Modules that act on their own also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
-- **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
+- **Protected items.** On the home page of `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
 - **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
 - **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
@@ -79,7 +79,7 @@
 
 1. Type `/gulli`, or click the toolkit icon on the minimap.
 2. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
-3. To switch a module off, flip its switch in the list and press **Reload**.
+3. To switch a module off, open it and flip the switch at the top right.
 
 `/gulli help` lists every command of the toolkit and of the modules you have.
 
@@ -105,7 +105,7 @@ The toolkit knows about it, but it is not in your AddOns folder. Install it with
 <details>
 <summary><b>I switched a module off, but it is still there</b></summary>
 
-The game turns addons on and off only when the interface loads. Press **Reload** in the toolkit window, or type `/reload`.
+A module that can pause stops at once. Any other one, and **Do not load in the game**, wait for the interface to load again: press **Reload** on the module's page or in the **Modules** card on the home page, or type `/reload`.
 </details>
 
 <details>
@@ -134,12 +134,13 @@ if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({ key = "QuestCleaner", open = function() ns.Toggle() end,
                             icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon", slash = "/gqc",
                             -- optional: a hub group, switches the search finds, the window for the
-                            -- hub, a line for the home page, moving frames and defaults
+                            -- hub, a line for the home page, moving frames, defaults and the pause
                             category = "Quests",
                             options = { { label = "...", tip = "...", get = function() ... end, set = function(on) ... end } },
                             window = function() return ns.Window() end,
                             summary = function() return "3 quests to abandon" end,
-                            move = function(on) end, reset = function() end })
+                            move = function(on) end, reset = function() end,
+                            pause = function(on) end })
 end
 ```
 

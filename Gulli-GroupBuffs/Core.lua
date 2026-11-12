@@ -323,6 +323,113 @@ local function weaponMissing(low)
     return (ms or 0) / 1000 <= low
 end
 
+---- Camp Benefits and other auras that block a weaker buff ------------------------
+
+-- Forever's camp gives stats in one aura (spell CAMP_SPELL, lines such as "First Aid Kit:
+-- Stamina increased by 34."). The game refuses a weaker buff of the same stat ("A more
+-- powerful spell is already active"), so such a buff is not missing.
+ns.CAMP_SPELL = 1229741
+-- Rank 1 id -> the stat it raises (1 Strength .. 5 Spirit) and { spell id, amount, level } per rank.
+ns.STAT_BUFFS = {
+    [1243] = { stat = 3, ranks = { { 1243, 3, 1 }, { 1244, 8, 12 }, { 1245, 20, 24 }, { 2791, 32, 36 },
+                                   { 10937, 43, 48 }, { 10938, 54, 60 } } },       -- Fortitude
+    [21562] = { stat = 3, ranks = { { 21562, 43, 48 }, { 21564, 54, 60 } } },   -- Prayer of Fortitude
+    [14752] = { stat = 5, ranks = { { 14752, 17, 30 }, { 14818, 23, 40 }, { 14819, 33, 50 },
+                                    { 27841, 40, 60 } } },                        -- Divine Spirit
+    [27681] = { stat = 5, ranks = { { 27681, 40, 60 } } },                      -- Prayer of Spirit
+    [1459] = { stat = 4, ranks = { { 1459, 2, 1 }, { 1460, 7, 14 }, { 1461, 15, 28 }, { 10156, 22, 42 },
+                                   { 10157, 31, 56 } } },                         -- Arcane Intellect
+    [23028] = { stat = 4, ranks = { { 23028, 31, 56 } } },                      -- Arcane Brilliance
+}
+local STAT_EN = { "Strength", "Agility", "Stamina", "Intellect", "Spirit" }
+local BLOCK_SECONDS = 600
+
+local function statOf(text)
+    local low = text:lower()
+    for i = 1, 5 do
+        for _, n in ipairs({ _G["SPELL_STAT" .. i .. "_NAME"], STAT_EN[i] }) do
+            if type(n) == "string" and n ~= "" and (text:find(n, 1, true) or low:find(n:lower(), 1, true)) then
+                return i
+            end
+        end
+    end
+end
+
+-- The unit's camp aura: stat -> amount, and the seconds it has left; nil without one.
+function ns.CampStats(unit)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
+    for i = 1, 40 do
+        local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
+        if not ok or not a then return nil end
+        if not secret(a.spellId) and a.spellId == ns.CAMP_SPELL then
+            local e = a.expirationTime
+            local left = (e and not secret(e) and e > 0) and (e - now()) or math.huge
+            local stats = {}
+            local tip = C_TooltipInfo and C_TooltipInfo.GetUnitBuffByAuraInstanceID and a.auraInstanceID
+                and C_TooltipInfo.GetUnitBuffByAuraInstanceID(unit, a.auraInstanceID)
+            for _, line in ipairs(tip and tip.lines or {}) do
+                local t = line.leftText
+                if type(t) == "string" and not secret(t) then
+                    local s, n = statOf(t), nil
+                    for d in t:gmatch("%d+") do n = tonumber(d) end
+                    if s and n then stats[s] = math.max(stats[s] or 0, n) end
+                end
+            end
+            return stats, left
+        end
+    end
+end
+
+-- What the buff of this rank 1 id gives: the best rank the player knows, else (asking
+-- someone else) the best rank for the player's level.
+function ns.BuffAmount(id)
+    local e = ns.STAT_BUFFS[id]
+    if not e then return nil end
+    local best
+    for _, r in ipairs(e.ranks) do
+        if IsPlayerSpell and IsPlayerSpell(r[1]) then best = r[2] end
+    end
+    if not best then
+        local level = UnitLevel and UnitLevel("player") or 60
+        for _, r in ipairs(e.ranks) do
+            if r[3] <= level then best = r[2] end
+        end
+    end
+    return best, e.stat
+end
+
+-- True when the unit already has an equal or stronger effect of this buff's stat.
+function ns.Covered(unit, id, low)
+    local amount, stat = ns.BuffAmount(id)
+    if not amount then return false end
+    local stats, left = ns.CampStats(unit)
+    return stats ~= nil and (stats[stat] or 0) >= amount and left > (low or 0)
+end
+
+-- A buff the game refused on a unit ("A more powerful spell is already active") is left
+-- alone while the camp aura lasts, or BLOCK_SECONDS when it is something else.
+local bounced = {}
+local function bounceKey(unit, spell)
+    local g = UnitGUID and UnitGUID(unit)
+    if not g or secret(g) then g = UnitName and UnitName(unit) end
+    return g and spell and (tostring(g) .. "|" .. spell)
+end
+
+function ns.Bounced(unit, spell)
+    local k = unit and bounceKey(unit, spell)
+    if not k then return end
+    local _, left = ns.CampStats(unit)
+    bounced[k] = now() + ((left and left < math.huge) and left or BLOCK_SECONDS)
+end
+
+function ns.IsBounced(unit, spell)
+    local k = bounceKey(unit, spell)
+    local t = k and bounced[k]
+    if t and t > now() then return true end
+    if k then bounced[k] = nil end
+    return false
+end
+
 ---- Units skipped after a failed cast -------------------------------------------
 
 local skipped = {}
@@ -380,14 +487,17 @@ function ns.Plan()
                 for _, fam in ipairs(fams) do
                     if fam.who == "blessing" then
                         local opt = not u.pet and fam.options[ns.BlessingFor(u.unit) or ""]
-                        if opt and not present(opt.names, auras, low) then
+                        if opt and not present(opt.names, auras, low) and not ns.IsBounced(u.unit, opt.name) then
                             need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
                                                 spell = opt.name, id = opt.id, names = opt.names }
                         end
                     elseif applies(fam, u.unit, ctx, u.pet) then
                         local missing
                         if fam.weapon then missing = weaponMissing(low)
-                        else missing = not present(fam.names, auras, low) end
+                        else
+                            missing = not present(fam.names, auras, low) and not ns.IsBounced(u.unit, fam.name)
+                                and not ns.Covered(u.unit, fam.id, low)
+                        end
                         if missing then
                             need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
                                                 spell = fam.name, id = fam.id, fam = fam,

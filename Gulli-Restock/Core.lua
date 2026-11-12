@@ -595,11 +595,13 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("PLAYER_LOGOUT")
         if MerchantItemButton_OnModifiedClick then
             hooksecurefunc("MerchantItemButton_OnModifiedClick", function(btn)
-                if IsAltKeyDown and IsAltKeyDown() and ns.ShowQuick then ns.ShowQuick(btn and btn.GetID and btn:GetID()) end
+                if not ns.paused and IsAltKeyDown and IsAltKeyDown() and ns.ShowQuick then ns.ShowQuick(btn and btn.GetID and btn:GetID()) end
             end)
         end
         return
     end
+    -- Paused from the hub: only the closing events still run, so nothing stays open.
+    if ns.paused and not event:find("_CLOSED$") then return end
     if event == "MERCHANT_SHOW" then
         ns.atVendor = true
         if ns.Refresh then ns.Refresh() end
@@ -681,6 +683,14 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on)
+            ns.paused = on
+            if on then
+                if ns.HidePlan then ns.HidePlan() end
+                if ns.HideQuick then ns.HideQuick() end
+                if ns.HideBank then ns.HideBank() end
+            end
+        end,
         key = "Restock",
         icon = "Interface\\AddOns\\Gulli-Restock\\icon",
         slash = "/grs",

@@ -67,6 +67,9 @@ On a gamepad or a phone you can also put `/click GulliGroupBuffsButton` in a mac
 
 ## FAQ
 
+**I have Camp Benefits. Why does it not ask for Fortitude?**
+The camp gives stats such as Stamina. When the camp gives as much as your buff or more, the game does not let you cast the weaker buff, so it is not shown. When the game refuses a buff as weaker for any other reason, it is not asked for again while that effect lasts (ten minutes at most).
+
 <details>
 <summary><b>Why does it skip a buff in combat?</b></summary>
 

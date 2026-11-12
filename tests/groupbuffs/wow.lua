@@ -89,9 +89,20 @@ function Fake(spec)
             local name = names[i]
             if not name then return nil end
             local left = x.auras[name]
-            return { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
+            local a = { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
+            if name == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
+            return a
         end,
     }
+    -- The camp aura's tooltip: W.camp[unit] = { "First Aid Kit: Stamina increased by 34." }.
+    W.camp = spec.camp or {}
+    C_TooltipInfo = { GetUnitBuffByAuraInstanceID = function(unit)
+        local lines = {}
+        for _, t in ipairs(W.camp[unit] or {}) do lines[#lines + 1] = { leftText = t } end
+        return { lines = lines }
+    end }
+    SPELL_STAT3_NAME, SPELL_STAT5_NAME = "Stamina", "Spirit"
+    SPELL_FAILED_AURA_BOUNCED = "A more powerful spell is already active"
     issecretvalue = function(v) return v == W.SECRET end
 
     UnitExists = function(unit) return u(unit) ~= nil end

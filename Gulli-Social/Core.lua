@@ -285,7 +285,7 @@ function ns.IsSpam(msg, sender)
 end
 
 local function spamFilter(_, _, msg, sender)
-    if ns.db and ns.IsSpam(msg, sender) then
+    if ns.db and not ns.paused and ns.IsSpam(msg, sender) then
         if ns.lastSpam ~= sender then
             ns.lastSpam = sender
             ns.Log("spam", sender)
@@ -330,6 +330,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if ChatFrame_AddMessageEventFilter then ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", spamFilter) end
         return
     end
+    if ns.paused then return end
     if event == "CHAT_MSG_WHISPER" then
         ns.OnWhisper(a1, a2)
     elseif event == "PARTY_INVITE_REQUEST" then
@@ -383,6 +384,7 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on) ns.paused = on end,
         key = "Social",
         icon = "Interface\\AddOns\\Gulli-Social\\icon",
         slash = "/gso",

@@ -201,4 +201,18 @@ test("the window draws every tab", function()
     for i = 1, 3 do ns.ShowTab(i) end
 end)
 
+test("paused from the hub it takes no quest", function()
+    Fake({ npc = { active = { { 6, true } }, available = {} } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Load()
+    GulliToolkit = nil
+    reg.pause(true)
+    W.Fire("GOSSIP_SHOW")
+    eq(#W.did, 0, "paused")
+    reg.pause(false)
+    W.Fire("GOSSIP_SHOW")
+    eq(W.did[1], "active:6", "started again")
+end)
+
 W.finish()

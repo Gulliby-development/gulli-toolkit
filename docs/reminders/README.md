@@ -52,6 +52,9 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 
 ## FAQ
 
+**I have Camp Benefits. Why does it not ask for Fortitude?**
+The camp gives stats such as Stamina. When the camp gives as much as your buff or more, the game does not let you cast the weaker buff, so it is not shown. When the game refuses a buff as weaker for any other reason, it is not asked for again while that effect lasts (ten minutes at most).
+
 <details>
 <summary><b>I see no icons. Why?</b></summary>
 

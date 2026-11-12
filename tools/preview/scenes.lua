@@ -19,7 +19,9 @@ S.toolkit = { default = {
         GulliToolkit.Register({ key = "Loot", open = function() end, slash = "/glt",
             icon = "Interface\\AddOns\\Gulli-Loot\\icon", summary = function() return "12 item rules" end })
         for _, k in ipairs({ "QuestCleaner", "BagSpace", "Merchant", "Bulletin", "Attune", "XP", "Restock", "Mail" }) do
+            GulliToolkitDB.paused = { Restock = true }
             GulliToolkit.Register({ key = k, open = function() end, slash = "/g" .. k:sub(1, 2):lower(),
+                pause = function() end,
                 icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon",
                 options = k == "QuestCleaner" and {
                     { label = "Keep class quests", get = function() return true end, set = function() end,

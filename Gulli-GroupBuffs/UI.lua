@@ -83,6 +83,7 @@ local function now() return GetTime and GetTime() or 0 end
 -- Remembers where a press went, so a failed cast can skip that unit for a while.
 local function noteCast(self)
     lastCast.unit, lastCast.t = self:GetAttribute("unit"), now()
+    lastCast.spell = self:GetAttribute("spell")
 end
 
 local function savePoint()
@@ -348,6 +349,12 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
         ns.Refresh()
     elseif event == "UI_ERROR_MESSAGE" then
         local msg = ...
+        -- A stronger buff is already on (Camp Benefits and the like): not that buff there for now.
+        if lastCast.unit and lastCast.spell and now() - (lastCast.t or 0) < 1.5
+            and msg == _G.SPELL_FAILED_AURA_BOUNCED then
+            ns.Bounced(lastCast.unit, lastCast.spell)
+            dirty = true
+        end
         if lastCast.unit and lastCast.unit ~= "player" and now() - (lastCast.t or 0) < 1.5
             and type(msg) == "string" and failMessages()[msg] then
             ns.Skip(lastCast.unit)

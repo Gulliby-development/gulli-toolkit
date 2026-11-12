@@ -170,13 +170,15 @@ end
 -- The Sell junk button on the vendor's window, for a visit skipped with Shift or with
 -- selling switched off.
 function ns.ShowVendorButton()
-    if vendorBtn or not MerchantFrame then if vendorBtn then ns.Refresh() end return end
+    if vendorBtn or not MerchantFrame then if vendorBtn then vendorBtn:Show(); ns.Refresh() end return end
     vendorBtn = S.Primary(S.FitButton(MerchantFrame, L.SELL_JUNK:format(0), 26, 100))
     vendorBtn:SetPoint("TOPRIGHT", MerchantFrame, "TOPRIGHT", -40, -30)
     vendorBtn:SetFrameLevel((MerchantFrame:GetFrameLevel() or 1) + 10)
     vendorBtn:SetScript("OnClick", function() ns.SellJunk() end)
     ns.Refresh()
 end
+
+function ns.HideVendorButton() if vendorBtn then vendorBtn:Hide() end end
 
 function ns.Toggle()
     S.ToggleWindow(ns.Window())

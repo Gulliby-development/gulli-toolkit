@@ -306,4 +306,19 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     assert(reg.summary():find("1", 1, true))
 end)
 
+test("paused from the hub the mailbox panel stays closed", function()
+    Fake({ inbox = { { sender = "A", money = 500 } } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    reg.pause(true)
+    W.Fire("MAIL_SHOW")
+    eq(ns.open, nil, "paused: the visit is not watched")
+    W.Fire("MAIL_CLOSED")
+    reg.pause(false)
+    W.Fire("MAIL_SHOW")
+    eq(ns.open, true, "started again")
+end)
+
 W.finish()

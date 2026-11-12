@@ -244,6 +244,42 @@ test("a unit is skipped for a while after a cast on it fails, and the bar says w
     eq(main.attrs.unit, "party1", "back after the wait")
 end)
 
+test("Camp Benefits with as much Stamina or more covers Fortitude; a weaker camp does not", function()
+    local units = party()
+    -- Rank 4 (2791) gives 32 Stamina; the camp gives 34.
+    Fake { known = { [1243] = true, [2791] = true }, units = units, db = { groupMin = 0 },
+           camp = { player = { "Gained the following camp benefits:", "First Aid Kit: Stamina increased by 34." } } }
+    local ns = Load()
+    units.player.auras = { ["Camp Benefits"] = 7200 }
+    local plan = ns.Plan()
+    assert(not show(plan):find("@player", 1, true), "covered on you: " .. show(plan))
+    assert(show(plan):find("Power Word: Fortitude@party1", 1, true), "the others still need it")
+    W.camp.player = { "First Aid Kit: Stamina increased by 20." }
+    assert(show(ns.Plan()):find("Power Word: Fortitude@player", 1, true), "a weaker camp leaves the buff")
+    W.camp.player = { "Sharpening Wheel: Strength increased by 11." }
+    assert(show(ns.Plan()):find("Power Word: Fortitude@player", 1, true), "another stat")
+end)
+
+test("a buff the game refuses as weaker is left alone on that unit", function()
+    local units = party()
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local main = GulliGroupBuffsButton
+    ns.Refresh()
+    eq(main.attrs.unit, "player")
+    main.hooks.OnClick(main)
+    Fire("UI_ERROR_MESSAGE", 50, "A more powerful spell is already active")
+    ns.Refresh()
+    eq(main.attrs.unit, "party1", "you are left alone")
+    W.spec.time = 400
+    ns.Refresh()
+    eq(main.attrs.unit, "party1", "still blocked after five minutes")
+    W.spec.time = 800
+    ns.Refresh()
+    eq(main.attrs.unit, "player", "back after ten minutes")
+end)
+
 test("the big button counts what waits and shows the state by colour", function()
     Fake { known = { [1243] = true }, units = party(), db = { groupMin = 0 } }
     local ns = Load()

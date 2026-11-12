@@ -224,4 +224,21 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     assert(reg.summary():find("3", 1, true))
 end)
 
+test("paused from the hub it sells nothing until it is started again", function()
+    Fake({ slots = { { 0, 1, 10, 3, 0 } }, prices = { [10] = 5 } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Load()
+    GulliToolkit = nil
+    reg.pause(true)
+    W.Fire("MERCHANT_SHOW")
+    W.RunTimers()
+    eq(#W.sold, 0, "paused")
+    W.Fire("MERCHANT_CLOSED")
+    reg.pause(false)
+    W.Fire("MERCHANT_SHOW")
+    W.RunTimers()
+    eq(#W.sold, 1, "started again")
+end)
+
 W.finish()

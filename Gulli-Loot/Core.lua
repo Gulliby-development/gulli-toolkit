@@ -297,11 +297,13 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if hooksecurefunc and HandleModifiedItemClick then
             -- Alt-click on an item anywhere (bags, a roll frame, a chat link) gives it a rule.
             hooksecurefunc("HandleModifiedItemClick", function(link)
-                if IsAltKeyDown and IsAltKeyDown() and ns.OnAltClick then ns.OnAltClick(link) end
+                if not ns.paused and IsAltKeyDown and IsAltKeyDown() and ns.OnAltClick then ns.OnAltClick(link) end
             end)
         end
         return
     end
+    -- Paused from the hub: only the closing events still run, so nothing stays open.
+    if ns.paused and not event:find("_CLOSED$") then return end
     if event == "START_LOOT_ROLL" then ns.OnRoll(a1)
     elseif event == "CONFIRM_LOOT_ROLL" then ns.OnConfirm(a1, a2)
     elseif event == "CHAT_MSG_LOOT" then ns.OnLootMessage(a1)
@@ -367,6 +369,7 @@ end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
+        pause = function(on) ns.paused = on end,
         key = "Loot",
         icon = "Interface\\AddOns\\Gulli-Loot\\icon",
         slash = "/glt",
