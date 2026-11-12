@@ -41,6 +41,38 @@ test("closing the mailbox stops take all", function()
     eq(#W.taken, 1)
 end)
 
+test("an item the game refuses is tried a few times, then left and counted", function()
+    Fake({ refuse = { [2] = true }, inbox = { { sender = "A", items = { 1, 2, 3 } }, { sender = "B", money = 7 } } })
+    local ns = Load()
+    W.Fire("MAIL_SHOW")
+    ns.TakeAll()
+    W.Drain()
+    eq(ns.taking, nil, "take all ended")
+    eq(#W.taken, 2); eq(W.money, 7)
+    local last = W.printed[#W.printed]
+    assert(last:find("took 2 items", 1, true), last)
+    assert(last:find("1 items could not be taken", 1, true), last)
+end)
+
+test("more than 50 letters: take all asks the server for the rest and goes on", function()
+    local inbox, server = {}, {}
+    for i = 1, 50 do inbox[i] = { sender = "AH", money = 1 } end
+    for i = 1, 30 do server[i] = { sender = "AH", money = 1 } end
+    Fake({ inbox = inbox, server = server })
+    local ns = Load()
+    W.Fire("MAIL_SHOW")
+    eq(ns.Summary().more, 30)
+    ns.TakeAll()
+    for _ = 1, 400 do
+        if #W.timers == 0 then break end
+        W.now = W.now + 5
+        W.RunTimers()
+    end
+    eq(W.money, 80)
+    assert(W.checks > 0, "asked the server")
+    eq(ns.taking, nil)
+end)
+
 test("names: own characters of this faction first, then recent recipients", function()
     Fake({ name = "Me", db = { alts = { Realm = { Alliance = { Me = true, Bank = true }, Horde = { Orc = true } } } } })
     local ns = Load()

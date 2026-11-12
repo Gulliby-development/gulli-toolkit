@@ -160,27 +160,173 @@ test("counts, the On/Off filter and the search", function()
     eq(#ns.Filter(rows, "All", "all", "zzz"), 0)
 end)
 
-test("a module's options are shown and switched from the hub", function()
+test("a module's options: only valid ones, and the search finds a module by them", function()
     Fake({ addons = { QC } })
     local ns = Load()
     local db = { sell = true }
     GulliToolkit.Register({ key = "QuestCleaner", open = function() end, options = {
         { label = "Sell", get = function() return db.sell end, set = function(on) db.sell = on end,
-          icon = "Interface\\Icons\\INV_Misc_Coin_02" },
+          icon = "Interface\\Icons\\INV_Misc_Coin_02", tip = "Sells junk at a vendor" },
         { label = "Broken" }, "nonsense" } })
     local row = byKey(ns.List()).QuestCleaner
     eq(#row.options, 1, "only options with a label, get and set")
     eq(row.options[1].icon, "Interface\\Icons\\INV_Misc_Coin_02", "the option keeps its icon")
+    eq(ns.Filter(ns.List(), "All", "all", "sell")[1].key, "QuestCleaner", "by an option's label")
+    eq(ns.Filter(ns.List(), "All", "all", "junk at a")[1].key, "QuestCleaner", "by an option's tip")
     ns.Toggle()
     local view = ns.View()
-    view.selected = "QuestCleaner"
-    ns.Refresh()
-    eq(view.selected, "QuestCleaner")
     view.query = "nothing like it"
     ns.Refresh()
-    eq(view.selected, nil, "nothing selected when the search finds nothing")
-    view.query, view.state, view.cat = "", "off", "Group"
+    view.query = ""
     ns.Refresh()
+end)
+
+test("the home page shows the modules' summaries and the feed; a click opens the module", function()
+    Fake({ addons = { QC, { name = "Gulli-XP", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "XP" } } } })
+    local ns = Load()
+    local S = ns.Skin
+    local win = S.Window(nil, "XP", S.NARROW_W, 300)
+    GulliToolkit.Register({ key = "XP", open = function() end, window = function() return win end,
+                            summary = function() return "Level 24 in 1 h", "Interface\\Icons\\XP" end })
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end, summary = function() error("boom") end })
+    local sums = ns.Summaries()
+    eq(#sums, 1, "a summary that fails is left out")
+    eq(sums[1].text, "Level 24 in 1 h")
+    eq(sums[1].icon, "Interface\\Icons\\XP")
+    GulliToolkit.Notify("XP", "Level 23 reached")
+    ns.Toggle()
+    local view = ns.View()
+    eq(view.page, "home", "nothing opened yet: the home page")
+    eq(ns.Home():IsShown(), true)
+    ns.Enter("XP")
+    eq(view.page, "module")
+    eq(ns.Home():IsShown(), false, "the module takes the centre")
+    eq(ns.Card():IsShown(), true, "a narrow window keeps the card beside it")
+    eq(ns.Last(), "XP", "remembered")
+    eq(ns.Ago(1000 - 30, 1000), ns.L.AGO_NOW)
+    eq(ns.Ago(1000 - 600, 1000), "10 min")
+    eq(ns.Ago(1000 - 7300, 1000), "2 h")
+    eq(ns.Ago(1000 - 3 * 86400, 1000), "3 d")
+    GulliToolkit.ClearFeed()
+    eq(#ns.Feed(), 0, "Clear empties the feed")
+end)
+
+test("the hub opens the module that was open last, back goes home and stays there", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local win = S.Window(nil, "Quest Cleaner", S.WIDE_W, 300)
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end, window = function() return win end })
+    ns.Toggle()
+    ns.Enter("QuestCleaner")
+    eq(ns.Card():IsShown(), false, "a wide window takes the whole centre")
+    local _, hub = ns.View()
+    hub:Hide()
+    hub:GetScript("OnHide")()
+    eq(win.docked, false)
+    ns.Toggle()
+    eq(ns.View().inside, "QuestCleaner", "opened where the player left it")
+    win.dockOpts.back(win)
+    eq(ns.View().page, "home")
+    eq(ns.Last(), nil, "back to home: the hub opens on home next time")
+    hub:Hide()
+    hub:GetScript("OnHide")()
+    ns.Toggle()
+    eq(ns.View().inside, nil)
+end)
+
+test("presets switch their modules on and the others off; a group switches together", function()
+    Fake({ addons = { QC, { name = "Gulli-Merchant", enabled = false, meta = { ["X-Gulli-Module"] = "Merchant" } },
+                      { name = "Gulli-Loot", enabled = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    for _, p in ipairs(ns.PRESETS) do
+        assert(ns.T.en["PRESET_" .. p.key], "no text for preset " .. p.key)
+        for _, k in ipairs(p.modules) do assert(ns.CATEGORY_OF[k], p.key .. ": unknown module " .. k) end
+    end
+    eq(ns.ApplyPreset("Minimum"), 3, "QuestCleaner and Loot off, Merchant on")
+    local r = byKey(ns.List())
+    eq(r.Merchant.on, true)
+    eq(r.QuestCleaner.on, false)
+    eq(r.Loot.on, false)
+    eq(ns.ApplyPreset("Minimum"), 0, "nothing left to switch")
+    eq(ns.ApplyPreset("Nope"), 0)
+    eq(ns.SetGroup("Quests", true), 1)
+    eq(byKey(ns.List()).QuestCleaner.on, true)
+    eq(ns.SetGroup("Items", false), 1)
+    eq(byKey(ns.List()).Merchant.on, false)
+end)
+
+test("/gulli move unlocks every module's frames, reset goes back to defaults", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local moving, reset
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end,
+        move = function(on) moving = on end, reset = function() reset = true end })
+    GulliToolkit.Register({ key = "Broken", open = function() end, move = function() error("x") end })
+    SlashCmdList.GULLITOOLKIT("move")
+    eq(moving, true)
+    eq(ns.moving, true)
+    SlashCmdList.GULLITOOLKIT("move")
+    eq(moving, false)
+    eq(ns.Reset(byKey(ns.List()).QuestCleaner), true)
+    eq(reset, true)
+    eq(ns.Reset(byKey(ns.List()).Broken), false, "no reset: nothing to do")
+end)
+
+test("export and import every Gulli setting as one line, and refuse anything else", function()
+    Fake({ addons = { { name = "Gulli-XP", enabled = true, loaded = true,
+        meta = { ["X-Gulli-Module"] = "XP", SavedVariables = "GulliXPDB", SavedVariablesPerCharacter = "GulliXPCharDB" } } } })
+    local ns = Load()
+    GulliXPDB = { bar = true, alpha = 80, name = 'a "b" | c\\n', list = { 1, 2.5, -3 }, nested = { x = { y = false } } }
+    GulliXPCharDB = { point = { "CENTER", 0, -120 } }
+    GulliToolkitDB.protected = { [6948] = true }
+    local line = ns.Export()
+    assert(line:sub(1, 7) == "GULLI1:", "has the prefix")
+    assert(not line:find("|", 1, true), "no | that the edit box would eat")
+    assert(not line:find("\n", 1, true), "one line")
+    local before = GulliXPDB
+    GulliXPDB, GulliXPCharDB, GulliToolkitDB = nil, nil, nil
+    eq(ns.Import("  " .. line .. "\n"), 3, "the toolkit's and both XP tables")
+    eq(GulliXPDB.alpha, 80)
+    eq(GulliXPDB.name, before.name, "quotes, pipes and backslashes survive")
+    eq(GulliXPDB.list[2], 2.5)
+    eq(GulliXPDB.list[3], -3)
+    eq(GulliXPDB.nested.x.y, false)
+    eq(GulliXPCharDB.point[3], -120)
+    eq(GulliToolkitDB.protected[6948], true)
+    eq(ns.Import("hello"), nil)
+    eq(ns.Import("GULLI1:{\"a\"=os.exit();}"), nil, "never runs code")
+    eq(ns.Import("GULLI1:{\"a\"=1;"), nil, "broken text")
+    eq(ns.Import('GULLI1:{"print"={};"GulliX"={};}'), 0, "only Gulli...DB names are set")
+    eq(print ~= nil and type(print), "function")
+end)
+
+test("versions: a newer one in the group is told once, New marks an updated module", function()
+    Fake({ addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.6.0" } },
+        { name = "Gulli-XP", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "XP", Version = "1.3.0" } } } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "XP", open = function() end })
+    eq(ns.CompareVersions("1.10.0", "1.9.2"), 1)
+    eq(ns.CompareVersions("1.2", "1.2.0"), 0)
+    eq(ns.CompareVersions("0.9", "1.0"), -1)
+    local msgs = ns.VersionMessages()
+    assert(msgs[1]:find("|Core=1.6.0", 1, true) and msgs[1]:find("|XP=1.3.0", 1, true), msgs[1])
+    for _, m in ipairs(msgs) do assert(#m <= 240) end
+    local newer = ns.ReadVersions("V|Core=1.6.0|XP=1.4.0|Nope=9.0")
+    eq(#newer, 1, "only XP is newer, an unknown module is skipped")
+    eq(newer[1].key, "XP")
+    eq(#ns.ReadVersions("V|XP=1.4.0"), 0, "told once")
+    eq(#ns.ReadVersions("V|XP=1.5.0"), 1, "a still newer one is told again")
+    eq(#ns.ReadVersions("junk"), 0)
+
+    eq(byKey(ns.List()).XP.new, nil, "the first version seen is not new")
+    W.addons[2].meta.Version = "1.4.0"
+    eq(byKey(ns.List()).XP.new, true, "updated since the player opened it")
+    ns.MarkSeen(byKey(ns.List()).XP)
+    eq(byKey(ns.List()).XP.new, nil)
+    SlashCmdList.GULLITOOLKIT("help")
+    local all = table.concat(W.printed, "\n")
+    assert(all:find("/gulli move", 1, true), "help names the toolkit's commands")
 end)
 
 test("protected items: by id or link, saved, listed, switched off again", function()
@@ -261,7 +407,7 @@ test("a module opens inside the hub, goes back, and its command takes it out", f
     eq(view.narrow, true, "a narrow window keeps the module card beside it")
     eq(opened, 0, "the module's own open is not called")
     win.dockOpts.back(win)
-    eq(view.inside, nil, "back goes to the list")
+    eq(view.inside, nil, "back goes to the home page")
     eq(win.docked, false)
     eq(win:IsShown(), false, "the window is closed again")
 

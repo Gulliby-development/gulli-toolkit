@@ -17,6 +17,9 @@ W.SPELLS = {
     [25894] = "Greater Blessing of Wisdom", [25898] = "Greater Blessing of Kings",
     [25899] = "Greater Blessing of Sanctuary",
     [324] = "Lightning Shield", [8017] = "Rockbiter Weapon", [8024] = "Flametongue Weapon",
+    [6673] = "Battle Shout", [168] = "Frost Armor", [7302] = "Ice Armor", [6117] = "Mage Armor",
+    [687] = "Demon Skin", [706] = "Demon Armor", [16864] = "Omen of Clarity", [25780] = "Righteous Fury",
+    [465] = "Devotion Aura", [7294] = "Retribution Aura", [13165] = "Aspect of the Hawk",
 }
 
 -- A frame that remembers its attributes, scripts and wrapped snippets.
@@ -128,6 +131,19 @@ function Fake(spec)
         if not w then return false end
         return true, w * 1000
     end
+
+    UnitPowerType = function(unit)
+        local x = u(unit)
+        if x and x.powerType then return x.powerType end
+        return (x and (x.class == "WARRIOR" or x.class == "ROGUE")) and 1 or 0
+    end
+    UnitPower = function() return spec.mana or 100 end
+    UnitPowerMax = function() return 100 end
+    IsResting = function() return spec.resting or false end
+    IsInInstance = function() return spec.instance ~= nil, spec.instance or "none" end
+    W.sounds = {}
+    PlaySound = function(id) W.sounds[#W.sounds + 1] = id end
+    SPELL_FAILED_LINE_OF_SIGHT = "Target not in line of sight"
 
     InCombatLockdown = function() return W.combat end
     GetLocale = function() return spec.locale or "enUS" end

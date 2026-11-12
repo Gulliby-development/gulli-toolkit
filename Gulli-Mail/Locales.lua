@@ -23,6 +23,9 @@ T.en = {
     ALT = "your character",
     OPT_PANEL = "Show the panel at the mailbox",
     HELP = "At a mailbox the panel opens next to it. Tap a name to start a letter to that player.",
+    FAILED = "%d items could not be taken (unique or the game refused them); they stay in their letters.",
+    MORE = "%d more letters wait on the server. Take all asks for them.",
+    WAITING = "Waiting for the server to send the next letters (up to a minute)...",
 }
 
 T.de = {
@@ -39,6 +42,9 @@ T.de = {
     ALT = "dein Charakter",
     OPT_PANEL = "Das Feld am Briefkasten zeigen",
     HELP = "Am Briefkasten öffnet sich das Feld daneben. Tippe auf einen Namen, um einen Brief an ihn zu beginnen.",
+    FAILED = "%d Gegenstände ließen sich nicht nehmen (einzigartig oder vom Spiel abgelehnt); sie bleiben in ihren Briefen.",
+    MORE = "%d weitere Briefe warten auf dem Server. Alles nehmen holt sie.",
+    WAITING = "Warte, bis der Server die nächsten Briefe schickt (bis zu einer Minute)...",
 }
 
 T.es = {
@@ -55,6 +61,9 @@ T.es = {
     ALT = "tu personaje",
     OPT_PANEL = "Mostrar el panel en el buzón",
     HELP = "En el buzón el panel se abre al lado. Toca un nombre para empezar una carta a ese jugador.",
+    FAILED = "%d objetos no se pudieron recoger (únicos o el juego los rechazó); siguen en sus cartas.",
+    MORE = "%d cartas más esperan en el servidor. Recoger todo las pide.",
+    WAITING = "Esperando a que el servidor envíe las siguientes cartas (hasta un minuto)...",
 }
 
 T.fr = {
@@ -71,6 +80,9 @@ T.fr = {
     ALT = "votre personnage",
     OPT_PANEL = "Afficher le panneau à la boîte aux lettres",
     HELP = "À la boîte aux lettres, le panneau s'ouvre à côté. Touchez un nom pour écrire à ce joueur.",
+    FAILED = "%d objets n'ont pas pu être pris (uniques ou refusés par le jeu) ; ils restent dans leurs lettres.",
+    MORE = "%d lettres de plus attendent sur le serveur. Tout prendre les demande.",
+    WAITING = "En attente des lettres suivantes du serveur (jusqu'à une minute)...",
 }
 
 T.pl = {
@@ -87,6 +99,9 @@ T.pl = {
     ALT = "twoja postać",
     OPT_PANEL = "Pokazuj panel przy skrzynce",
     HELP = "Przy skrzynce panel otwiera się obok. Dotknij imienia, aby zacząć list do tego gracza.",
+    FAILED = "Nie udało się wziąć %d przedmiotów (unikatowe lub gra odmówiła); zostają w listach.",
+    MORE = "Na serwerze czeka jeszcze %d listów. Weź wszystko je pobierze.",
+    WAITING = "Czekam, aż serwer wyśle kolejne listy (do minuty)...",
 }
 
 T.pt = {
@@ -103,6 +118,9 @@ T.pt = {
     ALT = "seu personagem",
     OPT_PANEL = "Mostrar o painel no correio",
     HELP = "No correio o painel abre ao lado. Toque num nome para começar uma carta a esse jogador.",
+    FAILED = "%d itens não puderam ser pegos (únicos ou recusados pelo jogo); ficam nas cartas.",
+    MORE = "Mais %d cartas esperam no servidor. Pegar tudo pede por elas.",
+    WAITING = "Esperando o servidor enviar as próximas cartas (até um minuto)...",
 }
 
 T.ru = {
@@ -119,6 +137,9 @@ T.ru = {
     ALT = "ваш персонаж",
     OPT_PANEL = "Показывать панель у почтового ящика",
     HELP = "У почтового ящика панель открывается рядом. Нажмите на имя, чтобы начать письмо этому игроку.",
+    FAILED = "Не удалось взять предметов: %d (уникальные или игра отказала); они остались в письмах.",
+    MORE = "Ещё писем на сервере: %d. «Забрать всё» их запросит.",
+    WAITING = "Ждём, пока сервер пришлёт следующие письма (до минуты)...",
 }
 
 T.zh = {
@@ -135,6 +156,9 @@ T.zh = {
     ALT = "你的角色",
     OPT_PANEL = "在邮箱旁显示面板",
     HELP = "在邮箱处，面板会在旁边打开。点击名字即可给该玩家写信。",
+    FAILED = "有 %d 件物品无法收取（唯一物品或被游戏拒绝），它们留在信中。",
+    MORE = "服务器上还有 %d 封信。全部收取会去请求它们。",
+    WAITING = "正在等待服务器发送后续信件（最多一分钟）……",
 }
 
 ns.T = T

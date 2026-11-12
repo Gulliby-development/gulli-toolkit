@@ -20,6 +20,16 @@ Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and s
 
 - **Tabs instead of a wall of text.** Groups, Selling, Buying, Crafting, Guilds and Other.
 - **Groups by dungeon.** LFG and LFM messages are grouped under the dungeon they name (Deadmines, SM Library, Strat...). Tick **Only dungeons for my level** to hide the rest.
+- **Only WoW Forever dungeons.** From Ragefire Chasm to Stratholme, plus Barrow Deeps, Hyjal Summit and Onyxia. Short words such as "dm me" or "st" do not make false groups.
+- **Pick your dungeons.** In **Setup**, tick **Show** to list only those dungeons, and **Alert** to hear a sound and get a chat line when a new group for them comes up. The alert also shows in the hub's Recent feed.
+- **Ask in one tap.** **Ask** whispers "Hi! Level 56 Priest, healer. Can I join you for Stratholme?" with your level, class and the role you set in **Setup**. LFG rows have **Invite**.
+- **See who and what.** Names are in class colours, an LFM shows the roles it needs (tank, healer, damage), and selling rows show the item icon.
+- **Search and fold.** Type in **Search** to filter any tab. Click a dungeon header to fold it.
+- **Hide spam.** **x** on a row hides that player for good; in **Setup** you can hide words too (boost, www...). **Show again** brings hidden players back.
+- **Watch words.** Get the same alert when someone writes a word you watch, such as an item name.
+- **Small feed.** A small panel on the screen with the newest groups for your alerted dungeons. Set its opacity, and let clicks go through it so it never gets in the way.
+- **Survives /reload.** The board is saved, so it is still there after a reload.
+- **My LFM.** With Gulli Quick Chat installed, **My LFM** on a dungeon header opens a ready group message for it.
 - **One line per player.** When a player posts again, the old line is replaced, so nobody floods the board.
 - **Whisper and Invite** on every row, with big buttons for touch.
 - **Old messages go away** after 15 minutes.
@@ -35,15 +45,16 @@ Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and s
 
 1. Type `/gbul`, or open it from `/gulli`.
 2. Pick a tab. In **Groups**, the dungeon name is a header and the groups are under it.
-3. Press **Whisper** to write to the player, or **Invite** to invite them.
-4. `/gbul clear` empties the board.
+3. In **Setup**, tick the dungeons you want to see or be alerted for.
+4. Press **Whisper** to write to the player, or **Invite** to invite them.
+5. `/gbul clear` empties the board.
 
 ## FAQ
 
 <details>
 <summary><b>The board is empty</b></summary>
 
-It shows messages from Trade, General, LookingForGroup, /say and /yell that come after you log in. Join the channels, wait a minute, and the board fills up.
+It shows messages from Trade, General, LookingForGroup, /say and /yell. Join the channels, wait a minute, and the board fills up. **Setup** tells you when you are not in LookingForGroup or Trade.
 </details>
 
 <details>

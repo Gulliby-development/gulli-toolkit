@@ -19,7 +19,8 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 ## Features
 
 - **Take all.** Money and items from every letter, one after the other.
-- **Safe.** Letters with cash on delivery are left alone. It stops when your bags are full.
+- **Safe.** Letters with cash on delivery are left alone. It stops when your bags are full. An item the game will not give you (a unique item you already have) stays in its letter, and you are told how many.
+- **More than 50 letters.** The game shows 50 letters at a time. When more wait on the server, Take all asks for them and goes on (the server sends them about once a minute).
 - **Names to tap.** Your other characters on this realm and faction, then the last 10 players you wrote to. Tap a name to start a letter.
 
 ## Install

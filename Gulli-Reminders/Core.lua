@@ -30,7 +30,7 @@ ns.BUFFS = {
     PALADIN = {
         { key = "BLESSING", ids = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25890, 25899, 25895 } },
         { key = "AURA", ids = { 465, 7294, 19746, 19876, 19888, 19891, 20218 } },
-        { key = "FURY", ids = { 25780 }, on = false },
+        { key = "FURY", ids = { 25780 }, on = false, tank = true }, -- on by default for a tank
     },
     HUNTER = {
         { key = "ASPECT", ids = { 13165, 13163, 5118, 13159, 13161, 20043 } },
@@ -45,6 +45,30 @@ ns.BUFFS = {
 }
 ns.IMBUES = { SHAMAN = { 8017, 8024, 8033, 8232 } } -- a shaman who knows one should use one
 ns.PET_SPELL = { HUNTER = 883, WARLOCK = 688 } -- Call Pet, Summon Imp
+-- The pets a warlock can pick to be summoned by a click: Imp, Voidwalker, Succubus, Felhunter.
+ns.WARLOCK_PETS = { 688, 697, 712, 691 }
+local REVIVE_PET = 982
+local WELL_FED = 19705 -- any Well Fed buff has this name
+-- Buff foods, best first; the food the player set comes before them.
+ns.FOOD = { 21023, 20452, 13928, 13931, 18254, 12218, 18045, 12216, 21217, 13929, 21072 }
+-- Rogue poisons, best first (Instant, Deadly, Wound, Crippling, Mind-numbing).
+ns.POISONS = { 8928, 8927, 8926, 6950, 6949, 6947, 20844, 8985, 8984, 2893, 2892,
+               10922, 10921, 10920, 10918, 3776, 3775, 9186, 6951, 5237 }
+-- Oils, sharpening stones and weightstones for any class, best first.
+ns.WEAPON_ITEMS = { 18262, 20749, 20748, 20750, 20747, 20746, 20745, 20744,
+                    12404, 7964, 2871, 2863, 2862, 12643, 7965, 3241, 3240, 3239 }
+-- Group buffs other classes give: when one of them is in the group and you lack it, it is shown
+-- with their name (the "others" switch). mana: only worth asking for with a mana bar.
+ns.OTHERS = {
+    { key = "FORTITUDE", class = "PRIEST", ids = { 1243, 21562 } },
+    { key = "WILD", class = "DRUID", ids = { 1126, 21849 } },
+    { key = "INTELLECT", class = "MAGE", ids = { 1459, 23028 }, mana = true },
+    { key = "SPIRIT", class = "PRIEST", ids = { 14752, 27681 }, mana = true },
+    { key = "BLESSING", class = "PALADIN", ids = { 19740, 19742, 20217, 20911, 25782, 25894, 25898, 25899 } },
+}
+ns.PLACES = { "always", "group", "instance" }
+ns.ALERTS = { "off", "always", "instance" }
+local MAIN_HAND = 16
 local POISON_LEVEL = 20
 local SOUL_SHARD = 6265
 local AMMO_SLOT, OFF_HAND = 0, 17
@@ -54,6 +78,8 @@ ns.DEFAULTS = {
     show = true, inRest = true, track = {}, weapon = true, ammo = true, shards = true, pet = true,
     ammoMin = 200, shardsMin = 3, soonMin = 3,
     locked = true, size = 40, alpha = 100, labels = true, vertical = false,
+    anyWeapon = false, food = true, where = "always", whereItems = "instance", alert = "instance",
+    durability = true, durMin = 20, bags = true, bagsMin = 2, others = false, custom = {},
 }
 ns.PANEL_POINT = { "TOP", 0, -190 }
 
@@ -76,6 +102,7 @@ local function knows(id)
     return false
 end
 ns.Knows = knows
+ns.SpellNameOf, ns.SpellIconOf = spellName, spellIcon
 -- The player's buffs: name -> seconds left (false for a buff that does not run out).
 local function buffs()
     local have = {}
@@ -102,11 +129,93 @@ local function offHandWeapon()
     return classID == ITEM_WEAPON
 end
 local function playerClass() return select(2, UnitClass("player")) end
+local function itemName(id)
+    local n = ((C_Item and C_Item.GetItemNameByID) or GetItemInfo or function() end)(id)
+    return n
+end
+local function itemIcon(id)
+    return ((C_Item and C_Item.GetItemIconByID) or GetItemIcon or function() end)(id)
+end
+ns.ItemName, ns.ItemIcon = itemName, itemIcon
+-- The name of the buff an item gives (its use spell), or nil.
+local function itemSpell(id)
+    local f = (C_Item and C_Item.GetItemSpell) or GetItemSpell
+    return f and (f(id)) or nil
+end
+ns.ItemSpell = itemSpell
+-- The first item of the list that is in the bags.
+local function firstInBags(list, preferred)
+    if preferred and itemCount(preferred) > 0 then return preferred end
+    for _, id in ipairs(list) do
+        if itemCount(id) > 0 then return id end
+    end
+end
+
+local function role()
+    return UnitGroupRolesAssigned and UnitGroupRolesAssigned("player") or "NONE"
+end
 
 function ns.Tracked(b)
     local v = ns.db and ns.db.track[b.key]
-    if v == nil then return b.on ~= false end
+    if v == nil then
+        if b.tank and role() == "TANK" then return true end
+        return b.on ~= false
+    end
     return v
+end
+
+-- Does a reminder for this place setting show here? always | group | instance.
+function ns.PlaceOK(w)
+    if w == "group" then return (IsInGroup and IsInGroup()) and true or false end
+    if w == "instance" then
+        if not IsInInstance then return false end
+        local inside, kind = IsInInstance()
+        return inside and (kind == "party" or kind == "raid") or false
+    end
+    return true
+end
+
+-- The weakest equipped item, in percent of its durability; nil when nothing can break.
+function ns.Durability()
+    if not GetInventoryItemDurability then return nil end
+    local low
+    for slot = 1, 18 do
+        local cur, max = GetInventoryItemDurability(slot)
+        if cur and max and max > 0 then
+            local pct = cur / max * 100
+            if not low or pct < low then low = pct end
+        end
+    end
+    return low
+end
+
+-- Free slots in the general bags (not in a quiver, a soul bag or a herb bag).
+function ns.FreeSlots()
+    local get = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
+    if not get then return nil end
+    local free = 0
+    for bag = 0, 4 do
+        local n, kind = get(bag)
+        if n and (kind == nil or kind == 0) then free = free + n end
+    end
+    return free
+end
+
+-- The spell a click on the pet icon casts: revive a dead hunter pet, else the pet the player picked.
+local function petAction(class)
+    if class == "HUNTER" and UnitExists("pet") and UnitIsDead("pet") and knows(REVIVE_PET) then
+        return REVIVE_PET
+    end
+    if class == "WARLOCK" then
+        local want = ns.db and ns.db.lockPet
+        if want and knows(want) then return want end
+    end
+    return ns.PET_SPELL[class]
+end
+
+-- Applies a weapon item to the main hand.
+local function weaponMacro(id)
+    return { type = "macro", macrotext = "/use item:" .. id .. "\n/use " .. MAIN_HAND }
 end
 
 -- The class's buffs for the settings: { key, ids, on, known (a spell id or nil), name, icon }.
@@ -117,7 +226,7 @@ function ns.ClassBuffs(class)
         for _, id in ipairs(b.ids) do
             if knows(id) then known = id; break end
         end
-        out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, known = known, name = L["BUFF_" .. b.key],
+        out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, tank = b.tank, known = known, name = L["BUFF_" .. b.key],
                           icon = spellIcon(known or b.ids[1]) }
     end
     return out
@@ -148,7 +257,9 @@ function ns.Missing()
     local level = UnitLevel("player")
     local soon = (db.soonMin or 0) * 60
     local have = buffs()
-    for _, b in ipairs(ns.ClassBuffs(class)) do
+    local here, items = ns.PlaceOK(db.where), ns.PlaceOK(db.whereItems)
+    local function cast(id) return { type = "spell", spell = spellName(id) } end
+    for _, b in ipairs(here and ns.ClassBuffs(class) or {}) do
         if b.known and ns.Tracked(b) then
             local best
             for _, id in ipairs(b.ids) do
@@ -157,47 +268,211 @@ function ns.Missing()
                 if left and (not best or left > best) then best = left end
             end
             if best == nil then
-                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known) }
+                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), act = cast(b.known) }
             elseif best and best < soon then
-                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), left = best }
+                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), left = best, act = cast(b.known) }
             end
         end
     end
-    if db.weapon then
-        local hasMain, mainLeft, _, _, hasOff, offLeft = GetWeaponEnchantInfo()
-        local limit = math.max(60, soon) * 1000
-        local function weak(has, left) return not has or (left or 0) < limit end
-        local need
+    local hasMain, mainLeft, _, _, hasOff, offLeft = GetWeaponEnchantInfo()
+    local limit = math.max(60, soon) * 1000
+    local function weak(has, left) return not has or (left or 0) < limit end
+    if db.weapon and here then
+        local need, act
         if class == "ROGUE" and level >= POISON_LEVEL then
             need = weak(hasMain, mainLeft) or (offHandWeapon() and weak(hasOff, offLeft))
-        elseif ns.IMBUES[class] then
-            for _, id in ipairs(ns.IMBUES[class]) do
-                if knows(id) then need = weak(hasMain, mainLeft); break end
+            local id = firstInBags(ns.POISONS)
+            if id then
+                -- The main hand first; when it is fine, the off hand.
+                act = weak(hasMain, mainLeft) and weaponMacro(id)
+                    or { type = "macro", macrotext = "/use item:" .. id .. "\n/use " .. OFF_HAND }
             end
+        elseif ns.IMBUES[class] then
+            local best
+            for _, id in ipairs(ns.IMBUES[class]) do
+                if knows(id) then best = db.imbue and knows(db.imbue) and db.imbue or id end
+            end
+            if best then need = weak(hasMain, mainLeft); act = cast(best) end
         end
         if need then
             local left = hasMain and mainLeft and mainLeft > 0 and mainLeft / 1000 or nil
-            out[#out + 1] = { key = "WEAPON", text = L.WEAPON, icon = "Interface\\Icons\\Trade_BrewPoison", left = left }
+            out[#out + 1] = { key = "WEAPON", text = L.WEAPON, icon = "Interface\\Icons\\Trade_BrewPoison", left = left, act = act }
         end
+    end
+    -- Oils and stones for any class, with the consumables.
+    if db.anyWeapon and items and not (db.weapon and (class == "ROGUE" or ns.IMBUES[class]))
+        and GetInventoryItemID("player", MAIN_HAND) and weak(hasMain, mainLeft) then
+        local id = firstInBags(ns.WEAPON_ITEMS)
+        local left = hasMain and mainLeft and mainLeft > 0 and mainLeft / 1000 or nil
+        out[#out + 1] = { key = "WEAPON_ITEM", text = L.WEAPON_ITEM, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Stone_02",
+                          left = left, act = id and weaponMacro(id) or nil, none = not id }
     end
     local pet = ns.PET_SPELL[class]
-    if db.pet and pet and knows(pet) and not (IsMounted and IsMounted())
+    if db.pet and here and pet and knows(pet) and not (IsMounted and IsMounted())
         and (not UnitExists("pet") or UnitIsDead("pet")) then
-        out[#out + 1] = { key = "PET", text = L.PET, icon = spellIcon(pet) }
+        local id = petAction(class)
+        out[#out + 1] = { key = "PET", text = L.PET, icon = spellIcon(id), act = cast(id) }
     end
-    if db.ammo and class == "HUNTER" then
+    if db.ammo and here and class == "HUNTER" then
         local n = GetInventoryItemCount("player", AMMO_SLOT) or 0
         if n < db.ammoMin then
-            out[#out + 1] = { key = "AMMO", text = L.AMMO:format(n), icon = "Interface\\Icons\\INV_Ammo_Arrow_02" }
+            out[#out + 1] = { key = "AMMO", text = L.AMMO:format(n), icon = "Interface\\Icons\\INV_Ammo_Arrow_02",
+                              buy = GetInventoryItemID("player", AMMO_SLOT), want = db.ammoMin - n }
         end
     end
-    if db.shards and class == "WARLOCK" then
+    if db.shards and here and class == "WARLOCK" then
         local n = itemCount(SOUL_SHARD)
         if n < db.shardsMin then
             out[#out + 1] = { key = "SHARDS", text = L.SHARDS:format(n), icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02" }
         end
     end
+    if db.food and items then
+        local left = have[spellName(WELL_FED) or ""]
+        if left == nil or (left and left < soon) then
+            local id = firstInBags(ns.FOOD, db.foodItem)
+            out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Misc_Food_14",
+                              left = left or nil, act = id and { type = "item", item = "item:" .. id } or nil, none = not id }
+        end
+    end
+    for i, c in ipairs(items and db.custom or {}) do
+        local key = "CUSTOM" .. i
+        if c.spell then
+            local name = spellName(c.spell)
+            local left = name and have[name]
+            if name and knows(c.spell) and (left == nil or (left and left < soon)) then
+                out[#out + 1] = { key = key, text = name, icon = spellIcon(c.spell), left = left or nil, act = cast(c.spell) }
+            end
+        elseif c.kind == "count" then
+            local n = itemCount(c.id)
+            if n < (c.min or 1) then
+                out[#out + 1] = { key = key, text = L.COUNT:format(itemName(c.id) or ("#" .. c.id), n, c.min or 1),
+                                  icon = itemIcon(c.id), buy = c.id, want = (c.min or 1) - n }
+            end
+        else
+            local buff = itemSpell(c.id)
+            local left = buff and have[buff]
+            if left == nil or (left and left < soon) then
+                local n = itemCount(c.id)
+                out[#out + 1] = { key = key, text = itemName(c.id) or ("#" .. c.id), icon = itemIcon(c.id), left = left or nil,
+                                  act = n > 0 and { type = "item", item = "item:" .. c.id } or nil, none = n == 0 }
+            end
+        end
+    end
+    if here and db.durability then
+        local pct = ns.Durability()
+        if pct and pct < db.durMin then
+            out[#out + 1] = { key = "DURABILITY", text = L.DURABILITY:format(math.floor(pct)),
+                              icon = "Interface\\Icons\\Trade_BlackSmithing" }
+        end
+    end
+    if here and db.bags then
+        local free = ns.FreeSlots()
+        if free and free < db.bagsMin then
+            out[#out + 1] = { key = "BAGS", text = L.BAGS:format(free), icon = "Interface\\Icons\\INV_Misc_Bag_08" }
+        end
+    end
+    if db.others and here and IsInGroup and IsInGroup() then
+        for _, o in ipairs(ns.OTHERS) do
+            local mine = class == o.class
+            local manaOK = not o.mana or not UnitPowerType or UnitPowerType("player") == 0
+            if not mine and manaOK then
+                local got
+                for _, id in ipairs(o.ids) do
+                    if have[spellName(id) or ""] ~= nil then got = true; break end
+                end
+                local who = not got and ns.GroupMember(o.class)
+                if who then
+                    out[#out + 1] = { key = "ASK_" .. o.key, text = L.ASK:format(L["BUFF_" .. o.key], who),
+                                      icon = spellIcon(o.ids[1]) }
+                end
+            end
+        end
+    end
     return out
+end
+
+-- The name of a living, online group member of this class, or nil.
+function ns.GroupMember(class)
+    local raid = IsInRaid and IsInRaid()
+    local n = raid and GetNumGroupMembers() or (GetNumSubgroupMembers and GetNumSubgroupMembers() or 0)
+    for i = 1, n do
+        local unit = (raid and "raid" or "party") .. i
+        local _, c = UnitClass(unit)
+        if c == class and not UnitIsUnit(unit, "player") and UnitIsConnected(unit)
+            and not UnitIsDeadOrGhost(unit) then
+            return UnitName(unit)
+        end
+    end
+end
+
+-- The reminders that were not there at the last call, for the sound and the line on screen.
+local seen = {}
+function ns.NewOnes(list)
+    local now, out = {}, {}
+    for _, m in ipairs(list) do
+        now[m.key] = true
+        if not seen[m.key] and not m.sample then out[#out + 1] = m end
+    end
+    seen = now
+    return out
+end
+
+-- Custom reminders: an item (its buff, or a count to keep in the bags) or a spell, by id.
+function ns.AddItem(id)
+    id = tonumber(id)
+    if not id then return false end
+    for _, c in ipairs(ns.db.custom) do if c.id == id then return false end end
+    local kind = itemSpell(id) and "buff" or "count"
+    table.insert(ns.db.custom, { id = id, kind = kind, min = kind == "count" and 5 or nil })
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+function ns.AddSpell(id)
+    id = tonumber(id)
+    if not id or not spellName(id) then return false end
+    for _, c in ipairs(ns.db.custom) do if c.spell == id then return false end end
+    table.insert(ns.db.custom, { spell = id })
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+function ns.RemoveCustom(i)
+    table.remove(ns.db.custom, i)
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.SetCustom(i, field, value)
+    local c = ns.db.custom[i]
+    if not c then return end
+    c[field] = value
+    if field == "kind" and value == "count" and not c.min then c.min = 5 end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- At an open vendor, buys what a count reminder lacks (whole stacks, never more than the money).
+-- Returns how many it bought.
+function ns.Buy(m)
+    if not (m and m.buy and m.want and m.want > 0) then return 0 end
+    if not (MerchantFrame and MerchantFrame:IsShown()) or not GetMerchantNumItems then return 0 end
+    for i = 1, GetMerchantNumItems() do
+        if GetMerchantItemID(i) == m.buy then
+            local _, _, price, per = GetMerchantItemInfo(i)
+            per = per or 1
+            local each = (price or 0) / per
+            local want = m.want
+            if each > 0 then want = math.min(want, math.floor(GetMoney() / each)) end
+            local stack = GetMerchantItemMaxStack and GetMerchantItemMaxStack(i) or want
+            local bought = 0
+            while want > 0 do
+                local n = math.min(want, math.max(1, stack))
+                BuyMerchantItem(i, n)
+                bought, want = bought + n, want - n
+            end
+            return bought
+        end
+    end
+    return 0
 end
 
 -- The icon of the class's pet summon, from the game.
@@ -218,6 +493,11 @@ function ns.Sample()
     if e.pet and ns.db.pet then out[#out + 1] = { key = "PET", text = L.PET, icon = spellIcon(ns.PET_SPELL[class]), sample = true } end
     if e.ammo and ns.db.ammo then out[#out + 1] = { key = "AMMO", text = L.OPT_AMMO, icon = "Interface\\Icons\\INV_Ammo_Arrow_02", sample = true } end
     if e.shards and ns.db.shards then out[#out + 1] = { key = "SHARDS", text = L.OPT_SHARDS, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02", sample = true } end
+    if ns.db.food then out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = "Interface\\Icons\\INV_Misc_Food_14", sample = true } end
+    for i, c in ipairs(ns.db.custom) do
+        out[#out + 1] = { key = "CUSTOM" .. i, text = c.spell and spellName(c.spell) or itemName(c.id) or "?",
+                          icon = c.spell and spellIcon(c.spell) or itemIcon(c.id), sample = true }
+    end
     if #out == 0 then out[1] = { key = "SAMPLE", text = L.TITLE, icon = "Interface\\AddOns\\Gulli-Reminders\\icon", sample = true } end
     return out
 end
@@ -273,7 +553,9 @@ f:SetScript("OnEvent", function(self, event, a1)
         migrate(ns.db)
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "UNIT_AURA", "UNIT_INVENTORY_CHANGED", "BAG_UPDATE_DELAYED",
                              "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_UPDATE_RESTING", "UNIT_PET",
-                             "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SPELLS_CHANGED" }) do
+                             "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SPELLS_CHANGED",
+                             "GROUP_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "UPDATE_INVENTORY_DURABILITY",
+                             "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED" }) do
             self:RegisterEvent(e)
         end
         -- Buffs and weapon buffs run out without an event.
@@ -296,6 +578,12 @@ SlashCmdList.GULLIREMINDERS = function(msg)
         ns.SetPref("locked", msg == "lock")
     elseif msg == "reset" then
         ns.SetPref("point", nil)
+    elseif msg:match("^item%s") or msg:match("^spell%s") then
+        -- /grm item <id or link>, /grm spell <id>
+        local kind, rest = msg:match("^(%a+)%s+(.+)$")
+        local id = tonumber(rest:match("item:(%d+)") or rest:match("spell:(%d+)") or rest:match("(%d+)"))
+        local ok = id and (kind == "item" and ns.AddItem(id) or kind == "spell" and ns.AddSpell(id))
+        print("|cff9ad0ffGulli-Reminders|r: " .. (ok and L.ADDED or L.NOT_ADDED))
     else
         ns.Toggle()
     end
@@ -309,6 +597,14 @@ ns.OPT_ICON = {
     inRest = "Interface\\Icons\\Spell_Nature_Sleep",
     locked = "Interface\\Icons\\INV_Misc_Key_03",
     weapon = "Interface\\Icons\\INV_Stone_02",
+    anyWeapon = "Interface\\Icons\\INV_Potion_100",
+    food = "Interface\\Icons\\INV_Misc_Food_14",
+    durability = "Interface\\Icons\\Trade_BlackSmithing",
+    bags = "Interface\\Icons\\INV_Misc_Bag_08",
+    others = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
+    where = "Interface\\Icons\\INV_Misc_Map_01",
+    whereItems = "Interface\\Icons\\INV_Drink_05",
+    alert = "Interface\\Icons\\INV_Misc_Bell_01",
     ammo = "Interface\\Icons\\INV_Ammo_Arrow_02",
     shards = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02",
     soonMin = "Interface\\Icons\\INV_Misc_PocketWatch_01",
@@ -336,6 +632,22 @@ if GulliToolkit and GulliToolkit.Register then
             option("show", ns.L.OPT_SHOW),
             option("locked", ns.L.OPT_LOCK),
             option("inRest", ns.L.OPT_REST),
+            option("food", ns.L.OPT_FOOD),
         },
+        move = function(on) if ns.db then ns.SetPref("locked", not on) end end,
+        reset = function()
+            if not ns.db then return end
+            for k in pairs(ns.db) do ns.db[k] = nil end
+            for k, v in pairs(ns.DEFAULTS) do ns.db[k] = type(v) == "table" and {} or v end
+            if ns.Refresh then ns.Refresh() end
+            if ns.RebuildWindow then ns.RebuildWindow() end
+        end,
+        summary = function()
+            if not ns.db then return nil end
+            local list, why = ns.Missing()
+            if why then return nil end
+            if #list == 0 then return ns.L.STATUS_NONE end
+            return ns.L.SUMMARY:format(#list)
+        end,
     })
 end

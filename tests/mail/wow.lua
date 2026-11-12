@@ -124,7 +124,14 @@ end
 function Fake(spec)
     W.Base(spec)
     W.inbox, W.free, W.taken, W.money = spec.inbox or {}, spec.free or 20, {}, 0
-    GetInboxNumItems = function() return #W.inbox end
+    W.server, W.refuse, W.checks = spec.server or {}, spec.refuse or {}, 0
+    GetInboxNumItems = function() return #W.inbox, #W.inbox + #W.server end
+    GetMoney = function() return W.money end
+    -- The server tops the shown letters up to 50.
+    CheckInbox = function()
+        W.checks = W.checks + 1
+        while #W.inbox < 50 and #W.server > 0 do table.insert(W.inbox, 1, table.remove(W.server, 1)) end
+    end
     GetInboxHeaderInfo = function(i)
         local m = W.inbox[i]
         local n = 0
@@ -135,11 +142,19 @@ function Fake(spec)
         local id = W.inbox[i].items and W.inbox[i].items[j]
         if id then return "Item" .. id, id, 1 end
     end
-    TakeInboxMoney = function(i) W.money = W.money + W.inbox[i].money; W.inbox[i].money = 0 end
+    -- A letter with nothing left and no text (auction mail) goes away.
+    local function gone(i)
+        local m = W.inbox[i]
+        if m.text or (m.money or 0) > 0 or next(m.items or {}) then return end
+        table.remove(W.inbox, i)
+    end
+    TakeInboxMoney = function(i) W.money = W.money + W.inbox[i].money; W.inbox[i].money = 0; gone(i) end
     TakeInboxItem = function(i, j)
+        if W.refuse[W.inbox[i].items[j]] then return end
         W.taken[#W.taken + 1] = W.inbox[i].items[j]
         W.inbox[i].items[j] = nil
         W.free = W.free - 1
+        gone(i)
     end
     C_Container = { GetContainerNumFreeSlots = function(b) if b == 0 then return W.free, 0 end return 0, 0 end }
     MailFrameTab2 = { Click = function() W.tab = 2 end }
