@@ -10,7 +10,7 @@
 ## Notes-zhCN: 我们的 Gulli 小插件集中在一处：打开、启用、停用。/gulli
 ## Notes-zhTW: 我们的 Gulli 小插件集中在一处：打开、启用、停用。/gulli
 ## Author: Gulliby
-## Version: 1.8.0
+## Version: 1.9.0
 ## IconTexture: Interface\AddOns\Gulli-Toolkit\icon
 ## SavedVariables: GulliToolkitDB
 ## AddonCompartmentFunc: GulliToolkit_Toggle
