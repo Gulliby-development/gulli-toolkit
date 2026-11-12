@@ -537,10 +537,17 @@ function S.SettingRow(parent, label, desc, control, controlWidth)
 end
 
 -- A settings row with an on/off switch. get() and set(value) read and write the setting.
-function S.SwitchRow(parent, label, desc, get, set)
+-- extra (an edit box for a number...) sits left of the switch.
+function S.SwitchRow(parent, label, desc, get, set, extra)
     local sw = S.Switch(parent)
-    local row = S.SettingRow(parent, label, desc, sw, 44)
+    local row = S.SettingRow(parent, label, desc, sw, 44 + (extra and (extra:GetWidth() + 8) or 0))
     row.switch = sw
+    if extra then
+        extra:SetParent(row)
+        extra:ClearAllPoints()
+        extra:SetPoint("RIGHT", sw, "LEFT", -8, 0)
+        row.extra = extra
+    end
     sw:SetScript("OnClick", function(self)
         set(not get())
         self:SetChecked(get())
@@ -561,7 +568,7 @@ function S.SettingsCard(parent, title, rows, hint)
     local st = S.Stack(card.body, 0)
     for i, r in ipairs(rows) do
         local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control)
-            or S.SwitchRow(card.body, r[1], r[2], r[3], r[4])
+            or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra)
         st:Add(row, row.height)
         row.line:SetShown(i < #rows)
         card.rows[i] = row
@@ -647,6 +654,48 @@ function S.StatRow(parent, labels, height)
         end
     end
     return holder
+end
+
+-- A place to drop an item from the bags (or click with one on the cursor). onDrop() reads the
+-- cursor itself.
+function S.DropZone(parent, text, onDrop, height)
+    local d = CreateFrame("Button", nil, parent)
+    d:SetHeight(height or 40)
+    S.Box(d, S.INPUT, S.EDGE)
+    d.text = S.Text(d, 12, S.MUTED)
+    d.text:SetPoint("LEFT", 10, 0)
+    d.text:SetPoint("RIGHT", -10, 0)
+    d.text:SetJustifyH("CENTER")
+    d.text:SetText("+  " .. (text or ""))
+    d:SetScript("OnReceiveDrag", onDrop)
+    d:SetScript("OnClick", onDrop)
+    d:SetScript("OnEnter", function(self)
+        S.SetBorder(self, S.Accent())
+        self.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
+    end)
+    d:SetScript("OnLeave", function(self)
+        S.SetBorder(self, S.EDGE)
+        self.text:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+    end)
+    return d
+end
+
+-- A thin bar that fills from the left: bar:Set(fraction[, color]).
+function S.Progress(parent, height)
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetHeight(height or 6)
+    S.Box(p, S.INPUT, S.EDGE)
+    p.fill = tex(p, "ARTWORK", 0, S.Accent())
+    p.fill:SetPoint("TOPLEFT", 1, -1)
+    p.fill:SetPoint("BOTTOMLEFT", 1, 1)
+    function p:Set(f, c)
+        f = math.max(0, math.min(1, f or 0))
+        local w = (tonumber(self:GetWidth()) or 0) - 2
+        self.fill:SetWidth(math.max(0.01, w * f))
+        self.fill:SetShown(f > 0)
+        if c then self.fill:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
+    end
+    return p
 end
 
 -- A small coloured label, like "On" or "3 new".

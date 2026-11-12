@@ -24,6 +24,10 @@ T.en = {
     RESET = "Start again",
     HM = "%d h %d min",
     M = "%d min",
+    STAT_RATE = "XP per hour",
+    STAT_TIME = "To the next level",
+    STAT_KILLS = "Kills to level",
+    SEC_SESSION = "This session",
 }
 
 T.de = {
@@ -41,6 +45,10 @@ T.de = {
     RESET = "Neu starten",
     HM = "%d Std %d Min",
     M = "%d Min",
+    STAT_RATE = "EP pro Stunde",
+    STAT_TIME = "Bis zur nächsten Stufe",
+    STAT_KILLS = "Kills bis zur Stufe",
+    SEC_SESSION = "Diese Sitzung",
 }
 
 T.es = {
@@ -58,6 +66,10 @@ T.es = {
     RESET = "Empezar de nuevo",
     HM = "%d h %d min",
     M = "%d min",
+    STAT_RATE = "PX por hora",
+    STAT_TIME = "Hasta el siguiente nivel",
+    STAT_KILLS = "Muertes hasta subir",
+    SEC_SESSION = "Esta sesión",
 }
 
 T.fr = {
@@ -75,6 +87,10 @@ T.fr = {
     RESET = "Recommencer",
     HM = "%d h %d min",
     M = "%d min",
+    STAT_RATE = "XP par heure",
+    STAT_TIME = "Jusqu'au niveau suivant",
+    STAT_KILLS = "Victimes avant le niveau",
+    SEC_SESSION = "Cette session",
 }
 
 T.pl = {
@@ -92,6 +108,10 @@ T.pl = {
     RESET = "Zacznij od nowa",
     HM = "%d godz. %d min",
     M = "%d min",
+    STAT_RATE = "PD na godzinę",
+    STAT_TIME = "Do następnego poziomu",
+    STAT_KILLS = "Zabójstw do poziomu",
+    SEC_SESSION = "Ta sesja",
 }
 
 T.pt = {
@@ -109,6 +129,10 @@ T.pt = {
     RESET = "Recomeçar",
     HM = "%d h %d min",
     M = "%d min",
+    STAT_RATE = "XP por hora",
+    STAT_TIME = "Até o próximo nível",
+    STAT_KILLS = "Abates até o nível",
+    SEC_SESSION = "Esta sessão",
 }
 
 T.ru = {
@@ -126,6 +150,10 @@ T.ru = {
     RESET = "Начать заново",
     HM = "%d ч %d мин",
     M = "%d мин",
+    STAT_RATE = "Опыта в час",
+    STAT_TIME = "До уровня",
+    STAT_KILLS = "Убийств до уровня",
+    SEC_SESSION = "Эта сессия",
 }
 
 T.zh = {
@@ -143,6 +171,10 @@ T.zh = {
     RESET = "重新开始",
     HM = "%d 小时 %d 分钟",
     M = "%d 分钟",
+    STAT_RATE = "每小时经验",
+    STAT_TIME = "距下一级",
+    STAT_KILLS = "升级所需击杀",
+    SEC_SESSION = "本次登录",
 }
 
 ns.T = T

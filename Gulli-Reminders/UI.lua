@@ -61,9 +61,10 @@ function ns.Refresh()
 end
 
 local function numberEdit(parent, key)
-    local e = S.Edit(parent, 52)
+    local e = S.Edit(parent, 52, 28)
     e:SetNumeric(true)
     e:SetMaxLetters(4)
+    e:SetText(tostring(ns.db[key]))
     e:SetScript("OnShow", function(self) self:SetText(tostring(ns.db[key])) end)
     local function apply(self)
         local n = tonumber(self:GetText())
@@ -73,35 +74,29 @@ local function numberEdit(parent, key)
         ns.Refresh()
     end
     e:SetScript("OnEnterPressed", apply)
-    e:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.BORDER); apply(self) end)
+    e:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); apply(self) end)
     return e
 end
 
 local function build()
-    frame = S.Window("GulliRemindersFrame", L.TITLE, 420, 300)
+    frame = S.Window("GulliRemindersFrame", L.TITLE, 460, 360)
     local body = frame.body
-    local y = 0
-    local function check(key, label)
-        local c = S.CheckRow(body, label, function() return ns.db[key] end, function(v) ns.db[key] = v; ns.Refresh() end)
-        c:SetPoint("TOPLEFT", 0, y)
-        y = y - 32
-        return c
+    local function switch(key, label, extra)
+        return { label, nil, function() return ns.db[key] end, function(v) ns.db[key] = v; ns.Refresh() end,
+                 extra = extra }
     end
-    check("buffs", L.OPT_BUFFS)
-    check("weapon", L.OPT_WEAPON)
-    local ammo = check("ammo", L.OPT_AMMO)
-    local ammoEdit = numberEdit(body, "ammoMin")
-    ammoEdit:SetPoint("TOPRIGHT", 0, -(2 * 32))
-    ammo.label:SetPoint("RIGHT", ammoEdit, "LEFT", -6, 0)
-    local shards = check("shards", L.OPT_SHARDS)
-    local shardEdit = numberEdit(body, "shardsMin")
-    shardEdit:SetPoint("TOPRIGHT", 0, -(3 * 32))
-    shards.label:SetPoint("RIGHT", shardEdit, "LEFT", -6, 0)
-    check("notResting", L.OPT_RESTING)
-    local note = S.Note(body, 11)
-    note:SetPoint("TOPLEFT", 0, y - 6)
-    note:SetPoint("RIGHT", 0, 0)
-    note:SetText(L.NOTE)
+    local st = S.Stack(body)
+    local card, h = S.SettingsCard(body, nil, {
+        switch("buffs", L.OPT_BUFFS),
+        switch("weapon", L.OPT_WEAPON),
+        switch("ammo", L.OPT_AMMO, numberEdit(body, "ammoMin")),
+        switch("shards", L.OPT_SHARDS, numberEdit(body, "shardsMin")),
+        switch("notResting", L.OPT_RESTING),
+    })
+    st:Add(card, h)
+    local note, nh = S.Paragraph(body, L.NOTE, frame.inner[1])
+    st:Add(note, nh)
+    S.FitWindow(frame, st:Height())
 end
 
 function ns.Toggle()
