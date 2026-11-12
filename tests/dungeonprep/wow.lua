@@ -120,18 +120,45 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
+-- spec.items: { [id] = { name, quality, ilvl, equipLoc, classID, subclassID } }; spec.counts: item id -> count;
+-- spec.worn: { [slot] = item id }; spec.instance = "party"|"none"; spec.complete: quest id set;
+-- spec.party: { { name, quests = { [id] = true } } }; spec.ammo; spec.className.
 -- spec.done / spec.active: quest id sets; spec.raceID, spec.classID; spec.bags: { [bag] = { size, slots } };
 -- spec.durability: { [slot] = { cur, max } }; spec.hearth = { start, duration }.
 function Fake(spec)
     W.Base(spec)
     W.done, W.active = spec.done or {}, spec.active or {}
+    GulliDungeonPrepDB = nil
     UnitRace = function() return "Human", "Human", spec.raceID or 1 end
-    UnitClass = function() return "Warrior", "WARRIOR", spec.classID or 1 end
+    UnitClass = function() return "Warrior", spec.className or "WARRIOR", spec.classID or 1 end
+    W.complete, W.instance, W.shared = spec.complete or {}, spec.instance or "none", {}
+    local party = spec.party or {}
     C_QuestLog = {
         IsQuestFlaggedCompleted = function(id) return W.done[id] == true end,
         IsOnQuest = function(id) return W.active[id] == true end,
+        IsComplete = function(id) return W.complete[id] == true end,
         GetTitleForQuestID = function() return nil end,
+        IsUnitOnQuest = function(unit, id)
+            local m = party[tonumber(unit:match("party(%d)") or 0)]
+            return m ~= nil and m.quests[id] == true
+        end,
+        SetSelectedQuest = function(id) W.selectedQuest = id end,
     }
+    IsInGroup = function() return #party > 0 end
+    UnitExists = function(unit) return party[tonumber(unit:match("party(%d)") or 0)] ~= nil end
+    UnitName = function(unit)
+        local m = party[tonumber((unit or ""):match("party(%d)") or 0)]
+        if m then return m.name end
+        if unit == "player" then return "Tester" end
+    end
+    QuestLogPushQuest = function() W.shared[#W.shared + 1] = W.selectedQuest end
+    IsInInstance = function() return W.instance ~= "none", W.instance end
+    GetQuestLogRewardXP = function(id) return id == 168 and 1450 or 0 end
+    GetQuestLogRewardMoney = function(id) return id == 168 and 2500 or 0 end
+    GetInventoryItemCount = function(_, slot) return slot == 0 and (spec.ammo or 0) or 0 end
+    local items, counts, worn = spec.items or {}, spec.counts or {}, spec.worn or {}
+    GetInventoryItemLink = function(_, slot) return worn[slot] end
+    TomTom = spec.tomtom and { AddWaypoint = function(_, map, x, y, opts) W.tomtom = { map, x, y, opts.title } end } or nil
     -- spec.map: { best = uiMapID, maps = { [id] = { name, mapType, parentMapID } }, pos = { x, y } }.
     local map = spec.map or {}
     W.pins = {}
@@ -172,10 +199,19 @@ function Fake(spec)
         end,
         GetItemCooldown = function() return (spec.hearth or {})[1] or 0, (spec.hearth or {})[2] or 0 end,
     }
-    C_Item = { GetItemInfoInstant = function(id)
-        if id == 4540 then return id, "", "", "", 1, 0, 5 end
-        return id, "", "", "", 1, 15, 0
-    end }
+    C_Item = {
+        GetItemInfoInstant = function(id)
+            if id == 4540 then return id, "", "", "", 1, 0, 5 end
+            return id, "", "", "", 1, 15, 0
+        end,
+        GetItemInfo = function(id)
+            local i = items[id]
+            if not i then return nil end
+            return i[1], "link" .. id, i[2], i[3], 1, "", "", 1, i[4], i[7] or ("icon" .. id), 0, i[5], i[6]
+        end,
+        GetItemCount = function(id) return counts[id] or 0 end,
+        RequestLoadItemDataByID = function() end,
+    }
     GetInventoryItemDurability = function(slot)
         local d = spec.durability and spec.durability[slot]
         if d then return d[1], d[2] end
