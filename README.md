@@ -59,7 +59,9 @@
 
 **With [Runeloader](https://github.com/Gulliby-development/runeloader)** (Android): open **Browse**, search for **Gulli Toolkit** and tap **Install**. You get the toolkit and every module. In **Library**, open the toolkit to see its modules and remove the ones you do not want.
 
-**By hand:**
+**Everything in one zip:** download [`Gulli-Toolkit-All.zip`](../../releases/download/bundle/Gulli-Toolkit-All.zip) and unpack it into the game's `Interface/AddOns` folder. It holds the newest version of the toolkit and of every module, and it is rebuilt after each release.
+
+**By hand, one by one:**
 
 1. **Download** the zips you want from the [releases](../../releases): `Gulli-Toolkit-<version>-forever.zip` for the toolkit, `Gulli-<Module>-<version>-forever.zip` for each module.
 2. **Unpack** each one into the game's `Interface/AddOns` folder. You get folders like `Interface/AddOns/Gulli-Toolkit` and `Interface/AddOns/Gulli-QuestCleaner`.

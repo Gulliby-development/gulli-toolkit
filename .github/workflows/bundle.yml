@@ -1,0 +1,47 @@
+name: All-in-one zip
+
+# Every Gulli addon in one zip, from the newest release of the core and of each module, on the
+# fixed pre-release "bundle". Release runs it after each release; "Run workflow" builds it now.
+# It stays a pre-release with a release.json that names no Forever build, so Runeloader and its
+# index never take it for the core (they read only published, non-pre-release tags).
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    # One build at a time; a newer waiting one replaces an older waiting one.
+    concurrency:
+      group: bundle
+      cancel-in-progress: false
+    permissions:
+      contents: write   # create or update the bundle release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build from the newest releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: python3 tools/bundle/build_bundle.py "$REPO" dist
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo '{"releases":[]}' > dist/release.json
+          if gh release view bundle --repo "$REPO" > /dev/null 2>&1; then
+            gh release upload bundle dist/Gulli-Toolkit-All.zip dist/release.json --repo "$REPO" --clobber
+            gh release edit bundle --repo "$REPO" --notes-file dist/notes.md --prerelease --latest=false
+          else
+            gh release create bundle dist/Gulli-Toolkit-All.zip dist/release.json --repo "$REPO" \
+              --target "$GITHUB_SHA" --title "Gulli Toolkit: everything in one zip" \
+              --notes-file dist/notes.md --prerelease --latest=false
+          fi

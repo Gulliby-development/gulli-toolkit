@@ -133,6 +133,8 @@ Each one loads `Locales.lua`, `Core.lua`, `Skin.lua`, `UI.lua` (DungeonPrep adds
 2. Start the Release workflow on `main` from the Actions tab ("Run workflow") with `module` set to `Core` or the module name (`QuestCleaner`), once per changed folder. Or push the tag.
 3. The workflow runs every test, zips that folder, writes `release.json` with the `forever` flavor, and publishes the release with both files. It refuses a tag that is already released.
 
+After each release, the `bundle` job (`.github/workflows/bundle.yml`, `tools/bundle/build_bundle.py`) rebuilds `Gulli-Toolkit-All.zip` from the newest published release of every tag group and puts it on the fixed pre-release `bundle`. It stays a pre-release with a `release.json` that names no Forever build, so the index and the app never take it for the core. A new module needs nothing there: every `<Name>-v` group is picked up. Run **All-in-one zip** from the Actions tab to rebuild it by hand.
+
 Never tag the core with a plain `v<version>`: the core is `Core-v…`. A tag prefix such as `release-` or `beta-` is not a module (`NOT_MODULES` in the index and the app).
 
 The owner asks for a release after every merged bug fix and after each batch of features: bump the version and run the workflow once the pull request is merged with green CI. Runeloader shows the new version after the next nightly index run. Installing the core in Runeloader installs every module.
@@ -158,7 +160,8 @@ The tag names, asset names and `release.json` are what Runeloader and its index 
 - `tools/dungeonprep/build_data.py`: the generator of DungeonPrep's `Data.lua` (it reuses `luadata.py`).
 - `docs/<name>/`: each module's player page and images. The logo and wordmarks come from Codex CLI image generation; the prompts are in `docs/<name>/PROMPTS.md`. QuestCleaner's window pictures are drawn from the layout in HTML, not taken in the game.
 - `.agents/skills/file-issue/`: the bug sweep skill.
-- `.github/workflows/`: CI (`ci.yml`) and releases (`release.yml`).
+- `tools/bundle/build_bundle.py`: builds the all-in-one zip from the newest releases.
+- `.github/workflows/`: CI (`ci.yml`), releases (`release.yml`) and the all-in-one zip (`bundle.yml`).
 
 ## Verification
 
