@@ -1,5 +1,6 @@
--- Before a dungeon: its quests (in the log, can take now and where, not yet), and a short
--- checklist of what runs out inside: repairs, bag space, food and drink, the hearthstone.
+-- Before a dungeon: its quests (in the log, can take now and where, not yet), their rewards
+-- and chains, the way there with the entrance, and a short checklist of what runs out
+-- inside: repairs, bag space, food and drink, the hearthstone, keys and class supplies.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -9,6 +10,40 @@ local CONSUMABLE, FOOD_DRINK = 0, 5
 
 local function data()
     return ns.Data or { dungeons = {}, byDungeon = {}, quest = {} }
+end
+
+-- Settings: the checklist thresholds and the switches. Each change goes through ns.Set.
+ns.DEFAULTS = {
+    durMin = 50, bagsMin = 6, foodMin = 10, ammoMin = 400, shardsMin = 5, reagentMin = 5,
+    keys = true, classCheck = true, remind = true, tomtom = true, hideLater = false,
+}
+
+function ns.Get(key)
+    local v = ns.db and ns.db[key]
+    if v == nil then return ns.DEFAULTS[key] end
+    return v
+end
+
+function ns.Set(key, value)
+    if ns.db then ns.db[key] = value end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Puts every setting back to its default and shows hidden quests again.
+function ns.Reset()
+    if not ns.db then return end
+    for k in pairs(ns.DEFAULTS) do ns.db[k] = nil end
+    ns.db.hidden = {}
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.Hidden(id) return ns.db and ns.db.hidden and ns.db.hidden[id] == true end
+
+function ns.SetHidden(id, on)
+    if not ns.db then return end
+    ns.db.hidden = ns.db.hidden or {}
+    ns.db.hidden[id] = on and true or nil
+    if ns.Refresh then ns.Refresh() end
 end
 
 -- Game API wrappers.
@@ -42,6 +77,16 @@ end
 local function itemClass(id)
     local _, _, _, _, _, classID, subclassID = ((C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant)(id)
     return classID, subclassID
+end
+local function itemCount(id)
+    return ((C_Item and C_Item.GetItemCount) or GetItemCount or function() return 0 end)(id) or 0
+end
+local function itemInfo(id)
+    local get = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if not get then return nil end
+    local name, link, quality, ilvl, _, _, _, _, equipLoc, icon, _, classID, subclassID = get(id)
+    if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
+    return name, link, quality, ilvl, equipLoc, icon, classID, subclassID
 end
 local function itemCooldown(id)
     local start, duration = ((C_Container and C_Container.GetItemCooldown) or GetItemCooldown)(id)
@@ -123,7 +168,8 @@ function ns.Dungeons(level)
     local out = {}
     for _, d in ipairs(data().dungeons) do
         out[#out + 1] = { key = d[1], areas = d[2], en = d[3], min = d[4], max = d[5],
-                          fits = level >= d[4] - 2 and level <= d[5] }
+                          fits = level >= d[4] - 2 and level <= d[5],
+                          entrance = d[6] and { area = d[6], x = d[7] or 0, y = d[8] or 0 } }
     end
     return out
 end
@@ -141,11 +187,41 @@ function ns.Suggest(level)
     return best or ns.Dungeons(level)[1]
 end
 
+-- The first earlier quest still missing: { id, name, who, area }, from the dungeon quests or D.pre.
+local function missing(q)
+    local D = data()
+    local ids = {}
+    for _, p in ipairs(q[8] or {}) do if not questDone(p) then ids[#ids + 1] = p end end
+    if #(q[9] or {}) > 0 then
+        local one = false
+        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        if not one then ids[#ids + 1] = q[9][1] end
+    end
+    for _, p in ipairs(ids) do
+        local d = D.quest[p]
+        if d then return { id = p, name = d[1], who = d[6], area = d[7] } end
+        d = D.pre and D.pre[p]
+        if d then return { id = p, name = d[1], who = d[3], area = d[4] } end
+    end
+    if ids[1] then return { id = ids[1] } end
+end
+
+local function matches(entry, text)
+    if not text or text == "" then return true end
+    text = text:lower()
+    local function has(s) return s and s ~= "" and s:lower():find(text, 1, true) ~= nil end
+    if has(entry.name) or has(entry.who) or has(entry.turnin and entry.turnin.who) then return true end
+    for _, t in ipairs(entry.targets or {}) do if has(t) then return true end end
+    return false
+end
+
 -- The quests of a dungeon for this character, split in three lists and a done count:
 -- log (in the quest log), take (can take now), later (level too low or an earlier quest missing).
-function ns.Quests(key, level)
+-- Quests the player hid go to `hidden` instead; `filter` is a text to find in the name, the
+-- quest givers or the mobs.
+function ns.Quests(key, level, filter)
     local D = data()
-    local out = { log = {}, take = {}, later = {}, done = 0 }
+    local out = { log = {}, take = {}, later = {}, hidden = {}, done = 0 }
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
         if q and forMe(q) then
@@ -153,9 +229,17 @@ function ns.Quests(key, level)
             for _, other in ipairs(q[10] or {}) do if questDone(other) then closed = true end end
             local entry = { id = id, name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or q[1],
                             level = q[2], minLevel = q[3], who = q[6], area = q[7],
-                            x = q[12] or 0, y = q[13] or 0 }
+                            x = q[12] or 0, y = q[13] or 0, step = q[18] or 0, steps = q[19] or 0,
+                            reward = D.reward and D.reward[id], targets = D.target and D.target[id] }
+            if q[14] and q[14] ~= "" then
+                entry.turnin = { who = q[14], area = q[15] or 0, zone = areaName(q[15]), x = q[16] or 0, y = q[17] or 0 }
+            end
             if questDone(id) then
                 out.done = out.done + 1
+            elseif not matches(entry, filter) then
+                -- left out by the search
+            elseif ns.Hidden(id) then
+                out.hidden[#out.hidden + 1] = entry
             elseif onQuest(id) then
                 out.log[#out.log + 1] = entry
             elseif not closed then
@@ -168,6 +252,7 @@ function ns.Quests(key, level)
                 end
                 if not pre then
                     entry.why = "WHY_EARLIER"
+                    entry.need = missing(q)
                     out.later[#out.later + 1] = entry
                 elseif level < entry.minLevel then
                     entry.why = "WHY_LEVEL"
@@ -180,7 +265,120 @@ function ns.Quests(key, level)
     end
     local byLevel = function(a, b) if a.level ~= b.level then return a.level < b.level end return a.name < b.name end
     table.sort(out.log, byLevel); table.sort(out.take, byLevel); table.sort(out.later, byLevel)
+    table.sort(out.hidden, byLevel)
     return out
+end
+
+-- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.
+function ns.NeedText(need)
+    if not need then return L.WHY_EARLIER end
+    if not need.name then return L.WHY_EARLIER end
+    local where = ns.Where({ who = need.who or "", area = need.area or 0 })
+    return where ~= "" and L.NEEDS_AT:format(need.name, where) or L.NEEDS:format(need.name)
+end
+
+-- Armour each class wears best (plate and mail from level 40) and the weapon subclasses it
+-- can learn. Item class 4 is armour, 2 weapons; armour subclass 0 is rings, necks, trinkets.
+local ARMOR, WEAPON = 4, 2
+local BEST_ARMOR = {
+    WARRIOR = { 3, 4 }, PALADIN = { 3, 4 }, HUNTER = { 2, 3 }, SHAMAN = { 2, 3 }, ROGUE = { 2, 2 },
+    DRUID = { 2, 2 }, PRIEST = { 1, 1 }, MAGE = { 1, 1 }, WARLOCK = { 1, 1 },
+}
+local SHIELD = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+local WEAPONS = {
+    WARRIOR = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 15, 16, 18 }, PALADIN = { 0, 1, 4, 5, 6, 7, 8 },
+    HUNTER = { 0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18 }, ROGUE = { 2, 3, 4, 7, 13, 15, 16, 18 },
+    PRIEST = { 4, 10, 15, 19 }, SHAMAN = { 0, 1, 4, 5, 10, 13, 15 }, MAGE = { 7, 10, 15, 19 },
+    WARLOCK = { 7, 10, 15, 19 }, DRUID = { 4, 5, 10, 13, 15 },
+}
+
+-- Whether an item is meant for this class: its best armour, any cloak or jewellery, a
+-- shield it can carry, or a weapon it can learn. Anything else (a potion, a bag) fits too.
+function ns.Fits(classID, subclassID, equipLoc, class, level)
+    if classID == ARMOR then
+        if subclassID == 0 or equipLoc == "INVTYPE_CLOAK" then return true end
+        if subclassID == 6 then return SHIELD[class] == true end
+        local best = BEST_ARMOR[class]
+        if not best then return true end
+        return subclassID == best[(level or 1) >= 40 and 2 or 1]
+    elseif classID == WEAPON then
+        for _, s in ipairs(WEAPONS[class] or {}) do if s == subclassID then return true end end
+        return WEAPONS[class] == nil
+    end
+    return true
+end
+
+-- The gear slots an equip location fills, to compare with what is worn.
+local SLOTS = {
+    INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 },
+    INVTYPE_ROBE = { 5 }, INVTYPE_WAIST = { 6 }, INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 },
+    INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 }, INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 },
+    INVTYPE_CLOAK = { 15 }, INVTYPE_WEAPON = { 16, 17 }, INVTYPE_2HWEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 },
+    INVTYPE_SHIELD = { 17 }, INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_HOLDABLE = { 17 }, INVTYPE_RANGED = { 18 },
+    INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 },
+}
+
+-- The lowest item level worn in the slots, 0 for an empty one.
+local function wornLevel(slots)
+    local low
+    for _, slot in ipairs(slots) do
+        local link = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+        local ilvl = 0
+        if link then ilvl = select(4, itemInfo(link)) or 0 end
+        low = low and math.min(low, ilvl) or ilvl
+    end
+    return low or 0
+end
+
+-- A quest's reward items: { id, name, link, icon, quality, fits, better }. `better` is an item
+-- for this class with a higher item level than what is worn there. Names come once the game
+-- has the item; until then only the id.
+function ns.Rewards(entry)
+    local out = {}
+    local _, class = UnitClass("player")
+    local level = UnitLevel("player") or 1
+    for _, id in ipairs(entry.reward or {}) do
+        local name, link, quality, ilvl, equipLoc, icon, classID, subclassID = itemInfo(id)
+        local r = { id = id, name = name, link = link, icon = icon, quality = quality }
+        if name then
+            r.fits = ns.Fits(classID, subclassID, equipLoc, class, level)
+            local slots = SLOTS[equipLoc or ""]
+            r.better = r.fits and slots ~= nil and (ilvl or 0) > wornLevel(slots)
+        end
+        out[#out + 1] = r
+    end
+    return out
+end
+
+-- Experience and money of a quest in the log, when the game tells them.
+function ns.LogReward(id)
+    local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(id)
+    local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(id)
+    return type(xp) == "number" and xp or 0, type(money) == "number" and money or 0
+end
+
+-- Group members (names) who have this quest too.
+function ns.GroupOn(id)
+    local out = {}
+    if not (Q.IsUnitOnQuest and IsInGroup and IsInGroup()) then return out end
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists and UnitExists(unit) and Q.IsUnitOnQuest(unit, id) then out[#out + 1] = UnitName(unit) end
+    end
+    return out
+end
+
+-- Shares a quest of the log with the group. Returns true when it was offered.
+function ns.Share(id)
+    if not (IsInGroup and IsInGroup() and QuestLogPushQuest) then return false end
+    if Q.SetSelectedQuest then
+        Q.SetSelectedQuest(id)
+    elseif SelectQuestLogEntry and Q.GetLogIndexForQuestID then
+        SelectQuestLogEntry(Q.GetLogIndexForQuestID(id))
+    end
+    QuestLogPushQuest()
+    print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.SHARED)
+    return true
 end
 
 function ns.Where(q)
@@ -226,7 +424,7 @@ local function dist(ax, ay, bx, by) return math.sqrt((ax - bx) ^ 2 + (ay - by) ^
 -- here, inside }. Stops in the player's zone come first, nearest first from where the
 -- player stands; then other zones on the same continent, then the other continent, each
 -- zone with the most quests first. Quests started by an item or inside the dungeon go last.
-function ns.Route(take, here)
+function ns.Route(take, here, dungeon)
     here = here or {}
     local stops, byKey, inside = {}, {}, nil
     for _, q in ipairs(take) do
@@ -284,6 +482,11 @@ function ns.Route(take, here)
             px, py = s.x, s.y
         end
     end
+    local e = dungeon and dungeon.entrance
+    if e and e.area > 0 then
+        out[#out + 1] = { entrance = true, who = ns.DungeonName(dungeon), area = e.area, zone = areaName(e.area),
+                          x = e.x, y = e.y, quests = {} }
+    end
     if inside then out[#out + 1] = inside end
     return out
 end
@@ -304,19 +507,51 @@ function ns.SetPin(stop)
     if not id then return false end
     MAP.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(id, stop.x / 100, stop.y / 100))
     if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+    -- TomTom's arrow too, when it is installed (never needed).
+    if ns.Get("tomtom") and TomTom and TomTom.AddWaypoint then
+        TomTom:AddWaypoint(id, stop.x / 100, stop.y / 100, { title = stop.who, from = "Gulli-DungeonPrep" })
+    end
     print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.PIN_SET:format(stop.who))
     return true
 end
 
--- The checklist: { key, ok, text } for repairs, bag space, food and drink, hearthstone.
-function ns.Checklist()
+-- Keys and items that open a dungeon or a part of it.
+ns.KEYS = {
+    SM = { 7146 },       -- The Scarlet Key
+    GNOMER = { 6893 },   -- Workshop Key
+    ZF = { 9240 },       -- Mallet of Zul'Farrak
+    BRD = { 11000 },     -- Shadowforge Key
+    BRS = { 12344 },     -- Seal of Ascension
+    DIREMAUL = { 18249 }, -- Crescent Key
+    SCHOLO = { 13704 },  -- Skeleton Key
+    STRAT = { 12382 },   -- Key to the City
+}
+
+-- What each class brings along: a reagent from the level its spell comes, or ammo and shards.
+ns.CLASS_ITEMS = {
+    PRIEST = { id = 17028, level = 48 },  -- Holy Candle
+    MAGE = { id = 17020, level = 56 },    -- Arcane Powder
+    SHAMAN = { id = 17030, level = 30 },  -- Ankh
+    DRUID = { id = 17034, level = 20 },   -- Maple Seed
+    ROGUE = { id = 5140, level = 22 },    -- Flash Powder
+    PALADIN = { id = 21177, level = 52 }, -- Symbol of Kings
+    WARLOCK = { id = 6265, level = 1, key = "SHARDS" }, -- Soul Shard
+}
+
+local function nameOf(id)
+    return itemInfo(id) or ("item:" .. id)
+end
+
+-- The checklist: { key, ok, text } for repairs, bag space, food and drink, hearthstone, then
+-- the keys of the dungeon (`dungeonKey`) and what the class brings along.
+function ns.Checklist(dungeonKey)
     local out = {}
     local lowest = 100
     for slot = 1, 18 do
         local cur, max = GetInventoryItemDurability(slot)
         if cur and max and max > 0 then lowest = math.min(lowest, math.floor(cur * 100 / max)) end
     end
-    out[#out + 1] = { key = "REPAIR", ok = lowest >= 50, text = L.CHECK_REPAIR:format(lowest) }
+    out[#out + 1] = { key = "REPAIR", ok = lowest >= ns.Get("durMin"), text = L.CHECK_REPAIR:format(lowest) }
 
     local free, food = 0, 0
     for bag = 0, 4 do
@@ -330,14 +565,92 @@ function ns.Checklist()
             end
         end
     end
-    out[#out + 1] = { key = "BAGS", ok = free >= 6, text = L.CHECK_BAGS:format(free) }
-    out[#out + 1] = { key = "FOOD", ok = food >= 10, text = L.CHECK_FOOD:format(food) }
+    out[#out + 1] = { key = "BAGS", ok = free >= ns.Get("bagsMin"), text = L.CHECK_BAGS:format(free) }
+    out[#out + 1] = { key = "FOOD", ok = food >= ns.Get("foodMin"), text = L.CHECK_FOOD:format(food) }
 
     local start, duration = itemCooldown(HEARTHSTONE)
     local left = (start > 0 and duration > 0) and math.ceil(start + duration - GetTime()) or 0
     out[#out + 1] = { key = "HEARTH", ok = left <= 0,
                       text = left > 0 and L.CHECK_HEARTH_CD:format(math.ceil(left / 60)) or L.CHECK_HEARTH }
+
+    if ns.Get("keys") and dungeonKey then
+        for _, id in ipairs(ns.KEYS[dungeonKey] or {}) do
+            local have = itemCount(id) > 0
+            out[#out + 1] = { key = "KEY", item = id, ok = have,
+                              text = (have and L.CHECK_KEY or L.CHECK_NO_KEY):format(nameOf(id)) }
+        end
+    end
+    if ns.Get("classCheck") then
+        local _, class = UnitClass("player")
+        local level = UnitLevel("player") or 1
+        if class == "HUNTER" then
+            local ammo = GetInventoryItemCount and GetInventoryItemCount("player", 0) or 0
+            out[#out + 1] = { key = "AMMO", ok = ammo >= ns.Get("ammoMin"), text = L.CHECK_AMMO:format(ammo) }
+        end
+        local c = ns.CLASS_ITEMS[class]
+        if c and level >= c.level then
+            local n = itemCount(c.id)
+            local min = ns.Get(c.key == "SHARDS" and "shardsMin" or "reagentMin")
+            out[#out + 1] = { key = c.key or "REAGENT", item = c.id, ok = n >= min,
+                              text = L.CHECK_ITEM:format(n, nameOf(c.id)) }
+        end
+    end
     return out
+end
+
+-- Finished dungeon quests in the log: { entry with turnin }, for the reminder after a run.
+function ns.HandIns()
+    local D = data()
+    local out, seen = {}, {}
+    for _, ids in pairs(D.byDungeon) do
+        for _, id in ipairs(ids) do
+            local q = D.quest[id]
+            if q and not seen[id] and onQuest(id) and Q.IsComplete and Q.IsComplete(id) then
+                seen[id] = true
+                out[#out + 1] = { id = id, name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or q[1],
+                                  turnin = { who = q[14] or "", area = q[15] or 0, zone = areaName(q[15]),
+                                             x = q[16] or 0, y = q[17] or 0 } }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return out
+end
+
+-- Leaving a dungeon: one line per finished quest with where to hand it in, a pin on the first.
+function ns.Remind()
+    if not ns.Get("remind") then return end
+    local list = ns.HandIns()
+    if #list == 0 then return end
+    for _, q in ipairs(list) do
+        local where = q.turnin.who ~= "" and ns.Where({ who = q.turnin.who, area = q.turnin.area }) or ""
+        print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.HAND_IN:format(q.name, where))
+    end
+    if GulliToolkit and GulliToolkit.Notify then
+        GulliToolkit.Notify("DungeonPrep", L.HAND_IN_N:format(#list))
+    end
+    local first = list[1].turnin
+    if first.who ~= "" and first.x > 0 then ns.SetPin(first) end
+end
+
+local wasInside = false
+local function checkLeave()
+    local inside, kind = false, nil
+    if IsInInstance then inside, kind = IsInInstance() end
+    inside = inside and (kind == "party" or kind == "raid")
+    if wasInside and not inside then ns.Remind() end
+    wasInside = inside and true or false
+end
+ns.CheckLeave = checkLeave
+
+-- One line for the hub's home page: the dungeon for this level and its quests.
+function ns.Summary()
+    local level = UnitLevel("player") or 1
+    local d = ns.Suggest(level)
+    if not d then return nil end
+    local q = ns.Quests(d.key, level)
+    if #q.log + #q.take == 0 then return nil end
+    return L.SUMMARY:format(ns.DungeonName(d), #q.log, #q.take), ns.Icon(d.key)
 end
 
 local f = CreateFrame("Frame")
@@ -347,12 +660,16 @@ f:SetScript("OnEvent", function(self, event, a1)
         if a1 ~= ADDON then return end
         GulliDungeonPrepDB = GulliDungeonPrepDB or {}
         ns.db = GulliDungeonPrepDB
+        ns.db.hidden = ns.db.hidden or {}
         self:RegisterEvent("QUEST_LOG_UPDATE")
+        self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         self:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         return
     end
+    if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then checkLeave() end
     if ns.Refresh then ns.Refresh() end
 end)
 
@@ -368,6 +685,13 @@ end
 
 function GulliDungeonPrep_Toggle() ns.Toggle() end
 
+-- The game icon of each switch, in the window and in the hub.
+ns.OPT_ICON = {
+    remind = "Interface\\Icons\\INV_Letter_15", keys = "Interface\\Icons\\INV_Misc_Key_04",
+    classCheck = "Interface\\Icons\\INV_Misc_Bag_10", tomtom = "Interface\\Icons\\INV_Misc_Map_01",
+    hideLater = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+}
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "DungeonPrep",
@@ -375,5 +699,17 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gdp",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        summary = function() return ns.Summary() end,
+        reset = function() ns.Reset() end,
+        options = {
+            { label = L.OPT_REMIND, tip = L.OPT_REMIND_D, icon = ns.OPT_ICON.remind,
+              get = function() return ns.Get("remind") end, set = function(v) ns.Set("remind", v) end },
+            { label = L.OPT_KEYS, tip = L.OPT_KEYS_D, icon = ns.OPT_ICON.keys,
+              get = function() return ns.Get("keys") end, set = function(v) ns.Set("keys", v) end },
+            { label = L.OPT_CLASS, tip = L.OPT_CLASS_D, icon = ns.OPT_ICON.classCheck,
+              get = function() return ns.Get("classCheck") end, set = function(v) ns.Set("classCheck", v) end },
+            { label = L.OPT_TOMTOM, tip = L.OPT_TOMTOM_D, icon = ns.OPT_ICON.tomtom,
+              get = function() return ns.Get("tomtom") end, set = function(v) ns.Set("tomtom", v) end },
+        },
     })
 end
