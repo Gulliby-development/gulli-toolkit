@@ -250,6 +250,40 @@ local function levels(rid, rec)
     return byItem
 end
 
+-- Where a recipe not learned yet comes from, and its price. Data.lua names the pattern and its
+-- vendors; a pattern sells to a vendor for a quarter of what the vendor asks, so the price is
+-- four times its sell price until the vendor was seen. A pattern on the auction costs its
+-- Auctionator price. A recipe with no pattern comes from the trainer, whose price is known
+-- once the trainer window was open.
+local function recipeSource(state, rid, rec)
+    local D = ns.Data and ns.Data.src
+    local d = D and rid ~= rec.out and D[rid]
+    if d then
+        local item = d[2]
+        itemFor(state, item)
+        local it = state.items[item]
+        local fac = (UnitFactionGroup and UnitFactionGroup("player")) == "Horde" and "H" or "A"
+        local who = {}
+        for i = 3, #d do
+            local name, f = d[i]:match("^(.-)|(%a+)$")
+            if name and f:find(fac, 1, true) then who[#who + 1] = name end
+        end
+        local src
+        if d[1] == "v" and #who > 0 then
+            local seen = ns.db.vendor[item]
+            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = who }
+        end
+        if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
+        src = src or { t = d[1] == "q" and "quest" or "drop" }
+        src.item, src.text = item, rec.source
+        return src
+    end
+    local cost = rec.name and ns.db.trainer[rec.name]
+    if cost then return { t = "trainer", cost = cost } end
+    if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then return { t = "trainer" } end
+    return { t = "text", text = rec.source }
+end
+
 -- The profession the window shows, as a plain table for Core.lua; nil before any scan.
 function ns.State()
     local db = charDB()
@@ -267,11 +301,7 @@ function ns.State()
                     icon = prof.icon, items = {}, recipes = {} }
     for rid, rec in pairs(prof.recipes) do
         local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
-        local src
-        if not rec.learned then
-            local cost = rec.name and ns.db.trainer[rec.name]
-            if cost then src = { t = "trainer", cost = cost } else src = { t = "text", text = rec.source } end
-        end
+        local src = not rec.learned and recipeSource(state, rid, rec) or nil
         state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
         for id in pairs(rec.r or {}) do itemFor(state, id) end

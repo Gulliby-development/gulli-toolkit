@@ -398,7 +398,7 @@ end)
 
 test("the levelling routes run from the cheapest to the fastest", function()
     local c, st = core(), state()
-    local f = c.Frontier(st, prefs({}))
+    local f = c.Frontier(st, prefs({ maxSell = 5 })) -- a small market makes speed cost gold)
     assert(#f >= 2 and #f <= c.LEVEL_ROUTES, "routes: " .. #f)
     for i = 2, #f do
         assert(f[i].net <= f[i - 1].net + 1, "each one costs more")
@@ -409,10 +409,10 @@ end)
 
 test("the loss budget: routes over it are marked, the fastest within it is the best", function()
     local c, st = core(), state()
-    local f = c.Frontier(st, prefs({}))
+    local f = c.Frontier(st, prefs({ maxSell = 5 }))
     local cheap, fast = -f[1].net, -f[#f].net
     assert(fast > cheap)
-    local v = c.Variants(st, prefs({ budget = math.floor((cheap + fast) / 2) }))
+    local v = c.Variants(st, prefs({ maxSell = 5, budget = math.floor((cheap + fast) / 2) }))
     local best, over = nil, 0
     for i, x in ipairs(v) do
         if x.best then best = i end
@@ -422,10 +422,10 @@ test("the loss budget: routes over it are marked, the fastest within it is the b
     assert(over >= 1)
     assert(not v[best].over)
     -- no limit: the fastest is the best
-    local all = c.Variants(st, prefs({}))
+    local all = c.Variants(st, prefs({ maxSell = 5 }))
     assert(all[#f].best)
     -- too small a budget: the cheapest, marked as over
-    local tiny = c.Variants(st, prefs({ budget = 1 }))
+    local tiny = c.Variants(st, prefs({ maxSell = 5, budget = 1 }))
     assert(tiny[1].best and tiny[1].over)
 end)
 
@@ -576,6 +576,47 @@ test("the profession window is read with the modern API", function()
     eq(st.recipes[102].skill[3], 175, "grey from the game still wins")
 end)
 
+test("a pattern's source and price come from the data; no pattern: the trainer", function()
+    local n = game()
+    -- sold by a vendor of each faction: the Alliance one counts; the price is four times its sell price
+    n.Data.src[104] = { "v", 6, "Horde Guy|H", "Ally Gal|A" }
+    local src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.cost, 520 * 4); eq(src.est, true); eq(src.who[1], "Ally Gal"); eq(#src.who, 1)
+    eq(n.CanGet({ src = src }, n.Prefs({})), true)
+    -- the vendor was seen: its own price
+    n.db.vendor[6] = 1000
+    src = n.State().recipes[104].src
+    eq(src.cost, 1000); eq(src.est, false)
+    -- on the auction for less: buy it there
+    n.db.vendor[6] = 9000
+    eq(n.State().recipes[104].src.t, "ah")
+    -- only a drop, and nobody sells it: not a way to get it
+    n.Data.src[104] = { "d", 7 }
+    src = n.State().recipes[104].src
+    eq(src.t, "drop"); eq(n.CanGet({ src = src }, n.Prefs({})), false)
+    -- no pattern, but a known recipe: the trainer, at no known price yet
+    n.Data.src[104] = nil
+    n.Data.spell[104] = { 160, 170, 180 }
+    src = n.State().recipes[104].src
+    eq(src.t, "trainer"); eq(src.cost, nil)
+    n.Data.spell[104] = nil
+    eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
+end)
+
+test("each leg chip shows what the run gains or loses; craft reagents get their own rows", function()
+    local n = game()
+    n.Toggle()
+    local v = n.view
+    local chip = n.ui.chips[1]:GetText()
+    local net = v.legs[1].plan.net
+    assert(chip:find((net < 0 and "-" or "+") .. n.Short(net), 1, true), chip)
+    local i
+    for k, s in ipairs(v.route) do if s.segs then i = k end end
+    n.Select(i)
+    local rows = n.ui.detail.rows
+    assert(rows[2] and rows[2].mid:GetText() == n.L.REAGENT, "a reagent row under the recipe")
+end)
+
 test("the classic API works too", function()
     local n = game({ classic = true })
     local p = n.char.profs.Tailoring
@@ -638,7 +679,7 @@ test("mode buttons, the target stepper and reset", function()
     W.Click(n.ui.chance.minus)
     eq(n.view.prefs.chance, 75)
     W.Click(n.ui.maxSell.plus)
-    eq(n.view.prefs.maxSell, 6)
+    eq(n.view.prefs.maxSell, 21)
     W.Click(n.ui.maxBuy.minus)
     eq(n.view.prefs.maxBuy, 30)
     W.Click(n.ui.reset)
