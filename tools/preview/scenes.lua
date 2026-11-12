@@ -190,7 +190,26 @@ S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "
 
 S.quickchat = {
     default = {},
+    edit = { open = function(ns)
+        ns.ToggleFav("Ready!"); ns.ToggleFav("brb"); ns.db.chan["Need a heal!"] = "PARTY"
+        ns.ShowPage(1, { editing = true })
+    end },
     group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
+    dungeon = { spec = { level = 57, areas = { [2017] = "Stratholme" } }, open = function(ns)
+        ns.ShowPage(2, { mode = 2 })
+    end },
+    whispers = { open = function(ns, W)
+        W.combat = true
+        W.Fire("CHAT_MSG_WHISPER", "can you craft a bag?", "Ann-Realm")
+        W.Fire("CHAT_MSG_WHISPER", "inv for ST?", "Bob")
+        W.combat = false
+        ns.ShowPage(3)
+    end },
+    more = { open = function(ns)
+        ns.Say("Ready!"); ns.Say("brb", "GUILD")
+        ns.ShowPage(4)
+    end },
+    setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
 }
 
 local QC = {
