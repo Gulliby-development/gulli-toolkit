@@ -1,4 +1,4 @@
--- The settings: what to do on its own, and a note about Shift and rewards.
+-- The settings: what to do on its own, in one card, and a note about Shift and rewards.
 
 local _, ns = ...
 local L = ns.L
@@ -7,18 +7,19 @@ local S = ns.Skin
 local frame
 
 local function build()
-    frame = S.Window("GulliAutoQuestFrame", L.TITLE, 400, 230)
+    frame = S.Window("GulliAutoQuestFrame", L.TITLE, 440, 300)
     local body = frame.body
-    local y = 0
+    local rows = {}
     for _, o in ipairs({ { "accept", L.OPT_ACCEPT }, { "turnIn", L.OPT_TURNIN }, { "skipTrivial", L.OPT_TRIVIAL } }) do
-        local c = S.CheckRow(body, o[2], function() return ns.db[o[1]] end, function(v) ns.db[o[1]] = v end)
-        c:SetPoint("TOPLEFT", 0, y)
-        y = y - 32
+        local key = o[1]
+        rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v) ns.db[key] = v end }
     end
-    local tip = S.Note(body, 11)
-    tip:SetPoint("TOPLEFT", 0, y - 6)
-    tip:SetPoint("RIGHT", 0, 0)
-    tip:SetText(L.NOTE)
+    local st = S.Stack(body)
+    local card, h = S.SettingsCard(body, nil, rows)
+    st:Add(card, h)
+    local tip, th = S.Paragraph(body, L.NOTE, frame.inner[1])
+    st:Add(tip, th)
+    S.FitWindow(frame, st:Height())
 end
 
 function ns.Toggle()

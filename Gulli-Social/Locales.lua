@@ -24,6 +24,8 @@ T.en = {
     OPT_BLOCK = "Turn away group invites from strangers",
     OPT_DUELS = "Turn away duels",
     OPT_GUILD = "Turn away guild invites",
+    SEC_INVITE = "Invites",
+    SEC_AWAY = "Turn away",
 }
 
 T.de = {
@@ -41,6 +43,8 @@ T.de = {
     OPT_BLOCK = "Gruppeneinladungen von Fremden ablehnen",
     OPT_DUELS = "Duelle ablehnen",
     OPT_GUILD = "Gildeneinladungen ablehnen",
+    SEC_INVITE = "Einladungen",
+    SEC_AWAY = "Ablehnen",
 }
 
 T.es = {
@@ -58,6 +62,8 @@ T.es = {
     OPT_BLOCK = "Rechazar invitaciones de grupo de desconocidos",
     OPT_DUELS = "Rechazar duelos",
     OPT_GUILD = "Rechazar invitaciones de hermandad",
+    SEC_INVITE = "Invitaciones",
+    SEC_AWAY = "Rechazar",
 }
 
 T.fr = {
@@ -75,6 +81,8 @@ T.fr = {
     OPT_BLOCK = "Refuser les invitations de groupe des inconnus",
     OPT_DUELS = "Refuser les duels",
     OPT_GUILD = "Refuser les invitations de guilde",
+    SEC_INVITE = "Invitations",
+    SEC_AWAY = "Refuser",
 }
 
 T.pl = {
@@ -92,6 +100,8 @@ T.pl = {
     OPT_BLOCK = "Odrzucaj zaproszenia do grupy od obcych",
     OPT_DUELS = "Odrzucaj pojedynki",
     OPT_GUILD = "Odrzucaj zaproszenia do gildii",
+    SEC_INVITE = "Zaproszenia",
+    SEC_AWAY = "Odrzucanie",
 }
 
 T.pt = {
@@ -109,6 +119,8 @@ T.pt = {
     OPT_BLOCK = "Recusar convites de grupo de desconhecidos",
     OPT_DUELS = "Recusar duelos",
     OPT_GUILD = "Recusar convites de guilda",
+    SEC_INVITE = "Convites",
+    SEC_AWAY = "Recusar",
 }
 
 T.ru = {
@@ -126,6 +138,8 @@ T.ru = {
     OPT_BLOCK = "Отклонять приглашения в группу от незнакомцев",
     OPT_DUELS = "Отклонять дуэли",
     OPT_GUILD = "Отклонять приглашения в гильдию",
+    SEC_INVITE = "Приглашения",
+    SEC_AWAY = "Отклонять",
 }
 
 T.zh = {
@@ -143,6 +157,8 @@ T.zh = {
     OPT_BLOCK = "拒绝陌生人的组队邀请",
     OPT_DUELS = "拒绝决斗",
     OPT_GUILD = "拒绝公会邀请",
+    SEC_INVITE = "邀请",
+    SEC_AWAY = "拒绝",
 }
 
 ns.T = T

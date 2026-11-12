@@ -23,6 +23,8 @@ T.en = {
     NO_ITEMS = "No item rules yet. Drop an item below to add one.",
     DROP = "Drop an item here to give it a rule",
     OPT_REPORT = "Say in chat what was rolled",
+    SEC_QUALITY = "By quality",
+    SEC_ITEMS = "Item rules",
 }
 
 T.de = {
@@ -39,6 +41,8 @@ T.de = {
     NO_ITEMS = "Noch keine Gegenstandsregeln. Lege unten einen Gegenstand ab.",
     DROP = "Gegenstand hier ablegen, um ihm eine Regel zu geben",
     OPT_REPORT = "Im Chat sagen, was gewürfelt wurde",
+    SEC_QUALITY = "Nach Qualität",
+    SEC_ITEMS = "Regeln für Gegenstände",
 }
 
 T.es = {
@@ -55,6 +59,8 @@ T.es = {
     NO_ITEMS = "Aún no hay reglas de objetos. Suelta un objeto abajo.",
     DROP = "Suelta aquí un objeto para darle una regla",
     OPT_REPORT = "Decir en el chat qué se tiró",
+    SEC_QUALITY = "Por calidad",
+    SEC_ITEMS = "Reglas por objeto",
 }
 
 T.fr = {
@@ -71,6 +77,8 @@ T.fr = {
     NO_ITEMS = "Aucune règle d'objet. Déposez un objet ci-dessous.",
     DROP = "Déposez un objet ici pour lui donner une règle",
     OPT_REPORT = "Dire dans le chat ce qui a été tiré",
+    SEC_QUALITY = "Par qualité",
+    SEC_ITEMS = "Règles par objet",
 }
 
 T.pl = {
@@ -87,6 +95,8 @@ T.pl = {
     NO_ITEMS = "Brak reguł przedmiotów. Upuść przedmiot poniżej.",
     DROP = "Upuść tu przedmiot, aby nadać mu regułę",
     OPT_REPORT = "Pisz na czacie, co wylosowano",
+    SEC_QUALITY = "Według jakości",
+    SEC_ITEMS = "Reguły przedmiotów",
 }
 
 T.pt = {
@@ -103,6 +113,8 @@ T.pt = {
     NO_ITEMS = "Nenhuma regra de item ainda. Solte um item abaixo.",
     DROP = "Solte um item aqui para dar uma regra a ele",
     OPT_REPORT = "Dizer no chat o que foi rolado",
+    SEC_QUALITY = "Por qualidade",
+    SEC_ITEMS = "Regras por item",
 }
 
 T.ru = {
@@ -119,6 +131,8 @@ T.ru = {
     NO_ITEMS = "Правил для предметов пока нет. Перетащите предмет вниз.",
     DROP = "Перетащите сюда предмет, чтобы задать ему правило",
     OPT_REPORT = "Писать в чат, что разыграно",
+    SEC_QUALITY = "По качеству",
+    SEC_ITEMS = "Правила для предметов",
 }
 
 T.zh = {
@@ -135,6 +149,8 @@ T.zh = {
     NO_ITEMS = "还没有物品规则。把物品拖到下方。",
     DROP = "把物品拖到这里设置规则",
     OPT_REPORT = "在聊天中显示掷骰结果",
+    SEC_QUALITY = "按品质",
+    SEC_ITEMS = "物品规则",
 }
 
 ns.T = T

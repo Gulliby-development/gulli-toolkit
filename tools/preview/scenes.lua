@@ -55,4 +55,21 @@ S.bagspace = { default = {
 S.attune = { default = { spec = { name = "Gulliby", done = { [7848] = true, [4182] = true, [4183] = true },
     active = { [4184] = true } } } }
 
+S.xp = { default = {
+    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 4200, now = 0 },
+    open = function(ns, W)
+        W.Fire("PLAYER_LOGIN")
+        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
+        ns.Toggle()
+    end,
+} }
+
+S.loot = { default = {
+    spec = { db = { quality = { [0] = "pass", [1] = "greed" }, items = { [2589] = "need", [2592] = "greed" }, report = true } },
+    before = function()
+        C_Item = C_Item or {}
+        C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
+    end,
+} }
+
 return S
