@@ -190,7 +190,26 @@ S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "
 
 S.quickchat = {
     default = {},
+    edit = { open = function(ns)
+        ns.ToggleFav("Ready!"); ns.ToggleFav("brb"); ns.db.chan["Need a heal!"] = "PARTY"
+        ns.ShowPage(1, { editing = true })
+    end },
     group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
+    dungeon = { spec = { level = 57, areas = { [2017] = "Stratholme" } }, open = function(ns)
+        ns.ShowPage(2, { mode = 2 })
+    end },
+    whispers = { open = function(ns, W)
+        W.combat = true
+        W.Fire("CHAT_MSG_WHISPER", "can you craft a bag?", "Ann-Realm")
+        W.Fire("CHAT_MSG_WHISPER", "inv for ST?", "Bob")
+        W.combat = false
+        ns.ShowPage(3)
+    end },
+    more = { open = function(ns)
+        ns.Say("Ready!"); ns.Say("brb", "GUILD")
+        ns.ShowPage(4)
+    end },
+    setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
 }
 
 local QC = {
@@ -237,13 +256,32 @@ S.groupbuffs = {
     shaman = { spec = { units = gbUnits("SHAMAN") }, open = gbOpen, crop = "GulliGroupBuffsSettings" },
 }
 
-S.chores = { default = {
-    spec = { level = 42 },
-    before = function(W)
-        W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
-        W.char.spells[17187], W.char.rested = true, 90000
-    end,
-} }
+local function choresChars(W)
+    W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
+    W.char.spells[17187], W.char.rested = true, 600
+    W.char.items[6948], W.char.bind = 1, "Goldshire"
+    W.char.profs = { { "Tailoring", 150, 150 }, { "Cooking", 112, 225 } }
+    W.char.inbox = { { 0, 0, 1.6, 2 } }
+    GulliChoresDB = { chars = {
+        ["Lirra-Realm"] = { name = "Lirra", class = "MAGE", level = 38, t = W.now - 30 * 3600, realm = "Realm",
+            faction = "Alliance", rested = 0.9, resting = true, money = 1234500, durability = 88, free = 9,
+            trainer = 38, cooldowns = { CD_MOONCLOTH = W.now - 60 } },
+        ["Bankie-Realm"] = { name = "Bankie", class = "ROGUE", level = 6, t = W.now - 5 * 86400, realm = "Realm",
+            faction = "Alliance", rested = 1.5, resting = true, money = 40000, durability = 100, free = 1,
+            trainer = 6, cooldowns = {}, note = "bank" },
+        ["Thorn-Realm"] = { name = "Thorn", class = "WARRIOR", level = 60, maxLevel = true, t = W.now - 2 * 86400,
+            realm = "Realm", faction = "Alliance", money = 8705000, durability = 54, free = 14, trainer = 60,
+            cooldowns = { CD_TRANSMUTE = W.now + 9 * 3600 } },
+    } }
+end
+local function choresTab(i)
+    return function(ns) ns.Toggle(); ns.ReadMail(); ns.Tabs():Select(i) end
+end
+S.chores = {
+    default = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(1) },
+    overview = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(2) },
+    settings = { spec = { level = 42, class = "PRIEST" }, before = choresChars, open = choresTab(3) },
+}
 
 S.craftprofit = { default = {
     spec = {
@@ -296,9 +334,19 @@ S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 
 S.mail = { panel = {
-    spec = { inbox = { { sender = "Auction House", money = 4210 }, { sender = "Auction House", items = { 2589 } } } },
+    spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
+                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
+                       { sender = "Bob", subject = "Herbs", items = { 765, 785 }, days = 2.4 },
+                       { sender = "Auction House", subject = "Auction expired: Copper Ore", items = { 2770 }, days = 25, player = false } } },
     open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW") end,
     crop = "GulliMailPanel",
+}, write = {
+    spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {} },
+    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.ShowTab(2) end,
+    crop = "GulliMailPanel",
+}, settings = {
+    spec = {},
+    open = function(ns) ns.Toggle() end,
 } }
 
 -- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.
@@ -365,5 +413,16 @@ S.instancelimit = { default = { spec = { name = "Gulliby" },
         ns.Toggle()
     end,
 }, settings = { open = function(ns) ns.ShowPage(2) end } }
+
+S.social = { default = {}, recent = { spec = { group = { 3, true } },
+    open = function(ns, W)
+        ns.db.blockStrangers, ns.db.noDuels = true, true
+        W.Fire("PARTY_INVITE_REQUEST", "Randomguy")
+        W.Fire("DUEL_REQUESTED", "Ganker")
+        W.Fire("CHAT_MSG_WHISPER", "inv", "Thrall")
+        ns.Log("spam", "Goldseller")
+        ns.ShowPage(2)
+    end,
+} }
 
 return S

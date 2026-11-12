@@ -134,6 +134,34 @@ function Fake(spec)
     StaticPopup_Hide = function() end
     GetCursorInfo = function() return W.cursor and "item", W.cursor end
     ClearCursor = function() W.cursor = nil end
+    -- W.items[id] = { class, equip, level, quality, bind }; W.worn[slot] = item level.
+    W.items, W.worn, W.shift, W.raid = spec.items or {}, spec.worn or {}, false, false
+    C_Item = {
+        GetItemInfoInstant = function(id) local x = W.items[id] or {}; return id, "", "", x[2], 1, x[1] end,
+        GetDetailedItemLevelInfo = function(item)
+            if type(item) == "string" and item:match("^worn:") then return W.worn[tonumber(item:match("%d+"))] end
+            local id = type(item) == "number" and item or tonumber(item:match("item:(%d+)"))
+            return W.items[id] and W.items[id][3]
+        end,
+        GetItemInfo = function(id)
+            local x = W.items[id] or {}
+            return "Item" .. id, "|Hitem:" .. id .. "|h[Item" .. id .. "]|h", x[4] or 1, x[3], 1, "", "", 1, x[2], 1, 1, x[1], 0, x[5] or 0
+        end,
+        GetItemNameByID = function(id) return "Item" .. id end,
+    }
+    GetInventoryItemLink = function(_, slot) if W.worn[slot] then return "worn:" .. slot end end
+    IsShiftKeyDown = function() return W.shift end
+    IsAltKeyDown = function() return false end
+    IsInRaid = function() return W.raid end
+    IsInGroup = function() return W.group or false end
+    LOOT_ROLL_WON = "%s won: %s"
+    LOOT_ROLL_YOU_WON = "You won: %s"
+    W.looted, W.lootN = {}, 0
+    GetNumLootItems = function() return W.lootN end
+    LootSlot = function(i) W.looted[#W.looted + 1] = i end
+    GetCVarBool = function() return true end
+    IsModifiedClick = function() return false end
+    ConfirmLootSlot = function(slot) W.confirmedSlot = slot end
     GulliLootDB = spec.db
     return W
 end
