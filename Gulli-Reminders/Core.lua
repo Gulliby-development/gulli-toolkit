@@ -125,6 +125,123 @@ local function buffs()
     end
     return have
 end
+local function secret(v) return issecretvalue and issecretvalue(v) or false end
+local function now() return GetTime and GetTime() or 0 end
+
+---- Camp Benefits and other auras that block a weaker buff ------------------------
+
+-- Forever's camp gives stats in one aura (spell CAMP_SPELL, lines such as "First Aid Kit:
+-- Stamina increased by 34."). The game refuses a weaker buff of the same stat ("A more
+-- powerful spell is already active"), so such a buff is not missing.
+ns.CAMP_SPELL = 1229741
+-- Rank 1 id -> the stat it raises (1 Strength .. 5 Spirit) and { spell id, amount, level } per rank.
+ns.STAT_BUFFS = {
+    [1243] = { stat = 3, ranks = { { 1243, 3, 1 }, { 1244, 8, 12 }, { 1245, 20, 24 }, { 2791, 32, 36 },
+                                   { 10937, 43, 48 }, { 10938, 54, 60 } } },       -- Fortitude
+    [21562] = { stat = 3, ranks = { { 21562, 43, 48 }, { 21564, 54, 60 } } },   -- Prayer of Fortitude
+    [14752] = { stat = 5, ranks = { { 14752, 17, 30 }, { 14818, 23, 40 }, { 14819, 33, 50 },
+                                    { 27841, 40, 60 } } },                        -- Divine Spirit
+    [27681] = { stat = 5, ranks = { { 27681, 40, 60 } } },                      -- Prayer of Spirit
+    [1459] = { stat = 4, ranks = { { 1459, 2, 1 }, { 1460, 7, 14 }, { 1461, 15, 28 }, { 10156, 22, 42 },
+                                   { 10157, 31, 56 } } },                         -- Arcane Intellect
+    [23028] = { stat = 4, ranks = { { 23028, 31, 56 } } },                      -- Arcane Brilliance
+}
+local STAT_EN = { "Strength", "Agility", "Stamina", "Intellect", "Spirit" }
+local BLOCK_SECONDS = 600
+
+local function statOf(text)
+    local low = text:lower()
+    for i = 1, 5 do
+        for _, n in ipairs({ _G["SPELL_STAT" .. i .. "_NAME"], STAT_EN[i] }) do
+            if type(n) == "string" and n ~= "" and (text:find(n, 1, true) or low:find(n:lower(), 1, true)) then
+                return i
+            end
+        end
+    end
+end
+
+-- The unit's camp aura: stat -> amount, and the seconds it has left; nil without one.
+function ns.CampStats(unit)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
+    for i = 1, 40 do
+        local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
+        if not ok or not a then return nil end
+        if not secret(a.spellId) and a.spellId == ns.CAMP_SPELL then
+            local e = a.expirationTime
+            local left = (e and not secret(e) and e > 0) and (e - now()) or math.huge
+            local stats = {}
+            local tip = C_TooltipInfo and C_TooltipInfo.GetUnitBuffByAuraInstanceID and a.auraInstanceID
+                and C_TooltipInfo.GetUnitBuffByAuraInstanceID(unit, a.auraInstanceID)
+            for _, line in ipairs(tip and tip.lines or {}) do
+                local t = line.leftText
+                if type(t) == "string" and not secret(t) then
+                    local s, n = statOf(t), nil
+                    for d in t:gmatch("%d+") do n = tonumber(d) end
+                    if s and n then stats[s] = math.max(stats[s] or 0, n) end
+                end
+            end
+            return stats, left
+        end
+    end
+end
+
+-- What the buff of this rank 1 id gives: the best rank the player knows, else (asking
+-- someone else) the best rank for the player's level.
+function ns.BuffAmount(id)
+    local e = ns.STAT_BUFFS[id]
+    if not e then return nil end
+    local best
+    for _, r in ipairs(e.ranks) do
+        if IsPlayerSpell and IsPlayerSpell(r[1]) then best = r[2] end
+    end
+    if not best then
+        local level = UnitLevel and UnitLevel("player") or 60
+        for _, r in ipairs(e.ranks) do
+            if r[3] <= level then best = r[2] end
+        end
+    end
+    return best, e.stat
+end
+
+-- True when the unit already has an equal or stronger effect of this buff's stat.
+function ns.Covered(unit, id, low)
+    local amount, stat = ns.BuffAmount(id)
+    if not amount then return false end
+    local stats, left = ns.CampStats(unit)
+    return stats ~= nil and (stats[stat] or 0) >= amount and left > (low or 0)
+end
+
+-- A buff the game refused after a click ("A more powerful spell is already active") is left
+-- alone while the camp aura lasts, or BLOCK_SECONDS when it is something else.
+local bounced, lastClick = {}, {}
+
+function ns.NoteClick(key)
+    lastClick.key, lastClick.t = key, now()
+end
+
+function ns.Bounced(key)
+    if not key then return end
+    local _, left = ns.CampStats("player")
+    bounced[key] = now() + ((left and left < math.huge) and left or BLOCK_SECONDS)
+end
+
+function ns.IsBounced(key)
+    local t = bounced[key]
+    if t and t > now() then return true end
+    bounced[key] = nil
+    return false
+end
+
+-- Called with each UI error; a refused cast right after a click blocks that reminder.
+function ns.OnError(msg)
+    if msg and msg == _G.SPELL_FAILED_AURA_BOUNCED and lastClick.key and now() - (lastClick.t or 0) < 1.5 then
+        ns.Bounced(lastClick.key)
+        lastClick.key = nil
+        return true
+    end
+    return false
+end
+
 local function itemCount(id) return ((C_Item and C_Item.GetItemCount) or GetItemCount)(id) or 0 end
 local function offHandWeapon()
     local id = GetInventoryItemID("player", OFF_HAND)
@@ -273,6 +390,10 @@ function ns.Missing()
                 if left == false then best = false; break end
                 if left and (not best or left > best) then best = left end
             end
+            local id1 = b.ids[1]
+            if best ~= false and (ns.IsBounced(b.key) or ns.Covered("player", id1, soon)) then
+                best = false -- a stronger effect is on: nothing to cast
+            end
             if best == nil then
                 out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), act = cast(b.known) }
             elseif best and best < soon then
@@ -386,6 +507,7 @@ function ns.Missing()
                 for _, id in ipairs(o.ids) do
                     if have[spellName(id) or ""] ~= nil then got = true; break end
                 end
+                if not got and (ns.IsBounced("ASK_" .. o.key) or ns.Covered("player", o.ids[1], soon)) then got = true end
                 local who = not got and ns.GroupMember(o.class)
                 if who then
                     out[#out + 1] = { key = "ASK_" .. o.key, text = L.ASK:format(L["BUFF_" .. o.key], who),
@@ -548,7 +670,7 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1)
+f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliRemindersDB = GulliRemindersDB or {}
@@ -561,7 +683,7 @@ f:SetScript("OnEvent", function(self, event, a1)
                              "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_UPDATE_RESTING", "UNIT_PET",
                              "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SPELLS_CHANGED",
                              "GROUP_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "UPDATE_INVENTORY_DURABILITY",
-                             "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED" }) do
+                             "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED", "UI_ERROR_MESSAGE" }) do
             self:RegisterEvent(e)
         end
         -- Buffs and weapon buffs run out without an event.
@@ -569,6 +691,9 @@ f:SetScript("OnEvent", function(self, event, a1)
         return
     end
     if (event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED") and a1 ~= "player" then return end
+    if event == "UI_ERROR_MESSAGE" then
+        if not ns.OnError(a2) then return end
+    end
     if event == "PLAYER_REGEN_DISABLED" then
         if ns.Refresh then ns.Refresh() end -- hide at once when a fight starts
         return

@@ -258,6 +258,39 @@ test("own reminders: an elixir's buff, a count to keep, a spell; a count icon bu
     eq(ns.db.custom[3].id, 2459)
 end)
 
+test("Camp Benefits with as much Stamina or more covers Fortitude, also when asking others", function()
+    -- Rank 4 (2791) gives 32 Stamina; the camp gives 34.
+    Fake({ class = "PRIEST", known = { 1243, 2791 }, auras = { "Camp Benefits" },
+           camp = { "Gained the following camp benefits:", "First Aid Kit: Stamina increased by 34." } })
+    local ns = Load()
+    ns.SetTracked("INNER_FIRE", false)
+    eq(W.Keys(ns.Missing()), "", "Fortitude covered")
+    W.camp[2] = "First Aid Kit: Stamina increased by 20."
+    eq(W.Keys(ns.Missing()), "FORTITUDE", "a weaker camp")
+    -- A level 60 warrior asks a priest only when the camp is under 54 Stamina.
+    Fake({ class = "WARRIOR", auras = { "Camp Benefits" }, camp = { "First Aid Kit: Stamina increased by 54." } })
+    ns = Load()
+    ns.SetPref("others", true)
+    W.group = { { class = "PRIEST", name = "Pia" } }
+    UnitPowerType = function() return 1 end
+    eq(W.Keys(ns.Missing()), "")
+    W.camp[1] = "First Aid Kit: Stamina increased by 34."
+    eq(W.Keys(ns.Missing()), "ASK_FORTITUDE")
+    UnitPowerType = nil
+end)
+
+test("a buff the game refuses as weaker after a click is not asked for again", function()
+    Fake({ class = "PRIEST", known = { 1243 } })
+    local ns = Load()
+    ns.SetTracked("INNER_FIRE", false)
+    eq(W.Keys(ns.Missing()), "FORTITUDE")
+    ns.NoteClick("FORTITUDE")
+    W.Fire("UI_ERROR_MESSAGE", 50, "A more powerful spell is already active")
+    eq(W.Keys(ns.Missing()), "", "blocked")
+    W.now = W.now + 601
+    eq(W.Keys(ns.Missing()), "FORTITUDE", "back after ten minutes")
+end)
+
 test("durability, bag space; group buffs others can give, with their name", function()
     Fake({ class = "WARRIOR", durability = 10, free = 1 })
     local ns = Load()
