@@ -27,6 +27,28 @@ S.toolkit = { default = {
     end,
 } }
 
+-- The minimap button on a stand-in minimap, after a drag to the lower left.
+S.toolkit.minimap = {
+    spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.5.0" } } } },
+    crop = "GulliToolkitMinimapStage",
+    before = function()
+        local stage = CreateFrame("Frame", "GulliToolkitMinimapStage", UIParent)
+        stage:SetSize(220, 220)
+        stage:SetPoint("CENTER")
+        local bg = stage:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.067, 0.071, 0.082, 1)
+        Minimap = CreateFrame("Frame", "Minimap", stage)
+        Minimap:SetSize(140, 140)
+        Minimap:SetPoint("CENTER")
+        local map = Minimap:CreateTexture(nil, "BACKGROUND")
+        map:SetAllPoints()
+        map:SetColorTexture(0.32, 0.38, 0.26, 1)
+        map:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+    end,
+    open = function() end,
+}
+
 S.merchant = { default = {
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
              prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = false } },
