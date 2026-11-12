@@ -75,12 +75,15 @@ end
 -- auction open, so this is an estimate from the vendor price.
 function ns.Deposit(it) return math.floor((it.vend or 0) * 0.3 + 0.5) end
 
+-- A count setting where 0 (or none) means no limit.
+function ns.Limit(v) return (v and v > 0) and v or math.huge end
+
 -- Value of one unit put up for sale. `sold`: how many the plan already lists; past maxSell the
 -- market is full and the rest goes to a vendor. Returns the value and "ah" or "vendor".
 function ns.SellValue(state, P, id, sold)
     local it = state.items[id] or {}
     local vend = it.vend or 0
-    if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= P.maxSell then return vend, "vendor" end
+    if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.Limit(P.maxSell) then return vend, "vendor" end
     local p = P.chance / 100
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
     local ev = p * it.ah * (1 - cut) + (1 - p) * (vend - ns.Deposit(it))
@@ -94,7 +97,7 @@ function ns.BuyOption(state, P, id)
     local v, how
     if P.buyVendor and it.buy then v, how = it.buy, "vendor" end
     -- `ahBought`: what this run already bought there; buying stops once it reaches maxBuy
-    local room = not P.ahBought or (P.ahBought[id] or 0) < (P.maxBuy or math.huge)
+    local room = not P.ahBought or (P.ahBought[id] or 0) < ns.Limit(P.maxBuy)
     if P.buyAH and room and ns.Fresh(it, P) and (not v or it.ah < v) then v, how = it.ah, "ah" end
     return v, how
 end
@@ -338,7 +341,7 @@ local function planWith(state, P, allowed)
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
-        local toAH = how == "ah" and math.min(n, P.maxSell) or 0
+        local toAH = how == "ah" and math.min(n, ns.Limit(P.maxSell)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
         add(acc.sellVendor, id, n - toAH)
@@ -424,7 +427,7 @@ local function earnWith(state, P, known, rid)
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
-        local toAH = how == "ah" and math.min(n, P.maxSell) or 0
+        local toAH = how == "ah" and math.min(n, ns.Limit(P.maxSell)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
         add(acc.sellVendor, id, n - toAH)
