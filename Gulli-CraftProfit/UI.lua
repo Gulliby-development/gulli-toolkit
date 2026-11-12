@@ -384,19 +384,27 @@ local function detailRows(n)
     local rows = {}
     if not n then return rows end
     local st = ns.view.state
+    -- a craft: the recipe with its skill stretch, then each reagent on its own row
     for _, sg in ipairs(n.segs or {}) do
         local r = st.recipes[sg.rid]
-        local reagents = {}
-        for id, k in pairs(r.r) do reagents[#reagents + 1] = (st.items[id] or {}).name .. " x" .. ns.Ceil(k * sg.n) end
-        table.sort(reagents)
         rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(segColor(sg.color)) .. r.name .. "|r x" .. ns.Ceil(sg.n),
-                            mid = sg.from .. " - " .. sg.to, right = table.concat(reagents, ", ") }
+                            mid = sg.from .. " - " .. sg.to, right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
+        local ids = {}
+        for id in pairs(r.r) do ids[#ids + 1] = id end
+        table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
+        for _, id in ipairs(ids) do
+            local it = st.items[id] or {}
+            local k = ns.Ceil(r.r[id] * sg.n)
+            rows[#rows + 1] = { icon = ns.ItemIcon(id), q = it.quality, text = "   " .. (it.name or tostring(id)) .. " x" .. k,
+                                mid = L.REAGENT, right = "" }
+        end
     end
     for _, l in ipairs(n.lines or {}) do
         local icon, q = lineIcon(l)
         local name = l.rank and L.STOP_RANK:format(l.rank) or l.name
-        rows[#rows + 1] = { icon = icon, n = l.n, q = q, text = name .. " x" .. l.n, mid = L[SRC[l.src] or ""] or "",
+        local mid = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
+        rows[#rows + 1] = { icon = icon, n = l.n, q = q, text = name .. " x" .. l.n, mid = mid,
                             right = l.price and ns.Money(l.price * l.n) or "" }
     end
     return rows
@@ -496,11 +504,18 @@ local function listRows(which)
         for _, x in ipairs(ns.Recipes(st, P)) do
             local r = st.recipes[x.recipe]
             local where = (x.src == "text" and (ns.SourceLabel(x.text) or "-")) or L["WHERE_" .. x.src] or "-"
+            -- an estimated vendor price gets "~"; the trainer's price is known after one visit
+            local price = x.cost and ((x.est and "~" or "") .. ns.Money(x.cost)) or (x.src == "trainer" and "?" or "-")
+            local tip = recipeTip(r)
+            if x.who then tip[#tip + 1] = { L.TIP_VENDOR:format(table.concat(x.who, ", ")), nil, nil, nil, true } end
+            if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
+            if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
+            if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name,
-                cols = { where, x.cost and ns.Money(x.cost) or "-", x.skill and tostring(x.skill) or "-",
+                cols = { where, price, x.skill and tostring(x.skill) or "-",
                          x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r") or L.NO_PRICE,
                          x.pay and L.PAY_AT:format(x.pay) or ((x.profit and x.cost) and L.PAY_NEVER or "-") },
-                keys = { x.name, where, x.cost, x.skill, x.profit, x.pay }, tip = recipeTip(r) }
+                keys = { x.name, where, x.cost, x.skill, x.profit, x.pay }, tip = tip }
         end
     end
     -- the chosen column, highest first (names A to Z); rows without a value go last
@@ -786,7 +801,7 @@ end
 
 -- The chips over the graph: each run of the whole way to the target, an unknown stretch in red.
 -- When they do not all fit, the row shows the ones around the chosen run.
-local CHIP_MIN = 60
+local CHIP_MIN = 92
 local function refreshChips(v)
     local legs = v.legs or {}
     local n = #legs
@@ -808,8 +823,14 @@ local function refreshChips(v)
             b:SetSize(cw, 28)
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", (k - 1) * (cw + 4), 0)
+            -- each run with what it gains or loses, so the whole way reads at a glance
             local text = leg.from .. "-" .. leg.to
-            b:SetText(leg.unknown and (color(BAD) .. text .. " ?|r") or text)
+            if leg.unknown then text = color(BAD) .. text .. " ?|r"
+            elseif leg.plan then
+                local net = leg.plan.net
+                text = text .. "  " .. color(net >= 0 and GOOD or BAD) .. (net < 0 and "-" or "+") .. ns.Short(net) .. "|r"
+            end
+            b:SetText(text)
             b:SetSelected(i == sel)
             b:Show()
         elseif b then

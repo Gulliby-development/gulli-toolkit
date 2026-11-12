@@ -21,7 +21,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. A craft stop names the recipe, the skill it covers and how many crafts it takes. Tap a stop to see the list.
 - **The real skill-up chances.** CraftProfit knows when each Classic recipe turns yellow, green and grey, so it knows how often a craft raises your skill. When the game shows another colour, it trusts the game.
 - **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. Below the route you still see how far the whole way is.
-- **The whole way, run by run.** Small tabs over the route show every run up to your target skill: 150-155, 155-185 and so on. Tap one to see that run. A red tab with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on.
+- **The whole way, run by run.** Small tabs over the route show every run up to your target skill: 150-155, 155-185 and so on, each with the gold it gains or loses. Tap one to see that run. A red tab with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on.
 - **The route fits on the screen.** You always see two rows of stops. When there are more, **All stops** opens the rest.
 - **Routes side by side.** Up to four ways to level, from the cheapest to the fastest, and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. A money run is one recipe, crafted while it still pays and the market still takes it. It does not raise your skill, and it buys at most a few stacks of one reagent at the auction (**Auction buy, at most**), because only a few sell at the cheapest price. Each tab shows the gold, so you can compare them.
 - **How much you may lose.** Set **Ready to lose**, and CraftProfit picks the fastest way to level that stays within it. Ways that cost more are marked.
@@ -30,7 +30,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **Honest money.** Over the route: what you buy, what your own materials are worth, what the sales bring and the result, red when you lose gold. The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
 - **Crafts now.** Your recipes in their game colour, sorted by profit per craft, and how many you can make from what you have. Tap a column head to sort by it; point at a row to see its reagents.
 - **My items.** For each material in your bags and bank: sell at the auction, sell to a vendor, or craft it.
-- **Recipes.** Patterns you can buy or learn, where they come from, the profit per craft and the craft that pays them back, the best profit first.
+- **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first.
 
 ## Install
 
@@ -63,7 +63,7 @@ An orange recipe always gives a point. A yellow or green one gives it less often
 <details>
 <summary><b>Why does the route lose gold when Crafts now shows a profit?</b></summary>
 
-Crafts now counts one craft sold at the auction. A run makes many of one item, and the market takes only a few (**At most of one item**); the rest go to a vendor for less. Raise that setting if your auction buys more.
+Crafts now counts one craft sold at the auction. A run makes many of one item, and the auction only buys so many at that price (**At most of one item**, 20 at first); the rest go to a vendor for less. Each item goes where it brings more: to a vendor only when the vendor pays more than the auction after its cut and the deposit you lose on what does not sell. Raise or lower that setting to match your auction.
 </details>
 
 <details>
@@ -75,7 +75,7 @@ Green and yellow recipes do not raise your skill every time, so one skill point 
 <details>
 <summary><b>Where do the recipe levels come from?</b></summary>
 
-From the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3), made from the game's own data. `tools/craftprofit/build_data.py` turns them into `Data.lua`.
+The skill levels come from the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3), made from the game's own data. Where a pattern comes from (vendor, quest, drop) comes from the WoW Forever data of [QuestieDB](https://github.com/Questie/QuestieDB) (GPLv3). A vendor's price is four times what a vendor pays for the pattern until you see the vendor; a trainer's price shows after one visit. `tools/craftprofit/build_data.py` turns both into `Data.lua`.
 </details>
 
 <details>
