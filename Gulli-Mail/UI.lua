@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local panel, summary, takeBtn, names, settings
+local panel, summary, takeBtn, names, noNames, settings
 
 local function makeName(r)
     r.text = S.Text(r, 12)
@@ -32,7 +32,9 @@ function ns.Refresh()
     summary:SetText(text)
     takeBtn:SetEnabled(not ns.taking and (s.items > 0 or s.money > 0))
     takeBtn:SetText(ns.taking and L.TAKING or L.TAKE_ALL)
-    names:SetData(ns.Names())
+    local list = ns.Names()
+    names:SetData(list)
+    noNames:SetShown(#list == 0)
 end
 
 local function buildPanel()
@@ -52,6 +54,9 @@ local function buildPanel()
     names = S.List(card.body, 30, makeName, fillName)
     names:SetPoint("TOPLEFT")
     names:SetPoint("BOTTOMRIGHT", -10, 0)
+    -- Before any alt or letter is known the list is empty; say how it fills.
+    noNames = S.Empty(card.body)
+    noNames:Set(L.NO_NAMES, L.NO_NAMES_SUB)
     panel:SetScript("OnShow", function() ns.Refresh() end)
 end
 
