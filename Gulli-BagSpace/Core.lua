@@ -7,6 +7,7 @@ local L = ns.L
 
 local J = ns.J
 local BATCH, STEP = J.BATCH, J.STEP
+ns.DEFAULTS = { want = 5, warnAt = 2, unusable = true, counter = true, popup = true }
 local AH_FACTOR = 2 -- an auction price this many times the vendor price keeps an item off the ticks
 
 -- Game API wrappers.
@@ -293,13 +294,9 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         if a1 ~= ADDON then return end
         GulliBagSpaceDB = GulliBagSpaceDB or {}
         ns.db = GulliBagSpaceDB
-        ns.db.want = ns.db.want or 5
-        ns.db.warnAt = ns.db.warnAt or 2
+        for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.keep = ns.db.keep or {}
         ns.db.junk = ns.db.junk or {}
-        for k, v in pairs({ unusable = true, counter = true, popup = true }) do
-            if ns.db[k] == nil then ns.db[k] = v end
-        end
         J.Attach(ns.db.junk)
         J.OnChange(function() if ns.Refresh then ns.Refresh(true) end end)
         J.InstallMarks({ JUNK_TIP = L.JUNK_TIP, ALWAYS_TIP = L.ALWAYS_TIP, MARKED = L.MARKED, UNMARKED = L.UNMARKED })
@@ -365,7 +362,7 @@ ns.OPT_ICON = {
 }
 
 local function option(key, label)
-    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], tip = ns.L["TIP_" .. key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on)
                  if not ns.db then return end
                  ns.db[key] = on and true or false
@@ -382,5 +379,16 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gbs",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        summary = function()
+            if not ns.db then return nil end
+            local free = ns.Space()
+            return ns.L.HUB_SUMMARY:format(free), "Interface\\Icons\\INV_Misc_Bag_10"
+        end,
+        reset = function()
+            if not ns.db then return end
+            for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+            if ns.UpdateCounter then ns.UpdateCounter() end
+            if ns.Refresh then ns.Refresh(true) end
+        end,
     })
 end

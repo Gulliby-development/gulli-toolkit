@@ -675,7 +675,7 @@ ns.OPT_ICON = {
 }
 
 local function option(key, label)
-    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], tip = ns.L["TIP_" .. key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 
@@ -687,5 +687,16 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         options = { option("auto", ns.L.AUTO), option("deposit", ns.L.OPT_DEPOSIT), option("forecast", ns.L.OPT_FORECAST) },
+        summary = function()
+            if not ns.char then return nil end
+            local miss = ns.Missing()
+            if #miss == 0 then return nil end
+            return ns.L.HUB_SUMMARY:format(#miss), "Interface\\Icons\\INV_Misc_Bag_08"
+        end,
+        reset = function()
+            if not ns.db then return end
+            for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+            if ns.Refresh then ns.Refresh() end
+        end,
     })
 end

@@ -272,4 +272,19 @@ test("DungeonPrep reads what the list misses", function()
     eq(#m, 1); eq(m[1].have, 2); eq(m[1].want, 5); eq(m[1].name, "Item3")
 end)
 
+test("the hub gets a summary, a reset and a tip on each switch", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
+    ns.db.auto = true
+    reg.reset()
+    eq(ns.db.auto, false)
+    eq(reg.summary(), nil)
+    ns.Set(3, 5)
+    assert(reg.summary():find("1", 1, true))
+end)
+
 W.finish()
