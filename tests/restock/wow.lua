@@ -125,11 +125,56 @@ end
 function Fake(spec)
     W.Base(spec)
     W.bags, W.vendor, W.bought, W.money = spec.bags or {}, spec.vendor or {}, {}, spec.money or 1000000
+    -- spec.items: id -> { stack, classID, subclassID, minLevel } (stack 20, consumable by default).
+    -- spec.containers: bag -> { size, family, [slot] = { id, n, locked } }; without it the bags
+    -- are five empty 16-slot bags and W.bags holds the counts.
+    W.items, W.cont, W.moved = spec.items or {}, spec.containers, {}
+    local function inBags(id, bank)
+        if not W.cont then return (W.bags[id] or 0) + (bank and spec.bank and spec.bank[id] or 0) end
+        local n = 0
+        for bag, c in pairs(W.cont) do
+            if bag >= 0 and bag <= 4 or bank then
+                for slot = 1, c.size do if c[slot] and c[slot].id == id then n = n + c[slot].n end end
+            end
+        end
+        return n
+    end
     C_Item = {
-        GetItemCount = function(id) return W.bags[id] or 0 end,
+        GetItemCount = inBags,
         GetItemNameByID = function(id) return "Item" .. id end,
         GetItemIconByID = function() return 1 end,
+        GetItemInfo = function(id)
+            local it = W.items[id] or {}
+            return "Item" .. id, nil, 1, nil, it.minLevel or 0, nil, nil, it.stack or 20, nil, nil, 1,
+                it.classID or 0, it.subclassID or 0
+        end,
     }
+    BANK_CONTAINER, NUM_BAG_SLOTS, NUM_BANKBAGSLOTS = -1, 4, 1
+    C_Container = {
+        GetContainerNumSlots = function(bag)
+            if not W.cont then return bag >= 0 and bag <= 4 and 16 or 0 end
+            return W.cont[bag] and W.cont[bag].size or 0
+        end,
+        GetContainerNumFreeSlots = function(bag)
+            if not W.cont then return bag >= 0 and bag <= 4 and 16 or 0, 0 end
+            local c = W.cont[bag]
+            if not c then return 0, 0 end
+            local free = 0
+            for slot = 1, c.size do if not c[slot] then free = free + 1 end end
+            return free, c.family or 0
+        end,
+        GetContainerItemInfo = function(bag, slot)
+            local s = W.cont and W.cont[bag] and W.cont[bag][slot]
+            if not s then return nil end
+            return { itemID = s.id, stackCount = s.n, isLocked = s.locked }
+        end,
+        UseContainerItem = function(bag, slot) W.moved[#W.moved + 1] = { "use", bag, slot } end,
+        SplitContainerItem = function(bag, slot, n) W.moved[#W.moved + 1] = { "split", bag, slot, n } end,
+        PickupContainerItem = function(bag, slot) W.moved[#W.moved + 1] = { "drop", bag, slot } end,
+    }
+    W.shift, W.alt = false, false
+    IsShiftKeyDown = function() return W.shift end
+    IsAltKeyDown = function() return W.alt end
     GetMoney = function() return W.money end
     GetMerchantNumItems = function() return #W.vendor end
     GetMerchantItemID = function(i) return W.vendor[i] and W.vendor[i][1] end
