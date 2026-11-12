@@ -110,6 +110,10 @@ T.en = {
     KIND_SPELL = "Spell",
     KIND_COUNT = "Keep",
     KIND_BUFF = "Buff",
+    BUFF_TOUCH = "Touch of Weakness",
+    BUFF_SHADOWGUARD = "Shadowguard",
+    BUFF_FEAR_WARD = "Fear Ward",
+    BUFF_SHADOWFORM = "Shadowform",
 }
 
 T.de = {
@@ -213,6 +217,10 @@ T.de = {
     KIND_SPELL = "Zauber",
     KIND_COUNT = "Vorrat",
     KIND_BUFF = "Buff",
+    BUFF_TOUCH = "Berührung der Schwäche",
+    BUFF_SHADOWGUARD = "Schattenschild",
+    BUFF_FEAR_WARD = "Furchtschutz",
+    BUFF_SHADOWFORM = "Schattengestalt",
 }
 
 T.es = {
@@ -316,6 +324,10 @@ T.es = {
     KIND_SPELL = "Hechizo",
     KIND_COUNT = "Tener",
     KIND_BUFF = "Efecto",
+    BUFF_TOUCH = "Toque de debilidad",
+    BUFF_SHADOWGUARD = "Guardia de las Sombras",
+    BUFF_FEAR_WARD = "Custodia de miedo",
+    BUFF_SHADOWFORM = "Forma de las Sombras",
 }
 
 T.fr = {
@@ -419,6 +431,10 @@ T.fr = {
     KIND_SPELL = "Sort",
     KIND_COUNT = "Garder",
     KIND_BUFF = "Effet",
+    BUFF_TOUCH = "Toucher de faiblesse",
+    BUFF_SHADOWGUARD = "Garde de l'ombre",
+    BUFF_FEAR_WARD = "Gardien de peur",
+    BUFF_SHADOWFORM = "Forme d'ombre",
 }
 
 T.pl = {
@@ -522,6 +538,10 @@ T.pl = {
     KIND_SPELL = "Zaklęcie",
     KIND_COUNT = "Zapas",
     KIND_BUFF = "Efekt",
+    BUFF_TOUCH = "Dotyk Słabości",
+    BUFF_SHADOWGUARD = "Strażnik Cienia",
+    BUFF_FEAR_WARD = "Osłona przed Strachem",
+    BUFF_SHADOWFORM = "Forma Cienia",
 }
 
 T.pt = {
@@ -625,6 +645,10 @@ T.pt = {
     KIND_SPELL = "Feitiço",
     KIND_COUNT = "Manter",
     KIND_BUFF = "Efeito",
+    BUFF_TOUCH = "Toque da Fraqueza",
+    BUFF_SHADOWGUARD = "Guarda Sombria",
+    BUFF_FEAR_WARD = "Proteção contra Medo",
+    BUFF_SHADOWFORM = "Forma de Sombra",
 }
 
 T.ru = {
@@ -728,6 +752,10 @@ T.ru = {
     KIND_SPELL = "Заклинание",
     KIND_COUNT = "Запас",
     KIND_BUFF = "Бафф",
+    BUFF_TOUCH = "Прикосновение слабости",
+    BUFF_SHADOWGUARD = "Защита от тьмы",
+    BUFF_FEAR_WARD = "Защита от страха",
+    BUFF_SHADOWFORM = "Облик Тьмы",
 }
 
 T.zh = {
@@ -831,6 +859,10 @@ T.zh = {
     KIND_SPELL = "法术",
     KIND_COUNT = "库存",
     KIND_BUFF = "增益",
+    BUFF_TOUCH = "虚弱之触",
+    BUFF_SHADOWGUARD = "暗影守卫",
+    BUFF_FEAR_WARD = "防护恐惧结界",
+    BUFF_SHADOWFORM = "暗影形态",
 }
 
 ns.T = T

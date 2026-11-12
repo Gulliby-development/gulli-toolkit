@@ -18,7 +18,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 
 ## Features
 
-- **Your class buffs, one switch each.** Fortitude, Inner Fire, Arcane Intellect, armor spells, Mark of the Wild, Demon Armor, blessings, auras, aspects, Trueshot Aura, Lightning Shield and more. The window lists only your class, with the game's own icons. A buff you have not learned yet waits until you learn it.
+- **Your class buffs, one switch each.** Fortitude, Inner Fire, Arcane Intellect, armor spells, Mark of the Wild, Demon Armor, blessings, auras, aspects, Trueshot Aura, Lightning Shield and more. Priest racials count too: Touch of Weakness, Shadowguard and Fear Ward (for your race), and Shadowform. The window lists only your class, with the game's own icons. A buff you have not learned yet waits until you learn it.
 - **Before it runs out.** A buff with less than 3 minutes left already shows, with the time on the icon. You choose the minutes, or turn it off.
 - **Weapons, pet, ammo and shards.** Rogue poisons and shaman imbues, a hunter or warlock pet that is not out, hunter ammo and warlock soul shards below the number you set.
 - **Click to fix it.** Click an icon and it casts the buff on you, puts poison or an oil on your weapon, summons or revives your pet, or eats your food. Right-click opens the settings. (The panel hides in a fight, as before.)
