@@ -5,6 +5,8 @@ local function stub()
     return setmetatable({}, { __index = function(t, k)
         if k == "GetWidth" then return function() return 400 end end
         if k == "GetHeight" then return function() return 300 end end
+        if k == "GetFrameLevel" then return function() return 1 end end
+        if k == "GetPoint" then return function() return "CENTER", nil, "CENTER", 12, 34 end end
         if k == "GetStringWidth" or k == "GetValue" then return function() return 0 end end
         if k == "IsShown" then return function() return rawget(t, "_shown") == true end end
         if k == "Show" then return function() rawset(t, "_shown", true) end end
@@ -121,7 +123,8 @@ function W.finish()
 end
 
 -- W.known: spell ids the player knows; W.auras: buff names; W.weapon = { hasMain, mainMs, hasOff, offMs };
--- W.ammo, W.shards, W.offHand (an item id), W.resting.
+-- W.ammo, W.shards, W.offHand (an item id), W.resting; W.left[name] = seconds left of a buff;
+-- W.pet (out), W.dead.
 function Fake(spec)
     W.Base(spec)
     W.known, W.auras = spec.known or {}, spec.auras or {}
@@ -129,7 +132,15 @@ function Fake(spec)
     W.offHand = spec.offHand
     IsPlayerSpell = function(id) for _, k in ipairs(W.known) do if k == id then return true end end return false end
     C_Spell = { GetSpellName = function(id) return "Spell" .. id end, GetSpellTexture = function() return 1 end }
-    C_UnitAuras = { GetAuraDataByIndex = function(_, i) local n = W.auras[i]; return n and { name = n } end }
+    W.left, W.pet, W.dead = spec.left or {}, spec.pet or false, false
+    C_UnitAuras = { GetAuraDataByIndex = function(_, i)
+        local n = W.auras[i]
+        if not n then return nil end
+        return { name = n, expirationTime = W.left[n] and (W.now + W.left[n]) or 0 }
+    end }
+    UnitExists = function(u) if u == "pet" then return W.pet end return true end
+    UnitIsDead = function() return false end
+    UnitIsDeadOrGhost = function() return W.dead end
     GetWeaponEnchantInfo = function() local w = W.weapon; return w[1], w[2], 0, 0, w[3], w[4], 0, 0 end
     GetInventoryItemCount = function() return W.ammo end
     GetInventoryItemID = function(_, slot) if slot == 17 then return W.offHand end end
