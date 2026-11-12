@@ -4,9 +4,11 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, tabs, list, empty, myLevel
+local frame, tabs, card, list, empty, myLevel, setup, dlist
 local current = 1
-local TAB_KEYS = { "TAB_GROUPS", "TAB_WTS", "TAB_WTB", "TAB_CRAFT", "TAB_GUILD", "TAB_OTHER" }
+-- The board tabs, one per kind, then the setup page (dungeons to show and to alert on).
+local TAB_KEYS = { "TAB_GROUPS", "TAB_WTS", "TAB_WTB", "TAB_CRAFT", "TAB_GUILD", "TAB_OTHER", "TAB_SETUP" }
+local SETUP = #TAB_KEYS
 
 local function ago(t)
     local m = math.floor((time() - t) / 60)
@@ -68,16 +70,90 @@ local function fillRow(r, item)
     if inv then r.whisper:SetPoint("RIGHT", r.invite, "LEFT", -6, 0) else r.whisper:SetPoint("RIGHT", 0, 0) end
 end
 
+-- A row of the setup list: the dungeon, its level range, and the Show and Alert boxes.
+local function makeDungeonRow(r)
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("LEFT", 4, 0)
+    r.name:SetPoint("RIGHT", -150, 0)
+    r.name:SetWordWrap(false)
+    r.alert = S.Check(r, 26)
+    r.alert:SetPoint("RIGHT", -24, 0)
+    r.show = S.Check(r, 26)
+    r.show:SetPoint("RIGHT", -96, 0)
+    r.show:SetScript("OnClick", function(self)
+        local key = self:GetParent().key
+        ns.db.only[key] = (not ns.db.only[key]) or nil
+        ns.Refresh()
+    end)
+    r.alert:SetScript("OnClick", function(self)
+        local key = self:GetParent().key
+        ns.db.alert[key] = (not ns.db.alert[key]) or nil
+        ns.Refresh()
+    end)
+end
+
+local function fillDungeonRow(r, d)
+    r.key = d.key
+    local range = d.min == d.max and tostring(d.min) or (d.min .. "-" .. d.max)
+    r.name:SetText(S.Hex(S.LevelColor(math.floor((d.min + d.max) / 2))) .. ns.DungeonName(d.key) .. "|r  " ..
+        S.Hex(S.MUTED) .. range .. "|r")
+    r.show:SetChecked(ns.db.only[d.key] == true)
+    r.alert:SetChecked(ns.db.alert[d.key] == true)
+end
+
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     for i, key in ipairs(TAB_KEYS) do
-        local n = ns.Count(ns.KINDS[i])
+        local n = i < SETUP and ns.Count(ns.KINDS[i]) or 0
         tabs.buttons[i]:SetText(L[key] .. (n > 0 and (" " .. n) or ""))
+    end
+    card:SetShown(current ~= SETUP)
+    setup:SetShown(current == SETUP)
+    if current == SETUP then
+        local rows = {}
+        for _, d in ipairs(ns.DUNGEONS) do rows[#rows + 1] = ns.Dungeon(d[1]) end
+        dlist:SetData(rows)
+        return
     end
     local items = ns.View(ns.KINDS[current], ns.db.myLevel, UnitLevel("player") or 60)
     list:SetData(items)
     empty:SetShown(#items == 0)
+    if current == 1 and next(ns.db.only) and #items == 0 then empty:Set(L.EMPTY_PICKED) else empty:Set(L.EMPTY) end
     myLevel:SetShown(current == 1)
+end
+
+local function buildSetup(body, width)
+    setup = CreateFrame("Frame", nil, body)
+    setup:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+    setup:SetPoint("BOTTOMRIGHT")
+    local leftW = math.floor((width - S.GAP) * 0.58)
+    local dcard = S.Card(setup, L.SEC_DUNGEONS)
+    dcard:SetPoint("TOPLEFT")
+    dcard:SetPoint("BOTTOMLEFT")
+    dcard:SetWidth(leftW)
+    dlist = S.List(dcard.body, 32, makeDungeonRow, fillDungeonRow)
+    dlist:SetPoint("TOPLEFT")
+    dlist:SetPoint("BOTTOMRIGHT", -10, 0)
+    -- Column names over the middle of the Show and Alert boxes.
+    for _, c in ipairs({ { L.COL_SHOW, -109 }, { L.COL_ALERT, -37 } }) do
+        local t = S.Text(dcard, 11, S.MUTED)
+        t:SetPoint("BOTTOM", dlist, "TOPRIGHT", c[2], 10)
+        t:SetText(c[1])
+    end
+
+    local right = CreateFrame("Frame", nil, setup)
+    right:SetPoint("TOPLEFT", leftW + S.GAP, 0)
+    right:SetPoint("BOTTOMRIGHT")
+    local st = S.Stack(right)
+    local alerts, h = S.SettingsCard(right, L.SEC_ALERTS, {
+        { L.OPT_SOUND, nil, function() return ns.db.sound end, function(v) ns.db.sound = v end,
+          icon = "Interface\\Icons\\INV_Misc_Bell_01" },
+        { L.OPT_CHAT, nil, function() return ns.db.chat end, function(v) ns.db.chat = v end,
+          icon = "Interface\\Icons\\INV_Letter_15" },
+    })
+    st:Add(alerts, h)
+    local hint = S.Paragraph(right, L.SETUP_HINT, width - leftW - S.GAP, 11)
+    st:Add(hint, 60)
 end
 
 local function build()
@@ -87,7 +163,7 @@ local function build()
     for i, k in ipairs(TAB_KEYS) do labels[i] = L[k] end
     tabs = S.Tabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end)
 
-    local card = S.Card(body)
+    card = S.Card(body)
     card:SetPoint("TOPLEFT", 0, -30 - S.GAP)
     card:SetPoint("BOTTOMRIGHT")
     myLevel = S.CheckRow(card.body, L.MY_LEVEL, function() return ns.db.myLevel end,
@@ -99,6 +175,7 @@ local function build()
     list:SetPoint("BOTTOMRIGHT", -10, 0)
     empty = S.Empty(list)
     empty:Set(L.EMPTY)
+    buildSetup(body, width)
 
     frame:SetScript("OnShow", function()
         myLevel:SetChecked(ns.db.myLevel)
@@ -110,6 +187,12 @@ local function build()
         elapsed = elapsed + (dt or 0)
         if elapsed > 20 then elapsed = 0; ns.Refresh() end
     end)
+end
+
+-- Picks a tab (1 Groups ... 7 Setup), for the previews and the tests.
+function ns.ShowTab(i)
+    ns.Window():Show()
+    tabs:Select(i)
 end
 
 function ns.Toggle()

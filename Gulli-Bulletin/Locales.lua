@@ -21,6 +21,18 @@ T.en = {
     NOW = "now", AGO_M = "%d min",
     HELP = "/gbul opens the board, /gbul clear empties it.",
     CLEARED = "The board is empty.",
+    TAB_SETUP = "Setup",
+    SEC_DUNGEONS = "Dungeons",
+    COL_SHOW = "Show",
+    COL_ALERT = "Alert",
+    SEC_ALERTS = "Alerts",
+    OPT_SOUND = "Play a sound",
+    OPT_CHAT = "Write a line in chat",
+    SETUP_HINT = "Show: the Groups tab lists only the ticked dungeons. With none ticked it lists every dungeon. Alert: a new group for a ticked dungeon plays a sound and shows up in chat and in the hub's Recent feed.",
+    EMPTY_PICKED = "No groups for the dungeons you picked yet.",
+    ALERT = "%s posted a group for %s.",
+    DG_BARROW = "Barrow Deeps",
+    DG_HYJAL = "Hyjal Summit",
 }
 
 T.de = {
@@ -35,6 +47,18 @@ T.de = {
     NOW = "jetzt", AGO_M = "%d Min.",
     HELP = "/gbul öffnet das Brett, /gbul clear leert es.",
     CLEARED = "Das Brett ist leer.",
+    TAB_SETUP = "Einstellungen",
+    SEC_DUNGEONS = "Dungeons",
+    COL_SHOW = "Zeigen",
+    COL_ALERT = "Melden",
+    SEC_ALERTS = "Meldungen",
+    OPT_SOUND = "Ton abspielen",
+    OPT_CHAT = "Eine Zeile im Chat",
+    SETUP_HINT = "Zeigen: Der Reiter Gruppen listet nur die markierten Dungeons. Ist keiner markiert, listet er alle. Melden: Eine neue Gruppe für einen markierten Dungeon spielt einen Ton und erscheint im Chat und im Feed Neues des Hubs.",
+    EMPTY_PICKED = "Noch keine Gruppen für die gewählten Dungeons.",
+    ALERT = "%s sucht eine Gruppe für %s.",
+    DG_BARROW = "Hügelgrabtiefen",
+    DG_HYJAL = "Hyjalgipfel",
 }
 
 T.es = {
@@ -49,6 +73,18 @@ T.es = {
     NOW = "ahora", AGO_M = "%d min",
     HELP = "/gbul abre el tablón, /gbul clear lo vacía.",
     CLEARED = "El tablón está vacío.",
+    TAB_SETUP = "Ajustes",
+    SEC_DUNGEONS = "Mazmorras",
+    COL_SHOW = "Mostrar",
+    COL_ALERT = "Avisar",
+    SEC_ALERTS = "Avisos",
+    OPT_SOUND = "Reproducir un sonido",
+    OPT_CHAT = "Escribir una línea en el chat",
+    SETUP_HINT = "Mostrar: la pestaña Grupos lista solo las mazmorras marcadas. Sin ninguna marcada lista todas. Avisar: un grupo nuevo para una mazmorra marcada suena y aparece en el chat y en Reciente del centro.",
+    EMPTY_PICKED = "Aún no hay grupos para las mazmorras elegidas.",
+    ALERT = "%s busca grupo para %s.",
+    DG_BARROW = "Profundidades del Túmulo",
+    DG_HYJAL = "La Cima Hyjal",
 }
 
 T.fr = {
@@ -63,6 +99,18 @@ T.fr = {
     NOW = "à l'instant", AGO_M = "%d min",
     HELP = "/gbul ouvre le tableau, /gbul clear le vide.",
     CLEARED = "Le tableau est vide.",
+    TAB_SETUP = "Réglages",
+    SEC_DUNGEONS = "Donjons",
+    COL_SHOW = "Afficher",
+    COL_ALERT = "Alerter",
+    SEC_ALERTS = "Alertes",
+    OPT_SOUND = "Jouer un son",
+    OPT_CHAT = "Écrire une ligne dans le chat",
+    SETUP_HINT = "Afficher : l'onglet Groupes ne liste que les donjons cochés. Sans coche, il les liste tous. Alerter : un nouveau groupe pour un donjon coché joue un son et apparaît dans le chat et dans Récent du hub.",
+    EMPTY_PICKED = "Pas encore de groupe pour les donjons choisis.",
+    ALERT = "%s cherche un groupe pour %s.",
+    DG_BARROW = "Profondeurs des Tertres",
+    DG_HYJAL = "Sommet d'Hyjal",
 }
 
 T.pl = {
@@ -77,6 +125,18 @@ T.pl = {
     NOW = "teraz", AGO_M = "%d min",
     HELP = "/gbul otwiera tablicę, /gbul clear ją czyści.",
     CLEARED = "Tablica jest pusta.",
+    TAB_SETUP = "Ustawienia",
+    SEC_DUNGEONS = "Lochy",
+    COL_SHOW = "Pokaż",
+    COL_ALERT = "Alarm",
+    SEC_ALERTS = "Powiadomienia",
+    OPT_SOUND = "Odtwórz dźwięk",
+    OPT_CHAT = "Napisz linię na czacie",
+    SETUP_HINT = "Pokaż: karta Grupy pokazuje tylko zaznaczone lochy. Bez zaznaczenia pokazuje wszystkie. Alarm: nowa grupa do zaznaczonego lochu gra dźwięk i pojawia się na czacie i w Ostatnich w hubie.",
+    EMPTY_PICKED = "Na razie brak grup do wybranych lochów.",
+    ALERT = "%s szuka grupy do %s.",
+    DG_BARROW = "Głębiny Kurhanu",
+    DG_HYJAL = "Szczyt Hyjal",
 }
 
 T.pt = {
@@ -91,6 +151,18 @@ T.pt = {
     NOW = "agora", AGO_M = "%d min",
     HELP = "/gbul abre o mural, /gbul clear o esvazia.",
     CLEARED = "O mural está vazio.",
+    TAB_SETUP = "Ajustes",
+    SEC_DUNGEONS = "Masmorras",
+    COL_SHOW = "Mostrar",
+    COL_ALERT = "Avisar",
+    SEC_ALERTS = "Avisos",
+    OPT_SOUND = "Tocar um som",
+    OPT_CHAT = "Escrever uma linha no chat",
+    SETUP_HINT = "Mostrar: a aba Grupos lista só as masmorras marcadas. Sem nenhuma marcada, lista todas. Avisar: um grupo novo para uma masmorra marcada toca um som e aparece no chat e em Recentes do hub.",
+    EMPTY_PICKED = "Ainda não há grupos para as masmorras escolhidas.",
+    ALERT = "%s procura grupo para %s.",
+    DG_BARROW = "Profundezas do Túmulo",
+    DG_HYJAL = "Pico Hyjal",
 }
 
 T.ru = {
@@ -105,6 +177,18 @@ T.ru = {
     NOW = "сейчас", AGO_M = "%d мин",
     HELP = "/gbul открывает доску, /gbul clear очищает её.",
     CLEARED = "Доска очищена.",
+    TAB_SETUP = "Настройка",
+    SEC_DUNGEONS = "Подземелья",
+    COL_SHOW = "Показ",
+    COL_ALERT = "Сигнал",
+    SEC_ALERTS = "Оповещения",
+    OPT_SOUND = "Звуковой сигнал",
+    OPT_CHAT = "Строка в чате",
+    SETUP_HINT = "Показ: на вкладке «Группы» только отмеченные подземелья. Если ничего не отмечено, видны все. Сигнал: новая группа в отмеченное подземелье даёт звук, строку в чате и в ленте «Недавнее» хаба.",
+    EMPTY_PICKED = "Пока нет групп в выбранные подземелья.",
+    ALERT = "%s собирает группу: %s.",
+    DG_BARROW = "Курганные глубины",
+    DG_HYJAL = "Вершина Хиджала",
 }
 
 T.zh = {
@@ -119,6 +203,18 @@ T.zh = {
     NOW = "刚刚", AGO_M = "%d 分钟",
     HELP = "/gbul 打开公告板，/gbul clear 清空。",
     CLEARED = "公告板已清空。",
+    TAB_SETUP = "设置",
+    SEC_DUNGEONS = "副本",
+    COL_SHOW = "显示",
+    COL_ALERT = "提醒",
+    SEC_ALERTS = "提醒",
+    OPT_SOUND = "播放声音",
+    OPT_CHAT = "在聊天中提示",
+    SETUP_HINT = "显示：队伍页只列出勾选的副本，都不勾选则列出全部。提醒：勾选副本有新队伍时播放声音，并显示在聊天和中心的最近动态里。",
+    EMPTY_PICKED = "所选副本暂时没有队伍。",
+    ALERT = "%s 在组 %s。",
+    DG_BARROW = "古冢深渊",
+    DG_HYJAL = "海加尔峰",
 }
 
 ns.T = T

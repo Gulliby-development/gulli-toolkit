@@ -127,6 +127,11 @@ S.bulletin = { default = { spec = { level = 56 },
         for _, m in ipairs(msgs) do W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade") end
         ns.Toggle()
     end,
+}, setup = { spec = { level = 56 },
+    open = function(ns)
+        ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
+        ns.ShowTab(7)
+    end,
 } }
 
 S.quickchat = {

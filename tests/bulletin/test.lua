@@ -109,6 +109,86 @@ test("chat events reach the board, the window opens, whisper and invite", functi
     eq(#ns.posts, 0)
 end)
 
+test("only Forever dungeons: no MC, BWL, Naxx, AQ or ZG; Hyjal and Barrow Deeps are there", function()
+    Fake({})
+    local ns = Load()
+    for _, key in ipairs({ "MC", "BWL", "NAXX", "AQ20", "AQ40", "ZG" }) do
+        eq(ns.Dungeon(key), nil, key)
+    end
+    local _, d = kind("LFM Hyjal need heals")
+    eq(d, "HYJAL")
+    _, d = kind("LF2M Barrow Deeps")
+    eq(d, "BARROW")
+    eq(ns.DungeonName("HYJAL"), "Hyjal Summit", "a Forever area without an id gets its name from Locales")
+    _, d = kind("LFM MC 10/40")
+    eq(d, nil, "Molten Core is not in Forever")
+end)
+
+test("short words do not make false matches", function()
+    local k, d = kind("WTS Copper ore, dm me")
+    eq(k, "WTS"); eq(d, nil, "dm me is a private message")
+    k, d = kind("LFM dm me for inv")
+    eq(d, nil, "dm me even in a group message")
+    k, d = kind("anyone sm? I mean small bags")
+    eq(k, "OTHER", "a weak word alone is no group"); eq(d, nil)
+    k, d = kind("aq")
+    eq(k, "OTHER")
+    k, d = kind("WTB stock of linen")
+    eq(k, "WTB"); eq(d, nil)
+    k, d = kind("selling Scarlet Leggings")
+    eq(d, nil, "an item name is not the Scarlet Monastery")
+    k, d, r = kind("LFM ST need tank")
+    eq(k, "GROUP"); eq(d, "ST", "a weak word counts in a group message")
+    k, d = kind("LF1M DM tank")
+    eq(d, "DM")
+    k, d = kind("Deadmines anyone?")
+    eq(k, "GROUP"); eq(d, "DM", "a full name alone is still a group")
+end)
+
+test("the Groups tab shows only the picked dungeons", function()
+    Fake({ level = 30 })
+    local ns = Load()
+    ns.Add("LFM RFC", "A"); ns.Add("LFM WC", "B"); ns.Add("LFG anything", "C")
+    eq(#ns.View("GROUP", false, 30), 6)
+    ns.db.only.WC = true
+    local v = ns.View("GROUP", false, 30)
+    eq(#v, 2); eq(v[1].dungeon, "WC"); eq(v[2].author, "B")
+    ns.db.only.WC = nil
+    eq(#ns.View("GROUP", false, 30), 6, "none picked shows all")
+end)
+
+test("a new group for a watched dungeon alerts once: sound, chat and the hub feed", function()
+    Fake({})
+    local sounds, notes = 0, {}
+    PlaySound = function() sounds = sounds + 1 end
+    GulliToolkit = { Notify = function(key, text) notes[#notes + 1] = key .. ":" .. text end }
+    local ns = Load()
+    ns.Add("LFM Strat", "Bob-Realm")
+    eq(sounds, 0, "not watched")
+    ns.db.alert.STRAT = true
+    ns.Add("LFM WC", "Ann")
+    eq(sounds, 0)
+    ns.Add("LFM Strat UD", "Ann")
+    eq(sounds, 1)
+    eq(notes[1], "Bulletin:Ann posted a group for Stratholme.")
+    assert(W.printed[#W.printed]:find("Ann posted", 1, true))
+    ns.Add("LFM Strat UD need 1 heal", "Ann")
+    eq(sounds, 1, "the same poster again is not new")
+    ns.db.sound, ns.db.chat = false, false
+    local printed = #W.printed
+    ns.Add("LFG Strat", "Cid")
+    eq(sounds, 1); eq(#W.printed, printed); eq(#notes, 2, "the feed still gets it")
+    ns.Add("LFM Strat", "Tester")
+    eq(#notes, 2, "not for my own post")
+end)
+
+test("the setup tab lists the dungeons with their boxes", function()
+    Fake({})
+    local ns = Load()
+    SlashCmdList.GULLIBULLETIN("")
+    ns.Refresh()
+end)
+
 test("it registers with the toolkit", function()
     Fake({})
     local got
