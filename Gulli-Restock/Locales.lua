@@ -24,6 +24,7 @@ T.en = {
     CANCEL = "Cancel",
     TOTAL = "Total: %s",
     SHORT = "not enough money",
+    SEC_KEEP = "Keep in the bags",
 }
 
 T.de = {
@@ -41,6 +42,7 @@ T.de = {
     CANCEL = "Abbrechen",
     TOTAL = "Gesamt: %s",
     SHORT = "nicht genug Geld",
+    SEC_KEEP = "In den Taschen halten",
 }
 
 T.es = {
@@ -58,6 +60,7 @@ T.es = {
     CANCEL = "Cancelar",
     TOTAL = "Total: %s",
     SHORT = "no hay dinero suficiente",
+    SEC_KEEP = "Mantener en las bolsas",
 }
 
 T.fr = {
@@ -75,6 +78,7 @@ T.fr = {
     CANCEL = "Annuler",
     TOTAL = "Total : %s",
     SHORT = "pas assez d'argent",
+    SEC_KEEP = "Garder dans les sacs",
 }
 
 T.pl = {
@@ -92,6 +96,7 @@ T.pl = {
     CANCEL = "Anuluj",
     TOTAL = "Razem: %s",
     SHORT = "za mało pieniędzy",
+    SEC_KEEP = "Trzymaj w torbach",
 }
 
 T.pt = {
@@ -109,6 +114,7 @@ T.pt = {
     CANCEL = "Cancelar",
     TOTAL = "Total: %s",
     SHORT = "dinheiro insuficiente",
+    SEC_KEEP = "Manter nas bolsas",
 }
 
 T.ru = {
@@ -126,6 +132,7 @@ T.ru = {
     CANCEL = "Отмена",
     TOTAL = "Итого: %s",
     SHORT = "не хватает денег",
+    SEC_KEEP = "Держать в сумках",
 }
 
 T.zh = {
@@ -143,6 +150,7 @@ T.zh = {
     CANCEL = "取消",
     TOTAL = "总计：%s",
     SHORT = "金钱不足",
+    SEC_KEEP = "保持在背包中",
 }
 
 ns.T = T

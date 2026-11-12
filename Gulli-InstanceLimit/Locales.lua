@@ -26,6 +26,11 @@ T.en = {
     WARN_NONE = "No dungeon entries left. The next one is free in %s.",
     LEARNED = "The game refused a new dungeon. The limit is now %d an hour.",
     AGO = "%s ago",
+    STAT_HOUR = "Entries left this hour",
+    STAT_DAY = "Entries left today",
+    SEC_LIMITS = "Limits",
+    ROW_LIMIT = "Entries per hour",
+    ROW_DAY = "Entries per day",
 }
 
 T.de = {
@@ -45,6 +50,11 @@ T.de = {
     WARN_NONE = "Keine Dungeon-Betretung mehr frei. Die nächste ist frei in %s.",
     LEARNED = "Das Spiel hat einen neuen Dungeon abgelehnt. Das Limit ist jetzt %d pro Stunde.",
     AGO = "vor %s",
+    STAT_HOUR = "Übrige Betritte diese Stunde",
+    STAT_DAY = "Übrige Betritte heute",
+    SEC_LIMITS = "Grenzen",
+    ROW_LIMIT = "Betritte pro Stunde",
+    ROW_DAY = "Betritte pro Tag",
 }
 
 T.es = {
@@ -64,6 +74,11 @@ T.es = {
     WARN_NONE = "No quedan entradas. La siguiente estará libre en %s.",
     LEARNED = "El juego rechazó una mazmorra nueva. El límite ahora es %d por hora.",
     AGO = "hace %s",
+    STAT_HOUR = "Entradas libres esta hora",
+    STAT_DAY = "Entradas libres hoy",
+    SEC_LIMITS = "Límites",
+    ROW_LIMIT = "Entradas por hora",
+    ROW_DAY = "Entradas por día",
 }
 
 T.fr = {
@@ -83,6 +98,11 @@ T.fr = {
     WARN_NONE = "Plus d'entrée en donjon. La prochaine se libère dans %s.",
     LEARNED = "Le jeu a refusé un nouveau donjon. La limite est maintenant %d par heure.",
     AGO = "il y a %s",
+    STAT_HOUR = "Entrées restantes cette heure",
+    STAT_DAY = "Entrées restantes aujourd'hui",
+    SEC_LIMITS = "Limites",
+    ROW_LIMIT = "Entrées par heure",
+    ROW_DAY = "Entrées par jour",
 }
 
 T.pl = {
@@ -102,6 +122,11 @@ T.pl = {
     WARN_NONE = "Brak wolnych wejść. Następne za %s.",
     LEARNED = "Gra odmówiła nowego lochu. Limit wynosi teraz %d na godzinę.",
     AGO = "%s temu",
+    STAT_HOUR = "Wejścia w tej godzinie",
+    STAT_DAY = "Wejścia dzisiaj",
+    SEC_LIMITS = "Limity",
+    ROW_LIMIT = "Wejść na godzinę",
+    ROW_DAY = "Wejść na dzień",
 }
 
 T.pt = {
@@ -121,6 +146,11 @@ T.pt = {
     WARN_NONE = "Sem entradas livres. A próxima fica livre em %s.",
     LEARNED = "O jogo recusou uma nova masmorra. O limite agora é %d por hora.",
     AGO = "há %s",
+    STAT_HOUR = "Entradas livres nesta hora",
+    STAT_DAY = "Entradas livres hoje",
+    SEC_LIMITS = "Limites",
+    ROW_LIMIT = "Entradas por hora",
+    ROW_DAY = "Entradas por dia",
 }
 
 T.ru = {
@@ -140,6 +170,11 @@ T.ru = {
     WARN_NONE = "Входов не осталось. Следующий освободится через %s.",
     LEARNED = "Игра не пустила в новое подземелье. Лимит теперь %d в час.",
     AGO = "%s назад",
+    STAT_HOUR = "Входов осталось за час",
+    STAT_DAY = "Входов осталось за день",
+    SEC_LIMITS = "Лимиты",
+    ROW_LIMIT = "Входов в час",
+    ROW_DAY = "Входов в день",
 }
 
 T.zh = {
@@ -159,6 +194,11 @@ T.zh = {
     WARN_NONE = "没有剩余次数。下一次可用还需 %s。",
     LEARNED = "游戏拒绝了新副本。上限改为每小时 %d 次。",
     AGO = "%s 前",
+    STAT_HOUR = "本小时剩余次数",
+    STAT_DAY = "今日剩余次数",
+    SEC_LIMITS = "上限",
+    ROW_LIMIT = "每小时次数",
+    ROW_DAY = "每日次数",
 }
 
 ns.T = T
