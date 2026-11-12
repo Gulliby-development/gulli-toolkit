@@ -50,7 +50,14 @@ function ns.Refresh(rebuild)
     ok:SetText(ns.atMerchant and L.SELL or L.DELETE)
     if ns.atMerchant then S.Primary(ok) else S.Danger(ok) end
     ok:SetEnabled(slots > 0)
-    frame.footer:SetStatus(ns.atMerchant and L.NOTE_SELL or L.NOTE_DELETE)
+    local selling = ns.ToSell(plan)
+    if plan.leftover then
+        frame.footer:SetStatus(L.LEFTOVER:format(#plan.items), S.WARN)
+    elseif selling > 12 then
+        frame.footer:SetStatus(L.NOTE_SELL_MANY:format(selling), S.WARN)
+    else
+        frame.footer:SetStatus(ns.atMerchant and L.NOTE_SELL or L.NOTE_DELETE)
+    end
 end
 
 local function build()
@@ -58,8 +65,21 @@ local function build()
     local ft = S.Footer(frame)
     ok = ft:Add(S.Button(ft, 120, 32))
     ok:SetScript("OnClick", function()
-        ns.Run(plan)
-        C_Timer.After(1, function() ns.Refresh(true) end)
+        local done = plan
+        local sold = ns.Run(done)
+        -- A moment later: what the game kept is offered again; else a fresh plan.
+        C_Timer.After(sold > 0 and (1 + sold / 12 * 0.25) or 1, function()
+            local left = ns.Leftover(done)
+            if #left > 0 and frame:IsShown() then
+                plan = { merges = {}, merged = 0, items = left, free = done.free, total = done.total,
+                         want = done.want, leftover = true }
+                local free, total = ns.Space()
+                plan.free, plan.total = free, total
+                ns.Refresh(false)
+            else
+                ns.Refresh(true)
+            end
+        end)
     end)
 
     local body = frame.body

@@ -23,6 +23,8 @@ T.en = {
     OPT_GUILD = "Use guild money for repairs when allowed",
     SHIFT = "Hold Shift while you open a vendor to skip both once. Protected items are never sold.",
     SELL_NOW = "Sell now",
+    OPT_SAFE = "Sell no more than 12 per visit (all can be bought back)",
+    BUYBACK = "Only the last 12 can be bought back.",
 }
 
 T.de = {
@@ -39,6 +41,8 @@ T.de = {
     OPT_GUILD = "Für Reparaturen Gildengeld nutzen, wenn erlaubt",
     SHIFT = "Halte Umschalt beim Öffnen eines Händlers, um beides einmal zu überspringen. Geschützte Gegenstände werden nie verkauft.",
     SELL_NOW = "Jetzt verkaufen",
+    OPT_SAFE = "Höchstens 12 pro Besuch verkaufen (alle rückkaufbar)",
+    BUYBACK = "Nur die letzten 12 lassen sich zurückkaufen.",
 }
 
 T.es = {
@@ -55,6 +59,8 @@ T.es = {
     OPT_GUILD = "Usar dinero de la hermandad para reparar si se permite",
     SHIFT = "Mantén Mayús al abrir un vendedor para saltar ambas cosas una vez. Los objetos protegidos nunca se venden.",
     SELL_NOW = "Vender ahora",
+    OPT_SAFE = "Vender como máximo 12 por visita (se pueden recomprar todos)",
+    BUYBACK = "Solo se pueden recomprar los últimos 12.",
 }
 
 T.fr = {
@@ -71,6 +77,8 @@ T.fr = {
     OPT_GUILD = "Utiliser l'argent de la guilde pour réparer si permis",
     SHIFT = "Maintenez Maj en ouvrant un marchand pour tout sauter une fois. Les objets protégés ne sont jamais vendus.",
     SELL_NOW = "Vendre",
+    OPT_SAFE = "Vendre 12 au plus par visite (tous rachetables)",
+    BUYBACK = "Seuls les 12 derniers peuvent être rachetés.",
 }
 
 T.pl = {
@@ -87,6 +95,8 @@ T.pl = {
     OPT_GUILD = "Naprawiaj z pieniędzy gildii, gdy wolno",
     SHIFT = "Przytrzymaj Shift przy otwieraniu handlarza, aby raz pominąć oba. Chronione przedmioty nigdy nie są sprzedawane.",
     SELL_NOW = "Sprzedaj teraz",
+    OPT_SAFE = "Sprzedawaj najwyżej 12 na wizytę (wszystkie do odkupienia)",
+    BUYBACK = "Odkupić można tylko ostatnie 12.",
 }
 
 T.pt = {
@@ -103,6 +113,8 @@ T.pt = {
     OPT_GUILD = "Usar dinheiro da guilda para reparar quando permitido",
     SHIFT = "Segure Shift ao abrir um vendedor para pular os dois uma vez. Itens protegidos nunca são vendidos.",
     SELL_NOW = "Vender agora",
+    OPT_SAFE = "Vender no máximo 12 por visita (todos podem ser recomprados)",
+    BUYBACK = "Só os últimos 12 podem ser recomprados.",
 }
 
 T.ru = {
@@ -119,6 +131,8 @@ T.ru = {
     OPT_GUILD = "Чиниться за счёт гильдии, если можно",
     SHIFT = "Удерживайте Shift при открытии торговца, чтобы один раз пропустить и то и другое. Защищённые предметы не продаются.",
     SELL_NOW = "Продать сейчас",
+    OPT_SAFE = "Продавать не больше 12 за визит (всё можно выкупить)",
+    BUYBACK = "Выкупить можно только последние 12.",
 }
 
 T.zh = {
@@ -135,6 +149,8 @@ T.zh = {
     OPT_GUILD = "允许时使用公会资金修理",
     SHIFT = "打开商人时按住 Shift 可跳过一次。受保护的物品永不出售。",
     SELL_NOW = "立即出售",
+    OPT_SAFE = "每次最多出售 12 件（都可以买回）",
+    BUYBACK = "只能买回最后 12 件。",
 }
 
 ns.T = T

@@ -18,10 +18,10 @@ Every time you open a vendor, you sell the gray junk and press Repair. Gulli Mer
 
 ## Features
 
-- **Sells gray items.** Every gray item with a price goes, in small steps, so you can still buy back the last ones.
-- **Repairs.** With guild money when your guild allows it and the amount is within your limit, else with your own.
+- **Sells gray items.** Every gray item with a price goes, in small steps. The vendor keeps the last 12 for buyback; turn on **Sell no more than 12 per visit** to be able to buy back everything.
+- **Repairs.** With guild money when your guild allows it and the amount is within your limit, else with your own. Short of money? It sells the junk first and repairs with what it brought.
 - **Never the wrong item.** Items you protected in the toolkit are never sold.
-- **Your choice.** A switch for selling, one for repairing, one for guild money. Hold **Shift** when you open a vendor to skip it once.
+- **Your choice.** A switch for selling, one for repairing, one for guild money, one for the 12 limit. Hold **Shift** when you open a vendor to skip it once.
 
 ## Install
 
@@ -40,7 +40,7 @@ Every time you open a vendor, you sell the gray junk and press Repair. Gulli Mer
 <details>
 <summary><b>I sold something by mistake</b></summary>
 
-Open the vendor's buyback tab. The last 12 sold items are there.
+Open the vendor's buyback tab. The last 12 sold items are there. If you want all of them back every time, turn on **Sell no more than 12 per visit**.
 </details>
 
 <details>

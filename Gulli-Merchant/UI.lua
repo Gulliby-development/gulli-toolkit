@@ -26,7 +26,7 @@ local function build()
     local st = S.Stack(body)
     local rows = {}
     for _, o in ipairs({ { "sell", L.OPT_SELL }, { "repair", L.OPT_REPAIR },
-                         { "guild", L.OPT_GUILD } }) do
+                         { "guild", L.OPT_GUILD }, { "safe", L.OPT_SAFE } }) do
         local key = o[1]
         rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v) ns.db[key] = v end, icon = ns.OPT_ICON[key] }
     end
