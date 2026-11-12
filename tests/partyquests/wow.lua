@@ -123,6 +123,7 @@ end
 -- spec.quests: quest log entries; spec.party: { { name, quests = { [id] = true } } }.
 function Fake(spec)
     W.Base(spec)
+    GulliPartyQuestsDB = nil
     W.quests = spec.quests or {}
     W.party = spec.party or {}
     W.pushed, W.chat = {}, {}
@@ -138,7 +139,31 @@ function Fake(spec)
         IsComplete = function(id) return spec.complete and spec.complete[id] or false end,
         GetTitleForQuestID = function(id) return spec.titles and spec.titles[id] end,
         SetSelectedQuest = function(id) selected = id end,
+        GetQuestObjectives = function(id) return spec.objectives and spec.objectives[id] or {} end,
+        IsQuestFlaggedCompleted = function(id) return spec.turned and spec.turned[id] or false end,
+        AddQuestWatch = function(id) W.watched[#W.watched + 1] = id end,
+        RequestLoadQuestByID = function(id) W.loaded[#W.loaded + 1] = id end,
     }
+    W.watched, W.loaded, W.tickers = {}, {}, {}
+    C_Timer.NewTicker = function(_, fn) W.tickers[#W.tickers + 1] = fn; return W.stub() end
+    UnitIsConnected = function(u)
+        local i = tonumber((u or ""):match("^party(%d)$"))
+        return not (i and W.party[i] and W.party[i].offline)
+    end
+    UnitIsGroupLeader = function(u) return u == "party1" end
+    GetRealZoneText = function() return spec.zone or "Westfall" end
+    W.bags = spec.bags or {}
+    C_Container = {
+        GetContainerNumSlots = function(b) return b == 0 and #W.bags or 0 end,
+        GetContainerItemInfo = function(b, s)
+            local it = b == 0 and W.bags[s]
+            return it and { itemID = it.id, stackCount = it.count } or nil
+        end,
+    }
+    C_Item = { GetItemNameByID = function(id) return spec.items and spec.items[id] end }
+    ERR_QUEST_PUSH_ALREADY_DONE_S = "%s has completed that quest."
+    ERR_QUEST_PUSH_SUCCESS_S = "Sharing quest with %s..."
+    ERR_QUEST_PUSH_LOW_LEVEL_S = "%s is too low level for that quest."
     QuestLogPushQuest = function() W.pushed[#W.pushed + 1] = selected end
     GetNumSubgroupMembers = function() return #W.party end
     local base = UnitName
@@ -149,7 +174,7 @@ function Fake(spec)
     end
     C_ChatInfo = { RegisterAddonMessagePrefix = function() end,
                    SendAddonMessage = function(p, m, c) W.sent[#W.sent + 1] = { p, m, c } end }
-    SendChatMessage = function(m, c) W.chat[#W.chat + 1] = { m, c } end
+    SendChatMessage = function(m, c, _, to) W.chat[#W.chat + 1] = { m, c, to } end
     return W
 end
 

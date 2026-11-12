@@ -115,7 +115,16 @@ S.partyquests = { default = { spec = { level = 17,
         { title = "Blackrock Menace", questID = 20, level = 21 },
     },
     party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
-} } }
+    objectives = { [155] = { { text = "Defias Pillager slain: 3/8", type = "monster", numFulfilled = 3, numRequired = 8 } },
+                   [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } },
+    items = { [10] = "Red Leather Bandana" }, bags = { { id = 10, count = 17 } },
+    zone = "Westfall",
+}, open = function(ns)
+    for _, p in ipairs({ "B", "Q155,20", "O155:6/8", "E" }) do ns.Receive(p, "Ann") end
+    ns.Toggle()
+end }, settings = { spec = { party = { { name = "Ann", quests = {} } } }, open = function(ns)
+    ns.ShowTab(3)
+end } }
 
 S.bulletin = { default = { spec = { level = 56 },
     open = function(ns, W)
