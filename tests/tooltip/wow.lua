@@ -136,15 +136,21 @@ function Fake(spec)
             for _, q in ipairs(W.log) do if q[1] == id then return q.objectives end end
         end,
     }
-    Enum = { TooltipDataType = { Item = 0, Unit = 2 } }
+    Enum = { TooltipDataType = { Item = 0, Unit = 2, Spell = 1 } }
     TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) W.post[kind] = fn end }
     W.tooltip = { AddDoubleLine = function(_, a, b) W.lines[#W.lines + 1] = a .. "=" .. b end, Show = function() end }
     GulliTooltipDB = spec.db
+    GulliChoresDB, GulliCraftProfitCharDB, Auctionator, IsShiftKeyDown = nil, nil, nil, nil
     return W
 end
 
 function W.HoverItem(id) W.lines = {}; W.post[0](W.tooltip, { id = id }); return W.lines end
-function W.HoverUnit(guid) W.lines = {}; W.post[2](W.tooltip, { guid = guid }); return W.lines end
+function W.HoverUnit(guid, name)
+    W.lines = {}
+    W.post[2](W.tooltip, { guid = guid, lines = name and { { leftText = name } } or nil })
+    return W.lines
+end
+function W.HoverSpell(id) W.lines = {}; W.post[1](W.tooltip, { id = id }); return W.lines end
 
 function Load()
     return W.Load("Gulli-Tooltip", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })

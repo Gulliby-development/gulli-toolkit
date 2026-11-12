@@ -1,5 +1,7 @@
--- Adds lines to item and NPC tooltips: the vendor price of a full stack, the quests in the
--- log that still need the item (with the count), and the item or NPC id.
+-- Adds lines to item, NPC and spell tooltips: the vendor price of a full stack, the auction
+-- price (Auctionator), the quests in the log that still need the item or the NPC, "protected"
+-- from the Gulli Toolkit, how many your other characters hold (from Gulli Chores), which of
+-- your professions use it (from Gulli Craft Profit), and ids. Prices and ids can wait for Shift.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -37,38 +39,126 @@ function ns.Money(copper)
     return table.concat(parts, " ")
 end
 
--- Quests in the log whose item objectives name the item: { { title, have, need } }.
+-- The name in an objective, without its count: "Wolf Pelt: 3/10" and "3/10 Wolf Pelt" are
+-- both "Wolf Pelt".
+function ns.ObjectiveName(text)
+    if type(text) ~= "string" then return nil end
+    local name = text:gsub("^%s*%d+%s*/%s*%d+%s+", ""):gsub("%s*:?%s*%d+%s*/%s*%d+%s*$", "")
+    return (name:match("^%s*(.-)%s*$"))
+end
+
+-- Quests in the log whose objectives name the item or the NPC: { { title, have, need, kind } }.
 -- Rebuilt when the log changes, so a tooltip only reads a table.
 local needs
-function ns.QuestNeeds(name)
-    if not name then return {} end
+local function allNeeds()
     if not needs then
         needs = {}
         for _, q in ipairs(questEntries()) do
             for _, o in ipairs(C_QuestLog.GetQuestObjectives(q.id) or {}) do
-                if o.type == "item" and o.text and not o.finished then
-                    needs[#needs + 1] = { title = q.title, text = o.text, have = o.numFulfilled or 0,
-                                          need = o.numRequired or 0 }
+                if (o.type == "item" or o.type == "monster") and o.text and not o.finished then
+                    needs[#needs + 1] = { title = q.title, name = ns.ObjectiveName(o.text), kind = o.type,
+                                          have = o.numFulfilled or 0, need = o.numRequired or 0 }
                 end
             end
         end
     end
+    return needs
+end
+
+-- The whole name must match: "Wolf Pelt" is not "Large Wolf Pelt".
+function ns.QuestNeeds(name)
     local out = {}
-    for _, n in ipairs(needs) do
-        if n.text:find(name, 1, true) then out[#out + 1] = n end
+    if not name then return out end
+    for _, n in ipairs(allNeeds()) do
+        if n.kind == "item" and n.name == name then out[#out + 1] = n end
+    end
+    return out
+end
+
+-- Kill objectives for an NPC: "Boar slain" names the Boar ("Boar" alone, or followed by a word).
+function ns.MobNeeds(name)
+    local out = {}
+    if not name or secret(name) then return out end
+    for _, n in ipairs(allNeeds()) do
+        if n.kind == "monster" and n.name and n.name:sub(1, #name) == name then
+            local rest = n.name:sub(#name + 1, #name + 1)
+            if rest == "" or rest:match("[%s%p]") then out[#out + 1] = n end
+        end
     end
     return out
 end
 
 function ns.Forget() needs = nil end
 
--- The lines for an item: { { left, right, color } }.
+local function shiftDown() return IsShiftKeyDown ~= nil and IsShiftKeyDown() == true end
+
+-- Prices and ids wait for Shift when the player wants a short tooltip.
+local function extra(key)
+    return ns.db[key] and (not ns.db.shift or shiftDown())
+end
+
+local function auctionPrice(id)
+    local api = Auctionator and Auctionator.API and Auctionator.API.v1
+    if not (api and api.GetAuctionPriceByItemID) then return nil end
+    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-Tooltip", id)
+    return ok and tonumber(price) or nil
+end
+
+-- How many the other characters hold, from Gulli Chores' snapshots (read only):
+-- { { name, bags, bank } }, the player's own bank as "me".
+function ns.AltCounts(id)
+    local out = {}
+    local db = GulliChoresDB
+    if type(db) ~= "table" or type(db.chars) ~= "table" then return out end
+    local me = UnitName("player") .. "-" .. (GetRealmName and GetRealmName() or "")
+    for key, c in pairs(db.chars) do
+        local bags = c.items and c.items[id] or 0
+        local bank = c.bank and c.bank[id] or 0
+        if key == me then bags = 0 end
+        if bags + bank > 0 then out[#out + 1] = { name = c.name or key, bags = bags, bank = bank, me = key == me } end
+    end
+    table.sort(out, function(a, b) if a.me ~= b.me then return a.me end return a.name < b.name end)
+    return out
+end
+
+-- Which professions of this character use the item, from Gulli Craft Profit's recipes (read only).
+local reagentOf
+function ns.ReagentFor(id)
+    if not reagentOf then
+        reagentOf = {}
+        local db = GulliCraftProfitCharDB
+        for prof, p in pairs(type(db) == "table" and type(db.profs) == "table" and db.profs or {}) do
+            -- A recipe keeps its reagents as r = { [itemID] = count }; only learned ones count.
+            for _, r in pairs(type(p) == "table" and type(p.recipes) == "table" and p.recipes or {}) do
+                if type(r) == "table" and r.learned and type(r.r) == "table" then
+                    for rid in pairs(r.r) do
+                        reagentOf[rid] = reagentOf[rid] or {}
+                        reagentOf[rid][prof] = true
+                    end
+                end
+            end
+        end
+    end
+    local out = {}
+    for prof in pairs(reagentOf[id] or {}) do out[#out + 1] = prof end
+    table.sort(out)
+    return out
+end
+
+-- The lines for an item: { { left, right, color, rightColor } }.
 function ns.ItemLines(id)
     local out = {}
     if not id or secret(id) then return out end
     local name, maxStack, price = itemInfo(id)
-    if ns.db.price and price > 0 and maxStack > 1 then
+    if ns.db.protect and GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id) then
+        out[#out + 1] = { L.PROTECTED, "", DONE }
+    end
+    if extra("price") and price > 0 and maxStack > 1 then
         out[#out + 1] = { L.STACK:format(maxStack), ns.Money(price * maxStack), MUTED }
+    end
+    if extra("auction") then
+        local ah = auctionPrice(id)
+        if ah and ah > 0 then out[#out + 1] = { L.AUCTION, ns.Money(ah), MUTED } end
     end
     if ns.db.quest then
         for _, n in ipairs(ns.QuestNeeds(name)) do
@@ -77,7 +167,18 @@ function ns.ItemLines(id)
                               n.need > 0 and n.have >= n.need and DONE or WHITE }
         end
     end
-    if ns.db.id then out[#out + 1] = { L.ITEM_ID, tostring(id), MUTED } end
+    if ns.db.alts then
+        for _, a in ipairs(ns.AltCounts(id)) do
+            local right = a.me and L.BANK_N:format(a.bank)
+                or (a.bank > 0 and L.BAGS_BANK:format(a.bags + a.bank, a.bank) or tostring(a.bags))
+            out[#out + 1] = { a.me and L.YOUR_BANK or a.name, right, MUTED }
+        end
+    end
+    if ns.db.reagent then
+        local profs = ns.ReagentFor(id)
+        if #profs > 0 then out[#out + 1] = { L.REAGENT:format(table.concat(profs, ", ")), "", MUTED } end
+    end
+    if extra("id") then out[#out + 1] = { L.ITEM_ID, tostring(id), MUTED } end
     return out
 end
 
@@ -88,9 +189,32 @@ function ns.NpcID(guid)
     if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
 end
 
-function ns.UnitLines(guid)
-    local id = ns.db.id and ns.NpcID(guid)
-    return id and { { L.NPC_ID, tostring(id), MUTED } } or {}
+function ns.UnitLines(guid, name)
+    local out = {}
+    if ns.db.mobs and ns.NpcID(guid) then
+        for _, n in ipairs(ns.MobNeeds(name)) do
+            out[#out + 1] = { L.QUEST:format(n.title), n.have .. "/" .. n.need, QUEST, WHITE }
+        end
+    end
+    local id = extra("id") and ns.NpcID(guid)
+    if id then out[#out + 1] = { L.NPC_ID, tostring(id), MUTED } end
+    return out
+end
+
+-- Spell and aura ids, under the same switch.
+function ns.SpellLines(id)
+    if not extra("id") or not id or secret(id) then return {} end
+    return { { L.SPELL_ID, tostring(id), MUTED } }
+end
+
+-- The tooltip's border in the item's quality colour.
+local function paintBorder(tt, id)
+    if not ns.db.quality or not id then return end
+    local _, _, q = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
+    local c = q and q >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+    if not c then return end
+    if tt.NineSlice and tt.NineSlice.SetBorderColor then tt.NineSlice:SetBorderColor(c.r, c.g, c.b)
+    elseif tt.SetBackdropBorderColor then tt:SetBackdropBorderColor(c.r, c.g, c.b) end
 end
 
 local function add(tt, lines)
@@ -101,23 +225,52 @@ local function add(tt, lines)
     if #lines > 0 then tt:Show() end
 end
 
+local function unitName(data)
+    local lines = data and data.lines
+    local first = lines and lines[1]
+    return first and first.leftText
+end
+
 local function hook()
     if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, data)
-            if data then add(tt, ns.ItemLines(data.id)) end
+        local T = Enum.TooltipDataType
+        TooltipDataProcessor.AddTooltipPostCall(T.Item, function(tt, data)
+            if data then add(tt, ns.ItemLines(data.id)); paintBorder(tt, data.id) end
         end)
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tt, data)
-            if data then add(tt, ns.UnitLines(data.guid)) end
+        TooltipDataProcessor.AddTooltipPostCall(T.Unit, function(tt, data)
+            if data then
+                local name = unitName(data)
+                if not name and tt.GetUnit then name = tt:GetUnit() end
+                add(tt, ns.UnitLines(data.guid, name))
+            end
         end)
+        for _, kind in ipairs({ "Spell", "UnitAura" }) do
+            if T[kind] then
+                TooltipDataProcessor.AddTooltipPostCall(T[kind], function(tt, data)
+                    if data then add(tt, ns.SpellLines(data.id)) end
+                end)
+            end
+        end
     elseif GameTooltip then
         GameTooltip:HookScript("OnTooltipSetItem", function(tt)
             local _, link = tt:GetItem()
             local id = link and tonumber(link:match("item:(%d+)"))
             add(tt, ns.ItemLines(id))
+            paintBorder(tt, id)
         end)
         GameTooltip:HookScript("OnTooltipSetUnit", function(tt)
-            local _, unit = tt:GetUnit()
-            add(tt, ns.UnitLines(unit and UnitGUID(unit)))
+            local name, unit = tt:GetUnit()
+            add(tt, ns.UnitLines(unit and UnitGUID(unit), name))
+        end)
+        GameTooltip:HookScript("OnTooltipSetSpell", function(tt)
+            local _, id = tt:GetSpell()
+            add(tt, ns.SpellLines(id))
+        end)
+    end
+    -- At the cursor instead of the corner of the screen, when the player wants it.
+    if hooksecurefunc and GameTooltip_SetDefaultAnchor then
+        hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tt, parent)
+            if ns.db.cursor and tt and tt.SetOwner then tt:SetOwner(parent, "ANCHOR_CURSOR") end
         end)
     end
 end
@@ -129,13 +282,24 @@ f:SetScript("OnEvent", function(self, event, a1)
         if a1 ~= ADDON then return end
         GulliTooltipDB = GulliTooltipDB or {}
         ns.db = GulliTooltipDB
-        for k, v in pairs({ price = true, quest = true, id = false }) do
+        for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
         self:RegisterEvent("QUEST_LOG_UPDATE")
+        self:RegisterEvent("MODIFIER_STATE_CHANGED")
+        self:RegisterEvent("TRADE_SKILL_CLOSE")
         hook()
         return
     end
+    if event == "MODIFIER_STATE_CHANGED" then
+        -- Shift shows the waiting lines on the tooltip that is open.
+        if ns.db.shift and (a1 == "LSHIFT" or a1 == "RSHIFT") and GameTooltip and GameTooltip.RefreshData
+            and GameTooltip:IsShown() then
+            GameTooltip:RefreshData()
+        end
+        return
+    end
+    if event == "TRADE_SKILL_CLOSE" then reagentOf = nil; return end
     ns.Forget()
 end)
 
@@ -149,13 +313,48 @@ function GulliTooltip_Toggle() ns.Toggle() end
 -- The game icon of each switch, in the window and in the hub.
 ns.OPT_ICON = {
     price = "Interface\\Icons\\INV_Misc_Coin_01",
+    auction = "Interface\\Minimap\\Tracking\\Auctioneer",
     quest = "Interface\\Icons\\INV_Misc_Note_01",
+    mobs = "Interface\\Icons\\Ability_Hunter_SniperShot",
+    protect = "Interface\\Icons\\INV_Misc_Key_03",
+    alts = "Interface\\Minimap\\Tracking\\Banker",
+    reagent = "Interface\\Icons\\Trade_Tailoring",
     id = "Interface\\Icons\\INV_Misc_Gear_01",
+    shift = "Interface\\Icons\\INV_Misc_Key_14",
+    quality = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
+    cursor = "Interface\\Icons\\Ability_Hunter_MarkedForDeath",
 }
 
-local function option(key, label)
-    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
-             set = function(on) if ns.db then ns.db[key] = on and true or false end end }
+-- The switches in window order; a new line gets its key here, a default, a text and a test.
+ns.LINES = { "price", "auction", "quest", "mobs", "protect", "alts", "reagent", "id" }
+ns.LOOK = { "shift", "quality", "cursor" }
+-- The engine may already show kill objectives on NPCs, so that line starts off.
+ns.DEFAULTS = { price = true, auction = true, quest = true, mobs = false, protect = true, alts = true,
+                reagent = true, id = false, shift = false, quality = false, cursor = false }
+
+function ns.Set(key, on)
+    ns.db[key] = on and true or false
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.Reset()
+    for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- One line for the hub's home page: how many lines are on.
+function ns.Summary()
+    if not ns.db then return nil end
+    local n = 0
+    for _, k in ipairs(ns.LINES) do if ns.db[k] then n = n + 1 end end
+    return L.SUMMARY:format(n, #ns.LINES)
+end
+
+local function option(key)
+    local K = key:upper()
+    return { label = L["OPT_" .. K], tip = L["TIP_" .. K], icon = ns.OPT_ICON[key],
+             get = function() return ns.db ~= nil and ns.db[key] == true end,
+             set = function(on) if ns.db then ns.Set(key, on) end end }
 end
 
 if GulliToolkit and GulliToolkit.Register then
@@ -165,10 +364,8 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gtt",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
-        options = {
-            option("price", ns.L.OPT_PRICE),
-            option("quest", ns.L.OPT_QUEST),
-            option("id", ns.L.OPT_ID),
-        },
+        summary = function() return ns.Summary() end,
+        reset = function() ns.Reset() end,
+        options = { option("price"), option("quest"), option("protect"), option("alts"), option("id"), option("shift") },
     })
 end

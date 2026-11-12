@@ -36,7 +36,7 @@
 | [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
 | [Mail](docs/mail/README.md) | Take all from the mailbox, and your characters and recent recipients as names to tap. | `/gml` |
 | [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. | `/gaq` |
-| [Tooltip](docs/tooltip/README.md) | Full stack price, the quests that need an item, item and NPC ids. | `/gtt` |
+| [Tooltip](docs/tooltip/README.md) | Stack and auction prices, the quests that need an item, what your other characters hold, ids. | `/gtt` |
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
 | [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
