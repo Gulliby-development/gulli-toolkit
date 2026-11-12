@@ -341,6 +341,17 @@ test("the profit route crafts only what gains, and the market cap lowers the gai
     assert(has(c.Route(st, e), "STOP_EARN"), "a craft stop for sale")
 end)
 
+test("a limit of 0 means no limit: every unit goes to the auction", function()
+    local c, st = core(), state()
+    local plan = c.Plan(st, prefs({ maxSell = 0 }))
+    local capped = c.Plan(st, prefs({ maxSell = 3 }))
+    local any = false
+    for id, n in pairs(capped.sellVendor) do if (capped.sellAH[id] or 0) > 0 then any = true end end
+    assert(any, "the small market sends some units to a vendor")
+    for id in pairs(plan.sellVendor) do assert(not plan.sellAH[id], id .. " sold at both places without a limit") end
+    eq(c.Limit(0), math.huge); eq(c.Limit(nil), math.huge); eq(c.Limit(7), 7)
+end)
+
 test("a profit run buys at most maxBuy of one item at the auction, and stops at EARN_MAX crafts", function()
     local c = core()
     -- cheap cloth at the auction, a bag that a vendor buys for more: the run would never end
@@ -682,6 +693,13 @@ test("mode buttons, the target stepper and reset", function()
     eq(n.view.prefs.maxSell, 21)
     W.Click(n.ui.maxBuy.minus)
     eq(n.view.prefs.maxBuy, 30)
+    -- one step past the top is "no limit", saved as 0, and back down from it
+    for _ = 1, 25 do W.Click(n.ui.maxSell.plus) end
+    eq(n.view.prefs.maxSell, 0)
+    W.Click(n.ui.maxSell.minus)
+    eq(n.view.prefs.maxSell, 40)
+    for _ = 1, 20 do W.Click(n.ui.maxBuy.plus) end
+    eq(n.view.prefs.maxBuy, 0)
     W.Click(n.ui.reset)
     eq(n.view.prefs.mode, "auto"); eq(n.view.plan.full.target, 225); eq(n.view.prefs.chance, 80); eq(n.view.prefs.budget, 0)
 end)

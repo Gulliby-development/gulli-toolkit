@@ -223,6 +223,8 @@ S.craftprofit = { default = {
 
 S.craftprofit.legs = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(2) end }
+S.craftprofit.nolimit = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("maxSell", 0); ns.SetPref("maxBuy", 0) end }
 S.craftprofit.unknown = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(#ns.view.legs) end }
 S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,

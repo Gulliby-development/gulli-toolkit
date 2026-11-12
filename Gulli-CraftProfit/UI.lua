@@ -68,6 +68,8 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 -- ---------- the settings column ----------
 
 -- The loss budgets the stepper offers, in copper; 0 is no limit.
+-- count settings whose stepper ends in "no limit"
+local UNLIMITED = { maxSell = true, maxBuy = true }
 local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
 
 local function pref(key)
@@ -103,6 +105,13 @@ local function stepRow(parent, key, step, min, max, fmt)
             return at
         end
         set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+    elseif UNLIMITED[key] then
+        -- one step past the top is "no limit", saved as 0
+        local top, show = max, fmt
+        get = function() local v = pref(key) or ns.DEFAULTS[key]; return v == 0 and top + step or v end
+        set = function(v) ns.SetPref(key, v > top and 0 or v) end
+        fmt = function(v) return v > top and L.NO_LIMIT or show(v) end
+        max = top + step
     end
     local st = S.Stepper(row, get, set, step, min, max, fmt)
     st:SetPoint("BOTTOMLEFT", 38, 8)

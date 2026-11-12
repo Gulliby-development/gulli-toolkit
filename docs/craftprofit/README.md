@@ -63,7 +63,7 @@ An orange recipe always gives a point. A yellow or green one gives it less often
 <details>
 <summary><b>Why does the route lose gold when Crafts now shows a profit?</b></summary>
 
-Crafts now counts one craft sold at the auction. A run makes many of one item, and the auction only buys so many at that price (**At most of one item**, 20 at first); the rest go to a vendor for less. Each item goes where it brings more: to a vendor only when the vendor pays more than the auction after its cut and the deposit you lose on what does not sell. Raise or lower that setting to match your auction.
+Crafts now counts one craft sold at the auction. A run makes many of one item, and the auction only buys so many at that price (**At most of one item**, 20 at first); the rest go to a vendor for less. Each item goes where it brings more: to a vendor only when the vendor pays more than the auction after its cut and the deposit you lose on what does not sell. Raise or lower that setting to match your auction. One step past the top of it is **no limit**: then every unit goes to the auction. **Auction buy, at most** ends in **no limit** the same way.
 </details>
 
 <details>
