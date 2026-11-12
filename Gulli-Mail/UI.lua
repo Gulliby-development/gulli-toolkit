@@ -60,10 +60,29 @@ local function buildPanel()
     panel:SetScript("OnShow", function() ns.Refresh() end)
 end
 
+-- The panel sits right of the open letter when there is one, else right of the mailbox, so it
+-- never covers the letter the player is reading.
+function ns.PanelAnchor()
+    if OpenMailFrame and OpenMailFrame:IsShown() then return OpenMailFrame end
+    return MailFrame
+end
+
+local function place()
+    if not panel then return end
+    local to = ns.PanelAnchor()
+    panel:ClearAllPoints()
+    if to then panel:SetPoint("TOPLEFT", to, "TOPRIGHT", 8, 0) else panel:SetPoint("CENTER") end
+end
+
+local hooked
 function ns.ShowPanel()
     if not panel then buildPanel() end
-    panel:ClearAllPoints()
-    if MailFrame then panel:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 8, 0) else panel:SetPoint("CENTER") end
+    if not hooked and OpenMailFrame and OpenMailFrame.HookScript then
+        hooked = true
+        OpenMailFrame:HookScript("OnShow", place)
+        OpenMailFrame:HookScript("OnHide", place)
+    end
+    place()
     panel:Show()
 end
 
