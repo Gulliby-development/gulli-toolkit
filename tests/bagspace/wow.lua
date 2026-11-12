@@ -126,6 +126,9 @@ function Fake(spec)
     W.Base(spec)
     W.bags, W.items = spec.bags or {}, spec.items or {}
     W.cursor, W.deleted, W.sold = nil, {}, {}
+    GulliJunkShared = nil
+    Auctionator = spec.ah and { API = { v1 = { GetAuctionPriceByItemID = function(_, id) return spec.ah[id] end } } } or nil
+    ERR_INV_FULL = "Inventory is full."
     local function bag(b) return W.bags[b] or { size = 0, slots = {} } end
     C_Container = {
         GetContainerNumSlots = function(b) return bag(b).size end,
@@ -187,7 +190,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-BagSpace", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-BagSpace", { "Locales.lua", "Junk.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W
