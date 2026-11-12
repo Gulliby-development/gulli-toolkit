@@ -57,6 +57,15 @@ test("names: own characters of this faction first, then recent recipients", func
     eq(W.to, "Bank"); eq(W.tab, 2)
 end)
 
+test("a new character has no names yet and the panel says how the list fills", function()
+    Fake({ inbox = { { sender = "Auction House", money = 5 } } })
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    eq(#ns.Names(), 0, "only the player, who is never listed")
+    W.Fire("MAIL_SHOW")
+    assert(ns.L.NO_NAMES ~= "" and ns.L.NO_NAMES_SUB ~= "", "the empty list has its texts")
+end)
+
 test("the panel opens at the mailbox unless it is turned off", function()
     Fake({ inbox = { { sender = "A", money = 5 } } })
     Load()

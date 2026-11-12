@@ -197,4 +197,10 @@ S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprof
 S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 
+S.mail = { panel = {
+    spec = { inbox = { { sender = "Auction House", money = 4210 }, { sender = "Auction House", items = { 2589 } } } },
+    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW") end,
+    crop = "GulliMailPanel",
+} }
+
 return S

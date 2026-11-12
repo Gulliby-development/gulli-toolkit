@@ -32,9 +32,15 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 
 1. Open a mailbox. The panel opens next to it.
 2. Tap **Take all**.
-3. To write, tap a name under **Send to**.
+3. To write, tap a name under **Write a letter to**.
 
 ## FAQ
+
+<details>
+<summary><b>The list of names is empty</b></summary>
+
+It fills by itself. Your other characters on the realm show up after you log in with each of them once, with the addon on. Players you send mail to show up too. Until then the list says **No names yet**.
+</details>
 
 <details>
 <summary><b>The panel is in my way</b></summary>
