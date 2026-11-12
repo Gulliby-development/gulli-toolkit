@@ -62,6 +62,9 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 
 -- ---------- the settings column ----------
 
+-- The loss budgets the stepper offers, in copper; 0 is no limit.
+local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
+
 local function pref(key)
     if key == "target" and ns.view.state then return ns.Target(ns.view.state, ns.view.prefs) end
     local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
@@ -85,8 +88,18 @@ local function stepRow(parent, key, step, min, max, fmt)
     row.label:SetPoint("RIGHT", 0, 0)
     row.label:SetWordWrap(false)
     row.label:SetText(key == "target" and L.SIDE_TARGET or L["P_" .. key])
-    local st = S.Stepper(row, function() return pref(key) or ns.DEFAULTS[key] end,
-        function(v) ns.SetPref(key, v) end, step, min, max, fmt)
+    local get = function() return pref(key) or ns.DEFAULTS[key] end
+    local set = function(v) ns.SetPref(key, v) end
+    if key == "budget" then
+        -- the stepper walks the BUDGETS list, the setting keeps copper
+        get = function()
+            local b, at = pref("budget") or 0, 1
+            for i, x in ipairs(BUDGETS) do if x <= b then at = i end end
+            return at
+        end
+        set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+    end
+    local st = S.Stepper(row, get, set, step, min, max, fmt)
     st:SetPoint("BOTTOMLEFT", 38, 8)
     st:SetPoint("BOTTOMRIGHT", 0, 8)
     row.line = S.Divider(row)
@@ -130,7 +143,8 @@ local function buildSide(scroll)
 
     local lv = sw("level")
     local target = stepRow(col, "target", 5, 1, 300)
-    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target })
+    local budget = stepRow(col, "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end)
+    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, budget })
     st:Add(c0, h0)
 
     local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"), sw("buyVendor") })
@@ -149,8 +163,10 @@ end
 local function refreshSide()
     local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    ui.target.minus:SetEnabled(P.level and true or false)
-    ui.target.plus:SetEnabled(P.level and true or false)
+    for _, key in ipairs({ "target", "budget" }) do
+        ui[key].minus:SetEnabled(P.level and true or false)
+        ui[key].plus:SetEnabled(P.level and true or false)
+    end
     for _, s in pairs(ui.steppers) do s:Refresh() end
     local d = ns.view.delta
     if d then
@@ -508,7 +524,6 @@ local function build()
         b.label:SetPoint("TOPLEFT", 8, -8)
         b.label:SetPoint("RIGHT", b.icon, "LEFT", -4, 0)
         b.label:SetWordWrap(false)
-        b.label:SetText(i .. ". " .. L["TILE_" .. m])
         b.value = S.Text(b, 15)
         b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -5)
         b.value:SetPoint("RIGHT", -6, 0)
@@ -517,9 +532,10 @@ local function build()
         b.sub:SetPoint("BOTTOMLEFT", 8, 7)
         b.sub:SetPoint("RIGHT", -6, 0)
         b.sub:SetWordWrap(false)
-        b:SetScript("OnClick", function()
-            -- a levelling route turns levelling back on
-            if ns.EARN[m] then ns.SetPref("mode", m) else ns.SetPrefs({ mode = m, level = true }) end
+        b:SetScript("OnClick", function(self)
+            if ns.EARN[m] then ns.SetPref("mode", m); return end
+            -- the best route within the budget stays automatic; a levelling tile turns levelling on
+            ns.SetPrefs({ mode = (self.best and (ns.view.prefs.budget or 0) > 0) and "auto" or m, level = true })
         end)
         b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
         b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.EDGE) end end)
@@ -620,37 +636,61 @@ local function refreshProfessions()
     end
 end
 
--- The route card is named after the chosen route.
-local function i18nRoute()
-    local i
-    for k, m in ipairs(ns.MODES) do if m == ns.view.mode then i = k end end
-    return (i and (i .. ". ") or "") .. L["VAR_" .. (ns.view.mode or "balance")]
+-- A levelling route's name by its place among n: the cheapest, the fastest, or an option between.
+local function routeName(mode, n, long)
+    if ns.EARN[mode] then return L[(long and "VAR_" or "TILE_") .. mode] end
+    local i = tonumber(mode:sub(2)) or 1
+    local key = (i == 1) and "cheap" or (i == n and "fast" or "mid")
+    return L[(long and "VAR_" or "TILE_") .. key]:format(i)
 end
 
 local function refreshRoute()
     local v = ns.view
     local plan = v.plan
+    local levels, anyLevel = 0, false
+    for _, x in ipairs(v.variants or {}) do if not ns.EARN[x.mode] and x.plan then levels = levels + 1; anyLevel = true end end
+    -- the tiles shown: the levelling routes there are (or one that says why there are none), the profit ones
+    local shown = {}
     for i, x in ipairs(v.variants or {}) do
         local b = ui.varTiles[i]
+        local visible = x.plan ~= nil or (i == 1 and not anyLevel)
+        b:SetShown(visible)
+        if visible then shown[#shown + 1] = { b = b, x = x } end
+    end
+    local k = #shown
+    local vw = math.floor((MAIN - (k - 1) * 8) / k)
+    for j, e in ipairs(shown) do
+        local b, x = e.b, e.x
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", (j - 1) * (vw + 8), 0)
+        b:SetSize(vw, 62)
         local on = x.mode == v.mode
         local p = x.plan
+        b.best = x.best
         S.Fill(b, on and S.RAISED or S.SURFACE)
         S.SetBorder(b, on and S.Accent() or S.EDGE)
         b.mark:SetShown(on)
+        b.label:SetText(j .. ". " .. routeName(x.mode, levels))
         if p then
-            b.value:SetText(color(p.net >= 0 and GOOD or BAD) .. (p.net < 0 and "-" or "+") .. ns.Short(p.net) .. "|r")
-            local short = p.reached and p.target and p.reached < p.target
-            b.sub:SetText(short and L.VAR_STOP:format(p.reached) or L.VAR_CRAFTS:format(ns.Ceil(p.crafts)))
-            b:SetAlpha(1)
+            -- the money of the whole way, so the tiles compare routes; the crafts of the next run
+            local full = p.full or p
+            b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
+            local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
+                or (p.earn and L.VAR_CRAFTS:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(p.reached, ns.Ceil(p.crafts)))
+            if x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
+            elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
+            b.sub:SetText(sub)
+            b:SetAlpha(x.over and 0.55 or 1)
         else
+            b.label:SetText(j .. ". " .. L.TILE_cheap)
             b.value:SetText(color(S.FAINT) .. "-|r")
             b.sub:SetText(v.prefs.level and L.VAR_MAXED or L.VAR_OFF)
             b:SetAlpha(0.6)
         end
     end
     ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income)))
-    ui.graphCard:SetTitle(i18nRoute())
-    local w = plan.warn
+    ui.graphCard:SetTitle(routeName(v.mode, levels, true))
+    local w = plan.warn or (plan.full and plan.full.warn)
     local warn = w and (color(GOLD) .. L[w[1]]:format(w[2], w[3]) .. "|r") or nil
     if selected > #v.route then selected = 1 end
     drawGraph()
@@ -679,8 +719,13 @@ local function refreshRoute()
     if plan.earn then
         ui.skillTo:SetText(warn or "")
     else
-        ui.skillTo:SetText((warn and (warn .. "  ·  ") or "") .. (guess and (L.GUESS .. "  ·  ") or "") .. (plan.reached < plan.target
-            and L.SKILL_SHORT:format(plan.reached, plan.target) or L.SKILL_TARGET:format(plan.target)))
+        local full = plan.full or plan
+        local where
+        if full.reached < full.target then where = L.SKILL_SHORT:format(full.reached, full.target)
+        elseif full ~= plan then where = L.SKILL_ALL:format(full.target, ns.Ceil(full.crafts))
+        else where = L.SKILL_TARGET:format(plan.target) end
+        if full ~= plan then where = L.SKILL_RUN:format(plan.reached) .. "  ·  " .. where end
+        ui.skillTo:SetText((warn and (warn .. "  ·  ") or "") .. (guess and (L.GUESS .. "  ·  ") or "") .. where)
     end
     local n = v.route[selected]
     ui.detailCard:SetTitle(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")

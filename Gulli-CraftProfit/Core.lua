@@ -16,7 +16,8 @@ local L = ns.L
 -- Settings a player picks in the right column. A new one gets a default here, a control in
 -- UI.lua, its texts in every language and a test that toggling it rebuilds the route.
 ns.DEFAULTS = {
-    mode = "balance", -- levelling: money, balance or speed; profit only: own or earn
+    mode = "auto", -- levelling: auto (the fastest within the budget) or l1..l4; profit only: own or earn
+    budget = 0, -- copper the levelling may lose; 0: no limit
     level = true, -- off: no levelling routes, only the profit one
     target = 0,       -- 0: the rank cap
     useBags = true, useBank = true, buyAH = true, buyVendor = true,
@@ -29,14 +30,19 @@ ns.FRESH_DAYS = 3
 -- What a craft is worth in time, in copper, by mode: speed counts crafts before money.
 ns.TIME = { money = 0, balance = 300, speed = 1e6 }
 -- The routes the window offers side by side, in tab order.
-ns.MODES = { "money", "balance", "speed", "own", "earn" }
+ns.MODES = { "l1", "l2", "l3", "l4", "own", "earn" }
+-- Time weights tried for the levelling routes: from money only to speed only.
+ns.SWEEP = { 0, 30, 100, 300, 1000, 3000, 1e6 }
+ns.LEVEL_ROUTES = 4
+-- Saved choices from before the routes were computed.
+ns.OLD_MODES = { money = "l1", balance = "auto", speed = "l4" }
 -- The two profit routes: "own" crafts from the bags and the bank (vendor thread and dye allowed),
 -- "earn" may also buy reagents at the auction and buy recipes when they pay back.
 ns.EARN = { own = true, earn = true }
--- The most crafts the profit route plans, so one cheap recipe cannot run away.
-ns.EARN_MAX = 400
 -- A change of recipe costs a little, so the plan does not hop between two recipes for a point.
 ns.SWITCH = 600
+-- The most crafts one profit run plans, so one cheap recipe cannot run away.
+ns.EARN_MAX = 400
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
 
@@ -223,9 +229,17 @@ local function rankAbove(cap)
     for _, r in ipairs(ns.RANKS) do if r[1] > cap then return r end end
 end
 
+-- The rank cap; a cap the game did not give (0, or below the skill) is the rank the skill is in.
+function ns.Cap(state)
+    local s, cap = state.skill, state.cap or 0
+    if cap > 0 and cap >= s then return cap end
+    for _, r in ipairs(ns.RANKS) do if r[1] >= s then return r[1] end end
+    return math.max(cap, s)
+end
+
 function ns.Target(state, P)
     if P.target and P.target > state.skill then return P.target end
-    return state.cap
+    return ns.Cap(state)
 end
 
 -- One pass: at each skill point the recipe with the lowest expected cost per point (plus time
@@ -234,8 +248,8 @@ local function planWith(state, P, allowed)
     local st = ns.Stock(state, P)
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
                   segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0 }
-    local s, cap, target = state.skill, state.cap, ns.Target(state, P)
-    local w = ns.TIME[P.mode] or 0
+    local s, cap, target = state.skill, ns.Cap(state), ns.Target(state, P)
+    local w = P.w or ns.TIME[P.mode] or 0
     -- a sorted list keeps the plan the same from run to run
     local ids = {}
     for rid in pairs(allowed) do ids[#ids + 1] = rid end
@@ -320,15 +334,13 @@ function ns.Plan(state, P)
     return best
 end
 
--- The profit route, without levelling: one craft at a time, always the recipe that gains the most
--- now, while a craft still gains something. What is already made sells lower (the market takes
--- maxSell at the auction) and own stock runs out, so the gain falls craft by craft. `known`: the
--- recipes it may use; a recipe not learned yet costs its price once.
-local function earnWith(state, P, known)
+-- A profit run without levelling: one recipe, crafted while a craft still gains something. What
+-- is already made sells lower (the market takes maxSell at the auction) and own stock runs out,
+-- so the gain falls craft by craft. `known`: the recipes that may make its intermediates; a
+-- recipe not learned yet costs its price once.
+local function earnWith(state, P, known, rid)
     local st = ns.Stock(state, P)
-    local ids = {}
-    for rid in pairs(known) do ids[#ids + 1] = rid end
-    table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
+    local ids = { rid }
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
                   segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true,
                   reached = state.skill, target = state.skill }
@@ -374,8 +386,9 @@ local function earnWith(state, P, known)
     return acc
 end
 
--- `own`: only what is in the bags and the bank, plus vendor reagents. Otherwise recipes that can
--- be bought now (and crafted at this skill) are tried one by one and kept while they add money.
+-- `own`: only what is in the bags and the bank, plus vendor reagents; otherwise reagents from the
+-- auction and recipes that can be bought now (and crafted at this skill) count too. The run is
+-- the one recipe whose series gains the most; the window plans the next run after it.
 function ns.Earn(state, P, own)
     local Q = P
     if own then
@@ -383,45 +396,94 @@ function ns.Earn(state, P, own)
         for k, v in pairs(P) do Q[k] = v end
         Q.buyAH, Q.buyRecipes = false, false
     end
-    local known, extra = {}, {}
+    local known, cands = {}, {}
     for rid, r in pairs(state.recipes) do
-        if r.out then
-            if r.learned then known[rid] = true
-            elseif not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1] then
-                extra[#extra + 1] = rid
-            end
+        if r.learned then known[rid] = true end
+        if r.out and (r.learned or (not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1])) then
+            cands[#cands + 1] = rid
         end
     end
-    table.sort(extra, function(a, b) return tostring(a) < tostring(b) end)
-    local best = earnWith(state, Q, known)
-    for _ = 1, 4 do
-        local better, pick
-        for _, rid in ipairs(extra) do
-            if not known[rid] then
-                known[rid] = true
-                local p = earnWith(state, Q, known)
-                known[rid] = nil
-                if p.net > (better or best).net + 1 then better, pick = p, rid end
-            end
+    table.sort(cands, function(a, b) return tostring(a) < tostring(b) end)
+    local best
+    for _, rid in ipairs(cands) do
+        local k = known
+        if not known[rid] then
+            k = {}
+            for x in pairs(known) do k[x] = true end
+            k[rid] = true
         end
-        if not better then break end
-        best, known[pick] = better, true
+        local p = earnWith(state, Q, k, rid)
+        if #p.segs > 0 and p.net >= 1 and (not best or p.net > best.net + 1) then best = p end
     end
-    return best
+    return best or earnWith(state, Q, known, nil)
 end
 
--- Every route at once, for the tabs: { mode, plan }. The levelling ones are skipped (plan nil)
--- when there is nothing left to level.
-function ns.Variants(state, P)
-    local out = {}
-    for i, m in ipairs(ns.MODES) do
+-- The levelling routes worth a choice: plans for each weight of ns.SWEEP, keeping only those
+-- that are clearly faster than every cheaper one (2% fewer crafts for more gold), cheapest first. At most
+-- ns.LEVEL_ROUTES, always with the cheapest and the fastest.
+function ns.Frontier(state, P)
+    local plans = {}
+    for _, w in ipairs(ns.SWEEP) do
         local Q = {}
         for k, v in pairs(P) do Q[k] = v end
-        Q.mode = m
-        local plan
-        if ns.EARN[m] then plan = ns.Earn(state, Q, m == "own")
-        elseif P.level and state.skill < ns.Target(state, Q) then plan = ns.Plan(state, Q) end
-        out[i] = { mode = m, plan = plan }
+        Q.w = w
+        plans[#plans + 1] = ns.Plan(state, Q)
+    end
+    local top = 0
+    for _, p in ipairs(plans) do top = math.max(top, p.reached) end
+    table.sort(plans, function(a, b)
+        if (a.reached == top) ~= (b.reached == top) then return a.reached == top end
+        if math.abs(a.net - b.net) > 1 then return a.net > b.net end
+        return a.crafts < b.crafts
+    end)
+    local front = {}
+    for _, p in ipairs(plans) do
+        local last = front[#front]
+        if p.reached == top and (not last or p.crafts < last.crafts * 0.98 - 0.5) then front[#front + 1] = p end
+    end
+    if #front == 0 then front[1] = plans[1] end
+    local n = ns.LEVEL_ROUTES
+    if #front <= n then return front end
+    local out = {}
+    for i = 1, n do out[i] = front[1 + math.floor((i - 1) * (#front - 1) / (n - 1) + 0.5)] end
+    return out
+end
+
+-- The next run of a levelling plan: its first recipe, crafted until the plan switches to the
+-- next one, planned again to that skill so the shopping covers this run only. The window plans
+-- the next run anew once the skill or the prices change. `full` keeps the whole way.
+function ns.NextRun(state, P, full)
+    local first = full.segs[1]
+    if not first or first.to >= full.reached then full.full = full; return full end
+    local Q = {}
+    for k, v in pairs(P) do Q[k] = v end
+    Q.target = first.to
+    local run = ns.Plan(state, Q)
+    run.full = full
+    return run
+end
+
+-- Every route at once, for the tiles: { mode, plan, over, best }. Levelling routes (l1..) come
+-- from ns.Frontier, missing ones have no plan; `over`: it loses more than the budget; `best`:
+-- the fastest one within the budget (the cheapest when none fits).
+function ns.Variants(state, P)
+    local out = {}
+    local front = {}
+    if P.level and state.skill < ns.Target(state, P) then
+        for i, p in ipairs(ns.Frontier(state, P)) do front[i] = ns.NextRun(state, P, p) end
+    end
+    local best
+    for i = 1, ns.LEVEL_ROUTES do
+        local p = front[i]
+        -- the budget is for the whole way; the tile and the route show the next run
+        local over = p and P.budget > 0 and -p.full.net > P.budget or false
+        out[i] = { mode = "l" .. i, plan = p, over = over }
+        if p and not over then best = i end
+    end
+    if front[1] and not best then best = 1 end
+    if best then out[best].best = true end
+    for _, m in ipairs(ns.MODES) do
+        if ns.EARN[m] then out[#out + 1] = { mode = m, plan = ns.Earn(state, P, m == "own") } end
     end
     return out
 end
@@ -627,8 +689,18 @@ function ns.Recalc(flash)
     v.state, v.prefs = state, P
     v.variants = ns.Variants(state, P)
     -- nothing left to level: show the profit route, without changing the saved choice
-    v.mode = (P.level or ns.EARN[P.mode]) and P.mode or "earn"
-    for _, x in ipairs(v.variants) do if x.mode == P.mode and not x.plan then v.mode = "earn" end end
+    local want = ns.OLD_MODES[P.mode] or P.mode
+    if not P.level and not ns.EARN[want] then want = "earn" end
+    v.mode = nil
+    for _, x in ipairs(v.variants) do
+        if x.plan and (x.mode == want or (want == "auto" and x.best)) then v.mode = x.mode end
+    end
+    -- the chosen route is gone (nothing left to level, fewer routes): the best one, else profit
+    if not v.mode then
+        for _, x in ipairs(v.variants) do if x.best then v.mode = x.mode end end
+    end
+    v.mode = v.mode or "earn"
+    v.auto = want == "auto"
     for _, x in ipairs(v.variants) do if x.mode == v.mode then v.plan = x.plan end end
     v.route = ns.Route(state, v.plan)
     v.changed = flash and ns.Changed(oldRoute, v.route) or {}
@@ -686,6 +758,7 @@ ns.OPT_ICON = {
     buyRecipes = "Interface\\Icons\\INV_Scroll_03", trainer = "Interface\\Icons\\INV_Misc_Book_11",
     sellAH = "Interface\\Icons\\INV_Misc_Coin_02", neutral = "Interface\\Icons\\INV_Misc_Coin_04",
     freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", level = "Interface\\Icons\\Spell_ChargePositive", target = "Interface\\Icons\\INV_Misc_Note_01",
+    budget = "Interface\\Icons\\INV_Misc_Coin_01",
     chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
 }
 

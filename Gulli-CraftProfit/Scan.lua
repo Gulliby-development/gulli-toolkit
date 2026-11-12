@@ -57,8 +57,21 @@ local DIFF = { optimal = 0, medium = 1, easy = 2, trivial = 3 }
 
 local function charDB() return ns.char end
 
--- Name, skill and cap of the open profession.
-local function professionLine()
+-- Skill and cap of a profession from the spellbook, which knows them even when the profession
+-- window reports 0 (the base line of a profession with expansion lines).
+local function spellbookSkill(name)
+    if not name or not GetProfessions or not GetProfessionInfo then return nil end
+    local list = { GetProfessions() } -- may hold gaps (no second profession, no fishing)
+    for k = 1, 6 do
+        local i = list[k]
+        if i then
+            local n, _, skill, cap = GetProfessionInfo(i)
+            if n == name then return skill, cap end
+        end
+    end
+end
+
+local function windowLine()
     local T = C_TradeSkillUI
     if T and T.GetChildProfessionInfo then
         local i = T.GetChildProfessionInfo()
@@ -77,6 +90,23 @@ local function professionLine()
         if name and name ~= "UNKNOWN" then return name, rank or 0, max or 0 end
     end
 end
+
+-- Name, skill and cap of the open profession; nil while the game has no skill for it, so a
+-- half-loaded window never saves a profession at 0/0.
+local function professionLine()
+    local name, skill, cap = windowLine()
+    if not name then return nil end
+    if (skill or 0) <= 0 or (cap or 0) <= 0 then
+        local s2, c2 = spellbookSkill(name)
+        if (skill or 0) <= 0 then skill = s2 or 0 end
+        if (cap or 0) <= 0 then cap = c2 or 0 end
+    end
+    if skill <= 0 and cap <= 0 then return nil end
+    return name, skill, cap
+end
+
+-- A saved profession the game gave no skill for (saved by version 1.1.0 and older).
+local function empty(p) return (p.skill or 0) <= 0 and (p.cap or 0) <= 0 end
 
 -- The profession's own icon from the spellbook, for the craft stops.
 local function professionIcon(name)
@@ -185,7 +215,7 @@ end
 
 function ns.Professions()
     local out = {}
-    for name, p in pairs(charDB().profs) do out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0, icon = p.icon } end
+    for name, p in pairs(charDB().profs) do if not empty(p) then out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0, icon = p.icon } end end
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
 end
@@ -212,7 +242,14 @@ function ns.State()
     local db = charDB()
     local name = db.current
     local prof = name and db.profs[name]
-    if not prof then return nil end
+    if not prof or empty(prof) then
+        name, prof = nil, nil
+        for n, p in pairs(db.profs) do
+            if not empty(p) and (not name or n < name) then name, prof = n, p end
+        end
+        if not prof then return nil end
+        db.current = name
+    end
     local state = { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
                     icon = prof.icon, items = {}, recipes = {} }
     for rid, rec in pairs(prof.recipes) do
@@ -306,6 +343,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         GulliCraftProfitCharDB = GulliCraftProfitCharDB or {}
         ns.char = GulliCraftProfitCharDB
         ns.char.profs = ns.char.profs or {}
+        for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
         for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
                              "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED" }) do
             self:RegisterEvent(e)

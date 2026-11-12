@@ -155,10 +155,20 @@ function Fake(spec)
         Auctionator = nil
     end
     local prof = spec.prof
+    -- the spellbook: { { name, skill, cap, icon } }
+    GetProfessions = function() local o = {}; for i in ipairs(spec.spellbook or {}) do o[i] = i end; return unpack(o) end
+    GetProfessionInfo = function(i) local b = spec.spellbook[i]; return b[1], b[4] or "picon", b[2], b[3] end
     C_TradeSkillUI, GetTradeSkillLine, GetNumTradeSkills = nil, nil, nil
     if prof and not spec.classic then
         C_TradeSkillUI = {
-            GetChildProfessionInfo = function() return { professionName = prof.name, skillLevel = prof.skill, maxSkillLevel = prof.cap } end,
+            GetChildProfessionInfo = function()
+                if prof.window0 then return { professionName = prof.name, skillLevel = 0, maxSkillLevel = 0 } end
+                return { professionName = prof.name, skillLevel = prof.skill, maxSkillLevel = prof.cap }
+            end,
+            GetBaseProfessionInfo = function()
+                local k = prof.window0 and 0 or prof.skill
+                return { professionName = prof.name, skillLevel = k, maxSkillLevel = prof.window0 and 0 or prof.cap }
+            end,
             GetAllRecipeIDs = function()
                 local ids = {}
                 for _, r in ipairs(prof.recipes) do ids[#ids + 1] = r.id end
