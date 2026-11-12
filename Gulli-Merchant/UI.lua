@@ -129,7 +129,7 @@ local function build()
     sellBtn:SetScript("OnClick", function() ns.SellJunk() end)
 
     local body, width = frame.body, frame.inner[1]
-    local leftW = 330
+    local leftW = 340
     local left = CreateFrame("Frame", nil, body)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
