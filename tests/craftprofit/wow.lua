@@ -19,7 +19,10 @@ local function stub()
         if k == "SetScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "HookScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "GetScript" then return function(_, n) return rawget(t, "_" .. n) end end
-        if k == "RegisterEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
+        if k == "RegisterEvent" then return function(_, e)
+            if W.unknownEvents and W.unknownEvents[e] then error('Attempt to register unknown event "' .. e .. '"') end
+            rawget(t, "_events")[e] = true
+        end end
         if k == "UnregisterEvent" then return function(_, e) rawget(t, "_events")[e] = nil end end
         return function() return stub() end
     end })
