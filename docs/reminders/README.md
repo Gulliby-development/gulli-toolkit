@@ -18,10 +18,13 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 
 ## Features
 
-- **Class buffs.** Arcane Intellect, Fortitude, Inner Fire, Mark of the Wild, Demon Armor, blessings, auras, aspects and more, once you know them.
-- **Weapons.** Rogue poisons and shaman imbues, also when they end within a minute.
-- **Ammo and shards.** Hunter ammo and warlock soul shards below the number you set.
-- **Quiet.** Only out of combat, and not in towns and inns if you like.
+- **Your class buffs, one switch each.** Fortitude, Inner Fire, Arcane Intellect, armor spells, Mark of the Wild, Demon Armor, blessings, auras, aspects, Trueshot Aura, Lightning Shield and more. The window lists only your class, with the game's own icons. A buff you have not learned yet waits until you learn it.
+- **Before it runs out.** A buff with less than 3 minutes left already shows, with the time on the icon. You choose the minutes, or turn it off.
+- **Weapons, pet, ammo and shards.** Rogue poisons and shaman imbues, a hunter or warlock pet that is not out, hunter ammo and warlock soul shards below the number you set.
+- **A panel you place.** Press **Move the panel**: it shows every icon it can show, and you drag it where you want. Set the icon size, the opacity, a row or a column, and names with the icons.
+- **Quiet in a fight.** It checks only out of combat, not while you are dead or on a flight. In cities and inns too, unless you turn that off.
+
+<p align="center"><img src="panel.png" alt="The panel on screen" width="460"></p>
 
 ## Install
 
@@ -31,10 +34,20 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 
 ## How to use it
 
-1. The icons appear on their own. Drag them to move them.
-2. Tap them, or type `/grm`, to change what is checked.
+1. Type `/grm`, or open **Reminders** in `/gulli`.
+2. Switch on the buffs you want to watch.
+3. Press **Move the panel**, drag the icons where you want them, and press **Done**.
+4. Hover over an icon to see what is missing. A click opens the settings.
+
+`/grm unlock` and `/grm lock` free and lock the panel, `/grm reset` puts it back at the top of the screen.
 
 ## FAQ
+
+<details>
+<summary><b>I see no icons. Why?</b></summary>
+
+Nothing is missing, or the panel waits: in a fight, while you are dead, on a flight, or in a city when you turned **Also in cities and inns** off. The line at the bottom of the window says which. Press **Move the panel** to see where the icons appear.
+</details>
 
 <details>
 <summary><b>A group buff from another player counts?</b></summary>

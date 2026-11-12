@@ -250,4 +250,38 @@ S.dungeonprep = { default = {
     open = function(ns) ns.selected = "GNOMER"; ns.Toggle() end,
 } }
 
+-- Spell icons by id for the Reminders previews (the fake client has none).
+local REM_ICONS = { [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", [588] = "Interface\\Icons\\Spell_Holy_InnerFire",
+    [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow",
+    [13165] = "Interface\\Icons\\Spell_Nature_RavenForm", [19506] = "Interface\\Icons\\Ability_TrueShot",
+    [883] = "Interface\\Icons\\Ability_Hunter_BeastCall", [324] = "Interface\\Icons\\Spell_Nature_LightningShield" }
+local function remIcons()
+    C_Spell.GetSpellTexture = function(id) return REM_ICONS[id] end
+end
+-- The panel on a dark stand-in screen, with room for its names.
+local function remStage(W)
+    remIcons()
+    local stage = CreateFrame("Frame", "GulliRemindersStage", UIParent)
+    stage:SetSize(460, 260)
+    stage:SetPoint("CENTER")
+    local bg = stage:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+end
+S.reminders = {
+    -- The panel goes to a corner, out of the window's picture.
+    default = { spec = { class = "PRIEST", known = { 1243, 588, 976 }, auras = { "Spell1243" },
+                         left = { Spell1243 = 140 }, db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
+    panel = { spec = { class = "PRIEST", known = { 1243, 588, 976 }, auras = { "Spell1243" },
+                       left = { Spell1243 = 140 } },
+              before = remStage, open = function(ns) ns.db.point = { "CENTER", 0, 20 }; ns.Refresh() end,
+              crop = "GulliRemindersStage" },
+    unlocked = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, auras = { "Spell13165" }, ammo = 120,
+                          db = { locked = false, vertical = true } },
+                 before = remStage, open = function(ns) ns.db.point = { "CENTER", -60, 0 }; ns.Refresh() end,
+                 crop = "GulliRemindersStage" },
+    hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
+                        db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
+}
+
 return S

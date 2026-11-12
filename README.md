@@ -40,7 +40,7 @@
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
 | [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
-| [Reminders](docs/reminders/README.md) | Icons for missing class buffs, poisons, ammo and soul shards. | `/grm` |
+| [Reminders](docs/reminders/README.md) | A movable panel of icons for missing class buffs, poisons, pet, ammo and soul shards. | `/grm` |
 | [Craft Profit](docs/craftprofit/README.md) | Profitable crafts and the cheapest way to level a profession, drawn as a route: where to buy, what to craft, where to sell. | `/gcp` |
 
 ## Features
