@@ -316,7 +316,7 @@ end
 
 local function sortedIds(m)
     local ids = {}
-    for id, n in pairs(m) do if n > 1e-6 then ids[#ids + 1] = id end end
+    for id, n in pairs(m) do if n == true or n > 1e-6 then ids[#ids + 1] = id end end
     table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
     return ids
 end

@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-CraftProfit
+## Notes: Profitable crafts and the cheapest way to level a profession, from your bags, bank and Auctionator prices. /gcp
+## Notes-ruRU: Выгодные крафты и самый дешёвый путь прокачки профессии по сумкам, банку и ценам Auctionator. /gcp
+## Notes-deDE: Lohnende Herstellungen und der günstigste Weg, einen Beruf zu steigern, aus Taschen, Bank und Auctionator-Preisen. /gcp
+## Notes-esES: Fabricaciones rentables y la forma más barata de subir una profesión, con tus bolsas, banco y precios de Auctionator. /gcp
+## Notes-esMX: Fabricaciones rentables y la forma más barata de subir una profesión, con tus bolsas, banco y precios de Auctionator. /gcp
+## Notes-frFR: Fabrications rentables et la montée de métier la moins chère, d'après sacs, banque et prix Auctionator. /gcp
+## Notes-ptBR: Criações lucrativas e o jeito mais barato de evoluir uma profissão, com bolsas, banco e preços do Auctionator. /gcp
+## Notes-zhCN: 根据背包、银行和 Auctionator 价格，找出赚钱的制作和最省钱的专业升级路线。 /gcp
+## Notes-zhTW: 根据背包、银行和 Auctionator 价格，找出赚钱的制作和最省钱的专业升级路线。 /gcp
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-CraftProfit\icon
+## OptionalDeps: Gulli-Toolkit, Auctionator
+## X-Gulli-Module: CraftProfit
+## SavedVariables: GulliCraftProfitDB
+## SavedVariablesPerCharacter: GulliCraftProfitCharDB
+## AddonCompartmentFunc: GulliCraftProfit_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Scan.lua
+Skin.lua
+UI.lua

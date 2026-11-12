@@ -257,3 +257,31 @@ function S.Note(parent, size)
     t:SetJustifyV("TOP")
     return t
 end
+
+-- A plain filled texture in a colour.
+function S.Tex(f, layer, color)
+    return tex(f, layer or "ARTWORK", 0, color or S.TEXT)
+end
+
+-- An item icon with a 1 pixel border (the quality colour when given) and a count in the corner.
+-- icon:Set(texture, count, quality).
+S.QUALITY = { [2] = { 0.12, 1, 0 }, [3] = { 0, 0.44, 0.87 }, [4] = { 0.64, 0.21, 0.93 } }
+function S.Icon(parent, size)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(size, size)
+    S.Box(f, { 0, 0, 0, 1 })
+    f.tex = f:CreateTexture(nil, "ARTWORK")
+    f.tex:SetPoint("TOPLEFT", 1, -1)
+    f.tex:SetPoint("BOTTOMRIGHT", -1, 1)
+    f.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    f.count = S.Text(f, math.max(8, math.floor(size * 0.45)), S.TEXT, "OUTLINE")
+    f.count:SetPoint("BOTTOMRIGHT", 0, 1)
+    function f:Set(texture, n, quality)
+        self.tex:SetTexture(texture)
+        self.count:SetText((n and n > 1) and (n > 999 and (math.floor(n / 100) / 10 .. "k") or tostring(n)) or "")
+        local q = S.QUALITY[quality or 1]
+        S.SetBorder(self, q and { q[1], q[2], q[3], 1 } or S.BORDER)
+        self:Show()
+    end
+    return f
+end
