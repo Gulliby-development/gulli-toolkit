@@ -18,11 +18,15 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 ## Features
 
-- **Phrases on big buttons.** "inv please", "Ready!", "brb", "Thanks for the group!" and more. Change them or add your own.
-- **Where it goes.** Group, Say, Party, Guild, or a whisper to your target.
-- **Smart words.** {target}, {zone}, {me} and {level} become your target, zone, name and level.
-- **Find a group from a quest.** Pick a quest, the number of players and the roles, and post "LFM 2 for ... need tank" in one tap.
-- **Missed whispers.** Whispers that came while you fought or were away are kept, with **Reply** and **Busy**.
+- **Phrases on big buttons.** "inv please", "Ready!", "brb", "Thanks for the group!", "WTS {item}" and more, in tabs: Group, Trade, Social and your own. Change them or add your own.
+- **Where it goes.** Group, Say, Party, Guild, a whisper to your target, or a whisper to the group leader. Each phrase can keep its own channel.
+- **Phrase wheel.** Pick a key (or a gamepad button) in **Setup**. It opens a wheel of your favourite phrases in the middle of the screen; keys 1-8 send one.
+- **Favourites panel.** A small panel of your favourite phrases on the screen. `/gulli move` places it.
+- **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader}, {item} (the last item you linked) and {quest}.
+- **Find a group.** From a quest, or for a WoW Forever dungeon (the ones near your level first): "LFM 2 for Stratholme, need healer". Or look for a group yourself: "LFG Stratholme, healer, level 58". After two minutes it reminds you to post again. Gulli Bulletin's **My LFM** opens this page.
+- **Whispers.** Whispers that came while you fought or were away are kept, with **Reply**, a ready phrase as the answer, and **Busy**. A sound when one comes, and an optional busy auto-reply (once per player every few minutes). A history of whispers by player.
+- **More.** Emotes and raid marks on buttons, and the last messages you sent with **Again**.
+- **No double posts.** Two taps on the same phrase send it once.
 
 ## Install
 
@@ -34,7 +38,8 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 1. Type `/gqk`, or open it from `/gulli`.
 2. Tap a phrase to send it.
-3. In **Find group**, pick a quest and tap **Post in LookingForGroup**.
+3. In **Find group**, pick a quest or a dungeon and tap **Post in LookingForGroup**.
+4. In **Setup**, set a key for the wheel. `/gqk wheel` opens it too.
 
 ## FAQ
 
@@ -42,6 +47,12 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 <summary><b>Why can it not post on its own?</b></summary>
 
 The game lets an addon write in public channels only right after a tap. That is why every message needs your tap.
+</details>
+
+<details>
+<summary><b>Does it work with a gamepad keyboard?</b></summary>
+
+**Type...** opens the chat box. ConsolePort and other gamepad keyboards open with it when they are installed.
 </details>
 
 <details>
