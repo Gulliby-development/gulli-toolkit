@@ -80,7 +80,13 @@ test("a mob alerts once when it appears, and again after it was gone", function(
     W.Ticker().fn()
     W.plates = { { name = "Mor'Ladim", guid = "2" } }
     W.Ticker().fn()
-    eq(#W.sounds, 2, "seen again after it was gone")
+    eq(#W.sounds, 1, "back within the cooldown: quiet")
+    W.plates = {}
+    W.Ticker().fn()
+    W.now = W.now + 61
+    W.plates = { { name = "Mor'Ladim", guid = "2" } }
+    W.Ticker().fn()
+    eq(#W.sounds, 2, "seen again after it was gone and the cooldown passed")
     eq(ns.lastFound.names[1], "Mor'Ladim")
 end)
 
@@ -136,11 +142,161 @@ test("slash commands add names, the target, and switch the search", function()
     eq(ns.AddTarget(), nil, "players are not added")
 end)
 
+test("players' pets, tagged mobs and switched-off entries do not alert; exact needs the whole name", function()
+    Fake { plates = {
+        { name = "Bob", guid = "1", pet = true },
+        { name = "Bob", guid = "2", tapped = true },
+        { name = "Bobby", guid = "3" },
+    } }
+    local ns = Load()
+    eq(names(ns.Scan({ "Bob" })), "Bobby", "pet and tagged skipped")
+    ns.db.skipTapped = false
+    eq(names(ns.Scan({ "Bob" })), "Bob,Bobby", "tagged counts with the switch off")
+    ns.Info("Bob").exact = true
+    eq(names(ns.Scan({ "Bob" })), "Bob", "exact")
+    ns.Info("Bob").off = true
+    eq(#ns.Scan({ "Bob" }), 0, "off")
+end)
+
+test("a rare from the zone list is found by its npc id, in any client language", function()
+    Fake { locale = "ruRU", plates = { { name = "Мор'Ладим", guid = "Creature-0-1-2-3-522-0000ABCD" } } }
+    local ns = Load()
+    ns.RARES = { [10] = { { 522, "Mor'Ladim", 35, 35, 1 } }, [12] = { { 99, "Hogger", 11, 11, 1 } } }
+    eq(#ns.ZoneRares(), 1, "only the zone the player is in")
+    eq(ns.AddZoneRares(), 1)
+    eq(ns.AddZoneRares(), 0, "added once")
+    local found = ns.Scan({})
+    eq(names(found), "Мор'Ладим")
+    eq(found[1].entry, "Mor'Ladim")
+    eq(ns.NpcID("Player-1-0000"), nil, "not a creature")
+end)
+
+test("the generated data has rares with an id, a name and levels", function()
+    Fake {}
+    local ns = Load()
+    local n = 0
+    for area, list in pairs(ns.RARES) do
+        assert(type(area) == "number")
+        for _, r in ipairs(list) do
+            assert(type(r[1]) == "number" and type(r[2]) == "string" and r[3] <= r[4], "bad rare in " .. area)
+            n = n + 1
+        end
+    end
+    assert(n > 100, "too few rares: " .. n)
+end)
+
+test("the minimap rare markers count when the switch is on", function()
+    Fake { vignettes = { { name = "Mor'Ladim", objectGUID = "Creature-0-1-2-3-522-01" } } }
+    local ns = Load()
+    eq(names(ns.Scan({ "Mor" })), "Mor'Ladim")
+    ns.db.vignettes = false
+    eq(#ns.Scan({ "Mor" }), 0)
+end)
+
+test("a find goes into the history and the mob row, marks a skull, and shares with the group", function()
+    Fake { group = true, db = { names = { "Bob" }, enabled = true, mark = true, share = true },
+           plates = { { name = "Bob", guid = "G" } } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local h = ns.db.history[1]
+    eq(h.name, "Bob")
+    eq(h.zone, "Duskwood")
+    eq(h.x, 0.405)
+    eq(ns.Info("Bob").count, 1)
+    eq(W.marks.nameplate1, 8, "skull")
+    eq(W.addon[1][1], "GulliMF")
+    eq(W.addon[1][2], "F1\tBob\t1431\t0.4050\t0.6025")
+    eq(W.addon[1][3], "PARTY")
+    eq(ns.Pin(h), true)
+    eq(W.pins[1].map, 1431)
+end)
+
+test("a find shared by another player lands in the history; our own message does not", function()
+    Fake {}
+    local ns = Load()
+    eq(ns.Receive("GulliMF", "F1\tBob\t1431\t0.5\t0.25", "Ann-Realm"), "Bob")
+    eq(ns.db.history[1].who, "Ann")
+    eq(ns.db.history[1].zone, "Duskwood")
+    eq(ns.Receive("GulliMF", "X9\tsomething", "Ann"), nil, "unknown type")
+    eq(ns.Receive("Other", "F1\tBob\t1\t0\t0", "Ann"), nil, "other prefix")
+    eq(#ns.db.history, 1)
+end)
+
+test("quiet in towns and in combat: no sound, the rest still happens", function()
+    Fake { resting = true, db = { names = { "Bob" }, enabled = true, quietRest = true },
+           plates = { { name = "Bob" } } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(#W.sounds, 0, "no sound")
+    eq(#W.banners, 1, "the warning still shows")
+    eq(#ns.db.history, 1)
+end)
+
+test("Tell group writes the name, the zone and the coordinates, and needs a group", function()
+    Fake {}
+    local ns = Load()
+    eq(ns.TellText("Bob"), "Bob in Duskwood at 40.5, 60.3")
+    eq(ns.TellGroup("Bob"), false, "no group")
+    W.group = true
+    eq(ns.TellGroup("Bob"), true)
+    eq(W.said[1][2], "PARTY")
+    W.pos = nil
+    eq(ns.TellText("Bob"), "Bob in Duskwood")
+end)
+
+test("the card's Target button gets a /targetexact macro out of combat, and waits in combat", function()
+    Fake { db = { names = { "Bob" }, enabled = true }, plates = { { name = "Bob", guid = "G", level = 30, class = "rare" } } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local btn = W.named.GulliMobFinderTarget
+    assert(btn, "no Target button")
+    eq(btn:GetAttribute("macrotext1") or btn:GetAttribute("macrotext"), "/targetexact Bob")
+    assert(W.named.GulliMobFinderCard:IsShown(), "the card shows")
+    W.combat = true
+    W.now = W.now + 100
+    W.plates = { { name = "Alice", guid = "H" } }
+    ns.db.names = { "Bob", "Alice" }
+    ns.Tick()
+    eq(btn:GetAttribute("macrotext1") or btn:GetAttribute("macrotext"), "/targetexact Bob", "unchanged in combat")
+    W.combat = false
+    Fire("PLAYER_REGEN_ENABLED")
+    eq(btn:GetAttribute("macrotext1") or btn:GetAttribute("macrotext"), "/targetexact Alice", "applied after combat")
+end)
+
+test("with the card off no card shows", function()
+    Fake { db = { names = { "Bob" }, enabled = true, card = false }, plates = { { name = "Bob" } } }
+    Load()
+    Fire("PLAYER_LOGIN")
+    local card = W.named.GulliMobFinderCard
+    assert(not (card and card:IsShown()), "card shown")
+    eq(#W.sounds, 1)
+end)
+
+test("the target key binds to the Target button", function()
+    Fake { db = { key = "F6" } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(W.bindings.F6, "GulliMobFinderTarget")
+end)
+
+test("the summary counts the watched mobs, and says nothing when the search is off", function()
+    local got
+    Fake { toolkit = { Register = function(m) got = m end }, db = { names = { "Bob", "Ann" }, enabled = true } }
+    Load()
+    eq(got.summary(), "Looking for 2 mobs")
+    GulliMobFinderDB.enabled = false
+    eq(got.summary(), nil)
+    assert(#got.options >= 1 and got.options[1].tip, "options with tips")
+end)
+
 test("the window builds and shows the saved settings", function()
     Fake { db = { names = { "Bob", "Hogger" }, enabled = true } }
     local ns = Load()
     ns.Toggle()
     ns.Refresh()
+    ns.db.history = { { name = "Bob", zone = "Duskwood", t = 1000000, map = 1431, x = 0.5, y = 0.5, who = "Ann" } }
+    ns.db.ids = { [522] = "Mor'Ladim" }
+    for i = 1, 3 do if ns.ShowPage then ns.ShowPage(i) end; ns.Refresh() end
 end)
 
 test("registers with Gulli Toolkit when the core is loaded", function()
