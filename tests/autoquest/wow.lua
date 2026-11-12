@@ -161,6 +161,30 @@ function Fake(spec)
         local i = tonumber(link:match("%d+"))
         return "Item", link, 2, 1, 1, "", "", 1, "", 1, W.prices[i] or 0
     end }
+    W.shift, W.ctrl = false, false
+    IsControlKeyDown = function() return W.ctrl end
+    IsAltKeyDown = function() return false end
+    W.questID, W.title, W.tags, W.required, W.classes, W.log, W.options = spec.questID or 101, "A Quest", {}, {}, {}, 0, {}
+    GetQuestID = function() return W.questID end
+    GetTitleText = function() return W.title end
+    GetSuggestedGroupNum = function() return W.group or 0 end
+    UnitGUID = function(u) if u == "npc" then return W.npcGuid end end
+    W.npcGuid = "Creature-0-1-2-3-" .. (spec.npcID or 500) .. "-0000"
+    GetNumQuestItems = function() return #W.required end
+    local link = GetQuestItemLink
+    GetQuestItemLink = function(kind, i) if kind == "required" then return W.required[i] end return link(kind, i) end
+    C_Item.GetItemInfoInstant = function(l) return 1, "", "", "", "", W.classes[l] or 12 end
+    C_QuestLog = {
+        GetNumQuestLogEntries = function() return W.log + 2, W.log end,
+        GetMaxNumQuestsCanAccept = function() return 20 end,
+        GetQuestTagInfo = function(id) return W.tags[id] end,
+        SetSelectedQuest = function(id) did("select:" .. id) end,
+        SetAbandonQuest = function() end,
+        AbandonQuest = function() did("abandon") end,
+    }
+    ConfirmAcceptQuest = function() did("confirm") end
+    C_GossipInfo.GetOptions = function() return W.options end
+    C_GossipInfo.SelectOption = function(id) did("option:" .. id) end
     GulliAutoQuestDB = spec.db
     return W
 end

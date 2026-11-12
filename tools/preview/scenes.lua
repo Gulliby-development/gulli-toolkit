@@ -286,4 +286,11 @@ S.reminders = {
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
 
+S.autoquest = {
+    default = { spec = { db = { session = { taken = 12, done = 9, clicks = 63 } } } },
+    rules = { spec = {}, open = function(ns) ns.ShowTab(2) end },
+    ignored = { spec = { db = { ignoreNpc = { [500] = "Marshal Dughan" }, ignoreQuest = { [7] = "Kobold Camp Cleanup" } } },
+                open = function(ns) ns.ShowTab(3) end },
+}
+
 return S
