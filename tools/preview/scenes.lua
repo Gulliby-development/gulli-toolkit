@@ -101,22 +101,38 @@ S.bagspace = { default = {
 S.attune = { default = { spec = { name = "Gulliby", done = { [7848] = true, [4182] = true, [4183] = true },
     active = { [4184] = true } } } }
 
+local function xpQuests()
+    local quests = { { questID = 1, xp = 2450 }, { questID = 2, xp = 1800 } }
+    C_QuestLog = { GetNumQuestLogEntries = function() return #quests end, GetInfo = function(i) return quests[i] end,
+                   IsComplete = function() return true end }
+    GetQuestLogRewardXP = function(id) return quests[id].xp end
+end
+local function xpPlay(W)
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    for i = 1, 30 do W.now = i * 120; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
+    W.now = 3700; W.Fire("QUEST_TURNED_IN", 1, 1450, 0); W.Gain(1450)
+end
 S.xp = { default = {
-    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 4200, now = 0 },
-    open = function(ns, W)
-        W.Fire("PLAYER_LOGIN")
-        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
-        ns.Toggle()
-    end,
+    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 4200, now = 0,
+             cdb = { levels = { { level = 40, time = 4380, kills = 212, killXP = 38100, questXP = 21400 },
+                                { level = 39, time = 3900, kills = 190, killXP = 33000, questXP = 22800 },
+                                { level = 38, time = 5100, kills = 260, killXP = 37200, questXP = 15900, partial = true } } } },
+    before = xpQuests,
+    open = function(ns, W) xpPlay(W); ns.Toggle() end,
+}, levels = {
+    before = xpQuests,
+    open = function(ns, W) S.xp.default.open(ns, W); ns.Tabs():Select(2) end,
+}, settings = {
+    before = xpQuests,
+    open = function(ns, W) S.xp.default.open(ns, W); ns.Tabs():Select(3) end,
 }, bar = {
     spec = { level = 41, xp = 12000, xpMax = 31000, rested = 6200, now = 0, db = { alpha = 60, scale = 140 } },
-    open = function(ns, W)
-        W.Fire("PLAYER_LOGIN")
-        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
-        ns.Refresh()
-    end,
+    before = xpQuests,
+    open = function(ns, W) xpPlay(W); ns.Refresh() end,
     crop = "GulliXPBar",
 } }
+S.xp.levels.spec = S.xp.default.spec
+S.xp.settings.spec = S.xp.default.spec
 
 S.loot = { default = {
     spec = { db = { quality = { [0] = "pass", [1] = "greed" }, items = { [2589] = "need", [2592] = "greed" }, report = true } },
@@ -136,7 +152,16 @@ S.partyquests = { default = { spec = { level = 17,
         { title = "Blackrock Menace", questID = 20, level = 21 },
     },
     party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
-} } }
+    objectives = { [155] = { { text = "Defias Pillager slain: 3/8", type = "monster", numFulfilled = 3, numRequired = 8 } },
+                   [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } },
+    items = { [10] = "Red Leather Bandana" }, bags = { { id = 10, count = 17 } },
+    zone = "Westfall",
+}, open = function(ns)
+    for _, p in ipairs({ "B", "Q155,20", "O155:6/8", "E" }) do ns.Receive(p, "Ann") end
+    ns.Toggle()
+end }, settings = { spec = { party = { { name = "Ann", quests = {} } } }, open = function(ns)
+    ns.ShowTab(3)
+end } }
 
 S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "PRIEST", P3 = "MAGE", P4 = "ROGUE" } },
     open = function(ns, W)
@@ -338,5 +363,19 @@ S.reminders = {
     hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
+
+S.instancelimit = { default = { spec = { name = "Gulliby" },
+    open = function(ns, W)
+        local now = W.now
+        ns.db.entries = {
+            { t = now - 3000, name = "The Deadmines", char = "Gulliby", class = "MAGE", out = now - 1500, secs = 1500, xp = 4200, money = 13250, kills = 41 },
+            { t = now - 1200, name = "Wailing Caverns", char = "Gulliby", class = "MAGE", out = now - 200, secs = 1000, xp = 3100, money = 870, kills = 28 },
+            { t = now - 900, name = "Shadowfang Keep", char = "Thorn", class = "WARRIOR", out = now - 100, secs = 800, xp = 2500, kills = 30 },
+            { t = now - 60, name = "Blackfathom Deeps", char = "Gulliby", class = "MAGE" },
+        }
+        ns.group = { Bob = { leftHour = 1, leftDay = 20, wait = 0, t = now } }
+        ns.Toggle()
+    end,
+}, settings = { open = function(ns) ns.ShowPage(2) end } }
 
 return S

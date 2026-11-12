@@ -21,8 +21,13 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 - **Entries left.** A small counter on screen shows how many entries you have left this hour, for example 3/5.
 - **When the next one is free.** It shows the time until the oldest entry stops counting.
 - **Smart counting.** Going out and back into the same dungeon does not count again. A reset or a new group does.
-- **Learns the real limit.** If the game says "too many instances", the addon sets its count to the limit.
-- **Reset button** for the group leader.
+- **Hour and day.** The window shows entries left this hour and today, which limit blocks you now, and the entries of the last hour or day, grouped by character.
+- **"Entry free again".** A sound and a chat line when you can enter a dungeon again. You can also get a warning when only a few entries are left.
+- **Learns the real limit.** If the game says "too many instances", the addon sets the limit to your count. If you got in more often, it raises the limit. Until the game confirms it, the limit shows as ≈5. **Defaults** puts back 5 and 30.
+- **Run stats.** Time inside, XP, money and kills for each run, with a short line in chat when you leave.
+- **Works with your group.** After **Reset dungeons** the group gets a chat line, and group members with the addon also reset their counters. They share how many entries they have left, so you see who has the fewest. If someone may still be inside, Reset asks you to press it again.
+- **Your counter, your way.** Show it always, only in a group or dungeon, or never. Change its size and opacity. It gets a red edge at 0.
+- **Count from the exit** (off): turn it on if the game counts the hour from when you leave. This is not checked in WoW Forever yet.
 
 ## Install
 
@@ -33,7 +38,7 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 ## How to use it
 
 1. The counter works on its own after you install it.
-2. Type `/gil` to see the list, change the limits, or hide the counter. `/gil status` prints one line in chat.
+2. Type `/gil` to see the list. **Settings** has the limits, alerts, group and counter options. `/gil status` prints one line in chat.
 3. Drag the counter to move it. Click it to open the window.
 
 ## FAQ
