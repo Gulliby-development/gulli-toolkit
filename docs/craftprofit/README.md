@@ -51,7 +51,7 @@ For auction prices, also install **Auctionator** and scan the auction once.
 
 1. Open your profession window once. CraftProfit reads your recipes.
 2. Open the bank once if you want it to count what is there.
-3. Type `/gcp`. Set the switches on the right and press **Calculate**. A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top and follow the stops. When your bags or prices change, press **Recalculate**.
+3. Type `/gcp`. Set the switches on the right and press **Calculate**. A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top (the arrows or the mouse wheel show more routes when they do not all fit) and follow the stops. Switching routes is instant. When your bags or prices change, press **Recalculate**.
 
 ## FAQ
 

@@ -182,6 +182,7 @@ T.en = {
     CALC_BUSY = "Calculating... %d%%",
     CALC_STALE = "Bags or prices changed: press Recalculate.",
     CALC_FAIL = "The calculation failed. Please report the error.",
+    LEGS_BUSY = "Building the runs of this route... %d%%",
 }
 
 T.de = {
@@ -357,6 +358,7 @@ T.de = {
     CALC_BUSY = "Berechne... %d%%",
     CALC_STALE = "Taschen oder Preise haben sich geändert: drücke Neu berechnen.",
     CALC_FAIL = "Die Berechnung ist fehlgeschlagen. Bitte melde den Fehler.",
+    LEGS_BUSY = "Erstelle die Runden dieser Route... %d%%",
 }
 
 T.es = {
@@ -532,6 +534,7 @@ T.es = {
     CALC_BUSY = "Calculando... %d%%",
     CALC_STALE = "Han cambiado las bolsas o los precios: pulsa Recalcular.",
     CALC_FAIL = "El cálculo ha fallado. Informa del error, por favor.",
+    LEGS_BUSY = "Creando las tandas de esta ruta... %d%%",
 }
 
 T.fr = {
@@ -707,6 +710,7 @@ T.fr = {
     CALC_BUSY = "Calcul... %d%%",
     CALC_STALE = "Les sacs ou les prix ont changé : appuie sur Recalculer.",
     CALC_FAIL = "Le calcul a échoué. Merci de signaler l'erreur.",
+    LEGS_BUSY = "Création des étapes de cet itinéraire... %d%%",
 }
 
 T.pl = {
@@ -882,6 +886,7 @@ T.pl = {
     CALC_BUSY = "Obliczanie... %d%%",
     CALC_STALE = "Zmieniły się torby lub ceny: naciśnij Przelicz.",
     CALC_FAIL = "Obliczenie nie powiodło się. Zgłoś błąd.",
+    LEGS_BUSY = "Buduję etapy tej trasy... %d%%",
 }
 
 T.pt = {
@@ -1057,6 +1062,7 @@ T.pt = {
     CALC_BUSY = "Calculando... %d%%",
     CALC_STALE = "Bolsas ou preços mudaram: clique em Recalcular.",
     CALC_FAIL = "O cálculo falhou. Por favor, informe o erro.",
+    LEGS_BUSY = "Montando as etapas desta rota... %d%%",
 }
 
 T.ru = {
@@ -1232,6 +1238,7 @@ T.ru = {
     CALC_BUSY = "Расчёт... %d%%",
     CALC_STALE = "Сумки или цены изменились: нажмите «Пересчитать».",
     CALC_FAIL = "Расчёт не удался. Сообщите об ошибке.",
+    LEGS_BUSY = "Строю этапы этого маршрута... %d%%",
 }
 
 T.zh = {
@@ -1407,6 +1414,7 @@ T.zh = {
     CALC_BUSY = "计算中... %d%%",
     CALC_STALE = "背包或价格已变化：请点击“重新计算”。",
     CALC_FAIL = "计算失败，请报告此错误。",
+    LEGS_BUSY = "正在生成此路线的各阶段... %d%%",
 }
 
 ns.T = T

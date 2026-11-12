@@ -345,6 +345,12 @@ S.craftprofit.busy = { spec = S.craftprofit.default.spec, before = S.craftprofit
         for _ = 1, 3 do if ns.Busy() then ns.calcDriver:GetScript("OnUpdate")() end end
         debugprofilestop = nil
     end }
+S.craftprofit.many = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        for _, x in ipairs(ns.view.variants) do x.plan = x.plan or ns.view.plan end
+        ns.Refresh()
+    end }
 S.craftprofit.legs = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(2) end }
 S.craftprofit.nolimit = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,

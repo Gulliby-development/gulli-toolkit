@@ -13,6 +13,8 @@ local NODE_W, NODE_H, COL_W, ROW_H = 112, 66, 120, 74
 local SHOWN_ROWS = 2
 local STRIP = 3 -- item icons along the bottom of a stop
 local MAIN = W - 2 * S.PAD - SIDE - S.GAP
+-- a route tile below this width cuts its name and numbers; past it the row pages with arrows
+local TILE_MIN, ARROW_W = 130, 24
 local GRAPH_W = MAIN - 2 * S.INSET - 10
 -- As many stops in a row as the graph is wide.
 local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
@@ -703,6 +705,20 @@ local function build()
     local nv = #ns.MODES
     local vw = math.floor((MAIN - (nv - 1) * 8) / nv)
     ui.varTiles = {}
+    ui.varPrev = S.FitButton(vars, "<", 62, ARROW_W)
+    ui.varPrev:SetWidth(ARROW_W)
+    ui.varPrev:SetPoint("TOPLEFT", 0, 0)
+    ui.varPrev:SetScript("OnClick", function() ui.varFirst = (ui.varFirst or 1) - 1; ns.Refresh() end)
+    ui.varNext = S.FitButton(vars, ">", 62, ARROW_W)
+    ui.varNext:SetWidth(ARROW_W)
+    ui.varNext:SetPoint("TOPRIGHT", 0, 0)
+    ui.varNext:SetScript("OnClick", function() ui.varFirst = (ui.varFirst or 1) + 1; ns.Refresh() end)
+    vars:EnableMouseWheel(true)
+    vars:SetScript("OnMouseWheel", function(_, d)
+        if not ui.varPrev:IsShown() then return end
+        ui.varFirst = (ui.varFirst or 1) - d
+        ns.Refresh()
+    end)
     for i, m in ipairs(ns.MODES) do
         local b = CreateFrame("Button", nil, vars)
         b:SetSize(vw, 62)
@@ -727,9 +743,9 @@ local function build()
         b.sub:SetPoint("RIGHT", -6, 0)
         b.sub:SetWordWrap(false)
         b:SetScript("OnClick", function(self)
-            if ns.EARN[m] then ns.SetPref("mode", m); return end
+            if ns.EARN[m] then ns.ChooseMode(m); return end
             -- the best route within the budget stays automatic; a levelling tile turns levelling on
-            ns.SetPrefs({ mode = (self.best and (ns.Prefs(ns.db.prefs).budget or 0) > 0) and "auto" or m, level = true })
+            ns.ChooseMode((self.best and (ns.Prefs(ns.db.prefs).budget or 0) > 0) and "auto" or m)
         end)
         b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
         b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.EDGE) end end)
@@ -925,7 +941,11 @@ local function refreshChips(v)
             b:Hide()
         end
     end
-    ui.chipNote:SetText(n == 0 and (v.plan and v.plan.earn and L.LEGS_EARN or "") or "")
+    if ns.BusyKind() == "legs" then
+        ui.chipNote:SetText(L.LEGS_BUSY:format(math.floor(ns.progress.done * 100)))
+    else
+        ui.chipNote:SetText(n == 0 and (v.plan and v.plan.earn and L.LEGS_EARN or "") or "")
+    end
 end
 
 local function refreshRoute()
@@ -943,12 +963,35 @@ local function refreshRoute()
         b:SetShown(visible)
         if visible then shown[#shown + 1] = { b = b, x = x } end
     end
+    -- as many tiles as fit at a readable width; arrows page through the rest, and the chosen
+    -- route stays in view when it changes
     local k = #shown
-    local vw = math.floor((MAIN - (k - 1) * 8) / k)
+    local fit, x0, avail = k, 0, MAIN
+    if k > math.floor((MAIN + 8) / (TILE_MIN + 8)) then
+        x0, avail = ARROW_W + 6, MAIN - 2 * (ARROW_W + 6)
+        fit = math.max(1, math.floor((avail + 8) / (TILE_MIN + 8)))
+        local sel
+        for j, e in ipairs(shown) do if e.x.mode == v.mode then sel = j end end
+        if sel and ui.varFollow ~= v.mode then
+            ui.varFollow = v.mode
+            if sel < (ui.varFirst or 1) then ui.varFirst = sel
+            elseif sel >= (ui.varFirst or 1) + fit then ui.varFirst = sel - fit + 1 end
+        end
+        ui.varFirst = math.max(1, math.min(ui.varFirst or 1, k - fit + 1))
+    else
+        ui.varFirst = 1
+    end
+    local paged = fit < k
+    ui.varPrev:SetShown(paged); ui.varNext:SetShown(paged)
+    ui.varPrev:SetEnabled(ui.varFirst > 1)
+    ui.varNext:SetEnabled(ui.varFirst + fit - 1 < k)
+    local vw = math.floor((avail - (fit - 1) * 8) / math.max(1, fit))
     for j, e in ipairs(shown) do
         local b, x = e.b, e.x
+        local slot = j - ui.varFirst
+        b:SetShown(slot >= 0 and slot < fit)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", (j - 1) * (vw + 8), 0)
+        b:SetPoint("TOPLEFT", x0 + slot * (vw + 8), 0)
         b:SetSize(vw, 62)
         local on = x.mode == v.mode
         local p = x.plan
@@ -1110,10 +1153,10 @@ function ns.Refresh()
     if not ns.HasAuctionator() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
     elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
     else ui.age:SetText("/gcp") end
-    local busy = ns.Busy()
+    local busy = ns.BusyKind() == "all"
     local has = v.state ~= nil and v.plan ~= nil and not busy
     local known = ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current]
-    ui.calc:SetText(busy and L.CALC_STOP or (v.plan and L.RECALC or L.CALC))
+    ui.calc:SetText((ns.Busy() and busy) and L.CALC_STOP or (v.plan and L.RECALC or L.CALC))
     ui.calc:SetWidth(math.max(110, math.floor((ui.calc.text:GetStringWidth() or 0) + 28)))
     ui.calc:SetEnabled(known and true or false)
     ui.progress:SetShown(busy)
@@ -1165,11 +1208,35 @@ driver:SetScript("OnUpdate", function()
 end)
 
 -- Starts a calculation in steps; the window shows how far it is and the game keeps running.
-function ns.Calculate(flash)
+local function start(r)
     if runner then runner:Cancel() end
-    runner = ns.RecalcJob(flash and ns.view.plan ~= nil)
+    runner = r
     local done, err = runner:Step(SLICE)
     if done then finish(err) else driver:Show(); ns.Refresh() end
+end
+function ns.Calculate(flash)
+    if runner then runner:Cancel() end
+    start(ns.RecalcJob(flash and ns.view.plan ~= nil))
+end
+
+-- A route tile: the routes are all in the result already, so the switch is instant; only the
+-- runs of a route not shown before are built, in steps, while its graph is already there.
+function ns.ChooseMode(want)
+    local P = ns.Prefs(ns.db.prefs)
+    local level = true
+    if ns.EARN[want] then level = P.level end
+    if ns.BusyKind() ~= "all" and level == P.level then
+        local ok, needLegs = ns.PickMode(want)
+        if ok then
+            ns.db.prefs.mode = want
+            if needLegs then start(ns.LegsJob(ns.view.mode)) else
+                if runner then runner:Cancel(); runner = nil; driver:Hide() end
+                ns.Refresh()
+            end
+            return
+        end
+    end
+    ns.SetPrefs({ mode = want, level = level })
 end
 function ns.StopCalc()
     if runner then runner:Cancel() end
