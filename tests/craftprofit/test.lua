@@ -151,6 +151,38 @@ test("thresholds guessed from the colours seen, short side first", function()
     assert(e[2] <= 169 and e[3] <= 180 and e[3] > 170)
 end)
 
+test("thresholds come from the data and follow the colours the game shows", function()
+    local c = core()
+    local vest = { 190, 205, 220 } -- Earthen Vest
+    local t, guess = c.Thresholds(vest, { [173] = 0 }, nil, true)
+    eq(guess, false); eq(t[1], 0); eq(t[2], 190); eq(t[3], 220)
+    eq(c.Chance({ skill = t }, 173), 1, "orange: every craft is a point")
+    near(c.Chance({ skill = t }, 205), 0.5)
+    -- the game says yellow at 173: yellow starts there, grey stays
+    t = c.Thresholds(vest, { [173] = 1 }, nil, true)
+    eq(t[2], 173); eq(t[3], 220)
+    assert(c.Chance({ skill = t }, 180) > 0.8, "a yellow recipe far from grey still gives most points")
+    -- grey from the game wins; grey seen earlier than the data says
+    t = c.Thresholds(vest, {}, 215, true); eq(t[3], 215)
+    t = c.Thresholds(vest, { [200] = 3 }, nil, true); eq(t[3], 200)
+    -- a recipe not learned yet starts orange at the skill it is learned at
+    t = c.Thresholds({ 45, 70, 87, 105 }, nil, nil, false)
+    eq(t[1], 45); eq(t[2], 70); eq(t[3], 105)
+    -- no data: the guess, with the usual 20 points from yellow to grey
+    t, guess = c.Thresholds(nil, { [173] = 1 }, nil, true)
+    eq(guess, true); eq(t[1], 0); eq(t[2], 173); eq(t[3], 193)
+    eq(c.Thresholds(nil, {}, nil, true), nil)
+end)
+
+test("Data.lua knows the Classic recipes by spell and by item", function()
+    local c = core()
+    eq(c.Data.spell[8764][3], 220, "Earthen Vest turns grey at 220")
+    eq(c.Data.item[4238][1], 45, "Linen Bag is learned at 45")
+    local n = 0
+    for _ in pairs(c.Data.spell) do n = n + 1 end
+    assert(n > 1000)
+end)
+
 -- ---------- the plan and the route ----------
 
 test("default plan reaches the cap, walks bank, auction, vendor, crafts, trainer, sells", function()
@@ -537,6 +569,11 @@ test("the profession window is read with the modern API", function()
     eq(st.items[3].buy, 50, "price learned at the vendor")
     eq(st.items[4].quality, 2)
     eq(st.recipes[104].src.t, "text")
+    eq(st.recipes[102].guess, true, "no data for this recipe: guessed")
+    n.Data.spell[102] = { 160, 168, 180 }
+    st = n.State()
+    eq(st.recipes[102].guess, false, "the data knows it now")
+    eq(st.recipes[102].skill[3], 175, "grey from the game still wins")
 end)
 
 test("the classic API works too", function()
@@ -708,6 +745,42 @@ test("a stop click shows its lines; tabs show the lists", function()
     assert(#n.ui.list.rows >= 3)
     n.Tab(4)
     assert(n.ui.list.rows[1].text:GetText():find("Pattern Thing", 1, true))
+end)
+
+test("a craft stop names its recipe and the crafts; the head shows the result with its sign", function()
+    local n = game()
+    n.Toggle()
+    local i
+    for k, s in ipairs(n.view.route) do if s.segs then i = k end end
+    local s, b = n.view.route[i], n.ui.nodes[i]
+    eq(b.title:GetText(), n.view.state.recipes[s.segs[1].rid].name)
+    assert(b.kind:GetText():find(s.from .. "-" .. s.to, 1, true))
+    assert(b.money:GetText():find(n.L.CRAFTS_N:format(s.crafts), 1, true))
+    local head = n.ui.money:GetText()
+    local net = n.view.plan.net
+    assert(head:find((net < 0 and "-" or "+") .. n.Short(net), 1, true), head)
+end)
+
+test("the list heads sort the rows; rows have a tooltip; the recipe source in the game's words", function()
+    local n = game()
+    n.Toggle()
+    n.Tab(2)
+    local rows = n.Crafts(n.view.state, n.view.prefs)
+    assert(n.ui.list.rows[1].text:GetText():find(rows[1].name, 1, true), "profit first")
+    assert(n.ui.list.rows[1].tip and #n.ui.list.rows[1].tip >= 2, "reagents in the tooltip")
+    assert(not n.ui.list.rows[1].text:GetText():find("■", 1, true), "no glyph the game font lacks")
+    W.Click(n.ui.listHead[5])
+    assert(n.ui.list.rows[1].text:GetText():find(rows[#rows].name, 1, true), "a second click turns the order")
+    W.Click(n.ui.listHead[1])
+    local names = {}
+    for _, r in ipairs(rows) do names[#names + 1] = r.name end
+    table.sort(names)
+    assert(n.ui.list.rows[1].text:GetText():find(names[1], 1, true), "names A to Z")
+    eq(n.SourceLabel("|cFFFFD200Vendor: |rSomebody|n|cFFFFD200Zone: |rIronforge"), "Vendor")
+    eq(n.SourceLabel("Drop"), "Drop")
+    eq(n.SourceLabel(nil), nil)
+    n.Tab(4)
+    eq(n.ui.list.rows[1].cols[1]:GetText(), "Vendor", "where, from the source text")
 end)
 
 test("without Auctionator only vendor prices count, and the window says so", function()

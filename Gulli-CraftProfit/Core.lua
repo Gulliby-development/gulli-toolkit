@@ -166,10 +166,14 @@ function ns.Chance(r, s)
     return (g - s) / (g - y)
 end
 
+-- Yellow to grey in the data: 20 points is the most common gap, so a recipe without data
+-- gets it too. A shorter gap would make the guess ask for far more crafts than the game does.
+ns.GAP = 20
+
 -- The game shows only the colour a recipe has at the current skill (0 orange, 1 yellow, 2 green,
--- 3 grey). From the colours seen at several skills, `obs` = { [skill] = colour }, this guesses
--- { orange, yellow, grey }; `grey` from the game (maxTrivialLevel) fixes the last one. The guess
--- leans to the short side: a shorter orange stretch means more crafts, never fewer.
+-- 3 grey). For a recipe Data.lua does not know, this guesses { orange, yellow, grey } from the
+-- colours seen at several skills, `obs` = { [skill] = colour }; `grey` from the game
+-- (maxTrivialLevel) fixes the last one.
 function ns.Estimate(obs, grey)
     local loY, hiY, loG, hiG = -math.huge, math.huge, -math.huge, math.huge
     local any = false
@@ -184,13 +188,44 @@ function ns.Estimate(obs, grey)
     if not any then return nil end
     local y
     if loY > -math.huge then y = math.min(loY, hiY)
-    elseif hiY < math.huge then y = hiY - 5
-    elseif hiG < math.huge then y = hiG - 10
-    else y = loG - 10 end
-    local g = math.max(loG, y + 10)
+    elseif hiY < math.huge then y = hiY
+    elseif hiG < math.huge then y = hiG - ns.GAP
+    else y = loG - ns.GAP end
+    local g = math.max(loG, y + ns.GAP)
     if hiG < math.huge then g = math.min(g, hiG) end
     if g <= y then g = y + 1 end
     return { y - 10, y, g }
+end
+
+-- { orange, yellow, grey } of a recipe: the levels from Data.lua (`d` = { yellow, green, grey },
+-- or { orange, yellow, green, grey }), moved where the game showed another colour, since the
+-- game is right about its own recipes. Without data, the guess from the colours. The second
+-- value is true for a guess. A learned recipe is orange from 0: it can always be crafted.
+function ns.Thresholds(d, obs, grey, learned)
+    if not d then
+        local e = ns.Estimate(obs, grey)
+        if e and learned then e[1] = 0 end
+        return e, true
+    end
+    local o, y, gr, g
+    if #d >= 4 then o, y, gr, g = d[1], d[2], d[3], d[4] else y, gr, g = d[1], d[2], d[3] end
+    if grey and grey > 0 then g = grey end
+    local ks = {}
+    for s in pairs(obs or {}) do ks[#ks + 1] = s end
+    table.sort(ks)
+    for _, s in ipairs(ks) do
+        local c = obs[s]
+        local green = (y + g) / 2
+        if c == 0 and y <= s then g = g + (s + 1 - y); y = s + 1
+        elseif c == 1 and y > s then y = s
+        elseif c == 1 and s >= green then g = 2 * s - y + 2
+        elseif c == 2 and s >= g then g = s + 1
+        elseif c == 2 and s < green then y = math.min(y, 2 * s - g)
+        elseif c == 3 and g > s then g = s; y = math.min(y, g - 1) end
+    end
+    if g <= y then g = y + 1 end
+    o = learned and 0 or math.min(o and o > 1 and o or y - 10, y)
+    return { o, y, g }, false
 end
 
 function ns.CanGet(r, P)

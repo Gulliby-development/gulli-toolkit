@@ -196,6 +196,11 @@ local function stopIcon(n)
         local r = ns.view.state.recipes[n.lines[1].recipe]
         if r and r.out then return ns.ItemIcon(r.out) end
     end
+    -- a run crafts one recipe: its item says more than the profession's icon
+    if n.segs then
+        local r = ns.view.state.recipes[n.segs[1].rid]
+        if r and r.out then return ns.ItemIcon(r.out) end
+    end
     if n.kind == "craft" and ns.view.state.icon then return ns.view.state.icon end
     return ns.STOP_ICONS[n.kind]
 end
@@ -205,6 +210,14 @@ local function stopTitle(n)
     if n.title == "STOP_EARN" then return L.STOP_EARN end
     if n.title == "STOP_RANK" then return L.STOP_RANK:format(n.rank.cap) end
     return L[n.title]
+end
+
+-- The recipe of a craft stop (one run is one recipe), with "+n" when it holds more.
+local function runName(n)
+    local ids, seen = {}, {}
+    for _, sg in ipairs(n.segs) do if not seen[sg.rid] then seen[sg.rid] = true; ids[#ids + 1] = sg.rid end end
+    local name = ns.view.state.recipes[ids[1]].name
+    return #ids > 1 and (name .. " +" .. (#ids - 1)) or name
 end
 
 local function lineIcon(l)
@@ -232,6 +245,7 @@ local function makeNode(parent, i)
     b.title = S.Text(b, 11)
     b.title:SetPoint("TOPLEFT", b.kind, "BOTTOMLEFT", 0, -3)
     b.title:SetPoint("RIGHT", -4, 0)
+    b.title:SetJustifyV("TOP")
     b.title:SetWordWrap(false)
     b.strip = {}
     for k = 1, STRIP do
@@ -242,7 +256,7 @@ local function makeNode(parent, i)
     b.more = S.Text(b, 9, S.MUTED)
     b.more:SetPoint("BOTTOMLEFT", 10 + STRIP * 18, 11)
     b.money = S.Text(b, 10, S.MUTED)
-    b.money:SetPoint("BOTTOMRIGHT", -6, 10)
+    b.money:SetPoint("BOTTOMRIGHT", -6, 7)
     b.bar = {}
     b:SetScript("OnClick", function() selected = i; ns.Refresh() end)
     return b
@@ -259,19 +273,20 @@ local function fillNode(b, n)
     local kc = (n.kind == "craft" and n.segs) and segColor(n.segs[1].color) or ns.STOPS[n.kind]
     b.stripe:SetVertexColor(kc[1], kc[2], kc[3], 1)
     b.icon:Set(stopIcon(n))
-    b.kind:SetText(color(kc) .. n.index .. ". " .. (L["KIND_" .. n.kind] or n.kind) .. "|r")
-    b.title:SetText(stopTitle(n))
+    -- a craft stop: the skill it covers on top, the recipe below on up to two lines, the crafts
+    -- at the bottom; the item's icon is the stop's, so it needs no icons along the bottom
+    local kind = n.index .. ". " .. (n.segs and (n.from .. "-" .. n.to) or (L["KIND_" .. n.kind] or n.kind))
+    b.kind:SetText(color(kc) .. kind .. "|r")
+    b.title:SetWordWrap(n.segs and true or false)
+    b.title:SetMaxLines(n.segs and 2 or 1)
+    b.title:SetHeight(n.segs and 26 or 13)
+    b.title:SetText(n.segs and runName(n) or stopTitle(n))
     local icons = {}
-    if n.segs then
-        local seen = {}
-        for _, sg in ipairs(n.segs) do
-            local r = ns.view.state.recipes[sg.rid]
-            if r.out and not seen[r.out] then seen[r.out] = true; icons[#icons + 1] = { ns.ItemIcon(r.out), nil, (ns.view.state.items[r.out] or {}).quality } end
-        end
-    else
+    if not n.segs then
         for _, l in ipairs(n.lines or {}) do
             local t, q = lineIcon(l)
-            icons[#icons + 1] = { t, l.n, q }
+            -- no counts on the small icons: they do not fit; the list under the graph has them
+            icons[#icons + 1] = { t, nil, q }
         end
     end
     for k = 1, STRIP do
@@ -279,7 +294,7 @@ local function fillNode(b, n)
         if ic then b.strip[k]:Set(ic[1], ic[2], ic[3]) else b.strip[k]:Hide() end
     end
     b.more:SetText(#icons > STRIP and ("+" .. (#icons - STRIP)) or "")
-    if n.segs then b.money:SetText("x" .. n.crafts)
+    if n.segs then b.money:SetText(color(S.TEXT) .. L.CRAFTS_N:format(n.crafts) .. "|r")
     elseif n.cost and n.cost > 0 then b.money:SetText(ns.Short(n.cost))
     else b.money:SetText("") end
     -- the recipe colours along the bottom of a craft stop
@@ -409,12 +424,49 @@ end
 
 -- ---------- the list tabs ----------
 
--- Columns: { header key, x from the right edge (nil: the name column), width }.
+-- Columns: { header key, width }, the name column first (it takes the room left), the others
+-- from the right edge. `sort`: the column a tab sorts by at first, highest first.
 local LISTS = {
-    { { "C_RECIPE" }, { "C_COST", 330 }, { "C_VALUE", 250 }, { "C_WHERE", 170 }, { "C_PROFIT", 90 }, { "C_CAN", 6 } },
-    { { "I_ITEM" }, { "I_BAGS", 400 }, { "I_BANK", 350 }, { "I_BEST", 200 }, { "I_EACH", 100 }, { "I_TOTAL", 6 } },
-    { { "C_RECIPE" }, { "R_WHERE", 330 }, { "R_PRICE", 250 }, { "R_SKILL", 200 }, { "C_PROFIT", 100 }, { "R_PAY", 6 } },
+    { cols = { { "C_RECIPE" }, { "C_COST", 62 }, { "C_VALUE", 62 }, { "C_WHERE", 54 }, { "C_PROFIT", 66 }, { "C_CAN", 30 } }, sort = 5 },
+    { cols = { { "I_ITEM" }, { "I_BAGS", 34 }, { "I_BANK", 34 }, { "I_BEST", 110 }, { "I_EACH", 62 }, { "I_TOTAL", 66 } }, sort = 6 },
+    { cols = { { "C_RECIPE" }, { "R_WHERE", 84 }, { "R_PRICE", 60 }, { "R_SKILL", 34 }, { "C_PROFIT", 66 }, { "R_PAY", 64 } }, sort = 5 },
 }
+local COL_GAP = 6
+-- x of each column's right edge, from the row's right edge
+local function colRight(spec, k)
+    local x = 6
+    for j = #spec.cols, k + 1, -1 do x = x + spec.cols[j][2] + COL_GAP end
+    return x
+end
+ns.LISTS = LISTS
+
+-- Where a recipe comes from, in the game's own words: the label before the first colon of the
+-- source text ("Vendor", "Drop", ...), without its colour codes.
+function ns.SourceLabel(text)
+    if not text or text == "" then return nil end
+    local plain = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|n", "\n")
+    local label = plain:match("^%s*([^:\n]+):") or plain:match("^%s*([^\n]+)")
+    return label and label:match("^%s*(.-)%s*$")
+end
+
+-- The tooltip of a list row: the reagents with their cost, then where the recipe comes from.
+local function recipeTip(r)
+    local st, P = ns.view.state, ns.view.prefs
+    local tip = { { r.name, 1, 1, 1 } }
+    local known = {}
+    for rid, x in pairs(st.recipes) do if x.learned then known[rid] = true end end
+    local stock = ns.Stock(st, P)
+    local ids = {}
+    for id in pairs(r.r) do ids[#ids + 1] = id end
+    table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
+    for _, id in ipairs(ids) do
+        local it = st.items[id] or {}
+        local each = ns.UnitCost(st, P, stock, known, id)
+        tip[#tip + 1] = { (it.name or tostring(id)) .. " x" .. r.r[id], each < math.huge and ns.Money(each * r.r[id]) or L.NO_PRICE }
+    end
+    if r.src and r.src.text then tip[#tip + 1] = { (r.src.text:gsub("|n", "\n")), nil, nil, nil, true } end
+    return tip
+end
 
 local function listRows(which)
     local st, P = ns.view.state, ns.view.prefs
@@ -423,30 +475,62 @@ local function listRows(which)
     if which == 2 then
         for _, x in ipairs(ns.Crafts(st, P)) do
             local r = st.recipes[x.recipe]
-            local c = x.color and segColor(x.color) or S.MUTED
+            -- the name in the recipe's colour, as in the game's profession window
+            local c = x.color and segColor(x.color) or S.TEXT
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
-                text = color(c) .. "■|r " .. x.name .. (x.stale and (" " .. color(GOLD) .. L.STALE .. "|r") or ""),
+                text = color(c) .. x.name .. "|r" .. (x.stale and (" " .. color(GOLD) .. L.STALE .. "|r") or ""),
                 cols = { ns.Money(x.cost), ns.Money(x.value), L["HOW_" .. x.how],
                          color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r",
-                         x.can > 0 and L.TIMES:format(x.can) or "-" } }
+                         x.can > 0 and ("x" .. x.can) or "-" },
+                keys = { x.name, x.cost, x.value, x.how, x.profit, x.can }, tip = recipeTip(r) }
         end
     elseif which == 3 then
         for _, x in ipairs(ns.Items(st, P)) do
             rows[#rows + 1] = { icon = ns.ItemIcon(x.id), n = x.bags + x.bank, q = (st.items[x.id] or {}).quality, text = x.name,
                 cols = { tostring(x.bags), tostring(x.bank),
                          L["HOW_" .. x.how] .. (x.recipeName and (": " .. x.recipeName) or ""),
-                         ns.Money(x.each), ns.Money(x.total) } }
+                         ns.Money(x.each), ns.Money(x.total) },
+                keys = { x.name, x.bags, x.bank, x.how, x.each, x.total } }
         end
     else
         for _, x in ipairs(ns.Recipes(st, P)) do
             local r = st.recipes[x.recipe]
+            local where = (x.src == "text" and (ns.SourceLabel(x.text) or "-")) or L["WHERE_" .. x.src] or "-"
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name,
-                cols = { L["WHERE_" .. x.src] or "", x.cost and ns.Money(x.cost) or "-", x.skill and tostring(x.skill) or "-",
+                cols = { where, x.cost and ns.Money(x.cost) or "-", x.skill and tostring(x.skill) or "-",
                          x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r") or L.NO_PRICE,
-                         x.pay and L.PAY_AT:format(x.pay) or (x.src == "text" and L.WHERE_text or (x.profit and L.PAY_NEVER or "-")) } }
+                         x.pay and L.PAY_AT:format(x.pay) or ((x.profit and x.cost) and L.PAY_NEVER or "-") },
+                keys = { x.name, where, x.cost, x.skill, x.profit, x.pay }, tip = recipeTip(r) }
         end
     end
+    -- the chosen column, highest first (names A to Z); rows without a value go last
+    local sort = ui.sort and ui.sort[which] or { col = LISTS[which - 1].sort, desc = true }
+    local k = sort.col
+    table.sort(rows, function(a, b)
+        local x, y = a.keys[k], b.keys[k]
+        if x == y then return tostring(a.keys[1]) < tostring(b.keys[1]) end
+        if x == nil then return false end
+        if y == nil then return true end
+        if type(x) ~= type(y) then x, y = tostring(x), tostring(y) end
+        if type(x) == "string" then
+            if sort.desc then return x < y end
+            return x > y
+        end
+        if sort.desc then return x > y end
+        return x < y
+    end)
     return rows
+end
+
+local function showTip(r)
+    if not GameTooltip or not r.tip then return end
+    GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
+    for i, l in ipairs(r.tip) do
+        if i == 1 then GameTooltip:SetText(l[1], l[2], l[3], l[4])
+        elseif l[5] then GameTooltip:AddLine(l[1], 0.8, 0.8, 0.8, true)
+        else GameTooltip:AddDoubleLine(l[1], l[2], 0.8, 0.8, 0.8, 1, 1, 1) end
+    end
+    GameTooltip:Show()
 end
 
 local function makeListRow(r)
@@ -456,25 +540,30 @@ local function makeListRow(r)
     for k = 2, 6 do
         local t = S.Text(r, 11)
         t:SetJustifyH("RIGHT")
+        t:SetWordWrap(false)
         r.cols[k - 1] = t
     end
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
     r.text:SetWordWrap(false)
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self) showTip(self) end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 end
 
 local function fillListRow(r, e)
     local spec = LISTS[tab - 1]
     if e.icon then r.icon:Set(e.icon, e.n, e.q) else r.icon:Hide() end
     r.text:SetText(e.text)
-    r.text:SetPoint("RIGHT", r, "RIGHT", -(spec[2][2] + 80), 0)
+    r.text:SetPoint("RIGHT", r, "RIGHT", -(colRight(spec, 2) + spec.cols[2][2] + COL_GAP), 0)
     for k = 1, 5 do
         local t = r.cols[k]
         t:ClearAllPoints()
-        t:SetPoint("RIGHT", r, "RIGHT", -spec[k + 1][2], 0)
-        t:SetWidth(spec[k + 1][2] == 6 and 80 or 74)
+        t:SetPoint("RIGHT", r, "RIGHT", -colRight(spec, k + 1), 0)
+        t:SetWidth(spec.cols[k + 1][2])
         t:SetText(e.cols[k] or "")
     end
+    r.tip = e.tip
 end
 
 -- ---------- building and refreshing ----------
@@ -617,8 +706,22 @@ local function build()
     list:SetPoint("TOPLEFT", 0, -top)
     list:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.listFrame = list
-    ui.listHead = {}
-    for k = 1, 6 do ui.listHead[k] = S.Text(list.body, 10, S.MUTED) end
+    -- the column heads sort the list: a click picks the column, a second click turns the order
+    ui.listHead, ui.sort = {}, {}
+    for k = 1, 6 do
+        local h = CreateFrame("Button", nil, list.body)
+        h:SetHeight(18)
+        h.text = S.Text(h, 10, S.MUTED)
+        h.text:SetPoint("LEFT")
+        h.text:SetPoint("RIGHT")
+        h.text:SetWordWrap(false)
+        h:SetScript("OnClick", function()
+            local cur = ui.sort[tab] or { col = LISTS[tab - 1].sort, desc = true }
+            ui.sort[tab] = { col = k, desc = not (cur.col == k and cur.desc) }
+            ns.Refresh()
+        end)
+        ui.listHead[k] = h
+    end
     ui.list = S.List(list.body, 32, makeListRow, fillListRow)
     ui.list:SetPoint("TOPLEFT", 0, -20)
     ui.list:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -762,7 +865,9 @@ local function refreshRoute()
             b:SetAlpha(0.6)
         end
     end
-    ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income)))
+    -- what is paid, what own stock is worth, what the sales bring, and the result with its sign
+    ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income),
+        color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
     refreshChips(v)
     local title = routeName(v.mode, levels, true)
     if leg and (v.leg or 1) > 1 then title = title .. "  ·  " .. leg.from .. "-" .. leg.to end
@@ -818,11 +923,23 @@ end
 
 local function refreshList()
     local spec = LISTS[tab - 1]
+    local sort = ui.sort[tab] or { col = spec.sort, desc = true }
     for k = 1, 6 do
-        local t = ui.listHead[k]
-        t:ClearAllPoints()
-        if k == 1 then t:SetPoint("TOPLEFT", 34, 0) else t:SetPoint("TOPRIGHT", -(spec[k][2] + 10), 0) end
-        t:SetText(L[spec[k][1]])
+        local h = ui.listHead[k]
+        h:ClearAllPoints()
+        if k == 1 then
+            h:SetPoint("TOPLEFT", 34, 0)
+            h:SetWidth(120)
+            h.text:SetJustifyH("LEFT")
+        else
+            -- the scroll bar takes 10 at the right of the rows
+            h:SetPoint("TOPRIGHT", -(colRight(spec, k) + 10), 0)
+            h:SetWidth(spec.cols[k][2])
+            h.text:SetJustifyH("RIGHT")
+        end
+        -- the sorted column in the accent colour
+        local on = sort.col == k
+        h.text:SetText((on and color(S.Accent()) or "") .. L[spec.cols[k][1]] .. (on and "|r" or ""))
     end
     ui.list:SetData(listRows(tab))
 end
