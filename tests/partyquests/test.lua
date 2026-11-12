@@ -32,7 +32,7 @@ test("rows: who has each quest, the shared ones first, share only when someone l
     eq(rows[1].have, 3)
     eq(rows[1].canShare, false)
     eq(rows[2].quest.id, 153)
-    eq(rows[2].cells[1], "no"); eq(rows[2].cells[2], "has")
+    eq(rows[2].cells[1].state, "no"); eq(rows[2].cells[2].state, "has")
     eq(rows[2].canShare, true)
     eq(rows[3].canShare, false, "a quest the game does not let you share")
     ns.Share(153)
@@ -62,8 +62,9 @@ test("their quests: what members have and I do not, and done objectives show", f
     eq(theirs[1].id, 64); eq(#theirs[1].who, 2)
     eq(theirs[1].title, "The Forgotten Heirloom")
     eq(theirs[2].title, "Quest 65")
+    eq(W.loaded[1] ~= nil, true, "an unknown quest is asked from the server")
     local rows = ns.Ours()
-    eq(rows[1].cells[2], "done", "Bob finished the objectives of 155")
+    eq(rows[1].cells[2].state, "done", "Bob finished the objectives of 155")
     ns.Ask("The Forgotten Heirloom")
     eq(W.chat[1][2], "PARTY")
     assert(W.chat[1][1]:find("Forgotten Heirloom", 1, true))
@@ -92,6 +93,160 @@ test("quest updates send one list after a pause; nothing is sent alone", functio
     local ns = Load()
     ns.Broadcast()
     eq(#W.sent, 0, "no group, nothing sent")
+end)
+
+
+test("objectives go out as a new message type and come back as progress", function()
+    Fake({ quests = LOG, party = PARTY, objectives = {
+        [155] = { { text = "Defias Pillager slain: 3/8", type = "monster", numFulfilled = 3, numRequired = 8 } },
+        [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15, finished = true } },
+    } })
+    local ns = Load()
+    local parts = ns.Encode(ns.MyQuests())
+    eq(parts[2], "Q155,153,999", "old message types stay as they were")
+    eq(parts[3], "O155:3/8,153:15/15")
+    for _, p in ipairs({ "B", "Q155", "O155:5/8", "E" }) do ns.Receive(p, "Bob") end
+    local rows = ns.Ours()
+    eq(rows[1].cells[2].have, 5); eq(rows[1].cells[2].need, 8)
+    eq(rows[1].mine.have, 3)
+    eq(ns.remote.Bob.obj[155][1][1], 5)
+end)
+
+test("member status: module, old data, no module, offline; offline cells are unknown", function()
+    local party = { { name = "Ann", quests = { [155] = true } }, { name = "Bob", quests = {}, offline = true } }
+    Fake({ quests = LOG, party = party })
+    local ns = Load()
+    local m = ns.Members()
+    eq(ns.Status(m[1]), "none"); eq(ns.Status(m[2]), "offline")
+    for _, p in ipairs({ "B", "Q155", "E" }) do ns.Receive(p, "Ann") end
+    eq(ns.Status(m[1]), "fresh")
+    W.now = W.now + 400
+    eq(ns.Status(m[1]), "stale")
+    local rows = ns.Ours()
+    eq(rows[1].cells[2].state, "unknown")
+    eq(m[1].leader, true)
+end)
+
+test("the summary says what to share and when the group is in sync", function()
+    Fake({ quests = { LOG[1], LOG[2], LOG[3] }, party = { { name = "Ann", quests = { [155] = true } } } })
+    local ns = Load()
+    local text, synced = ns.Summary(ns.Ours())
+    eq(synced, false); assert(text:find("1"))
+    Fake({ quests = { LOG[1], LOG[2] }, party = { { name = "Ann", quests = { [155] = true } } }, complete = { [155] = true } })
+    ns = Load()
+    for _, p in ipairs({ "B", "Q155*", "E" }) do ns.Receive(p, "Ann") end
+    text, synced = ns.Summary(ns.Ours())
+    eq(synced, true)
+    eq(text, ns.L.SYNC_READY:format(1))
+end)
+
+test("a member who turned in a quest is not offered it; the game's share reply teaches that too", function()
+    Fake({ quests = LOG, party = PARTY, turned = { [64] = true } })
+    local ns = Load()
+    for _, p in ipairs({ "B", "Q64", "C153", "E" }) do ns.Receive(p, "Ann") end
+    local rows = ns.Ours()
+    local r153
+    for _, r in ipairs(rows) do if r.quest.id == 153 then r153 = r end end
+    eq(r153.cells[1].state, "turned")
+    eq(r153.canShare, false, "Bob has it, Ann did it before")
+    eq(ns.TurnedForOthers()[1], 64, "I tell Ann I did 64 before")
+    local parts = ns.Encode(ns.MyQuests(), ns.TurnedForOthers())
+    eq(parts[#parts - 1], "C64")
+    ns.Share(155)
+    local who, what = ns.ShareReply("Bob has completed that quest.")
+    eq(who, "Bob"); eq(what, "turned")
+    eq(ns.turnedByShare.Bob[155], true)
+end)
+
+test("Share all shares each missing quest one second apart; auto share waits for its switch", function()
+    Fake({ quests = LOG, party = { { name = "Ann", quests = {} } } })
+    local ns = Load()
+    eq(ns.ShareAll(), 2)
+    eq(#W.pushed, 1)
+    W.RunTimers()
+    eq(#W.pushed, 2)
+    W.Fire("GROUP_ROSTER_UPDATE"); W.RunTimers(); W.pushed = {}
+    W.party[2] = { name = "Cid", quests = {} }
+    W.Fire("GROUP_ROSTER_UPDATE"); W.RunTimers()
+    eq(#W.pushed, 0, "auto share is off by default")
+    ns.Set("autoShare", true)
+    W.party[3] = { name = "Dan", quests = {} }
+    W.Fire("GROUP_ROSTER_UPDATE"); W.RunTimers(); W.RunTimers()
+    assert(#W.pushed > 0, "a new member gets my quests")
+end)
+
+test("a request goes to the owner through the module, else as a whisper; the owner sees it", function()
+    Fake({ quests = LOG, party = PARTY })
+    local ns = Load()
+    eq(ns.Request(64, "Heirloom", "Ann"), "whisper")
+    eq(W.chat[1][2], "WHISPER"); eq(W.chat[1][3], "Ann")
+    for _, p in ipairs({ "B", "Q64", "E" }) do ns.Receive(p, "Ann") end
+    eq(ns.Request(64, "Heirloom", "Ann"), "addon")
+    eq(W.sent[#W.sent][2], "R64:Ann")
+    ns.Receive("R155:Tester", "Bob-Realm")
+    eq(ns.requests[1].from, "Bob"); eq(ns.requests[1].id, 155)
+    ns.Receive("R153:Someone", "Bob")
+    eq(#ns.requests, 1, "a request for someone else is ignored")
+end)
+
+test("group events become messages, each behind its switch; the whole group finishing too", function()
+    GulliPartyQuestsDB = nil
+    Fake({ quests = { LOG[1], LOG[2] }, party = { { name = "Ann", quests = { [155] = true } } }, complete = { [155] = true } })
+    local ns = Load()
+    for _, p in ipairs({ "B", "Q155", "O155:7/8", "E" }) do ns.Receive(p, "Ann") end
+    eq(#W.printed, 0, "the first list is not news")
+    for _, p in ipairs({ "B", "Q155*,64", "O155:8/8", "E" }) do ns.Receive(p, "Ann") end
+    local all = table.concat(W.printed, "\n")
+    assert(all:find("Ann took"), "accept"); assert(all:find("Ann finished"), "complete")
+    assert(all:find("whole group finished"), "all done")
+    W.printed = {}
+    for _, p in ipairs({ "B", "Q64", "E" }) do ns.Receive(p, "Ann") end
+    assert(table.concat(W.printed):find("handed in"), "turn in")
+    ns.Set("nAccept", false)
+    W.printed = {}
+    for _, p in ipairs({ "B", "Q64,70", "E" }) do ns.Receive(p, "Ann") end
+    eq(#W.printed, 0, "switched off")
+    local d = ns.Diff({ ids = { [1] = true }, done = {}, obj = { [1] = { { 2, 3 } } }, turned = {} },
+                      { ids = { [1] = true }, done = {}, obj = { [1] = { { 3, 3 } } }, turned = {} })
+    eq(d[1][1], "objective")
+end)
+
+test("the zone filter and the search narrow my quests", function()
+    local log = { LOG[1], LOG[2], { title = "Elwynn Forest", isHeader = true }, { title = "Wolves", questID = 33, level = 5 } }
+    Fake({ quests = log, party = PARTY })
+    local ns = Load()
+    eq(#ns.Ours({ zone = "Westfall" }), 1)
+    eq(#ns.Ours({}), 2)
+    eq(#ns.Ours({ text = "wol" }), 1)
+end)
+
+test("spare quest items, track for all and the tooltip lines", function()
+    Fake({ quests = LOG, party = PARTY, items = { [10] = "Red Leather Bandana" }, bags = { { id = 10, count = 17 } },
+           objectives = { [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } } })
+    local ns = Load()
+    for _, q in ipairs(ns.MyQuests(true)) do if q.id == 153 then eq(q.spare, 2) end end
+    for _, p in ipairs({ "B", "Q153", "O153:4/15", "E" }) do ns.Receive(p, "Bob") end
+    local lines = ns.TooltipLines("Red Leather Bandana")
+    eq(#lines, 1); eq(lines[1][1], "Bob"); eq(lines[1][2], "4/15")
+    eq(#ns.TooltipLines("Red Leather"), 0, "a name must match the whole objective")
+    ns.TrackForAll(153)
+    eq(W.watched[1], 153); eq(W.sent[#W.sent][2], "T153")
+    ns.Receive("T153", "Bob")
+    eq(W.watched[2], 153)
+    ns.Set("track", false)
+    ns.Receive("T153", "Bob")
+    eq(#W.watched, 2, "track requests follow their switch")
+    ns.Set("tooltip", false)
+    eq(#ns.TooltipLines("Red Leather Bandana"), 0)
+end)
+
+test("the window draws every tab and the request card", function()
+    Fake({ quests = LOG, party = PARTY })
+    local ns = Load()
+    SlashCmdList.GULLIPARTYQUESTS("")
+    for i = 1, 3 do ns.Refresh() end
+    ns.OnRequest("Bob", 155)
+    assert(ns.ShowRequest())
 end)
 
 test("the window opens and draws both tabs", function()

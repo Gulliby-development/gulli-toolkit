@@ -129,8 +129,12 @@ function Fake(spec)
     local function find(b, s)
         for _, x in ipairs(W.slots) do if x[1] == b and x[2] == s then return x end end
     end
+    GulliJunkShared = nil
+    W.alt = false
+    IsAltKeyDown = function() return W.alt end
     C_Container = {
         GetContainerNumSlots = function(b) return b == 0 and 16 or 0 end,
+        GetContainerNumFreeSlots = function() return 0, 0 end,
         GetContainerItemInfo = function(b, s)
             local x = find(b, s)
             if not x then return nil end
@@ -146,9 +150,19 @@ function Fake(spec)
             end
         end,
     }
+    W.info = spec.info or {}
     C_Item = { GetItemInfo = function(id)
-        return "Item" .. id, nil, nil, nil, nil, nil, nil, nil, nil, nil, W.prices[id] or 0
+        local i = W.info[id] or {}
+        return "Item" .. id, nil, i.quality, nil, nil, nil, nil, 1, i.equipLoc, nil, W.prices[id] or 0, i.classID,
+            i.subclassID
     end }
+    W.bound = spec.bound or {}
+    C_Item.IsBound = function(loc) return W.bound[loc.slot] or false end
+    ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
+    W.hooks = {}
+    hooksecurefunc = function(a, b, c)
+        if type(a) == "table" then W.hooks[b] = c else W.hooks[a] = b end
+    end
     GetMoney = function() return W.money end
     IsShiftKeyDown = function() return W.shift end
     CanMerchantRepair = function() return true end
@@ -164,8 +178,15 @@ function Fake(spec)
     return W
 end
 
+function W.Drain()
+    for _ = 1, 100 do
+        if #W.timers == 0 then return end
+        W.RunTimers()
+    end
+end
+
 function Load()
-    return W.Load("Gulli-Merchant", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-Merchant", { "Locales.lua", "Junk.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W

@@ -38,6 +38,10 @@ jobs:
           done
           exit $rc
 
+      - name: BagSpace has the same Junk.lua as Merchant
+        run: |
+          cmp -s Gulli-Merchant/Junk.lua Gulli-BagSpace/Junk.lua || { echo "::error::Gulli-BagSpace/Junk.lua differs from Gulli-Merchant/Junk.lua. Run tools/junk/sync.sh."; exit 1; }
+
       - name: Each addon folder has a Forever TOC that lists every Lua file
         run: |
           for dir in Gulli-*/; do

@@ -1,29 +1,58 @@
--- A thin bar on screen ("1.2k XP/h · 45 min · 12 kills") that opens the window: the numbers of
--- this session, the bar's settings (shown, locked, opacity, scale, place) and Start again.
+-- A thin bar on screen ("1.2k XP/h · 45 min · 12 kills") that opens the window. Its line shows
+-- the level done, the XP of finished quests (gold) and the rested part. At the top level it
+-- shows the watched reputation instead. The window: three tiles, the level with the quests to
+-- hand in, and three tabs: this session (with a graph), the last levels and the bar's settings.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, bar, tiles, left, progress
-local info = {}
+local frame, bar, tiles, left, ready, progress, tabs
+local pages, info, graph, levelLines = {}, {}, {}, {}
+local GRAPH_BARS = 18
 
-function ns.BarText()
-    local st = ns.Stats()
+local XP_COLOR, RESTED_COLOR = { 0.58, 0.36, 0.90, 1 }, { 0.25, 0.55, 1.00, 0.55 }
+local READY_COLOR, REP_COLOR = { 1.00, 0.78, 0.25, 0.95 }, { 0.30, 0.75, 0.45, 1 }
+
+-- What the bar says, by the chosen text (ns.TEXTS).
+function ns.BarText(st)
+    st = st or ns.Stats()
+    local mode = ns.db.text or "all"
+    local eta = st.toLevel and ns.Span(st.toLevel) or "-"
+    if mode == "rate" then return L.RATE:format(ns.Short(st.rate)) end
+    if mode == "eta" then return st.toLevel and L.TO_LEVEL:format(eta) or L.NO_RATE_SHORT end
+    if mode == "left" then return L.LEFT_SHORT:format(ns.Short(st.left), st.percent) end
+    if mode == "pct" then return L.LEVEL_PCT:format(st.level, st.percent) end
     local parts = { L.RATE:format(ns.Short(st.rate)) }
-    if st.toLevel then parts[#parts + 1] = ns.Span(st.toLevel) end
+    if st.toLevel then parts[#parts + 1] = eta end
     if st.killsToLevel then parts[#parts + 1] = L.KILLS:format(st.killsToLevel) end
     return table.concat(parts, "  ·  ")
 end
 
-local XP_COLOR, RESTED_COLOR = { 0.58, 0.36, 0.90, 1 }, { 0.25, 0.55, 1.00, 0.55 }
+-- The numbers behind the bar, for its tooltip.
+function ns.TipLines(st)
+    st = st or ns.Stats()
+    local lines = {
+        L.RATE:format(ns.Short(st.rate)),
+        st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.NO_RATE,
+        L.LEFT:format(ns.Short(st.left), st.percent),
+        L.RESTED:format(ns.Short(st.rested)),
+    }
+    if st.readyN > 0 then lines[#lines + 1] = L.READY:format(ns.Short(st.ready), st.readyN, st.readyPercent) end
+    if st.killsToLevel then lines[#lines + 1] = L.KILLS_TO:format(st.killsToLevel) end
+    if st.questsToLevel then lines[#lines + 1] = L.QUESTS_TO:format(st.questsToLevel) end
+    lines[#lines + 1] = L.SESSION:format(ns.Span(st.session), ns.Short(st.gained))
+    return lines
+end
+
+local function textLabel(mode) return L["TEXT_" .. mode:upper()] end
 
 local function savePoint()
     local p, _, _, x, y = bar:GetPoint()
     ns.db.point = { p, x, y }
 end
 
--- Opacity, scale, lock and place from the settings; the text keeps full opacity.
+-- Opacity, scale, width, lock and place from the settings; the text keeps full opacity.
 function ns.StyleBar()
     if not bar then return end
     local d = ns.db
@@ -32,9 +61,17 @@ function ns.StyleBar()
     S.SetBorder(bar, { 0, 0, 0, a })
     bar.track:SetAlpha(math.max(0.35, a))
     bar:SetScale(d.scale / 100)
-    bar:ClearAllPoints()
     local p = d.point or ns.BAR_POINT
-    bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+    bar:ClearAllPoints()
+    if d.wide then
+        -- Across the whole screen, at the height the player chose.
+        local w = (tonumber(UIParent:GetWidth()) or 1024) / (d.scale / 100)
+        bar:SetWidth(w)
+        bar:SetPoint(p[1], UIParent, p[1], 0, p[3])
+    else
+        bar:SetWidth(260)
+        bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+    end
 end
 
 local function buildBar()
@@ -43,10 +80,10 @@ local function buildBar()
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
     bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function(self) if not ns.db.locked then self:StartMoving() end end)
+    bar:SetScript("OnDragStart", function(self) if not ns.Locked() then self:StartMoving() end end)
     bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); savePoint() end)
     S.Box(bar)
-    -- A thin line along the bottom: the level so far, then the rested part after it.
+    -- A thin line along the bottom: the level so far, finished quests, then the rested part.
     bar.track = CreateFrame("Frame", nil, bar)
     bar.track:SetPoint("BOTTOMLEFT", 1, 1)
     bar.track:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -54,17 +91,26 @@ local function buildBar()
     bar.xp = S.Tex(bar.track, "ARTWORK", 0, XP_COLOR)
     bar.xp:SetPoint("TOPLEFT")
     bar.xp:SetPoint("BOTTOMLEFT")
+    bar.ready = S.Tex(bar.track, "ARTWORK", 0, READY_COLOR)
+    bar.ready:SetPoint("TOPLEFT", bar.xp, "TOPRIGHT")
+    bar.ready:SetPoint("BOTTOMLEFT", bar.xp, "BOTTOMRIGHT")
     bar.rested = S.Tex(bar.track, "ARTWORK", 0, RESTED_COLOR)
-    bar.rested:SetPoint("TOPLEFT", bar.xp, "TOPRIGHT")
-    bar.rested:SetPoint("BOTTOMLEFT", bar.xp, "BOTTOMRIGHT")
+    bar.rested:SetPoint("TOPLEFT", bar.ready, "TOPRIGHT")
+    bar.rested:SetPoint("BOTTOMLEFT", bar.ready, "BOTTOMRIGHT")
     bar.text = S.Text(bar, 12)
     bar.text:SetPoint("CENTER", 0, 1)
     bar.text:SetJustifyH("CENTER")
-    bar:SetScript("OnClick", function() ns.Toggle() end)
+    bar:SetScript("OnClick", function()
+        if IsShiftKeyDown and IsShiftKeyDown() then ns.Share() else ns.Toggle() end
+    end)
     bar:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:SetText(ns.db.locked and L.TIP_LOCKED or L.TIP_MOVE)
+        GameTooltip:SetText(L.TITLE, 1, 1, 1)
+        if not bar.atCap then
+            for _, l in ipairs(ns.TipLines()) do GameTooltip:AddLine(l, 0.93, 0.93, 0.94) end
+        end
+        GameTooltip:AddLine(ns.Locked() and L.TIP_LOCKED or L.TIP_MOVE, 0.6, 0.61, 0.66, true)
         GameTooltip:Show()
     end)
     bar:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -76,22 +122,78 @@ local function buildBar()
     ns.StyleBar()
 end
 
-local function paintBar()
-    local st = ns.Stats()
-    bar.text:SetText(ns.BarText())
+local function setLine(done, readyPart, rested)
     local w = (tonumber(bar:GetWidth()) or 260) - 2
-    local xp, rested = ns.BarParts(st)
-    bar.xp:SetWidth(math.max(0.01, w * xp))
+    bar.xp:SetWidth(math.max(0.01, w * done))
+    bar.ready:SetWidth(math.max(0.01, w * readyPart))
+    bar.ready:SetShown(readyPart > 0)
     bar.rested:SetWidth(math.max(0.01, w * rested))
     bar.rested:SetShown(rested > 0)
 end
 
+local function paintBar()
+    if bar.atCap then
+        local name, standing, v, size = ns.WatchedFaction()
+        bar.text:SetText(name and L.REP_BAR:format(name, standing, ns.Short(v), ns.Short(size)) or L.MOVE_ME)
+        bar.xp:SetVertexColor(REP_COLOR[1], REP_COLOR[2], REP_COLOR[3], 1)
+        setLine(name and math.min(1, v / size) or 0, 0, 0)
+        return
+    end
+    bar.xp:SetVertexColor(XP_COLOR[1], XP_COLOR[2], XP_COLOR[3], 1)
+    local st = ns.Stats()
+    bar.text:SetText(ns.BarText(st))
+    local xp, rested, readyPart = ns.BarParts(st)
+    setLine(xp, readyPart, rested)
+end
+
+-- At the top level the bar shows the watched reputation, when the player wants it.
+local function barState()
+    local atCap = ns.MaxLevel()
+    local show = ns.db.bar
+    if atCap then show = show and ns.db.rep and ns.WatchedFaction() ~= nil end
+    return show or ns.moving, atCap
+end
+
+local function fillGraph()
+    local s = ns.s
+    local now = time()
+    local last = math.floor((now - s.t) / ns.BUCKET) + 1
+    local first = math.max(1, last - GRAPH_BARS + 1)
+    local top = 1
+    for i = first, last do top = math.max(top, s.buckets[i] or 0) end
+    local h = graph.height
+    for j = 1, GRAPH_BARS do
+        local v = s.buckets[first + j - 1] or 0
+        local b = graph.bars[j]
+        b:SetHeight(math.max(1, h * v / top))
+        b:SetShown(first + j - 1 <= last)
+        b:SetAlpha(v > 0 and 1 or 0.25)
+    end
+    graph.top:SetText(L.GRAPH_TOP:format(ns.Short(top)))
+end
+
+local function fillLevels()
+    local list = ns.Levels()
+    for i, l in ipairs(levelLines) do
+        local e = list[i]
+        if e then
+            local t = ns.Span(e.time) .. (e.partial and "+" or "")
+            l.level:SetText(L.LEVEL_N:format(e.level))
+            l.time:SetText(t)
+            l.from:SetText(L.LEVEL_FROM:format(e.kills or 0, ns.Short(e.killXP or 0), ns.Short(e.questXP or 0)))
+        end
+        l:SetShown(e ~= nil)
+    end
+    pages[2].empty:SetShown(#list == 0)
+end
+
 function ns.Refresh()
-    local showBar = ns.db.bar and not ns.MaxLevel()
-    if showBar and not bar then buildBar() end
+    local show, atCap = barState()
+    if show and not bar then buildBar() end
     if bar then
-        bar:SetShown(showBar)
-        if showBar then paintBar() end
+        bar.atCap = atCap
+        bar:SetShown(show)
+        if show then paintBar() end
     end
     if not frame or not frame:IsShown() then return end
     local st = ns.Stats()
@@ -100,21 +202,136 @@ function ns.Refresh()
     t[2]:Set(st.toLevel and ns.Span(st.toLevel) or "-", st.toLevel and S.TEXT or S.MUTED)
     t[3]:Set(st.killsToLevel and tostring(st.killsToLevel) or "-", st.killsToLevel and S.TEXT or S.MUTED)
     left:SetText(L.LEFT:format(ns.Short(st.left), st.percent) .. (st.toLevel and "" or ("   " .. S.Hex(S.FAINT) .. L.NO_RATE .. "|r")))
+    ready:SetText(st.readyN > 0 and (S.Hex(READY_COLOR) .. L.READY:format(ns.Short(st.ready), st.readyN, st.readyPercent) .. "|r") or "")
     progress:Set(st.percent / 100)
     local lines = {
         L.FROM_KILLS:format(st.kills, ns.Short(st.killXP)),
         L.FROM_QUESTS:format(st.quests, ns.Short(st.questXP)),
+        L.FROM_OTHER:format(ns.Short(st.otherXP)),
         L.RESTED:format(ns.Short(st.rested)),
         L.SESSION:format(ns.Span(st.session), ns.Short(st.gained)),
+        st.killsToLevel and L.KILLS_TO:format(st.killsToLevel) or L.KILLS_TO_NONE,
+        st.questsToLevel and L.QUESTS_TO:format(st.questsToLevel) or L.QUESTS_TO_NONE,
+        L.AVG_KILL:format(ns.Short(st.avgKill)),
     }
     for i, l in ipairs(lines) do info[i]:SetText(l) end
+    fillGraph()
+    fillLevels()
+    if frame.textBtn then frame.textBtn:SetText(textLabel(ns.db.text or "all")) end
+end
+
+local function sessionPage(body, width)
+    local p = CreateFrame("Frame", nil, body)
+    local st = S.Stack(p)
+    local card = S.Card(p, L.SEC_SESSION)
+    local half = math.floor((width - 2 * S.INSET - 12) / 2)
+    for i = 1, 8 do
+        local col, row = (i - 1) >= 4 and 1 or 0, (i - 1) % 4
+        local t = S.Text(card.body, 12)
+        t:SetPoint("TOPLEFT", col * (half + 12), -row * 22)
+        t:SetWidth(half)
+        t:SetWordWrap(false)
+        info[i] = t
+    end
+    st:Add(card, card:Fit(4 * 22 - 8))
+
+    local gc = S.Card(p, L.SEC_GRAPH)
+    graph.top = S.Text(gc, 11, S.FAINT)
+    graph.top:SetPoint("TOPRIGHT", -S.INSET, -13)
+    graph.height = 62
+    graph.bars = {}
+    local bw = math.floor((width - 2 * S.INSET - (GRAPH_BARS - 1) * 3) / GRAPH_BARS)
+    for j = 1, GRAPH_BARS do
+        local b = S.Tex(gc.body, "ARTWORK", 0, XP_COLOR)
+        b:SetWidth(bw)
+        b:SetPoint("BOTTOMLEFT", (j - 1) * (bw + 3), 0)
+        graph.bars[j] = b
+    end
+    st:Add(gc, gc:Fit(graph.height))
+
+    local row = CreateFrame("Frame", nil, p)
+    local restart = S.Ghost(S.FitButton(row, L.RESET, 30, 120))
+    restart:SetScript("OnClick", function() ns.Start(); ns.Refresh() end)
+    restart:SetPoint("RIGHT")
+    local note = S.Note(row, 11)
+    note:SetPoint("LEFT")
+    note:SetPoint("RIGHT", restart, "LEFT", -8, 0)
+    note:SetMaxLines(2)
+    note:SetText(L.SESSION_NOTE)
+    st:Add(row, 30)
+    return p
+end
+
+local function levelsPage(body)
+    local p = CreateFrame("Frame", nil, body)
+    local card = S.Card(p, L.SEC_LEVELS)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("TOPRIGHT")
+    for i = 1, 10 do
+        local l = CreateFrame("Frame", nil, card.body)
+        l:SetHeight(24)
+        l:SetPoint("TOPLEFT", 0, -(i - 1) * 26)
+        l:SetPoint("TOPRIGHT", 0, -(i - 1) * 26)
+        l.level = S.Text(l, 12)
+        l.level:SetPoint("LEFT")
+        l.level:SetWidth(80)
+        l.time = S.Text(l, 12, S.Accent())
+        l.time:SetPoint("LEFT", 84, 0)
+        l.time:SetWidth(100)
+        l.from = S.Text(l, 11, S.MUTED)
+        l.from:SetPoint("LEFT", 190, 0)
+        l.from:SetPoint("RIGHT")
+        l.from:SetWordWrap(false)
+        levelLines[i] = l
+    end
+    card:Fit(10 * 26 - 2)
+    p.empty = S.Note(card.body, 12)
+    p.empty:SetPoint("TOPLEFT")
+    p.empty:SetPoint("RIGHT")
+    p.empty:SetText(L.NO_LEVELS)
+    return p
+end
+
+local function barPage(body)
+    local p = CreateFrame("Frame", nil, body)
+    local function pct(v) return v .. "%" end
+    local alpha = S.Stepper(p, function() return ns.db.alpha end,
+        function(v) ns.SetPref("alpha", v) end, 10, 0, 100, pct)
+    local scale = S.Stepper(p, function() return ns.db.scale end,
+        function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
+    local place = S.FitButton(p, L.PLACE_RESET, 28, 110)
+    place:SetScript("OnClick", function() ns.SetPref("point", nil) end)
+    -- The text cycles through the choices on each press.
+    local text = S.Button(p, 130, 28)
+    text:SetScript("OnClick", function()
+        local cur = ns.db.text or "all"
+        local nxt = ns.TEXTS[1]
+        for i, m in ipairs(ns.TEXTS) do if m == cur then nxt = ns.TEXTS[i % #ns.TEXTS + 1] end end
+        ns.SetPref("text", nxt)
+    end)
+    frame.textBtn = text
+    local sw = S.SettingsCard(p, L.SEC_BAR, {
+        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
+          icon = ns.OPT_ICON.bar },
+        { L.OPT_LOCK, nil, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
+          icon = ns.OPT_ICON.locked },
+        { L.OPT_TEXT, nil, control = text, icon = "Interface\\Icons\\INV_Misc_Note_01" },
+        { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
+        { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
+        { L.OPT_WIDE, nil, function() return ns.db.wide end, function(v) ns.SetPref("wide", v) end,
+          icon = "Interface\\Icons\\INV_Misc_Map_02" },
+        { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
+        { L.OPT_REP, nil, function() return ns.db.rep end, function(v) ns.SetPref("rep", v) end,
+          icon = ns.OPT_ICON.rep },
+    })
+    sw:SetPoint("TOPLEFT")
+    sw:SetPoint("TOPRIGHT")
+    frame.steppers = { alpha, scale }
+    return p
 end
 
 local function build()
-    frame = S.Window("GulliXPFrame", L.TITLE, S.NARROW_W, 420)
-    local ft = S.Footer(frame)
-    local reset = ft:Add(S.FitButton(ft, L.RESET, 32, 110))
-    reset:SetScript("OnClick", function() ns.Start(); ns.Refresh() end)
+    frame = S.Window("GulliXPFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
     local st = S.Stack(body)
 
@@ -133,37 +350,29 @@ local function build()
     progress:SetPoint("TOPLEFT", 0, -22)
     progress:SetPoint("TOPRIGHT", 0, -22)
     progress:SetWidth(width)
-    st:Add(lv, 28)
+    ready = S.Text(lv, 12)
+    ready:SetPoint("TOPLEFT", 0, -36)
+    ready:SetPoint("TOPRIGHT", 0, -36)
+    ready:SetWordWrap(false)
+    st:Add(lv, 50)
 
-    local card = S.Card(body, L.SEC_SESSION)
-    for i = 1, 4 do
-        local t = S.Text(card.body, 12)
-        t:SetPoint("TOPLEFT", 0, -(i - 1) * 22)
-        t:SetPoint("TOPRIGHT", 0, -(i - 1) * 22)
-        t:SetWordWrap(false)
-        info[i] = t
+    tabs = S.Tabs(body, { L.TAB_SESSION, L.TAB_LEVELS, L.TAB_BAR }, nil, function(i)
+        for j, p in ipairs(pages) do p:SetShown(j == i) end
+        if i == 3 then for _, x in ipairs(frame.steppers) do x:Refresh() end end
+        ns.Refresh()
+    end)
+    tabs.frame:ClearAllPoints()
+    tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
+    st:Space(30 + S.GAP)
+
+    pages[1] = sessionPage(body, width)
+    pages[2] = levelsPage(body)
+    pages[3] = barPage(body)
+    for i, p in ipairs(pages) do
+        p:SetPoint("TOPLEFT", 0, -st.y)
+        p:SetPoint("BOTTOMRIGHT")
+        p:SetShown(i == 1)
     end
-    st:Add(card, card:Fit(4 * 22 - 8))
-
-    local function pct(v) return v .. "%" end
-    local alpha = S.Stepper(body, function() return ns.db.alpha end,
-        function(v) ns.SetPref("alpha", v) end, 10, 0, 100, pct)
-    local scale = S.Stepper(body, function() return ns.db.scale end,
-        function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
-    local place = S.FitButton(body, L.PLACE_RESET, 28, 110)
-    place:SetScript("OnClick", function() ns.SetPref("point", nil) end)
-    local sw, h = S.SettingsCard(body, L.SEC_BAR, {
-        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
-          icon = ns.OPT_ICON.bar },
-        { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
-          icon = ns.OPT_ICON.locked },
-        { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
-        { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
-        { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
-    })
-    frame.steppers = { alpha, scale }
-    st:Add(sw, h)
-    S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function()
         for _, x in ipairs(frame.steppers) do x:Refresh() end
         ns.Refresh()
@@ -188,3 +397,6 @@ function ns.Window()
     end
     return frame
 end
+
+-- The tabs, for the tests.
+function ns.Tabs() return tabs, pages end

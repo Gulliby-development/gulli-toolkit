@@ -180,6 +180,185 @@ test("who it buffs: a friendly target outside the group, or nobody", function()
     eq(show(ns.Plan()), "")
 end)
 
+test("other classes: Battle Shout, the best armor known, an aura, Omen of Clarity; Righteous Fury starts off", function()
+    Fake { known = { [6673] = true }, units = { player = { name = "Me", class = "WARRIOR", auras = {} } } }
+    local ns = Load()
+    eq(show(ns.Plan()), "Battle Shout@player")
+    Fake { known = { [1459] = true, [168] = true, [7302] = true }, units = { player = { name = "Me", class = "MAGE", auras = {} } } }
+    ns = Load()
+    eq(show(ns.Plan()), "Arcane Intellect@player,Ice Armor@player", "auto takes the last one known")
+    ns.DB().magearmor = "frost"
+    eq(show(ns.Plan()), "Arcane Intellect@player,Frost Armor@player")
+    ns.DB().magearmor = "off"
+    eq(show(ns.Plan()), "Arcane Intellect@player")
+    Fake { known = { [687] = true, [706] = true }, units = { player = { name = "Me", class = "WARLOCK", auras = {} } } }
+    ns = Load()
+    eq(show(ns.Plan()), "Demon Armor@player")
+    Fake { known = { [19740] = true, [465] = true, [25780] = true }, units = { player = { name = "Me", class = "PALADIN", auras = {} } } }
+    ns = Load()
+    eq(show(ns.Plan()), "Blessing of Might@player,Devotion Aura@player")
+    ns.DB().watch.fury = true
+    eq(show(ns.Plan()), "Blessing of Might@player,Devotion Aura@player,Righteous Fury@player")
+    Fake { known = { [1126] = true, [16864] = true }, units = { player = { name = "Me", class = "DRUID", auras = {} } } }
+    ns = Load()
+    eq(show(ns.Plan()), "Mark of the Wild@player,Omen of Clarity@player")
+    Fake { known = { [13165] = true }, units = { player = { name = "Me", class = "HUNTER", auras = {} } } }
+    ns = Load()
+    eq(show(ns.Plan()), "", "no aspect until one is picked")
+    ns.DB().aspect = "hawk"
+    eq(show(ns.Plan()), "Aspect of the Hawk@player")
+end)
+
+test("pets get the buffs for everyone, mana ones only with mana, and can be switched off", function()
+    local units = party({
+        pet = { name = "Imp", class = "WARLOCK", auras = {}, powerType = 0 },
+        partypet2 = { name = "Wolf", class = "HUNTER", auras = {}, powerType = 2 },
+    })
+    Fake { known = { [1243] = true, [14752] = true }, units = units, db = { groupMin = 0 } }
+    local ns = Load()
+    local s = show(ns.Plan())
+    assert(s:find("Power Word: Fortitude@pet", 1, true), s)
+    assert(s:find("Divine Spirit@pet", 1, true), s)
+    assert(s:find("Power Word: Fortitude@partypet2", 1, true), s)
+    assert(not s:find("Divine Spirit@partypet2", 1, true), "no Spirit for a pet without mana")
+    ns.DB().pets = false
+    assert(not show(ns.Plan()):find("pet", 1, true), "pets off")
+end)
+
+test("a unit is skipped for a while after a cast on it fails, and the bar says why", function()
+    local units = party()
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local main = GulliGroupBuffsButton
+    units.player.auras = { ["Power Word: Fortitude"] = 0 }
+    ns.Refresh()
+    eq(main.attrs.unit, "party1")
+    main.hooks.OnClick(main)
+    Fire("UI_ERROR_MESSAGE", 50, "Target not in line of sight")
+    ns.Refresh()
+    eq(main.attrs.unit, "party2", "the tank is skipped")
+    eq(ns.Status(ns.Plan())[1][1], "ST_SKIPPED")
+    W.spec.time = 125
+    ns.Refresh()
+    eq(main.attrs.unit, "party1", "back after the wait")
+end)
+
+test("the big button counts what waits and shows the state by colour", function()
+    Fake { known = { [1243] = true }, units = party(), db = { groupMin = 0 } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(GulliGroupBuffsButton.count._text, "+3")
+end)
+
+test("low on mana only buffs you; /ggb status prints the reason", function()
+    Fake { known = { [1243] = true }, units = party(), db = { groupMin = 0, mana = 30 }, mana = 20 }
+    local ns = Load()
+    local plan, far = ns.Plan()
+    eq(show(plan), "Power Word: Fortitude@player")
+    eq(ns.Status(plan, far)[1][1], "ST_MANA")
+    SlashCmdList.GULLIGROUPBUFFS("status")
+    local out = table.concat(W.printed, "\n")
+    assert(out:find("only buffing you", 1, true), out)
+end)
+
+test("why it is empty: no class buffs, nothing learned, a missing reagent, all out of range", function()
+    Fake { units = { player = { name = "Me", class = "ROGUE", auras = {} } } }
+    local ns = Load()
+    eq(ns.Status(ns.Plan())[1][1], "ST_NO_CLASS")
+    Fake { units = { player = { name = "Me", class = "PRIEST", auras = {} } } }
+    ns = Load()
+    eq(ns.Status(ns.Plan())[1][1], "ST_NONE_KNOWN")
+    local units = party()
+    units.player.auras = { ["Power Word: Fortitude"] = 0 }
+    units.party1.far, units.party2.far, units.party3.far = true, true, true
+    Fake { known = { [1243] = true, [21562] = true }, units = units, unusable = { ["Prayer of Fortitude"] = true } }
+    ns = Load()
+    local plan, far = ns.Plan()
+    local keys = {}
+    for _, st in ipairs(ns.Status(plan, far)) do keys[#keys + 1] = st[1] end
+    eq(table.concat(keys, ","), "ST_FAR,ST_REAGENT")
+end)
+
+test("where it shows: hidden in an inn when set, shown on a ready check with a sound", function()
+    Fake { known = { [1243] = true }, units = party(), db = { where = "norest" }, resting = true }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(GulliGroupBuffsBar.shown, false, "hidden while resting")
+    eq(GulliGroupBuffsButton.attrs.spell ~= nil, true, "the key still works")
+    Fire("READY_CHECK")
+    eq(GulliGroupBuffsBar.shown, true, "ready check shows it")
+    eq(#W.sounds, 1)
+    ns.DB().where = "instance"
+    W.spec.resting = false
+    W.spec.time = 200
+    ns.Refresh()
+    eq(GulliGroupBuffsBar.shown, false, "only in instances")
+    W.spec.instance = "party"
+    ns.Refresh()
+    eq(GulliGroupBuffsBar.shown, true)
+end)
+
+test("marks on the game's party frames show the first missing buff", function()
+    local units = party()
+    units.party2.auras = { ["Power Word: Fortitude"] = 0 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    CompactPartyFrameMember1 = W.frame(); CompactPartyFrameMember1.unit = "party1"
+    CompactPartyFrameMember2 = W.frame(); CompactPartyFrameMember2.unit = "party2"
+    local made = {}
+    for i = 1, 2 do
+        local f = _G["CompactPartyFrameMember" .. i]
+        rawset(f, "CreateTexture", function() local t = W.frame(); made[i] = t; return t end)
+    end
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    assert(made[1] and made[1].shown, "mark on the tank")
+    eq(made[2], nil, "no mark on the buffed mage")
+    ns.DB().marks = false
+    ns.Refresh()
+    eq(made[1].shown, false)
+    CompactPartyFrameMember1, CompactPartyFrameMember2 = nil, nil
+end)
+
+test("settings by group size: a raid can use other values than a party", function()
+    local units = party()
+    units.player.auras = { ["Power Word: Fortitude"] = 30 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0, perSize = true, low = 60 } }
+    local ns = Load()
+    eq(ns.Size(), "party")
+    eq(show(ns.Plan()):find("@player", 1, true) ~= nil, true, "30 s left counts as low in a party")
+    ns.DB().size.party.low = 0
+    eq(show(ns.Plan()):find("@player", 1, true), nil, "party: only when gone")
+    ns.DB().perSize = false
+    eq(show(ns.Plan()):find("@player", 1, true) ~= nil, true, "back to the shared value")
+end)
+
+test("raid groups: only the chosen groups are buffed, and you always", function()
+    local units = { player = { name = "Me", class = "PRIEST", auras = {} } }
+    local raid = {}
+    for i = 1, 4 do
+        local unit = "raid" .. i
+        if i == 1 then units[unit] = units.player
+        else units[unit] = { name = "R" .. i, class = "WARRIOR", auras = {}, inGroup = true } end
+        raid[i] = { name = "R" .. i, group = i }
+    end
+    Fake { known = { [1243] = true }, units = units, raid = raid, db = { groupMin = 0, raidGroups = "3-4" } }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@raid3,Power Word: Fortitude@raid4")
+end)
+
+test("the unit under the mouse, then the target, go first", function()
+    local units = party()
+    units.player.auras = { ["Power Word: Fortitude"] = 0 }
+    units.mouseover = units.party3
+    units.target = units.party2
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@party3,Power Word: Fortitude@party2,Power Word: Fortitude@party1")
+    ns.DB().focus = false
+    eq(show(ns.Plan()), "Power Word: Fortitude@party1,Power Word: Fortitude@party2,Power Word: Fortitude@party3")
+end)
+
 -- Runs the combat snippet the way the restricted environment does: only the calls it has.
 local function click(main, down)
     local f = assert(loadstring("local self, button, down = ...\n" .. main.wrapped))
@@ -282,7 +461,7 @@ test("registers with the toolkit when it is there", function()
 end)
 
 test("the settings window builds for every class and its buttons cycle", function()
-    for _, class in ipairs({ "PRIEST", "MAGE", "DRUID", "PALADIN", "SHAMAN", "WARRIOR" }) do
+    for _, class in ipairs({ "PRIEST", "MAGE", "DRUID", "PALADIN", "SHAMAN", "WARRIOR", "WARLOCK", "HUNTER", "ROGUE" }) do
         local units = party()
         units.player.class = class
         Fake { units = units }

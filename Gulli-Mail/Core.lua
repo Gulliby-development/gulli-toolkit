@@ -8,11 +8,20 @@ local STEP = 0.4 -- the server needs a moment between two takes
 local RECENT_MAX = 10
 local ATTACH = ATTACHMENTS_MAX_RECEIVE or 12
 
+local TRIES = 3 -- a take that changes nothing this often is one the game refuses
+local WAIT_MAX = 70 -- the server sends the next letters at most once a minute
+local WAIT_STEP = 5
+
 -- Game API wrappers.
-local function numMail() return (GetInboxNumItems and GetInboxNumItems()) or 0 end
+local function numMail()
+    if not GetInboxNumItems then return 0, 0 end
+    local shown, total = GetInboxNumItems()
+    return shown or 0, total or shown or 0
+end
 local function header(i)
-    local _, _, sender, subject, money, cod, _, items, _, _, _, _, isGM = GetInboxHeaderInfo(i)
-    return { sender = sender, subject = subject, money = money or 0, cod = cod or 0, items = items or 0, gm = isGM }
+    local _, _, sender, subject, money, cod, days, items, _, _, _, _, isGM = GetInboxHeaderInfo(i)
+    return { sender = sender, subject = subject, money = money or 0, cod = cod or 0, items = items or 0, gm = isGM,
+             days = days }
 end
 local function freeSlots()
     local free = 0
@@ -22,6 +31,8 @@ local function freeSlots()
     end
     return free
 end
+local function money() return GetMoney and GetMoney() or 0 end
+local function checkInbox() if CheckInbox then CheckInbox() end end
 local function say(msg) print("|cff9ad0ffGulli Mail|r: " .. msg) end
 local function realm() return GetRealmName() or "" end
 
@@ -36,10 +47,12 @@ function ns.Money(copper)
     return table.concat(parts, " ")
 end
 
--- What Take all would get: money, item count, and letters left out (cash on delivery).
+-- What Take all would get: money, item count, letters left out (cash on delivery) and the
+-- letters still on the server (it shows at most 50 at a time).
 function ns.Summary()
-    local s = { money = 0, items = 0, cod = 0, letters = numMail() }
-    for i = 1, numMail() do
+    local shown, total = numMail()
+    local s = { money = 0, items = 0, cod = 0, letters = shown, more = math.max(0, total - shown) }
+    for i = 1, shown do
         local h = header(i)
         if h.cod > 0 or h.gm then s.cod = s.cod + 1 else
             s.money = s.money + h.money
@@ -49,22 +62,35 @@ function ns.Summary()
     return s
 end
 
--- One take: the money or the first attachment of the last letter that has any.
--- Returns "money", "item", "full" (bags are full) or nil when nothing is left.
-function ns.TakeOne()
+-- A take is known by its place and what it is. Going from the last letter back, a take
+-- that worked moves on to another place; the same key again means the game refused it.
+-- `what` (without the place) counts each refused thing once.
+local function takeKey(i, h, what)
+    local w = (h.sender or "?") .. "\1" .. (h.subject or "") .. "\1" .. what
+    return i .. "\1" .. w, w
+end
+
+-- The next thing to take, from the last letter back: { i, j, kind = "money"|"item", key,
+-- amount }, "full" when the next one is an item and the bags are full, or nil. `skip` holds
+-- the keys the game refused.
+function ns.Next(skip)
+    skip = skip or {}
     for i = numMail(), 1, -1 do
         local h = header(i)
         if h.cod == 0 and not h.gm then
-            if h.money > 0 then
-                TakeInboxMoney(i)
-                return "money", h.money
+            local k, what = takeKey(i, h, "money")
+            if h.money > 0 and not skip[k] then
+                return { i = i, kind = "money", key = k, what = what, amount = h.money }
             end
             if h.items > 0 then
                 for j = 1, ATTACH do
-                    if GetInboxItem(i, j) then
-                        if freeSlots() == 0 then return "full" end
-                        TakeInboxItem(i, j)
-                        return "item"
+                    local name, id = GetInboxItem(i, j)
+                    if name then
+                        k, what = takeKey(i, h, j .. ":" .. tostring(id or name))
+                        if not skip[k] then
+                            if freeSlots() == 0 then return "full" end
+                            return { i = i, j = j, kind = "item", key = k, what = what }
+                        end
                     end
                 end
             end
@@ -73,23 +99,71 @@ function ns.TakeOne()
     return nil
 end
 
+-- One take. Returns "money", "item", "full" or nil when nothing is left.
+function ns.TakeOne(skip)
+    local c = ns.Next(skip)
+    if type(c) ~= "table" then return c end
+    if c.kind == "money" then TakeInboxMoney(c.i) else TakeInboxItem(c.i, c.j) end
+    return c.kind, c.amount, c
+end
+
+-- Take all, one thing per step. A thing the game refuses (a unique item the bags already
+-- hold) is tried TRIES times, then left in its letter and counted. When the mailbox shows
+-- fewer letters than the server holds, it asks for the rest and goes on.
 function ns.TakeAll()
     if ns.taking then return end
-    ns.taking = { money = 0, items = 0 }
-    local function step()
-        if not ns.taking or not ns.open then ns.taking = nil; return end
-        local what, amount = ns.TakeOne()
-        if what == "money" then ns.taking.money = ns.taking.money + amount
-        elseif what == "item" then ns.taking.items = ns.taking.items + 1 end
-        if what == "money" or what == "item" then
+    local t = { items = 0, failed = 0, skip = {}, refused = {}, start = money() }
+    ns.taking = t
+    local function finish(why)
+        ns.taking = nil
+        local got = math.max(0, money() - t.start)
+        local msg = L.TAKEN:format(t.items, ns.Money(got))
+        if t.failed > 0 then msg = msg .. " " .. L.FAILED:format(t.failed) end
+        if why == "full" then msg = msg .. " " .. L.FULL end
+        say(msg)
+        if ns.Refresh then ns.Refresh() end
+    end
+    local step
+    step = function()
+        if ns.taking ~= t or not ns.open then if ns.taking == t then ns.taking = nil end return end
+        local c = ns.Next(t.skip)
+        -- The last take is done once something else comes next; the same thing again means
+        -- the game did not take it.
+        if t.last and not (type(c) == "table" and c.key == t.last.key) then
+            if t.last.kind == "item" then t.items = t.items + 1 end
+            t.last, t.tries = nil, 0
+        end
+        if type(c) == "table" and t.last and c.key == t.last.key then
+            t.tries = t.tries + 1
+            if t.tries >= TRIES then
+                t.skip[c.key] = true
+                if not t.refused[c.what] then t.refused[c.what] = true; t.failed = t.failed + 1 end
+                t.last, t.tries = nil, 0
+                return step()
+            end
+        end
+        if type(c) == "table" then
+            t.waitSince = nil
+            if c.kind == "money" then TakeInboxMoney(c.i) else TakeInboxItem(c.i, c.j) end
+            t.last, t.tries = c, t.tries or 0
             if ns.Refresh then ns.Refresh() end
             C_Timer.After(STEP, step)
             return
         end
-        local t = ns.taking
-        ns.taking = nil
-        say(L.TAKEN:format(t.items, ns.Money(t.money)) .. (what == "full" and (" " .. L.FULL) or ""))
-        if ns.Refresh then ns.Refresh() end
+        if c == nil then
+            local shown, total = numMail()
+            if total > shown then
+                t.waitSince = t.waitSince or GetTime()
+                if GetTime() - t.waitSince < WAIT_MAX then
+                    t.waiting = total - shown
+                    checkInbox()
+                    if ns.Refresh then ns.Refresh() end
+                    C_Timer.After(WAIT_STEP, step)
+                    return
+                end
+            end
+        end
+        finish(c)
     end
     step()
 end
@@ -156,6 +230,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.open, ns.taking = false, nil
         if ns.HidePanel then ns.HidePanel() end
     elseif event == "MAIL_INBOX_UPDATE" then
+        if ns.taking then ns.taking.waiting = nil end
         if ns.Refresh then ns.Refresh() end
     end
 end)
