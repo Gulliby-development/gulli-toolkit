@@ -62,7 +62,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliXPFrame", L.TITLE, 460, 420)
+    frame = S.Window("GulliXPFrame", L.TITLE, S.NARROW_W, 420)
     local ft = S.Footer(frame)
     local reset = ft:Add(S.FitButton(ft, L.RESET, 32, 110))
     reset:SetScript("OnClick", function() ns.Start(); ns.Refresh() end)
@@ -105,7 +105,20 @@ local function build()
 end
 
 function ns.Toggle()
-    if not frame then build() end
-    frame:SetShown(not frame:IsShown())
-    if frame:IsShown() then ns.Refresh() end
+    if S.ToggleWindow(ns.Window()) then
+        ns.Refresh()
+    end
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
+    if not frame then
+        build()
+        -- In the hub the window is shown by the hub, not by ns.Toggle.
+        frame:HookScript("OnShow", function(self)
+            if not self.docked then return end
+            ns.Refresh()
+        end)
+    end
+    return frame
 end

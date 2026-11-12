@@ -166,5 +166,6 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-QuickChat\\icon",
         slash = "/gqk",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
     })
 end

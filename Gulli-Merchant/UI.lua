@@ -16,7 +16,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliMerchantFrame", L.TITLE, 440, 300)
+    frame = S.Window("GulliMerchantFrame", L.TITLE, S.NARROW_W, 300)
     local ft = S.Footer(frame)
     sellBtn = S.Primary(S.FitButton(ft, L.SELL_NOW, 32, 110))
     ft:Add(sellBtn)
@@ -39,6 +39,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

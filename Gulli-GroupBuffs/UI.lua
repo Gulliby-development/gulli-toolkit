@@ -279,7 +279,7 @@ end)
 
 ---- Settings window -------------------------------------------------------------
 
-local W, H = 540, 580
+local W, H = S.NARROW_W, 580
 local I = "Interface\\Icons\\"
 local win, scroll, keyButton
 local rows = {}
@@ -546,9 +546,22 @@ local function buildWindow()
 end
 
 function ns.Toggle()
-    if not win then buildWindow() end
-    if win:IsShown() then win:Hide(); return end
-    fillRows()
-    scroll:Top()
-    win:Show()
+    if S.ToggleWindow(ns.Window()) then
+        fillRows()
+        scroll:Top()
+    end
+end
+
+-- The settings window, for the hub (/gulli) to show inside it.
+function ns.Window()
+    if not win then
+        buildWindow()
+        -- In the hub the window is shown by the hub, not by ns.Toggle.
+        win:HookScript("OnShow", function(self)
+            if not self.docked then return end
+            fillRows()
+            scroll:Top()
+        end)
+    end
+    return win
 end

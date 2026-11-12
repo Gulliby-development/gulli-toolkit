@@ -72,7 +72,7 @@ local function numberEdit(parent, get, set)
 end
 
 local function build()
-    frame = S.Window("GulliInstanceLimitFrame", L.TITLE, 480, 600)
+    frame = S.Window("GulliInstanceLimitFrame", L.TITLE, S.NARROW_W, 600)
     local ft = S.Footer(frame)
     resetBtn = ft:Add(S.FitButton(ft, L.RESET, 32, 110))
     resetBtn:SetScript("OnClick", function() ns.Reset() end)
@@ -131,8 +131,13 @@ local function buildBadge()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end
 
 function ns.SetupBadge()

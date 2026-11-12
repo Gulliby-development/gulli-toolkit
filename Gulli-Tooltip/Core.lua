@@ -161,6 +161,7 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Tooltip\\icon",
         slash = "/gtt",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         options = {
             option("price", ns.L.OPT_PRICE),
             option("quest", ns.L.OPT_QUEST),

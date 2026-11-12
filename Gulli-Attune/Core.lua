@@ -225,5 +225,6 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Attune\\icon",
         slash = "/gat",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
     })
 end

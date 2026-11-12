@@ -7,7 +7,7 @@ local S = ns.Skin
 local frame
 
 local function build()
-    frame = S.Window("GulliTooltipFrame", L.TITLE, 420, 240)
+    frame = S.Window("GulliTooltipFrame", L.TITLE, S.NARROW_W, 240)
     local rows = {}
     for _, o in ipairs({ { "price", L.OPT_PRICE }, { "quest", L.OPT_QUEST },
                          { "id", L.OPT_ID } }) do
@@ -20,6 +20,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

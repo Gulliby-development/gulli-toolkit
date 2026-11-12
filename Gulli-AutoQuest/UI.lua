@@ -7,7 +7,7 @@ local S = ns.Skin
 local frame
 
 local function build()
-    frame = S.Window("GulliAutoQuestFrame", L.TITLE, 440, 300)
+    frame = S.Window("GulliAutoQuestFrame", L.TITLE, S.NARROW_W, 300)
     local body = frame.body
     local rows = {}
     for _, o in ipairs({ { "accept", L.OPT_ACCEPT }, { "turnIn", L.OPT_TURNIN },
@@ -24,6 +24,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

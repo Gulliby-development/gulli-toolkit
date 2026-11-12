@@ -134,5 +134,6 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-XP\\icon",
         slash = "/gxp",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
     })
 end

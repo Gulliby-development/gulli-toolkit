@@ -162,6 +162,7 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Merchant\\icon",
         slash = "/gmc",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         options = {
             option("sell", ns.L.OPT_SELL),
             option("repair", ns.L.OPT_REPAIR),

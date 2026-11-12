@@ -241,5 +241,89 @@ test("the client language picks the table, English is the fallback", function()
     eq(ns.L.OPEN, "Open")
 end)
 
+test("a module opens inside the hub, goes back, and its command takes it out", function()
+    Fake({ addons = { QC, { name = "Gulli-Merchant", enabled = false, loaded = false,
+                            meta = { ["X-Gulli-Module"] = "Merchant" } } } })
+    local ns = Load()
+    local S = ns.Skin
+    local win = S.Window(nil, "Quest Cleaner", S.NARROW_W, 300)
+    local opened = 0
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() opened = opened + 1 end,
+                            window = function() return win end })
+    ns.Toggle()
+    local view = ns.View()
+    ns.Enter("QuestCleaner")
+    eq(view.inside, "QuestCleaner", "the hub is inside the module")
+    eq(win.docked, true, "the window sits in the hub")
+    eq(win:IsShown(), true)
+    eq(win:GetHeight(), S.DOCK_H, "it takes the hub's height")
+    eq(view.narrow, true, "a narrow window keeps the module card beside it")
+    eq(opened, 0, "the module's own open is not called")
+    win.dockOpts.back(win)
+    eq(view.inside, nil, "back goes to the list")
+    eq(win.docked, false)
+    eq(win:IsShown(), false, "the window is closed again")
+
+    ns.Enter("QuestCleaner")
+    S.FitWindow(win, 200)
+    eq(win:GetHeight(), S.DOCK_H, "a window that fits itself keeps the hub's height inside")
+    S.ToggleWindow(win)
+    eq(view.inside, nil, "the slash command takes the window out of the hub")
+    eq(win.docked, false)
+    eq(win:IsShown(), true, "and shows it alone")
+    eq(win:GetHeight(), S.HEADER_H + 2 * S.PAD + 200, "at its own height")
+    S.ToggleWindow(win)
+    eq(win:IsShown(), false, "the command closes it alone as before")
+
+    ns.Enter("Merchant")
+    eq(view.inside, "Merchant", "a module that is off opens its page inside too")
+    local page = ns.Inside()
+    assert(page and page ~= win and page.docked, "the page for a module that is off")
+    eq(page.empty.title:GetText(), ns.L.INSIDE_OFF)
+    local _, hub = ns.View()
+    hub:Hide()
+    hub:GetScript("OnHide")()
+    eq(view.inside, nil, "closing the hub leaves the module")
+end)
+
+test("a module without a window, or a window too big for the hub, opens alone", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local opened = 0
+    local big = ns.Skin.Window(nil, "Big", 2000, 300)
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() opened = opened + 1 end,
+                            window = function() return big end })
+    ns.Toggle()
+    ns.Enter("QuestCleaner")
+    eq(opened, 1, "too big: the module opens its own window")
+    eq(ns.View().inside, nil)
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() opened = opened + 1 end })
+    ns.Toggle()
+    ns.Enter("QuestCleaner")
+    eq(opened, 2, "no window: the module opens its own window")
+end)
+
+test("every module gives its window to the hub, in a size the hub has room for", function()
+    local p = io.popen("ls -d Gulli-*/")
+    local n = 0
+    for dir in p:lines() do
+        local name = dir:gsub("/$", "")
+        if name ~= "Gulli-Toolkit" then
+            n = n + 1
+            local all = ""
+            for _, f in ipairs({ "Core.lua", "UI.lua" }) do
+                local fh = io.open(name .. "/" .. f)
+                if fh then all = all .. fh:read("*a"); fh:close() end
+            end
+            assert(all:find("window = function", 1, true), name .. ": Register has no window")
+            assert(all:find("function ns.Window", 1, true), name .. ": no ns.Window")
+            assert(all:find("S.NARROW_W", 1, true) or all:find("S.WIDE_W", 1, true),
+                name .. ": the window is not S.NARROW_W or S.WIDE_W wide")
+        end
+    end
+    p:close()
+    assert(n > 0, "found the modules")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

@@ -98,7 +98,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliPartyQuestsFrame", L.TITLE, 760, 500)
+    frame = S.Window("GulliPartyQuestsFrame", L.TITLE, S.WIDE_W, 500)
     local body = frame.body
     tabs = S.Tabs(body, { L.TAB_OURS, L.TAB_THEIRS }, 160, function(i) current = i; ns.Refresh() end)
 
@@ -144,6 +144,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

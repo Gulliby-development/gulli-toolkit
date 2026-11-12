@@ -10,6 +10,9 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    POP_OUT = "Open in its own window",
+    INSIDE_OFF = "This module is off. Switch it on above, then reload the interface to open it here.",
+    INSIDE_RELOAD = "The module is on. Reload the interface to open it here.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Our small addons in one place.",
     OPEN = "Open",
@@ -93,6 +96,9 @@ T.en = {
 }
 
 T.de = {
+    POP_OUT = "In eigenem Fenster öffnen",
+    INSIDE_OFF = "Dieses Modul ist aus. Schalte es oben ein und lade dann die Oberfläche neu, um es hier zu öffnen.",
+    INSIDE_RELOAD = "Das Modul ist an. Lade die Oberfläche neu, um es hier zu öffnen.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Unsere kleinen Addons an einem Ort.",
     OPEN = "Öffnen",
@@ -176,6 +182,9 @@ T.de = {
 }
 
 T.es = {
+    POP_OUT = "Abrir en su propia ventana",
+    INSIDE_OFF = "Este módulo está apagado. Enciéndelo arriba y recarga la interfaz para abrirlo aquí.",
+    INSIDE_RELOAD = "El módulo está encendido. Recarga la interfaz para abrirlo aquí.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Nuestros pequeños addons en un solo lugar.",
     OPEN = "Abrir",
@@ -259,6 +268,9 @@ T.es = {
 }
 
 T.fr = {
+    POP_OUT = "Ouvrir dans sa propre fenêtre",
+    INSIDE_OFF = "Ce module est désactivé. Activez-le en haut, puis rechargez l'interface pour l'ouvrir ici.",
+    INSIDE_RELOAD = "Le module est activé. Rechargez l'interface pour l'ouvrir ici.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Nos petits addons au même endroit.",
     OPEN = "Ouvrir",
@@ -342,6 +354,9 @@ T.fr = {
 }
 
 T.pl = {
+    POP_OUT = "Otwórz w osobnym oknie",
+    INSIDE_OFF = "Ten moduł jest wyłączony. Włącz go u góry i przeładuj interfejs, aby otworzyć go tutaj.",
+    INSIDE_RELOAD = "Moduł jest włączony. Przeładuj interfejs, aby otworzyć go tutaj.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Nasze małe dodatki w jednym miejscu.",
     OPEN = "Otwórz",
@@ -425,6 +440,9 @@ T.pl = {
 }
 
 T.pt = {
+    POP_OUT = "Abrir em janela própria",
+    INSIDE_OFF = "Este módulo está desligado. Ligue-o acima e recarregue a interface para abri-lo aqui.",
+    INSIDE_RELOAD = "O módulo está ligado. Recarregue a interface para abri-lo aqui.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Nossos pequenos addons em um só lugar.",
     OPEN = "Abrir",
@@ -508,6 +526,9 @@ T.pt = {
 }
 
 T.ru = {
+    POP_OUT = "Открыть в отдельном окне",
+    INSIDE_OFF = "Модуль выключен. Включите его переключателем вверху и перезагрузите интерфейс, чтобы открыть здесь.",
+    INSIDE_RELOAD = "Модуль включён. Перезагрузите интерфейс, чтобы открыть его здесь.",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "Все наши маленькие аддоны в одном месте.",
     OPEN = "Открыть",
@@ -591,6 +612,9 @@ T.ru = {
 }
 
 T.zh = {
+    POP_OUT = "在单独窗口中打开",
+    INSIDE_OFF = "此模块已关闭。在上方打开它，然后重载界面即可在这里打开。",
+    INSIDE_RELOAD = "模块已开启。重载界面即可在这里打开。",
     TITLE = "Gulli Toolkit",
     SUBTITLE = "我们的小插件集中在一处。",
     OPEN = "打开",

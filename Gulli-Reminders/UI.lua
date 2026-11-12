@@ -79,7 +79,7 @@ local function numberEdit(parent, key)
 end
 
 local function build()
-    frame = S.Window("GulliRemindersFrame", L.TITLE, 460, 360)
+    frame = S.Window("GulliRemindersFrame", L.TITLE, S.NARROW_W, 360)
     local body = frame.body
     local function switch(key, label, extra)
         return { label, nil, function() return ns.db[key] end, function(v) ns.db[key] = v; ns.Refresh() end,
@@ -100,6 +100,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

@@ -73,7 +73,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliBulletinFrame", L.TITLE, 740, 500)
+    frame = S.Window("GulliBulletinFrame", L.TITLE, S.WIDE_W, 500)
     local body, width = frame.body, frame.inner[1]
     local labels = {}
     for i, k in ipairs(TAB_KEYS) do labels[i] = L[k] end
@@ -105,6 +105,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

@@ -64,7 +64,7 @@ local function dropItem()
 end
 
 local function build()
-    frame = S.Window("GulliLootFrame", L.TITLE, 500, 600)
+    frame = S.Window("GulliLootFrame", L.TITLE, S.NARROW_W, 600)
     local body, width = frame.body, frame.inner[1]
     local st = S.Stack(body)
 
@@ -101,6 +101,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

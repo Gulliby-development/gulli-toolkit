@@ -145,6 +145,7 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",
         slash = "/gaq",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         options = {
             option("accept", ns.L.OPT_ACCEPT),
             option("turnIn", ns.L.OPT_TURNIN),

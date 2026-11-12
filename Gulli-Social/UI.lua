@@ -13,7 +13,7 @@ local function switch(key, label)
 end
 
 local function build()
-    frame = S.Window("GulliSocialFrame", L.TITLE, 460, 400)
+    frame = S.Window("GulliSocialFrame", L.TITLE, S.NARROW_W, 400)
     local body = frame.body
     local words = S.Edit(body, 170, 28)
     words:SetJustifyH("LEFT")
@@ -41,6 +41,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end
