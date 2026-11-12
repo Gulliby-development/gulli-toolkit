@@ -109,13 +109,14 @@ function ns.RestedNow(c, now)
     return math.min(RESTED_MAX, (c.rested or 0) + hours * rate)
 end
 
--- What is waiting for a character: { { key, text } }, the most useful first.
+-- What is waiting for a character: { { key, text, cd } }, the most useful first; cd is the
+-- cooldown's text key.
 function ns.Tasks(c, now)
     now = now or time()
     local out = {}
-    local function add(key, text) out[#out + 1] = { key = key, text = text } end
+    local function add(key, text, cd) out[#out + 1] = { key = key, text = text, cd = cd } end
     for text, ready in pairs(c.cooldowns or {}) do
-        if ready <= now then add("CD", L[text]) end
+        if ready <= now then add("CD", L[text], text) end
     end
     table.sort(out, function(a, b) return a.text < b.text end)
     if c.trainer and c.level > c.trainer then add("TRAINER", L.TASK_TRAINER) end

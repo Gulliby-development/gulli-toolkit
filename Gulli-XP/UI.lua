@@ -5,7 +5,8 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, info, bar
+local frame, bar, tiles, left, progress
+local info = {}
 
 function ns.BarText()
     local st = ns.Stats()
@@ -45,37 +46,66 @@ function ns.Refresh()
     end
     if not frame or not frame:IsShown() then return end
     local st = ns.Stats()
+    local t = tiles.tiles
+    t[1]:Set(ns.Short(st.rate), st.rate > 0 and S.Accent() or S.MUTED)
+    t[2]:Set(st.toLevel and ns.Span(st.toLevel) or "-", st.toLevel and S.TEXT or S.MUTED)
+    t[3]:Set(st.killsToLevel and tostring(st.killsToLevel) or "-", st.killsToLevel and S.TEXT or S.MUTED)
+    left:SetText(L.LEFT:format(ns.Short(st.left), st.percent) .. (st.toLevel and "" or ("   " .. S.Hex(S.FAINT) .. L.NO_RATE .. "|r")))
+    progress:Set(st.percent / 100)
     local lines = {
-        L.RATE:format(ns.Short(st.rate)),
-        L.LEFT:format(ns.Short(st.left), st.percent),
-        st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.NO_RATE,
-        L.FROM_KILLS:format(st.kills, ns.Short(st.killXP)) ..
-            (st.killsToLevel and ("  " .. L.KILLS:format(st.killsToLevel)) or ""),
+        L.FROM_KILLS:format(st.kills, ns.Short(st.killXP)),
         L.FROM_QUESTS:format(st.quests, ns.Short(st.questXP)),
         L.RESTED:format(ns.Short(st.rested)),
         L.SESSION:format(ns.Span(st.session), ns.Short(st.gained)),
     }
-    info:SetText(table.concat(lines, "\n"))
+    for i, l in ipairs(lines) do info[i]:SetText(l) end
 end
 
 local function build()
-    frame = S.Window("GulliXPFrame", L.TITLE, 380, 300)
-    local body = frame.body
-    info = S.Text(body, 13)
-    info:SetPoint("TOPLEFT", 0, 0)
-    info:SetPoint("RIGHT", 0, 0)
-    info:SetJustifyH("LEFT")
-    info:SetSpacing(4)
-    local c = S.CheckRow(body, L.OPT_BAR, function() return ns.db.bar end, function(v) ns.db.bar = v; ns.Refresh() end)
-    c:SetPoint("BOTTOMLEFT", 0, 40)
-    local reset = S.Button(body, 160, 30)
-    reset:SetPoint("BOTTOMLEFT", 0, 0)
-    reset:SetText(L.RESET)
+    frame = S.Window("GulliXPFrame", L.TITLE, 460, 420)
+    local ft = S.Footer(frame)
+    local reset = ft:Add(S.FitButton(ft, L.RESET, 32, 110))
     reset:SetScript("OnClick", function() ns.Start(); ns.Refresh() end)
+    local body, width = frame.body, frame.inner[1]
+    local st = S.Stack(body)
+
+    tiles = S.StatRow(body, { L.STAT_RATE, L.STAT_TIME, L.STAT_KILLS }, 62,
+        { "Interface\\Icons\\INV_Misc_Book_11", "Interface\\Icons\\INV_Misc_PocketWatch_01",
+          "Interface\\Icons\\INV_Sword_04" })
+    st:Add(tiles, 62)
+    tiles:Layout(width)
+
+    local lv = CreateFrame("Frame", nil, body)
+    left = S.Text(lv, 12, S.MUTED)
+    left:SetPoint("TOPLEFT")
+    left:SetPoint("TOPRIGHT")
+    left:SetWordWrap(false)
+    progress = S.Progress(lv, 6)
+    progress:SetPoint("TOPLEFT", 0, -22)
+    progress:SetPoint("TOPRIGHT", 0, -22)
+    progress:SetWidth(width)
+    st:Add(lv, 28)
+
+    local card = S.Card(body, L.SEC_SESSION)
+    for i = 1, 4 do
+        local t = S.Text(card.body, 12)
+        t:SetPoint("TOPLEFT", 0, -(i - 1) * 22)
+        t:SetPoint("TOPRIGHT", 0, -(i - 1) * 22)
+        t:SetWordWrap(false)
+        info[i] = t
+    end
+    st:Add(card, card:Fit(4 * 22 - 8))
+
+    local sw, h = S.SettingsCard(body, nil, {
+        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.db.bar = v; ns.Refresh() end,
+          icon = "Interface\\Icons\\INV_Misc_Spyglass_02" } })
+    st:Add(sw, h)
+    S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function() ns.Refresh() end)
 end
 
 function ns.Toggle()
     if not frame then build() end
     frame:SetShown(not frame:IsShown())
+    if frame:IsShown() then ns.Refresh() end
 end

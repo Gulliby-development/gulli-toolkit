@@ -4,37 +4,9 @@ local S = ns.Skin
 
 -- One small window: the switch, the list of mobs, how often to look and which sound to
 -- play. Every change is saved at once; the search itself lives in Core.lua.
-local W, H = 400, 540
-local TITLE_H = 28
-local PAD = 16
+local W = 440
 
 local frame, enable, memo, interval, soundName, again, banner, status
-
-local labels = {}
-local function say(obj, key)
-    labels[#labels + 1] = { obj, key }
-    obj:SetText(L[key])
-end
-
-local function button(parent, key, width)
-    local b = S.Button(parent, width, 30)
-    if key then say(b, key) end
-    return b
-end
-
-local function checkbox(parent, key, onClick)
-    local c = S.Check(parent, 26)
-    local label = S.Text(c, 13)
-    label:SetPoint("LEFT", c, "RIGHT", 2, 0)
-    say(label, key)
-    c.label = label
-    c:SetHitRectInsets(0, -(label:GetStringWidth() + 8), 0, 0)
-    c:SetScript("OnClick", function(self)
-        self:SetChecked(not self:GetChecked())
-        onClick(self:GetChecked())
-    end)
-    return c
-end
 
 local function soundIndex()
     for i, s in ipairs(ns.SOUNDS) do
@@ -70,6 +42,8 @@ function ns.Refresh()
         text = text .. "\n" .. L.STATUS_LAST:format(table.concat(ns.lastFound.names, ", "))
     end
     status:SetText(text)
+    local c = d.enabled and S.GOOD or S.MUTED
+    status:SetTextColor(c[1], c[2], c[3], 1)
 end
 
 ns.OnState = ns.Refresh
@@ -80,129 +54,92 @@ local function saveInterval(self)
         ns.Refresh()
     else
         status:SetText(L.BAD_INTERVAL)
+        status:SetTextColor(S.BAD[1], S.BAD[2], S.BAD[3], 1)
         self:SetText(intervalText(ns.db.interval))
     end
 end
 
 local function build()
-    local accent = S.Accent()
-    frame = CreateFrame("Frame", "GulliMobFinderFrame", UIParent)
-    S.Box(frame, S.BG)
-    frame:SetSize(W, H)
-    frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:Hide()
-    tinsert(UISpecialFrames, "GulliMobFinderFrame")
+    frame = S.Window("GulliMobFinderFrame", L.TITLE, W, 640, { sub = "/gmf" })
+    local ft = S.Footer(frame)
+    local play = ft:Add(S.FitButton(ft, L.PLAY, 30, 80))
+    play:SetScript("OnClick", function() ns.PlayAlert() end)
+    status = ft.status
+    local body, width = frame.body, frame.inner[1]
+    local st = S.Stack(body)
 
-    -- Title bar: drag to move, a flat close button.
-    local bar = CreateFrame("Frame", nil, frame)
-    bar:SetPoint("TOPLEFT", 1, -1)
-    bar:SetPoint("TOPRIGHT", -1, -1)
-    bar:SetHeight(TITLE_H)
-    S.Box(bar, S.PANEL, { 0, 0, 0, 0 })
-    local line = bar:CreateTexture(nil, "ARTWORK")
-    line:SetTexture("Interface\\Buttons\\WHITE8X8")
-    line:SetVertexColor(accent[1], accent[2], accent[3], 0.8)
-    line:SetPoint("BOTTOMLEFT")
-    line:SetPoint("BOTTOMRIGHT")
-    line:SetHeight(1)
-    bar:EnableMouse(true)
-    bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function() frame:StartMoving() end)
-    bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    local title = S.Text(bar, 14)
-    title:SetPoint("LEFT", 10, 0)
-    title:SetText(S.Hex(accent) .. "Gulli|r-MobFinder")
-    local close = S.Button(bar, 24, 22)
-    close:SetPoint("RIGHT", -3, 0)
-    close:SetText("×")
-    close:SetScript("OnEnter", function(self) S.Fill(self, { 0.6, 0.1, 0.1, 1 }) end)
-    close:SetScript("OnLeave", function(self) S.Fill(self, S.PANEL) end)
-    close:SetScript("OnClick", function() frame:Hide() end)
+    local main, mh = S.SettingsCard(body, nil, {
+        { L.ENABLE, nil, function() return ns.db.enabled end, function(on) ns.SetEnabled(on) end,
+          icon = "Interface\\Icons\\Ability_Hunter_SniperShot" } })
+    enable = main.rows[1]
+    enable.label:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 14, "")
+    st:Add(main, mh)
 
-    enable = checkbox(frame, "ENABLE", function(on) ns.SetEnabled(on) end)
-    enable:SetPoint("TOPLEFT", PAD - 6, -(TITLE_H + 12))
-    enable.label:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 15, "")
-
-    local mobs = S.Text(frame, 12, S.MUTED)
-    mobs:SetPoint("TOPLEFT", enable, "BOTTOMLEFT", 6, -10)
-    mobs:SetPoint("RIGHT", -PAD, 0)
-    say(mobs, "MOBS")
-
-    memo = S.Memo(frame, W - 2 * PAD, 150)
-    memo:SetPoint("TOPLEFT", mobs, "BOTTOMLEFT", 0, -6)
+    local mobs = S.Card(body, L.MOBS)
+    memo = S.Memo(mobs.body, width - 2 * S.INSET, 130)
+    memo:SetPoint("TOPLEFT")
+    memo:SetPoint("TOPRIGHT")
     memo.edit:SetScript("OnTextChanged", function(self, user)
         if user then
             ns.SetNames(ns.ParseNames(self:GetText()))
             ns.Refresh()
         end
     end)
-
-    local add = button(frame, "ADD_TARGET", 150)
-    add:SetPoint("TOPLEFT", memo, "BOTTOMLEFT", 0, -8)
+    local add = S.FitButton(mobs.body, L.ADD_TARGET, 30, 120)
+    add:SetPoint("TOPLEFT", memo, "BOTTOMLEFT", 0, -10)
     add:SetScript("OnClick", function()
         local name = ns.AddTarget()
         memo.edit:ClearFocus()
         ns.Refresh()
         if not name then status:SetText(L.NO_TARGET) end
     end)
+    st:Add(mobs, mobs:Fit(130 + 10 + 30))
 
-    -- How often to look.
-    local every = S.Text(frame, 13)
-    every:SetPoint("TOPLEFT", add, "BOTTOMLEFT", 0, -18)
-    say(every, "EVERY")
-    interval = S.Edit(frame, 50)
-    interval:SetPoint("LEFT", every, "RIGHT", 10, 0)
+    -- How often to look: [n] sec.
+    local every = CreateFrame("Frame", nil, body)
+    every:SetSize(96, 28)
+    interval = S.Edit(every, 52, 28)
+    interval:SetPoint("LEFT")
     interval:SetMaxLetters(4)
     interval:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     interval:SetScript("OnEditFocusLost", function(self)
-        S.SetBorder(self, S.BORDER)
+        S.SetBorder(self, S.EDGE)
         saveInterval(self)
     end)
-    local sec = S.Text(frame, 13)
+    local sec = S.Text(every, 12, S.MUTED)
     sec:SetPoint("LEFT", interval, "RIGHT", 8, 0)
-    say(sec, "SECONDS")
+    sec:SetText(L.SECONDS)
 
     -- Which sound: arrows step through the list and play the new sound.
-    local sound = S.Text(frame, 13)
-    sound:SetPoint("TOPLEFT", every, "BOTTOMLEFT", 0, -24)
-    say(sound, "SOUND")
-    local prev = S.Button(frame, 30, 30)
-    prev:SetPoint("LEFT", sound, "RIGHT", 10, 0)
+    local sound = CreateFrame("Frame", nil, body)
+    sound:SetSize(30 + 140 + 30, 28)
+    local prev = S.Button(sound, 28, 28)
+    prev:SetPoint("LEFT")
     prev:SetText("<")
     prev:SetScript("OnClick", function() stepSound(-1) end)
-    soundName = S.Text(frame, 13)
-    soundName:SetPoint("LEFT", prev, "RIGHT", 6, 0)
-    soundName:SetWidth(150)
-    soundName:SetJustifyH("CENTER")
-    soundName:SetWordWrap(false)
-    local nextB = S.Button(frame, 30, 30)
-    nextB:SetPoint("LEFT", soundName, "RIGHT", 6, 0)
+    local nextB = S.Button(sound, 28, 28)
+    nextB:SetPoint("RIGHT")
     nextB:SetText(">")
     nextB:SetScript("OnClick", function() stepSound(1) end)
-    local play = button(frame, "PLAY", 90)
-    play:SetPoint("TOPRIGHT", memo, "BOTTOMRIGHT", 0, -8)
-    play:SetScript("OnClick", function() ns.PlayAlert() end)
+    soundName = S.Text(sound, 12)
+    soundName:SetPoint("LEFT", prev, "RIGHT", 4, 0)
+    soundName:SetPoint("RIGHT", nextB, "LEFT", -4, 0)
+    soundName:SetJustifyH("CENTER")
+    soundName:SetWordWrap(false)
 
-    again = checkbox(frame, "AGAIN", function(on) ns.db.again = on end)
-    again:SetPoint("TOPLEFT", sound, "BOTTOMLEFT", -6, -16)
-    banner = checkbox(frame, "BANNER", function(on) ns.db.banner = on end)
-    banner:SetPoint("TOPLEFT", again, "BOTTOMLEFT", 0, -2)
-
-    local note = S.Text(frame, 11, S.MUTED)
-    note:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", 6, -10)
-    note:SetPoint("RIGHT", -PAD, 0)
-    note:SetWordWrap(true)
-    say(note, "NOTE")
-
-    status = S.Text(frame, 12)
-    status:SetPoint("BOTTOMLEFT", PAD, 14)
-    status:SetPoint("RIGHT", -PAD, 0)
-    status:SetWordWrap(true)
-
+    local opts, oh = S.SettingsCard(body, nil, {
+        { L.EVERY, nil, control = every, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
+        { L.SOUND, nil, control = sound, icon = "Interface\\Icons\\INV_Misc_Horn_01" },
+        { L.AGAIN, nil, function() return ns.db.again end, function(on) ns.db.again = on end,
+          icon = "Interface\\Icons\\Spell_Nature_TimeStop" },
+        { L.BANNER, nil, function() return ns.db.banner end, function(on) ns.db.banner = on end,
+          icon = "Interface\\Icons\\Ability_Warrior_BattleShout" },
+    })
+    again, banner = opts.rows[3], opts.rows[4]
+    st:Add(opts, oh)
+    local note, nh = S.Paragraph(body, L.NOTE, width)
+    st:Add(note, nh)
+    S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", ns.Refresh)
 end
 

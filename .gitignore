@@ -1,3 +1,4 @@
 Gulli-*.zip
 release.json
 __pycache__/
+tools/preview/.cache/

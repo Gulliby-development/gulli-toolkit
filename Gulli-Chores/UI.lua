@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, chars, list, info, forget
+local frame, chars, list, info, forget, head, empty
 local selected
 
 local ICON = {
@@ -16,6 +16,18 @@ local ICON = {
     REPAIR = "Interface\\Icons\\Trade_BlackSmithing",
     BAGS = "Interface\\Icons\\INV_Misc_Bag_08",
 }
+-- Each cooldown shows the icon of what it makes; a new cooldown text key gets one here.
+local CD_ICON = {
+    CD_TRANSMUTE = "Interface\\Icons\\Trade_Alchemy",
+    CD_MOONCLOTH = "Interface\\Icons\\INV_Fabric_Moonrag_01",
+}
+local function cdIcon(key)
+    if key == "CD_SALT" then
+        local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+        return get and get(15846) -- Salt Shaker
+    end
+    return CD_ICON[key]
+end
 
 local function classColor(class)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -28,11 +40,13 @@ local function money(copper)
 end
 
 local function makeChar(r)
+    S.NavRow(r)
+    r.line:Hide()
     r.text = S.Text(r, 12)
-    r.text:SetPoint("LEFT", 8, 0)
+    r.text:SetPoint("LEFT", 12, 0)
     r.text:SetPoint("RIGHT", -30, 0)
     r.text:SetWordWrap(false)
-    r.count = S.Text(r, 12, S.Accent())
+    r.count = S.Badge(r)
     r.count:SetPoint("RIGHT", -8, 0)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
@@ -43,25 +57,22 @@ local function fillChar(r, e)
     r.entry = e
     r.text:SetText(classColor(e.char.class) .. e.char.name .. "|r " .. S.Hex(S.MUTED) .. (e.char.level or "") .. "|r")
     local n = #ns.Tasks(e.char)
-    r.count:SetText(n > 0 and tostring(n) or "")
-    S.Fill(r, e.key == selected and S.PANEL or S.ROW)
-    S.SetBorder(r, e.key == selected and S.Accent() or { 0, 0, 0, 0 })
+    r.count:Set(n > 0 and tostring(n) or nil, S.Accent())
+    r:SetSelected(e.key == selected)
 end
 
 local function makeRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(22, 22)
-    r.icon:SetPoint("LEFT", 8, 0)
-    r.text = S.Text(r, 13)
+    r.icon = S.IconBox(r, 26)
+    r.icon:SetPoint("LEFT", 2, 0)
+    r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
     r.text:SetPoint("RIGHT", -8, 0)
     r.text:SetWordWrap(false)
 end
 
 local function fillRow(r, task)
-    r.icon:SetTexture(ICON[task.key])
+    r.icon:SetIcon(task.cd and cdIcon(task.cd) or ICON[task.key])
     r.text:SetText(task.text)
-    S.Fill(r, S.ROW)
 end
 
 function ns.Refresh()
@@ -82,32 +93,54 @@ function ns.Refresh()
         if selected ~= ns.CharKey() then lines[#lines + 1] = L.SEEN:format(ns.Span(now - c.t)) end
         local nextCd = ns.NextReady(c, now)
         if nextCd then lines[#lines + 1] = L.NEXT_CD:format(ns.Span(nextCd - now)) end
-        if #tasks == 0 then lines[#lines + 1] = S.Hex(S.Accent()) .. L.NOTHING .. "|r" end
         info:SetText(table.concat(lines, "\n"))
+        head:SetText(classColor(c.class) .. c.name .. "|r  " .. S.Hex(S.MUTED) .. (c.level or "") .. "|r")
     else
         info:SetText("")
+        head:SetText("")
     end
+    empty:SetShown(c ~= nil and #tasks == 0)
+    empty:Set(L.NOTHING)
     forget:SetEnabled(selected ~= nil and selected ~= ns.CharKey())
 end
 
 local function build()
-    frame = S.Window("GulliChoresFrame", L.TITLE, 640, 420)
+    frame = S.Window("GulliChoresFrame", L.TITLE, 700, 460)
     local body = frame.body
-    chars = S.List(body, 30, makeChar, fillChar)
-    chars:SetPoint("TOPLEFT", 0, 0)
-    chars:SetPoint("BOTTOMLEFT", 0, 40)
-    chars:SetWidth(180)
-    forget = S.Button(body, 180, 30)
-    forget:SetPoint("BOTTOMLEFT", 0, 0)
+    local left = S.Card(body)
+    left:SetPoint("TOPLEFT")
+    left:SetPoint("BOTTOMLEFT")
+    left:SetWidth(200)
+    forget = S.Ghost(S.Button(left.body, 1, 30))
+    forget:SetPoint("BOTTOMLEFT")
+    forget:SetPoint("BOTTOMRIGHT")
     forget:SetText(L.FORGET)
     forget:SetScript("OnClick", function() if selected then ns.Forget(selected); selected = nil end end)
-    info = S.Text(body, 12, S.MUTED)
-    info:SetPoint("TOPLEFT", 200, -2)
-    info:SetPoint("RIGHT", 0, 0)
-    info:SetJustifyH("LEFT")
-    list = S.List(body, 32, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 200, -76)
-    list:SetPoint("BOTTOMRIGHT", -12, 0)
+    chars = S.List(left.body, 32, makeChar, fillChar)
+    chars:SetPoint("TOPLEFT")
+    chars:SetPoint("BOTTOMRIGHT", -10, 40)
+
+    local top = S.Card(body)
+    top:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
+    top:SetPoint("TOPRIGHT")
+    top:SetHeight(104)
+    head = S.Text(top.body, 15)
+    head:SetPoint("TOPLEFT")
+    head:SetPoint("TOPRIGHT")
+    head:SetWordWrap(false)
+    info = S.Text(top.body, 12, S.MUTED)
+    info:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -8)
+    info:SetPoint("RIGHT")
+    info:SetJustifyV("TOP")
+    info:SetSpacing(3)
+
+    local right = S.Card(body)
+    right:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
+    right:SetPoint("BOTTOMRIGHT")
+    list = S.List(right.body, 34, makeRow, fillRow)
+    list:SetPoint("TOPLEFT")
+    list:SetPoint("BOTTOMRIGHT", -10, 0)
+    empty = S.Empty(right.body)
     frame:SetScript("OnShow", function() ns.Snapshot(); ns.Refresh() end)
 end
 

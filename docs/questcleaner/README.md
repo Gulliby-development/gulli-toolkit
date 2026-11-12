@@ -33,7 +33,7 @@ After a few zones, your quest log is full of grey quests, and your bags are full
 - **Sells when it can.** With a merchant open, items that have a price are sold instead of deleted.
 - **Shows what you get.** The list says how many places the quest log and the bags will have after **OK**.
 - **Reminds you.** When your quest log is almost full, one line in the chat says how many old quests `/gqc` can clean. `/gqc last` shows what the last cleaning removed.
-- **Small and quick.** One window, three buttons. Open it with `/gqc`, from the addon button on the minimap, or from the [Gulli Toolkit](../../README.md) window (`/gulli`).
+- **Small and quick.** One window, with the main button at the bottom right. Open it with `/gqc`, from the addon button on the minimap, or from the [Gulli Toolkit](../../README.md) window (`/gulli`).
 - **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android.
 - **Clean, modern look.** A flat dark window in your class colour, in the style of ElvUI. It fits a modern interface.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.

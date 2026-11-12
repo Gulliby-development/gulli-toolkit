@@ -51,7 +51,7 @@
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
 - **Recent news.** The toolkit window shows the last messages from the modules, such as how many dungeon entries are left or what waits on your other characters.
-- **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI.
+- **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
 - **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 

@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, list, empty, autoCheck
+local frame, list, empty, card, autoRow
 local planFrame, planList, planTotal, planOk
 local currentPlan
 
@@ -15,15 +15,12 @@ local function money(copper)
 end
 
 local function makeRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(24, 24)
-    r.icon:SetPoint("LEFT", 6, 0)
-    r.remove = S.Button(r, 28, 28)
-    r.remove:SetPoint("RIGHT", -2, 0)
-    r.remove:SetText("x")
-    r.remove:SetScript("OnClick", function(self) ns.Set(self:GetParent().entry.id, 0) end)
-    r.edit = S.Edit(r, 52)
-    r.edit:SetPoint("RIGHT", r.remove, "LEFT", -6, 0)
+    r.icon = S.IconBox(r, 26)
+    r.icon:SetPoint("LEFT", 2, 0)
+    r.remove = S.Close(r, function(self) ns.Set(self:GetParent().entry.id, 0) end)
+    r.remove:SetPoint("RIGHT", 0, 0)
+    r.edit = S.Edit(r, 52, 28)
+    r.edit:SetPoint("RIGHT", r.remove, "LEFT", -8, 0)
     r.edit:SetNumeric(true)
     r.edit:SetMaxLetters(4)
     local function apply(self)
@@ -33,23 +30,22 @@ local function makeRow(r)
         self:ClearFocus()
     end
     r.edit:SetScript("OnEnterPressed", apply)
-    r.edit:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.BORDER); apply(self) end)
+    r.edit:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); apply(self) end)
     r.have = S.Text(r, 12, S.MUTED)
     r.have:SetPoint("RIGHT", r.edit, "LEFT", -8, 0)
-    r.text = S.Text(r, 13)
-    r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    r.text = S.Text(r, 12)
+    r.text:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
     r.text:SetPoint("RIGHT", r.have, "LEFT", -8, 0)
     r.text:SetWordWrap(false)
 end
 
 local function fillRow(r, e)
     r.entry = e
-    r.icon:SetTexture(ns.ItemIcon(e.id))
+    r.icon:SetIcon(ns.ItemIcon(e.id))
     r.text:SetText(ns.ItemName(e.id))
     local low = e.have < e.want
-    r.have:SetText((low and S.Hex(S.Accent()) or "") .. L.HAVE:format(e.have) .. (low and "|r" or ""))
+    r.have:SetText((low and S.Hex(S.WARN) or "") .. L.HAVE:format(e.have) .. (low and "|r" or ""))
     r.edit:SetText(tostring(e.want))
-    S.Fill(r, S.ROW)
 end
 
 function ns.Refresh()
@@ -57,7 +53,8 @@ function ns.Refresh()
     local items = ns.List()
     list:SetData(items)
     empty:SetShown(#items == 0)
-    autoCheck:SetChecked(ns.db.auto)
+    card:SetTitle(L.SEC_KEEP, #items > 0 and tostring(#items) or "")
+    autoRow:SetChecked(ns.db.auto)
 end
 
 local function dropItem()
@@ -69,40 +66,33 @@ local function dropItem()
 end
 
 local function build()
-    frame = S.Window("GulliRestockFrame", L.TITLE, 520, 440)
-    local body = frame.body
-    list = S.List(body, 34, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 0, 0)
-    list:SetPoint("BOTTOMRIGHT", -12, 112)
-    empty = S.Note(body, 12)
-    empty:SetPoint("TOPLEFT", 4, -6)
-    empty:SetPoint("RIGHT", -16, 0)
-    empty:SetText(L.EMPTY)
-
-    local drop = S.Button(body, 1, 36)
-    drop:SetPoint("BOTTOMLEFT", 0, 70)
-    drop:SetPoint("BOTTOMRIGHT", 0, 70)
-    drop:SetText(L.DROP)
-    drop:SetScript("OnClick", dropItem)
-    drop:SetScript("OnReceiveDrag", dropItem)
-
-    local preset = S.Button(body, 200, 30)
-    preset:SetPoint("BOTTOMLEFT", 0, 32)
-    preset:SetText(L.PRESET)
+    frame = S.Window("GulliRestockFrame", L.TITLE, 540, 520)
+    local ft = S.Footer(frame)
+    local preset = ft:Add(S.FitButton(ft, L.PRESET, 32, 120))
     preset:SetScript("OnClick", function()
         if ns.AddPreset() == 0 then print("|cff9ad0ffGulli Restock|r: " .. L.PRESET_NONE) end
     end)
 
-    autoCheck = S.Check(body, 26)
-    autoCheck:SetPoint("BOTTOMLEFT", 0, 0)
-    autoCheck:SetScript("OnClick", function(self)
-        ns.db.auto = not ns.db.auto
-        self:SetChecked(ns.db.auto)
-    end)
-    local at = S.Text(body, 12)
-    at:SetPoint("LEFT", autoCheck, "RIGHT", 6, 0)
-    at:SetPoint("RIGHT", 0, 0)
-    at:SetText(L.AUTO)
+    local body = frame.body
+    local auto, ah = S.SettingsCard(body, nil, {
+        { L.AUTO, nil, function() return ns.db.auto end, function(v) ns.db.auto = v end,
+          icon = "Interface\\Icons\\INV_Misc_Bag_08" } })
+    auto:SetPoint("BOTTOMLEFT")
+    auto:SetPoint("BOTTOMRIGHT")
+    auto:SetHeight(ah)
+    autoRow = auto.rows[1]
+
+    card = S.Card(body, L.SEC_KEEP)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("BOTTOMRIGHT", auto, "TOPRIGHT", 0, S.GAP)
+    local drop = S.DropZone(card.body, L.DROP, dropItem, 36)
+    drop:SetPoint("BOTTOMLEFT")
+    drop:SetPoint("BOTTOMRIGHT")
+    list = S.List(card.body, 36, makeRow, fillRow)
+    list:SetPoint("TOPLEFT")
+    list:SetPoint("BOTTOMRIGHT", drop, "TOPRIGHT", -10, 8)
+    empty = S.Empty(list)
+    empty:Set(L.EMPTY)
 
     frame:SetScript("OnShow", function() ns.Refresh() end)
 end
@@ -113,11 +103,10 @@ function ns.Toggle()
 end
 
 local function makePlanRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(20, 20)
-    r.icon:SetPoint("LEFT", 6, 0)
+    r.icon = S.IconBox(r, 22)
+    r.icon:SetPoint("LEFT", 2, 0)
     r.cost = S.Text(r, 12)
-    r.cost:SetPoint("RIGHT", -6, 0)
+    r.cost:SetPoint("RIGHT", -2, 0)
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
     r.text:SetPoint("RIGHT", r.cost, "LEFT", -6, 0)
@@ -125,33 +114,26 @@ local function makePlanRow(r)
 end
 
 local function fillPlanRow(r, e)
-    r.icon:SetTexture(ns.ItemIcon(e.id))
+    r.icon:SetIcon(ns.ItemIcon(e.id))
     r.text:SetText(e.buy .. " x " .. ns.ItemName(e.id))
     r.cost:SetText(money(e.cost))
-    S.Fill(r, S.ROW)
 end
 
 local function buildPlan()
-    planFrame = S.Window("GulliRestockPlan", L.PLAN_TITLE, 340, 300)
-    local body = planFrame.body
-    planList = S.List(body, 28, makePlanRow, fillPlanRow)
-    planList:SetPoint("TOPLEFT", 0, 0)
-    planList:SetPoint("BOTTOMRIGHT", -12, 70)
-    planTotal = S.Text(body, 13)
-    planTotal:SetPoint("BOTTOMLEFT", 0, 44)
-    planTotal:SetPoint("RIGHT", 0, 0)
-    planOk = S.Button(body, 150, 32)
-    planOk:SetPoint("BOTTOMLEFT", 0, 0)
-    planOk:SetText(L.BUY)
+    planFrame = S.Window("GulliRestockPlan", L.PLAN_TITLE, 360, 340)
+    local ft = S.Footer(planFrame)
+    planOk = ft:Add(S.Primary(S.FitButton(ft, L.BUY, 32, 90)))
     planOk:SetScript("OnClick", function()
         if currentPlan then ns.Buy(currentPlan) end
         currentPlan = nil
         planFrame:Hide()
     end)
-    local cancel = S.Button(body, 150, 32)
-    cancel:SetPoint("BOTTOMRIGHT", 0, 0)
-    cancel:SetText(L.CANCEL)
+    local cancel = ft:Add(S.FitButton(ft, L.CANCEL, 32, 80))
     cancel:SetScript("OnClick", function() currentPlan = nil; planFrame:Hide() end)
+    planTotal = ft.status
+    planList = S.List(planFrame.body, 30, makePlanRow, fillPlanRow)
+    planList:SetPoint("TOPLEFT", 0, 0)
+    planList:SetPoint("BOTTOMRIGHT", -10, 0)
 end
 
 function ns.ShowPlan(plan, total)
@@ -165,7 +147,8 @@ function ns.ShowPlan(plan, total)
     end
     planList:SetData(plan)
     local enough = total <= (GetMoney and GetMoney() or 0)
-    planTotal:SetText(L.TOTAL:format(money(total)) .. (enough and "" or ("  " .. S.Hex(S.Accent()) .. L.SHORT .. "|r")))
+    planTotal:SetText(L.TOTAL:format(money(total)) .. (enough and "" or ("  " .. S.Hex(S.BAD) .. L.SHORT .. "|r")))
+    planTotal:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
     planFrame:Show()
 end
 

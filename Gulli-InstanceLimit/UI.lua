@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, big, next, list, empty, limitEdit, dayEdit, badgeCheck, resetBtn, badge
+local frame, big, next, list, empty, entries, resetBtn, badge
 
 local function ago(t)
     return L.AGO:format(ns.Clock(time() - t))
@@ -13,11 +13,11 @@ end
 
 local function makeRow(r)
     r.name = S.Text(r, 12)
-    r.name:SetPoint("LEFT", 8, 0)
+    r.name:SetPoint("LEFT", 2, 0)
     r.name:SetPoint("RIGHT", -150, 0)
     r.name:SetWordWrap(false)
     r.when = S.Text(r, 11, S.MUTED)
-    r.when:SetPoint("RIGHT", -8, 0)
+    r.when:SetPoint("RIGHT", -2, 0)
     r.when:SetJustifyH("RIGHT")
 end
 
@@ -38,9 +38,10 @@ function ns.Refresh()
     local s = ns.Status()
     updateBadge(s)
     if not frame or not frame:IsShown() then return end
-    big:SetText(L.LEFT_HOUR:format(s.leftHour, ns.db.limit))
-    next:SetText((s.wait > 0 and L.NEXT_FREE:format(ns.Clock(s.wait)) or L.ALL_FREE) .. "   " ..
-        S.Hex(S.MUTED) .. L.LEFT_DAY:format(s.leftDay, ns.db.dayLimit) .. "|r")
+    local function tone(left) return left == 0 and S.BAD or (left == 1 and S.WARN or S.GOOD) end
+    big.tiles[1]:Set(s.leftHour .. " / " .. ns.db.limit, tone(s.leftHour))
+    big.tiles[2]:Set(s.leftDay .. " / " .. ns.db.dayLimit, tone(s.leftDay))
+    next:SetText(s.wait > 0 and L.NEXT_FREE:format(ns.Clock(s.wait)) or L.ALL_FREE)
     local recent = {}
     for _, e in ipairs(ns.db.entries) do
         if time() - e.t < ns.HOUR then recent[#recent + 1] = e end
@@ -48,13 +49,15 @@ function ns.Refresh()
     table.sort(recent, function(a, b) return a.t > b.t end)
     list:SetData(recent)
     empty:SetShown(#recent == 0)
+    entries:SetTitle(L.ENTRIES, #recent > 0 and tostring(#recent) or "")
     resetBtn:SetEnabled(ns.CanReset())
 end
 
 local function numberEdit(parent, get, set)
-    local e = S.Edit(parent, 48)
+    local e = S.Edit(parent, 52, 28)
     e:SetNumeric(true)
     e:SetMaxLetters(3)
+    e:SetText(tostring(get()))
     e:SetScript("OnShow", function(self) self:SetText(tostring(get())) end)
     local function apply(self)
         local n = tonumber(self:GetText())
@@ -64,64 +67,45 @@ local function numberEdit(parent, get, set)
         ns.Refresh()
     end
     e:SetScript("OnEnterPressed", apply)
-    e:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.BORDER); apply(self) end)
+    e:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); apply(self) end)
     return e
 end
 
 local function build()
-    frame = S.Window("GulliInstanceLimitFrame", L.TITLE, 440, 420)
-    local body = frame.body
-    big = S.Text(body, 20, S.Accent())
-    big:SetPoint("TOPLEFT", 0, -2)
-    next = S.Text(body, 12)
-    next:SetPoint("TOPLEFT", big, "BOTTOMLEFT", 0, -6)
-    next:SetPoint("RIGHT", 0, 0)
-
-    local head = S.Text(body, 11, S.MUTED)
-    head:SetPoint("TOPLEFT", 0, -60)
-    head:SetText(L.ENTRIES)
-    list = S.List(body, 26, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 0, -78)
-    list:SetPoint("BOTTOMRIGHT", -12, 110)
-    empty = S.Note(body, 12)
-    empty:SetPoint("TOPLEFT", list, "TOPLEFT", 4, -6)
-    empty:SetText(L.NONE)
-
-    limitEdit = numberEdit(body, function() return ns.db.limit end, function(n) ns.db.limit = n end)
-    limitEdit:SetPoint("BOTTOMLEFT", 0, 74)
-    local lt = S.Text(body, 12)
-    lt:SetPoint("LEFT", limitEdit, "RIGHT", 8, 0)
-    lt:SetText(L.LIMIT)
-    dayEdit = numberEdit(body, function() return ns.db.dayLimit end, function(n) ns.db.dayLimit = n end)
-    dayEdit:SetPoint("BOTTOMLEFT", 210, 74)
-    local dt = S.Text(body, 12)
-    dt:SetPoint("LEFT", dayEdit, "RIGHT", 8, 0)
-    dt:SetText(L.DAY_LIMIT)
-
-    badgeCheck = S.Check(body, 26)
-    badgeCheck:SetPoint("BOTTOMLEFT", 0, 40)
-    badgeCheck:SetScript("OnClick", function(self)
-        ns.db.badge = not ns.db.badge
-        self:SetChecked(ns.db.badge)
-        ns.Refresh()
-    end)
-    local bt = S.Text(body, 12)
-    bt:SetPoint("LEFT", badgeCheck, "RIGHT", 4, 0)
-    bt:SetText(L.BADGE)
-
-    resetBtn = S.Button(body, 170, 30)
-    resetBtn:SetPoint("BOTTOMLEFT", 0, 0)
-    resetBtn:SetText(L.RESET)
+    frame = S.Window("GulliInstanceLimitFrame", L.TITLE, 480, 600)
+    local ft = S.Footer(frame)
+    resetBtn = ft:Add(S.FitButton(ft, L.RESET, 32, 110))
     resetBtn:SetScript("OnClick", function() ns.Reset() end)
-    local tip = S.Note(body, 11)
-    tip:SetPoint("LEFT", resetBtn, "RIGHT", 8, 0)
-    tip:SetPoint("RIGHT", 0, 0)
-    tip:SetText(L.RESET_TIP)
+    ft:SetStatus(L.RESET_TIP)
 
-    frame:SetScript("OnShow", function()
-        badgeCheck:SetChecked(ns.db.badge)
-        ns.Refresh()
-    end)
+    local body, width = frame.body, frame.inner[1]
+    local st = S.Stack(body)
+    big = S.StatRow(body, { L.STAT_HOUR, L.STAT_DAY }, 62,
+        { "Interface\\Icons\\INV_Misc_PocketWatch_01", "Interface\\Icons\\Spell_Nature_TimeStop" })
+    st:Add(big, 62, 8)
+    big:Layout(width)
+    next = S.Text(body, 12, S.MUTED)
+    st:Add(next, 16)
+
+    entries = S.Card(body, L.ENTRIES)
+    st:Add(entries, 170)
+    list = S.List(entries.body, 28, makeRow, fillRow)
+    list:SetPoint("TOPLEFT")
+    list:SetPoint("BOTTOMRIGHT", -10, 0)
+    empty = S.Empty(entries.body)
+    empty:Set(L.NONE)
+
+    local limits, h = S.SettingsCard(body, L.SEC_LIMITS, {
+        { L.ROW_LIMIT, nil, control = numberEdit(body, function() return ns.db.limit end, function(n) ns.db.limit = n end),
+          icon = "Interface\\Icons\\INV_Misc_PocketWatch_02" },
+        { L.ROW_DAY, nil, control = numberEdit(body, function() return ns.db.dayLimit end, function(n) ns.db.dayLimit = n end),
+          icon = "Interface\\Icons\\Spell_Arcane_PortalIronForge" },
+        { L.BADGE, nil, function() return ns.db.badge end, function(v) ns.db.badge = v; ns.Refresh() end,
+          icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
+    })
+    st:Add(limits, h)
+    S.FitWindow(frame, st:Height())
+    frame:SetScript("OnShow", function() ns.Refresh() end)
 end
 
 -- The counter: "3/5" with the wait time while no entry is free. Drag to move, click to open.

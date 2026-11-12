@@ -12,6 +12,8 @@
 
 <p align="center"><img src="preview.png" alt="The Quick Buff bar and the settings" width="860"></p>
 
+<p align="center"><img src="settings.png" alt="The settings window" width="520"></p>
+
 ---
 
 Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs looks at your group and puts the next missing buff on one button. Press it, or press your key, until everyone has your buffs.
@@ -49,7 +51,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 
 1. Type `/ggb`, or open it from the [Gulli Toolkit](../../README.md) window (`/gulli`).
 2. Press the **Quick Buff key** button, then the key you want.
-3. Tick the buffs you want to watch.
+3. Turn on the buffs you want to watch.
 4. Press your key (or the big button) until the bar says **Everyone has your buffs**.
 
 On a gamepad or a phone you can also put `/click GulliGroupBuffsButton` in a macro and place it on your action bar.

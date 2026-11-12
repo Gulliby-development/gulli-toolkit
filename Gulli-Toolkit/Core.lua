@@ -49,7 +49,8 @@ end
 -- GulliToolkit.Register(info) or GulliToolkit:Register(info).
 -- info: key (required, "QuestCleaner"), open (function), and optional title, desc, icon, slash,
 -- category (a key of ns.CATEGORIES) and options: switches the hub shows beside the module,
--- { { label = "Sell gray items", get = function() return db.sell end, set = function(on) ... end } }.
+-- { { label = "Sell gray items", get = function() return db.sell end, set = function(on) ... end,
+--     icon = "Interface\\Icons\\INV_Misc_Coin_02" } } (icon optional: a game icon beside the switch).
 function Toolkit.Register(a, b)
     local info = (a == Toolkit) and b or a
     if type(info) ~= "table" or type(info.key) ~= "string" or info.key == "" then return false end

@@ -1,4 +1,4 @@
--- The settings: which lines to add.
+-- The settings: which lines to add to the tooltip, in one card.
 
 local _, ns = ...
 local L = ns.L
@@ -7,13 +7,16 @@ local S = ns.Skin
 local frame
 
 local function build()
-    frame = S.Window("GulliTooltipFrame", L.TITLE, 380, 170)
-    local y = 0
-    for _, o in ipairs({ { "price", L.OPT_PRICE }, { "quest", L.OPT_QUEST }, { "id", L.OPT_ID } }) do
-        local c = S.CheckRow(frame.body, o[2], function() return ns.db[o[1]] end, function(v) ns.db[o[1]] = v end)
-        c:SetPoint("TOPLEFT", 0, y)
-        y = y - 32
+    frame = S.Window("GulliTooltipFrame", L.TITLE, 420, 240)
+    local rows = {}
+    for _, o in ipairs({ { "price", L.OPT_PRICE }, { "quest", L.OPT_QUEST },
+                         { "id", L.OPT_ID } }) do
+        local key = o[1]
+        rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v) ns.db[key] = v end, icon = ns.OPT_ICON[key] }
     end
+    local card, h = S.SettingsCard(frame.body, nil, rows)
+    S.Stack(frame.body):Add(card, h)
+    S.FitWindow(frame, h)
 end
 
 function ns.Toggle()

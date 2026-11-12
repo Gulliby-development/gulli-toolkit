@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 Is this worth keeping? Which quest wanted it? Gulli Tooltip puts the answer in the tooltip.

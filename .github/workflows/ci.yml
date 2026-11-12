@@ -30,6 +30,14 @@ jobs:
           for t in tests/*/test.lua; do echo "== $t"; lua5.1 "$t" || rc=1; done
           exit $rc
 
+      - name: Every module has the same Skin.lua as the core
+        run: |
+          rc=0
+          for f in Gulli-*/Skin.lua; do
+            cmp -s Gulli-Toolkit/Skin.lua "$f" || { echo "::error::$f differs from Gulli-Toolkit/Skin.lua. Run tools/skin/sync.sh."; rc=1; }
+          done
+          exit $rc
+
       - name: Each addon folder has a Forever TOC that lists every Lua file
         run: |
           for dir in Gulli-*/; do

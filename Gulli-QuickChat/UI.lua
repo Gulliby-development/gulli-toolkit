@@ -19,7 +19,7 @@ local function layoutPhrases()
     local page = pages[1]
     local list = ns.Phrases()
     local width = (page:GetWidth() > 1 and page:GetWidth() or 640)
-    local w = math.floor((width - (COLS - 1) * 6) / COLS)
+    local w = math.floor((width - (COLS - 1) * 8) / COLS)
     for i, text in ipairs(list) do
         local b = phraseButtons[i]
         if not b then
@@ -39,49 +39,45 @@ local function layoutPhrases()
         end
         b:SetSize(w, BTN_H)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", ((i - 1) % COLS) * (w + 6), -math.floor((i - 1) / COLS) * (BTN_H + 6))
+        b:SetPoint("TOPLEFT", ((i - 1) % COLS) * (w + 8), -math.floor((i - 1) / COLS) * (BTN_H + 8))
         b.index, b.phrase = i, text
-        b:SetText(editing and ("|cffff6060X|r  " .. text) or text)
+        b:SetText(editing and (S.Hex(S.BAD) .. "x|r  " .. text) or text)
         b:Show()
     end
     for i = #list + 1, #phraseButtons do phraseButtons[i]:Hide() end
-    page.grid:SetHeight(math.ceil(#list / COLS) * (BTN_H + 6))
+    page.grid:SetHeight(math.ceil(#list / COLS) * (BTN_H + 8))
+    page.scroll:Update(math.ceil(#list / COLS) * (BTN_H + 8))
     page.add:SetShown(editing)
     page.addBtn:SetShown(editing)
     page.reset:SetShown(editing)
     page.edit:SetText(editing and L.DONE or L.EDIT)
-    for i, b in ipairs(channelButtons) do
-        S.SetBorder(b, ns.CHANNELS[i] == ns.db.channel and S.Accent() or S.BORDER)
+    for i, ch in ipairs(ns.CHANNELS) do
+        if ch == ns.db.channel and page.channels.selected ~= i then page.channels:Select(i, true) end
     end
 end
 
 local function buildPhrases(page)
-    local x = 0
-    for i, ch in ipairs(ns.CHANNELS) do
-        local b = S.Button(page, 96, 28)
-        b:SetPoint("TOPLEFT", x, 0)
-        b:SetText(L["CH_" .. ch])
-        b:SetScript("OnClick", function() ns.db.channel = ch; layoutPhrases() end)
-        b:SetScript("OnLeave", function(self) S.SetBorder(self, ns.db.channel == ch and S.Accent() or S.BORDER) end)
-        channelButtons[i] = b
-        x = x + 100
-    end
-    page.edit = S.Button(page, 90, 28)
+    local labels = {}
+    for i, ch in ipairs(ns.CHANNELS) do labels[i] = L["CH_" .. ch] end
+    page.channels = S.Tabs(page, labels, 96, function(i) ns.db.channel = ns.CHANNELS[i]; layoutPhrases() end)
+    channelButtons = page.channels.buttons
+    page.edit = S.Ghost(S.Button(page, 90, 30))
     page.edit:SetPoint("TOPRIGHT", 0, 0)
     page.edit:SetScript("OnClick", function() editing = not editing; layoutPhrases() end)
 
     local scroll = S.Scroll(page)
-    scroll:SetPoint("TOPLEFT", 0, -36)
-    scroll:SetPoint("BOTTOMRIGHT", -12, 40)
+    scroll:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+    scroll:SetPoint("BOTTOMRIGHT", -12, 44)
+    page.scroll = scroll
     page.grid = scroll.child
     page.grid:SetWidth(640)
 
-    page.add = S.Edit(page, 400)
-    page.add:SetPoint("BOTTOMLEFT", 0, 4)
+    page.add = S.Edit(page, 400, 30)
+    page.add:SetPoint("BOTTOMLEFT", 0, 0)
     page.add:SetJustifyH("LEFT")
     page.add:SetMaxLetters(200)
-    page.addBtn = S.Button(page, 90, 30)
-    page.addBtn:SetPoint("LEFT", page.add, "RIGHT", 6, 0)
+    page.addBtn = S.Primary(S.Button(page, 90, 30))
+    page.addBtn:SetPoint("LEFT", page.add, "RIGHT", 8, 0)
     page.addBtn:SetText(L.ADD)
     local function add()
         if ns.AddPhrase(page.add:GetText()) then page.add:SetText("") end
@@ -90,12 +86,12 @@ local function buildPhrases(page)
     end
     page.addBtn:SetScript("OnClick", add)
     page.add:SetScript("OnEnterPressed", add)
-    page.reset = S.Button(page, 120, 30)
-    page.reset:SetPoint("BOTTOMRIGHT", 0, 4)
+    page.reset = S.Ghost(S.Button(page, 120, 30))
+    page.reset:SetPoint("BOTTOMRIGHT", 0, 0)
     page.reset:SetText(L.RESET)
     page.reset:SetScript("OnClick", function() ns.ResetPhrases(); layoutPhrases() end)
     local hint = S.Note(page, 11)
-    hint:SetPoint("BOTTOMLEFT", 0, 10)
+    hint:SetPoint("BOTTOMLEFT", 0, 8)
     hint:SetPoint("RIGHT", 0, 0)
     hint:SetText(L.TOKENS)
     page.hint = hint
@@ -114,72 +110,73 @@ local function lfmText()
 end
 
 local function buildGroup(page)
-    local qLabel = S.Text(page, 12, S.MUTED)
-    qLabel:SetPoint("TOPLEFT", 0, 0)
-    qLabel:SetText(L.QUEST)
-    local prev = S.Button(page, 40, 30)
-    prev:SetPoint("TOPLEFT", 0, -18)
+    local card = S.Card(page, L.QUEST)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("TOPRIGHT")
+    card:SetHeight(36 + 30 + 12 + 42 + 12)
+    local cb = card.body
+    local prev = S.Button(cb, 36, 30)
+    prev:SetPoint("TOPLEFT")
     prev:SetText("<")
-    local nextB = S.Button(page, 40, 30)
-    nextB:SetPoint("TOPRIGHT", 0, -18)
+    local nextB = S.Button(cb, 36, 30)
+    nextB:SetPoint("TOPRIGHT")
     nextB:SetText(">")
-    local title = S.Text(page, 13)
-    title:SetPoint("LEFT", prev, "RIGHT", 8, 0)
-    title:SetPoint("RIGHT", nextB, "LEFT", -8, 0)
+    local title = S.Text(cb, 13)
+    title:SetPoint("LEFT", prev, "RIGHT", 10, 0)
+    title:SetPoint("RIGHT", nextB, "LEFT", -10, 0)
     title:SetJustifyH("CENTER")
     title:SetWordWrap(false)
 
-    local cLabel = S.Text(page, 12, S.MUTED)
-    cLabel:SetPoint("TOPLEFT", 0, -60)
+    local cLabel = S.Text(cb, 12, S.MUTED)
+    cLabel:SetPoint("TOPLEFT", 0, -50)
     cLabel:SetText(L.HOW_MANY)
-    local counts = {}
-    for n = 1, 4 do
-        local b = S.Button(page, 50, 30)
-        b:SetPoint("TOPLEFT", (n - 1) * 56, -78)
-        b:SetText(tostring(n))
-        b:SetScript("OnClick", function() lfm.count = n; page.Update() end)
-        counts[n] = b
-    end
-    local roles = {}
-    for i, r in ipairs(ns.ROLES) do
-        local c = S.Check(page, 28)
-        c:SetPoint("TOPLEFT", 250 + (i - 1) * 120, -78)
-        c:SetScript("OnClick", function() lfm.roles[r] = not lfm.roles[r]; page.Update() end)
-        local t = S.Text(page, 12)
-        t:SetPoint("LEFT", c, "RIGHT", 4, 0)
+    local countTabs = S.Tabs(cb, { "1", "2", "3", "4" }, 40, function(n) lfm.count = n; page.Update() end)
+    countTabs.frame:ClearAllPoints()
+    countTabs.frame:SetPoint("LEFT", cLabel, "RIGHT", 10, 0)
+    local roles, prevRole = {}, nil
+    for i = #ns.ROLES, 1, -1 do
+        local r = ns.ROLES[i]
+        local t = S.Text(cb, 12)
         t:SetText(L["ROLE_" .. r])
+        if prevRole then t:SetPoint("RIGHT", prevRole, "LEFT", -14, 0) else t:SetPoint("RIGHT", cb, "TOPRIGHT", 0, -65) end
+        local c = S.Check(cb, 26)
+        c:SetPoint("RIGHT", t, "LEFT", -2, 0)
+        c:SetScript("OnClick", function() lfm.roles[r] = not lfm.roles[r]; page.Update() end)
         roles[r] = c
+        prevRole = c
     end
 
     local preview = CreateFrame("Frame", nil, page)
-    preview:SetPoint("TOPLEFT", 0, -124)
-    preview:SetPoint("TOPRIGHT", 0, -124)
-    preview:SetHeight(60)
-    S.Box(preview, S.PANEL)
+    preview:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -S.GAP)
+    preview:SetPoint("TOPRIGHT", card, "BOTTOMRIGHT", 0, -S.GAP)
+    preview:SetHeight(64)
+    S.Box(preview, S.INPUT, S.EDGE)
     local text = S.Text(preview, 13)
-    text:SetPoint("TOPLEFT", 10, -10)
-    text:SetPoint("BOTTOMRIGHT", -10, 10)
+    text:SetPoint("TOPLEFT", 12, -12)
+    text:SetPoint("BOTTOMRIGHT", -12, 12)
     text:SetJustifyV("TOP")
 
-    local post = S.Button(page, 200, 34)
-    post:SetPoint("TOPLEFT", 0, -196)
+    local post = S.Primary(S.Button(page, 200, 34))
+    post:SetPoint("TOPRIGHT", preview, "BOTTOMRIGHT", 0, -S.GAP)
     post:SetText(L.POST_LFG)
     post:SetScript("OnClick", function() ns.PostLFM((lfmText())) end)
-    local say = S.Button(page, 200, 34)
-    say:SetPoint("LEFT", post, "RIGHT", 8, 0)
+    local say = S.Button(page, 160, 34)
+    say:SetPoint("RIGHT", post, "LEFT", -8, 0)
     say:SetText(L.POST_HERE)
     say:SetScript("OnClick", function() ns.Say((lfmText())) end)
     local note = S.Note(page, 11)
-    note:SetPoint("TOPLEFT", 0, -240)
-    note:SetPoint("RIGHT", 0, 0)
+    note:SetPoint("TOPLEFT", preview, "BOTTOMLEFT", 0, -S.GAP - 2)
+    note:SetPoint("RIGHT", say, "LEFT", -12, 0)
+    note:SetMaxLines(3)
     note:SetText(L.LFM_NOTE)
+    local counts = countTabs
 
     page.Update = function()
         local msg, quests = lfmText()
         local q = quests[lfm.index]
         title:SetText(q and ("[" .. q.level .. "] " .. q.title) or L.NO_QUEST)
         text:SetText(msg)
-        for n, b in ipairs(counts) do S.SetBorder(b, n == lfm.count and S.Accent() or S.BORDER) end
+        if counts.selected ~= lfm.count then counts:Select(lfm.count, true) end
         for r, c in pairs(roles) do c:SetChecked(lfm.roles[r] and true or false) end
     end
     prev:SetScript("OnClick", function()
@@ -198,18 +195,18 @@ end
 
 local function makeMissed(r)
     r.busy = S.Button(r, 80, 28)
-    r.busy:SetPoint("RIGHT", -4, 0)
+    r.busy:SetPoint("RIGHT", 0, 0)
     r.busy:SetText(L.BUSY)
     r.busy:SetScript("OnClick", function(self) ns.Busy(self:GetParent().entry) end)
     r.reply = S.Button(r, 80, 28)
-    r.reply:SetPoint("RIGHT", r.busy, "LEFT", -4, 0)
+    r.reply:SetPoint("RIGHT", r.busy, "LEFT", -6, 0)
     r.reply:SetText(L.REPLY)
     r.reply:SetScript("OnClick", function(self) ns.Reply(self:GetParent().entry) end)
     r.who = S.Text(r, 12, S.Accent())
-    r.who:SetPoint("TOPLEFT", 8, -5)
+    r.who:SetPoint("TOPLEFT", 10, -7)
     r.who:SetPoint("RIGHT", r.reply, "LEFT", -6, 0)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("TOPLEFT", r.who, "BOTTOMLEFT", 0, -2)
+    r.text:SetPoint("TOPLEFT", r.who, "BOTTOMLEFT", 0, -4)
     r.text:SetPoint("RIGHT", r.reply, "LEFT", -6, 0)
     r.text:SetWordWrap(false)
 end
@@ -217,31 +214,30 @@ end
 local function fillMissed(r, e)
     r.entry = e
     local m = math.floor((time() - e.t) / 60)
-    r.who:SetText(e.short .. "  " .. S.Hex(S.MUTED) .. L.AGO_M:format(m) .. "|r")
+    r.who:SetText(e.short .. "  " .. S.Hex(S.FAINT) .. L.AGO_M:format(m) .. "|r")
     r.text:SetText(e.text)
 end
 
 local function buildMissed(page)
-    page.list = S.List(page, 44, makeMissed, fillMissed)
-    page.list:SetPoint("TOPLEFT", 0, 0)
-    page.list:SetPoint("BOTTOMRIGHT", -12, 40)
-    page.empty = S.Note(page, 12)
-    page.empty:SetPoint("TOPLEFT", 4, -6)
-    page.empty:SetPoint("RIGHT", -16, 0)
-    page.empty:SetText(L.NO_MISSED)
-    page.always = S.Check(page, 26)
-    page.always:SetPoint("BOTTOMLEFT", 0, 4)
-    page.always:SetScript("OnClick", function(self)
-        ns.db.always = not ns.db.always
-        self:SetChecked(ns.db.always)
-    end)
-    local t = S.Text(page, 12)
-    t:SetPoint("LEFT", page.always, "RIGHT", 4, 0)
-    t:SetText(L.ALWAYS)
-    local clear = S.Button(page, 100, 30)
-    clear:SetPoint("BOTTOMRIGHT", 0, 2)
+    local always, ah = S.SettingsCard(page, nil, {
+        { L.ALWAYS, nil, function() return ns.db.always end, function(v) ns.db.always = v end,
+          icon = "Interface\\Icons\\INV_Letter_02" } })
+    always:SetPoint("BOTTOMLEFT")
+    always:SetPoint("BOTTOMRIGHT")
+    always:SetHeight(ah)
+    page.always = always.rows[1]
+    local card = S.Card(page, L.TAB_MISSED)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("BOTTOMRIGHT", always, "TOPRIGHT", 0, S.GAP)
+    local clear = S.Ghost(S.Button(card, 90, 26))
+    clear:SetPoint("TOPRIGHT", -6, -6)
     clear:SetText(L.CLEAR)
     clear:SetScript("OnClick", function() wipe(ns.missed); ns.Refresh() end)
+    page.list = S.List(card.body, 48, makeMissed, fillMissed)
+    page.list:SetPoint("TOPLEFT")
+    page.list:SetPoint("BOTTOMRIGHT", -10, 0)
+    page.empty = S.Empty(card.body)
+    page.empty:Set(L.NO_MISSED)
     page.Update = function()
         page.list:SetData(ns.missed)
         page.empty:SetShown(#ns.missed == 0)
@@ -259,12 +255,12 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliQuickChatFrame", L.TITLE, 680, 440)
+    frame = S.Window("GulliQuickChatFrame", L.TITLE, 700, 480)
     local body = frame.body
     tabs = S.Tabs(body, { L.TAB_PHRASES, L.TAB_GROUP, L.TAB_MISSED }, 150, function(i) current = i; ns.Refresh() end)
     for i, b in ipairs({ buildPhrases, buildGroup, buildMissed }) do
         local page = CreateFrame("Frame", nil, body)
-        page:SetPoint("TOPLEFT", 0, -40)
+        page:SetPoint("TOPLEFT", 0, -30 - S.GAP)
         page:SetPoint("BOTTOMRIGHT", 0, 0)
         b(page)
         pages[i] = page

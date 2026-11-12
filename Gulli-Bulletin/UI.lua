@@ -14,27 +14,27 @@ local function ago(t)
 end
 
 local function makeRow(r)
-    r.head = S.Text(r, 13, S.Accent())
-    r.head:SetPoint("LEFT", 8, 0)
+    r.head = S.Text(r, 12)
+    r.head:SetPoint("LEFT", 10, 0)
     r.head:SetPoint("RIGHT", -8, 0)
     r.head:SetWordWrap(false)
     r.who = S.Text(r, 12)
-    r.who:SetPoint("TOPLEFT", 8, -5)
+    r.who:SetPoint("TOPLEFT", 10, -7)
     r.who:SetWidth(130)
     r.who:SetWordWrap(false)
-    r.age = S.Text(r, 10, S.MUTED)
-    r.age:SetPoint("TOPLEFT", r.who, "BOTTOMLEFT", 0, -3)
+    r.age = S.Text(r, 11, S.FAINT)
+    r.age:SetPoint("TOPLEFT", r.who, "BOTTOMLEFT", 0, -4)
     r.invite = S.Button(r, 76, 28)
-    r.invite:SetPoint("RIGHT", -4, 0)
+    r.invite:SetPoint("RIGHT", 0, 0)
     r.invite:SetText(L.INVITE)
     r.invite:SetScript("OnClick", function(self) ns.Invite(self:GetParent().post.author) end)
     r.whisper = S.Button(r, 76, 28)
-    r.whisper:SetPoint("RIGHT", r.invite, "LEFT", -4, 0)
+    r.whisper:SetPoint("RIGHT", r.invite, "LEFT", -6, 0)
     r.whisper:SetText(L.WHISPER)
     r.whisper:SetScript("OnClick", function(self) ns.Whisper(self:GetParent().post.author) end)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("TOPLEFT", 144, -5)
-    r.text:SetPoint("BOTTOMRIGHT", r.whisper, "BOTTOMLEFT", -6, -9)
+    r.text:SetPoint("TOPLEFT", 150, -7)
+    r.text:SetPoint("BOTTOMRIGHT", r.whisper, "BOTTOMLEFT", -10, -11)
     r.text:SetJustifyV("TOP")
     r.text:SetMaxLines(3)
 end
@@ -45,16 +45,19 @@ local function fillRow(r, item)
     for _, w in ipairs({ r.who, r.age, r.text, r.whisper, r.invite }) do w:SetShown(not header) end
     if header then
         r.head:SetText(ns.DungeonName(item.dungeon) .. "  " .. S.Hex(S.MUTED) .. item.count .. "|r")
-        S.Fill(r, S.PANEL)
+        S.Fill(r, S.RAISED)
         return
     end
-    S.Fill(r, S.ROW)
+    S.Fill(r, S.CLEAR)
     r.post = item
     local role = item.role and (S.Hex(S.Accent()) .. L[item.role] .. "|r ") or ""
     r.who:SetText(role .. item.short)
     r.age:SetText(ago(item.t))
     r.text:SetText(item.text)
-    r.invite:SetShown(item.kind == "GROUP" and item.role == "LFG")
+    local inv = item.kind == "GROUP" and item.role == "LFG"
+    r.invite:SetShown(inv)
+    r.whisper:ClearAllPoints()
+    if inv then r.whisper:SetPoint("RIGHT", r.invite, "LEFT", -6, 0) else r.whisper:SetPoint("RIGHT", 0, 0) end
 end
 
 function ns.Refresh()
@@ -67,34 +70,27 @@ function ns.Refresh()
     list:SetData(items)
     empty:SetShown(#items == 0)
     myLevel:SetShown(current == 1)
-    myLevel.label:SetShown(current == 1)
 end
 
 local function build()
-    frame = S.Window("GulliBulletinFrame", L.TITLE, 680, 460)
-    local body = frame.body
+    frame = S.Window("GulliBulletinFrame", L.TITLE, 740, 500)
+    local body, width = frame.body, frame.inner[1]
     local labels = {}
     for i, k in ipairs(TAB_KEYS) do labels[i] = L[k] end
-    tabs = S.Tabs(body, labels, 104, function(i) current = i; ns.Refresh() end)
+    tabs = S.Tabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end)
 
-    myLevel = S.Check(body, 26)
-    myLevel:SetPoint("TOPLEFT", 0, -36)
-    myLevel:SetScript("OnClick", function(self)
-        ns.db.myLevel = not ns.db.myLevel
-        self:SetChecked(ns.db.myLevel)
-        ns.Refresh()
-    end)
-    myLevel.label = S.Text(body, 12)
-    myLevel.label:SetPoint("LEFT", myLevel, "RIGHT", 4, 0)
-    myLevel.label:SetText(L.MY_LEVEL)
+    local card = S.Card(body)
+    card:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+    card:SetPoint("BOTTOMRIGHT")
+    myLevel = S.CheckRow(card.body, L.MY_LEVEL, function() return ns.db.myLevel end,
+        function(v) ns.db.myLevel = v; ns.Refresh() end, width - 60)
+    myLevel:SetPoint("TOPLEFT", -6, 2)
 
-    list = S.List(body, 46, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 0, -68)
-    list:SetPoint("BOTTOMRIGHT", -12, 0)
-    empty = S.Note(body, 12)
-    empty:SetPoint("TOPLEFT", list, "TOPLEFT", 4, -8)
-    empty:SetPoint("RIGHT", list, "RIGHT", -4, 0)
-    empty:SetText(L.EMPTY)
+    list = S.List(card.body, 50, makeRow, fillRow)
+    list:SetPoint("TOPLEFT", 0, -34)
+    list:SetPoint("BOTTOMRIGHT", -10, 0)
+    empty = S.Empty(list)
+    empty:Set(L.EMPTY)
 
     frame:SetScript("OnShow", function()
         myLevel:SetChecked(ns.db.myLevel)

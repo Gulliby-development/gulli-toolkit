@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 Before you leave town with a group, you want to know: who has which quest? Gulli Party Quests shows your quests against every group member.

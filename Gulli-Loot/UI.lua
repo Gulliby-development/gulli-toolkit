@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, list, empty
+local frame, list, empty, itemsCard
 local tabs = {}
 local QUALITY_COLOR = { [0] = "|cff9d9d9d", [1] = "|cffffffff", [2] = "|cff1eff00" }
 
@@ -14,12 +14,10 @@ local function indexOf(t, v) for i, x in ipairs(t) do if x == v then return i en
 local function makeRow(r)
     r.icon = r:CreateTexture(nil, "ARTWORK")
     r.icon:SetSize(22, 22)
-    r.icon:SetPoint("LEFT", 6, 0)
-    r.remove = S.Button(r, 28, 28)
-    r.remove:SetPoint("RIGHT", -2, 0)
-    r.remove:SetText("x")
-    r.remove:SetScript("OnClick", function(self) ns.SetItem(self:GetParent().entry.id, nil) end)
-    r.rule = S.Button(r, 90, 28)
+    r.icon:SetPoint("LEFT", 2, 0)
+    r.remove = S.Close(r, function(self) ns.SetItem(self:GetParent().entry.id, nil) end)
+    r.remove:SetPoint("RIGHT", 0, 0)
+    r.rule = S.Button(r, 96, 28)
     r.rule:SetPoint("RIGHT", r.remove, "LEFT", -6, 0)
     r.rule:SetScript("OnClick", function(self)
         local e = self:GetParent().entry
@@ -44,7 +42,6 @@ local function fillRow(r, e)
         "Interface\\Icons\\INV_Misc_QuestionMark")
     r.text:SetText(itemName(e.id))
     r.rule:SetText(L["RULE_" .. e.rule:upper()])
-    S.Fill(r, S.ROW)
 end
 
 function ns.Refresh()
@@ -55,6 +52,7 @@ function ns.Refresh()
     local items = ns.Items()
     list:SetData(items)
     empty:SetShown(#items == 0)
+    itemsCard:SetTitle(L.SEC_ITEMS, #items > 0 and tostring(#items) or "")
 end
 
 local function dropItem()
@@ -66,38 +64,39 @@ local function dropItem()
 end
 
 local function build()
-    frame = S.Window("GulliLootFrame", L.TITLE, 480, 470)
-    local body = frame.body
+    frame = S.Window("GulliLootFrame", L.TITLE, 500, 600)
+    local body, width = frame.body, frame.inner[1]
+    local st = S.Stack(body)
+
     local labels = { L.RULE_ASK, L.RULE_GREED, L.RULE_PASS }
+    local qrows = {}
     for i, q in ipairs(ns.QUALITIES) do
-        local row = CreateFrame("Frame", nil, body)
-        row:SetSize(330, 30)
-        row:SetPoint("TOPRIGHT", 0, -(i - 1) * 36)
-        local name = S.Text(body, 12)
-        name:SetPoint("RIGHT", row, "LEFT", -8, 0)
-        name:SetPoint("LEFT", body, "LEFT", 0, 0)
-        name:SetText(QUALITY_COLOR[q] .. L["Q" .. q] .. "|r")
-        tabs[q] = S.Tabs(row, labels, 106, function(sel) ns.db.quality[q] = ns.RULES[sel] end)
+        local holder = CreateFrame("Frame", nil, body)
+        holder:SetSize(3 * 86 + 4, 30)
+        tabs[q] = S.Tabs(holder, labels, 86, function(sel) ns.db.quality[q] = ns.RULES[sel] end)
+        qrows[i] = { QUALITY_COLOR[q] .. L["Q" .. q] .. "|r", nil, control = holder }
     end
-    local note = S.Note(body, 11)
-    note:SetPoint("TOPLEFT", 0, -112)
-    note:SetPoint("RIGHT", 0, 0)
-    note:SetText(L.NOTE)
-    list = S.List(body, 32, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 0, -160)
-    list:SetPoint("BOTTOMRIGHT", -12, 80)
-    empty = S.Note(body, 12)
-    empty:SetPoint("TOPLEFT", list, "TOPLEFT", 4, -6)
-    empty:SetPoint("RIGHT", -16, 0)
-    empty:SetText(L.NO_ITEMS)
-    local drop = S.Button(body, 1, 34)
-    drop:SetPoint("BOTTOMLEFT", 0, 38)
-    drop:SetPoint("BOTTOMRIGHT", 0, 38)
-    drop:SetText(L.DROP)
-    drop:SetScript("OnClick", dropItem)
-    drop:SetScript("OnReceiveDrag", dropItem)
-    local c = S.CheckRow(body, L.OPT_REPORT, function() return ns.db.report end, function(v) ns.db.report = v end)
-    c:SetPoint("BOTTOMLEFT", 0, 0)
+    local quality, qh = S.SettingsCard(body, L.SEC_QUALITY, qrows)
+    st:Add(quality, qh, 8)
+    local note, nh = S.Paragraph(body, L.NOTE, width)
+    st:Add(note, nh)
+
+    itemsCard = S.Card(body, L.SEC_ITEMS)
+    st:Add(itemsCard, 230)
+    local drop = S.DropZone(itemsCard.body, L.DROP, dropItem, 36)
+    drop:SetPoint("BOTTOMLEFT")
+    drop:SetPoint("BOTTOMRIGHT")
+    list = S.List(itemsCard.body, 34, makeRow, fillRow)
+    list:SetPoint("TOPLEFT")
+    list:SetPoint("BOTTOMRIGHT", drop, "TOPRIGHT", -10, 8)
+    empty = S.Empty(list)
+    empty:Set(L.NO_ITEMS)
+
+    local report, rh = S.SettingsCard(body, nil, {
+        { L.OPT_REPORT, nil, function() return ns.db.report end, function(v) ns.db.report = v end,
+          icon = "Interface\\Icons\\INV_Letter_01" } })
+    st:Add(report, rh)
+    S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function() ns.Refresh() end)
 end
 

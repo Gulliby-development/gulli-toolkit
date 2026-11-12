@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and sorts every message into tabs, so you find a group or a seller in a few seconds.

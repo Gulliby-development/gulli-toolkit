@@ -4,6 +4,8 @@
 
 Type the mobs you look for. When one of them shows its nameplate, you hear a sound.
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ## Features
 
 - **A list of mobs.** One name per line. A part of the name is enough, and the case does not matter (also in Russian).

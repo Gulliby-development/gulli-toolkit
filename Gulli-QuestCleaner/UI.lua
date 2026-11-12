@@ -5,23 +5,28 @@ local S = ns.Skin
 -- Two views in one window. Setup: the level and what to clean. Preview: zones
 -- and their quests on the left, items on the right, a line from each quest to the items
 -- it needs. Items no quest needs hang off a "No quest" label at the end.
-local W = 680
-local SETUP_H, PREVIEW_H = 244, 540
-local TITLE_H = 28
+local W, PREVIEW_H = 720, 600
+local I = "Interface\\Icons\\"
 local ROW_H, ZONE_H = 32, 28
 local LEFT_W, GAP = 262, 52
 local DIM = { 0.55, 0.55, 0.58, 0.35 }
 
-local frame, setup, preview, status, summary, frees
-local edit, checkQuests, checkItems
-local protect = {}
+local frame, footer, setup, preview, summary, frees, setupH
+local edit, levelRow, clearButton
 local scroll, content, okButton, backButton, questHead, itemHead
 local plan = { quests = {}, items = {}, future = {} }
 local totals = { quests = 0, items = 0 }
 local pools = { zone = {}, quest = {}, item = {}, label = {}, line = {}, band = {} }
 local used = {}
 
-local function setStatus(text) status:SetText(text or "") end
+-- The footer line: a message, else the hint of the preview.
+local function setStatus(text)
+    if (not text or text == "") and preview and preview:IsShown() then
+        footer:SetStatus(L.HINT)
+    else
+        footer:SetStatus(text or "", S.TEXT)
+    end
+end
 
 -- Fixed labels by key, set once the window is built.
 local labels = {}
@@ -279,24 +284,26 @@ end
 
 ---- Views ---------------------------------------------------------------------
 
+local function showView(isPreview)
+    setup:SetShown(not isPreview)
+    preview:SetShown(isPreview)
+    clearButton:SetShown(not isPreview)
+    okButton:SetShown(isPreview)
+    backButton:SetShown(isPreview)
+end
+
 local function showSetup()
-    preview:Hide()
-    setup:Show()
-    frame:SetHeight(SETUP_H)
-    local d = ns.db()
+    showView(false)
+    S.FitWindow(frame, setupH)
     edit:SetText(tostring(ns.charDB().level or math.max(1, UnitLevel("player") - 10)))
-    checkQuests:SetChecked(d.quests ~= false)
-    checkItems:SetChecked(d.items ~= false)
-    for key, c in pairs(protect) do c:SetChecked(d[key] ~= false) end
-    setup.level:SetText(L.YOUR_LEVEL:format(UnitLevel("player")))
+    levelRow.desc:SetText(L.YOUR_LEVEL:format(UnitLevel("player")))
 end
 
 local function showPreview()
-    setup:Hide()
-    preview:Show()
+    showView(true)
     frame:SetHeight(PREVIEW_H)
     local width = scroll:GetWidth()
-    content:SetWidth(width > 0 and width or W - 40)
+    content:SetWidth(width > 0 and width or W - 80)
     scroll:Top()
     refresh()
 end
@@ -309,9 +316,7 @@ local function onClear()
     end
     local d = ns.db()
     ns.charDB().level = level
-    d.quests = checkQuests:GetChecked()
-    d.items = checkItems:GetChecked()
-    for key, c in pairs(protect) do d[key] = c:GetChecked() and true or false end
+    d.quests, d.items = d.quests ~= false, d.items ~= false
     plan.quests = d.quests and ns.PlanQuests(level) or {}
     plan.items, plan.future = {}, {}
     if d.items then plan.items, plan.future = ns.PlanItems(plan.quests, level) end
@@ -321,8 +326,8 @@ local function onClear()
         setStatus(L.NOTHING .. (kept ~= "" and ("  " .. kept) or ""))
         return
     end
-    setStatus(kept)
     showPreview()
+    setStatus(kept)
 end
 
 local function onOK()
@@ -358,153 +363,113 @@ end
 ---- Build ---------------------------------------------------------------------
 
 local function button(parent, key, width)
-    local b = S.Button(parent, width, 30)
+    local b = S.Button(parent, width, 32)
     say(b, key)
     return b
 end
 
-local function checkbox(parent, key, onClick)
-    local c = S.Check(parent, 26)
-    local label = S.Text(c, 13)
-    label:SetPoint("LEFT", c, "RIGHT", 2, 0)
-    say(label, key)
-    c:SetHitRectInsets(0, -(label:GetStringWidth() + 8), 0, 0)
-    c:SetScript("OnClick", function(self) self:SetChecked(not self:GetChecked()) end)
-    return c
+-- A switch row for an account-wide setting that is on unless it was turned off.
+local function setting(key, label, icon)
+    return { L[label], nil, function() return ns.db()[key] ~= false end,
+             function(v) ns.db()[key] = v and true or false end, icon = I .. icon }
 end
 
 local function build()
-    local accent = S.Accent()
-    frame = CreateFrame("Frame", "GulliQuestCleanerFrame", UIParent)
-    S.Box(frame, S.BG)
-    frame:SetSize(W, SETUP_H)
-    frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:Hide()
-    tinsert(UISpecialFrames, "GulliQuestCleanerFrame")
+    frame = S.Window("GulliQuestCleanerFrame", "Quest Cleaner", W, PREVIEW_H)
+    footer = S.Footer(frame)
+    okButton = S.Danger(button(footer, "OK", 150))
+    footer:Add(okButton)
+    okButton:SetScript("OnClick", onOK)
+    backButton = S.Ghost(button(footer, "BACK", 110))
+    footer:Add(backButton)
+    backButton:SetScript("OnClick", function()
+        showSetup()
+        setStatus("")
+    end)
+    clearButton = S.Primary(button(footer, "CLEAR", 150))
+    clearButton:SetParent(footer)
+    clearButton:SetPoint("RIGHT", -S.PAD, 0)
+    clearButton:SetScript("OnClick", onClear)
 
-    -- Title bar: drag to move, a flat close button.
-    local bar = CreateFrame("Frame", nil, frame)
-    bar:SetPoint("TOPLEFT", 1, -1)
-    bar:SetPoint("TOPRIGHT", -1, -1)
-    bar:SetHeight(TITLE_H)
-    S.Box(bar, S.PANEL, { 0, 0, 0, 0 })
-    local line = bar:CreateTexture(nil, "ARTWORK")
-    line:SetTexture("Interface\\Buttons\\WHITE8X8")
-    line:SetVertexColor(accent[1], accent[2], accent[3], 0.8)
-    line:SetPoint("BOTTOMLEFT")
-    line:SetPoint("BOTTOMRIGHT")
-    line:SetHeight(1)
-    bar:EnableMouse(true)
-    bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function() frame:StartMoving() end)
-    bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    local title = S.Text(bar, 14)
-    title:SetPoint("LEFT", 10, 0)
-    title:SetText(S.Hex(accent) .. "Gulli|r-QuestCleaner")
-    local close = S.Button(bar, 24, 22)
-    close:SetPoint("RIGHT", -3, 0)
-    close:SetText("×")
-    close:SetScript("OnEnter", function(self) S.Fill(self, { 0.6, 0.1, 0.1, 1 }) end)
-    close:SetScript("OnLeave", function(self) S.Fill(self, S.PANEL) end)
-    close:SetScript("OnClick", function() frame:Hide() end)
+    local body, width = frame.body, frame.inner[1]
 
-    status = S.Text(frame, 12)
-    status:SetPoint("BOTTOMLEFT", 14, 16)
-    status:SetPoint("RIGHT", -280, 0)
-
-    -- Setup view
-    setup = CreateFrame("Frame", nil, frame)
+    -- Setup view: the level, what to clean, what always stays.
+    setup = CreateFrame("Frame", nil, body)
     setup:SetAllPoints()
+    local st = S.Stack(setup)
 
-    local label = S.Text(setup, 14)
-    label:SetPoint("TOPLEFT", 16, -(TITLE_H + 22))
-    say(label, "LEVEL")
-    edit = S.Edit(setup, 44)
-    edit:SetPoint("LEFT", label, "RIGHT", 10, 0)
+    local level = CreateFrame("Frame", nil, setup)
+    level:SetSize(44 + 8 + 90, 32)
+    edit = S.Edit(level, 44, 32)
+    edit:SetPoint("LEFT")
     edit:SetNumeric(true)
     edit:SetMaxLetters(2)
     edit:SetScript("OnEnterPressed", function(self) self:ClearFocus(); onClear() end)
     edit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    local after = S.Text(setup, 14)
-    after:SetPoint("LEFT", edit, "RIGHT", 10, 0)
-    say(after, "OR_LOWER")
-    local gray = button(setup, "GRAY", 90)
-    gray:SetPoint("LEFT", after, "RIGHT", 12, 0)
+    local gray = button(level, "GRAY", 90)
+    gray:SetPoint("LEFT", edit, "RIGHT", 8, 0)
     gray:SetScript("OnClick", function() edit:SetText(tostring(math.max(1, ns.GrayLevel()))) end)
-    setup.level = S.Text(setup, 11, S.MUTED)
-    setup.level:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -10)
+    local levelCard, h = S.SettingsCard(setup, nil, {
+        { L.LEVEL .. " " .. L.OR_LOWER, L.YOUR_LEVEL:format(UnitLevel("player")), control = level,
+          icon = I .. "INV_Misc_Note_01" } })
+    levelRow = levelCard.rows[1]
+    st:Add(levelCard, h)
 
-    checkQuests = checkbox(setup, "DO_QUESTS")
-    checkQuests:SetPoint("TOPLEFT", setup.level, "BOTTOMLEFT", -6, -10)
-    checkItems = checkbox(setup, "DO_ITEMS")
-    checkItems:SetPoint("TOPLEFT", checkQuests, "BOTTOMLEFT", 0, -2)
+    local what, wh = S.SettingsCard(setup, L.SEC_WHAT, {
+        setting("quests", "DO_QUESTS", "INV_Scroll_03"),
+        setting("items", "DO_ITEMS", "INV_Misc_Bag_10"),
+    })
+    st:Add(what, wh)
+    local keep, kh = S.SettingsCard(setup, L.SEC_KEEP, {
+        setting("keepClass", "KEEP_CLASS", "INV_Misc_Book_09"),
+        setting("keepDungeon", "KEEP_DUNGEON", "INV_Misc_Key_14"),
+        setting("keepElite", "KEEP_ELITE", "INV_Misc_Head_Dragon_01"),
+    })
+    st:Add(keep, kh)
+    setupH = st:Height()
 
-    -- Kinds of quests that are never planned.
-    local above = checkQuests
-    for i, key in ipairs({ "keepClass", "keepDungeon", "keepElite" }) do
-        local c = checkbox(setup, ({ "KEEP_CLASS", "KEEP_DUNGEON", "KEEP_ELITE" })[i])
-        if i == 1 then
-            c:SetPoint("TOPLEFT", checkQuests, "TOPLEFT", 330, 0)
-        else
-            c:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -2)
-        end
-        protect[key], above = c, c
-    end
-
-    local clear = button(setup, "CLEAR", 150)
-    clear:SetPoint("BOTTOMRIGHT", -12, 12)
-    clear:SetScript("OnClick", onClear)
-
-    -- Preview view
-    preview = CreateFrame("Frame", nil, frame)
+    -- Preview view: quests on the left, items on the right, the totals under them.
+    preview = CreateFrame("Frame", nil, body)
     preview:SetAllPoints()
     preview:Hide()
 
-    questHead = S.Text(preview, 13, accent)
-    questHead:SetPoint("TOPLEFT", 16, -(TITLE_H + 12))
-    itemHead = S.Text(preview, 13, accent)
-    itemHead:SetPoint("TOPLEFT", 14 + LEFT_W + GAP, -(TITLE_H + 12))
-
-    scroll = S.Scroll(preview)
-    scroll:SetPoint("TOPLEFT", 12, -(TITLE_H + 34))
-    scroll:SetPoint("BOTTOMRIGHT", -24, 100)
-    content = scroll.child
-    content:SetWidth(W - 40)
-
-    local hint = S.Text(preview, 11, S.MUTED)
-    hint:SetPoint("BOTTOMLEFT", 14, 76)
-    hint:SetPoint("RIGHT", -14, 0)
-    say(hint, "HINT")
-
-    summary = S.Text(preview, 13)
-    summary:SetPoint("BOTTOMLEFT", 14, 56)
-    summary:SetPoint("RIGHT", -280, 0)
-
     frees = S.Text(preview, 11, S.MUTED)
-    frees:SetPoint("BOTTOMLEFT", 14, 38)
-    frees:SetPoint("RIGHT", -280, 0)
+    frees:SetPoint("BOTTOMLEFT", 0, 0)
+    frees:SetPoint("RIGHT", 0, 0)
+    frees:SetWordWrap(false)
+    summary = S.Text(preview, 13)
+    summary:SetPoint("BOTTOMLEFT", frees, "TOPLEFT", 0, 6)
+    summary:SetPoint("RIGHT", 0, 0)
+    summary:SetWordWrap(false)
 
-    okButton = button(preview, "OK", 150)
-    okButton:SetPoint("BOTTOMRIGHT", -12, 12)
-    okButton:SetScript("OnClick", onOK)
-    backButton = button(preview, "BACK", 110)
-    backButton:SetPoint("RIGHT", okButton, "LEFT", -8, 0)
-    backButton:SetScript("OnClick", function()
-        setStatus("")
-        showSetup()
-    end)
+    local card = S.Card(preview)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("TOPRIGHT")
+    card:SetPoint("BOTTOM", summary, "TOP", 0, S.GAP)
+    local cb = card.body
+    local accent = S.Accent()
+    questHead = S.Text(cb, 13, accent)
+    questHead:SetPoint("TOPLEFT", 4, 0)
+    itemHead = S.Text(cb, 13, accent)
+    itemHead:SetPoint("TOPLEFT", 4 + LEFT_W + GAP, 0)
+    local rule = S.Divider(cb, S.EDGE)
+    rule:SetPoint("TOPLEFT", 0, -24)
+    rule:SetPoint("TOPRIGHT", 0, -24)
+    rule:SetHeight(1)
 
-    frame:SetScript("OnShow", function() setStatus(""); showSetup() end)
+    scroll = S.Scroll(cb)
+    scroll:SetPoint("TOPLEFT", 0, -34)
+    scroll:SetPoint("BOTTOMRIGHT", -12, 0)
+    content = scroll.child
+    content:SetWidth(width - 2 * S.INSET - 12)
+
+    frame:SetScript("OnShow", function() showSetup(); setStatus("") end)
     ns.ApplyTexts()
 end
 
 function ns.ApplyTexts()
     for _, e in ipairs(labels) do e[1]:SetText(L[e[2]]) end
-    setup.level:SetText(L.YOUR_LEVEL:format(UnitLevel("player")))
+    if levelRow then levelRow.desc:SetText(L.YOUR_LEVEL:format(UnitLevel("player"))) end
     if preview:IsShown() then refresh() end
 end
 

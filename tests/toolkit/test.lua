@@ -164,10 +164,12 @@ test("a module's options are shown and switched from the hub", function()
     local ns = Load()
     local db = { sell = true }
     GulliToolkit.Register({ key = "QuestCleaner", open = function() end, options = {
-        { label = "Sell", get = function() return db.sell end, set = function(on) db.sell = on end },
+        { label = "Sell", get = function() return db.sell end, set = function(on) db.sell = on end,
+          icon = "Interface\\Icons\\INV_Misc_Coin_02" },
         { label = "Broken" }, "nonsense" } })
     local row = byKey(ns.List()).QuestCleaner
     eq(#row.options, 1, "only options with a label, get and set")
+    eq(row.options[1].icon, "Interface\\Icons\\INV_Misc_Coin_02", "the option keeps its icon")
     ns.Toggle()
     local view = ns.View()
     view.selected = "QuestCleaner"
