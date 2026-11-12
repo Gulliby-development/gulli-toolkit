@@ -1,0 +1,52 @@
+# Quests check_data.py found that were judged not to gate a raid or a dungeon in WoW Forever.
+# One "<quest id> <name>" per line. Remove a line to see the quest again.
+328 The Hidden Key
+396 An Audience with the King
+603 Ansirem's Key
+722 Amulet of Secrets
+779 Seal of the Earth
+795 Seal of the Earth
+1014 Arugal Must Die
+1200 Blackfathom Villainy
+3201 At Last!
+3627 Uniting the Shattered Amulet
+4451 The Key to Freedom
+4810 Return to Tinkee
+5202 A Strange Red Key
+5213 The Active Agent
+5944 In Dreams
+6163 Ramstein
+6561 Blackfathom Villainy
+7201 The Last Element
+7498 Garona: A Study on Stealth and Treachery
+7499 Codex of Defense
+7500 The Arcanist's Cookbook
+7501 The Light and How To Swing It
+7502 Harnessing Shadows
+7503 The Greatest Race of Hunters
+7504 Holy Bologna: What the Light Won't Tell You
+7505 Frost Shock and You
+7506 The Emerald Dream...
+7846 Recover the Key!
+7981 1200 Tickets - Amulet of the Darkmoon
+8236 The Azure Key
+8352 Scepter of the Council
+8364 Abyssal Scepters
+8730 Nefarius's Corruption
+8791 The Fall of Ossirian
+8802 The Savior of Kalimdor
+8966 The Left Piece of Lord Valthalak's Amulet
+8967 The Left Piece of Lord Valthalak's Amulet
+8968 The Left Piece of Lord Valthalak's Amulet
+8969 The Left Piece of Lord Valthalak's Amulet
+8989 The Right Piece of Lord Valthalak's Amulet
+8990 The Right Piece of Lord Valthalak's Amulet
+8991 The Right Piece of Lord Valthalak's Amulet
+8992 The Right Piece of Lord Valthalak's Amulet
+9141 They Call Me "The Rooster"
+9142 Craftsman's Writ
+9222 Epic Armaments of Battle - Friend of the Dawn
+9224 Epic Armaments of Battle - Honored Amongst the Dawn
+9225 Epic Armaments of Battle - Revered Amongst the Dawn
+9228 Epic Armaments of Battle - Exalted Amongst the Dawn
+9378 DND FLAG The Dread Citadel - Naxxramas

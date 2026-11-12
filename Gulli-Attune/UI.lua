@@ -1,4 +1,4 @@
--- Characters on the left; on the right each raid with its steps, the next one highlighted.
+-- Characters on the left; on the right each raid or key with its steps, the next one highlighted.
 -- A raid that is done shows only its line.
 
 local _, ns = ...
@@ -57,6 +57,7 @@ local function fillRow(r, item)
         r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
         local state = p.ready and (S.Hex(S.Accent()) .. L.READY .. "|r") or
             (S.Hex(S.MUTED) .. L.STEPS:format(p.done, p.total) .. "|r")
+        if p.raid.later then state = state .. "   " .. S.Hex(S.MUTED) .. L.LATER .. "|r" end
         r.text:SetText(ns.RaidName(p.raid) .. "   " .. state)
         r.sub:SetText("")
         S.Fill(r, S.PANEL)

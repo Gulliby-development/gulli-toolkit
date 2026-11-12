@@ -66,10 +66,12 @@ end)
 test("names: the game's quest and zone names first, then English", function()
     Fake({ titles = { [7848] = "Настройка на Недра" }, areas = { [25] = "Черная гора" } })
     local ns = Load()
-    local step = ns.RAIDS[1].steps[1]
+    local mc
+    for _, r in ipairs(ns.RAIDS) do if r.key == "MC" then mc = r end end
+    local step = mc.steps[1]
     eq(ns.QuestName(step), "Настройка на Недра")
     eq(ns.Where(step), "Lothos Riftwaker, Черная гора")
-    eq(ns.RaidName(ns.RAIDS[1]), "Molten Core")
+    eq(ns.RaidName(mc), "Molten Core")
 end)
 
 test("events scan after a short pause; the window opens", function()
@@ -82,6 +84,39 @@ test("events scan after a short pause; the window opens", function()
     assert(ns.db.chars["Tester-Realm"])
     SlashCmdList.GULLIATTUNE("")
     ns.Refresh()
+end)
+
+test("dungeon keys: the chain or the key in the bags; Scholomance has a chain per faction", function()
+    Fake({ done = { [3801] = true, [3802] = true }, items = { [17191] = 1 } })
+    local ns = Load()
+    ns.Scan()
+    local c = ns.db.chars["Tester-Realm"]
+    eq(raid(ns, c, "BRD").ready, true)
+    eq(raid(ns, c, "MARA").ready, true, "the Scepter of Celebras in the bags")
+    local sch = raid(ns, c, "SCHOLO")
+    eq(sch.steps[1].step[1], 5092)
+    eq(sch.total, 8)
+    Fake({ faction = "Horde", items = { [13704] = 1 } })
+    ns = Load()
+    ns.Scan()
+    c = ns.db.chars["Tester-Realm"]
+    sch = raid(ns, c, "SCHOLO")
+    eq(sch.steps[1].step[1], 5096)
+    eq(sch.ready, true, "the Skeleton Key in the bags")
+end)
+
+test("what Forever has now comes first; raids it has not opened are last and marked", function()
+    Fake({})
+    local ns = Load()
+    eq(ns.RAIDS[1].key, "ONY")
+    local seenLater = false
+    for _, r in ipairs(ns.RAIDS) do
+        if r.later then seenLater = true else assert(not seenLater, r.key .. " comes after a later raid") end
+    end
+    assert(seenLater)
+    for _, r in ipairs(ns.RAIDS) do
+        assert(ns.T.en["RAID_" .. r.key], "no name for " .. r.key)
+    end
 end)
 
 test("every language has every key, with the same placeholders", function()
