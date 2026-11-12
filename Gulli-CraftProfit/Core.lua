@@ -23,6 +23,7 @@ ns.DEFAULTS = {
     useBags = true, useBank = true, buyAH = true, buyVendor = true,
     buyRecipes = true, trainer = true,
     sellAH = true, neutral = false, chance = 80, maxSell = 5, freshOnly = true,
+    maxBuy = 40, -- units of one item a profit run buys at the auction: only a few sell at that price
 }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
@@ -41,8 +42,8 @@ ns.OLD_MODES = { money = "l1", balance = "auto", speed = "l4" }
 ns.EARN = { own = true, earn = true }
 -- A change of recipe costs a little, so the plan does not hop between two recipes for a point.
 ns.SWITCH = 600
--- The most crafts one profit run plans, so one cheap recipe cannot run away.
-ns.EARN_MAX = 400
+-- The most crafts one profit run plans, intermediates included, so one cheap recipe cannot run away.
+ns.EARN_MAX = 200
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
 
@@ -92,7 +93,9 @@ function ns.BuyOption(state, P, id)
     local it = state.items[id] or {}
     local v, how
     if P.buyVendor and it.buy then v, how = it.buy, "vendor" end
-    if P.buyAH and ns.Fresh(it, P) and (not v or it.ah < v) then v, how = it.ah, "ah" end
+    -- `ahBought`: what this run already bought there; buying stops once it reaches maxBuy
+    local room = not P.ahBought or (P.ahBought[id] or 0) < (P.maxBuy or math.huge)
+    if P.buyAH and room and ns.Fresh(it, P) and (not v or it.ah < v) then v, how = it.ah, "ah" end
     return v, how
 end
 
@@ -344,8 +347,17 @@ local function earnWith(state, P, known, rid)
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
                   segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true,
                   reached = state.skill, target = state.skill }
+    local Q = {}
+    for k, v in pairs(P) do Q[k] = v end
+    Q.ahBought = acc.ahBuy
+    P = Q
     local bySeg = {}
-    while acc.crafts < ns.EARN_MAX do
+    local function made()
+        local n = acc.crafts
+        for _, k in pairs(acc.prep) do n = n + k end
+        return n
+    end
+    while made() < ns.EARN_MAX do
         local best
         for _, rid in ipairs(ids) do
             local r = state.recipes[rid]
@@ -760,6 +772,7 @@ ns.OPT_ICON = {
     freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", level = "Interface\\Icons\\Spell_ChargePositive", target = "Interface\\Icons\\INV_Misc_Note_01",
     budget = "Interface\\Icons\\INV_Misc_Coin_01",
     chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
+    maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop",
 }
 
 local function option(key)

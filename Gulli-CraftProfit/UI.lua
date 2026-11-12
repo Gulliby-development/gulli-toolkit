@@ -149,7 +149,8 @@ local function buildSide(scroll)
     local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, budget })
     st:Add(c0, h0)
 
-    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"), sw("buyVendor") })
+    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"),
+        stepRow(col, "maxBuy", 10, 10, 200, function(v) return L.UNITS:format(v) end), sw("buyVendor") })
     st:Add(c1, h1)
     local c2, h2 = rowsCard(col, L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") })
     st:Add(c2, h2)
@@ -678,7 +679,7 @@ local function refreshRoute()
             local full = p.full or p
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
-                or (p.earn and L.VAR_CRAFTS:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(p.reached, ns.Ceil(p.crafts)))
+                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(p.reached, ns.Ceil(p.crafts)))
             if x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
             b.sub:SetText(sub)
