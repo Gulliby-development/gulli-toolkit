@@ -44,6 +44,13 @@ T.en = {
     ALT_HELP = "Alt+click an item in your bags, or drop it on the list, to always sell it. Untick a row to keep that item this session.",
     DROP = "Drop an item here to always sell it",
     EMPTY_SUB = "Gray items and items on your \"always sell\" list show up here.",
+    SUMMARY_SOLD = "Sold %d items for %s",
+    SUMMARY_JUNK = "%d junk items worth %s",
+    TIP_sell = "Sell junk when a vendor opens.",
+    TIP_repair = "Repair your gear at a vendor that can.",
+    TIP_guild = "Repair with guild money when allowed.",
+    TIP_safe = "Sell at most 12 items, so all can be bought back.",
+    TIP_unusable = "Also sell bound gear your class cannot use.",
 }
 
 T.de = {
@@ -81,6 +88,13 @@ T.de = {
     ALT_HELP = "Alt+Klick auf einen Gegenstand in den Taschen, oder zieh ihn auf die Liste, um ihn immer zu verkaufen. Entferne den Haken, um ihn diese Sitzung zu behalten.",
     DROP = "Gegenstand hier ablegen, um ihn immer zu verkaufen",
     EMPTY_SUB = "Graue Gegenstände und die Liste \"immer verkaufen\" erscheinen hier.",
+    SUMMARY_SOLD = "%d Gegenstände für %s verkauft",
+    SUMMARY_JUNK = "%d Schrott im Wert von %s",
+    TIP_sell = "Verkauft Schrott beim Händler.",
+    TIP_repair = "Repariert die Ausrüstung.",
+    TIP_guild = "Repariert mit Gildengold, wenn erlaubt.",
+    TIP_safe = "Höchstens 12 verkaufen, alles rückkaufbar.",
+    TIP_unusable = "Verkauft auch gebundene, unbrauchbare Ausrüstung.",
 }
 
 T.es = {
@@ -118,6 +132,13 @@ T.es = {
     ALT_HELP = "Alt+clic en un objeto de tus bolsas, o suéltalo en la lista, para venderlo siempre. Desmarca una fila para guardar ese objeto en esta sesión.",
     DROP = "Suelta un objeto aquí para venderlo siempre",
     EMPTY_SUB = "Aquí aparecen los objetos grises y los de tu lista \"vender siempre\".",
+    SUMMARY_SOLD = "%d objetos vendidos por %s",
+    SUMMARY_JUNK = "%d objetos basura por %s",
+    TIP_sell = "Vende basura al abrir un vendedor.",
+    TIP_repair = "Repara el equipo.",
+    TIP_guild = "Repara con dinero del gremio si se permite.",
+    TIP_safe = "Vende como mucho 12, todo recomprable.",
+    TIP_unusable = "Vende también equipo ligado que no puedes usar.",
 }
 
 T.fr = {
@@ -155,6 +176,13 @@ T.fr = {
     ALT_HELP = "Alt+clic sur un objet de vos sacs, ou déposez-le sur la liste, pour toujours le vendre. Décochez une ligne pour garder l'objet pendant cette session.",
     DROP = "Déposez un objet ici pour toujours le vendre",
     EMPTY_SUB = "Les objets gris et ceux de votre liste « toujours vendre » apparaissent ici.",
+    SUMMARY_SOLD = "%d objets vendus pour %s",
+    SUMMARY_JUNK = "%d objets inutiles pour %s",
+    TIP_sell = "Vend les objets inutiles chez le marchand.",
+    TIP_repair = "Répare l'équipement.",
+    TIP_guild = "Répare avec l'or de guilde si permis.",
+    TIP_safe = "Au plus 12, tout reste rachetable.",
+    TIP_unusable = "Vend aussi l'équipement lié inutilisable.",
 }
 
 T.pl = {
@@ -192,6 +220,13 @@ T.pl = {
     ALT_HELP = "Alt+klik na przedmiot w torbie albo upuść go na listę, aby zawsze go sprzedawać. Odznacz wiersz, by zatrzymać przedmiot w tej sesji.",
     DROP = "Upuść tu przedmiot, aby zawsze go sprzedawać",
     EMPTY_SUB = "Tu pojawiają się szare przedmioty i lista „zawsze sprzedawaj”.",
+    SUMMARY_SOLD = "Sprzedano %d przedmiotów za %s",
+    SUMMARY_JUNK = "%d śmieci warte %s",
+    TIP_sell = "Sprzedaje śmieci u kupca.",
+    TIP_repair = "Naprawia ekwipunek.",
+    TIP_guild = "Naprawia za złoto gildii, jeśli wolno.",
+    TIP_safe = "Najwyżej 12, wszystko do odkupienia.",
+    TIP_unusable = "Sprzedaje też związany sprzęt, którego nie użyjesz.",
 }
 
 T.pt = {
@@ -229,6 +264,13 @@ T.pt = {
     ALT_HELP = "Alt+clique num item das bolsas, ou solte-o na lista, para sempre vendê-lo. Desmarque uma linha para manter o item nesta sessão.",
     DROP = "Solte um item aqui para sempre vendê-lo",
     EMPTY_SUB = "Itens cinza e os da lista \"sempre vender\" aparecem aqui.",
+    SUMMARY_SOLD = "%d itens vendidos por %s",
+    SUMMARY_JUNK = "%d itens de lixo por %s",
+    TIP_sell = "Vende lixo ao abrir o vendedor.",
+    TIP_repair = "Repara o equipamento.",
+    TIP_guild = "Repara com ouro da guilda se permitido.",
+    TIP_safe = "No máximo 12, tudo recomprável.",
+    TIP_unusable = "Vende também equipamento vinculado inútil.",
 }
 
 T.ru = {
@@ -266,6 +308,13 @@ T.ru = {
     ALT_HELP = "Alt+клик по предмету в сумке или перетаскивание в список — продавать всегда. Снимите галочку, чтобы оставить предмет на эту сессию.",
     DROP = "Перетащите сюда предмет, чтобы всегда его продавать",
     EMPTY_SUB = "Здесь появятся серые предметы и список «всегда продавать».",
+    SUMMARY_SOLD = "Продано %d предметов на %s",
+    SUMMARY_JUNK = "Хлам: %d на %s",
+    TIP_sell = "Продавать хлам у торговца.",
+    TIP_repair = "Чинить экипировку.",
+    TIP_guild = "Чинить за счёт гильдии, если можно.",
+    TIP_safe = "Не больше 12, всё можно выкупить.",
+    TIP_unusable = "Продавать и привязанные вещи, которые класс не носит.",
 }
 
 T.zh = {
@@ -303,6 +352,13 @@ T.zh = {
     ALT_HELP = "在背包中 Alt+点击物品，或把它拖到列表上，即可总是出售。取消勾选可在本次登录中保留该物品。",
     DROP = "把物品拖到这里即可总是出售",
     EMPTY_SUB = "灰色物品和“总是出售”列表中的物品会显示在这里。",
+    SUMMARY_SOLD = "已售出 %d 件,得 %s",
+    SUMMARY_JUNK = "%d 件垃圾,值 %s",
+    TIP_sell = "打开商人时出售垃圾。",
+    TIP_repair = "在可修理的商人处修理装备。",
+    TIP_guild = "允许时用公会资金修理。",
+    TIP_safe = "最多卖 12 件,可全部回购。",
+    TIP_unusable = "也出售本职业无法使用的绑定装备。",
 }
 
 ns.T = T

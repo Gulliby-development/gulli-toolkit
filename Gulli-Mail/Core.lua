@@ -601,7 +601,7 @@ SlashCmdList.GULLIMAIL = function() ns.Toggle() end
 function GulliMail_Toggle() ns.Toggle() end
 
 local function option(key, label)
-    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], tip = ns.L["TIP_" .. key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 
@@ -620,5 +620,24 @@ if GulliToolkit and GulliToolkit.Register then
             option("expired", ns.L.OPT_EXPIRED),
             option("player", ns.L.OPT_PLAYER),
         },
+        -- letters with things in them that run out soon, on any character of this realm
+        summary = function()
+            if not ns.db or not ns.db.chars then return nil end
+            local n, soonest = 0, nil
+            for _, c in pairs(ns.db.chars[GetRealmName and GetRealmName() or ""] or {}) do
+                for _, e in ipairs(c.ends or {}) do
+                    local days = (e - time()) / 86400
+                    if days > 0 and days < 7 then n = n + 1; soonest = math.min(soonest or days, days) end
+                end
+            end
+            if n == 0 then return nil end
+            return ns.L.HUB_SUMMARY:format(n, math.max(1, math.ceil(soonest))), "Interface\\Icons\\INV_Letter_15"
+        end,
+        reset = function()
+            if not ns.db then return end
+            for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+            if ns.Refresh then ns.Refresh() end
+            if ns.RefreshSettings then ns.RefreshSettings() end
+        end,
     })
 end

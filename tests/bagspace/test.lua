@@ -203,4 +203,17 @@ test("every language has every key, with the same placeholders", function()
     W.CheckLocales(Load())
 end)
 
+test("the hub gets a summary, a reset and a tip on each switch", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
+    ns.db.popup = false
+    reg.reset()
+    eq(ns.db.popup, true)
+    assert(reg.summary())
+end)
+
 W.finish()
