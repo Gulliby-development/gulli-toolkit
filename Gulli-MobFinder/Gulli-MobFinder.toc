@@ -10,7 +10,7 @@
 ## Notes-zhCN: 列表中的怪物显示姓名板时播放声音。/gmf
 ## Notes-zhTW: 列表中的怪物显示姓名板时播放声音。/gmf
 ## Author: Gulliby
-## Version: 1.3.0
+## Version: 1.4.0
 ## IconTexture: Interface\AddOns\Gulli-MobFinder\icon
 ## SavedVariables: GulliMobFinderDB
 ## OptionalDeps: Gulli-Toolkit
