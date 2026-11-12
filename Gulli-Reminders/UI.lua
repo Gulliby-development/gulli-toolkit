@@ -76,6 +76,7 @@ local function postClick(self, button, down)
     local m = self.m
     if button == "RightButton" then ns.Toggle(); return end
     if not ns.db.locked then return end
+    if m and m.act and ns.NoteClick then ns.NoteClick(m.key) end
     if m and m.buy and ns.Buy(m) > 0 then return end
     if not (m and m.act) then ns.Toggle() end
 end
