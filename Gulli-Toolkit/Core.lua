@@ -266,7 +266,7 @@ function ns.List()
             -- runs but is switched off, or is switched on but not running, waits for a reload.
             local ok, reason = loadable(addon)
             local loaded = info ~= nil or isLoaded(addon)
-            row.on = isOn(addon)
+            row.on, row.running = isOn(addon), loaded
             if loaded then
                 row.state = row.on and "ready" or "reload"
             elseif not row.on then
@@ -278,7 +278,7 @@ function ns.List()
                 row.state, row.reason = "blocked", reason
             end
         elseif info then
-            row.state, row.on = "ready", true
+            row.state, row.on, row.running = "ready", true, true
         else
             row.state = "missing"
         end
@@ -447,11 +447,12 @@ end
 -- The home page ---------------------------------------------------------------------------------
 
 -- One short line per module that gives a summary ("Level 24 in 1 h 10 min"), for the hub's home
--- page: { { row, text, icon } }. A summary that fails or says nothing is left out.
+-- page: { { row, text, icon } }. Every module that runs counts, also one that waits for a reload
+-- after it was switched off. A summary that fails or says nothing is left out.
 function ns.Summaries(rows)
     local out = {}
     for _, r in ipairs(rows or ns.List()) do
-        local fn = r.state == "ready" and r.info and r.info.summary
+        local fn = r.info and r.info.summary
         if type(fn) == "function" then
             local ok, text, icon = pcall(fn)
             if ok and type(text) == "string" and text ~= "" then
@@ -460,6 +461,42 @@ function ns.Summaries(rows)
         end
     end
     return out
+end
+
+-- The state of the whole set for the home page: how many modules are on and run, which wait for
+-- a reload, which the game refuses, which were updated, and the memory they use (heaviest first).
+function ns.Overview(rows)
+    rows = rows or ns.List()
+    local o = { on = 0, total = 0, running = 0, reload = {}, blocked = {}, new = {}, heavy = {}, kb = 0 }
+    local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
+    local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
+    if update and get then pcall(update) end
+    for _, r in ipairs(rows) do
+        if r.state ~= "missing" or r.info then
+            o.total = o.total + 1
+            if r.on then o.on = o.on + 1 end
+            if r.running then o.running = o.running + 1 end
+        end
+        if r.state == "reload" then o.reload[#o.reload + 1] = r end
+        if r.state == "blocked" then o.blocked[#o.blocked + 1] = r end
+        if r.new and r.running then o.new[#o.new + 1] = r end
+        if r.running and r.addon and get then
+            local ok, kb = pcall(get, r.addon)
+            kb = ok and tonumber(kb)
+            if kb and kb > 0 then
+                o.kb = o.kb + kb
+                o.heavy[#o.heavy + 1] = { row = r, kb = kb }
+            end
+        end
+    end
+    table.sort(o.heavy, function(a, b) return a.kb > b.kb end)
+    return o
+end
+
+-- Kilobytes as "820 KB" or "2.4 MB".
+function ns.Size(kb)
+    if kb >= 1024 then return string.format("%.1f MB", kb / 1024) end
+    return string.format("%d KB", math.floor(kb + 0.5))
 end
 
 -- The module the hub showed last (it opens there next time), nil for the home page.
@@ -546,8 +583,7 @@ end
 function ns.Memory(row)
     local kb = row and row.addon and memoryKB(row.addon)
     if not kb then return nil end
-    if kb >= 1024 then return string.format("%.1f MB", kb / 1024) end
-    return string.format("%d KB", math.floor(kb + 0.5))
+    return ns.Size(kb)
 end
 
 -- Export and import of every Gulli setting as one line of text --------------------------------

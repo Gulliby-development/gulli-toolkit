@@ -495,6 +495,36 @@ test("the switch shows what the game will load: off is off, a module it refuses 
     ADDON_INTERFACE_VERSION = nil
 end)
 
+test("the home page counts what runs, waits, is refused or updated, and lists every running summary", function()
+    Fake({ addons = {
+        { name = "Gulli-XP", enabled = false, loaded = true, meta = { ["X-Gulli-Module"] = "XP", Version = "1.4.0" } },
+        { name = "Gulli-Loot", enabled = true, blocked = "INTERFACE_VERSION", meta = { ["X-Gulli-Module"] = "Loot" } },
+        { name = "Gulli-Chores", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Chores", Version = "1.4.0" } } } })
+    GulliToolkitDB = { seen = { Chores = "1.3.0" } }
+    UpdateAddOnMemoryUsage = function() end
+    GetAddOnMemoryUsage = function(name) return ({ ["Gulli-XP"] = 360, ["Gulli-Chores"] = 2048 })[name] or 0 end
+    local ns = Load()
+    GulliToolkit.Register({ key = "XP", open = function() end, slash = "/gxp", summary = function() return "8k XP/h" end })
+    GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
+    local o = ns.Overview()
+    eq(o.on, 2, "Loot and Chores are on")
+    eq(o.running, 2, "XP and Chores run")
+    eq(#o.reload, 1, "XP runs but is switched off")
+    eq(o.reload[1].key, "XP")
+    eq(#o.blocked, 1)
+    eq(o.blocked[1].key, "Loot")
+    eq(#o.new, 1, "Chores was updated")
+    eq(o.heavy[1].row.key, "Chores", "heaviest first")
+    eq(ns.Size(o.kb), "2.4 MB")
+    eq(ns.Size(360), "360 KB")
+    local sums = ns.Summaries()
+    eq(#sums, 1, "a module that still runs while it waits for a reload keeps its summary")
+    eq(sums[1].row.key, "XP")
+    ns.Toggle()
+    eq(ns.Home():IsShown(), true, "the home page builds with the Modules card and the commands")
+    UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
+end)
+
 test("the minimap button sits on the circle, or on the edge of a square minimap", function()
     Fake({})
     local ns = Load()

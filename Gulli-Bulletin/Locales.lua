@@ -70,6 +70,7 @@ T.en = {
     PROF_ENGI = "Engineering",
     PROF_COOK = "Cooking",
     PROF_LOCK = "Lockpick",
+    HUB_SUMMARY = "%d groups looking for players, %d trade posts",
 }
 
 T.de = {
@@ -133,6 +134,7 @@ T.de = {
     PROF_ENGI = "Ingenieur",
     PROF_COOK = "Kochen",
     PROF_LOCK = "Schlösser",
+    HUB_SUMMARY = "%d Gruppen suchen Spieler, %d Handelsposts",
 }
 
 T.es = {
@@ -196,6 +198,7 @@ T.es = {
     PROF_ENGI = "Ingeniería",
     PROF_COOK = "Cocina",
     PROF_LOCK = "Cerraduras",
+    HUB_SUMMARY = "%d grupos buscan jugadores, %d anuncios de comercio",
 }
 
 T.fr = {
@@ -259,6 +262,7 @@ T.fr = {
     PROF_ENGI = "Ingénierie",
     PROF_COOK = "Cuisine",
     PROF_LOCK = "Crochetage",
+    HUB_SUMMARY = "%d groupes cherchent des joueurs, %d annonces de commerce",
 }
 
 T.pl = {
@@ -322,6 +326,7 @@ T.pl = {
     PROF_ENGI = "Inżynieria",
     PROF_COOK = "Gotowanie",
     PROF_LOCK = "Zamki",
+    HUB_SUMMARY = "Grupy szukające graczy: %d, ogłoszenia handlowe: %d",
 }
 
 T.pt = {
@@ -385,6 +390,7 @@ T.pt = {
     PROF_ENGI = "Engenharia",
     PROF_COOK = "Culinária",
     PROF_LOCK = "Fechaduras",
+    HUB_SUMMARY = "%d grupos procuram jogadores, %d anúncios de comércio",
 }
 
 T.ru = {
@@ -448,6 +454,7 @@ T.ru = {
     PROF_ENGI = "Инженер",
     PROF_COOK = "Кулинария",
     PROF_LOCK = "Взлом",
+    HUB_SUMMARY = "Групп ищут игроков: %d, торговых объявлений: %d",
 }
 
 T.zh = {
@@ -511,6 +518,7 @@ T.zh = {
     PROF_ENGI = "工程",
     PROF_COOK = "烹饪",
     PROF_LOCK = "开锁",
+    HUB_SUMMARY = "%d 个队伍在招人，%d 条交易信息",
 }
 
 ns.T = T

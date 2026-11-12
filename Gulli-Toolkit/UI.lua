@@ -17,7 +17,7 @@ local W = 2 * S.PAD + SIDE + GAP + HOST_W
 local H = S.HEADER_H + 2 * S.PAD + HOST_H
 local LIST_W = SIDE - 2 * S.INSET - 10
 local ROW_H, HEAD_H = 30, 30
-local TILE_COLS, TILE_MAX, TILE_H = 3, 9, 58
+local TILE_COLS, TILE_MAX, TILE_H = 3, 12, 58
 local QUICK_W, LINE_H = 320, 24
 
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
@@ -382,7 +382,7 @@ end
 
 -- The home page ---------------------------------------------------------------------------------
 
-local tiles, feedLines = {}, {}
+local tiles, feedLines, ovLines, cmdLines = {}, {}, {}, {}
 
 local function makeTile(i)
     local t = CreateFrame("Button", nil, home.summary)
@@ -428,6 +428,98 @@ local function makeFeedLine(i)
     return b
 end
 
+-- A line of the Modules card or the commands list: text, a tooltip with the whole text, and a
+-- click that opens the module it names.
+local function makeLine(parent, list, i, size)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetHeight(LINE_H)
+    S.Box(b, S.CLEAR, S.CLEAR)
+    b.text = S.Text(b, size or 12, S.MUTED)
+    b.text:SetPoint("LEFT", 4, 0)
+    b.text:SetPoint("RIGHT", -4, 0)
+    b.text:SetWordWrap(false)
+    b:SetScript("OnClick", function(self) if self.row then enter(self.row) end end)
+    b:SetScript("OnEnter", function(self)
+        if self.row then S.Fill(self, HOVER) end
+        if self.full then tip(self, self.head, { self.full }, "ANCHOR_TOP") end
+    end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR); hideTip() end)
+    list[i] = b
+    return b
+end
+
+-- The lines of the Modules card from ns.Overview: what waits, what the game refuses, what was
+-- updated and what uses the most memory. { { head, color, names, row } }
+local function overviewLines(o)
+    local out = {}
+    local function names(rows, extra)
+        local t = {}
+        for _, r in ipairs(rows) do t[#t + 1] = r.title .. (extra and extra(r) or "") end
+        return table.concat(t, ", ")
+    end
+    if #o.reload > 0 then out[#out + 1] = { L.OV_RELOAD, S.WARN, names(o.reload), o.reload[1] } end
+    if #o.blocked > 0 then
+        out[#out + 1] = { L.OV_BLOCKED, S.BAD,
+            names(o.blocked, function(r) return " (" .. ns.ReasonText(r.reason) .. ")" end), o.blocked[1] }
+    end
+    if #o.new > 0 then
+        out[#out + 1] = { L.OV_NEW, S.GOOD, names(o.new, function(r) return " " .. r.version end), o.new[1] }
+    end
+    if #out == 0 then out[#out + 1] = { L.OV_FINE, S.GOOD, "" } end
+    if #o.heavy > 0 then
+        local t = {}
+        for i = 1, math.min(3, #o.heavy) do t[i] = o.heavy[i].row.title .. " " .. ns.Size(o.heavy[i].kb) end
+        out[#out + 1] = { L.OV_HEAVY, S.FAINT, table.concat(t, ", "), o.heavy[1].row }
+    end
+    return out
+end
+
+local function fillOverview(data)
+    local o = ns.Overview(data)
+    local hex = S.Hex(S.TEXT)
+    local parts = { hex .. L.OV_ON:format(o.on, o.total) .. "|r", L.OV_RUNNING:format(o.running) }
+    if o.kb > 0 then parts[#parts + 1] = L.OV_MEMORY:format(ns.Size(o.kb)) end
+    home.ovHead:SetText(table.concat(parts, S.Hex(S.FAINT) .. "   ·   |r"))
+    local lines = overviewLines(o)
+    for i, e in ipairs(lines) do
+        local b = ovLines[i] or makeLine(home.overview.body, ovLines, i)
+        b.head, b.full, b.row = e[1], e[3] ~= "" and e[3] or nil, e[4]
+        b.text:SetText(S.Hex(e[2]) .. e[1] .. "|r" .. (e[3] ~= "" and ("  " .. e[3]) or ""))
+        place(b, 24 + (i - 1) * LINE_H)
+        b:Show()
+    end
+    for i = #lines + 1, #ovLines do ovLines[i]:Hide() end
+    return home.overview:Fit(24 + #lines * LINE_H)
+end
+
+-- The slash commands of the modules that run, as many as the Quick setup card has room for.
+local function fillCommands(data)
+    local room = math.floor((home.quick:GetHeight() - home.cmdTop - 36 - S.INSET) / LINE_H)
+    local list = {}
+    for _, r in ipairs(data) do if r.running and r.slash then list[#list + 1] = r end end
+    home.cmdTitle:SetShown(room > 0 and #list > 0)
+    local shown = math.max(0, math.min(#list, room))
+    if shown < #list and shown > 0 then shown = shown - 1 end
+    for i = 1, shown do
+        local b = cmdLines[i] or makeLine(home.quick.body, cmdLines, i)
+        local r = list[i]
+        b.row, b.head, b.full = r, nil, nil
+        b.text:SetText(S.Hex(S.Accent()) .. r.slash .. "|r  " .. r.title)
+        place(b, home.cmdTop + 24 + (i - 1) * LINE_H)
+        b:Show()
+    end
+    local n = shown
+    if shown < #list and room > 0 then
+        n = n + 1
+        local b = cmdLines[n] or makeLine(home.quick.body, cmdLines, n)
+        b.row, b.head, b.full = nil, nil, nil
+        b.text:SetText(S.Hex(S.FAINT) .. L.COMMANDS_MORE:format(#list - shown) .. "|r")
+        place(b, home.cmdTop + 24 + (n - 1) * LINE_H)
+        b:Show()
+    end
+    for i = n + 1, #cmdLines do cmdLines[i]:Hide() end
+end
+
 local function fillHome(data)
     local list2 = ns.Summaries(data)
     local n = math.min(#list2, TILE_MAX)
@@ -451,11 +543,14 @@ local function fillHome(data)
     local sh = 36 + inner + S.INSET
     home.summaryCard:SetHeight(sh)
     local lower = HOST_H - sh - GAP
-    home.recent:SetHeight(lower)
     home.quick:SetHeight(lower)
+    local oh = fillOverview(data)
+    local rh = lower - oh - GAP
+    home.recent:SetHeight(rh)
+    fillCommands(data)
 
     local feed = ns.Feed()
-    local room = math.max(1, math.floor((lower - 36 - S.INSET) / LINE_H))
+    local room = math.max(1, math.floor((rh - 36 - S.INSET) / LINE_H))
     local now = time()
     local shown = math.min(#feed, room)
     for i = 1, shown do
@@ -906,10 +1001,27 @@ local function buildHome()
     local map = minimapRow(q)
     map:SetPoint("TOPLEFT", 0, -(y + 84))
     map:SetPoint("TOPRIGHT", 0, -(y + 84))
+    home.cmdTop = y + 84 + 40
+    home.cmdTitle = S.Text(q, 13)
+    home.cmdTitle:SetPoint("TOPLEFT", 0, -home.cmdTop)
+    home.cmdTitle:SetText(L.COMMANDS)
+    local line = S.Tex(q, "ARTWORK", 0, LINE)
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", 0, -(home.cmdTop - 10))
+    line:SetPoint("TOPRIGHT", 0, -(home.cmdTop - 10))
+
+    local ov = S.Card(home, L.OV_TITLE)
+    ov:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    ov:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    home.overview = ov
+    home.ovHead = S.Text(ov.body, 13, S.MUTED)
+    home.ovHead:SetPoint("TOPLEFT", 4, 0)
+    home.ovHead:SetPoint("TOPRIGHT", -4, 0)
+    home.ovHead:SetWordWrap(false)
 
     local recent = S.Card(home, L.RECENT)
-    recent:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
-    recent:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    recent:SetPoint("TOPLEFT", ov, "BOTTOMLEFT", 0, -GAP)
+    recent:SetPoint("TOPRIGHT", ov, "BOTTOMRIGHT", 0, -GAP)
     home.recent = recent
     home.clear = S.Ghost(S.FitButton(recent, L.CLEAR, 24, 70))
     home.clear:SetPoint("TOPRIGHT", -8, -6)

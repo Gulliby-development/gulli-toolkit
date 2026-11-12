@@ -141,6 +141,17 @@ T.en = {
     NEW_TIP = "Updated since you last opened it.",
     NEWER_VERSION = "%s %s is out (you have %s). Update it in Runeloader.",
     HELP_MORE = "/gulli move unlocks frames, /gulli minimap hides the button, /gulli protect <item> protects an item.",
+    OV_TITLE = "Modules",
+    OV_ON = "%d of %d on",
+    OV_RUNNING = "%d running",
+    OV_MEMORY = "memory %s",
+    OV_RELOAD = "Wait for a reload:",
+    OV_BLOCKED = "The game does not load:",
+    OV_NEW = "Updated:",
+    OV_HEAVY = "Most memory:",
+    OV_FINE = "Every module that is on runs. Nothing waits.",
+    COMMANDS = "Commands",
+    COMMANDS_MORE = "+%d more: /gulli help",
 }
 
 T.de = {
@@ -275,6 +286,17 @@ T.de = {
     NEW_TIP = "Aktualisiert, seit du es zuletzt geöffnet hast.",
     NEWER_VERSION = "%s %s ist erschienen (du hast %s). Aktualisiere es in Runeloader.",
     HELP_MORE = "/gulli move entsperrt Rahmen, /gulli minimap blendet den Knopf aus, /gulli protect <Gegenstand> schützt einen Gegenstand.",
+    OV_TITLE = "Module",
+    OV_ON = "%d von %d an",
+    OV_RUNNING = "%d laufen",
+    OV_MEMORY = "Speicher %s",
+    OV_RELOAD = "Warten auf Neuladen:",
+    OV_BLOCKED = "Das Spiel lädt nicht:",
+    OV_NEW = "Aktualisiert:",
+    OV_HEAVY = "Höchster Speicherbedarf:",
+    OV_FINE = "Jedes eingeschaltete Modul läuft. Nichts wartet.",
+    COMMANDS = "Befehle",
+    COMMANDS_MORE = "+%d weitere: /gulli help",
 }
 
 T.es = {
@@ -409,6 +431,17 @@ T.es = {
     NEW_TIP = "Actualizado desde la última vez que lo abriste.",
     NEWER_VERSION = "Ya salió %s %s (tienes %s). Actualízalo en Runeloader.",
     HELP_MORE = "/gulli move desbloquea marcos, /gulli minimap oculta el botón, /gulli protect <objeto> protege un objeto.",
+    OV_TITLE = "Módulos",
+    OV_ON = "%d de %d activos",
+    OV_RUNNING = "%d en marcha",
+    OV_MEMORY = "memoria %s",
+    OV_RELOAD = "Esperan una recarga:",
+    OV_BLOCKED = "El juego no carga:",
+    OV_NEW = "Actualizados:",
+    OV_HEAVY = "Más memoria:",
+    OV_FINE = "Todos los módulos activos funcionan. Nada espera.",
+    COMMANDS = "Comandos",
+    COMMANDS_MORE = "+%d más: /gulli help",
 }
 
 T.fr = {
@@ -543,6 +576,17 @@ T.fr = {
     NEW_TIP = "Mis à jour depuis ta dernière ouverture.",
     NEWER_VERSION = "%s %s est sorti (tu as %s). Mets-le à jour dans Runeloader.",
     HELP_MORE = "/gulli move déverrouille les cadres, /gulli minimap cache le bouton, /gulli protect <objet> protège un objet.",
+    OV_TITLE = "Modules",
+    OV_ON = "%d sur %d actifs",
+    OV_RUNNING = "%d en marche",
+    OV_MEMORY = "mémoire %s",
+    OV_RELOAD = "Attendent un rechargement :",
+    OV_BLOCKED = "Le jeu ne charge pas :",
+    OV_NEW = "Mis à jour :",
+    OV_HEAVY = "Plus de mémoire :",
+    OV_FINE = "Chaque module actif tourne. Rien n'attend.",
+    COMMANDS = "Commandes",
+    COMMANDS_MORE = "+%d de plus : /gulli help",
 }
 
 T.pl = {
@@ -677,6 +721,17 @@ T.pl = {
     NEW_TIP = "Zaktualizowano od ostatniego otwarcia.",
     NEWER_VERSION = "Wyszła wersja %s %s (masz %s). Zaktualizuj w Runeloader.",
     HELP_MORE = "/gulli move odblokowuje ramki, /gulli minimap ukrywa przycisk, /gulli protect <przedmiot> chroni przedmiot.",
+    OV_TITLE = "Moduły",
+    OV_ON = "%d z %d włączone",
+    OV_RUNNING = "%d działa",
+    OV_MEMORY = "pamięć %s",
+    OV_RELOAD = "Czekają na przeładowanie:",
+    OV_BLOCKED = "Gra nie wczytuje:",
+    OV_NEW = "Zaktualizowane:",
+    OV_HEAVY = "Najwięcej pamięci:",
+    OV_FINE = "Każdy włączony moduł działa. Nic nie czeka.",
+    COMMANDS = "Polecenia",
+    COMMANDS_MORE = "+%d więcej: /gulli help",
 }
 
 T.pt = {
@@ -811,6 +866,17 @@ T.pt = {
     NEW_TIP = "Atualizado desde a última vez que você abriu.",
     NEWER_VERSION = "Saiu %s %s (você tem %s). Atualize no Runeloader.",
     HELP_MORE = "/gulli move destrava quadros, /gulli minimap esconde o botão, /gulli protect <item> protege um item.",
+    OV_TITLE = "Módulos",
+    OV_ON = "%d de %d ligados",
+    OV_RUNNING = "%d rodando",
+    OV_MEMORY = "memória %s",
+    OV_RELOAD = "Esperam recarregar:",
+    OV_BLOCKED = "O jogo não carrega:",
+    OV_NEW = "Atualizados:",
+    OV_HEAVY = "Mais memória:",
+    OV_FINE = "Todo módulo ligado está rodando. Nada espera.",
+    COMMANDS = "Comandos",
+    COMMANDS_MORE = "+%d mais: /gulli help",
 }
 
 T.ru = {
@@ -945,6 +1011,17 @@ T.ru = {
     NEW_TIP = "Обновлён с тех пор, как вы его открывали.",
     NEWER_VERSION = "Вышел %s %s (у вас %s). Обновите в Runeloader.",
     HELP_MORE = "/gulli move открепляет рамки, /gulli minimap прячет кнопку, /gulli protect <предмет> защищает предмет.",
+    OV_TITLE = "Модули",
+    OV_ON = "Включено %d из %d",
+    OV_RUNNING = "работают %d",
+    OV_MEMORY = "память %s",
+    OV_RELOAD = "Ждут перезагрузки:",
+    OV_BLOCKED = "Игра не загружает:",
+    OV_NEW = "Обновлены:",
+    OV_HEAVY = "Больше всего памяти:",
+    OV_FINE = "Все включённые модули работают. Ничего не ждёт.",
+    COMMANDS = "Команды",
+    COMMANDS_MORE = "ещё %d: /gulli help",
 }
 
 T.zh = {
@@ -1079,6 +1156,17 @@ T.zh = {
     NEW_TIP = "自上次打开后已更新。",
     NEWER_VERSION = "%s %s 已发布（你的是 %s）。请在 Runeloader 中更新。",
     HELP_MORE = "/gulli move 解锁框体，/gulli minimap 隐藏按钮，/gulli protect <物品> 保护物品。",
+    OV_TITLE = "模块",
+    OV_ON = "已开启 %d / %d",
+    OV_RUNNING = "%d 个运行中",
+    OV_MEMORY = "内存 %s",
+    OV_RELOAD = "等待重载：",
+    OV_BLOCKED = "游戏未加载：",
+    OV_NEW = "已更新：",
+    OV_HEAVY = "内存占用最多：",
+    OV_FINE = "所有开启的模块都在运行，无需等待。",
+    COMMANDS = "命令",
+    COMMANDS_MORE = "另有 %d 个：/gulli help",
 }
 
 ns.T = T
