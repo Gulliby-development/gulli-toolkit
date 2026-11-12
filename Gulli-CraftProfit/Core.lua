@@ -270,7 +270,8 @@ local function planWith(state, P, allowed)
             local last = acc.segs[#acc.segs]
             for _, rid in ipairs(ids) do
                 local r = state.recipes[rid]
-                local ch = ns.Chance(r, s)
+                -- `only`: a run of one recipe; the others still make its intermediates
+                local ch = (not P.only or P.only == rid) and ns.Chance(r, s) or 0
                 if ch > 0 then
                     local n = 1 / ch
                     local value = r.out and ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1) or 0
@@ -439,7 +440,9 @@ function ns.Frontier(state, P)
         local Q = {}
         for k, v in pairs(P) do Q[k] = v end
         Q.w = w
-        plans[#plans + 1] = ns.Plan(state, Q)
+        local p = ns.Plan(state, Q)
+        p.w = w
+        plans[#plans + 1] = p
     end
     local top = 0
     for _, p in ipairs(plans) do top = math.max(top, p.reached) end
@@ -469,10 +472,120 @@ function ns.NextRun(state, P, full)
     if not first or first.to >= full.reached then full.full = full; return full end
     local Q = {}
     for k, v in pairs(P) do Q[k] = v end
-    Q.target = first.to
+    Q.target, Q.only = first.to, first.rid
     local run = ns.Plan(state, Q)
     run.full = full
     return run
+end
+
+-- The whole way to the target as runs one after another: each run starts from what the one
+-- before left (skill, rank, own stock, recipes bought). Where no known recipe raises the skill,
+-- a leg is `unknown` up to the skill where a recipe turns orange, and the runs go on from there.
+-- `first`: the run the window shows now, so the first leg is the same plan. At most ns.MAX_LEGS.
+ns.MAX_LEGS = 20
+-- The recipe of a plan that uses only one, else nil.
+local function one(plan)
+    local rid
+    for _, sg in ipairs(plan.segs) do
+        if rid and sg.rid ~= rid then return nil end
+        rid = sg.rid
+    end
+    return rid
+end
+-- The state a run leaves: own stock it used is gone, recipes it bought are known, a new rank.
+local function after(st, run)
+    local nst = {}
+    for k, v in pairs(st) do nst[k] = v end
+    nst.items = {}
+    for id, it in pairs(st.items) do
+        local c = {}
+        for k, v in pairs(it) do c[k] = v end
+        c.bags = math.max(0, (c.bags or 0) - ((run.bags or {})[id] or 0))
+        c.bank = math.max(0, (c.bank or 0) - ((run.bank or {})[id] or 0))
+        nst.items[id] = c
+    end
+    nst.recipes = {}
+    for rid, r in pairs(st.recipes) do
+        local c = {}
+        for k, v in pairs(r) do c[k] = v end
+        if run.buyRecipes[rid] then c.learned = true end
+        nst.recipes[rid] = c
+    end
+    if run.rank then nst.cap = run.rank.cap end
+    nst.skill = run.reached
+    return nst
+end
+function ns.Legs(state, P, first)
+    local target = ns.Target(state, P)
+    local st = {}
+    for k, v in pairs(state) do st[k] = v end
+    st.items, st.recipes = {}, {}
+    for id, it in pairs(state.items) do
+        local c = {}
+        for k, v in pairs(it) do c[k] = v end
+        st.items[id] = c
+    end
+    for rid, r in pairs(state.recipes) do
+        local c = {}
+        for k, v in pairs(r) do c[k] = v end
+        st.recipes[rid] = c
+    end
+    local Q = {}
+    for k, v in pairs(P) do Q[k] = v end
+    Q.w = (first and first.full and first.full.w) or P.w
+    Q.target = target
+    local legs, s = {}, state.skill
+    while s < target and #legs < ns.MAX_LEGS do
+        st.skill = s
+        local run = (#legs == 0 and first) or nil
+        if not run then
+            local full = ns.Plan(st, Q)
+            local sg = full.segs[1]
+            if sg and full.reached > s then
+                -- the first recipe of the way from here, as far as the way keeps it
+                local to = sg.to
+                for i = 2, #full.segs do
+                    if full.segs[i].rid ~= sg.rid or full.segs[i].from ~= to then break end
+                    to = full.segs[i].to
+                end
+                local R = {}
+                for k, v in pairs(Q) do R[k] = v end
+                R.target, R.only = to, sg.rid
+                run = ns.Plan(st, R)
+            end
+        end
+        if not run or #run.segs == 0 or run.reached <= s then
+            -- no known recipe here: the next skill where one turns orange
+            local nxt
+            for _, r in pairs(st.recipes) do
+                if r.skill and r.skill[1] > s and ns.CanGet(r, Q) and (not nxt or r.skill[1] < nxt) then nxt = r.skill[1] end
+            end
+            local to = math.min(nxt or target, target)
+            legs[#legs + 1] = { from = s, to = to, unknown = true }
+            s = to
+        else
+            -- the same recipe as the run before: one longer run of it
+            local last = legs[#legs]
+            local rid = one(run)
+            local merged
+            if #legs > 1 and last.plan and rid and one(last.plan) == rid then
+                local M = {}
+                for k, v in pairs(Q) do M[k] = v end
+                M.target, M.only = run.reached, rid
+                merged = ns.Plan(last.state, M)
+                if merged.reached ~= run.reached then merged = nil end
+            end
+            if merged then
+                last.to, last.plan = run.reached, merged
+                st = after(last.state, merged)
+            else
+                legs[#legs + 1] = { from = s, to = run.reached, plan = run, state = st }
+                st = after(st, run)
+            end
+            s = run.reached
+        end
+    end
+    return legs
 end
 
 -- Every route at once, for the tiles: { mode, plan, over, best }. Levelling routes (l1..) come
@@ -714,7 +827,14 @@ function ns.Recalc(flash)
     v.mode = v.mode or "earn"
     v.auto = want == "auto"
     for _, x in ipairs(v.variants) do if x.mode == v.mode then v.plan = x.plan end end
-    v.route = ns.Route(state, v.plan)
+    -- the whole way as runs, for the leg chips; a chosen leg stays chosen while it still starts there
+    local oldLeg = v.legs and v.leg and v.legs[v.leg]
+    v.legs = (not ns.EARN[v.mode] and v.plan and not v.plan.earn) and ns.Legs(state, P, v.plan) or {}
+    v.leg = 1
+    if oldLeg then
+        for i, l in ipairs(v.legs) do if l.from == oldLeg.from and l.unknown == oldLeg.unknown then v.leg = i end end
+    end
+    v.route = ns.LegRoute(v)
     v.changed = flash and ns.Changed(oldRoute, v.route) or {}
     if flash and before then
         v.delta = { net = v.plan.net - before.net, crafts = ceil(v.plan.crafts) - ceil(before.crafts),
@@ -723,6 +843,23 @@ function ns.Recalc(flash)
         v.delta = nil
     end
     return v
+end
+
+-- The stops of the chosen leg (the current run for the first one); none for an unknown leg.
+function ns.LegRoute(v)
+    local l = v.legs and v.legs[v.leg or 1]
+    if l and l.unknown then return {} end
+    if l and v.leg > 1 then return ns.Route(l.state, l.plan) end
+    return ns.Route(v.state, v.plan)
+end
+
+function ns.SelectLeg(i)
+    local v = ns.view
+    if not v.legs or not v.legs[i] then return end
+    v.leg = i
+    v.route = ns.LegRoute(v)
+    v.changed = {}
+    if ns.Refresh then ns.Refresh() end
 end
 
 -- Changes one setting and rebuilds at once. nil value: back to the default.

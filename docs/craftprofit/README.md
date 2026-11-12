@@ -20,6 +20,8 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 
 - **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. Tap a stop to see the list.
 - **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. Below the route you still see how far the whole way is.
+- **The whole way, run by run.** Small tabs over the route show every run up to your target skill: 150-155, 155-185 and so on. Tap one to see that run. A red tab with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on.
+- **The route fits on the screen.** You always see two rows of stops. When there are more, **All stops** opens the rest.
 - **Routes side by side.** Up to four ways to level, from the cheapest to the fastest, and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. A money run is one recipe, crafted while it still pays and the market still takes it. It does not raise your skill, and it buys at most a few stacks of one reagent at the auction (**Auction buy, at most**), because only a few sell at the cheapest price. Each tab shows the gold, so you can compare them.
 - **How much you may lose.** Set **Ready to lose**, and CraftProfit picks the fastest way to level that stays within it. Ways that cost more are marked.
 - **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
