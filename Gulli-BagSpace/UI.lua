@@ -14,6 +14,8 @@ local function makeRow(r)
         local it = self:GetParent().item
         it.checked = not it.checked
         self:SetChecked(it.checked)
+        -- An item unticked by the player stays out of later plans (until /gbs reset).
+        if it.tier < 3 then ns.SetKept(it, not it.checked) end
         ns.Refresh(false)
     end)
     r.icon = r:CreateTexture(nil, "ARTWORK")
@@ -32,8 +34,14 @@ local function fillRow(r, it)
     r.item = it
     r.check:SetChecked(it.checked)
     r.icon:SetTexture(it.icon)
+    local tags = {}
+    if it.why == "always" then tags[#tags + 1] = L.TAG_ALWAYS end
+    if it.why == "unusable" then tags[#tags + 1] = L.TAG_UNUSABLE end
+    if it.ah then tags[#tags + 1] = L.TAG_AH:format(ns.Money(it.ah)) end
+    if it.boe then tags[#tags + 1] = L.TAG_BOE end
+    if it.tier == 3 and #tags == 0 then tags[#tags + 1] = L.MAYBE end
     r.name:SetText(S.QualityHex(it.quality) .. it.name .. "|r" .. (it.count > 1 and (" x" .. it.count) or "") ..
-        (it.tier == 3 and ("  " .. S.Hex(S.FAINT) .. L.MAYBE .. "|r") or ""))
+        (#tags > 0 and ("  " .. S.Hex(S.FAINT) .. table.concat(tags, ", ") .. "|r") or ""))
     r.value:SetText(it.value > 0 and ns.Money(it.value) or "")
 end
 
@@ -50,16 +58,38 @@ function ns.Refresh(rebuild)
     ok:SetText(ns.atMerchant and L.SELL or L.DELETE)
     if ns.atMerchant then S.Primary(ok) else S.Danger(ok) end
     ok:SetEnabled(slots > 0)
-    frame.footer:SetStatus(ns.atMerchant and L.NOTE_SELL or L.NOTE_DELETE)
+    local selling = ns.ToSell(plan)
+    if plan.leftover then
+        frame.footer:SetStatus(L.LEFTOVER:format(#plan.items), S.WARN)
+    elseif selling > 12 then
+        frame.footer:SetStatus(L.NOTE_SELL_MANY:format(selling), S.WARN)
+    else
+        local kept = ns.KeptCount()
+        frame.footer:SetStatus((ns.atMerchant and L.NOTE_SELL or L.NOTE_DELETE) ..
+            (kept > 0 and ("\n" .. L.KEPT:format(kept)) or ""))
+    end
 end
 
 local function build()
-    frame = S.Window("GulliBagSpaceFrame", L.TITLE, S.NARROW_W, 520)
+    frame = S.Window("GulliBagSpaceFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local ft = S.Footer(frame)
     ok = ft:Add(S.Button(ft, 120, 32))
     ok:SetScript("OnClick", function()
-        ns.Run(plan)
-        C_Timer.After(1, function() ns.Refresh(true) end)
+        local done = plan
+        local sold = ns.Run(done)
+        -- A moment later: what the game kept is offered again; else a fresh plan.
+        C_Timer.After(sold > 0 and (1 + sold / 12 * 0.25) or 1, function()
+            local left = ns.Leftover(done)
+            if #left > 0 and frame:IsShown() then
+                plan = { merges = {}, merged = 0, items = left, free = done.free, total = done.total,
+                         want = done.want, leftover = true }
+                local free, total = ns.Space()
+                plan.free, plan.total = free, total
+                ns.Refresh(false)
+            else
+                ns.Refresh(true)
+            end
+        end)
     end)
 
     local body = frame.body
@@ -85,9 +115,29 @@ local function build()
     want:SetScript("OnEnterPressed", apply)
     planBtn:SetScript("OnClick", apply)
 
+    if ns.CanSort() then
+        local sortBtn = S.FitButton(body, L.SORT, 30, 70)
+        sortBtn:SetPoint("RIGHT", label, "LEFT", -12, 0)
+        sortBtn:SetScript("OnClick", function() ns.SortBags() end)
+    end
+
+    local rows = {}
+    for _, o in ipairs({ { "unusable", L.OPT_UNUSABLE }, { "counter", L.OPT_COUNTER }, { "popup", L.OPT_POPUP } }) do
+        local key = o[1]
+        rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v)
+            ns.db[key] = v
+            if key == "counter" then ns.UpdateCounter() end
+            ns.Refresh(true)
+        end, icon = ns.OPT_ICON[key] }
+    end
+    local settingsCard, sh = S.SettingsCard(body, nil, rows)
+    settingsCard:SetPoint("BOTTOMLEFT")
+    settingsCard:SetPoint("BOTTOMRIGHT")
+    settingsCard:SetHeight(sh)
+
     card = S.Card(body, " ")
     card:SetPoint("TOPLEFT", 0, -30 - S.GAP)
-    card:SetPoint("BOTTOMRIGHT")
+    card:SetPoint("BOTTOMRIGHT", settingsCard, "TOPRIGHT", 0, S.GAP)
     list = S.List(card.body, 34, makeRow, fillRow)
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -117,3 +167,49 @@ function ns.Window()
     end
     return frame
 end
+
+-- The free slots on the backpack button.
+function ns.UpdateCounter()
+    local b = MainMenuBarBackpackButton
+    if not b or not b.CreateFontString then return end
+    if not b.gulliFree then
+        b.gulliFree = S.Text(b, 11, S.TEXT, "OUTLINE")
+        b.gulliFree:SetPoint("TOP", 0, -2)
+    end
+    local free = ns.Space()
+    b.gulliFree:SetText(ns.db.counter and tostring(free) or "")
+    local c = free <= ns.db.warnAt and S.BAD or S.TEXT
+    b.gulliFree:SetTextColor(c[1], c[2], c[3], 1)
+end
+
+-- "Inventory is full": a small button that sells or deletes the cheapest junk item in one
+-- click (the game lets an addon delete only inside a click).
+local popup
+function ns.ShowPopup()
+    local it = ns.OneItem()
+    if not it then return end
+    if not popup then
+        popup = CreateFrame("Frame", "GulliBagSpacePopup", UIParent)
+        popup:SetSize(320, 44)
+        popup:SetPoint("TOP", 0, -160)
+        popup:SetFrameStrata("DIALOG")
+        S.Box(popup, S.BG, S.BORDER)
+        popup.btn = S.Primary(S.Button(popup, 1, 30))
+        popup.btn:SetPoint("LEFT", 7, 0)
+        popup.btn:SetPoint("RIGHT", -40, 0)
+        popup.btn:SetScript("OnClick", function()
+            ns.FreeOne()
+            popup:Hide()
+        end)
+        popup.close = S.Button(popup, 28, 30)
+        popup.close:SetPoint("RIGHT", -7, 0)
+        popup.close:SetText("x")
+        popup.close:SetScript("OnClick", function() popup:Hide() end)
+    end
+    popup.btn:SetText(L.FREE_ONE:format(it.name))
+    popup:Show()
+    popup.shownAt = GetTime()
+    C_Timer.After(10, function() if popup and GetTime() - (popup.shownAt or 0) >= 10 then popup:Hide() end end)
+end
+
+function ns.HidePopup() if popup then popup:Hide() end end

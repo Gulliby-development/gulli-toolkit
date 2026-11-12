@@ -126,6 +126,9 @@ function Fake(spec)
     W.Base(spec)
     W.bags, W.items = spec.bags or {}, spec.items or {}
     W.cursor, W.deleted, W.sold = nil, {}, {}
+    GulliJunkShared = nil
+    Auctionator = spec.ah and { API = { v1 = { GetAuctionPriceByItemID = function(_, id) return spec.ah[id] end } } } or nil
+    ERR_INV_FULL = "Inventory is full."
     local function bag(b) return W.bags[b] or { size = 0, slots = {} } end
     C_Container = {
         GetContainerNumSlots = function(b) return bag(b).size end,
@@ -167,20 +170,27 @@ function Fake(spec)
     C_Item = { GetItemInfo = function(id)
         local it = W.items[id]
         if not it then return nil end
-        return it.name, "item:" .. id, it.quality, 1, 1, "", "", it.maxStack or 1, "", 1, it.price or 0, it.classID or 15
+        return it.name, "item:" .. id, it.quality, 1, 1, "", "", it.maxStack or 1, "", 1, it.price or 0, it.classID or 15,
+            it.subclassID or 0
     end }
+    W.sets, W.refuse = spec.sets or {}, {}
+    C_Container.GetContainerItemEquipmentSetInfo = function(b, s) return W.sets[b] and W.sets[b][s] or false end
     GetCursorInfo = function() if W.cursor then return "item", W.cursor.id end end
     ClearCursor = function()
         if W.cursor and W.cursor.from then bag(W.cursor.from[1]).slots[W.cursor.from[2]] = W.cursor end
         W.cursor = nil
     end
-    DeleteCursorItem = function() W.deleted[#W.deleted + 1] = W.cursor.id; W.cursor = nil end
+    DeleteCursorItem = function()
+        -- A refused delete leaves the item where it was.
+        if W.refuse[W.cursor.id] then ClearCursor() return end
+        W.deleted[#W.deleted + 1] = W.cursor.id; W.cursor = nil
+    end
     GulliBagSpaceDB = spec.db
     return W
 end
 
 function Load()
-    return W.Load("Gulli-BagSpace", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-BagSpace", { "Locales.lua", "Junk.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W

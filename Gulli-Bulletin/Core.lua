@@ -6,36 +6,35 @@ local L = ns.L
 
 ns.KINDS = { "GROUP", "WTS", "WTB", "CRAFT", "GUILD", "OTHER" }
 
--- Dungeons and raids: key, area id (for the game's own localized name), English name,
--- level range, and the words players use for it.
+-- Dungeons and raids of WoW Forever: key, area id (for the game's own localized name; nil when
+-- the area is new in Forever and its name comes from Locales), English name, level range, and
+-- the words players use for it. Only what Forever has: a raid comes in when Blizzard opens it.
+-- A word that starts with "~" is weak: short or common, so it names the dungeon only in a
+-- message that already looks for a group.
 ns.DUNGEONS = {
     { "RFC", 2437, "Ragefire Chasm", 13, 18, { "rfc", "ragefire" } },
-    { "WC", 718, "Wailing Caverns", 17, 24, { "wc", "wailing" } },
-    { "DM", 1581, "The Deadmines", 17, 26, { "dm", "deadmines", "deadmine", "vc", "vancleef", "мертвые копи", "мёртвые копи" } },
+    { "WC", 718, "Wailing Caverns", 17, 24, { "~wc", "wailing" } },
+    { "DM", 1581, "The Deadmines", 17, 26, { "~dm", "deadmines", "deadmine", "~vc", "vancleef", "мертвые копи", "мёртвые копи" } },
     { "SFK", 209, "Shadowfang Keep", 22, 30, { "sfk", "shadowfang" } },
     { "BFD", 719, "Blackfathom Deeps", 24, 32, { "bfd", "blackfathom" } },
-    { "STOCKS", 717, "The Stockade", 24, 32, { "stocks", "stockade", "stockades", "stock" } },
+    { "STOCKS", 717, "The Stockade", 24, 32, { "~stocks", "stockade", "stockades", "~stock" } },
     { "GNOMER", 721, "Gnomeregan", 29, 38, { "gnomer", "gnomeregan", "gnomer run" } },
     { "RFK", 491, "Razorfen Kraul", 30, 40, { "rfk", "kraul" } },
-    { "SM", 796, "Scarlet Monastery", 34, 45, { "sm", "scarlet", "smgy", "sm gy", "smlib", "sm lib", "smarm", "sm arm", "smcath", "sm cath", "cath", "armory" } },
-    { "RFD", 722, "Razorfen Downs", 37, 46, { "rfd", "downs" } },
-    { "ULDA", 1337, "Uldaman", 41, 51, { "ulda", "uld", "uldaman" } },
+    { "SM", 796, "Scarlet Monastery", 34, 45, { "~sm", "~scarlet", "smgy", "sm gy", "smlib", "sm lib", "smarm", "sm arm", "smcath", "sm cath", "~cath", "~armory", "scarlet monastery" } },
+    { "RFD", 722, "Razorfen Downs", 37, 46, { "rfd", "~downs" } },
+    { "ULDA", 1337, "Uldaman", 41, 51, { "ulda", "~uld", "uldaman" } },
     { "ZF", 1176, "Zul'Farrak", 44, 54, { "zf", "zul farrak", "zulfarrak", "farrak" } },
-    { "MARA", 2100, "Maraudon", 46, 55, { "mara", "maraudon" } },
-    { "ST", 1417, "Sunken Temple", 50, 56, { "st", "sunken", "atal hakkar" } },
+    { "MARA", 2100, "Maraudon", 46, 55, { "~mara", "maraudon" } },
+    { "ST", 1417, "Sunken Temple", 50, 56, { "~st", "~sunken", "sunken temple", "atal hakkar" } },
     { "BRD", 1584, "Blackrock Depths", 52, 60, { "brd", "blackrock depths", "emp run", "arena run" } },
     { "LBRS", 1583, "Lower Blackrock Spire", 55, 60, { "lbrs" } },
     { "UBRS", 1583, "Upper Blackrock Spire", 58, 60, { "ubrs", "rend run" } },
-    { "DIREMAUL", 2557, "Dire Maul", 56, 60, { "dme", "dmw", "dmn", "dm e", "dm w", "dm n", "dm east", "dm west", "dm north", "dire maul", "diremaul", "tribute" } },
+    { "DIREMAUL", 2557, "Dire Maul", 56, 60, { "dme", "dmw", "dmn", "~dm e", "~dm w", "~dm n", "dm east", "dm west", "dm north", "dire maul", "diremaul", "~tribute" } },
     { "SCHOLO", 2057, "Scholomance", 58, 60, { "scholo", "scholomance", "sholo", "некроситет" } },
     { "STRAT", 2017, "Stratholme", 58, 60, { "strat", "strath", "stratholme", "ud strat", "live strat", "стратхольм" } },
-    { "ZG", 1977, "Zul'Gurub", 60, 60, { "zg", "zul gurub", "zulgurub" } },
-    { "AQ20", 3429, "Ruins of Ahn'Qiraj", 60, 60, { "aq20", "aq 20", "ruins of ahn qiraj" } },
-    { "MC", 2717, "Molten Core", 60, 60, { "mc", "molten core", "огненные недра" } },
+    { "BARROW", nil, "Barrow Deeps", 60, 60, { "barrow deeps", "barrow", "barrows", "~bd" } },
+    { "HYJAL", nil, "Hyjal Summit", 60, 60, { "hyjal", "hyjal summit", "mount hyjal", "хиджал" } },
     { "ONY", 2159, "Onyxia's Lair", 60, 60, { "ony", "onyxia", "onyxia s lair" } },
-    { "BWL", 2677, "Blackwing Lair", 60, 60, { "bwl", "blackwing" } },
-    { "AQ40", 3428, "Temple of Ahn'Qiraj", 60, 60, { "aq40", "aq 40", "aq" } },
-    { "NAXX", 3456, "Naxxramas", 60, 60, { "naxx", "naxxramas" } },
 }
 local byKey = {}
 for i, d in ipairs(ns.DUNGEONS) do
@@ -90,8 +89,16 @@ local function has(padded, word)
     return padded:find(" " .. word .. " ", 1, true) ~= nil
 end
 
-local function any(padded, list)
-    for _, w in ipairs(list) do if has(padded, w) then return w end end
+local function any(padded, list, weakToo)
+    for _, w in ipairs(list) do
+        if w:sub(1, 1) == "~" then
+            -- "dm me" and "pm me" ask for a private message, not for the Deadmines.
+            w = w:sub(2)
+            if weakToo and has(padded, w) and not has(padded, w .. " me") then return w end
+        elseif has(padded, w) then
+            return w
+        end
+    end
 end
 
 -- Returns kind ("GROUP", "WTS", ...), the dungeon key or nil, and for groups "LFM" or "LFG".
@@ -102,16 +109,78 @@ function ns.Classify(msg)
     for _, k in ipairs(ORDER) do
         if any(padded, WORDS[k]) or (k == "LFM" and padded:find(" lf%dm ")) then kind = k; break end
     end
+    local group = kind == "LFM" or kind == "LFG"
     local dungeon
     for _, d in ipairs(ns.DUNGEONS) do
-        if any(padded, d[6]) then dungeon = d[1]; break end
+        if any(padded, d[6], group) then dungeon = d[1]; break end
     end
-    if kind == "LFM" or kind == "LFG" then return "GROUP", dungeon, kind end
+    if group then return "GROUP", dungeon, kind end
     if not kind and dungeon then return "GROUP", dungeon, "LFM" end
     return kind or "OTHER", dungeon
 end
 
--- Posts: one per poster and kind, newest first.
+-- The roles an LFM message asks for, in the order tank, healer, damage.
+ns.ROLES = { "TANK", "HEALER", "DPS" }
+local ROLE_WORDS = {
+    TANK = { "tank", "tanks", "танк", "танка", "tanque", "czołg", "坦克", "坦" },
+    HEALER = { "heal", "heals", "healer", "healers", "хил", "хила", "хилл", "лекарь", "heiler", "sanador",
+               "soigneur", "soin", "healera", "curador", "治疗", "奶" },
+    DPS = { "dps", "dd", "дд", "дпс", "рдд", "мдд", "dmg", "damage", "dégâts", "伤害" },
+}
+function ns.Needs(msg)
+    local padded = ns.Normalize(msg)
+    local out = {}
+    for _, r in ipairs(ns.ROLES) do
+        if any(padded, ROLE_WORDS[r]) then out[#out + 1] = r end
+    end
+    return out
+end
+
+-- The first item link in a message: its id.
+function ns.ItemOf(msg)
+    return tonumber(msg:match("|Hitem:(%d+)"))
+end
+
+-- Comma lists the player types (blocked words, watched words), lowered.
+function ns.Words(text)
+    local out = {}
+    for w in (text or ""):gmatch("[^,]+") do
+        w = lowerUtf8(strtrim(w))
+        if w ~= "" then out[#out + 1] = w end
+    end
+    return out
+end
+
+local function anyWord(padded, text)
+    for _, w in ipairs(ns.Words(text)) do
+        if padded:find(w, 1, true) then return w end
+    end
+end
+
+-- Players and words the player hid.
+function ns.Blocked(msg, short)
+    if ns.db.blockNames[lowerUtf8(short or "")] then return true end
+    return anyWord(ns.Normalize(msg), ns.db.blockWords) ~= nil
+end
+
+function ns.BlockPlayer(short)
+    if not short or short == "" then return end
+    ns.db.blockNames[lowerUtf8(short)] = true
+    local name = lowerUtf8(short)
+    for i = #ns.posts, 1, -1 do
+        if lowerUtf8(ns.posts[i].short) == name then table.remove(ns.posts, i) end
+    end
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.BlockedCount()
+    local n = 0
+    for _ in pairs(ns.db.blockNames) do n = n + 1 end
+    return n
+end
+
+-- Posts: one per poster and kind, newest first. They live in the saved variables, so the board
+-- is still there after a /reload.
 ns.posts = {}
 ns.MAX_POSTS = 200
 
@@ -119,22 +188,69 @@ local function secret(v)
     return issecretvalue and issecretvalue(v)
 end
 
-function ns.Add(msg, author, channel)
+local function classOf(guid)
+    if type(guid) ~= "string" or guid == "" or secret(guid) or not GetPlayerInfoByGUID then return nil end
+    local _, class = GetPlayerInfoByGUID(guid)
+    return class
+end
+
+function ns.Add(msg, author, channel, guid)
     if secret(msg) or secret(author) then return end
     if type(msg) ~= "string" or type(author) ~= "string" or author == "" then return end
     local kind, dungeon, role = ns.Classify(msg)
     if not kind then return end
     if kind == "OTHER" and not ns.db.other then return end
+    local short = author:match("^[^-]+") or author
+    if ns.Blocked(msg, short) then return end
+    local repost = false
     for i = #ns.posts, 1, -1 do
         local p = ns.posts[i]
-        if p.author == author and p.kind == kind then table.remove(ns.posts, i) end
+        if p.author == author and p.kind == kind then
+            repost = repost or p.dungeon == dungeon
+            table.remove(ns.posts, i)
+        end
     end
-    local post = { author = author, short = author:match("^[^-]+") or author, text = msg, kind = kind,
-                   dungeon = dungeon, role = role, t = time(), channel = channel }
+    local post = { author = author, short = short, text = msg, kind = kind, dungeon = dungeon, role = role,
+                   t = time(), channel = channel, class = classOf(guid), item = ns.ItemOf(msg),
+                   needs = role == "LFM" and ns.Needs(msg) or nil }
     table.insert(ns.posts, 1, post)
     while #ns.posts > ns.MAX_POSTS do table.remove(ns.posts) end
+    if not repost then
+        if not ns.Alert(post) then ns.Watch(post) end
+    end
+    if ns.Feed then ns.Feed() end
     if ns.Refresh then ns.Refresh() end
     return post
+end
+
+-- Whether the group list shows a dungeon: every one while none is picked, else the picked.
+function ns.Shown(key)
+    if not next(ns.db.only) then return true end
+    return key ~= nil and ns.db.only[key] == true
+end
+
+-- A new group for a dungeon the player watches: a sound, a chat line and a line in the hub.
+-- The same poster posting again for the same dungeon is not new.
+function ns.Alert(post)
+    if post.kind ~= "GROUP" or not post.dungeon or not ns.db.alert[post.dungeon] then return false end
+    if post.short == UnitName("player") then return false end
+    return ns.Ring(L.ALERT:format(post.short, ns.DungeonName(post.dungeon)))
+end
+
+-- A post that has a word the player watches (an item, a profession...).
+function ns.Watch(post)
+    if post.short == UnitName("player") then return false end
+    local w = anyWord(ns.Normalize(post.text), ns.db.watch)
+    if not w then return false end
+    return ns.Ring(L.WATCHED:format(post.short, w))
+end
+
+function ns.Ring(text)
+    if ns.db.sound and PlaySound then PlaySound((SOUNDKIT and SOUNDKIT.TELL_MESSAGE) or 3081) end
+    if ns.db.chat then print("|cff9ad0ffGulli Bulletin|r: " .. text) end
+    if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Bulletin", text) end
+    ns.lastAlert = text
+    return true
 end
 
 function ns.Expire()
@@ -152,16 +268,25 @@ end
 
 -- The posts of one kind for the window. Groups are sorted by dungeon level and get a header
 -- row before each dungeon; posts without a dungeon go last.
-function ns.View(kind, onlyMyLevel, level)
+ns.collapsed = {}
+
+-- query: text the post or the poster must have (the search box).
+function ns.View(kind, onlyMyLevel, level, query)
     ns.Expire()
     local out = {}
+    query = query and query ~= "" and lowerUtf8(query) or nil
+    local function match(p)
+        return not query or lowerUtf8(p.text):find(query, 1, true) or lowerUtf8(p.short):find(query, 1, true)
+            or (p.dungeon and lowerUtf8(ns.DungeonName(p.dungeon)):find(query, 1, true))
+    end
     if kind ~= "GROUP" then
-        for _, p in ipairs(ns.posts) do if p.kind == kind then out[#out + 1] = p end end
+        for _, p in ipairs(ns.posts) do if p.kind == kind and match(p) then out[#out + 1] = p end end
         return out
     end
     local groups, keys = {}, {}
     for _, p in ipairs(ns.posts) do
-        if p.kind == "GROUP" and (not onlyMyLevel or not p.dungeon or ns.FitsLevel(p.dungeon, level)) then
+        if p.kind == "GROUP" and ns.Shown(p.dungeon) and match(p)
+            and (not onlyMyLevel or not p.dungeon or ns.FitsLevel(p.dungeon, level)) then
             local k = p.dungeon or "?"
             if not groups[k] then groups[k] = {}; keys[#keys + 1] = k end
             table.insert(groups[k], p)
@@ -174,8 +299,11 @@ function ns.View(kind, onlyMyLevel, level)
         return da.order < db.order
     end)
     for _, k in ipairs(keys) do
-        out[#out + 1] = { header = true, dungeon = byKey[k] and k or nil, count = #groups[k] }
-        for _, p in ipairs(groups[k]) do out[#out + 1] = p end
+        local closed = ns.collapsed[k] == true
+        out[#out + 1] = { header = true, dungeon = byKey[k] and k or nil, key = k, count = #groups[k], closed = closed }
+        if not closed then
+            for _, p in ipairs(groups[k]) do out[#out + 1] = p end
+        end
     end
     return out
 end
@@ -190,10 +318,60 @@ end
 function ns.DungeonName(key)
     local d = byKey[key]
     if not d then return L.OTHER_GROUPS end
-    local info = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.area)
-    local name = (type(info) == "string" and info ~= "" and info) or d.name
+    local info = d.area and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.area)
+    local name = (type(info) == "string" and info ~= "" and info) or (not d.area and L["DG_" .. key]) or d.name
     if key == "LBRS" or key == "UBRS" then name = d.name end
     return name
+end
+
+-- "Hi! Level 56 priest, healer. Can I join for Stratholme?"
+function ns.AskText(post)
+    local className = UnitClass("player") or ""
+    local role = L["ROLE_" .. (ns.db.role or "DPS")]
+    local where = post.dungeon and ns.DungeonName(post.dungeon) or L.YOUR_GROUP
+    return L.ASK:format(UnitLevel("player") or 0, className, role, where)
+end
+
+function ns.Ask(post)
+    if not post or not SendChatMessage then return false end
+    SendChatMessage(ns.AskText(post), "WHISPER", nil, post.author)
+    return true
+end
+
+-- The channels the board reads groups and trade from, in each client language.
+local CHANNELS = {
+    LFG = { "lookingforgroup", "поисксспутников", "поискспутников", "suchenachgruppe", "buscargrupo",
+            "recherchegroupe", "procurandogrupo", "szukaniegrupy", "寻求组队", "尋求組隊" },
+    TRADE = { "trade", "торговля", "handel", "comercio", "commerce", "comércio", "交易" },
+}
+-- Which of LookingForGroup and Trade the player has not joined: { "LFG", "TRADE" }.
+function ns.MissingChannels()
+    if not GetChannelList then return {} end
+    local list = { GetChannelList() }
+    local have = {}
+    for i = 1, #list, 3 do
+        local name = list[i + 1]
+        if type(name) == "string" and not secret(name) then
+            local n = lowerUtf8(name):gsub("%s", "")
+            for key, names in pairs(CHANNELS) do
+                for _, want in ipairs(names) do if n:find(want, 1, true) then have[key] = true end end
+            end
+        end
+    end
+    local out = {}
+    for _, key in ipairs({ "LFG", "TRADE" }) do if not have[key] then out[#out + 1] = key end end
+    return out
+end
+
+-- Opens Gulli Quick Chat's group message for a dungeon, when Quick Chat is installed.
+function ns.CanPostLFM()
+    return GulliQuickChat ~= nil and type(GulliQuickChat.OpenLFM) == "function"
+end
+
+function ns.PostLFM(key)
+    if not ns.CanPostLFM() then return false end
+    GulliQuickChat.OpenLFM(key)
+    return true
 end
 
 -- Game calls.
@@ -208,7 +386,7 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9)
+f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _, a12)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliBulletinDB = GulliBulletinDB or {}
@@ -216,12 +394,27 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9)
         if ns.db.minutes == nil then ns.db.minutes = 15 end
         if ns.db.myLevel == nil then ns.db.myLevel = true end
         if ns.db.other == nil then ns.db.other = false end
+        ns.db.only = ns.db.only or {}
+        ns.db.alert = ns.db.alert or {}
+        if ns.db.sound == nil then ns.db.sound = true end
+        if ns.db.chat == nil then ns.db.chat = true end
+        ns.db.blockNames = ns.db.blockNames or {}
+        ns.db.blockWords = ns.db.blockWords or ""
+        ns.db.watch = ns.db.watch or ""
+        ns.db.role = ns.db.role or "DPS"
+        ns.db.feed = ns.db.feed or {}
+        local feed = ns.db.feed
+        if feed.alpha == nil then feed.alpha = 80 end
+        ns.db.posts = ns.db.posts or {}
+        ns.posts = ns.db.posts
+        ns.Expire()
+        if ns.SetupFeed then ns.SetupFeed() end
         self:RegisterEvent("CHAT_MSG_CHANNEL")
         self:RegisterEvent("CHAT_MSG_SAY")
         self:RegisterEvent("CHAT_MSG_YELL")
         return
     end
-    ns.Add(a1, a2, event == "CHAT_MSG_CHANNEL" and a9 or event)
+    ns.Add(a1, a2, event == "CHAT_MSG_CHANNEL" and a9 or event, a12)
 end)
 
 SLASH_GULLIBULLETIN1 = "/gbul"
@@ -230,6 +423,7 @@ SlashCmdList.GULLIBULLETIN = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "clear" then
         wipe(ns.posts)
+        if ns.Feed then ns.Feed() end
         print("|cff9ad0ffGulli Bulletin|r: " .. L.CLEARED)
         if ns.Refresh then ns.Refresh() end
     elseif msg == "help" then

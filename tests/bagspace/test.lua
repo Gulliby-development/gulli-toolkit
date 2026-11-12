@@ -86,8 +86,92 @@ test("OK deletes away from a vendor, sells at one, then merges stacks", function
     ns = Load()
     W.Fire("MERCHANT_SHOW")
     sold, deleted = ns.Run(ns.Plan(3))
-    eq(sold, 2); eq(deleted, 0)
+    while #W.timers > 0 do W.RunTimers() end
+    eq(sold, 2); eq(deleted, 0); eq(#W.sold, 2)
     eq(#W.deleted, 0)
+end)
+
+test("profession tools, fishing poles and equipment set items are never offered", function()
+    local items = {
+        [2901] = { name = "Mining Pick", quality = 1, price = 10, classID = 2 },
+        [50] = { name = "Odd Pole", quality = 1, price = 10, classID = 2, subclassID = 20 },
+        [51] = { name = "Set Helm", quality = 1, price = 10, classID = 4 },
+        [52] = { name = "Old Axe", quality = 1, price = 10, classID = 2 },
+    }
+    Fake({ items = items, sets = { [0] = { [3] = true } }, bags = { [0] = { size = 4, slots = {
+        [1] = { id = 2901, count = 1 }, [2] = { id = 50, count = 1 }, [3] = { id = 51, count = 1 },
+        [4] = { id = 52, count = 1 } } } } })
+    local ns = Load()
+    local plan = ns.Plan(10)
+    eq(#plan.items, 1)
+    eq(plan.items[1].name, "Old Axe")
+end)
+
+test("a vendor sells in steps of 12; more than 12 says only the last 12 come back", function()
+    local items, slots = {}, {}
+    for i = 1, 15 do items[100 + i] = { name = "Junk" .. i, quality = 0, price = 1 }; slots[i] = { id = 100 + i, count = 1 } end
+    Fake({ items = items, bags = { [0] = { size = 16, slots = slots } } })
+    local ns = Load()
+    W.Fire("MERCHANT_SHOW")
+    local plan = ns.Plan(1)
+    eq(ns.ToSell(plan), 15)
+    eq(ns.Run(plan), 15)
+    eq(#W.sold, 12, "the first step")
+    W.RunTimers()
+    eq(#W.sold, 15)
+    eq(#ns.Leftover(plan), 0)
+end)
+
+test("what the game did not delete is offered again", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    local plan = ns.Plan(6)
+    W.refuse = { [2] = true }
+    ns.Run(plan)
+    local left = ns.Leftover(plan)
+    eq(#left, 1)
+    eq(left[1].name, "Torn Hide")
+end)
+
+test("an unticked item stays out of later plans until /gbs reset", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    local plan = ns.Plan(6)
+    eq(plan.items[1].name, "Broken Fang")
+    ns.SetKept(plan.items[1], true)
+    for _, it in ipairs(ns.Plan(6).items) do assert(it.name ~= "Broken Fang") end
+    eq(ns.KeptCount(), 1)
+    SlashCmdList.GULLIBAGSPACE("reset")
+    eq(ns.KeptCount(), 0)
+    eq(ns.Plan(6).items[1].name, "Broken Fang")
+end)
+
+test("always-sell items come first, ticked", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    ns.J.SetAlways(5, true)
+    local plan = ns.Plan(3)
+    local bread
+    for _, it in ipairs(plan.items) do if it.name == "Bread" then bread = it end end
+    assert(bread and bread.checked and bread.tier == 1, "bread is junk now")
+end)
+
+test("an item worth more at the auction house is never ticked", function()
+    Fake({ bags = bags(), items = ITEMS, ah = { [3] = 500 } })
+    local ns = Load()
+    local plan = ns.Plan(7)
+    for _, it in ipairs(plan.items) do
+        if it.name == "Worn Sword" then eq(it.checked, false); eq(it.ah, 500) end
+    end
+end)
+
+test("Free 1 slot takes the cheapest junk in one click", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    W.Fire("UI_ERROR_MESSAGE", 3, "Inventory is full.")
+    local it = ns.FreeOne()
+    eq(it.name, "Broken Fang")
+    eq(W.deleted[1], 1)
 end)
 
 test("nothing in combat", function()

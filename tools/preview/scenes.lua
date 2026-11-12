@@ -21,11 +21,32 @@ S.toolkit = { default = {
                       icon = "Interface\\Icons\\INV_Misc_Key_14" },
                 } or nil })
         end
+        local sums = { XP = "Level 42 in 35 min (8.4k XP/h)", Attune = "Onyxia: 3 of 7 steps",
+            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups for Scarlet Monastery" }
+        for k, text in pairs(sums) do GulliToolkit.modules[k].summary = function() return text end end
         GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
         GulliToolkit.Notify("XP", "Level 42 in about 35 min at this pace.")
+        GulliToolkitDB.feed[2].t = 1000 - 1500
         SlashCmdList.GULLITOOLKIT("")
     end,
 } }
+
+-- A narrow module open inside the hub, with the card beside it.
+S.toolkit.inside = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        local Sk = ns.Skin
+        local win = Sk.Window("GulliPreviewMerchant", "Gulli Merchant", Sk.NARROW_W, 400, { sub = "/gmc",
+            icon = "Interface\\AddOns\\Gulli-Merchant\\icon" })
+        local c = Sk.SettingsCard(win.body, "Settings", {
+            { "Sell gray items", nil, function() return true end, function() end, icon = "Interface\\Icons\\INV_Misc_Coin_02" },
+            { "Repair", nil, function() return true end, function() end, icon = "Interface\\Icons\\Trade_BlackSmithing" } })
+        c:SetPoint("TOPLEFT"); c:SetPoint("TOPRIGHT")
+        GulliToolkit.modules.Merchant.window = function() return win end
+        GulliToolkit.modules.Merchant.reset = function() end
+        ns.Enter("Merchant")
+    end,
+}
 
 -- The minimap button on a stand-in minimap, after a drag to the lower left.
 S.toolkit.minimap = {
@@ -126,15 +147,28 @@ end }, settings = { spec = { party = { { name = "Ann", quests = {} } } }, open =
     ns.ShowTab(3)
 end } }
 
-S.bulletin = { default = { spec = { level = 56 },
+S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "PRIEST", P3 = "MAGE", P4 = "ROGUE" } },
     open = function(ns, W)
         local msgs = {
             { "LF2M Deadmines need tank and heal", "Thrall" }, { "Priest LFG Scholo or Strat", "Anduin" },
-            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" },
-            { "WTS [Linen Cloth] 20x 1g", "Gelbin" },
+            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" }, { "LF1M Strat UD need heals", "Sylvanas" },
+            { "WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g", "Gelbin" },
         }
-        for _, m in ipairs(msgs) do W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade") end
+        for i, m in ipairs(msgs) do
+            W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade", "", "", 0, 2, "Trade", nil, i, "P" .. i)
+        end
         ns.Toggle()
+    end,
+}, trade = { spec = { level = 56 },
+    open = function(ns, W)
+        ns.Add("WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g, |cff1eff00|Hitem:7909::::::::|h[Aquamarine]|h|r 3g", "Gelbin")
+        ns.Add("WTS [Arcanite Bar] cheap, pst", "Rexxar")
+        ns.ShowTab(2)
+    end,
+}, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
+    open = function(ns)
+        ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
+        ns.ShowTab(7)
     end,
 } }
 
@@ -294,5 +328,19 @@ S.reminders = {
     hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
+
+S.instancelimit = { default = { spec = { name = "Gulliby" },
+    open = function(ns, W)
+        local now = W.now
+        ns.db.entries = {
+            { t = now - 3000, name = "The Deadmines", char = "Gulliby", class = "MAGE", out = now - 1500, secs = 1500, xp = 4200, money = 13250, kills = 41 },
+            { t = now - 1200, name = "Wailing Caverns", char = "Gulliby", class = "MAGE", out = now - 200, secs = 1000, xp = 3100, money = 870, kills = 28 },
+            { t = now - 900, name = "Shadowfang Keep", char = "Thorn", class = "WARRIOR", out = now - 100, secs = 800, xp = 2500, kills = 30 },
+            { t = now - 60, name = "Blackfathom Deeps", char = "Gulliby", class = "MAGE" },
+        }
+        ns.group = { Bob = { leftHour = 1, leftDay = 20, wait = 0, t = now } }
+        ns.Toggle()
+    end,
+}, settings = { open = function(ns) ns.ShowPage(2) end } }
 
 return S

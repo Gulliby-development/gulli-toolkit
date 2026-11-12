@@ -25,15 +25,24 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 - **In combat too.** The game does not let an addon change a button in combat. So when the fight starts, the addon gives the button the list of missing buffs. Each press in combat casts the next buff from that list and skips the dead. Buffs that landed in combat are greyed out on the bar.
 - **Group spells when they pay off.** When three or more players in a party need the same buff, it casts Prayer of Fortitude, Arcane Brilliance or Gift of the Wild instead, if you have the reagent.
 - **Buff again in time.** A buff with less than one minute left counts as missing. You choose: when it is gone, or 1, 3 or 5 minutes before.
-- **Every buffing class.**
+- **Every class.**
   - Priest: Power Word: Fortitude, Divine Spirit, Shadow Protection (off by default), Inner Fire.
-  - Mage: Arcane Intellect.
-  - Druid: Mark of the Wild, and Thorns on you, on your tanks or on everyone.
-  - Paladin: one blessing per class, and one for tanks and one for healers.
+  - Mage: Arcane Intellect, and your armor (the best one you know, or the one you pick).
+  - Druid: Mark of the Wild, Thorns on you, on your tanks or on everyone, and Omen of Clarity.
+  - Paladin: one blessing per class, one for tanks and one for healers, your aura, and Righteous Fury (off by default).
   - Shaman: your shield and a weapon imbue you choose.
-- **Smart about people.** No Intellect or Spirit for warriors and rogues. Dead, offline and far away players are skipped; the bar says how many are out of range.
+  - Warrior: Battle Shout. Warlock: Demon Skin or Demon Armor. Hunter: the aspect you pick.
+- **Pets too.** Hunter and warlock pets get Fortitude and Mark of the Wild, and the mana buffs when they have mana. Turn **Buff pets** off if you do not want that.
+- **See it at a glance.** The big button shows how many buffs wait (**+3**). Its border is red when there is something to cast, yellow when the rest is out of range, green when everyone is done.
+- **Marks on your group frames.** A small icon on the game's party and raid frames shows who misses a buff, even when the bar is hidden.
+- **Smart about people.** No Intellect or Spirit for warriors and rogues. Dead, offline and far away players are skipped; the bar says how many are out of range. When a cast fails on someone (out of sight, a stronger buff), that player is skipped for 20 seconds, so the button does not get stuck.
+- **Mouseover and target first.** Point at a player, or target them, and the next press buffs them first.
+- **Save mana.** Below the mana you choose, it only buffs you.
+- **Raid groups.** In a raid, buff only the groups you are given (1–2, 3–4, 1–4, ...). You always buff yourself.
+- **Different for solo, party and raid.** Turn on **By group size** to keep **Buff again when** and **Group spells** apart for each.
 - **Your target too.** Set **Who it buffs** to **Group and target** to buff a friendly player outside your group.
-- **Your bar, your place.** Drag the bar by its grip. Show it only when a buff is missing, always, or never (key only). `/ggb lock` locks it.
+- **Your bar, your place.** Drag the bar by its grip. Show it only when a buff is missing, always, or never (key only). Hide it in cities and inns, or show it only in dungeons and raids. On a ready check it shows up with a sound when someone misses a buff. `/ggb lock` locks it.
+- **It tells you why.** When there is nothing to cast, the bar says why: no reagent, low mana, everyone out of range. `/ggb status` prints it in the chat.
 - **Made for handhelds.** Big buttons, so it works with a mouse and with touch on WoW Forever for Android.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. Spell and class names come from your game.
 
@@ -65,6 +74,18 @@ In combat the game does not tell the button who still needs a buff. The button w
 </details>
 
 <details>
+<summary><b>The bar is empty, but someone has no buff</b></summary>
+
+Type `/ggb status`. It tells you the reason: the spell is not learned, a reagent is missing, your mana is low, they are out of range, or a cast on them failed a moment ago.
+</details>
+
+<details>
+<summary><b>Can it share raid buff jobs with other players?</b></summary>
+
+Not yet. Set **Raid groups** to the groups the raid leader gives you. Sharing jobs with other players (and with PallyPower) may come later.
+</details>
+
+<details>
 <summary><b>The key does nothing</b></summary>
 
 A key set in combat works after the fight. If another addon uses the same key, pick another one. Right-click the key button to clear it.
@@ -85,8 +106,8 @@ The idea is the same as HealKit's Quick Buff, but it is a small addon of its own
 <details>
 <summary><b>For developers</b></summary>
 
-- `Buffs.lua`: the buffs per class by spell id. Names come from the game, so they are always in your language.
-- `Core.lua`: the plan (`ns.Plan`): units you first, what each one misses, group spells, range. It never casts.
+- `Buffs.lua`: the buffs per class by spell id (`B.CLASS`), and the pick-one lists (`B.CHOICES`, "auto" takes the best known). Names come from the game, so they are always in your language.
+- `Core.lua`: the plan (`ns.Plan`): units you first (pets after their owner), what each one misses, group spells, mana, mouseover and target first, range. `ns.Status` gives why nothing is cast. It never casts.
 - `UI.lua`: the secure buttons. Out of combat every change sets their `spell` and `unit`. On `PLAYER_REGEN_DISABLED` the list goes into attributes of the big button, and a restricted snippet (`ns.COMBAT_SNIPPET`) picks the next living unit on each press in combat.
 - Tests: `lua5.1 tests/groupbuffs/test.lua`. They run the combat snippet with only the calls the restricted environment has.
 </details>

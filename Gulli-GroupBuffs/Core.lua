@@ -11,15 +11,28 @@ ns.DEFAULTS = {
     low = 60,            -- seconds left at which a buff counts as running low (0: only when gone)
     groupMin = 3,        -- party members missing a buff before the group spell is used (0: never)
     thorns = "tanks",    -- self | tanks | all
-    shield = "lightning",
-    weapon = "off",
     locked = false,
+    pets = true,         -- buff hunter and warlock pets too
+    mana = 0,            -- below this share of mana (percent) only buff yourself (0: off)
+    where = "always",    -- always | norest (not in cities and inns) | instance
+    readyCheck = true,   -- on a ready check: show the bar and play a sound
+    marks = true,        -- a small icon on the game's party and raid frames
+    focus = true,        -- the unit under the mouse, then the target, come first
+    raidGroups = "all",  -- the raid groups you buff, see ns.RAID_GROUPS
+    perSize = false,     -- "Buff again when" and "Group spells" kept per group size
 }
+for k, v in pairs(B.CHOICE_DEFAULT) do ns.DEFAULTS[k] = v end
 ns.WHO = { "group", "target", "off" }
 ns.SHOW = { "missing", "always", "never" }
 ns.LOW = { 0, 60, 180, 300 }
 ns.GROUP_MIN = { 2, 3, 4, 5, 0 }
 ns.THORNS = { "self", "tanks", "all" }
+ns.MANA = { 0, 20, 30, 40, 50 }
+ns.WHERE = { "always", "norest", "instance" }
+ns.SIZES = { "solo", "party", "raid" }
+-- Raid groups to buff, as "first-last".
+ns.RAID_GROUPS = { "all", "1-2", "3-4", "5-6", "7-8", "1-4", "5-8" }
+ns.SKIP_SECONDS = 20
 
 local db
 
@@ -32,8 +45,27 @@ function ns.DB()
         end
         db.watch = db.watch or {}
         db.bless = db.bless or {}
+        db.size = db.size or {}
+        for _, k in ipairs(ns.SIZES) do db.size[k] = db.size[k] or {} end
     end
     return db
+end
+
+-- The group size now: solo, party or raid.
+function ns.Size()
+    if IsInRaid and IsInRaid() then return "raid" end
+    if GetNumSubgroupMembers and GetNumSubgroupMembers() > 0 then return "party" end
+    return "solo"
+end
+
+-- A setting that can differ by group size ("low", "groupMin"), when perSize is on.
+function ns.Setting(key, size)
+    local d = ns.DB()
+    if d.perSize then
+        local v = d.size[size or ns.Size()][key]
+        if v ~= nil then return v end
+    end
+    return d[key]
 end
 
 ---- Game wrappers: the C_ call first, the old global as a fallback --------------
@@ -128,12 +160,27 @@ ns.Role = role
 
 ---- Units -----------------------------------------------------------------------
 
+-- Is raid group n one of those you buff?
+function ns.InRaidGroups(n, value)
+    value = value or ns.DB().raidGroups
+    if value == "all" or not n then return true end
+    local a, b = (value or ""):match("^(%d)%-(%d)$")
+    if not a then return true end
+    return n >= tonumber(a) and n <= tonumber(b)
+end
+
 -- The units to look at, you first: { unit = "raid3", group = 2 } (group: the party number,
--- nil for a target outside the group).
+-- nil for a target outside the group; pet = true for a pet, right after its owner).
 function ns.Units()
     local d = ns.DB()
     local list = {}
     if d.who == "off" then return list end
+    local function add(unit, group, petUnit)
+        list[#list + 1] = { unit = unit, group = group }
+        if d.pets and petUnit and UnitExists(petUnit) then
+            list[#list + 1] = { unit = petUnit, group = group, pet = true }
+        end
+    end
     local inRaid = IsInRaid and IsInRaid()
     if inRaid then
         local mine = 1
@@ -143,14 +190,14 @@ function ns.Units()
             local unit = "raid" .. i
             local _, _, sub = GetRaidRosterInfo(i)
             if UnitIsUnit(unit, "player") then mine = sub or 1
-            else rest[#rest + 1] = { unit = unit, group = sub or 1 } end
+            elseif ns.InRaidGroups(sub or 1) then rest[#rest + 1] = { unit = unit, group = sub or 1, i = i } end
         end
-        list[1] = { unit = "player", group = mine }
-        for _, u in ipairs(rest) do list[#list + 1] = u end
+        add("player", mine, "pet")
+        for _, u in ipairs(rest) do add(u.unit, u.group, "raidpet" .. u.i) end
     else
-        list[1] = { unit = "player", group = 1 }
+        add("player", 1, "pet")
         local n = GetNumSubgroupMembers and GetNumSubgroupMembers() or 0
-        for i = 1, n do list[#list + 1] = { unit = "party" .. i, group = 1 } end
+        for i = 1, n do add("party" .. i, 1, "partypet" .. i) end
     end
     if d.who == "target" and UnitExists("target") and UnitIsPlayer("target")
         and UnitIsFriend("player", "target") and not UnitIsUnit("target", "player")
@@ -195,7 +242,7 @@ function ns.Families()
                 if f.choice then
                     id = nil
                     for _, c in ipairs(B.CHOICES[f.choice]) do
-                        if c.key == d[f.choice] then id = c.id end
+                        if c.key == d[f.choice] or (d[f.choice] == "auto" and known(c.id)) then id = c.id end
                     end
                 end
                 if id and known(id) and spellName(id) then
@@ -235,7 +282,13 @@ local function hasTank(units)
 end
 
 -- Does this family go on this unit at all?
-local function applies(fam, unit, ctx)
+local function applies(fam, unit, ctx, pet)
+    if pet then
+        -- Pets get the buffs for everyone, and the mana ones when they have mana.
+        if fam.who == "all" then return true end
+        if fam.who == "mana" then return UnitPowerType and UnitPowerType(unit) == 0 or false end
+        return false
+    end
     if fam.who == "self" then return unit == "player" end
     if fam.who == "mana" then
         local _, class = UnitClass(unit)
@@ -268,6 +321,40 @@ local function weaponMissing(low)
     return (ms or 0) / 1000 <= low
 end
 
+---- Units skipped after a failed cast -------------------------------------------
+
+local skipped = {}
+
+local function unitKey(unit)
+    local g = UnitGUID and UnitGUID(unit)
+    if g and not secret(g) then return g end
+    return UnitName(unit)
+end
+
+-- Leaves a unit out of the plan for a while after a cast on it failed (line of sight, a
+-- stronger buff, a bad target), so the button does not stick on one person.
+function ns.Skip(unit, seconds)
+    local k = unit and unitKey(unit)
+    if k then skipped[k] = now() + (seconds or ns.SKIP_SECONDS) end
+end
+
+function ns.Skipped(unit)
+    local k = unitKey(unit)
+    local t = k and skipped[k]
+    if t and t > now() then return true end
+    if k then skipped[k] = nil end
+    return false
+end
+
+-- The player's mana share in percent, nil for a class without mana.
+local function manaShare()
+    if not UnitPower or not UnitPowerMax then return nil end
+    if UnitPowerType and UnitPowerType("player") ~= 0 then return nil end
+    local max = UnitPowerMax("player", 0)
+    if not max or max <= 0 then return nil end
+    return UnitPower("player", 0) / max * 100
+end
+
 ---- The plan --------------------------------------------------------------------
 
 -- Every missing buff in casting order, you first, then each member in group order:
@@ -278,22 +365,27 @@ function ns.Plan()
     local units = ns.Units()
     local fams = ns.Families()
     local ctx = { db = d, tank = hasTank(units) }
+    local low, groupMin = ns.Setting("low"), ns.Setting("groupMin")
+    local info = { families = #fams, skipped = 0 }
+    ns.info = info
     local need = {}
     for _, u in ipairs(units) do
-        if alive(u.unit) then
+        if alive(u.unit) and ns.Skipped(u.unit) then
+            info.skipped = info.skipped + 1
+        elseif alive(u.unit) then
             local auras = ns.Auras(u.unit)
             if auras then
                 for _, fam in ipairs(fams) do
                     if fam.who == "blessing" then
-                        local opt = fam.options[ns.BlessingFor(u.unit) or ""]
-                        if opt and not present(opt.names, auras, d.low) then
+                        local opt = not u.pet and fam.options[ns.BlessingFor(u.unit) or ""]
+                        if opt and not present(opt.names, auras, low) then
                             need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
                                                 spell = opt.name, id = opt.id, names = opt.names }
                         end
-                    elseif applies(fam, u.unit, ctx) then
+                    elseif applies(fam, u.unit, ctx, u.pet) then
                         local missing
-                        if fam.weapon then missing = weaponMissing(d.low)
-                        else missing = not present(fam.names, auras, d.low) end
+                        if fam.weapon then missing = weaponMissing(low)
+                        else missing = not present(fam.names, auras, low) end
                         if missing then
                             need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
                                                 spell = fam.name, id = fam.id, fam = fam,
@@ -305,9 +397,16 @@ function ns.Plan()
         end
     end
 
+    -- Who misses what, before group spells merge it: for the marks on the group frames.
+    local byUnit = {}
+    for _, e in ipairs(need) do
+        if not byUnit[e.unit] then byUnit[e.unit] = spellIcon(e.id) end
+    end
+
     -- A group spell replaces the single casts of one party when enough of it needs one.
-    if d.groupMin and d.groupMin > 0 then
+    if groupMin and groupMin > 0 then
         for _, fam in ipairs(fams) do
+            if fam.group and not usable(fam.group) then info.reagent = fam.group end
             if fam.group and usable(fam.group) then
                 local count = {}
                 for _, e in ipairs(need) do
@@ -318,7 +417,7 @@ function ns.Plan()
                 table.sort(subs)
                 for _, sub in ipairs(subs) do
                     local c = count[sub]
-                    if c >= d.groupMin then
+                    if c >= groupMin then
                         -- Cast it on you when you are in that party, else on the first one in range.
                         local at, target, kept = nil, nil, {}
                         for i, e in ipairs(need) do
@@ -345,13 +444,73 @@ function ns.Plan()
         end
     end
 
+    -- Low on mana: only what goes on you.
+    local share = d.mana and d.mana > 0 and manaShare()
+    if share and share < d.mana then
+        local mine = {}
+        for _, e in ipairs(need) do
+            if e.unit == "player" then mine[#mine + 1] = e end
+        end
+        info.mana = #mine < #need
+        need = mine
+    end
+
+    -- The unit under the mouse, then the target, go first (a stable move to the front).
+    if d.focus then
+        local front, rest = {}, {}
+        for _, focus in ipairs({ "mouseover", "target" }) do
+            if UnitExists(focus) then
+                for i, e in ipairs(need) do
+                    if e and e.unit ~= "player" and UnitIsUnit(e.unit, focus) then
+                        front[#front + 1] = e
+                        need[i] = false
+                    end
+                end
+            end
+        end
+        for _, e in ipairs(need) do if e then rest[#rest + 1] = e end end
+        for _, e in ipairs(rest) do front[#front + 1] = e end
+        need = front
+    end
+
     local plan, far = {}, {}
     for _, e in ipairs(need) do
         e.fam, e.removedAt = nil, nil
         e.icon = spellIcon(e.id)
         if inRange(e.spell, e.unit) then plan[#plan + 1] = e else far[#far + 1] = e end
     end
-    return plan, far
+    return plan, far, byUnit
+end
+
+-- Why the bar has nothing to cast, as text keys with their numbers: { { "ST_FAR", 2 }, ... }.
+-- Empty when there is something to cast and nothing worth a word.
+function ns.Status(plan, far)
+    local d = ns.DB()
+    local info = ns.info or {}
+    local out = {}
+    local function add(key, n) out[#out + 1] = { key, n } end
+    if d.who == "off" then add("ST_OFF"); return out end
+    local _, class = UnitClass("player")
+    if not B.CLASS[class] then add("ST_NO_CLASS"); return out end
+    if (info.families or 0) == 0 then add("ST_NONE_KNOWN"); return out end
+    if info.mana then add("ST_MANA", d.mana) end
+    if #plan == 0 and #far > 0 then add("ST_FAR", #far) end
+    if (info.skipped or 0) > 0 then add("ST_SKIPPED", info.skipped) end
+    if info.reagent then add("ST_REAGENT", info.reagent) end
+    if not ns.PlaceOK() then add("ST_PLACE") end
+    return out
+end
+
+-- Does the bar show here? (The key works everywhere.)
+function ns.PlaceOK()
+    local w = ns.DB().where
+    if w == "norest" then return not (IsResting and IsResting()) end
+    if w == "instance" then
+        local inside, kind = false, nil
+        if IsInInstance then inside, kind = IsInInstance() end
+        return inside and (kind == "party" or kind == "raid") or false
+    end
+    return true
 end
 
 -- The list the key walks through in combat: what is in range first, then the rest.
@@ -373,8 +532,17 @@ SlashCmdList.GULLIGROUPBUFFS = function(msg)
     if msg == "lock" then
         ns.DB().locked = not ns.DB().locked
         if ns.Refresh then ns.Refresh() end
+    elseif msg == "status" then
+        local plan, far = ns.Plan()
+        local lines = {}
+        for _, st in ipairs(ns.Status(plan, far)) do
+            lines[#lines + 1] = st[2] and ns.L[st[1]]:format(st[2]) or ns.L[st[1]]
+        end
+        if #plan > 0 then table.insert(lines, 1, ns.L.ST_NEXT:format(#plan)) end
+        if #lines == 0 then lines[1] = ns.L.ALL_DONE end
+        for _, line in ipairs(lines) do print("|cff9ad0ffGulli-GroupBuffs|r: " .. line) end
     elseif msg == "help" then
-        print("|cff9ad0ffGulli-GroupBuffs|r: " .. ns.L.HELP)
+        print("|cff9ad0ffGulli-GroupBuffs|r: " .. ns.L.HELP .. " " .. ns.L.HELP_STATUS)
     elseif ns.Toggle then
         ns.Toggle()
     end
@@ -393,5 +561,10 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() GulliGroupBuffs_Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         slash = "/ggb",
+        summary = function()
+            local plan, far = ns.Plan()
+            if #plan + #far == 0 then return ns.L.ALL_DONE end
+            return ns.L.SUMMARY:format(#plan + #far)
+        end,
     })
 end
