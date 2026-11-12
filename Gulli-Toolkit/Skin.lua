@@ -755,6 +755,35 @@ end
 
 -- A game icon (an item or a spell, "Interface\\Icons\\...") in a thin dark frame, cropped
 -- like the action bars do. box.tex is the texture.
+-- Round shapes for rings and radial menus: the game's round portrait mask on a flat texture.
+local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+-- A disc of one colour; size is the diameter.
+function S.Circle(parent, size, color, layer, sub)
+    local t = tex(parent, layer or "BACKGROUND", sub or 0, color)
+    t:SetSize(size, size)
+    if t.SetMask then t:SetMask(ROUND) end
+    return t
+end
+
+-- A round game icon with a ring around it (r.ring, r.fill, r.tex); r:SetIcon(path).
+function S.RoundIcon(parent, size, path)
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetSize(size, size)
+    b.ring = S.Circle(b, size, S.EDGE, "BACKGROUND", 1)
+    b.ring:SetPoint("CENTER")
+    b.fill = S.Circle(b, size - 4, S.SURFACE, "BACKGROUND", 2)
+    b.fill:SetPoint("CENTER")
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetSize(size - 12, size - 12)
+    b.tex:SetPoint("CENTER")
+    if b.tex.SetMask then b.tex:SetMask(ROUND) end
+    function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
+    function b:SetRing(c) self.ring:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
+    b:SetIcon(path)
+    return b
+end
+
 function S.IconBox(parent, size, path)
     local b = CreateFrame("Frame", nil, parent)
     b:SetSize(size or 26, size or 26)

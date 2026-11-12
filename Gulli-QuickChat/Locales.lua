@@ -118,6 +118,7 @@ T.en = {
     OPT_REMIND = "Remind me to post again",
     TAB_MORE = "More",
     TAB_SETUP = "Setup",
+    WHEEL_PICK = "Point at a phrase",
 }
 
 T.de = {
@@ -229,6 +230,7 @@ T.de = {
     OPT_REMIND = "An erneutes Posten erinnern",
     TAB_MORE = "Mehr",
     TAB_SETUP = "Einstellungen",
+    WHEEL_PICK = "Auf einen Satz zeigen",
 }
 
 T.es = {
@@ -340,6 +342,7 @@ T.es = {
     OPT_REMIND = "Recordarme publicar otra vez",
     TAB_MORE = "Más",
     TAB_SETUP = "Ajustes",
+    WHEEL_PICK = "Apunta a una frase",
 }
 
 T.fr = {
@@ -451,6 +454,7 @@ T.fr = {
     OPT_REMIND = "Me rappeler de reposter",
     TAB_MORE = "Plus",
     TAB_SETUP = "Réglages",
+    WHEEL_PICK = "Pointez une phrase",
 }
 
 T.pl = {
@@ -562,6 +566,7 @@ T.pl = {
     OPT_REMIND = "Przypomnij o ponownym wysłaniu",
     TAB_MORE = "Więcej",
     TAB_SETUP = "Ustawienia",
+    WHEEL_PICK = "Wskaż zwrot",
 }
 
 T.pt = {
@@ -673,6 +678,7 @@ T.pt = {
     OPT_REMIND = "Lembrar de postar de novo",
     TAB_MORE = "Mais",
     TAB_SETUP = "Ajustes",
+    WHEEL_PICK = "Aponte para uma frase",
 }
 
 T.ru = {
@@ -784,6 +790,7 @@ T.ru = {
     OPT_REMIND = "Напомнить отправить снова",
     TAB_MORE = "Ещё",
     TAB_SETUP = "Настройки",
+    WHEEL_PICK = "Наведите на фразу",
 }
 
 T.zh = {
@@ -895,6 +902,7 @@ T.zh = {
     OPT_REMIND = "提醒我再次发送",
     TAB_MORE = "更多",
     TAB_SETUP = "设置",
+    WHEEL_PICK = "指向一条常用语",
 }
 
 ns.T = T

@@ -20,7 +20,9 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 - **Phrases on big buttons.** "inv please", "Ready!", "brb", "Thanks for the group!", "WTS {item}" and more, in tabs: Group, Trade, Social and your own. Change them or add your own.
 - **Where it goes.** Group, Say, Party, Guild, a whisper to your target, or a whisper to the group leader. Each phrase can keep its own channel.
-- **Phrase wheel.** Pick a key (or a gamepad button) in **Setup**. It opens a wheel of your favourite phrases in the middle of the screen; keys 1-8 send one.
+- **Phrase wheel.** Pick a key (or a gamepad button) in **Setup**. A ring of your favourite phrases opens at the mouse, each with its own picture. Point at one and click (or press the key again, or 1-8) to send it; the middle shows what it says and where it goes.
+
+  <img src="wheel.png" alt="The phrase wheel" width="320">
 - **Favourites panel.** A small panel of your favourite phrases on the screen. `/gulli move` places it.
 - **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader}, {item} (the last item you linked) and {quest}.
 - **Find a group.** From a quest, or for a WoW Forever dungeon (the ones near your level first): "LFM 2 for Stratholme, need healer". Or look for a group yourself: "LFG Stratholme, healer, level 58". After two minutes it reminds you to post again. Gulli Bulletin's **My LFM** opens this page.

@@ -235,6 +235,12 @@ S.quickchat = {
         ns.ShowPage(4)
     end },
     setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
+    wheel = { crop = "GulliQuickChatWheel", open = function(ns)
+        for _, p in ipairs({ "inv please", "Ready!", "brb", "Back", "Thanks for the group!", "On my way",
+                             "Need a heal!", "WTS {item}, pst" }) do ns.ToggleFav(p) end
+        ns.ToggleWheel()
+        ns.WheelHover(2)
+    end },
 }
 
 local QC = {
