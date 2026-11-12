@@ -82,6 +82,7 @@ function Region:GetEffectiveScale() return self.__scale or 1 end
 local function plain(s)
     s = tostring(s or "")
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "WW"):gsub("|n", "\n")
+        :gsub("|H.-|h", ""):gsub("|h", "")
     return s
 end
 local function ulen(s) local _, n = s:gsub("[^\128-\191]", ""); return n end
@@ -399,7 +400,7 @@ local function esc(s) return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "
 
 -- WoW text escapes to HTML: |cAARRGGBB..|r colours, |n new lines, |T..|t icons.
 local function richText(s)
-    s = tostring(s or "")
+    s = tostring(s or ""):gsub("|H.-|h", ""):gsub("|h", "")
     local out, open = {}, 0
     local i = 1
     while i <= #s do

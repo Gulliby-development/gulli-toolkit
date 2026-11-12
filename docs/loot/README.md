@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 In a dungeon group, every gray drop asks you to roll. Gulli Loot answers by your rules.

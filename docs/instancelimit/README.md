@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 The game lets you enter only a few new dungeons per hour. Gulli Instance Limit counts them for you, so you never stand at the portal and see "You have entered too many instances".

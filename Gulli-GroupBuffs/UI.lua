@@ -279,13 +279,17 @@ end)
 
 ---- Settings window -------------------------------------------------------------
 
-local W, ROW = 460, 32
+local W, H = 540, 580
+local I = "Interface\\Icons\\"
 local win, scroll, keyButton
 local rows = {}
 
-local function option(label, get, values, text)
-    return { kind = "cycle", label = label, get = get, values = values, text = text }
+-- icon: a game icon path, or a function of the current value that gives one (or nil).
+local function option(label, get, values, text, icon)
+    return { kind = "cycle", label = label, get = get, values = values, text = text, icon = icon }
 end
+
+local function spellIcon(id) return id and ns.SpellIcon(id) end
 
 local function dbValue(key)
     return function(v)
@@ -329,16 +333,21 @@ end
 local function rowList()
     local list = {
         { kind = "header", label = L.QUICK },
-        option(L.WHO, dbValue("who"), ns.WHO, function(v) return L["WHO_" .. v] end),
-        option(L.SHOW, dbValue("show"), ns.SHOW, function(v) return L["SHOW_" .. v] end),
+        option(L.WHO, dbValue("who"), ns.WHO, function(v) return L["WHO_" .. v] end,
+            I .. "Spell_Holy_PrayerOfHealing02"),
+        option(L.SHOW, dbValue("show"), ns.SHOW, function(v) return L["SHOW_" .. v] end,
+            I .. "INV_Misc_Spyglass_02"),
         option(L.COMBAT, dbValue("combat"), { true, false },
-            function(v) return v and L.COMBAT_ON or L.COMBAT_OFF end),
-        { kind = "key", label = L.KEY },
-        option(L.LOCK, dbValue("locked"), { false, true }, function(v) return v and L.YES or L.NO end),
+            function(v) return v and L.COMBAT_ON or L.COMBAT_OFF end, I .. "Ability_Warrior_OffensiveStance"),
+        { kind = "key", label = L.KEY, icon = I .. "INV_Gizmo_01" },
+        option(L.LOCK, dbValue("locked"), { false, true }, function(v) return v and L.YES or L.NO end,
+            I .. "INV_Misc_Key_04"),
         option(L.LOW, dbValue("low"), ns.LOW,
-            function(v) return v == 0 and L.LOW_GONE or L.LOW_MIN:format(v / 60) end),
+            function(v) return v == 0 and L.LOW_GONE or L.LOW_MIN:format(v / 60) end,
+            I .. "INV_Misc_PocketWatch_01"),
         option(L.GROUP, dbValue("groupMin"), ns.GROUP_MIN,
-            function(v) return v == 0 and L.GROUP_NEVER or L.GROUP_N:format(v) end),
+            function(v) return v == 0 and L.GROUP_NEVER or L.GROUP_N:format(v) end,
+            I .. "Spell_Holy_PrayerOfFortitude"),
     }
     local _, class = UnitClass("player")
     local fams = B.CLASS[class]
@@ -348,7 +357,10 @@ local function rowList()
         return list
     end
     for _, f in ipairs(fams) do
-        list[#list + 1] = { kind = "check", label = famLabel(f), get = function(v)
+        local id = f.id
+        if f.who == "blessing" then id = B.BLESSINGS[1].id
+        elseif f.choice then id = B.CHOICES[f.choice][1].id end
+        list[#list + 1] = { kind = "check", label = famLabel(f), icon = spellIcon(id), get = function(v)
             local d = ns.DB()
             if v ~= nil then d.watch[f.key] = v end
             local on = d.watch[f.key]
@@ -359,14 +371,15 @@ local function rowList()
     if class == "DRUID" then
         list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
         list[#list + 1] = option(L.THORNS, dbValue("thorns"), ns.THORNS,
-            function(v) return L["THORNS_" .. v] end)
+            function(v) return L["THORNS_" .. v] end, spellIcon(467))
     elseif class == "SHAMAN" then
         list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
         for _, choice in ipairs({ "shield", "weapon" }) do
             local keys, byKey = {}, {}
             for _, c in ipairs(B.CHOICES[choice]) do keys[#keys + 1] = c.key; byKey[c.key] = c end
             list[#list + 1] = option(choice == "shield" and L.SHIELD or L.WEAPON, dbValue(choice), keys,
-                function(v) return byKey[v] and ns.SpellName(byKey[v].id) or v end)
+                function(v) return byKey[v] and ns.SpellName(byKey[v].id) or v end,
+                function(v) return byKey[v] and spellIcon(byKey[v].id) end)
         end
     elseif class == "PALADIN" then
         list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
@@ -374,10 +387,13 @@ local function rowList()
         for _, b in ipairs(B.BLESSINGS) do plain[#plain + 1] = b.key end
         local roleValues = { "class" }
         for _, k in ipairs(plain) do roleValues[#roleValues + 1] = k end
-        list[#list + 1] = option(L.TANKS, blessValue("TANK"), roleValues, blessingName)
-        list[#list + 1] = option(L.HEALERS, blessValue("HEALER"), roleValues, blessingName)
+        local function blessIcon(v)
+            for _, b in ipairs(B.BLESSINGS) do if b.key == v then return spellIcon(b.id) end end
+        end
+        list[#list + 1] = option(L.TANKS, blessValue("TANK"), roleValues, blessingName, blessIcon)
+        list[#list + 1] = option(L.HEALERS, blessValue("HEALER"), roleValues, blessingName, blessIcon)
         for _, c in ipairs(B.CLASSES) do
-            list[#list + 1] = option(className(c), blessValue(c), plain, blessingName)
+            list[#list + 1] = option(className(c), blessValue(c), plain, blessingName, blessIcon)
         end
     end
     return list
@@ -391,6 +407,7 @@ local function cycle(r, step)
     at = (at - 1 + step) % #values + 1
     r.data.get(values[at])
     r.button:SetText(r.data.text(values[at]))
+    r:ShowIcon()
     dirty = true
 end
 
@@ -434,104 +451,104 @@ local function makeKeyButton(parent)
     return b
 end
 
+-- A row's icon: fixed, or picked by the current value (hidden when there is none).
+local function rowIcon(data)
+    if type(data.icon) == "function" then return data.icon(data.get()) end
+    return data.icon
+end
+
+local function makeRow(parent, data)
+    local control
+    if data.kind == "cycle" then
+        control = S.Button(parent, 190, 28)
+        control:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    elseif data.kind == "check" then
+        control = S.Switch(parent)
+    elseif data.kind == "key" then
+        control = makeKeyButton(parent)
+        keyButton = control
+    end
+    local r = S.SettingRow(parent, data.label, nil, control, control and control:GetWidth(),
+        data.icon and (I .. "INV_Misc_QuestionMark"))
+    r.data = data
+    function r:ShowIcon()
+        if not self.icon then return end
+        local path = rowIcon(self.data)
+        self.icon:SetShown(path ~= nil)
+        if path then self.icon:SetIcon(path) end
+    end
+    if data.kind == "cycle" then
+        r.button = control
+        control:SetScript("OnClick", function(_, mouse) cycle(r, mouse == "RightButton" and -1 or 1) end)
+    elseif data.kind == "check" then
+        r.check = control
+        control:SetScript("OnClick", function(self)
+            self:SetChecked(r.data.get(not r.data.get()))
+            dirty = true
+        end)
+    end
+    return r
+end
+
+-- Shows each row's current value.
+local function fillRows()
+    for _, r in ipairs(rows) do
+        local data = r.data
+        if data.kind == "cycle" then r.button:SetText(data.text(data.get()))
+        elseif data.kind == "check" then r.check:SetChecked(data.get())
+        elseif data.kind == "key" then capture(r.control, false) end
+        r:ShowIcon()
+    end
+end
+
+-- One card per header of rowList(); the class does not change, so this runs once.
 local function buildRows()
-    for _, r in ipairs(rows) do r:Hide() end
-    local y = 0
     local child = scroll.child
-    for i, data in ipairs(rowList()) do
-        local r = rows[i]
-        if not r then
-            r = CreateFrame("Frame", nil, child)
-            r.text = S.Text(r, 12)
-            r.text:SetPoint("LEFT", 8, 0)
-            r.text:SetPoint("RIGHT", r, "RIGHT", -204, 0)
-            r.text:SetWordWrap(false)
-            rows[i] = r
-        end
-        r.data = data
-        r:SetSize(W - 40, data.kind == "header" and 28 or ROW)
-        r:SetPoint("TOPLEFT", 0, -y)
-        r:Show()
-        y = y + r:GetHeight()
-        r.text:SetText(data.label)
-        local c = data.kind == "header" and S.Accent() or (data.kind == "note" and S.MUTED or S.TEXT)
-        r.text:SetTextColor(c[1], c[2], c[3], c[4])
-        r.text:SetPoint("RIGHT", r, "RIGHT", (data.kind == "header" or data.kind == "note") and -8 or -204, 0)
-        if r.button then r.button:Hide() end
-        if r.check then r.check:Hide() end
-        if r.key then r.key:Hide() end
-        if data.kind == "cycle" then
-            if not r.button then
-                r.button = S.Button(r, 190, 28)
-                r.button:SetPoint("RIGHT", -6, 0)
-                r.button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-                r.button:SetScript("OnClick", function(_, mouse) cycle(r, mouse == "RightButton" and -1 or 1) end)
-            end
-            r.button:SetText(data.text(data.get()))
-            r.button:Show()
-        elseif data.kind == "check" then
-            if not r.check then
-                r.check = S.Check(r, 28)
-                r.check:SetPoint("RIGHT", -6, 0)
-                r.check:SetScript("OnClick", function(self)
-                    self:SetChecked(r.data.get(not r.data.get()))
-                    dirty = true
-                end)
-            end
-            r.check:SetChecked(data.get())
-            r.check:Show()
-        elseif data.kind == "key" then
-            if not r.key then
-                r.key = makeKeyButton(r)
-                r.key:SetPoint("RIGHT", -6, 0)
-            end
-            capture(r.key, false)
-            r.key:Show()
-            keyButton = r.key
+    local width = child:GetWidth()
+    local st = S.Stack(child)
+    local card, cst, n
+    local function close()
+        if not card then return end
+        if n > 0 then rows[#rows].line:Hide() end
+        st:Add(card, card:Fit(cst:Height()))
+    end
+    for _, data in ipairs(rowList()) do
+        if data.kind == "header" then
+            close()
+            card = S.Card(child, data.label)
+            card:SetWidth(width)
+            cst, n = S.Stack(card.body, 0), 0
+        elseif data.kind == "note" then
+            local t = S.Note(card.body, 12)
+            t:SetText(data.label)
+            cst:Add(t, S.ROW_H)
+        else
+            local r = makeRow(card.body, data)
+            cst:Add(r, r.height)
+            rows[#rows + 1] = r
+            n = n + 1
         end
     end
-    child:SetSize(W - 40, y)
-    scroll:Update(y)
+    close()
+    child:SetHeight(st:Height())
+    scroll:Update(st:Height())
 end
 
 local function buildWindow()
-    win = CreateFrame("Frame", "GulliGroupBuffsSettings", UIParent)
-    win:SetSize(W, 470)
-    win:SetPoint("CENTER")
-    win:SetFrameStrata("DIALOG")
-    win:SetClampedToScreen(true)
-    win:SetMovable(true)
-    win:EnableMouse(true)
-    win:RegisterForDrag("LeftButton")
-    win:SetScript("OnDragStart", win.StartMoving)
-    win:SetScript("OnDragStop", win.StopMovingOrSizing)
-    S.Box(win)
-    tinsert(UISpecialFrames, "GulliGroupBuffsSettings")
-
-    local title = S.Text(win, 14)
-    title:SetPoint("TOPLEFT", 12, -9)
-    title:SetText(L.TITLE)
-    local close = S.Button(win, 28, 28)
-    close:SetPoint("TOPRIGHT", -4, -4)
-    close:SetText("×")
-    close:SetScript("OnClick", function() win:Hide() end)
-
-    scroll = S.Scroll(win)
-    scroll:SetPoint("TOPLEFT", 10, -40)
-    scroll:SetPoint("BOTTOMRIGHT", -24, 36)
-
-    local hint = S.Text(win, 11, S.MUTED)
-    hint:SetPoint("BOTTOMLEFT", 12, 12)
-    hint:SetPoint("RIGHT", -12, 0)
-    hint:SetWordWrap(false)
-    hint:SetText(L.MACRO)
-    win:Hide()
+    win = S.Window("GulliGroupBuffsSettings", L.TITLE, W, H)
+    local ft = S.Footer(win)
+    ft:SetStatus(L.MACRO)
+    scroll = S.Scroll(win.body)
+    scroll:SetPoint("TOPLEFT")
+    scroll:SetPoint("BOTTOMRIGHT", -12, 0)
+    scroll.child:SetWidth(win.inner[1] - 12)
+    buildRows()
 end
 
 function ns.Toggle()
     if not win then buildWindow() end
     if win:IsShown() then win:Hide(); return end
-    buildRows()
+    fillRows()
     scroll:Top()
     win:Show()
 end

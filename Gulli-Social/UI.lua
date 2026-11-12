@@ -8,8 +8,8 @@ local S = ns.Skin
 local frame
 local I = "Interface\\Icons\\"
 
-local function switch(key, label, icon)
-    return { label, nil, function() return ns.db[key] end, function(v) ns.db[key] = v end, icon = I .. icon }
+local function switch(key, label)
+    return { label, nil, function() return ns.db[key] end, function(v) ns.db[key] = v end, icon = ns.OPT_ICON[key] }
 end
 
 local function build()
@@ -25,16 +25,16 @@ local function build()
 
     local st = S.Stack(body)
     local invites, h1 = S.SettingsCard(body, L.SEC_INVITE, {
-        switch("invite", L.OPT_INVITE, "INV_Letter_02"),
+        switch("invite", L.OPT_INVITE),
         { L.WORDS, nil, control = words, icon = I .. "INV_Misc_Note_05" },
-        switch("inviteKnown", L.OPT_INVITE_KNOWN, "Spell_Holy_SealOfSalvation"),
-        switch("acceptKnown", L.OPT_ACCEPT_KNOWN, "Spell_Holy_PrayerOfHealing02"),
+        switch("inviteKnown", L.OPT_INVITE_KNOWN),
+        switch("acceptKnown", L.OPT_ACCEPT_KNOWN),
     })
     st:Add(invites, h1)
     local away, h2 = S.SettingsCard(body, L.SEC_AWAY, {
-        switch("blockStrangers", L.OPT_BLOCK, "Ability_Warrior_ShieldWall"),
-        switch("noDuels", L.OPT_DUELS, "Ability_DualWield"),
-        switch("noGuildInvites", L.OPT_GUILD, "INV_Shirt_GuildTabard_01"),
+        switch("blockStrangers", L.OPT_BLOCK),
+        switch("noDuels", L.OPT_DUELS),
+        switch("noGuildInvites", L.OPT_GUILD),
     })
     st:Add(away, h2)
     S.FitWindow(frame, st:Height())

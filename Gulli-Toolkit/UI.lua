@@ -305,8 +305,10 @@ local function makeOption(i)
             ns.Refresh()
         end
     end)
+    o.icon = S.IconBox(o, 24)
+    o.icon:SetPoint("LEFT")
     o.label = S.Text(o, 12)
-    o.label:SetPoint("LEFT")
+    o.label:SetPoint("LEFT", 34, 0)
     o.label:SetPoint("RIGHT", o.switch, "LEFT", -6, 0)
     o.label:SetMaxLines(2)
     optRows[i] = o
@@ -333,6 +335,10 @@ local function fillDetail(row)
         local o = optRows[i] or makeOption(i)
         o.opt = opts[i]
         o.label:SetText(opts[i].label)
+        local icon = type(opts[i].icon) == "string" and opts[i].icon or nil
+        o.icon:SetShown(icon ~= nil)
+        if icon then o.icon:SetIcon(icon) end
+        o.label:SetPoint("LEFT", icon and 34 or 0, 0)
         local ok, on = pcall(opts[i].get)
         o.switch:SetChecked(ok and on)
         o:Show()

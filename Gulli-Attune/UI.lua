@@ -36,7 +36,15 @@ local function fillChar(r, e)
     r:SetSelected(e.key == selected)
 end
 
+-- A raid header shows the item the attunement gives, from the game.
+local function raidIcon(raid)
+    local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+    return raid.item and get and get(raid.item) or "Interface\\Icons\\INV_Misc_Key_14"
+end
+
 local function makeRow(r)
+    r.raid = S.IconBox(r, 26)
+    r.raid:SetPoint("LEFT", 6, 0)
     r.icon = r:CreateTexture(nil, "ARTWORK")
     r.icon:SetSize(16, 16)
     r.text = S.Text(r, 12)
@@ -51,11 +59,15 @@ local function fillRow(r, item)
     r.icon:ClearAllPoints()
     r.text:ClearAllPoints()
     r.text:SetPoint("RIGHT", -8, 0)
+    r.raid:SetShown(item.header == true)
     if item.header then
         local p = item.progress
-        r.icon:SetPoint("LEFT", 8, 0)
+        r.raid:SetIcon(raidIcon(p.raid))
+        r.icon:SetPoint("RIGHT", -10, 0)
         r.icon:SetTexture(ICON[p.ready and "done" or (p.done > 0 and "active" or "todo")])
-        r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+        r.text:ClearAllPoints()
+        r.text:SetPoint("LEFT", r.raid, "RIGHT", 10, 0)
+        r.text:SetPoint("RIGHT", r.icon, "LEFT", -8, 0)
         local state = p.ready and (S.Hex(S.Accent()) .. L.READY .. "|r") or
             (S.Hex(S.MUTED) .. L.STEPS:format(p.done, p.total) .. "|r")
         r.text:SetText(ns.RaidName(p.raid) .. "   " .. state)
@@ -71,13 +83,13 @@ local function fillRow(r, item)
     r.icon:SetTexture(ICON[item.state])
     r.sub:ClearAllPoints()
     if item.isNext then
-        r.icon:SetPoint("TOPLEFT", 28, -5)
+        r.icon:SetPoint("TOPLEFT", 40, -5)
         r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
         r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
         r.sub:SetPoint("RIGHT", -8, 0)
         r.sub:SetText(ns.Where(item.step) or "")
     else
-        r.icon:SetPoint("LEFT", 28, 0)
+        r.icon:SetPoint("LEFT", 40, 0)
         r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
         r.sub:SetText("")
     end

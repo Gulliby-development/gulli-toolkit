@@ -7,6 +7,9 @@ local S = ns.Skin
 local frame, dungeons, checks, list
 local checkLines = {}
 local ICON_OK, ICON_NO = "Interface\\RaidFrame\\ReadyCheck-Ready", "Interface\\RaidFrame\\ReadyCheck-NotReady"
+-- The game icon of each check in ns.Checklist.
+local CHECK_ICON = { REPAIR = "Trade_BlackSmithing", BAGS = "INV_Misc_Bag_10", FOOD = "INV_Misc_Food_14",
+                     HEARTH = "INV_Misc_Rune_01" }
 
 local function makeDungeon(r)
     S.NavRow(r)
@@ -77,8 +80,10 @@ function ns.Refresh()
     dungeons:SetData(ns.Dungeons(level))
     for i, c in ipairs(ns.Checklist()) do
         local line = checkLines[i]
-        line.icon:SetTexture(c.ok and ICON_OK or ICON_NO)
+        line.state:SetTexture(c.ok and ICON_OK or ICON_NO)
+        line.icon:SetIcon("Interface\\Icons\\" .. (CHECK_ICON[c.key] or "INV_Misc_QuestionMark"))
         line.text:SetText(c.text)
+        line.text:SetTextColor(unpack(c.ok and S.TEXT or S.WARN))
     end
     local items = {}
     if ns.selected then
@@ -111,16 +116,18 @@ local function build()
     checks = S.Card(body)
     checks:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     checks:SetPoint("TOPRIGHT")
-    checks:SetHeight(72)
+    checks:Fit(26 * 2 + 8)
     for i = 1, 4 do
         local line = {}
-        line.icon = checks.body:CreateTexture(nil, "ARTWORK")
-        line.icon:SetSize(14, 14)
         local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
-        line.icon:SetPoint("TOPLEFT", col * 250, -2 - row * 26)
+        line.icon = S.IconBox(checks.body, 26)
+        line.icon:SetPoint("TOPLEFT", col * 250, -row * 34)
+        line.state = checks.body:CreateTexture(nil, "ARTWORK")
+        line.state:SetSize(14, 14)
+        line.state:SetPoint("LEFT", line.icon, "LEFT", 222, 0)
         line.text = S.Text(checks.body, 12)
-        line.text:SetPoint("LEFT", line.icon, "RIGHT", 8, 0)
-        line.text:SetWidth(222)
+        line.text:SetPoint("LEFT", line.icon, "RIGHT", 10, 0)
+        line.text:SetPoint("RIGHT", line.state, "LEFT", -6, 0)
         line.text:SetWordWrap(false)
         checkLines[i] = line
     end

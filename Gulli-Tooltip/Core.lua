@@ -143,8 +143,15 @@ SlashCmdList.GULLITOOLTIP = function() ns.Toggle() end
 function GulliTooltip_Toggle() ns.Toggle() end
 
 -- The same switches as in the window, so the Gulli Toolkit hub can show them.
+-- The game icon of each switch, in the window and in the hub.
+ns.OPT_ICON = {
+    price = "Interface\\Icons\\INV_Misc_Coin_01",
+    quest = "Interface\\Icons\\INV_Misc_Note_01",
+    id = "Interface\\Icons\\INV_Misc_Gear_01",
+}
+
 local function option(key, label)
-    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 

@@ -15,8 +15,7 @@ local function money(copper)
 end
 
 local function makeRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(24, 24)
+    r.icon = S.IconBox(r, 26)
     r.icon:SetPoint("LEFT", 2, 0)
     r.remove = S.Close(r, function(self) ns.Set(self:GetParent().entry.id, 0) end)
     r.remove:SetPoint("RIGHT", 0, 0)
@@ -42,7 +41,7 @@ end
 
 local function fillRow(r, e)
     r.entry = e
-    r.icon:SetTexture(ns.ItemIcon(e.id))
+    r.icon:SetIcon(ns.ItemIcon(e.id))
     r.text:SetText(ns.ItemName(e.id))
     local low = e.have < e.want
     r.have:SetText((low and S.Hex(S.WARN) or "") .. L.HAVE:format(e.have) .. (low and "|r" or ""))
@@ -104,8 +103,7 @@ function ns.Toggle()
 end
 
 local function makePlanRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(20, 20)
+    r.icon = S.IconBox(r, 22)
     r.icon:SetPoint("LEFT", 2, 0)
     r.cost = S.Text(r, 12)
     r.cost:SetPoint("RIGHT", -2, 0)
@@ -116,7 +114,7 @@ local function makePlanRow(r)
 end
 
 local function fillPlanRow(r, e)
-    r.icon:SetTexture(ns.ItemIcon(e.id))
+    r.icon:SetIcon(ns.ItemIcon(e.id))
     r.text:SetText(e.buy .. " x " .. ns.ItemName(e.id))
     r.cost:SetText(money(e.cost))
 end

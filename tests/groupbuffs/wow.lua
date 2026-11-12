@@ -37,7 +37,7 @@ local function frame()
         if k == "GetHeight" then return function() return 32 end end
         if k == "GetValue" or k == "GetWidth" then return function() return 0 end end
         if k == "GetPoint" then return function() return "CENTER", nil, "CENTER", 0, -180 end end
-        if k == "CreateTexture" or k == "CreateFontString" then return function() return frame() end end
+        if k == "CreateTexture" or k == "CreateFontString" or k == "CreateLine" then return function() return frame() end end
         -- Widget methods are CamelCase; a lowercase key is a field the addon never set.
         if type(k) == "string" and k:match("^%l") then return nil end
         return function() end

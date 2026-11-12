@@ -45,6 +45,8 @@ T.en = {
     LOG_FULL = "Your quest log is %d of %d. /gqc can abandon %d old quests.",
     LAST_NONE = "No cleaning yet on this character.",
     LAST = "Last cleaning: %d quests, %d items:",
+    SEC_WHAT = "What to clean",
+    SEC_KEEP = "Always keep",
 }
 
 T.de = {
@@ -83,6 +85,8 @@ T.de = {
     LOG_FULL = "Dein Questlog ist bei %d von %d. /gqc kann %d alte Quests abbrechen.",
     LAST_NONE = "Mit diesem Charakter wurde noch nicht aufgeräumt.",
     LAST = "Letztes Aufräumen: %d Quests, %d Gegenstände:",
+    SEC_WHAT = "Was aufräumen",
+    SEC_KEEP = "Immer behalten",
 }
 
 T.es = {
@@ -121,6 +125,8 @@ T.es = {
     LOG_FULL = "Tu registro de misiones está en %d de %d. /gqc puede abandonar %d misiones viejas.",
     LAST_NONE = "Este personaje aún no ha limpiado nada.",
     LAST = "Última limpieza: %d misiones, %d objetos:",
+    SEC_WHAT = "Qué limpiar",
+    SEC_KEEP = "Conservar siempre",
 }
 
 T.fr = {
@@ -159,6 +165,8 @@ T.fr = {
     LOG_FULL = "Votre journal de quêtes est à %d sur %d. /gqc peut abandonner %d anciennes quêtes.",
     LAST_NONE = "Aucun nettoyage pour ce personnage.",
     LAST = "Dernier nettoyage : %d quêtes, %d objets :",
+    SEC_WHAT = "Quoi nettoyer",
+    SEC_KEEP = "Toujours garder",
 }
 
 T.pl = {
@@ -197,6 +205,8 @@ T.pl = {
     LOG_FULL = "Dziennik zadań: %d z %d. /gqc może porzucić stare zadania: %d.",
     LAST_NONE = "Ta postać jeszcze nic nie czyściła.",
     LAST = "Ostatnie czyszczenie: zadania %d, przedmioty %d:",
+    SEC_WHAT = "Co wyczyścić",
+    SEC_KEEP = "Zawsze zostaw",
 }
 
 T.pt = {
@@ -235,6 +245,8 @@ T.pt = {
     LOG_FULL = "Seu registro de missões está com %d de %d. /gqc pode abandonar %d missões antigas.",
     LAST_NONE = "Este personagem ainda não limpou nada.",
     LAST = "Última limpeza: %d missões, %d itens:",
+    SEC_WHAT = "O que limpar",
+    SEC_KEEP = "Manter sempre",
 }
 
 T.ru = {
@@ -273,6 +285,8 @@ T.ru = {
     LOG_FULL = "Журнал квестов: %d из %d. /gqc может бросить старых квестов: %d.",
     LAST_NONE = "Этот персонаж ещё ничего не чистил.",
     LAST = "Последняя чистка: квестов %d, предметов %d:",
+    SEC_WHAT = "Что очищать",
+    SEC_KEEP = "Всегда оставлять",
 }
 
 T.zh = {
@@ -311,6 +325,8 @@ T.zh = {
     LOG_FULL = "任务日志已有 %d / %d。/gqc 可以放弃 %d 个旧任务。",
     LAST_NONE = "此角色还没有清理过。",
     LAST = "上次清理：%d 个任务，%d 个物品：",
+    SEC_WHAT = "清理内容",
+    SEC_KEEP = "始终保留",
 }
 
 ns.T = T

@@ -16,6 +16,18 @@ local ICON = {
     REPAIR = "Interface\\Icons\\Trade_BlackSmithing",
     BAGS = "Interface\\Icons\\INV_Misc_Bag_08",
 }
+-- Each cooldown shows the icon of what it makes; a new cooldown text key gets one here.
+local CD_ICON = {
+    CD_TRANSMUTE = "Interface\\Icons\\Trade_Alchemy",
+    CD_MOONCLOTH = "Interface\\Icons\\INV_Fabric_Moonrag_01",
+}
+local function cdIcon(key)
+    if key == "CD_SALT" then
+        local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+        return get and get(15846) -- Salt Shaker
+    end
+    return CD_ICON[key]
+end
 
 local function classColor(class)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -50,8 +62,7 @@ local function fillChar(r, e)
 end
 
 local function makeRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(22, 22)
+    r.icon = S.IconBox(r, 26)
     r.icon:SetPoint("LEFT", 2, 0)
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
@@ -60,7 +71,7 @@ local function makeRow(r)
 end
 
 local function fillRow(r, task)
-    r.icon:SetTexture(ICON[task.key])
+    r.icon:SetIcon(task.cd and cdIcon(task.cd) or ICON[task.key])
     r.text:SetText(task.text)
 end
 

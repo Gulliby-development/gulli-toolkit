@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
+<p align="center"><img src="window.png" alt="The window" width="560"></p>
+
 ---
 
 You are about to run a dungeon. Did you take all its quests? Gulli Dungeon Prep shows them, and checks what usually runs out inside.

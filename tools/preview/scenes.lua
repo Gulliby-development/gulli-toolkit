@@ -13,9 +13,12 @@ S.toolkit = { default = {
     open = function(ns)
         for _, k in ipairs({ "QuestCleaner", "BagSpace", "Merchant", "Bulletin", "Attune", "XP", "Restock", "Mail" }) do
             GulliToolkit.Register({ key = k, open = function() end, slash = "/g" .. k:sub(1, 2):lower(),
+                icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon",
                 options = k == "QuestCleaner" and {
-                    { label = "Keep class quests", get = function() return true end, set = function() end },
-                    { label = "Keep dungeon and raid quests", get = function() return false end, set = function() end },
+                    { label = "Keep class quests", get = function() return true end, set = function() end,
+                      icon = "Interface\\Icons\\INV_Misc_Book_09" },
+                    { label = "Keep dungeon and raid quests", get = function() return false end, set = function() end,
+                      icon = "Interface\\Icons\\INV_Misc_Key_14" },
                 } or nil })
         end
         GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
@@ -100,5 +103,57 @@ S.quickchat = {
     default = {},
     group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
 }
+
+local QC = {
+    quests = {
+        { title = "Elwynn Forest", isHeader = true },
+        { title = "Wolves Across the Border", level = 6, questID = 101, objectives = { { text = "Tough Wolf Meat: 3/8" } } },
+        { title = "Kobold Candles", level = 8, questID = 102, objectives = { { text = "Large Candle: 2/8" } } },
+        { title = "Westfall", isHeader = true },
+        { title = "The Killing Fields", level = 14, questID = 103, objectives = { { text = "Harvest Watcher: 4/20" } } },
+        { title = "Red Leather Bandanas", level = 15, questID = 104, objectives = { { text = "Red Leather Bandana: 5/15" } } },
+        { title = "Redridge Mountains", isHeader = true },
+        { title = "Blackrock Menace", level = 21, questID = 105 },
+    },
+    bag = {
+        { id = 1, name = "Tough Wolf Meat", class = 12, count = 3 },
+        { id = 2, name = "Large Candle", class = 12, count = 2 },
+        { id = 3, name = "Red Leather Bandana", class = 12, count = 5 },
+        { id = 4, name = "Old Note", class = 12 },
+    },
+    level = 22,
+}
+S.questcleaner = {
+    default = { spec = QC, open = function(ns) ns.Toggle() end },
+    preview = { spec = QC, open = function(ns, W, R)
+        ns.Toggle()
+        ns.charDB().level = 16
+        GulliQuestCleanerFrame:GetScript("OnShow")()
+        local function find(f)
+            if f.GetText and f:GetText() == ns.L.CLEAR and rawget(f, "_OnClick") then return f end
+            for _, c in ipairs(f.__children) do local x = find(c); if x then return x end end
+        end
+        find(GulliQuestCleanerFrame):GetScript("OnClick")()
+    end },
+}
+
+local function gbUnits(class)
+    return { player = { name = "Me", class = class, auras = {} },
+             party1 = { name = "Tank", class = "WARRIOR", auras = {}, role = "TANK", inGroup = true },
+             party2 = { name = "Mage", class = "MAGE", auras = {}, inGroup = true } }
+end
+local function gbOpen(ns) ns.Toggle() end
+S.groupbuffs = {
+    default = { spec = { units = gbUnits("PRIEST") }, open = gbOpen, crop = "GulliGroupBuffsSettings" },
+    shaman = { spec = { units = gbUnits("SHAMAN") }, open = gbOpen, crop = "GulliGroupBuffsSettings" },
+}
+
+S.chores = { default = {
+    spec = { level = 42 },
+    before = function(W)
+        W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
+        W.char.spells[17187], W.char.rested = true, 90000
+    end,
+} }
 
 return S

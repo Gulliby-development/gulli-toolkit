@@ -81,17 +81,17 @@ end
 local function build()
     frame = S.Window("GulliRemindersFrame", L.TITLE, 460, 360)
     local body = frame.body
-    local function switch(key, label, icon, extra)
+    local function switch(key, label, extra)
         return { label, nil, function() return ns.db[key] end, function(v) ns.db[key] = v; ns.Refresh() end,
-                 extra = extra, icon = "Interface\\Icons\\" .. icon }
+                 extra = extra, icon = ns.OPT_ICON[key] }
     end
     local st = S.Stack(body)
     local card, h = S.SettingsCard(body, nil, {
-        switch("buffs", L.OPT_BUFFS, "Spell_Holy_WordFortitude"),
-        switch("weapon", L.OPT_WEAPON, "INV_Stone_02"),
-        switch("ammo", L.OPT_AMMO, "INV_Ammo_Arrow_02", numberEdit(body, "ammoMin")),
-        switch("shards", L.OPT_SHARDS, "INV_Misc_Gem_Amethyst_02", numberEdit(body, "shardsMin")),
-        switch("notResting", L.OPT_RESTING, "Spell_Nature_Sleep"),
+        switch("buffs", L.OPT_BUFFS),
+        switch("weapon", L.OPT_WEAPON),
+        switch("ammo", L.OPT_AMMO, numberEdit(body, "ammoMin")),
+        switch("shards", L.OPT_SHARDS, numberEdit(body, "shardsMin")),
+        switch("notResting", L.OPT_RESTING),
     })
     st:Add(card, h)
     local note, nh = S.Paragraph(body, L.NOTE, frame.inner[1])

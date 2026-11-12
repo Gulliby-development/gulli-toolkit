@@ -107,8 +107,18 @@ SlashCmdList.GULLISOCIAL = function() ns.Toggle() end
 function GulliSocial_Toggle() ns.Toggle() end
 
 -- The same switches as in the window, so the Gulli Toolkit hub can show them.
+-- The game icon of each switch, in the window and in the hub.
+ns.OPT_ICON = {
+    invite = "Interface\\Icons\\INV_Letter_02",
+    inviteKnown = "Interface\\Icons\\Spell_Holy_SealOfSalvation",
+    acceptKnown = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
+    blockStrangers = "Interface\\Icons\\Ability_Warrior_ShieldWall",
+    noDuels = "Interface\\Icons\\Ability_DualWield",
+    noGuildInvites = "Interface\\Icons\\INV_Shirt_GuildTabard_01",
+}
+
 local function option(key, label)
-    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 

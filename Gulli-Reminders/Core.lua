@@ -144,8 +144,17 @@ SlashCmdList.GULLIREMINDERS = function() ns.Toggle() end
 function GulliReminders_Toggle() ns.Toggle() end
 
 -- The same switches as in the window, so the Gulli Toolkit hub can show them.
+-- The game icon of each switch, in the window and in the hub.
+ns.OPT_ICON = {
+    buffs = "Interface\\Icons\\Spell_Holy_WordFortitude",
+    weapon = "Interface\\Icons\\INV_Stone_02",
+    ammo = "Interface\\Icons\\INV_Ammo_Arrow_02",
+    shards = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02",
+    notResting = "Interface\\Icons\\Spell_Nature_Sleep",
+}
+
 local function option(key, label)
-    return { label = label, get = function() return ns.db ~= nil and ns.db[key] == true end,
+    return { label = label, icon = ns.OPT_ICON[key], get = function() return ns.db ~= nil and ns.db[key] == true end,
              set = function(on) if ns.db then ns.db[key] = on and true or false end; if ns.Refresh then ns.Refresh() end end }
 end
 
