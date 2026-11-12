@@ -167,7 +167,7 @@ end)
 test("learning raises the limit too, and the limit is an estimate until confirmed", function()
     Fake({ db = { limit = 2, entries = {}, open = {} } })
     local ns = Load()
-    eq(ns.LimitText(5), "≈5")
+    eq(ns.LimitText(5), "~5")
     for i = 1, 3 do W.Go("D" .. i, "party", i); W.Go("Out", "none", 0) end
     eq(ns.db.limit, 3, "we got in three times")
     ns.DefaultLimits()

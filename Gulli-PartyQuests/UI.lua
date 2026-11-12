@@ -343,36 +343,15 @@ local function build()
     end)
 end
 
--- A small card at the top of the screen when a member asks for one of my quests.
-local popup
+-- A Gulli HUD notice when a member asks for one of my quests.
 function ns.ShowRequest()
     local req = ns.requests[#ns.requests]
     if not req then return end
-    if not popup then
-        popup = CreateFrame("Frame", "GulliPartyQuestsRequest", UIParent)
-        popup:SetSize(380, 92)
-        popup:SetPoint("TOP", 0, -140)
-        popup:SetFrameStrata("DIALOG")
-        S.Box(popup, S.BG, S.EDGE)
-        popup.text = S.Note(popup, 12)
-        popup.text:SetPoint("TOPLEFT", S.INSET, -S.INSET)
-        popup.text:SetPoint("TOPRIGHT", -S.INSET, -S.INSET)
-        popup.text:SetMaxLines(2)
-        popup.share = S.FitButton(popup, L.SHARE, 30, 90)
-        S.Primary(popup.share)
-        popup.share:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
-        popup.close = S.FitButton(popup, L.CLOSE, 30, 90)
-        popup.close:SetPoint("RIGHT", popup.share, "LEFT", -8, 0)
-        popup.close:SetScript("OnClick", function() popup:Hide() end)
-        popup.share:SetScript("OnClick", function() ns.Share(popup.req.id); popup:Hide() end)
-    end
-    popup.req = req
-    popup.text:SetText(L.REQUEST:format(req.from, req.title))
     local mine = false
     for _, q in ipairs(ns.MyQuests()) do if q.id == req.id and q.pushable then mine = true end end
-    popup.share:SetEnabled(mine)
-    popup:Show()
-    return popup
+    local buttons = mine and { { text = L.SHARE, primary = true, onClick = function() ns.Share(req.id) end } } or nil
+    return S.Toast({ key = "request", icon = "Interface\\Icons\\INV_Letter_15", title = L.REQUEST_TITLE:format(req.from),
+        text = req.title, buttons = buttons, seconds = 30 })
 end
 
 -- Opens one tab (1 my quests, 2 theirs, 3 settings).

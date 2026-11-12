@@ -24,7 +24,7 @@ Before you leave town with a group, you want to know: who has which quest? Gulli
 - **One line about the group.** "To share: 2. Ready to hand in for everyone: 1", or "The group is in sync".
 - **Share in one tap, or all at once.** **Share** gives one quest, **Share all** gives every quest someone lacks, one per second. The game's answer ("too low level", "did it before") shows at the bottom.
 - **Share with new members.** A switch shares your quests with everyone who joins (off by default).
-- **Request a quest.** In "Their quests", **Request** asks the owner to share it. They get a small card with **Share**. Without the module, it is a whisper.
+- **Request a quest.** In "Their quests", **Request** asks the owner to share it. They get a card at the top of the screen with **Share**. Without the module, it is a whisper.
 - **Group news.** A line in chat and in the Gulli Toolkit feed when a member takes, finishes or hands in a quest, and when the whole group finished one. Each kind has a switch, plus one for the sound.
 - **This zone and search.** Show only the quests of the zone you are in, or search by name.
 - **Progress in tooltips.** A mob or an item that one of your quests needs shows how far each member is.

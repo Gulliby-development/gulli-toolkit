@@ -519,8 +519,9 @@ test("the settings window builds for every class and its buttons cycle", functio
     eq(who.text._text, "Group and target")
     who.scripts.OnClick(who, "RightButton")
     eq(ns.DB().who, "group", "right-click goes back")
+    eq(ns.DB().locked, true, "a new bar starts locked")
     SlashCmdList.GULLIGROUPBUFFS("lock")
-    eq(ns.DB().locked, true)
+    eq(ns.DB().locked, false)
 end)
 
 test("every language has every key with the same placeholders", function()

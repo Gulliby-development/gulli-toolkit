@@ -427,58 +427,70 @@ function ns.FeedItems()
     return out
 end
 
+local function placeFeed()
+    feed:ClearAllPoints()
+    local p = ns.db.feed.point
+    if p then feed:SetPoint(p[1], UIParent, p[2] or p[1], p[3] or 0, p[4] or 0) else feed:SetPoint("TOPRIGHT", -40, -220) end
+end
+
+-- The mini feed: a Gulli HUD list with the dungeon as a tag in its level colour.
 local function buildFeed()
-    feed = CreateFrame("Button", "GulliBulletinFeed", UIParent)
-    feed:SetSize(320, 26 + ns.FEED_ROWS * 18)
+    feed = S.HudList("GulliBulletinFeed", 360, ns.FEED_ROWS)
     feed:SetFrameStrata("MEDIUM")
-    feed:SetClampedToScreen(true)
-    feed:SetMovable(true)
-    feed:RegisterForDrag("LeftButton")
-    feed:SetScript("OnDragStart", feed.StartMoving)
-    feed:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, rel, x, y = self:GetPoint()
-        ns.db.feed.point = { point, rel, x, y }
-    end)
-    feed:SetScript("OnClick", function() ns.Toggle() end)
-    S.Box(feed)
-    feed.title = S.Text(feed, 11, S.MUTED)
-    feed.title:SetPoint("TOPLEFT", 8, -6)
     feed.title:SetText(L.TITLE)
-    feed.lines = {}
-    for i = 1, ns.FEED_ROWS do
-        local t = S.Text(feed, 11)
-        t:SetPoint("TOPLEFT", 8, -6 - i * 18)
-        t:SetPoint("RIGHT", -8, 0)
-        t:SetWordWrap(false)
-        feed.lines[i] = t
-    end
+    feed:SetScript("OnClick", function() ns.Toggle() end)
+    S.Mover(feed, { label = L.TITLE, save = function(point, rel, x, y) ns.db.feed.point = { point, rel, x, y } end,
+        reset = function() ns.db.feed.point = nil; placeFeed() end })
+end
+
+local function feedRow(item)
+    local where = item.dungeon and ns.DungeonName(item.dungeon) or L.OTHER_GROUPS
+    local d = item.dungeon and ns.Dungeon(item.dungeon)
+    local color = d and S.LevelColor(math.floor((d.min + d.max) / 2)) or S.MUTED
+    local role = item.role and (S.Hex(S.Accent()) .. L[item.role] .. "|r ") or ""
+    local needs = {}
+    for _, n in ipairs(item.needs or {}) do needs[#needs + 1] = L["ROLE_" .. n] end
+    local need = #needs > 0 and (S.Hex(S.WARN) .. table.concat(needs, " ") .. "|r ") or ""
+    local hex = classHex(item.class)
+    local who = hex and (hex .. item.short .. "|r") or item.short
+    return { tag = where, tagColor = color, text = role .. need .. who .. "  " .. S.Hex(S.MUTED) .. item.text .. "|r",
+             right = ago(item.t) }
 end
 
 function ns.Feed()
     local o = ns.db and ns.db.feed
     if not o then return end
-    if not o.show then
+    if not o.show and not ns.movingFeed then
         if feed then feed:Hide() end
         return
     end
     if not feed then buildFeed() end
-    feed:ClearAllPoints()
-    local p = o.point
-    if p then feed:SetPoint(p[1], UIParent, p[2] or p[1], p[3] or 0, p[4] or 0) else feed:SetPoint("TOPRIGHT", -40, -220) end
-    feed:SetAlpha((o.alpha or 80) / 100)
-    feed:EnableMouse(not o.through)
+    placeFeed()
+    feed:SetAlpha(ns.movingFeed and 1 or (o.alpha or 80) / 100)
+    feed:EnableMouse(ns.movingFeed or not o.through)
+    feed:SetMoving(ns.movingFeed)
     local items = ns.FeedItems()
-    for i, line in ipairs(feed.lines) do
-        local item = items[i]
-        if item then
-            local where = item.dungeon and ns.DungeonName(item.dungeon) or L.OTHER_GROUPS
-            line:SetText(S.Hex(S.Accent()) .. where .. "|r  " .. item.short .. "  " .. S.Hex(S.MUTED) .. item.text .. "|r")
-        else
-            line:SetText(i == 1 and (S.Hex(S.FAINT) .. L.FEED_EMPTY .. "|r") or "")
-        end
-    end
+    local rows = {}
+    for i, item in ipairs(items) do rows[i] = feedRow(item) end
+    feed:SetRows(rows, L.FEED_EMPTY)
+    feed.right:SetText(#items > 0 and tostring(#items) or "")
     feed:Show()
+end
+
+-- A watched dungeon got a new group: a Gulli HUD notice with Ask (or Invite for an LFG).
+function ns.ShowAlert(post)
+    local lfg = post.role == "LFG"
+    return S.Toast({ key = "alert", icon = "Interface\\AddOns\\Gulli-Bulletin\\icon",
+        title = L.ALERT:format(post.short, ns.DungeonName(post.dungeon)), text = post.text, seconds = 20,
+        buttons = { { text = lfg and L.INVITE or L.ASK_BTN, primary = true, onClick = function()
+            if lfg then ns.Invite(post.author) else ns.Ask(post) end
+        end } } })
+end
+
+-- /gulli move: the feed shows and can be placed even when it is off.
+function ns.MoveFeed(on)
+    ns.movingFeed = on and true or nil
+    ns.Feed()
 end
 
 function ns.SetupFeed() ns.Feed() end

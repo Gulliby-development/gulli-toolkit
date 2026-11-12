@@ -11,7 +11,7 @@ ns.DEFAULTS = {
     low = 60,            -- seconds left at which a buff counts as running low (0: only when gone)
     groupMin = 3,        -- party members missing a buff before the group spell is used (0: never)
     thorns = "tanks",    -- self | tanks | all
-    locked = false,
+    locked = true,       -- false shows the mover over the bar, to place it
     pets = true,         -- buff hunter and warlock pets too
     mana = 0,            -- below this share of mana (percent) only buff yourself (0: off)
     where = "always",    -- always | norest (not in cities and inns) | instance
@@ -43,6 +43,8 @@ function ns.DB()
         for k, v in pairs(ns.DEFAULTS) do
             if db[k] == nil then db[k] = v end
         end
+        -- Gulli HUD: an unlocked bar now shows a mover that takes the clicks, so start locked.
+        if not db.hud then db.hud, db.locked = 1, true end
         db.watch = db.watch or {}
         db.bless = db.bless or {}
         db.size = db.size or {}
@@ -671,6 +673,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() GulliGroupBuffs_Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         slash = "/ggb",
+        move = function(on) if ns.Move then ns.Move(on) end end,
         summary = function()
             local plan, far = ns.Plan()
             if #plan + #far == 0 then return ns.L.ALL_DONE end

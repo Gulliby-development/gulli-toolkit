@@ -10,7 +10,7 @@ Type the mobs you look for. When one of them shows its nameplate, you hear a sou
 
 - **A list of mobs.** Type a name, take your target, or press **Zone rares** to add every rare of the zone you are in. A part of the name is enough, and the case does not matter (also in Russian). Each mob on the **Mobs** page has its own switch, **Exact** or **Part**, and shows how often and where it was found.
 - **Zone rares in every language.** Rares are found by their game id, so the list works in any client language.
-- **A card when a mob is found.** It shows the name, level, rare or elite, and a 3D model. **Target** takes the mob as your target, **Tell group** writes where it is in the group chat, **Pin** puts a pin on the map. The card closes itself after the time you pick.
+- **A card when a mob is found.** It shows the portrait, name, level and rare or elite, with your Target key on the button. **Target** takes the mob as your target, **Tell group** writes where it is in the group chat, **Pin** puts a pin on the map. The card closes itself after the time you pick.
 - **A key for Target.** Bind one key in the window; it targets the last mob found.
 - **Not only nameplates.** With **Also target, mouseover and the group's targets** on, it finds a mob even when its nameplate is hidden. Rare icons on the minimap count too.
 - **No false alarms.** Players' pets and mobs another player already tagged do not count. The same mob alerts again only after the time you pick.

@@ -10,6 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    REQUEST_TITLE = "%s asks for a quest",
     TITLE = "Party Quests",
     TAB_OURS = "My quests",
     TAB_THEIRS = "Their quests",
@@ -86,10 +87,10 @@ T.en = {
     EV_COMPLETE = "%s finished %s.",
     EV_TURNIN = "%s handed in %s.",
     EV_ALL = "The whole group finished %s.",
-    CLOSE = "Close",
 }
 
 T.de = {
+    REQUEST_TITLE = "%s bittet um eine Quest",
     TITLE = "Gruppenquests",
     TAB_OURS = "Meine Quests",
     TAB_THEIRS = "Ihre Quests",
@@ -166,10 +167,10 @@ T.de = {
     EV_COMPLETE = "%s hat %s erfüllt.",
     EV_TURNIN = "%s hat %s abgegeben.",
     EV_ALL = "Die ganze Gruppe hat %s erfüllt.",
-    CLOSE = "Schließen",
 }
 
 T.es = {
+    REQUEST_TITLE = "%s pide una misión",
     TITLE = "Misiones del grupo",
     TAB_OURS = "Mis misiones",
     TAB_THEIRS = "Sus misiones",
@@ -246,10 +247,10 @@ T.es = {
     EV_COMPLETE = "%s completó %s.",
     EV_TURNIN = "%s entregó %s.",
     EV_ALL = "Todo el grupo completó %s.",
-    CLOSE = "Cerrar",
 }
 
 T.fr = {
+    REQUEST_TITLE = "%s demande une quête",
     TITLE = "Quêtes du groupe",
     TAB_OURS = "Mes quêtes",
     TAB_THEIRS = "Leurs quêtes",
@@ -326,10 +327,10 @@ T.fr = {
     EV_COMPLETE = "%s a fini %s.",
     EV_TURNIN = "%s a rendu %s.",
     EV_ALL = "Tout le groupe a fini %s.",
-    CLOSE = "Fermer",
 }
 
 T.pl = {
+    REQUEST_TITLE = "%s prosi o zadanie",
     TITLE = "Zadania drużyny",
     TAB_OURS = "Moje zadania",
     TAB_THEIRS = "Ich zadania",
@@ -406,10 +407,10 @@ T.pl = {
     EV_COMPLETE = "%s kończy: %s.",
     EV_TURNIN = "%s oddaje: %s.",
     EV_ALL = "Cała grupa skończyła: %s.",
-    CLOSE = "Zamknij",
 }
 
 T.pt = {
+    REQUEST_TITLE = "%s pede uma missão",
     TITLE = "Missões do grupo",
     TAB_OURS = "Minhas missões",
     TAB_THEIRS = "Missões deles",
@@ -486,10 +487,10 @@ T.pt = {
     EV_COMPLETE = "%s concluiu %s.",
     EV_TURNIN = "%s entregou %s.",
     EV_ALL = "O grupo todo concluiu %s.",
-    CLOSE = "Fechar",
 }
 
 T.ru = {
+    REQUEST_TITLE = "%s просит квест",
     TITLE = "Квесты группы",
     TAB_OURS = "Мои квесты",
     TAB_THEIRS = "Их квесты",
@@ -566,10 +567,10 @@ T.ru = {
     EV_COMPLETE = "%s выполнил %s.",
     EV_TURNIN = "%s сдал %s.",
     EV_ALL = "Вся группа выполнила %s.",
-    CLOSE = "Закрыть",
 }
 
 T.zh = {
+    REQUEST_TITLE = "%s 请求共享任务",
     TITLE = "队伍任务",
     TAB_OURS = "我的任务",
     TAB_THEIRS = "他们的任务",
@@ -646,7 +647,6 @@ T.zh = {
     EV_COMPLETE = "%s 完成了 %s。",
     EV_TURNIN = "%s 交付了 %s。",
     EV_ALL = "全队完成了 %s。",
-    CLOSE = "关闭",
 }
 
 ns.T = T

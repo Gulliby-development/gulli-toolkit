@@ -12,7 +12,7 @@ local BUTTON = "GulliMobFinderTarget"
 local frame, pageTabs, pages, status
 local mobList, mobEmpty, histList, histEmpty, addEdit, keyButton
 local card, flash
-local pendingMacro, repeater, hideTimer
+local pendingMacro, repeater
 
 local function soundIndex()
     for i, s in ipairs(ns.SOUNDS) do
@@ -38,6 +38,22 @@ local function stopRepeat()
     if repeater then repeater:Cancel(); repeater = nil end
 end
 
+-- The Target button lives on UIParent, not on the card: the game blocks showing a frame with a
+-- secure child in combat, and a find often comes in combat. It shows and hides only out of combat.
+local targetPending
+
+local function showTarget(on)
+    if not card then return end
+    if InCombatLockdown() then
+        targetPending = on
+        if not on then pcall(card.target.SetAlpha, card.target, 0) end
+        return
+    end
+    targetPending = nil
+    card.target:SetAlpha(1)
+    card.target:SetShown(on and true or false)
+end
+
 local function hideCard()
     stopRepeat()
     if card then card:Hide() end
@@ -54,63 +70,51 @@ local function aimTarget(name)
     return true
 end
 
-local function savePoint(f)
-    local p, _, _, x, y = f:GetPoint()
-    ns.db.cardPoint = { p, x, y }
+local CARD_POINT = { "TOP", 0, -76 }
+
+local function placeCard()
+    local p = ns.db.cardPoint or CARD_POINT
+    card:ClearAllPoints()
+    card:SetPoint(p[1], UIParent, p[1], p[2], p[3])
 end
 
 local function buildCard()
-    card = CreateFrame("Frame", "GulliMobFinderCard", UIParent)
-    card:SetSize(320, 116)
+    -- The Gulli HUD notice card, at its own place (it is movable) so it stays above the others.
+    card = S.ToastFrame("GulliMobFinderCard")
     card:SetFrameStrata("HIGH")
-    S.Box(card, S.BG, S.Accent())
-    card:SetMovable(true)
-    card:SetClampedToScreen(true)
-    card:EnableMouse(true)
-    card:RegisterForDrag("LeftButton")
-    card:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    card:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); savePoint(self) end)
-    local p = ns.db.cardPoint or { "TOP", 0, -140 }
-    card:SetPoint(p[1], UIParent, p[1], p[2], p[3])
-    card.model = CreateFrame("PlayerModel", nil, card)
-    card.model:SetSize(96, 96)
-    card.model:SetPoint("LEFT", 10, 0)
-    card.name = S.Text(card, 14)
-    card.name:SetPoint("TOPLEFT", card.model, "TOPRIGHT", 10, -2)
-    card.name:SetPoint("RIGHT", -36, 0)
-    card.name:SetWordWrap(false)
-    card.info = S.Note(card, 11)
-    card.info:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -4)
-    card.info:SetPoint("RIGHT", -10, 0)
-    card.info:SetWordWrap(false)
-    local close = S.Close(card, hideCard)
-    close:SetPoint("TOPRIGHT", -4, -4)
+    placeCard()
+    S.Mover(card, { label = L.TITLE, save = function(p, _, x, y) ns.db.cardPoint = { p, x, y } end,
+        reset = function() ns.db.cardPoint = nil; placeCard() end })
+    card:HookScript("OnHide", function() stopRepeat(); showTarget(false) end)
 
-    -- The secure Target button, drawn like S.Primary.
-    local t = CreateFrame("Button", BUTTON, card, "SecureActionButtonTemplate")
-    t:SetSize(96, 30)
-    t:SetPoint("BOTTOMLEFT", card.model, "BOTTOMRIGHT", 10, 2)
+    -- The secure Target button, drawn like S.Primary, with the key on it.
+    local t = CreateFrame("Button", BUTTON, UIParent, "SecureActionButtonTemplate")
+    t:SetSize(96, 28)
+    t:SetFrameStrata("HIGH")
+    t:SetFrameLevel((tonumber((card:GetFrameLevel())) or 0) + 10)
+    t:SetPoint("RIGHT", card, "RIGHT", -32, 0)
     S.Box(t, S.Accent(), S.EDGE)
     t.text = S.Text(t, 12, S.BG)
+    t.text:SetShadowColor(0, 0, 0, 0)
     t.text:SetPoint("CENTER")
-    t.text:SetText(L.TARGET)
     t:RegisterForClicks("AnyUp", "AnyDown")
     t:SetAttribute("type", "macro")
     t:HookScript("OnClick", function() stopRepeat() end)
+    t:Hide()
     card.target = t
+end
 
-    card.tell = S.FitButton(card, L.TELL_BTN, 30, 60)
-    card.tell:SetPoint("LEFT", t, "RIGHT", 6, 0)
-    card.tell:SetScript("OnClick", function()
-        if card.hit then ns.TellGroup(card.hit.name) end
-    end)
-    card.pin = S.FitButton(card, L.PIN, 30, 50)
-    card.pin:SetPoint("LEFT", card.tell, "RIGHT", 6, 0)
-    card.pin:SetScript("OnClick", function()
-        local h = ns.db.history[1]
-        if h then ns.Pin(h) end
-    end)
-    card:Hide()
+-- The card while /gulli move places it.
+function ns.MoveCard(on)
+    if not ns.db then return end
+    if not card then buildCard() end
+    card:SetMoving(on)
+    if on then
+        card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", title = L.TITLE, text = L.CARD_D,
+                   kind = "bad" })
+    else
+        card:Hide()
+    end
 end
 
 -- The edges of the screen flash red for a moment.
@@ -155,30 +159,37 @@ function ns.ShowFind(hits)
     if not ns.db.card then return end
     if not card then buildCard() end
     card.hit = h
-    card.name:SetText(h.name)
     local parts = {}
+    local portrait
     if h.unit and UnitExists(h.unit) then
         local lvl = UnitLevel and UnitLevel(h.unit)
         if lvl then parts[#parts + 1] = L.LEVEL:format(lvl > 0 and tostring(lvl) or "??") end
         parts[#parts + 1] = classification(h.unit)
-        card.model:SetUnit(h.unit)
-        card.model:Show()
-    else
-        card.model:Hide()
+        portrait = h.unit
     end
     if h.vignette then parts[#parts + 1] = L.ON_MAP end
     if #hits > 1 then parts[#parts + 1] = L.MORE:format(#hits - 1) end
-    card.info:SetText(table.concat(parts, " · "))
-    if not aimTarget(h.name) then card.info:SetText(card.info:GetText() .. " · " .. L.AFTER_COMBAT) end
-    card.tell:SetEnabled((IsInGroup and IsInGroup()) and true or false)
-    card:Show()
+    if not aimTarget(h.name) then parts[#parts + 1] = L.AFTER_COMBAT end
+    local key = ns.db.key and S.ShortKey(ns.db.key)
+    card.target.text:SetText(L.TARGET .. (key and key ~= "" and ("  " .. S.Hex(S.HEAD) .. key .. "|r") or ""))
+    card.target:SetWidth(math.max(80, math.floor((tonumber((card.target.text:GetStringWidth())) or 60) + 24)))
+    local buttons = {}
+    if IsInGroup and IsInGroup() then
+        buttons[#buttons + 1] = { text = L.TELL_BTN, keep = true,
+            onClick = function() if card.hit then ns.TellGroup(card.hit.name) end end }
+    end
+    buttons[#buttons + 1] = { text = L.PIN, keep = true, onClick = function()
+        local last = ns.db.history[1]
+        if last then ns.Pin(last) end
+    end }
+    card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", portrait = portrait, title = h.name,
+               text = table.concat(parts, " · "), kind = "bad", buttons = buttons,
+               reserve = (card.target:GetWidth() or 96) + 6,
+               seconds = (ns.db.cardSeconds or 0) > 0 and ns.db.cardSeconds or nil })
+    showTarget(true)
     stopRepeat()
     if ns.db.repeatSound and C_Timer and C_Timer.NewTicker then
         repeater = C_Timer.NewTicker(3, function() if not ns.Quiet() then ns.PlayAlert() end end, 10)
-    end
-    if hideTimer then hideTimer:Cancel(); hideTimer = nil end
-    if (ns.db.cardSeconds or 0) > 0 and C_Timer and C_Timer.NewTimer then
-        hideTimer = C_Timer.NewTimer(ns.db.cardSeconds, hideCard)
     end
 end
 
@@ -559,6 +570,7 @@ regen:SetScript("OnEvent", function(_, event)
     if pendingMacro ~= nil and card then
         aimTarget(pendingMacro ~= false and card.hit and card.hit.name or nil)
     end
+    if targetPending ~= nil then showTarget(targetPending and card:IsShown()) end
     if ns.db and ns.db.key then ns.ApplyKey() end
 end)
 
@@ -585,6 +597,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = ns.Toggle,
         window = function() return ns.Window and ns.Window() end,
         slash = "/gmf",
+        move = function(on) if ns.MoveCard then ns.MoveCard(on) end end,
         options = {
             { label = L.ENABLE, tip = L.DESC, icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
               get = function() return ns.db ~= nil and ns.db.enabled end,

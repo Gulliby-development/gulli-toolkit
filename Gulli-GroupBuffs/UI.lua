@@ -9,11 +9,12 @@ local B = ns.Buffs
 -- walks through the list made just before the fight, in restricted code (COMBAT_SNIPPET),
 -- and the small buttons keep the target they had.
 
-local MAIN, MINI, GAP, GRIP = 44, 28, 4, 12
+local MAIN, MINI, GAP = 52, 28, 4
 local MINIS = 10
 local BUTTON = "GulliGroupBuffsButton"
 
-local bar, grip, main, label, header
+local bar, main, label, header
+local moving = false
 local minis = {}
 local plan, far, list, byUnit = {}, {}, {}, {}
 local built, dirty, pendingKey = false, true, false
@@ -64,15 +65,10 @@ end
 ---- Building --------------------------------------------------------------------
 
 local function iconOn(b, size)
-    S.Box(b, { 0, 0, 0, 1 })
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", 1, -1)
-    b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    S.HudIcon(b, size)
     local h = b:CreateTexture(nil, "HIGHLIGHT")
     h:SetAllPoints()
     h:SetColorTexture(1, 1, 1, 0.15)
-    b:SetSize(size, size)
 end
 
 local function tooltip(b, text)
@@ -91,6 +87,7 @@ local function noteCast(self)
 end
 
 local function savePoint()
+    if not bar then return end
     local p, _, _, x, y = bar:GetPoint()
     ns.DB().point = { p, x, y }
 end
@@ -98,52 +95,40 @@ end
 local function build()
     local d = ns.DB()
     bar = CreateFrame("Frame", "GulliGroupBuffsBar", UIParent)
-    bar:SetSize(GRIP + MAIN, MAIN)
-    bar:SetMovable(true)
-    bar:SetClampedToScreen(true)
+    bar:SetSize(MAIN + 160, MAIN)
     local p = d.point or { "CENTER", 0, -180 }
     bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
-
-    grip = CreateFrame("Frame", nil, bar)
-    grip:SetSize(GRIP - 2, MAIN)
-    grip:SetPoint("LEFT")
-    S.Box(grip, S.PANEL)
-    grip:EnableMouse(true)
-    grip:RegisterForDrag("LeftButton")
-    grip:SetScript("OnDragStart", function()
-        if not InCombatLockdown() and not ns.DB().locked then bar:StartMoving() end
-    end)
-    grip:SetScript("OnDragStop", function()
-        bar:StopMovingOrSizing()
-        savePoint()
-    end)
-    grip:SetScript("OnEnter", function(self) tooltip(self, L.DRAG) end)
-    grip:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    S.Mover(bar, { label = L.TITLE, hint = L.DRAG,
+        save = function() savePoint() end,
+        reset = function()
+            if InCombatLockdown() then return end
+            ns.DB().point = nil
+            bar:ClearAllPoints()
+            bar:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
+        end })
 
     header = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
     main = CreateFrame("Button", BUTTON, bar, "SecureActionButtonTemplate")
     iconOn(main, MAIN)
-    main:SetPoint("LEFT", GRIP, 0)
+    main:SetPoint("TOPLEFT")
     main:RegisterForClicks("AnyUp", "AnyDown")
     main:SetAttribute("type", "spell")
     header:WrapScript(main, "OnClick", ns.COMBAT_SNIPPET)
     main:HookScript("OnClick", function(self) dirty = true; noteCast(self) end)
-    main.count = S.Text(main, 13, nil, "OUTLINE")
-    main.count:SetPoint("BOTTOMRIGHT", -2, 3)
     main:SetScript("OnEnter", function(self)
         local e = self.entry
         tooltip(self, (e and who(e) or L.ALL_DONE) .. "\n|cff8c8c94" .. L.TIP_MAIN .. "|r")
     end)
     main:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
-    label = S.Text(bar, 12)
-    label:SetPoint("BOTTOMLEFT", main, "TOPLEFT", 0, 4)
-    label:SetWordWrap(false)
+    -- What the big button casts and on whom, in a panel beside it.
+    label = S.HudCaption(bar, MAIN)
+    label:SetPoint("TOPLEFT", main, "TOPRIGHT", -1, 0)
 
     for i = 1, MINIS do
         local m = CreateFrame("Button", BUTTON .. "Mini" .. i, bar, "SecureActionButtonTemplate")
         iconOn(m, MINI)
-        m:SetPoint("LEFT", main, "RIGHT", GAP + (i - 1) * (MINI + GAP), 0)
+        m:SetPoint("TOPLEFT", main, "BOTTOMLEFT", (i - 1) * (MINI + GAP), -GAP - 1)
         m:RegisterForClicks("AnyUp", "AnyDown")
         m:SetAttribute("type", "spell")
         m:HookScript("OnClick", function(self) dirty = true; noteCast(self) end)
@@ -153,6 +138,12 @@ local function build()
         minis[i] = m
     end
     built = true
+end
+
+-- /gulli move: the mover over the bar, and the bar shows so it can be placed.
+function ns.Move(on)
+    moving = on and true or false
+    if built then layout() end
 end
 
 ---- Keybind ---------------------------------------------------------------------
@@ -175,8 +166,8 @@ local function aim(b, e)
 end
 
 local function paint(b, e, fallback)
-    b.icon:SetTexture(e and e.icon or fallback)
-    b.icon:SetDesaturated(done(e))
+    b:SetIcon(e and e.icon or fallback)
+    b:SetDone(done(e))
 end
 
 -- The marks on the game's party and raid frames: the icon of the first buff a unit misses.
@@ -220,10 +211,11 @@ ns.PaintMarks = paintMarks
 -- Red: something to cast now; yellow: only out of reach or skipped; green: all done.
 local function state()
     local n = #plan + #far
-    main.count:SetText(n > 1 and ("+" .. (n - 1)) or "")
-    local c = S.GOOD
-    if #plan > 0 then c = S.BAD elseif n > 0 or ((ns.info or {}).skipped or 0) > 0 then c = S.WARN end
-    S.SetBorder(main, c)
+    main:SetCount(n > 1 and ("+" .. (n - 1)) or "")
+    local st = "ok"
+    if #plan > 0 then st = "need" elseif n > 0 or ((ns.info or {}).skipped or 0) > 0 then st = "soon" end
+    main:SetState(st)
+    main:SetKey(ns.DB().key)
 end
 
 function layout()
@@ -240,10 +232,12 @@ function layout()
             minis[i]:Hide()
         end
     end
-    bar:SetWidth(GRIP + MAIN + shown * (MINI + GAP))
-    grip:SetShown(not d.locked)
-    local show = false
-    if d.who ~= "off" and d.show ~= "never" then
+    bar:SetWidth(math.max(MAIN + (label:GetWidth() or 120) - 1, shown * (MINI + GAP)))
+    bar:SetHeight(MAIN + (shown > 0 and (GAP + 1 + MINI) or 0))
+    local move = moving or not d.locked
+    bar:SetMoving(move and not InCombatLockdown())
+    local show = move
+    if not show and d.who ~= "off" and d.show ~= "never" then
         if readyUntil > now() and #plan + #far > 0 then show = true
         elseif ns.PlaceOK() then show = d.show == "always" or #plan > 0 end
     end
@@ -257,11 +251,20 @@ local function reason()
     return st[2] and L[st[1]]:format(st[2]) or L[st[1]]
 end
 
--- Text over the bar: who is next, and how many are out of reach.
+-- The caption beside the big button: the spell, then on whom (in the class colour) and the
+-- extra line (out of range, the combat list).
 local function caption(e, extra)
-    local text = e and who(e) or reason() or L.ALL_DONE
-    if extra then text = text .. "  |cff8c8c94" .. extra .. "|r" end
-    label:SetText(text)
+    local sub
+    if e then
+        local name = UnitName(e.unit) or e.unit
+        local _, class = UnitClass(e.unit)
+        local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+        if c then name = S.Hex({ c.r, c.g, c.b }) .. name .. "|r" end
+        if e.group and e.covers and e.covers > 1 then name = name .. " +" .. (e.covers - 1) end
+        sub = name
+    end
+    if extra then sub = sub and (sub .. "  " .. S.Hex(S.FAINT) .. extra .. "|r") or extra end
+    label:Set(e and e.spell or reason() or L.ALL_DONE, sub)
 end
 
 function ns.Refresh()

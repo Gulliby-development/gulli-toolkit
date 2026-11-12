@@ -29,6 +29,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 - **Where it counts.** Class checks and consumables each have their own place: everywhere, only in a group, or only in dungeons and raids. Consumables start with dungeons and raids.
 - **A sound and a line on screen** when a new reminder shows up: always, only in dungeons and raids (the default), or never.
 - **Tanks.** Righteous Fury is on for a paladin who has the tank role, unless you turn it off.
+- **Easy to read.** A missing buff pulses red; one that runs out soon has a yellow ring and the time on it.
 - **A panel you place.** Press **Move the panel**: it shows every icon it can show, and you drag it where you want. Set the icon size, the opacity, a row or a column, and names with the icons.
 - **Quiet in a fight.** It checks only out of combat, not while you are dead or on a flight. In cities and inns too, unless you turn that off.
 
