@@ -462,6 +462,39 @@ test("the route is the next run: the first recipe of the whole way, planned agai
     end
 end)
 
+test("the whole way as runs: one after another, from what the run before left, unknown stretches marked", function()
+    local c, st = core(), state()
+    st.cap = 300
+    local P = prefs({ target = 300 })
+    local full = c.Plan(st, P)
+    local first = c.NextRun(st, P, full)
+    local legs = c.Legs(st, P, first)
+    assert(#legs >= 3, "runs: " .. #legs)
+    eq(legs[1].plan, first, "the first leg is the run on screen")
+    eq(legs[1].from, st.skill)
+    for i = 2, #legs do eq(legs[i].from, legs[i - 1].to, "legs follow each other") end
+    assert(#legs == c.MAX_LEGS or legs[#legs].to == 300, "to the target")
+    local unknown = 0
+    for _, l in ipairs(legs) do
+        if l.unknown then unknown = unknown + 1; eq(l.plan, nil)
+        else assert(#l.plan.segs >= 1 and l.to > l.from) end
+    end
+    assert(unknown >= 1, "nothing known raises the skill near the top")
+    -- own silk used by one run is not there for the next one
+    local silk = 0
+    for _, l in ipairs(legs) do if l.plan then silk = silk + ((l.plan.bags or {}).silk or 0) + ((l.plan.bank or {}).silk or 0) end end
+    assert(silk <= (st.items.silk.bags or 0) + (st.items.silk.bank or 0) + 1e-6, "own silk counted once: " .. silk)
+    -- a gap in the middle: no recipe from 160 to 175, the runs go on after it
+    local g = state()
+    g.recipes.band = nil; g.recipes.shirt = nil
+    g.recipes.hood.skill = { 145, 150, 160 }
+    local gl = c.Legs(g, prefs({}), nil)
+    local gap
+    for i, l in ipairs(gl) do if l.unknown then gap = gap or i end end
+    assert(gap and gl[gap].from == 160 and gl[gap].to == 175, "gap " .. tostring(gap and gl[gap].from) .. "-" .. tostring(gap and gl[gap].to))
+    assert(gl[gap + 1] and not gl[gap + 1].unknown, "a known run after the gap")
+end)
+
 test("a cap the game did not give is the rank the skill is in", function()
     local c = core()
     eq(c.Cap({ skill = 147, cap = 0 }), 150)
@@ -629,6 +662,36 @@ test("the levelling switch and the route tiles", function()
     eq(n.view.mode, "l1")
     eq(n.ui.graphCard.title:GetText(), n.L.VAR_cheap)
     assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
+end)
+
+test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()
+    local n = game()
+    n.Toggle()
+    local v = n.view
+    assert(#v.legs >= 2, "legs: " .. #v.legs)
+    assert(n.ui.chips[1]:IsShown() and n.ui.chips[2]:IsShown())
+    eq(v.leg, 1)
+    W.Click(n.ui.chips[2])
+    eq(v.leg, 2)
+    assert(n.ui.graphCard.title:GetText():find(v.legs[2].from .. "-" .. v.legs[2].to, 1, true), "the title names the leg")
+    if v.legs[2].unknown then eq(#v.route, 0); assert(n.ui.unknown:IsShown()) else assert(#v.route > 0) end
+    -- a setting change keeps the chosen leg while it starts at the same skill
+    W.Click(n.ui.checks.neutral)
+    eq(v.leg, 2)
+    W.Click(n.ui.checks.neutral)
+    W.Click(n.ui.chips[1])
+    -- many stops: two rows, then the button opens the graph and hides the stop list
+    n.view.route = {}
+    for i = 1, 10 do n.view.route[i] = { kind = "vendor", title = "STOP_VENDOR_BUY", lines = {}, index = i } end
+    n.Refresh()
+    -- Refresh rebuilds nothing: the route stays the ten stops
+    assert(n.ui.expand:IsShown())
+    assert(not n.ui.nodes[10]:IsShown(), "the third row waits")
+    W.Click(n.ui.expand)
+    assert(n.ui.nodes[10]:IsShown())
+    assert(not n.ui.detailCard:IsShown())
+    W.Click(n.ui.expand)
+    assert(n.ui.detailCard:IsShown())
 end)
 
 test("a stop click shows its lines; tabs show the lists", function()

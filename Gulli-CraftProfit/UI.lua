@@ -7,8 +7,11 @@ local L = ns.L
 local S = ns.Skin
 
 local W, H = S.WIDE_W, S.DOCK_H
-local SIDE = 300
-local NODE_W, NODE_H, COL_W, ROW_H = 130, 74, 140, 84
+local SIDE = 264
+local NODE_W, NODE_H, COL_W, ROW_H = 112, 66, 120, 74
+-- Rows of stops the graph shows before **All stops** opens the rest.
+local SHOWN_ROWS = 2
+local STRIP = 3 -- item icons along the bottom of a stop
 local MAIN = W - 2 * S.PAD - SIDE - S.GAP
 local GRAPH_W = MAIN - 2 * S.INSET - 10
 -- As many stops in a row as the graph is wide.
@@ -231,13 +234,13 @@ local function makeNode(parent, i)
     b.title:SetPoint("RIGHT", -4, 0)
     b.title:SetWordWrap(false)
     b.strip = {}
-    for k = 1, 4 do
+    for k = 1, STRIP do
         local ic = S.ItemIcon(b, 16)
         ic:SetPoint("BOTTOMLEFT", 10 + (k - 1) * 18, 8)
         b.strip[k] = ic
     end
     b.more = S.Text(b, 9, S.MUTED)
-    b.more:SetPoint("BOTTOMLEFT", 10 + 4 * 18, 11)
+    b.more:SetPoint("BOTTOMLEFT", 10 + STRIP * 18, 11)
     b.money = S.Text(b, 10, S.MUTED)
     b.money:SetPoint("BOTTOMRIGHT", -6, 10)
     b.bar = {}
@@ -271,11 +274,11 @@ local function fillNode(b, n)
             icons[#icons + 1] = { t, l.n, q }
         end
     end
-    for k = 1, 4 do
+    for k = 1, STRIP do
         local ic = icons[k]
         if ic then b.strip[k]:Set(ic[1], ic[2], ic[3]) else b.strip[k]:Hide() end
     end
-    b.more:SetText(#icons > 4 and ("+" .. (#icons - 4)) or "")
+    b.more:SetText(#icons > STRIP and ("+" .. (#icons - STRIP)) or "")
     if n.segs then b.money:SetText("x" .. n.crafts)
     elseif n.cost and n.cost > 0 then b.money:SetText(ns.Short(n.cost))
     else b.money:SetText("") end
@@ -304,6 +307,9 @@ end
 local function drawGraph()
     local route = ns.view.route or {}
     local child = ui.graph.child
+    local rows = math.ceil(#route / PER_ROW)
+    local open = ui.expanded or rows <= SHOWN_ROWS
+    local shown = open and #route or SHOWN_ROWS * PER_ROW
     for i, n in ipairs(route) do
         local b = ui.nodes[i] or makeNode(child, i)
         ui.nodes[i] = b
@@ -311,7 +317,7 @@ local function drawGraph()
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", x, y)
         fillNode(b, n)
-        b:Show()
+        b:SetShown(i <= shown)
         if ns.view.changed and ns.view.changed[i] then
             S.SetBorder(b, GOLD)
             b.lit = true
@@ -341,11 +347,16 @@ local function drawGraph()
         else
             l:SetStartPoint("LEFT", a, 0, 0); l:SetEndPoint("RIGHT", b, 0, 0)
         end
-        l:Show()
+        l:SetShown(i <= shown)
     end
     for i = #route + 1, #ui.lines do if ui.lines[i] then ui.lines[i]:Hide() end end
-    local rows = math.ceil(#route / PER_ROW)
-    local h = 8 + rows * ROW_H
+    -- the button shows how many stops wait below; open, it closes the list of the stop again
+    ui.expand:SetShown(rows > SHOWN_ROWS)
+    ui.money:ClearAllPoints()
+    if rows > SHOWN_ROWS then ui.money:SetPoint("RIGHT", ui.expand, "LEFT", -8, 0)
+    else ui.money:SetPoint("TOPRIGHT", ui.graphCard, "TOPRIGHT", -S.INSET, -13) end
+    ui.expand:SetText(ui.expanded and L.GRAPH_LESS or L.GRAPH_ALL:format(#route))
+    local h = 8 + (open and rows or SHOWN_ROWS) * ROW_H
     child:SetSize(GRAPH_W, h)
     ui.graph:Update(h)
 end
@@ -545,15 +556,37 @@ local function build()
         ui.varTiles[i] = b
         ui.modes[m] = b
     end
-    local detailH = 36 + 3 * 28 + S.INSET
-    local graphH = bodyH - top - st.y - S.GAP - detailH
+    -- the whole way to the target as runs: one chip per run, the chosen one shown below
+    local chips = CreateFrame("Frame", nil, route)
+    st:Add(chips, 28, 8)
+    ui.chipBox, ui.chips = chips, {}
+    ui.chipNote = S.Text(chips, 11, S.MUTED)
+    ui.chipNote:SetPoint("LEFT", 2, 0)
+    ui.chipNote:SetPoint("RIGHT", 0, 0)
+    ui.chipNote:SetWordWrap(false)
+    local graphH = 36 + 8 + SHOWN_ROWS * ROW_H + 30 + S.INSET
     local gcard = S.Card(route, L.TAB_ROUTE)
     st:Add(gcard, graphH)
-    ui.graphCard = gcard
+    local detailH = bodyH - top - st.y
+    ui.graphCard, ui.graphH, ui.graphOpenH = gcard, graphH, graphH + S.GAP + detailH
     ui.money = gcard.hint
+    ui.expand = S.FitButton(gcard, L.GRAPH_ALL:format(99), 28, 60)
+    ui.expand:SetPoint("TOPRIGHT", -S.INSET, -4)
+    ui.expand:SetScript("OnClick", function()
+        ui.expanded = not ui.expanded
+        gcard:SetHeight(ui.expanded and ui.graphOpenH or ui.graphH)
+        ui.detailCard:SetShown(not ui.expanded)
+        ns.Refresh()
+    end)
+
     local graphBox = CreateFrame("Frame", nil, gcard.body)
     graphBox:SetPoint("TOPLEFT", 0, 0)
     graphBox:SetPoint("BOTTOMRIGHT", 0, 30)
+    ui.unknown = S.Text(graphBox, 12, S.MUTED)
+    ui.unknown:SetPoint("TOPLEFT", 8, -16)
+    ui.unknown:SetPoint("RIGHT", -8, 0)
+    ui.unknown:SetJustifyH("LEFT")
+    ui.unknown:Hide()
     ui.graph = S.Scroll(graphBox)
     ui.graph:SetPoint("TOPLEFT", 0, 0)
     ui.graph:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -572,6 +605,7 @@ local function build()
     ui.skillTo:SetJustifyH("RIGHT")
     local dcard = S.Card(route, " ")
     st:Add(dcard, detailH)
+    dcard:SetShown(not ui.expanded)
     ui.detailCard = dcard
     ui.detailTitle = dcard.title
     ui.detail = S.List(dcard.body, 28, makeLine, fillLine)
@@ -647,9 +681,46 @@ local function routeName(mode, n, long)
     return L[(long and "VAR_" or "TILE_") .. key]:format(i)
 end
 
+-- The chips over the graph: each run of the whole way to the target, an unknown stretch in red.
+-- When they do not all fit, the row shows the ones around the chosen run.
+local CHIP_MIN = 60
+local function refreshChips(v)
+    local legs = v.legs or {}
+    local n = #legs
+    local fit = math.min(n, math.floor((MAIN + 4) / (CHIP_MIN + 4)))
+    local cw = fit > 0 and math.floor((MAIN - (fit - 1) * 4) / fit) or 0
+    local sel = v.leg or 1
+    local first = math.max(1, math.min(sel - math.floor(fit / 2), n - fit + 1))
+    for k = 1, math.max(#ui.chips, fit) do
+        local i = first + k - 1
+        local leg = k <= fit and legs[i]
+        local b = ui.chips[k]
+        if leg then
+            if not b then
+                b = S.Pill(ui.chipBox, cw, 28)
+                b:SetScript("OnClick", function(self) ns.SelectLeg(self.leg) end)
+                ui.chips[k] = b
+            end
+            b.leg = i
+            b:SetSize(cw, 28)
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", (k - 1) * (cw + 4), 0)
+            local text = leg.from .. "-" .. leg.to
+            b:SetText(leg.unknown and (color(BAD) .. text .. " ?|r") or text)
+            b:SetSelected(i == sel)
+            b:Show()
+        elseif b then
+            b:Hide()
+        end
+    end
+    ui.chipNote:SetText(n == 0 and (v.plan and v.plan.earn and L.LEGS_EARN or "") or "")
+end
+
 local function refreshRoute()
     local v = ns.view
-    local plan = v.plan
+    local leg = v.legs and v.legs[v.leg or 1]
+    -- a later run shows its own plan; an unknown stretch has none and keeps the current one's numbers
+    local plan = (leg and leg.plan and (v.leg or 1) > 1) and leg.plan or v.plan
     local levels, anyLevel = 0, false
     for _, x in ipairs(v.variants or {}) do if not ns.EARN[x.mode] and x.plan then levels = levels + 1; anyLevel = true end end
     -- the tiles shown: the levelling routes there are (or one that says why there are none), the profit ones
@@ -692,13 +763,19 @@ local function refreshRoute()
         end
     end
     ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income)))
-    ui.graphCard:SetTitle(routeName(v.mode, levels, true))
+    refreshChips(v)
+    local title = routeName(v.mode, levels, true)
+    if leg and (v.leg or 1) > 1 then title = title .. "  ·  " .. leg.from .. "-" .. leg.to end
+    ui.graphCard:SetTitle(title)
+    ui.unknown:SetShown(leg and leg.unknown or false)
+    if leg and leg.unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
     local w = plan.warn or (plan.full and plan.full.warn)
     local warn = w and (color(GOLD) .. L[w[1]]:format(w[2], w[3]) .. "|r") or nil
     if selected > #v.route then selected = 1 end
     drawGraph()
     -- the skill bar: one colour per recipe stretch, a mark at each rank cap
-    local span = math.max(1, plan.target - v.state.skill)
+    local start = (leg and (v.leg or 1) > 1) and leg.from or v.state.skill
+    local span = math.max(1, plan.target - start)
     local width = math.max(1, ui.bar:GetWidth() - 2)
     for _, t in ipairs(ui.barParts) do t:Hide() end
     local x, k = 1, 0
@@ -715,11 +792,16 @@ local function refreshRoute()
         t:Show()
         x = x + wd
     end
-    ui.bar:SetShown(not plan.earn)
-    ui.skillFrom:SetText(L.SKILL_FROM:format(v.state.skill))
+    local unknown = leg and leg.unknown
+    ui.bar:SetShown(not plan.earn and not unknown)
+    ui.skillFrom:SetText(L.SKILL_FROM:format(start))
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
-    if plan.earn then
+    if unknown then
+        ui.skillFrom:SetText(L.SKILL_FROM:format(leg.from))
+        ui.skillTo:SetText(L.SKILL_TARGET:format(leg.to))
+        ui.money:SetText("")
+    elseif plan.earn then
         ui.skillTo:SetText(warn or "")
     else
         local full = plan.full or plan
@@ -727,7 +809,6 @@ local function refreshRoute()
         if full.reached < full.target then where = L.SKILL_SHORT:format(full.reached, full.target)
         elseif full ~= plan then where = L.SKILL_ALL:format(full.target, ns.Ceil(full.crafts))
         else where = L.SKILL_TARGET:format(plan.target) end
-        if full ~= plan then where = L.SKILL_RUN:format(plan.reached) .. "  ·  " .. where end
         ui.skillTo:SetText((warn and (warn .. "  ·  ") or "") .. (guess and (L.GUESS .. "  ·  ") or "") .. where)
     end
     local n = v.route[selected]

@@ -191,6 +191,10 @@ S.craftprofit = { default = {
     end,
 } }
 
+S.craftprofit.legs = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(2) end }
+S.craftprofit.unknown = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(#ns.view.legs) end }
 S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(2) end }
 
