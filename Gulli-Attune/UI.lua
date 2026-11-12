@@ -19,8 +19,10 @@ local function classColor(class)
 end
 
 local function makeChar(r)
+    S.NavRow(r)
+    r.line:Hide()
     r.text = S.Text(r, 12)
-    r.text:SetPoint("LEFT", 8, 0)
+    r.text:SetPoint("LEFT", 12, 0)
     r.text:SetPoint("RIGHT", -4, 0)
     r.text:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
@@ -31,8 +33,7 @@ end
 local function fillChar(r, e)
     r.entry = e
     r.text:SetText(classColor(e.char.class) .. e.char.name .. "|r " .. S.Hex(S.MUTED) .. (e.char.level or "") .. "|r")
-    S.Fill(r, e.key == selected and S.PANEL or S.ROW)
-    S.SetBorder(r, e.key == selected and S.Accent() or { 0, 0, 0, 0 })
+    r:SetSelected(e.key == selected)
 end
 
 local function makeRow(r)
@@ -58,20 +59,28 @@ local function fillRow(r, item)
         local state = p.ready and (S.Hex(S.Accent()) .. L.READY .. "|r") or
             (S.Hex(S.MUTED) .. L.STEPS:format(p.done, p.total) .. "|r")
         r.text:SetText(ns.RaidName(p.raid) .. "   " .. state)
+        r.text:SetTextColor(unpack(S.TEXT))
         r.sub:SetText("")
-        S.Fill(r, S.PANEL)
+        S.Fill(r, S.RAISED)
         return
     end
-    S.Fill(r, S.ROW)
-    r.icon:SetPoint("TOPLEFT", 28, -5)
-    r.icon:SetTexture(ICON[item.state])
-    r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
+    S.Fill(r, S.CLEAR)
     local name = ns.QuestName(item.step)
     r.text:SetText(item.isNext and (S.Hex(S.Accent()) .. L.NEXT .. "|r " .. name) or name)
+    r.text:SetTextColor(unpack(item.state == "done" and S.MUTED or S.TEXT))
+    r.icon:SetTexture(ICON[item.state])
     r.sub:ClearAllPoints()
-    r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -2)
-    r.sub:SetPoint("RIGHT", -8, 0)
-    r.sub:SetText(item.isNext and ns.Where(item.step) or "")
+    if item.isNext then
+        r.icon:SetPoint("TOPLEFT", 28, -5)
+        r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
+        r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
+        r.sub:SetPoint("RIGHT", -8, 0)
+        r.sub:SetText(ns.Where(item.step) or "")
+    else
+        r.icon:SetPoint("LEFT", 28, 0)
+        r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+        r.sub:SetText("")
+    end
 end
 
 function ns.Refresh()
@@ -97,19 +106,27 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliAttuneFrame", L.TITLE, 720, 480)
+    frame = S.Window("GulliAttuneFrame", L.TITLE, 760, 500)
     local body = frame.body
-    chars = S.List(body, 30, makeChar, fillChar)
-    chars:SetPoint("TOPLEFT", 0, 0)
-    chars:SetPoint("BOTTOMLEFT", 0, 40)
-    chars:SetWidth(170)
-    forget = S.Button(body, 170, 30)
+    local left = S.Card(body)
+    left:SetPoint("TOPLEFT")
+    left:SetPoint("BOTTOMLEFT")
+    left:SetWidth(190)
+    forget = S.Ghost(S.Button(left.body, 166, 30))
     forget:SetPoint("BOTTOMLEFT", 0, 0)
+    forget:SetPoint("BOTTOMRIGHT", 0, 0)
     forget:SetText(L.FORGET)
     forget:SetScript("OnClick", function() if selected then ns.Forget(selected); selected = nil end end)
-    list = S.List(body, 36, makeRow, fillRow)
-    list:SetPoint("TOPLEFT", 190, 0)
-    list:SetPoint("BOTTOMRIGHT", -12, 0)
+    chars = S.List(left.body, 32, makeChar, fillChar)
+    chars:SetPoint("TOPLEFT", 0, 0)
+    chars:SetPoint("BOTTOMRIGHT", -10, 40)
+
+    local right = S.Card(body)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
+    right:SetPoint("BOTTOMRIGHT")
+    list = S.List(right.body, 38, makeRow, fillRow)
+    list:SetPoint("TOPLEFT", 0, 0)
+    list:SetPoint("BOTTOMRIGHT", -10, 0)
     frame:SetScript("OnShow", function() ns.Scan() end)
 end
 
