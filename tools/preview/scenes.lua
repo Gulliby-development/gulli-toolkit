@@ -65,6 +65,14 @@ S.xp = { default = {
         for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
         ns.Toggle()
     end,
+}, bar = {
+    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 6200, now = 0, db = { alpha = 60, scale = 140 } },
+    open = function(ns, W)
+        W.Fire("PLAYER_LOGIN")
+        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
+        ns.Refresh()
+    end,
+    crop = "GulliXPBar",
 } }
 
 S.loot = { default = {
@@ -75,7 +83,7 @@ S.loot = { default = {
     end,
 } }
 
-S.partyquests = { default = { spec = {
+S.partyquests = { default = { spec = { level = 17,
     quests = {
         { title = "Westfall", isHeader = true },
         { title = "The Defias Brotherhood", questID = 155, level = 18 },
@@ -87,7 +95,7 @@ S.partyquests = { default = { spec = {
     party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
 } } }
 
-S.bulletin = { default = {
+S.bulletin = { default = { spec = { level = 56 },
     open = function(ns, W)
         local msgs = {
             { "LF2M Deadmines need tank and heal", "Thrall" }, { "Priest LFG Scholo or Strat", "Anduin" },

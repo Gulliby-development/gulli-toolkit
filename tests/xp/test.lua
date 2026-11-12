@@ -69,4 +69,71 @@ test("the bar hides at the top level and when switched off", function()
     eq(ns.s.gained, 0, "a new login starts a new session")
 end)
 
+test("older saves get the bar's new settings", function()
+    Fake({ db = { bar = false } })
+    local ns = Load()
+    eq(ns.db.bar, false, "a saved choice stays")
+    eq(ns.db.locked, false); eq(ns.db.alpha, 100); eq(ns.db.scale, 100)
+end)
+
+test("the line under the bar: level done, then the rested part", function()
+    Fake({ level = 20, xp = 250, xpMax = 1000, rested = 500 })
+    local ns = Load()
+    local done, rested = ns.BarParts(ns.Stats())
+    eq(done, 0.25); eq(rested, 0.5)
+    W.rested = 5000
+    done, rested = ns.BarParts(ns.Stats())
+    eq(rested, 0.75, "rested never runs past the level")
+end)
+
+local function theBar()
+    for _, f in ipairs(W.frames) do
+        if rawget(f, "_OnDragStart") then return f end
+    end
+end
+
+test("a locked bar does not move, and the place is saved", function()
+    Fake({ level = 20 })
+    local ns = Load()
+    ns.Refresh()
+    local bar = assert(theBar(), "the bar is built")
+    local moved = 0
+    rawset(bar, "StartMoving", function() moved = moved + 1 end)
+    rawset(bar, "GetPoint", function() return "CENTER", nil, "CENTER", 12, -34 end)
+    ns.SetPref("locked", true)
+    bar._OnDragStart(bar)
+    eq(moved, 0, "locked")
+    ns.SetPref("locked", false)
+    bar._OnDragStart(bar)
+    bar._OnDragStop(bar)
+    eq(moved, 1, "unlocked")
+    eq(ns.db.point[1], "CENTER"); eq(ns.db.point[3], -34)
+    ns.SetPref("point", nil)
+    eq(ns.db.point, nil, "Reset puts it back")
+end)
+
+test("opacity and size change the bar", function()
+    Fake({ level = 20 })
+    local ns = Load()
+    ns.Refresh()
+    local bar = theBar()
+    local scale
+    rawset(bar, "SetScale", function(_, v) scale = v end)
+    ns.SetPref("scale", 150)
+    eq(scale, 1.5)
+    ns.SetPref("alpha", 0)
+    eq(ns.db.alpha, 0)
+end)
+
+test("the hub shows the bar and lock switches", function()
+    Fake({ level = 20 })
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    local ns = Load()
+    eq(#got.options, 2)
+    got.options[2].set(true)
+    eq(ns.db.locked, true)
+    eq(got.options[2].get(), true)
+end)
+
 W.finish()

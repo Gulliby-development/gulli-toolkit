@@ -68,8 +68,9 @@ local function fillRow(r, item)
         r.text:ClearAllPoints()
         r.text:SetPoint("LEFT", r.raid, "RIGHT", 10, 0)
         r.text:SetPoint("RIGHT", r.icon, "LEFT", -8, 0)
-        local state = p.ready and (S.Hex(S.Accent()) .. L.READY .. "|r") or
-            (S.Hex(S.MUTED) .. L.STEPS:format(p.done, p.total) .. "|r")
+        -- Ready green, started in the accent, not started grey.
+        local state = p.ready and (S.Hex(S.GOOD) .. L.READY .. "|r") or
+            (S.Hex(p.done > 0 and S.Accent() or S.MUTED) .. L.STEPS:format(p.done, p.total) .. "|r")
         r.text:SetText(ns.RaidName(p.raid) .. "   " .. state)
         r.text:SetTextColor(unpack(S.TEXT))
         r.sub:SetText("")

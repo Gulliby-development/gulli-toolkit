@@ -1,5 +1,5 @@
 -- A thin bar on screen ("1.2k XP/h · 45 min · 12 kills") that opens the window: the numbers of
--- this session, a switch for the bar and Start again.
+-- this session, the bar's settings (shown, locked, opacity, scale, place) and Start again.
 
 local _, ns = ...
 local L = ns.L
@@ -16,25 +16,74 @@ function ns.BarText()
     return table.concat(parts, "  ·  ")
 end
 
+local XP_COLOR, RESTED_COLOR = { 0.58, 0.36, 0.90, 1 }, { 0.25, 0.55, 1.00, 0.55 }
+
+local function savePoint()
+    local p, _, _, x, y = bar:GetPoint()
+    ns.db.point = { p, x, y }
+end
+
+-- Opacity, scale, lock and place from the settings; the text keeps full opacity.
+function ns.StyleBar()
+    if not bar then return end
+    local d = ns.db
+    local a = d.alpha / 100
+    S.Fill(bar, { S.BG[1], S.BG[2], S.BG[3], S.BG[4] * a })
+    S.SetBorder(bar, { 0, 0, 0, a })
+    bar.track:SetAlpha(math.max(0.35, a))
+    bar:SetScale(d.scale / 100)
+    bar:ClearAllPoints()
+    local p = d.point or ns.BAR_POINT
+    bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+end
+
 local function buildBar()
     bar = CreateFrame("Button", "GulliXPBar", UIParent)
     bar:SetSize(260, 24)
-    bar:SetPoint("TOP", 0, -150)
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
     bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", bar.StartMoving)
-    bar:SetScript("OnDragStop", bar.StopMovingOrSizing)
+    bar:SetScript("OnDragStart", function(self) if not ns.db.locked then self:StartMoving() end end)
+    bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); savePoint() end)
     S.Box(bar)
+    -- A thin line along the bottom: the level so far, then the rested part after it.
+    bar.track = CreateFrame("Frame", nil, bar)
+    bar.track:SetPoint("BOTTOMLEFT", 1, 1)
+    bar.track:SetPoint("BOTTOMRIGHT", -1, 1)
+    bar.track:SetHeight(2)
+    bar.xp = S.Tex(bar.track, "ARTWORK", 0, XP_COLOR)
+    bar.xp:SetPoint("TOPLEFT")
+    bar.xp:SetPoint("BOTTOMLEFT")
+    bar.rested = S.Tex(bar.track, "ARTWORK", 0, RESTED_COLOR)
+    bar.rested:SetPoint("TOPLEFT", bar.xp, "TOPRIGHT")
+    bar.rested:SetPoint("BOTTOMLEFT", bar.xp, "BOTTOMRIGHT")
     bar.text = S.Text(bar, 12)
-    bar.text:SetPoint("CENTER")
+    bar.text:SetPoint("CENTER", 0, 1)
     bar.text:SetJustifyH("CENTER")
     bar:SetScript("OnClick", function() ns.Toggle() end)
+    bar:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(ns.db.locked and L.TIP_LOCKED or L.TIP_MOVE)
+        GameTooltip:Show()
+    end)
+    bar:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     local elapsed = 0
     bar:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + (dt or 0)
         if elapsed >= 5 then elapsed = 0; ns.Refresh() end
     end)
+    ns.StyleBar()
+end
+
+local function paintBar()
+    local st = ns.Stats()
+    bar.text:SetText(ns.BarText())
+    local w = (tonumber(bar:GetWidth()) or 260) - 2
+    local xp, rested = ns.BarParts(st)
+    bar.xp:SetWidth(math.max(0.01, w * xp))
+    bar.rested:SetWidth(math.max(0.01, w * rested))
+    bar.rested:SetShown(rested > 0)
 end
 
 function ns.Refresh()
@@ -42,7 +91,7 @@ function ns.Refresh()
     if showBar and not bar then buildBar() end
     if bar then
         bar:SetShown(showBar)
-        if showBar then bar.text:SetText(ns.BarText()) end
+        if showBar then paintBar() end
     end
     if not frame or not frame:IsShown() then return end
     local st = ns.Stats()
@@ -96,12 +145,29 @@ local function build()
     end
     st:Add(card, card:Fit(4 * 22 - 8))
 
-    local sw, h = S.SettingsCard(body, nil, {
-        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.db.bar = v; ns.Refresh() end,
-          icon = "Interface\\Icons\\INV_Misc_Spyglass_02" } })
+    local function pct(v) return v .. "%" end
+    local alpha = S.Stepper(body, function() return ns.db.alpha end,
+        function(v) ns.SetPref("alpha", v) end, 10, 0, 100, pct)
+    local scale = S.Stepper(body, function() return ns.db.scale end,
+        function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
+    local place = S.FitButton(body, L.PLACE_RESET, 28, 110)
+    place:SetScript("OnClick", function() ns.SetPref("point", nil) end)
+    local sw, h = S.SettingsCard(body, L.SEC_BAR, {
+        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
+          icon = ns.OPT_ICON.bar },
+        { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
+          icon = ns.OPT_ICON.locked },
+        { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
+        { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
+        { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
+    })
+    frame.steppers = { alpha, scale }
     st:Add(sw, h)
     S.FitWindow(frame, st:Height())
-    frame:SetScript("OnShow", function() ns.Refresh() end)
+    frame:SetScript("OnShow", function()
+        for _, x in ipairs(frame.steppers) do x:Refresh() end
+        ns.Refresh()
+    end)
 end
 
 function ns.Toggle()

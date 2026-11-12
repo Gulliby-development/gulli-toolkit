@@ -38,7 +38,9 @@ end
 local function fillOurs(r, row)
     r.row = row
     local q = row.quest
-    r.title:SetText(q.title .. (q.group and (" " .. S.Hex(S.Accent()) .. L.GROUP .. "|r") or ""))
+    -- The title in the quest log colour of its level.
+    local title = q.level and q.level > 0 and (S.Hex(S.LevelColor(q.level)) .. q.title .. "|r") or q.title
+    r.title:SetText(title .. (q.group and (" " .. S.Hex(S.Accent()) .. L.GROUP .. "|r") or ""))
     r.sub:SetText(string.format("[%d] %s", q.level, q.zone or ""))
     local states = { q.done and "done" or "has" }
     for i, s in ipairs(row.cells) do states[i + 1] = s end

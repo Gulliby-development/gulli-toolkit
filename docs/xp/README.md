@@ -22,6 +22,9 @@ How long until the next level? Gulli XP tells you on a small bar.
 - **Time to level** at that pace.
 - **Kills to level** from your average XP per kill.
 - **Kills and quests** apart, plus your rested XP.
+- A thin line under the bar shows the **level so far** (purple) and your **rested XP** (blue).
+- **Lock** the bar so it stays put, or unlock it and drag it where you like.
+- Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
 - The bar hides at the top level.
 
 ## Install
@@ -32,7 +35,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 
 ## How to use it
 
-1. The bar appears after your first XP. Drag it to move it.
+1. The bar appears after your first XP. Drag it to move it. In the window, **Lock the bar** keeps it in place, and **Place: Reset** puts it back at the top.
 2. Tap the bar, or type `/gxp`, for all numbers. `/gxp reset` starts again.
 
 ## FAQ

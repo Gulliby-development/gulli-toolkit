@@ -7,8 +7,6 @@ local S = ns.Skin
 local frame, space, want, list, empty, card, ok
 local plan
 
-local QUALITY = { [0] = "|cff9d9d9d", [1] = "|cffffffff" }
-
 local function makeRow(r)
     r.check = S.Check(r, 26)
     r.check:SetPoint("LEFT", -4, 0)
@@ -34,7 +32,7 @@ local function fillRow(r, it)
     r.item = it
     r.check:SetChecked(it.checked)
     r.icon:SetTexture(it.icon)
-    r.name:SetText((QUALITY[it.quality] or "") .. it.name .. "|r" .. (it.count > 1 and (" x" .. it.count) or "") ..
+    r.name:SetText(S.QualityHex(it.quality) .. it.name .. "|r" .. (it.count > 1 and (" x" .. it.count) or "") ..
         (it.tier == 3 and ("  " .. S.Hex(S.FAINT) .. L.MAYBE .. "|r") or ""))
     r.value:SetText(it.value > 0 and ns.Money(it.value) or "")
 end

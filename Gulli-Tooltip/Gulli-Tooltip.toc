@@ -10,7 +10,7 @@
 ## Notes-zhCN: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
 ## Notes-zhTW: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
 ## Author: Gulliby
-## Version: 1.3.0
+## Version: 1.4.0
 ## IconTexture: Interface\AddOns\Gulli-Tooltip\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Tooltip

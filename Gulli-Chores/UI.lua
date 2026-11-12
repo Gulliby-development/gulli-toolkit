@@ -61,6 +61,13 @@ local function fillChar(r, e)
     r:SetSelected(e.key == selected)
 end
 
+-- How urgent a task is: what hurts when it waits red, what is ready to use green.
+local TONE = { REPAIR = "BAD", BAGS = "BAD", CD = "GOOD", RESTED = "GOOD" }
+function ns.TaskColor(key)
+    local t = TONE[key]
+    return t and S[t] or S.TEXT
+end
+
 local function makeRow(r)
     r.icon = S.IconBox(r, 26)
     r.icon:SetPoint("LEFT", 2, 0)
@@ -73,6 +80,7 @@ end
 local function fillRow(r, task)
     r.icon:SetIcon(task.cd and cdIcon(task.cd) or ICON[task.key])
     r.text:SetText(task.text)
+    r.text:SetTextColor(unpack(ns.TaskColor(task.key)))
 end
 
 function ns.Refresh()
