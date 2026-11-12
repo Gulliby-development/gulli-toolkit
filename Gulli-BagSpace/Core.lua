@@ -272,5 +272,6 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
     })
 end

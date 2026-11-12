@@ -391,6 +391,7 @@ if GulliToolkit and GulliToolkit.Register then
         desc = ns.L.DESC,
         icon = "Interface\\AddOns\\Gulli-GroupBuffs\\icon",
         open = function() GulliGroupBuffs_Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         slash = "/ggb",
     })
 end

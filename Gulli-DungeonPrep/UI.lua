@@ -103,7 +103,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliDungeonPrepFrame", L.TITLE, 780, 540)
+    frame = S.Window("GulliDungeonPrepFrame", L.TITLE, S.WIDE_W, 540)
     local body = frame.body
     local left = S.Card(body)
     left:SetPoint("TOPLEFT")
@@ -142,7 +142,20 @@ local function build()
 end
 
 function ns.Toggle()
-    if not frame then build() end
-    frame:SetShown(not frame:IsShown())
-    ns.Refresh()
+    if S.ToggleWindow(ns.Window()) then
+        ns.Refresh()
+    end
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
+    if not frame then
+        build()
+        -- In the hub the window is shown by the hub, not by ns.Toggle.
+        frame:HookScript("OnShow", function(self)
+            if not self.docked then return end
+            ns.Refresh()
+        end)
+    end
+    return frame
 end

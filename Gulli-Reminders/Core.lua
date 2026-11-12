@@ -164,6 +164,7 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Reminders\\icon",
         slash = "/grm",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         options = {
             option("buffs", ns.L.OPT_BUFFS),
             option("weapon", ns.L.OPT_WEAPON),

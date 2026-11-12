@@ -4,7 +4,7 @@ local S = ns.Skin
 
 -- One small window: the switch, the list of mobs, how often to look and which sound to
 -- play. Every change is saved at once; the search itself lives in Core.lua.
-local W = 440
+local W = S.NARROW_W
 
 local frame, enable, memo, interval, soundName, again, banner, status
 
@@ -60,7 +60,7 @@ local function saveInterval(self)
 end
 
 local function build()
-    frame = S.Window("GulliMobFinderFrame", L.TITLE, W, 640, { sub = "/gmf" })
+    frame = S.Window("GulliMobFinderFrame", L.TITLE, W, S.DOCK_H, { sub = "/gmf" })
     local ft = S.Footer(frame)
     local play = ft:Add(S.FitButton(ft, L.PLAY, 30, 80))
     play:SetScript("OnClick", function() ns.PlayAlert() end)
@@ -76,7 +76,7 @@ local function build()
     st:Add(main, mh)
 
     local mobs = S.Card(body, L.MOBS)
-    memo = S.Memo(mobs.body, width - 2 * S.INSET, 130)
+    memo = S.Memo(mobs.body, width - 2 * S.INSET, 90)
     memo:SetPoint("TOPLEFT")
     memo:SetPoint("TOPRIGHT")
     memo.edit:SetScript("OnTextChanged", function(self, user)
@@ -93,7 +93,7 @@ local function build()
         ns.Refresh()
         if not name then status:SetText(L.NO_TARGET) end
     end)
-    st:Add(mobs, mobs:Fit(130 + 10 + 30))
+    st:Add(mobs, mobs:Fit(90 + 10 + 30))
 
     -- How often to look: [n] sec.
     local every = CreateFrame("Frame", nil, body)
@@ -144,8 +144,13 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end
 
 -- The addon compartment (the minimap addon menu) opens the window too.
@@ -159,6 +164,7 @@ if GulliToolkit and GulliToolkit.Register then
         desc = L.DESC,
         icon = "Interface\\AddOns\\Gulli-MobFinder\\icon",
         open = ns.Toggle,
+        window = function() return ns.Window and ns.Window() end,
         slash = "/gmf",
     })
 end

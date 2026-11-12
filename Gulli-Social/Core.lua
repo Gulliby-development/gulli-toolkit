@@ -128,6 +128,7 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Social\\icon",
         slash = "/gso",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
         options = {
             option("invite", ns.L.OPT_INVITE),
             option("inviteKnown", ns.L.OPT_INVITE_KNOWN),

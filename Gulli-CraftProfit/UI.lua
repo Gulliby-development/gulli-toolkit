@@ -6,11 +6,13 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local W, H = 940, 640
+local W, H = S.WIDE_W, S.DOCK_H
 local SIDE = 300
-local NODE_W, NODE_H, COL_W, ROW_H, PER_ROW = 130, 74, 140, 84, 4
+local NODE_W, NODE_H, COL_W, ROW_H = 130, 74, 140, 84
 local MAIN = W - 2 * S.PAD - SIDE - S.GAP
 local GRAPH_W = MAIN - 2 * S.INSET - 10
+-- As many stops in a row as the graph is wide.
+local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
 
 -- Icons from the game for the stops; a craft stop shows the profession's own icon.
 ns.STOP_ICONS = {
@@ -770,7 +772,20 @@ function ns.Tab(i) if ui.tabs then ui.tabs:Select(i) end end
 function ns.Selected() return selected, tab end
 
 function ns.Toggle()
-    if not frame then build() end
-    frame:SetShown(not frame:IsShown())
-    if frame:IsShown() then ns.Recalc(false); ns.Refresh() end
+    if S.ToggleWindow(ns.Window()) then
+        ns.Recalc(false); ns.Refresh()
+    end
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
+    if not frame then
+        build()
+        -- In the hub the window is shown by the hub, not by ns.Toggle.
+        frame:HookScript("OnShow", function(self)
+            if not self.docked then return end
+            ns.Recalc(false); ns.Refresh()
+        end)
+    end
+    return frame
 end

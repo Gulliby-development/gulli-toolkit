@@ -70,7 +70,7 @@ end
 function ns.HidePanel() if panel then panel:Hide() end end
 
 local function buildSettings()
-    settings = S.Window("GulliMailFrame", L.TITLE, 420, 220)
+    settings = S.Window("GulliMailFrame", L.TITLE, S.NARROW_W, 220)
     local st = S.Stack(settings.body)
     local card, h = S.SettingsCard(settings.body, nil, {
         { L.OPT_PANEL, nil, function() return ns.db.panel end, function(v) ns.db.panel = v end,
@@ -86,6 +86,12 @@ function ns.Toggle()
         if panel and panel:IsShown() then panel:Hide() else ns.ShowPanel() end
         return
     end
+    S.ToggleWindow(ns.Window())
+end
+
+-- The settings window, for the hub (/gulli) to show inside it. The mailbox panel stays at the
+-- mailbox.
+function ns.Window()
     if not settings then buildSettings() end
-    settings:SetShown(not settings:IsShown())
+    return settings
 end

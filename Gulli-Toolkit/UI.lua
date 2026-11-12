@@ -2,14 +2,19 @@
 -- the modules of the chosen category with an on/off switch in the middle, the chosen module with
 -- its switches and Open on the right. It only shows what Core.lua gives (ns.List, ns.Filter,
 -- ns.Groups, ns.Counts) and calls ns.OpenModule, ns.SetEnabled and the module's own options.
+-- A module that gives its window (Register's window) opens inside the hub: a narrow window
+-- takes the place of the list and keeps the module card beside it, a wide one takes both.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local W, H = 960, 600
 local SIDE, DETAIL, GAP = 210, 280, S.GAP
-local MID = W - 2 * S.PAD - SIDE - DETAIL - 2 * GAP
+local MID = S.NARROW_W
+local W = 2 * S.PAD + SIDE + GAP + MID + GAP + DETAIL
+local HOST_W = W - 2 * S.PAD - SIDE - GAP
+local HOST_H = S.DOCK_H
+local H = S.HEADER_H + 2 * S.PAD + HOST_H
 local LIST_W = MID - 12
 local ROW_H, GROUP_H, CAT_H = 52, 34, 32
 local FEED_LINES, MAX_OPTIONS = 3, 6
@@ -20,6 +25,7 @@ local LINE, HOVER = S.LINE, S.HOVER
 local view = { cat = "All", state = "all", query = "" }
 local frame, side, mid, detail, search, placeholder, midTitle, scroll, list, empty
 local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, recent
+local host, hubSwitch, offWin, insideWin
 local cats, pills, rows, heads, recentLines, optRows = {}, {}, {}, {}, {}, {}
 
 local function catName(key)
@@ -50,6 +56,83 @@ local function open(row)
     if row and ns.OpenModule(row.key) then frame:Hide() end
 end
 
+-- Inside a module ------------------------------------------------------------------------------
+
+local function canEnter(row)
+    return row ~= nil and row.state ~= "missing"
+end
+
+-- The window a module gives the hub, when it can sit inside it.
+local function moduleWindow(row)
+    local fn = row.info and row.info.window
+    if type(fn) ~= "function" then return nil end
+    local ok, win = pcall(fn)
+    if not ok or type(win) ~= "table" or type(win.Dock) ~= "function" then return nil end
+    local size = win.size or {}
+    if (size[1] or 0) > HOST_W or (size[2] or 0) > HOST_H then return nil end
+    return win
+end
+
+-- The page for a module that is off or waits for a reload: it is not loaded, so it has no window.
+local function offWindow(row)
+    if not offWin then
+        offWin = S.Window(nil, "", MID, HOST_H)
+        offWin.empty = S.Empty(offWin.body)
+        offWin.reload = S.Primary(S.FitButton(offWin.body, L.RELOAD, 32, 140))
+        offWin.reload:SetPoint("TOP", offWin.body, "CENTER", 0, -60)
+        offWin.reload:SetScript("OnClick", function() ReloadUI() end)
+    end
+    offWin.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    offWin.icon:SetDesaturated(true)
+    offWin.title:SetText(row.title)
+    offWin.sub:SetText(row.slash or "")
+    offWin.empty:Set(row.state == "reload" and L.INSIDE_RELOAD or L.INSIDE_OFF)
+    offWin.reload:SetShown(row.state == "reload")
+    return offWin
+end
+
+local function leave()
+    local win = insideWin
+    if not win then return end
+    insideWin, view.inside, view.insideCat = nil, nil, nil
+    win:Undock()
+    mid:Show()
+    detail:Show()
+    ns.Refresh()
+end
+
+-- Takes the module out of the hub into its own window.
+local function popOut()
+    local win = insideWin
+    if not win or win == offWin then return end
+    leave()
+    win:Show()
+end
+
+local function enter(row)
+    if not canEnter(row) then return end
+    local win
+    if row.state == "ready" then
+        win = moduleWindow(row)
+        if not win then return open(row) end
+    else
+        win = offWindow(row)
+    end
+    if insideWin and insideWin ~= win then leave() end
+    if protectFrame then protectFrame:Hide() end
+    local narrow = (win.size and win.size[1] or MID) <= MID
+    insideWin, view.inside, view.narrow, view.selected = win, row.key, narrow, row.key
+    view.insideCat = row.category
+    mid:Hide()
+    detail:SetShown(narrow)
+    hubSwitch:SetChecked(row.on)
+    win:Dock(host, {
+        width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch },
+        back = leave, popOut = popOut, onHide = leave,
+    })
+    ns.Refresh()
+end
+
 local function select(row)
     view.selected = row and row.key
     ns.Refresh()
@@ -78,6 +161,7 @@ local function makeCat(i)
     b.text:SetPoint("RIGHT", b.countBox, "LEFT", -4, 0)
     b.text:SetWordWrap(false)
     b:SetScript("OnClick", function(self)
+        leave()
         view.cat = self.key
         view.selected = nil
         search:SetText("")
@@ -103,7 +187,9 @@ local function fillCats(counts)
         local c = counts[key] or { on = 0, total = 0 }
         b.text:SetText(catName(key))
         b.count:SetText(c.on .. "/" .. c.total)
-        local sel = view.cat == key and not searching
+        -- Inside a module its group is marked.
+        local sel
+        if view.inside then sel = key == view.insideCat else sel = view.cat == key and not searching end
         b.bar:SetShown(sel)
         S.Fill(b, sel and S.RAISED or S.CLEAR)
         local tc = sel and S.TEXT or ((c.total > 0) and S.MUTED or S.FAINT)
@@ -138,7 +224,7 @@ local function makeRow(i)
     r.go.text = S.Text(r.go, 18, S.MUTED)
     r.go.text:SetPoint("CENTER")
     r.go.text:SetText(">")
-    r.go:SetScript("OnClick", function(self) open(self:GetParent().row) end)
+    r.go:SetScript("OnClick", function(self) enter(self:GetParent().row) end)
     r.go:SetScript("OnEnter", function(self)
         local a = S.Accent()
         self.text:SetTextColor(a[1], a[2], a[3], 1)
@@ -179,7 +265,7 @@ local function makeRow(i)
     r.desc:SetWordWrap(false)
 
     r:SetScript("OnClick", function(self) select(self.row) end)
-    r:SetScript("OnDoubleClick", function(self) open(self.row) end)
+    r:SetScript("OnDoubleClick", function(self) enter(self.row) end)
     r:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
     r:SetScript("OnLeave", function(self) if not self.selected then S.Fill(self, S.CLEAR) end end)
     rows[i] = r
@@ -198,8 +284,8 @@ local function fillRow(r, row)
     local missing = row.state == "missing"
     r.switch:SetShown(not missing)
     r.go:SetShown(not missing)
-    r.go:SetEnabled(canOpen(row) and true or false)
-    r.go:SetAlpha(canOpen(row) and 1 or 0.3)
+    r.go:SetEnabled(canEnter(row))
+    r.go:SetAlpha(canOpen(row) and 1 or 0.5)
     r.status:SetShown(missing)
     r.status:SetText(missing and L.NOT_INSTALLED or "")
     local right = missing and r.status or r.switch
@@ -329,7 +415,11 @@ local function fillDetail(row)
     detail.desc:SetText(row.desc)
     detail.slash:SetText(row.slash and L.COMMAND:format(row.slash) or "")
 
-    local opts = row.state == "ready" and row.options or {}
+    -- Inside a module its own window shows the settings; the card only describes it.
+    local inside = view.inside == row.key
+    detail.setHead:SetShown(not inside)
+    detail.srule:SetShown(not inside)
+    local opts = (row.state == "ready" and not inside) and row.options or {}
     local count = math.min(#opts, MAX_OPTIONS)
     for i = 1, count do
         local o = optRows[i] or makeOption(i)
@@ -351,10 +441,14 @@ local function fillDetail(row)
     else
         detail.none:SetText(L.NO_SETTINGS)
     end
-    detail.none:SetShown(count == 0)
+    detail.none:SetShown(count == 0 and not inside)
 
+    -- Inside, the module's own main button stays the only filled one.
+    detail.open:SetShown(not inside)
+    detail.pop:SetShown(inside)
+    detail.pop:SetEnabled(insideWin ~= offWin)
     detail.open:SetText(row.state == "missing" and L.NOT_INSTALLED or L.OPEN_MODULE:format(row.title))
-    detail.open:SetEnabled(canOpen(row) and true or false)
+    detail.open:SetEnabled(canEnter(row))
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -381,6 +475,11 @@ function ns.Refresh()
     midTitle:SetText(view.query ~= "" and L.RESULTS or catName(view.cat))
     for key, p in pairs(pills) do p:SetSelected(view.state == key) end
     local row = fillList(data)
+    if view.inside then
+        for _, r in ipairs(data) do if r.key == view.inside then row = r end end
+        hubSwitch:SetChecked(row and row.on)
+        if row and insideWin == offWin then offWindow(row) end
+    end
     view.selected = row and row.key
     -- fillList drew the rows before the selection was known when it fell back to the first one.
     for _, r in ipairs(rows) do
@@ -519,6 +618,7 @@ local function buildSide()
     search:HookScript("OnEditFocusLost", hint)
     search:SetScript("OnTextChanged", function(self)
         view.query = self:GetText() or ""
+        if view.query ~= "" then leave() end
         hint(self)
         scroll:Top()
         ns.Refresh()
@@ -533,6 +633,7 @@ local function buildSide()
     protectBtn:SetPoint("BOTTOMLEFT")
     protectBtn:SetPoint("BOTTOMRIGHT")
     protectBtn:SetScript("OnClick", function()
+        leave()
         if not protectFrame then buildProtected() end
         protectFrame:SetShown(not protectFrame:IsShown())
     end)
@@ -657,6 +758,7 @@ local function buildDetail()
     srule:SetHeight(1)
     srule:SetPoint("LEFT", d.setHead, "RIGHT", 8, 0)
     srule:SetPoint("RIGHT", -S.INSET, 0)
+    d.srule = srule
     d.none = S.Note(d.body, 11)
     d.none:SetPoint("TOPLEFT", d.setHead, "BOTTOMLEFT", 0, -10)
     d.none:SetPoint("RIGHT", -S.INSET, 0)
@@ -665,7 +767,13 @@ local function buildDetail()
     d.open = S.Primary(S.Button(d.body, DETAIL - 2 * S.INSET, 34))
     d.open:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
     d.open:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
-    d.open:SetScript("OnClick", function() open(detail.row) end)
+    d.open:SetScript("OnClick", function() enter(detail.row) end)
+    d.pop = S.Button(d.body, DETAIL - 2 * S.INSET, 34)
+    d.pop:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
+    d.pop:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    d.pop:SetText(L.POP_OUT)
+    d.pop:SetScript("OnClick", function() popOut() end)
+    d.pop:Hide()
 end
 
 local function build()
@@ -676,10 +784,28 @@ local function build()
     buildMiddle()
     buildDetail()
 
+    host = CreateFrame("Frame", nil, frame.body)
+    host:SetPoint("TOPLEFT", side, "TOPRIGHT", GAP, 0)
+    host:SetPoint("BOTTOMRIGHT")
+    hubSwitch = S.Switch(frame)
+    hubSwitch:Hide()
+    hubSwitch:SetScript("OnClick", function()
+        for _, r in ipairs(ns.List()) do
+            if r.key == view.inside then ns.SetEnabled(r, not r.on) end
+        end
+    end)
+    hubSwitch:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L.ON_TIP, 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    hubSwitch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+
     frame:SetScript("OnShow", function()
         applyScale()
         ns.Refresh()
     end)
+    frame:SetScript("OnHide", function() leave() end)
 end
 
 function ns.Toggle()
@@ -695,6 +821,15 @@ end
 function ns.View()
     return view, frame
 end
+
+-- Opens a module inside the hub (row key), or goes back to the list (nil). For the tests.
+function ns.Enter(key)
+    if not key then return leave() end
+    for _, r in ipairs(ns.List()) do
+        if r.key == key then return enter(r) end
+    end
+end
+function ns.Inside() return insideWin end
 
 -- A page under Options > AddOns with a button that opens the hub.
 function ns.RegisterSettings()

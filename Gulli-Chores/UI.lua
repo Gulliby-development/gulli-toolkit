@@ -105,7 +105,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliChoresFrame", L.TITLE, 700, 460)
+    frame = S.Window("GulliChoresFrame", L.TITLE, S.WIDE_W, 460)
     local body = frame.body
     local left = S.Card(body)
     left:SetPoint("TOPLEFT")
@@ -145,6 +145,11 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

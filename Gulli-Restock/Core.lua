@@ -211,5 +211,6 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Restock\\icon",
         slash = "/grs",
         open = function() ns.Toggle() end,
+        window = function() return ns.Window and ns.Window() end,
     })
 end

@@ -5,7 +5,7 @@ local S = ns.Skin
 -- Two views in one window. Setup: the level and what to clean. Preview: zones
 -- and their quests on the left, items on the right, a line from each quest to the items
 -- it needs. Items no quest needs hang off a "No quest" label at the end.
-local W, PREVIEW_H = 720, 600
+local W, PREVIEW_H = S.WIDE_W, 600
 local I = "Interface\\Icons\\"
 local ROW_H, ZONE_H = 32, 28
 local LEFT_W, GAP = 262, 52
@@ -301,7 +301,7 @@ end
 
 local function showPreview()
     showView(true)
-    frame:SetHeight(PREVIEW_H)
+    S.SetWindowHeight(frame, PREVIEW_H)
     local width = scroll:GetWidth()
     content:SetWidth(width > 0 and width or W - 80)
     scroll:Top()
@@ -474,6 +474,11 @@ function ns.ApplyTexts()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end

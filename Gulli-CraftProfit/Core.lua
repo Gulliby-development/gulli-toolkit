@@ -775,6 +775,7 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gcp",
         category = "Items",
         open = function() if ns.Toggle then ns.Toggle() end end,
+        window = function() return ns.Window and ns.Window() end,
         options = { option("level"), option("useBank"), option("buyAH"), option("buyRecipes"), option("trainer"),
                     option("sellAH") },
     })

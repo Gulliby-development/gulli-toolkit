@@ -66,7 +66,7 @@ local function dropItem()
 end
 
 local function build()
-    frame = S.Window("GulliRestockFrame", L.TITLE, 540, 520)
+    frame = S.Window("GulliRestockFrame", L.TITLE, S.NARROW_W, 520)
     local ft = S.Footer(frame)
     local preset = ft:Add(S.FitButton(ft, L.PRESET, 32, 120))
     preset:SetScript("OnClick", function()
@@ -98,8 +98,13 @@ local function build()
 end
 
 function ns.Toggle()
+    S.ToggleWindow(ns.Window())
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
     if not frame then build() end
-    frame:SetShown(not frame:IsShown())
+    return frame
 end
 
 local function makePlanRow(r)

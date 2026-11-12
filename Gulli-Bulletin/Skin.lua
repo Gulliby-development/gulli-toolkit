@@ -35,6 +35,9 @@ S.ROW = { 1, 1, 1, 0.025 }
 -- Spacing: 4, 8, 12, 16, 24. Window padding, gap between cards, padding inside a card.
 S.PAD, S.GAP, S.INSET = 16, 12, 12
 S.HEADER_H, S.FOOTER_H, S.ROW_H, S.ROW_DESC_H = 44, 56, 40, 56
+-- Window sizes that fit the hub (/gulli): a narrow window takes the place of the module list and
+-- leaves the module card beside it, a wide one takes both. No window is taller than DOCK_H.
+S.NARROW_W, S.WIDE_W, S.DOCK_H = 540, 832, 624
 
 -- The player's class colour, like ElvUI's default accent.
 function S.Accent()
@@ -802,6 +805,103 @@ end
 
 -- Windows ------------------------------------------------------------------------------------
 
+-- A square back button with a < drawn from two lines.
+local function backButton(parent, onClick)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(28, 28)
+    S.Box(b, S.CLEAR, S.EDGE)
+    local lines = {}
+    for i, d in ipairs({ { "LEFT", 10, 0, "TOPRIGHT", -11, -8 }, { "LEFT", 10, 0, "BOTTOMRIGHT", -11, 8 } }) do
+        local l = b:CreateLine(nil, "ARTWORK")
+        l:SetThickness(1.5)
+        l:SetColorTexture(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+        l:SetStartPoint(d[1], b, d[2], d[3])
+        l:SetEndPoint(d[4], b, d[5], d[6])
+        lines[i] = l
+    end
+    local function color(c) for _, l in ipairs(lines) do l:SetColorTexture(c[1], c[2], c[3], 1) end end
+    b:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()); color(S.TEXT) end)
+    b:SetScript("OnLeave", function(self) S.SetBorder(self, S.EDGE); color(S.MUTED) end)
+    b:SetScript("OnClick", onClick)
+    return b
+end
+S.Back = backButton
+
+-- Puts a window inside another frame (the hub): no shadow, no dragging, a back button instead
+-- of the close button, and opts.right (the hub's own controls) on the right of the header.
+-- opts: { back = fn, popOut = fn, onHide = fn, onResize = fn, right = { frames }, width, height }
+local function dock(f, host, opts)
+    opts = opts or {}
+    f.size = f.size or { f:GetWidth(), f:GetHeight() }
+    f.dockOpts = opts
+    f.docked = true
+    f:StopMovingOrSizing()
+    f:SetParent(host)
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+    f:SetWidth(opts.width or f.size[1])
+    f:SetHeight(opts.height or f.size[2])
+    f:SetFrameStrata(host:GetFrameStrata())
+    f:SetFrameLevel((tonumber(host:GetFrameLevel()) or 0) + 5)
+    for _, sh in ipairs(f.shadow or {}) do sh:Hide() end
+    f.close:Hide()
+    if not f.back then
+        f.back = backButton(f.bar, function() if f.dockOpts and f.dockOpts.back then f.dockOpts.back(f) end end)
+        f.back:SetPoint("LEFT", 10, 0)
+    end
+    f.back:Show()
+    f.icon:ClearAllPoints()
+    f.icon:SetPoint("LEFT", f.back, "RIGHT", 10, 0)
+    local last
+    for _, b in ipairs(opts.right or {}) do
+        b:SetParent(f.bar)
+        b:ClearAllPoints()
+        if last then b:SetPoint("RIGHT", last, "LEFT", -8, 0) else b:SetPoint("RIGHT", -12, 0) end
+        b:Show()
+        last = b
+    end
+    -- Header buttons of the window (help, size...) move left of the hub's controls.
+    local first = rawget(f.close, "dockNext")
+    if first and last then
+        first:ClearAllPoints()
+        first:SetPoint("RIGHT", last, "LEFT", -8, 0)
+    end
+    if not f.dockHooked then
+        f.dockHooked = true
+        f:HookScript("OnHide", function(self)
+            if self.docked and self.dockOpts and self.dockOpts.onHide then self.dockOpts.onHide(self) end
+        end)
+    end
+    f:Show()
+end
+
+-- Takes a window out of the hub again: back to its own size in the middle of the screen. It
+-- stays hidden; the caller shows it when it should stand alone.
+local function undock(f)
+    if not f.docked then return end
+    local opts = f.dockOpts or {}
+    f.docked = false
+    f.dockOpts = false
+    f:Hide()
+    for _, b in ipairs(opts.right or {}) do b:Hide() end
+    f:SetParent(UIParent)
+    f:ClearAllPoints()
+    f:SetPoint("CENTER")
+    f:SetWidth(f.size[1])
+    f:SetHeight(f.size[2])
+    f:SetFrameStrata(f.strata or "DIALOG")
+    for _, sh in ipairs(f.shadow or {}) do sh:Show() end
+    if f.back then f.back:Hide() end
+    f.close:Show()
+    f.icon:ClearAllPoints()
+    f.icon:SetPoint("LEFT", 14, 0)
+    local first = rawget(f.close, "dockNext")
+    if first then
+        first:ClearAllPoints()
+        first:SetPoint("RIGHT", f.close, "LEFT", -6, 0)
+    end
+end
+
 -- A movable window: a header with the addon icon, the title, a grey subtitle (the slash
 -- command) and a close button. frame.body is the padded area under the header; S.Footer adds
 -- a bar for the buttons at the bottom. opts: { sub = "/gmc", icon = path, strata, fullTitle }.
@@ -810,15 +910,18 @@ function S.Window(name, title, width, height, opts)
     local f = CreateFrame("Frame", name, UIParent)
     f:SetSize(width, height)
     f:SetPoint("CENTER")
-    f:SetFrameStrata(opts.strata or "DIALOG")
+    f.strata = opts.strata or "DIALOG"
+    f:SetFrameStrata(f.strata)
     f:SetClampedToScreen(true)
     f:SetMovable(true)
     f:EnableMouse(true)
     -- A soft shadow: a few dark rings outside the edge.
+    f.shadow = {}
     for i = 1, 4 do
         local sh = tex(f, "BACKGROUND", -8, { 0, 0, 0, 0.16 - i * 0.03 })
         sh:SetPoint("TOPLEFT", -i, i)
         sh:SetPoint("BOTTOMRIGHT", i, -i - 1)
+        f.shadow[i] = sh
     end
     S.Box(f, S.BG, S.BORDER)
     if name then tinsert(UISpecialFrames, name) end
@@ -834,7 +937,7 @@ function S.Window(name, title, width, height, opts)
     line:SetHeight(1)
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function() f:StartMoving() end)
+    bar:SetScript("OnDragStart", function() if not f.docked then f:StartMoving() end end)
     bar:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
     f.bar = bar
 
@@ -859,6 +962,7 @@ function S.Window(name, title, width, height, opts)
         b:SetParent(bar)
         b:ClearAllPoints()
         b:SetPoint("RIGHT", self.headerRight, "LEFT", -6, 0)
+        if self.headerRight == self.close then self.close.dockNext = b end
         self.headerRight = b
         return b
     end
@@ -867,13 +971,39 @@ function S.Window(name, title, width, height, opts)
     f.body:SetPoint("TOPLEFT", S.PAD, -(S.HEADER_H + S.PAD))
     f.body:SetPoint("BOTTOMRIGHT", -S.PAD, S.PAD)
     f.inner = { width - 2 * S.PAD, height - S.HEADER_H - 2 * S.PAD }
+    f.size = { width, height }
+    f.docked, f.dockOpts, f.dockHooked, f.back, f.footer = false, false, false, false, false
+    f.Dock, f.Undock = dock, undock
     f:Hide()
     return f
 end
 
+-- Sets the height of a window. A window that sits in the hub keeps the hub's height and only
+-- remembers its own for when it stands alone again.
+function S.SetWindowHeight(f, h)
+    f.size = f.size or { f:GetWidth(), h }
+    f.size[2] = h
+    if f.docked then
+        if f.dockOpts and f.dockOpts.onResize then f.dockOpts.onResize(f) end
+        return
+    end
+    f:SetHeight(h)
+end
+
 -- Sets the window height so the body is exactly h pixels high.
 function S.FitWindow(f, h)
-    f:SetHeight(S.HEADER_H + 2 * S.PAD + h + (f.footer and S.FOOTER_H or 0))
+    S.SetWindowHeight(f, S.HEADER_H + 2 * S.PAD + h + (f.footer and S.FOOTER_H or 0))
+end
+
+-- A slash command opens the window alone. When the window sits in the hub, the command takes
+-- it out of the hub instead of closing it.
+function S.ToggleWindow(f)
+    if f.docked and f.dockOpts and f.dockOpts.popOut then
+        f.dockOpts.popOut(f)
+    else
+        f:SetShown(not f:IsShown())
+    end
+    return f:IsShown()
 end
 
 -- A bar at the bottom of a window for its buttons: the main one on the right, a grey status

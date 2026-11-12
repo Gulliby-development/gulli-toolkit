@@ -10,7 +10,7 @@
 ## Notes-zhCN: 统计本小时和今天进入副本的次数，并显示下一次何时可用。 /gil
 ## Notes-zhTW: 统计本小时和今天进入副本的次数，并显示下一次何时可用。 /gil
 ## Author: Gulliby
-## Version: 1.1.0
+## Version: 1.2.0
 ## IconTexture: Interface\AddOns\Gulli-InstanceLimit\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: InstanceLimit
