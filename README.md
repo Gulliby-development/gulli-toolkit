@@ -30,13 +30,13 @@
 | [Attunements](docs/attune/README.md) | Raid attunements and dungeon keys for all your characters, with the next step and where it starts. | `/gat` |
 | [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
 | [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests for your faction, a way to pick them up from where you stand, and a checklist before you go. | `/gdp` |
-| [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons, a group message from a quest, whispers you missed. | `/gqk` |
+| [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons and a phrase wheel, group messages for quests and dungeons, whispers you missed. | `/gqk` |
 | [Chores](docs/chores/README.md) | A to-do list for each character: mail that runs out, cooldowns, trainer, rested XP, repairs; all characters in one table. | `/gch` |
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
 | [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
 | [Mail](docs/mail/README.md) | Take all from the mailbox, and your characters and recent recipients as names to tap. | `/gml` |
 | [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. | `/gaq` |
-| [Tooltip](docs/tooltip/README.md) | Full stack price, the quests that need an item, item and NPC ids. | `/gtt` |
+| [Tooltip](docs/tooltip/README.md) | Stack and auction prices, the quests that need an item, what your other characters hold, ids. | `/gtt` |
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
 | [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
