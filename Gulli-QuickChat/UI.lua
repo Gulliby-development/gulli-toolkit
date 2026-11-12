@@ -610,51 +610,170 @@ end
 
 ---- The wheel --------------------------------------------------------------------
 
--- Eight favourites around the middle of the screen; a tap sends one and closes the wheel.
+-- A ring of up to eight favourites around the cursor, in the spirit of radial menus: round
+-- icons on a soft disc, the one in the pointed direction lit, its text in the middle. Point and
+-- click (or press the wheel key again, or 1-8) to send; a click in the middle or Escape closes it.
 ns.WHEEL_R = 150
+local SLOT = 58
+local CAT_ICONS = { GROUP = I .. "Spell_Holy_PrayerOfFortitude", TRADE = I .. "INV_Misc_Coin_02",
+                    SOCIAL = I .. "Spell_Holy_Heal", OWN = I .. "INV_Misc_Note_05" }
+-- Each default phrase has its own picture; the player's own phrases show their category's.
+local PHRASE_ICONS = { "INV_Letter_02", "Ability_Warrior_BattleShout", "INV_Misc_PocketWatch_01", "Ability_Rogue_Sprint",
+                       "INV_Misc_Gift_01", "Ability_Mount_RidingHorse", "Spell_Holy_FlashHeal", "INV_Drink_18",
+                       "INV_Misc_Coin_02", "INV_Misc_Coin_01" }
+
+local function phraseIcon(text)
+    for i, name in ipairs(PHRASE_ICONS) do
+        if L["P" .. i] == text then return I .. name end
+    end
+    return CAT_ICONS[ns.Category(text)] or CAT_ICONS.OWN
+end
+
+local hovered -- the lit slot (kept outside the frame)
+
+local function wheelSelect(i)
+    if hovered == i then return end
+    hovered = i
+    local a = S.Accent()
+    for j, slot in ipairs(wheel.slots) do
+        local on = j == i
+        slot.icon:SetRing(on and a or S.EDGE)
+        slot.icon.fill:SetVertexColor(unpack(on and S.RAISED or S.SURFACE))
+        slot.icon:SetScale(on and 1.12 or 1)
+        local c = on and S.TEXT or S.MUTED
+        slot.label:SetTextColor(c[1], c[2], c[3], 1)
+    end
+    local slot = i and wheel.slots[i]
+    wheel.dot:SetShown(slot ~= nil)
+    if slot then
+        wheel.dot:ClearAllPoints()
+        wheel.dot:SetPoint("CENTER", math.floor(math.cos(slot.angle) * 104), math.floor(math.sin(slot.angle) * 104))
+        wheel.say:SetText(ns.Fill(slot.phrase))
+        wheel.where:SetText(chanLabel(ns.Target(ns.db.chan[slot.phrase])))
+    else
+        wheel.say:SetText(L.WHEEL_PICK)
+        wheel.where:SetText("")
+    end
+end
+
+-- The slot the cursor points at: by direction once it is out of the middle.
+local function pointedSlot()
+    local n = wheel.count or 0
+    if n == 0 or not GetCursorPosition then return nil end
+    local x, y = GetCursorPosition()
+    local scale = wheel:GetEffectiveScale()
+    local cx, cy = wheel:GetCenter()
+    if not cx then return nil end
+    local dx, dy = x / scale - cx, y / scale - cy
+    if dx * dx + dy * dy < 48 * 48 then return nil end
+    local deg = math.deg(math.atan2(dy, dx))
+    return math.floor(((90 - deg) % 360) / (360 / n) + 0.5) % n + 1
+end
+
+-- Lights a slot, for the previews and the tests.
+function ns.WheelHover(i) wheelSelect(i) end
+
+function ns.WheelSend(i)
+    local slot = wheel and wheel.slots[i]
+    if not slot or not slot:IsShown() then return false end
+    wheel:Hide()
+    return ns.Say(slot.phrase)
+end
 
 local function buildWheel()
+    local size = 2 * (ns.WHEEL_R + 80)
     wheel = CreateFrame("Frame", "GulliQuickChatWheel", UIParent)
-    wheel:SetSize(2 * ns.WHEEL_R + 170, 2 * ns.WHEEL_R + 60)
+    wheel:SetSize(size, size)
     wheel:SetPoint("CENTER")
     wheel:SetFrameStrata("DIALOG")
+    wheel:SetClampedToScreen(true)
     wheel:EnableMouse(true)
     tinsert(UISpecialFrames, "GulliQuickChatWheel")
-    wheel.buttons = {}
+    wheel.disc = S.Circle(wheel, size - 20, { 0, 0, 0, 0.55 }, "BACKGROUND", 0)
+    wheel.disc:SetPoint("CENTER")
+    wheel.track = S.Circle(wheel, 2 * ns.WHEEL_R + 4, { 1, 1, 1, 0.06 }, "BACKGROUND", 1)
+    wheel.track:SetPoint("CENTER")
+    wheel.hole = S.Circle(wheel, 2 * ns.WHEEL_R - 4, { 0, 0, 0, 0.35 }, "BACKGROUND", 2)
+    wheel.hole:SetPoint("CENTER")
+    -- The middle: what the lit slot says and where it goes.
+    wheel.mid = S.Circle(wheel, 196, S.EDGE, "BORDER", 0)
+    wheel.mid:SetPoint("CENTER")
+    wheel.midFill = S.Circle(wheel, 192, S.BG, "BORDER", 1)
+    wheel.midFill:SetPoint("CENTER")
+    wheel.say = S.Text(wheel, 14)
+    wheel.say:SetWidth(150)
+    wheel.say:SetPoint("CENTER", 0, 8)
+    wheel.say:SetJustifyH("CENTER")
+    wheel.say:SetMaxLines(3)
+    wheel.where = S.Text(wheel, 11, S.FAINT)
+    wheel.where:SetPoint("TOP", wheel.say, "BOTTOM", 0, -6)
+    wheel.dot = S.Circle(wheel, 10, S.Accent(), "ARTWORK", 0)
+    wheel.slots = {}
     for i = 1, 8 do
-        local a = math.rad(90 - (i - 1) * 45)
-        local b = S.Button(wheel, 160, 40)
-        b:SetPoint("CENTER", math.floor(math.cos(a) * ns.WHEEL_R), math.floor(math.sin(a) * ns.WHEEL_R * 0.8))
-        b.text:SetWordWrap(true)
-        b:SetScript("OnClick", function(self) wheel:Hide(); ns.Say(self.phrase) end)
-        b.num = S.Text(b, 10, S.FAINT)
-        b.num:SetPoint("TOPLEFT", 3, -2)
-        b.num:SetText(tostring(i))
-        wheel.buttons[i] = b
+        local slot = CreateFrame("Frame", nil, wheel)
+        slot:SetSize(SLOT, SLOT)
+        slot.icon = S.RoundIcon(slot, SLOT)
+        slot.icon:SetPoint("CENTER")
+        slot.num = S.Text(slot.icon, 10, S.FAINT)
+        slot.num:SetPoint("TOPRIGHT", slot.icon, "TOPRIGHT", 2, 2)
+        slot.num:SetText(tostring(i))
+        slot.label = S.Text(slot, 11, S.MUTED)
+        slot.label:SetWidth(124)
+        slot.label:SetJustifyH("CENTER")
+        slot.label:SetMaxLines(2)
+        slot.label:SetPoint("TOP", slot, "BOTTOM", 0, -4)
+        wheel.slots[i] = slot
     end
-    local close = S.Ghost(S.Button(wheel, 60, 40))
-    close:SetPoint("CENTER")
-    close:SetText("x")
-    close:SetScript("OnClick", function() wheel:Hide() end)
+    wheel:SetScript("OnUpdate", function()
+        local i = pointedSlot()
+        if i then wheelSelect(i) end
+    end)
+    wheel:SetScript("OnMouseUp", function()
+        local i = pointedSlot()
+        if i then ns.WheelSend(i) else wheel:Hide() end
+    end)
     -- Keys 1-8 send while the wheel is open; every other key goes on to the game.
     wheel:SetScript("OnKeyDown", function(self, key)
         local n = tonumber(key)
-        local b = n and self.buttons[n]
+        local ok = n and self.slots[n] and self.slots[n]:IsShown()
         if self.SetPropagateKeyboardInput and not (InCombatLockdown and InCombatLockdown()) then
-            self:SetPropagateKeyboardInput(not (b and b:IsShown()))
+            self:SetPropagateKeyboardInput(not ok)
         end
-        if b and b:IsShown() then b:Click() end
+        if ok then ns.WheelSend(n) end
     end)
+    wheel:Hide() -- a new frame starts shown
 end
 
+-- Opens the ring at the cursor; on an open ring the wheel key sends the lit phrase, or closes it.
 function ns.ToggleWheel()
     if not wheel then buildWheel() end
-    if wheel:IsShown() then wheel:Hide(); return false end
+    if wheel:IsShown() then
+        if hovered then ns.WheelSend(hovered) else wheel:Hide() end
+        return false
+    end
     local list = ns.Favorites(8)
-    for i, b in ipairs(wheel.buttons) do
-        b.phrase = list[i]
-        b:SetShown(list[i] ~= nil)
-        if list[i] then b:SetText(list[i]) end
+    wheel.count = #list
+    for i, slot in ipairs(wheel.slots) do
+        slot.phrase = list[i]
+        slot:SetShown(list[i] ~= nil)
+        if list[i] then
+            slot.angle = math.rad(90 - (i - 1) * 360 / #list)
+            slot:ClearAllPoints()
+            slot:SetPoint("CENTER", wheel, "CENTER", math.floor(math.cos(slot.angle) * ns.WHEEL_R),
+                math.floor(math.sin(slot.angle) * ns.WHEEL_R))
+            slot.icon:SetIcon(phraseIcon(list[i]))
+            slot.label:SetText(list[i])
+        end
+    end
+    hovered = -1
+    wheelSelect(nil)
+    wheel:ClearAllPoints()
+    local x, y = GetCursorPosition and GetCursorPosition()
+    if x and y and x > 0 then
+        local scale = UIParent:GetEffectiveScale()
+        wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+    else
+        wheel:SetPoint("CENTER")
     end
     wheel:EnableKeyboard(not (InCombatLockdown and InCombatLockdown()))
     wheel:Show()

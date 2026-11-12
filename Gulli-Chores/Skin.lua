@@ -328,15 +328,28 @@ function S.Scroll(parent)
     bar:SetValueStep(1)
     bar:SetScript("OnValueChanged", function(_, v) sf:SetVerticalScroll(v) end)
     sf:EnableMouseWheel(true)
-    sf:SetScript("OnMouseWheel", function(_, delta)
-        bar:SetValue(bar:GetValue() - delta * 40)
+    sf:SetScript("OnMouseWheel", function(self, delta)
+        bar:SetValue(bar:GetValue() - delta * (self.step or 40))
     end)
+    -- The bar shows only when the content is taller than the view; the thumb is as long as the
+    -- share in view. The view's own size can change later (docked in the hub), so it counts again.
     function sf:Update(contentHeight)
-        local range = math.max(0, contentHeight - self:GetHeight())
+        self.content = contentHeight or self.content or 0
+        local view = self:GetHeight()
+        local range = self.content - view
+        if range < 2 then range = 0 end
         bar:SetMinMaxValues(0, range)
         bar:SetShown(range > 0)
+        if range > 0 and view > 0 then
+            thumb:SetHeight(math.max(24, math.floor(view * view / self.content)))
+        end
         if bar:GetValue() > range then bar:SetValue(range) end
+        if range == 0 then self:SetVerticalScroll(0) end
     end
+    sf:SetScript("OnSizeChanged", function(self, w)
+        if self.onResize then self.onResize(self, w) end
+        if self.content then self:Update() end
+    end)
     function sf:Top() bar:SetValue(0); self:SetVerticalScroll(0) end
     sf.child, sf.bar = child, bar
     return sf
@@ -742,6 +755,35 @@ end
 
 -- A game icon (an item or a spell, "Interface\\Icons\\...") in a thin dark frame, cropped
 -- like the action bars do. box.tex is the texture.
+-- Round shapes for rings and radial menus: the game's round portrait mask on a flat texture.
+local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+-- A disc of one colour; size is the diameter.
+function S.Circle(parent, size, color, layer, sub)
+    local t = tex(parent, layer or "BACKGROUND", sub or 0, color)
+    t:SetSize(size, size)
+    if t.SetMask then t:SetMask(ROUND) end
+    return t
+end
+
+-- A round game icon with a ring around it (r.ring, r.fill, r.tex); r:SetIcon(path).
+function S.RoundIcon(parent, size, path)
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetSize(size, size)
+    b.ring = S.Circle(b, size, S.EDGE, "BACKGROUND", 1)
+    b.ring:SetPoint("CENTER")
+    b.fill = S.Circle(b, size - 4, S.SURFACE, "BACKGROUND", 2)
+    b.fill:SetPoint("CENTER")
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetSize(size - 12, size - 12)
+    b.tex:SetPoint("CENTER")
+    if b.tex.SetMask then b.tex:SetMask(ROUND) end
+    function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
+    function b:SetRing(c) self.ring:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
+    b:SetIcon(path)
+    return b
+end
+
 function S.IconBox(parent, size, path)
     local b = CreateFrame("Frame", nil, parent)
     b:SetSize(size or 26, size or 26)
@@ -1095,6 +1137,8 @@ function S.List(parent, rowHeight, make, fill, gap)
     gap = gap or 0
     local sf = S.Scroll(parent)
     local rows = {}
+    sf.step = rowHeight + gap
+    sf.onResize = function(self, w) if w and w > 1 then self.child:SetWidth(w) end end
     function sf:SetData(items)
         local width = self:GetWidth()
         self.child:SetWidth(width > 1 and width or 400)

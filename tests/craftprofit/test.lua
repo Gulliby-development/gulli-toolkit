@@ -1226,4 +1226,11 @@ test("many routes page with arrows instead of squeezing the tiles", function()
     assert(n.ui.varTiles[#n.MODES]:IsShown())
 end)
 
+test("the stop card shows two rows without a scroll bar", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    -- the card's title takes 36 pixels and its bottom inset 12; the rows are 28 high
+    assert(n.ui.detailH - 36 - 12 >= 2 * 28, "stop card body: " .. (n.ui.detailH - 48))
+end)
+
 W.finish()

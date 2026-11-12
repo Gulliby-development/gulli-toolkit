@@ -15,6 +15,9 @@ local STRIP = 3 -- item icons along the bottom of a stop
 local MAIN = W - 2 * S.PAD - SIDE - S.GAP
 -- a route tile below this width cuts its name and numbers; past it the row pages with arrows
 local TILE_MIN, ARROW_W = 130, 24
+-- the route tiles and the strip under the graph (skill bar and its line), kept tight so the
+-- stop card below fits two of its rows without a scroll bar
+local TILE_H, GRAPH_FOOT = 56, 28
 local GRAPH_W = MAIN - 2 * S.INSET - 10
 -- As many stops in a row as the graph is wide.
 local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
@@ -701,15 +704,15 @@ local function build()
     local st = S.Stack(route)
     -- the routes side by side: pick one, compare the result and the crafts
     local vars = CreateFrame("Frame", nil, route)
-    st:Add(vars, 62)
+    st:Add(vars, TILE_H, 8)
     local nv = #ns.MODES
     local vw = math.floor((MAIN - (nv - 1) * 8) / nv)
     ui.varTiles = {}
-    ui.varPrev = S.FitButton(vars, "<", 62, ARROW_W)
+    ui.varPrev = S.FitButton(vars, "<", TILE_H, ARROW_W)
     ui.varPrev:SetWidth(ARROW_W)
     ui.varPrev:SetPoint("TOPLEFT", 0, 0)
     ui.varPrev:SetScript("OnClick", function() ui.varFirst = (ui.varFirst or 1) - 1; ns.Refresh() end)
-    ui.varNext = S.FitButton(vars, ">", 62, ARROW_W)
+    ui.varNext = S.FitButton(vars, ">", TILE_H, ARROW_W)
     ui.varNext:SetWidth(ARROW_W)
     ui.varNext:SetPoint("TOPRIGHT", 0, 0)
     ui.varNext:SetScript("OnClick", function() ui.varFirst = (ui.varFirst or 1) + 1; ns.Refresh() end)
@@ -721,7 +724,7 @@ local function build()
     end)
     for i, m in ipairs(ns.MODES) do
         local b = CreateFrame("Button", nil, vars)
-        b:SetSize(vw, 62)
+        b:SetSize(vw, TILE_H)
         b:SetPoint("TOPLEFT", (i - 1) * (vw + 8), 0)
         S.Box(b, S.SURFACE, S.EDGE)
         b.mark = S.Tex(b, "ARTWORK", 0, S.Accent())
@@ -729,17 +732,17 @@ local function build()
         b.mark:SetPoint("TOPRIGHT", -1, -1)
         b.mark:SetHeight(2)
         b.icon = S.IconBox(b, 18, ns.EARN[m] and "Interface\\Icons\\INV_Misc_Coin_02" or ns.OPT_ICON.level)
-        b.icon:SetPoint("TOPRIGHT", -6, -6)
+        b.icon:SetPoint("TOPRIGHT", -6, -5)
         b.label = S.Text(b, 10, S.MUTED)
-        b.label:SetPoint("TOPLEFT", 8, -8)
+        b.label:SetPoint("TOPLEFT", 8, -6)
         b.label:SetPoint("RIGHT", b.icon, "LEFT", -4, 0)
         b.label:SetWordWrap(false)
         b.value = S.Text(b, 15)
-        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -5)
+        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -3)
         b.value:SetPoint("RIGHT", -6, 0)
         b.value:SetWordWrap(false)
         b.sub = S.Text(b, 10, S.MUTED)
-        b.sub:SetPoint("BOTTOMLEFT", 8, 7)
+        b.sub:SetPoint("BOTTOMLEFT", 8, 5)
         b.sub:SetPoint("RIGHT", -6, 0)
         b.sub:SetWordWrap(false)
         b:SetScript("OnClick", function(self)
@@ -760,11 +763,11 @@ local function build()
     ui.chipNote:SetPoint("LEFT", 2, 0)
     ui.chipNote:SetPoint("RIGHT", 0, 0)
     ui.chipNote:SetWordWrap(false)
-    local graphH = 36 + 8 + SHOWN_ROWS * ROW_H + 30 + S.INSET
+    local graphH = 36 + 8 + SHOWN_ROWS * ROW_H + GRAPH_FOOT + S.INSET
     local gcard = S.Card(route, L.TAB_ROUTE)
     st:Add(gcard, graphH)
     local detailH = bodyH - top - st.y
-    ui.graphCard, ui.graphH, ui.graphOpenH = gcard, graphH, graphH + S.GAP + detailH
+    ui.graphCard, ui.graphH, ui.graphOpenH, ui.detailH = gcard, graphH, graphH + S.GAP + detailH, detailH
     ui.money = gcard.hint
     ui.expand = S.FitButton(gcard, L.GRAPH_ALL:format(99), 28, 60)
     ui.expand:SetPoint("TOPRIGHT", -S.INSET, -4)
@@ -777,7 +780,7 @@ local function build()
 
     local graphBox = CreateFrame("Frame", nil, gcard.body)
     graphBox:SetPoint("TOPLEFT", 0, 0)
-    graphBox:SetPoint("BOTTOMRIGHT", 0, 30)
+    graphBox:SetPoint("BOTTOMRIGHT", 0, GRAPH_FOOT)
     ui.unknown = S.Text(graphBox, 12, S.MUTED)
     ui.unknown:SetPoint("TOPLEFT", 8, -16)
     ui.unknown:SetPoint("RIGHT", -8, 0)
@@ -992,7 +995,7 @@ local function refreshRoute()
         b:SetShown(slot >= 0 and slot < fit)
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", x0 + slot * (vw + 8), 0)
-        b:SetSize(vw, 62)
+        b:SetSize(vw, TILE_H)
         local on = x.mode == v.mode
         local p = x.plan
         b.best = x.best
