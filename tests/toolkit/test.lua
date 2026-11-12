@@ -70,6 +70,7 @@ test("switching a module waits for a reload", function()
     local r = byKey(ns.List())
     ns.SetEnabled(r.MobFinder, true)
     eq(W.addons[2].enabled, true, "enabled in the addon list")
+    eq(W.unsaved, false, "the change is saved at once, so the reload keeps it")
     assert(ns.NeedsReload())
     eq(byKey(ns.List()).MobFinder.state, "reload")
     ns.SetEnabled(byKey(ns.List()).MobFinder, false)
@@ -323,6 +324,29 @@ test("every module gives its window to the hub, in a size the hub has room for",
     end
     p:close()
     assert(n > 0, "found the modules")
+end)
+
+test("the switch shows what the game will load: off is off, a module it refuses says why", function()
+    Fake({ addons = {
+        { name = "Gulli-MobFinder", enabled = false, state = 1, meta = { ["X-Gulli-Module"] = "MobFinder" } },
+        { name = "Gulli-XP", enabled = true, blocked = "INTERFACE_VERSION", meta = { ["X-Gulli-Module"] = "XP" } },
+        { name = "Gulli-Loot", enabled = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    ADDON_INTERFACE_VERSION = "Out of date"
+    local ns = Load()
+    local r = byKey(ns.List())
+    eq(r.MobFinder.on, false, "enabled only for other characters: off here")
+    eq(r.MobFinder.state, "off")
+    eq(r.XP.on, true)
+    eq(r.XP.state, "blocked", "on but the game will not load it")
+    eq(r.XP.reason, "INTERFACE_VERSION")
+    eq(ns.ReasonText(r.XP.reason), "Out of date", "the game's own words")
+    eq(ns.ReasonText("SOMETHING_NEW"), "SOMETHING_NEW")
+    eq(r.Loot.state, "reload", "on and loadable, not loaded yet: a reload loads it")
+    eq(ns.Counts(ns.List()).All.on, 2)
+    ns.Toggle()
+    ns.Enter("XP")
+    eq(ns.Inside().empty.title:GetText(), ns.L.INSIDE_OUTDATED, "the page says how to load it")
+    ADDON_INTERFACE_VERSION = nil
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))

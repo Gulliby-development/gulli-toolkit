@@ -25,7 +25,7 @@ end
 
 function Fake(spec)
     W.addons = spec.addons or {}
-    W.frames, W.printed, W.reloaded = {}, {}, false
+    W.frames, W.printed, W.reloaded, W.unsaved = {}, {}, false, false
     local function find(name)
         for i, a in ipairs(W.addons) do
             if a.name == name or i == name then return a end
@@ -36,9 +36,18 @@ function Fake(spec)
         GetAddOnInfo = function(i) local a = find(i); return a and a.name end,
         GetAddOnMetadata = function(name, field) local a = find(name); return a and a.meta and a.meta[field] end,
         IsAddOnLoaded = function(name) local a = find(name); return a and a.loaded or false end,
-        GetAddOnEnableState = function(name) local a = find(name); return (a and a.enabled) and 2 or 0 end,
-        EnableAddOn = function(name) find(name).enabled = true end,
-        DisableAddOn = function(name) find(name).enabled = false end,
+        -- a.state forces what the game answers, as a client that reads another character would.
+        GetAddOnEnableState = function(name) local a = find(name); return a and (a.state or (a.enabled and 2 or 0)) or 0 end,
+        IsAddOnLoadable = function(name)
+            local a = find(name)
+            if not a then return false, "MISSING" end
+            if not a.enabled then return false, "DISABLED" end
+            if a.blocked then return false, a.blocked end
+            return true
+        end,
+        EnableAddOn = function(name) find(name).enabled = true; W.unsaved = true end,
+        DisableAddOn = function(name) find(name).enabled = false; W.unsaved = true end,
+        SaveAddOns = function() W.unsaved = false end,
     }
     UnitName = function() return "Tester" end
     UnitClass = function() return "Priest", "PRIEST" end

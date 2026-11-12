@@ -10,6 +10,10 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    STATE_BLOCKED = "Not loaded: %s",
+    INSIDE_BLOCKED = "The game did not load this module: %s. Check it in the AddOns list of the game menu.",
+    INSIDE_OUTDATED = "The game says this module is out of date. In the AddOns list of the game menu, tick \"Load out of date AddOns\", then reload.",
+    OFF_HINT = "The module is off. Switch it on and reload the interface to use it.",
     POP_OUT = "Open in its own window",
     INSIDE_OFF = "This module is off. Switch it on above, then reload the interface to open it here.",
     INSIDE_RELOAD = "The module is on. Reload the interface to open it here.",
@@ -96,6 +100,10 @@ T.en = {
 }
 
 T.de = {
+    STATE_BLOCKED = "Nicht geladen: %s",
+    INSIDE_BLOCKED = "Das Spiel hat dieses Modul nicht geladen: %s. Prüfe es in der AddOn-Liste im Spielmenü.",
+    INSIDE_OUTDATED = "Das Spiel hält dieses Modul für veraltet. Setze in der AddOn-Liste im Spielmenü den Haken bei „Veraltete AddOns laden“ und lade dann neu.",
+    OFF_HINT = "Das Modul ist aus. Schalte es ein und lade die Oberfläche neu, um es zu nutzen.",
     POP_OUT = "In eigenem Fenster öffnen",
     INSIDE_OFF = "Dieses Modul ist aus. Schalte es oben ein und lade dann die Oberfläche neu, um es hier zu öffnen.",
     INSIDE_RELOAD = "Das Modul ist an. Lade die Oberfläche neu, um es hier zu öffnen.",
@@ -182,6 +190,10 @@ T.de = {
 }
 
 T.es = {
+    STATE_BLOCKED = "No cargado: %s",
+    INSIDE_BLOCKED = "El juego no cargó este módulo: %s. Revísalo en la lista de accesorios del menú del juego.",
+    INSIDE_OUTDATED = "El juego dice que este módulo está desactualizado. En la lista de accesorios del menú del juego, marca «Cargar accesorios desactualizados» y recarga.",
+    OFF_HINT = "El módulo está apagado. Enciéndelo y recarga la interfaz para usarlo.",
     POP_OUT = "Abrir en su propia ventana",
     INSIDE_OFF = "Este módulo está apagado. Enciéndelo arriba y recarga la interfaz para abrirlo aquí.",
     INSIDE_RELOAD = "El módulo está encendido. Recarga la interfaz para abrirlo aquí.",
@@ -268,6 +280,10 @@ T.es = {
 }
 
 T.fr = {
+    STATE_BLOCKED = "Non chargé : %s",
+    INSIDE_BLOCKED = "Le jeu n'a pas chargé ce module : %s. Vérifiez-le dans la liste des AddOns du menu du jeu.",
+    INSIDE_OUTDATED = "Le jeu considère ce module comme périmé. Dans la liste des AddOns du menu du jeu, cochez « Charger les AddOns périmés », puis rechargez.",
+    OFF_HINT = "Le module est désactivé. Activez-le et rechargez l'interface pour l'utiliser.",
     POP_OUT = "Ouvrir dans sa propre fenêtre",
     INSIDE_OFF = "Ce module est désactivé. Activez-le en haut, puis rechargez l'interface pour l'ouvrir ici.",
     INSIDE_RELOAD = "Le module est activé. Rechargez l'interface pour l'ouvrir ici.",
@@ -354,6 +370,10 @@ T.fr = {
 }
 
 T.pl = {
+    STATE_BLOCKED = "Nie wczytano: %s",
+    INSIDE_BLOCKED = "Gra nie wczytała tego modułu: %s. Sprawdź go na liście dodatków w menu gry.",
+    INSIDE_OUTDATED = "Gra uważa ten moduł za nieaktualny. Na liście dodatków w menu gry zaznacz „Wczytuj nieaktualne dodatki” i przeładuj.",
+    OFF_HINT = "Moduł jest wyłączony. Włącz go i przeładuj interfejs, aby go używać.",
     POP_OUT = "Otwórz w osobnym oknie",
     INSIDE_OFF = "Ten moduł jest wyłączony. Włącz go u góry i przeładuj interfejs, aby otworzyć go tutaj.",
     INSIDE_RELOAD = "Moduł jest włączony. Przeładuj interfejs, aby otworzyć go tutaj.",
@@ -440,6 +460,10 @@ T.pl = {
 }
 
 T.pt = {
+    STATE_BLOCKED = "Não carregado: %s",
+    INSIDE_BLOCKED = "O jogo não carregou este módulo: %s. Verifique-o na lista de AddOns do menu do jogo.",
+    INSIDE_OUTDATED = "O jogo diz que este módulo está desatualizado. Na lista de AddOns do menu do jogo, marque \"Carregar AddOns desatualizados\" e recarregue.",
+    OFF_HINT = "O módulo está desligado. Ligue-o e recarregue a interface para usá-lo.",
     POP_OUT = "Abrir em janela própria",
     INSIDE_OFF = "Este módulo está desligado. Ligue-o acima e recarregue a interface para abri-lo aqui.",
     INSIDE_RELOAD = "O módulo está ligado. Recarregue a interface para abri-lo aqui.",
@@ -526,6 +550,10 @@ T.pt = {
 }
 
 T.ru = {
+    STATE_BLOCKED = "Не загружен: %s",
+    INSIDE_BLOCKED = "Игра не загрузила этот модуль: %s. Проверьте его в списке модификаций в меню игры.",
+    INSIDE_OUTDATED = "Игра считает этот модуль устаревшим. В списке модификаций в меню игры отметьте «Загружать устаревшие модификации» и перезагрузите интерфейс.",
+    OFF_HINT = "Модуль выключен. Включите его и перезагрузите интерфейс, чтобы им пользоваться.",
     POP_OUT = "Открыть в отдельном окне",
     INSIDE_OFF = "Модуль выключен. Включите его переключателем вверху и перезагрузите интерфейс, чтобы открыть здесь.",
     INSIDE_RELOAD = "Модуль включён. Перезагрузите интерфейс, чтобы открыть его здесь.",
@@ -612,6 +640,10 @@ T.ru = {
 }
 
 T.zh = {
+    STATE_BLOCKED = "未加载：%s",
+    INSIDE_BLOCKED = "游戏没有加载此模块：%s。请在游戏菜单的插件列表中检查。",
+    INSIDE_OUTDATED = "游戏认为此模块已过期。在游戏菜单的插件列表中勾选“加载过期插件”，然后重载。",
+    OFF_HINT = "模块已关闭。打开它并重载界面即可使用。",
     POP_OUT = "在单独窗口中打开",
     INSIDE_OFF = "此模块已关闭。在上方打开它，然后重载界面即可在这里打开。",
     INSIDE_RELOAD = "模块已开启。重载界面即可在这里打开。",

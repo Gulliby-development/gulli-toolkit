@@ -100,6 +100,12 @@ The toolkit knows about it, but it is not in your AddOns folder. Install it with
 The game turns addons on and off only when the interface loads. Press **Reload** in the toolkit window, or type `/reload`.
 </details>
 
+<details>
+<summary><b>A module is on, but it says "Not loaded: Out of date"</b></summary>
+
+The game did not load it because its version is older than the game. In the game's AddOns list, tick **Load out of date AddOns** and reload. Other reasons, such as a missing addon it needs, are shown the same way.
+</details>
+
 ## For developers
 
 <details>

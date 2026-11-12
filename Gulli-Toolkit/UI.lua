@@ -45,6 +45,7 @@ local function stateText(row)
     if row.state == "ready" then return L.STATE_ON, GOOD end
     if row.state == "off" then return L.OFF, S.MUTED end
     if row.state == "reload" then return L.STATE_RELOAD, WAIT end
+    if row.state == "blocked" then return L.STATE_BLOCKED:format(ns.ReasonText(row.reason)), BAD end
     return L.NOT_INSTALLED, BAD
 end
 
@@ -86,7 +87,12 @@ local function offWindow(row)
     offWin.icon:SetDesaturated(true)
     offWin.title:SetText(row.title)
     offWin.sub:SetText(row.slash or "")
-    offWin.empty:Set(row.state == "reload" and L.INSIDE_RELOAD or L.INSIDE_OFF)
+    if row.state == "blocked" then
+        offWin.empty:Set(row.reason == "INTERFACE_VERSION" and L.INSIDE_OUTDATED
+            or L.INSIDE_BLOCKED:format(ns.ReasonText(row.reason)))
+    else
+        offWin.empty:Set(row.state == "reload" and L.INSIDE_RELOAD or L.INSIDE_OFF)
+    end
     offWin.reload:SetShown(row.state == "reload")
     return offWin
 end
@@ -280,7 +286,14 @@ local function fillRow(r, row)
     r.title:SetText(row.title .. slash)
     local tc = row.state == "ready" and S.TEXT or S.MUTED
     r.title:SetTextColor(tc[1], tc[2], tc[3], 1)
-    r.desc:SetText(row.desc)
+    -- A module that is on but not loaded says why in its row, so a grey row with its switch on
+    -- is not a riddle.
+    if row.state == "reload" or row.state == "blocked" then
+        local st, c = stateText(row)
+        r.desc:SetText(S.Hex(c) .. st .. "|r")
+    else
+        r.desc:SetText(row.desc)
+    end
     local missing = row.state == "missing"
     r.switch:SetShown(not missing)
     r.go:SetShown(not missing)
@@ -436,6 +449,11 @@ local function fillDetail(row)
     for i = count + 1, #optRows do optRows[i]:Hide() end
     if row.state == "missing" then
         detail.none:SetText(L.MISSING_HINT)
+    elseif row.state == "off" then
+        detail.none:SetText(L.OFF_HINT)
+    elseif row.state == "blocked" then
+        detail.none:SetText(row.reason == "INTERFACE_VERSION" and L.INSIDE_OUTDATED
+            or L.INSIDE_BLOCKED:format(ns.ReasonText(row.reason)))
     elseif row.state ~= "ready" then
         detail.none:SetText(L.RELOAD_HINT)
     else
