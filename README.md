@@ -45,15 +45,19 @@
 
 ## Features
 
-- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). Modules are sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with how many are on. Pick a module to see what it does, its command and its main switches, and press **Open**.
-- **Modules open inside the toolkit.** **Open** (or **>** in a row) shows the module's own window right in `/gulli`, with the groups still on the left, **<** to go back and the on/off switch at the top. **Open in its own window** takes it out. The module's own command, such as `/gbs`, still opens it in a window of its own.
+- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of every module, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with a small on/off switch.
+- **Click a module, see it.** The module's own window opens in the middle of `/gulli` at once. Next to a small window you see what the module does, its command, its version and **Reset to defaults**. **<** goes back to **Home**, **Open in its own window** takes it out. The toolkit opens again where you left it.
+- **Home: everything at a glance.** Short news from the modules (XP to the next level, dungeon entries left, what waits on your other characters), the **Recent** messages with how long ago they came (click one to open its module), and **Quick setup**.
+- **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off. Each group in the list also has one switch for all its modules.
+- **Move frames.** **Move frames** on the home page (or `/gulli move`) unlocks the bars and panels of every module at once, such as the XP bar, so you can drag them. Press it again to lock them.
+- **Take your settings along.** **Export / import** gives one line of text with every Gulli setting. Paste it on another computer, phone or handheld and press **Import**.
 - **A button on the minimap.** The toolkit icon sits on the edge of the minimap: click it to open `/gulli`, drag it to move it around the minimap. Turn off **Minimap button** in `/gulli` (or type `/gulli minimap`) to hide it.
-- **Search.** Type in the search box to find a module by name, what it does or its command. **All**, **On** and **Off** show only the modules you want.
+- **Search.** Type in the search box to find a module by name, what it does, its command or one of its settings. **Enter** opens the first one found.
+- **Updates.** A dot on a module's icon means it was updated since you last opened it. When someone in your group has a newer version, the toolkit tells you once in chat.
 - **Switch off what you do not need.** Flip a module's switch in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** In `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
-- **Recent news.** The toolkit window shows the last messages from the modules, such as how many dungeon entries are left or what waits on your other characters.
 - **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
 - **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
@@ -73,13 +77,15 @@
 ## How to use it
 
 1. Type `/gulli`, or click the toolkit icon on the minimap.
-2. Pick a group on the left, or type in **Search modules**.
-3. Click a module to see it on the right, and press **Open** (or **>** in its row). The module opens inside the toolkit window; **<** brings you back to the list. Or use the module's own command, such as `/gqc`, for a window of its own.
-4. To switch a module off, flip its switch and press **Reload**.
+2. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
+3. To switch a module off, flip its switch in the list and press **Reload**.
+
+`/gulli help` lists every command of the toolkit and of the modules you have.
 
 `/gulli questcleaner` opens a module directly, in its own window.
 
-<p align="center"><img src="docs/toolkit/inside.png" alt="Bag Space inside the Gulli Toolkit window" width="860"></p>
+<p align="center"><img src="docs/toolkit/home.png" alt="The home page of Gulli Toolkit" width="860"></p>
+<p align="center"><img src="docs/toolkit/inside.png" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
 
 ## FAQ
 
@@ -120,9 +126,13 @@ A module registers with the toolkit when it is loaded:
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({ key = "QuestCleaner", open = function() ns.Toggle() end,
                             icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon", slash = "/gqc",
-                            -- optional: a hub group and switches the hub shows beside the module
+                            -- optional: a hub group, switches the search finds, the window for the
+                            -- hub, a line for the home page, moving frames and defaults
                             category = "Quests",
-                            options = { { label = "...", get = function() ... end, set = function(on) ... end } } })
+                            options = { { label = "...", tip = "...", get = function() ... end, set = function(on) ... end } },
+                            window = function() return ns.Window() end,
+                            summary = function() return "3 quests to abandon" end,
+                            move = function(on) end, reset = function() end })
 end
 ```
 

@@ -21,11 +21,32 @@ S.toolkit = { default = {
                       icon = "Interface\\Icons\\INV_Misc_Key_14" },
                 } or nil })
         end
+        local sums = { XP = "Level 42 in 35 min (8.4k XP/h)", Attune = "Onyxia: 3 of 7 steps",
+            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups for Scarlet Monastery" }
+        for k, text in pairs(sums) do GulliToolkit.modules[k].summary = function() return text end end
         GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
         GulliToolkit.Notify("XP", "Level 42 in about 35 min at this pace.")
+        GulliToolkitDB.feed[2].t = 1000 - 1500
         SlashCmdList.GULLITOOLKIT("")
     end,
 } }
+
+-- A narrow module open inside the hub, with the card beside it.
+S.toolkit.inside = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        local Sk = ns.Skin
+        local win = Sk.Window("GulliPreviewMerchant", "Gulli Merchant", Sk.NARROW_W, 400, { sub = "/gmc",
+            icon = "Interface\\AddOns\\Gulli-Merchant\\icon" })
+        local c = Sk.SettingsCard(win.body, "Settings", {
+            { "Sell gray items", nil, function() return true end, function() end, icon = "Interface\\Icons\\INV_Misc_Coin_02" },
+            { "Repair", nil, function() return true end, function() end, icon = "Interface\\Icons\\Trade_BlackSmithing" } })
+        c:SetPoint("TOPLEFT"); c:SetPoint("TOPRIGHT")
+        GulliToolkit.modules.Merchant.window = function() return win end
+        GulliToolkit.modules.Merchant.reset = function() end
+        ns.Enter("Merchant")
+    end,
+}
 
 -- The minimap button on a stand-in minimap, after a drag to the lower left.
 S.toolkit.minimap = {
