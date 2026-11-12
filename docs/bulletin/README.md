@@ -28,7 +28,7 @@ Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and s
 - **Search and fold.** Type in **Search** to filter any tab. Click a dungeon header to fold it.
 - **Hide spam.** **x** on a row hides that player for good; in **Setup** you can hide words too (boost, www...). **Show again** brings hidden players back.
 - **Watch words.** Get the same alert when someone writes a word you watch, such as an item name.
-- **Small feed.** A small panel on the screen with the newest groups for your alerted dungeons. Set its opacity, and let clicks go through it so it never gets in the way.
+- **Small feed.** A small panel on the screen with the newest groups for your alerted dungeons, the dungeon in its level colour. A new group for an alerted dungeon also shows a card with **Ask** (or **Invite**). Set its opacity, and let clicks go through it so it never gets in the way.
 - **Survives /reload.** The board is saved, so it is still there after a reload.
 - **My LFM.** With Gulli Quick Chat installed, **My LFM** on a dungeon header opens a ready group message for it.
 - **One line per player.** When a player posts again, the old line is replaced, so nobody floods the board.

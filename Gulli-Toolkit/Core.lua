@@ -530,6 +530,7 @@ function ns.SetMoving(on)
     for _, info in pairs(Toolkit.modules) do
         if type(info.move) == "function" and pcall(info.move, ns.moving) then n = n + 1 end
     end
+    if ns.MoveOverlay then ns.MoveOverlay(ns.moving and n > 0) end
     if ns.Refresh then ns.Refresh() end
     return n
 end
@@ -772,8 +773,14 @@ events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("CHAT_MSG_ADDON")
+events:RegisterEvent("PLAYER_REGEN_DISABLED")
 local lastSent = 0
 events:SetScript("OnEvent", function(self, event, a, b, c, d)
+    if event == "PLAYER_REGEN_DISABLED" then
+        -- Nothing moves in combat: a fight ends the move mode.
+        if ns.moving then ns.SetMoving(false) end
+        return
+    end
     if event == "CHAT_MSG_ADDON" then
         local who = type(d) == "string" and d:match("^[^%-]+")
         if a == ns.VERSION_PREFIX and who and who ~= player() then ns.OnVersions(b) end

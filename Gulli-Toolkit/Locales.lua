@@ -10,6 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    MOVE_BAR = "Move mode: drag the frames. Right click puts one back.",
     STATE_BLOCKED = "Not loaded: %s",
     SWITCH_FAILED = "The game did not switch %s. Open the game's AddOns list and switch it there.",
     INSIDE_BLOCKED = "The game did not load this module: %s. Check it in the AddOns list of the game menu.",
@@ -144,6 +145,7 @@ T.en = {
 }
 
 T.de = {
+    MOVE_BAR = "Verschiebemodus: Rahmen ziehen. Rechtsklick setzt einen zurück.",
     STATE_BLOCKED = "Nicht geladen: %s",
     SWITCH_FAILED = "Das Spiel hat %s nicht umgeschaltet. Öffne die AddOn-Liste des Spiels und schalte es dort um.",
     INSIDE_BLOCKED = "Das Spiel hat dieses Modul nicht geladen: %s. Prüfe es in der AddOn-Liste im Spielmenü.",
@@ -278,6 +280,7 @@ T.de = {
 }
 
 T.es = {
+    MOVE_BAR = "Modo mover: arrastra los marcos. Clic derecho devuelve uno a su sitio.",
     STATE_BLOCKED = "No cargado: %s",
     SWITCH_FAILED = "El juego no cambió %s. Abre la lista de accesorios del juego y cámbialo allí.",
     INSIDE_BLOCKED = "El juego no cargó este módulo: %s. Revísalo en la lista de accesorios del menú del juego.",
@@ -412,6 +415,7 @@ T.es = {
 }
 
 T.fr = {
+    MOVE_BAR = "Mode déplacement : fais glisser les cadres. Clic droit en remet un à sa place.",
     STATE_BLOCKED = "Non chargé : %s",
     SWITCH_FAILED = "Le jeu n'a pas basculé %s. Ouvrez la liste des AddOns du jeu et basculez-le là.",
     INSIDE_BLOCKED = "Le jeu n'a pas chargé ce module : %s. Vérifiez-le dans la liste des AddOns du menu du jeu.",
@@ -546,6 +550,7 @@ T.fr = {
 }
 
 T.pl = {
+    MOVE_BAR = "Tryb przesuwania: przeciągnij ramki. Prawy klik przywraca jedną.",
     STATE_BLOCKED = "Nie wczytano: %s",
     SWITCH_FAILED = "Gra nie przełączyła %s. Otwórz listę modyfikacji w grze i przełącz go tam.",
     INSIDE_BLOCKED = "Gra nie wczytała tego modułu: %s. Sprawdź go na liście dodatków w menu gry.",
@@ -680,6 +685,7 @@ T.pl = {
 }
 
 T.pt = {
+    MOVE_BAR = "Modo mover: arraste os quadros. Clique direito devolve um ao lugar.",
     STATE_BLOCKED = "Não carregado: %s",
     SWITCH_FAILED = "O jogo não alternou %s. Abra a lista de AddOns do jogo e altere lá.",
     INSIDE_BLOCKED = "O jogo não carregou este módulo: %s. Verifique-o na lista de AddOns do menu do jogo.",
@@ -814,6 +820,7 @@ T.pt = {
 }
 
 T.ru = {
+    MOVE_BAR = "Режим перемещения: тащите рамки. Правый клик возвращает рамку на место.",
     STATE_BLOCKED = "Не загружен: %s",
     SWITCH_FAILED = "Игра не переключила %s. Открой список модификаций в игре и переключи там.",
     INSIDE_BLOCKED = "Игра не загрузила этот модуль: %s. Проверьте его в списке модификаций в меню игры.",
@@ -948,6 +955,7 @@ T.ru = {
 }
 
 T.zh = {
+    MOVE_BAR = "移动模式：拖动框体。右键点击可还原。",
     STATE_BLOCKED = "未加载：%s",
     SWITCH_FAILED = "游戏没有切换 %s。请打开游戏的插件列表并在那里切换。",
     INSIDE_BLOCKED = "游戏没有加载此模块：%s。请在游戏菜单的插件列表中检查。",

@@ -1,4 +1,4 @@
--- The window has two pages. Status: entries left this hour and today (≈ while the limit is
+-- The window has two pages. Status: entries left this hour and today (~ while the limit is
 -- our guess), which limit blocks, the group, and the entries of the last hour or day by
 -- character, with Reset in the footer. Settings: limits, alerts, the group and the counter.
 -- The counter is a small badge on screen that opens the window.
@@ -9,6 +9,7 @@ local S = ns.Skin
 
 local frame, tabs, statusPage, settingsPage, big, nextLine, groupLine, list, empty, entries, span
 local resetBtn, footer, badge
+local TIME_ICON = "Interface\\Icons\\Spell_Nature_TimeStop"
 local page, range = 1, "HOUR"
 local I = "Interface\\Icons\\"
 
@@ -101,10 +102,17 @@ local function updateBadge(s)
     badge:SetShown(ns.BadgeShown(s))
     badge:SetScale((ns.db.badgeScale or 100) / 100)
     badge:SetAlpha((ns.db.badgeAlpha or 100) / 100)
-    S.SetBorder(badge, s.left == 0 and S.BAD or S.BORDER)
-    local color = s.left == 0 and S.Hex(S.BAD) or (s.left == 1 and S.Hex(S.WARN) or S.Hex(S.Accent()))
-    badge.text:SetText(color .. s.leftHour .. "/" .. ns.LimitText(ns.db.limit) .. "|r" ..
-        (s.wait > 0 and ("  " .. ns.Clock(s.wait)) or ""))
+    local color = s.left == 0 and S.BAD or (s.left == 1 and S.WARN or nil)
+    badge:Set(TIME_ICON, s.leftHour .. "/" .. ns.LimitText(ns.db.limit), color, s.leftHour, ns.db.limit,
+        s.wait > 0 and ns.Clock(s.wait) or nil)
+    badge:SetMoving(ns.moving and not InCombatLockdown())
+end
+
+-- "A dungeon entry is free again" as a Gulli HUD notice.
+function ns.ShowFree(s)
+    s = s or ns.Status()
+    return S.Toast({ key = "free", icon = TIME_ICON, kind = "good", title = L.FREE,
+        text = L.LEFT_HOUR:format(s.leftHour, ns.db.limit), seconds = 12 })
 end
 
 function ns.Refresh()
@@ -281,25 +289,19 @@ function ns.ShowPage(i, which)
     tabs:Select(i)
 end
 
--- The counter: "3/5" with the wait time while no entry is free. Drag to move, click to open.
-local function buildBadge()
-    badge = CreateFrame("Button", "GulliInstanceLimitBadge", UIParent)
-    badge:SetSize(96, 26)
+-- The counter: a Gulli HUD chip "3/5" with a mark per entry and the wait time. Click opens the
+-- window; /gulli move places it.
+local function badgePlace()
+    badge:ClearAllPoints()
     local p = ns.db.badgePoint
     if p then badge:SetPoint(p[1], UIParent, p[2] or p[1], p[3] or 0, p[4] or 0) else badge:SetPoint("TOP", 0, -120) end
-    badge:SetMovable(true)
-    badge:SetClampedToScreen(true)
-    badge:RegisterForDrag("LeftButton")
-    badge:SetScript("OnDragStart", badge.StartMoving)
-    badge:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, rel, x, y = self:GetPoint()
-        ns.db.badgePoint = { point, rel, x, y }
-    end)
-    S.Box(badge)
-    badge.text = S.Text(badge, 13)
-    badge.text:SetPoint("CENTER")
-    badge.text:SetJustifyH("CENTER")
+end
+
+local function buildBadge()
+    badge = S.Chip(UIParent, "GulliInstanceLimitBadge")
+    badgePlace()
+    S.Mover(badge, { label = L.TITLE, save = function(point, rel, x, y) ns.db.badgePoint = { point, rel, x, y } end,
+        reset = function() ns.db.badgePoint = nil; badgePlace() end })
     badge:SetScript("OnClick", function() ns.Toggle() end)
     local elapsed = 0
     badge:SetScript("OnUpdate", function(_, dt)

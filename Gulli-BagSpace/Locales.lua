@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    POPUP_TITLE = "Bags are full",
+    POPUP_TEXT = "Free 1 slot: %s",
     TITLE = "Bag Space",
     SPACE = "Free: %d of %d slots",
     WANT = "Free up",
@@ -47,6 +49,8 @@ T.en = {
 }
 
 T.de = {
+    POPUP_TITLE = "Taschen sind voll",
+    POPUP_TEXT = "1 Platz frei machen: %s",
     TITLE = "Taschenplatz",
     SPACE = "Frei: %d von %d Plätzen",
     WANT = "Freimachen:",
@@ -84,6 +88,8 @@ T.de = {
 }
 
 T.es = {
+    POPUP_TITLE = "Bolsas llenas",
+    POPUP_TEXT = "Liberar 1 hueco: %s",
     TITLE = "Espacio en bolsas",
     SPACE = "Libres: %d de %d huecos",
     WANT = "Liberar",
@@ -121,6 +127,8 @@ T.es = {
 }
 
 T.fr = {
+    POPUP_TITLE = "Sacs pleins",
+    POPUP_TEXT = "Libérer 1 place : %s",
     TITLE = "Place dans les sacs",
     SPACE = "Libres : %d emplacements sur %d",
     WANT = "Libérer",
@@ -158,6 +166,8 @@ T.fr = {
 }
 
 T.pl = {
+    POPUP_TITLE = "Torby są pełne",
+    POPUP_TEXT = "Zwolnij 1 miejsce: %s",
     TITLE = "Miejsce w torbach",
     SPACE = "Wolne: %d z %d miejsc",
     WANT = "Zwolnij",
@@ -195,6 +205,8 @@ T.pl = {
 }
 
 T.pt = {
+    POPUP_TITLE = "Bolsas cheias",
+    POPUP_TEXT = "Liberar 1 espaço: %s",
     TITLE = "Espaço nas bolsas",
     SPACE = "Livres: %d de %d espaços",
     WANT = "Liberar",
@@ -232,6 +244,8 @@ T.pt = {
 }
 
 T.ru = {
+    POPUP_TITLE = "Сумки полны",
+    POPUP_TEXT = "Освободить 1 ячейку: %s",
     TITLE = "Место в сумках",
     SPACE = "Свободно: %d из %d ячеек",
     WANT = "Освободить",
@@ -269,6 +283,8 @@ T.ru = {
 }
 
 T.zh = {
+    POPUP_TITLE = "背包已满",
+    POPUP_TEXT = "腾出 1 格：%s",
     TITLE = "背包空间",
     SPACE = "空格：%d / %d",
     WANT = "腾出",

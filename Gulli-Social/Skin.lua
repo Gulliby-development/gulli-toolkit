@@ -52,7 +52,7 @@ function S.Hex(c)
 end
 
 -- The width of a text, or 0 where the game cannot tell yet.
-local function strw(fs) return tonumber(fs:GetStringWidth()) or 0 end
+local function strw(fs) return tonumber((fs:GetStringWidth())) or 0 end
 
 local function tex(f, layer, sub, color)
     local t = f:CreateTexture(nil, layer, nil, sub)
@@ -1167,4 +1167,461 @@ function S.List(parent, rowHeight, make, fill, gap)
     end
     sf.rows = rows
     return sf
+end
+
+-- HUD: what sits on the game screen outside a window ----------------------------------------
+-- One look for every popup and overlay (Gulli HUD): game icons framed like the action bars,
+-- a coloured ring for their state, translucent panels, one card for notices (S.Toast) and one
+-- way to move things (S.Mover, shown by /gulli move).
+
+S.HUD_BG = { 0.055, 0.059, 0.071, 0.88 }
+S.TOAST_W, S.TOAST_H = 360, 64
+
+-- Edges of one width and colour around f, inside (inset >= 0) or outside (inset < 0) it.
+local function frameLines(f, layer, sub, color, width, inset)
+    local t = {}
+    local o = inset or 0
+    for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", o, -o, -o, -o, "h" }, { "BOTTOMLEFT", "BOTTOMRIGHT", o, o, -o, o, "h" },
+                         { "TOPLEFT", "BOTTOMLEFT", o, -o, o, o, "v" }, { "TOPRIGHT", "BOTTOMRIGHT", -o, -o, -o, o, "v" } }) do
+        local e = tex(f, layer, sub, color)
+        e:SetPoint(p[1], p[3], p[4])
+        e:SetPoint(p[2], p[5], p[6])
+        if p[7] == "h" then e:SetHeight(width) else e:SetWidth(width) end
+        t[i] = e
+    end
+    return t
+end
+
+local function colorLines(lines, c, a)
+    for _, e in ipairs(lines) do e:SetVertexColor(c[1], c[2], c[3], a or c[4] or 1) end
+end
+
+local function showLines(lines, on)
+    for _, e in ipairs(lines) do e:SetShown(on and true or false) end
+end
+
+-- A translucent HUD panel: black edge, a faint inner line and a soft shadow.
+function S.HudPanel(f)
+    S.Box(f, S.HUD_BG, S.BORDER)
+    f.inner = frameLines(f, "BORDER", 6, { 1, 1, 1, 0.06 }, 1, 1)
+    f.shadow = {}
+    for i = 1, 3 do
+        local sh = tex(f, "BACKGROUND", -8, { 0, 0, 0, 0.22 - i * 0.06 })
+        sh:SetPoint("TOPLEFT", -i, i)
+        sh:SetPoint("BOTTOMRIGHT", i, -i - 1)
+        f.shadow[i] = sh
+    end
+    return f
+end
+
+-- "SHIFT-F" -> "sF", "BUTTON4" -> "M4": the short key text in the corner of an icon.
+function S.ShortKey(key)
+    if not key or key == "" then return "" end
+    key = tostring(key):upper()
+    key = key:gsub("SHIFT%-", "s"):gsub("CTRL%-", "c"):gsub("ALT%-", "a"):gsub("META%-", "m")
+    key = key:gsub("MOUSEWHEELUP", "WU"):gsub("MOUSEWHEELDOWN", "WD"):gsub("BUTTON", "M")
+    key = key:gsub("NUMPAD", "N"):gsub("SPACE", "Sp")
+    return key
+end
+
+local STATE = { need = "BAD", soon = "WARN", ok = "GOOD" }
+
+-- A game icon on the screen: cropped like the action bars, a black 1 pixel frame, a coloured
+-- ring for its state (need = red and pulsing, soon = yellow, ok = green), the key in the top
+-- left corner, a count in the bottom right and a big text in the middle (time left).
+-- b is any frame, secure buttons too; the look is only textures and texts on it.
+-- b:SetIcon(path), b:SetState(state), b:SetDone(on), b:SetKey(key), b:SetCount(s), b:SetMid(s, color).
+function S.HudIcon(b, size)
+    size = size or 40
+    b:SetSize(size, size)
+    S.Box(b, { 0, 0, 0, 1 }, S.BORDER)
+    b.outline = frameLines(b, "BACKGROUND", -6, { 1, 1, 1, 0.10 }, 1, -1)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", 1, -1)
+    b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b.ring = frameLines(b, "OVERLAY", 6, S.BAD, size >= 32 and 2 or 1, 1)
+    showLines(b.ring, false)
+    b.glow = frameLines(b, "BACKGROUND", -7, S.BAD, 4, -2)
+    showLines(b.glow, false)
+    b.key = S.Text(b, math.max(9, math.floor(size * 0.22)), S.TEXT, "OUTLINE")
+    b.key:SetPoint("TOPLEFT", 3, -3)
+    b.count = S.Text(b, math.max(10, math.floor(size * 0.27)), S.TEXT, "OUTLINE")
+    b.count:SetPoint("BOTTOMRIGHT", -2, 3)
+    b.mid = S.Text(b, math.max(11, math.floor(size * 0.32)), S.WARN, "OUTLINE")
+    b.mid:SetPoint("CENTER", 0, 0)
+    b.mid:SetJustifyH("CENTER")
+    -- The pulse runs on a child frame, so a secure button keeps its own scripts.
+    local pulser = CreateFrame("Frame", nil, b)
+    pulser:Hide()
+    local t = 0
+    pulser:SetScript("OnUpdate", function(_, dt)
+        t = t + (dt or 0)
+        local a = 0.25 + 0.35 * (0.5 + 0.5 * math.sin(t * 5))
+        for _, e in ipairs(b.glow) do e:SetAlpha(a) end
+    end)
+    b.pulser = pulser
+    function b:SetIcon(p) self.icon:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
+    function b:SetState(st)
+        self.state = st
+        local c = st and S[STATE[st] or ""]
+        showLines(self.ring, c ~= nil)
+        if c then colorLines(self.ring, c) end
+        local pulse = st == "need"
+        showLines(self.glow, pulse)
+        if pulse then colorLines(self.glow, S.BAD, 0.5) end
+        self.pulser:SetShown(pulse)
+    end
+    function b:SetDone(on)
+        self.icon:SetDesaturated(on and true or false)
+        self.icon:SetVertexColor(on and 0.6 or 1, on and 0.6 or 1, on and 0.6 or 1, 1)
+    end
+    function b:SetKey(k) self.key:SetText(S.ShortKey(k)) end
+    function b:SetCount(s) self.count:SetText(s or "") end
+    function b:SetMid(s, c)
+        c = c or S.WARN
+        self.mid:SetText(s or "")
+        self.mid:SetTextColor(c[1], c[2], c[3], 1)
+    end
+    return b
+end
+
+-- What an icon is about, in a panel next to it: a white line and a grey one.
+-- cap:Set(title, sub) sizes it to the longer line.
+function S.HudCaption(parent, height)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(150, height or 40)
+    S.HudPanel(f)
+    f.title = S.Text(f, 13)
+    f.title:SetPoint("TOPLEFT", 10, -((height or 40) / 2 - 13))
+    f.title:SetWordWrap(false)
+    f.sub = S.Text(f, 11, S.MUTED)
+    f.sub:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
+    f.sub:SetWordWrap(false)
+    function f:Set(title, sub)
+        self.title:SetText(title or "")
+        self.sub:SetText(sub or "")
+        self.sub:SetShown(sub ~= nil and sub ~= "")
+        if sub == nil or sub == "" then
+            self.title:SetPoint("TOPLEFT", 10, -((self:GetHeight() or 40) / 2 - 7))
+        else
+            self.title:SetPoint("TOPLEFT", 10, -((self:GetHeight() or 40) / 2 - 13))
+        end
+        self:SetWidth(math.max(120, math.floor(math.max(strw(self.title), strw(self.sub)) + 22)))
+    end
+    return f
+end
+
+-- A small counter on the screen: an icon, a value, up to 10 marks and a grey note, such as
+-- "3/5 [marks] 18 m". chip:Set(icon, value, color, filled, total, note).
+function S.Chip(parent, name)
+    local f = CreateFrame("Button", name, parent or UIParent)
+    f:SetSize(120, 30)
+    S.HudPanel(f)
+    f.ico = S.IconBox(f, 24)
+    f.ico:SetPoint("LEFT", 3, 0)
+    f.value = S.Text(f, 14, S.TEXT, "OUTLINE")
+    f.value:SetPoint("LEFT", f.ico, "RIGHT", 8, 0)
+    f.marks = {}
+    f.note = S.Text(f, 12, S.MUTED)
+    f.note:SetWordWrap(false)
+    function f:Set(icon, value, color, filled, total, note)
+        self.ico:SetIcon(icon)
+        local c = color or S.TEXT
+        self.value:SetText(value or "")
+        self.value:SetTextColor(c[1], c[2], c[3], 1)
+        total = math.min(total or 0, 10)
+        local x = 3 + 24 + 8 + strw(self.value) + 8
+        for i = 1, math.max(total, #self.marks) do
+            local m = self.marks[i]
+            if not m and i <= total then
+                m = tex(self, "ARTWORK", 0, S.LINE)
+                m:SetSize(8, 10)
+                self.marks[i] = m
+            end
+            if m then
+                m:SetShown(i <= total)
+                m:ClearAllPoints()
+                m:SetPoint("LEFT", x + (i - 1) * 10, 0)
+                local on = i <= (filled or 0)
+                local mc = on and (color or S.Accent()) or { 1, 1, 1, 0.12 }
+                m:SetVertexColor(mc[1], mc[2], mc[3], mc[4] or 1)
+            end
+        end
+        if total > 0 then x = x + total * 10 + 6 end
+        self.note:ClearAllPoints()
+        self.note:SetPoint("LEFT", x, 0)
+        self.note:SetText(note or "")
+        self:SetWidth(math.floor(x + ((note and note ~= "") and (strw(self.note) + 10) or 4)))
+    end
+    return f
+end
+
+-- A small list on the screen: a header (icon, title, a grey note on the right) and rows of a
+-- coloured tag, a text and a grey note. list:SetRows({ { tag, tagColor, text, right } }, empty).
+function S.HudList(name, width, rows, parent)
+    local f = CreateFrame("Button", name, parent or UIParent)
+    f:SetSize(width or 330, 26 + (rows or 3) * 22)
+    S.HudPanel(f)
+    f.ico = f:CreateTexture(nil, "ARTWORK")
+    f.ico:SetSize(16, 16)
+    f.ico:SetPoint("TOPLEFT", 8, -5)
+    f.ico:SetTexture("Interface\\AddOns\\" .. tostring(addon) .. "\\icon")
+    f.title = S.Text(f, 12)
+    f.title:SetPoint("LEFT", f.ico, "RIGHT", 6, 0)
+    f.right = S.Text(f, 11, S.FAINT)
+    f.right:SetPoint("TOPRIGHT", -8, -7)
+    f.right:SetJustifyH("RIGHT")
+    local line = S.Divider(f)
+    line:SetPoint("TOPLEFT", 1, -26)
+    line:SetPoint("TOPRIGHT", -1, -26)
+    line:SetHeight(1)
+    f.rows = {}
+    for i = 1, rows or 3 do
+        local r = CreateFrame("Frame", nil, f)
+        r:SetHeight(22)
+        r:SetPoint("TOPLEFT", 1, -26 - (i - 1) * 22)
+        r:SetPoint("TOPRIGHT", -1, -26 - (i - 1) * 22)
+        r.tag = S.Badge(r)
+        r.tag:SetPoint("LEFT", 7, 0)
+        r.text = S.Text(r, 11)
+        r.text:SetWordWrap(false)
+        r.right = S.Text(r, 10, S.FAINT)
+        r.right:SetPoint("RIGHT", -7, 0)
+        r.right:SetJustifyH("RIGHT")
+        f.rows[i] = r
+    end
+    function f:SetRows(list, empty)
+        for i, r in ipairs(self.rows) do
+            local it = list[i]
+            r.text:ClearAllPoints()
+            if it then
+                r.tag:Set(it.tag, it.tagColor)
+                r.right:SetText(it.right or "")
+                if it.tag and it.tag ~= "" then r.text:SetPoint("LEFT", r.tag, "RIGHT", 6, 0)
+                else r.text:SetPoint("LEFT", 8, 0) end
+                r.text:SetPoint("RIGHT", r.right, "LEFT", -6, 0)
+                r.text:SetText(it.text or "")
+                r.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
+                r:Show()
+            elseif i == 1 and empty then
+                r.tag:Set(nil)
+                r.right:SetText("")
+                r.text:SetPoint("LEFT", 8, 0)
+                r.text:SetPoint("RIGHT", -8, 0)
+                r.text:SetText(empty)
+                r.text:SetTextColor(S.FAINT[1], S.FAINT[2], S.FAINT[3], 1)
+                r:Show()
+            else
+                r:Hide()
+            end
+        end
+    end
+    return f
+end
+
+-- Notices -----------------------------------------------------------------------------------
+
+local KIND = { bad = "BAD", warn = "WARN", good = "GOOD" }
+
+-- A notice card: a coloured stripe on the left (o.kind: bad, warn, good, or the accent), an
+-- icon, a title, a grey line, buttons on the right, a close button, and a thin line at the
+-- bottom that runs out when the card hides by itself.
+-- card:Set{ icon, portrait (a unit), title, text, kind, buttons = { { text, onClick, primary } },
+--          seconds, reserve (pixels kept free on the right for a frame of the caller's own) }
+function S.ToastFrame(name, parent)
+    local t = CreateFrame("Frame", name, parent or UIParent)
+    t:SetSize(S.TOAST_W, S.TOAST_H)
+    t:SetFrameStrata("DIALOG")
+    t:SetClampedToScreen(true)
+    t:EnableMouse(true)
+    S.HudPanel(t)
+    t.stripe = tex(t, "ARTWORK", 1, S.Accent())
+    t.stripe:SetPoint("TOPLEFT", 1, -1)
+    t.stripe:SetPoint("BOTTOMLEFT", 1, 1)
+    t.stripe:SetWidth(3)
+    t.ico = S.IconBox(t, 40)
+    t.ico:SetPoint("LEFT", 13, 0)
+    t.title = S.Text(t, 13)
+    t.title:SetWordWrap(false)
+    t.text = S.Note(t, 11)
+    t.text:SetMaxLines(2)
+    t.close = closeButton(t, function() t:Dismiss() end)
+    t.close:SetPoint("TOPRIGHT", 0, 0)
+    t.track = tex(t, "ARTWORK", 0, { 1, 1, 1, 0.06 })
+    t.track:SetPoint("BOTTOMLEFT", 4, 1)
+    t.track:SetPoint("BOTTOMRIGHT", -1, 1)
+    t.track:SetHeight(2)
+    t.timer = tex(t, "ARTWORK", 1, S.Accent())
+    t.timer:SetPoint("BOTTOMLEFT", 4, 1)
+    t.timer:SetHeight(2)
+    t.buttons = {}
+    t:SetScript("OnUpdate", function(self, dt)
+        if not self.left then return end
+        self.left = self.left - (dt or 0)
+        local w = (self:GetWidth() or S.TOAST_W) - 5
+        self.timer:SetWidth(math.max(1, w * math.max(0, self.left) / self.seconds))
+        if self.left <= 0 then self:Dismiss() end
+    end)
+    function t:Dismiss()
+        self.left = nil
+        self:Hide()
+        if self.restack then self.restack() end
+        if self.onClose then self.onClose(self) end
+    end
+    function t:Set(o)
+        local c = o.kind and S[KIND[o.kind] or ""] or S.Accent()
+        self.stripe:SetVertexColor(c[1], c[2], c[3], 1)
+        self.timer:SetVertexColor(c[1], c[2], c[3], 0.8)
+        if o.portrait and SetPortraitTexture and UnitExists and UnitExists(o.portrait) then
+            SetPortraitTexture(self.ico.tex, o.portrait)
+            self.ico.tex:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+        else
+            self.ico.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            self.ico:SetIcon(o.icon)
+        end
+        self.title:SetText(o.title or "")
+        self.text:SetText(o.text or "")
+        self.onClose = o.onClose
+        local right = -32 - (o.reserve or 0)
+        local last
+        for i = 1, math.max(#(o.buttons or {}), #self.buttons) do
+            local spec = (o.buttons or {})[i]
+            local b = self.buttons[i]
+            if spec then
+                if not b then
+                    b = S.Button(self, 60, 28)
+                    self.buttons[i] = b
+                end
+                b.kind = spec.primary and "primary" or "normal"
+                paint(b)
+                if not spec.primary then b.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1) end
+                b:SetText(spec.text)
+                b:SetWidth(math.max(56, math.floor(strw(b.text) + 22)))
+                b:ClearAllPoints()
+                if last then b:SetPoint("RIGHT", last, "LEFT", -5, 0) else b:SetPoint("RIGHT", right, 0) end
+                b:SetScript("OnClick", function()
+                    if spec.onClick then spec.onClick(self) end
+                    if not spec.keep then self:Dismiss() end
+                end)
+                b:Show()
+                last = b
+            elseif b then
+                b:Hide()
+            end
+        end
+        self.title:ClearAllPoints()
+        -- Without a second line the title sits in the middle of the icon.
+        self.title:SetPoint("TOPLEFT", self.ico, "TOPRIGHT", 10, (o.text and o.text ~= "") and -3 or -13)
+        self.title:SetPoint("RIGHT", last or self.close, "LEFT", last and -8 or (-4 - (o.reserve or 0)), 0)
+        self.text:ClearAllPoints()
+        self.text:SetPoint("TOPLEFT", self.title, "BOTTOMLEFT", 0, -3)
+        self.text:SetPoint("RIGHT", self.title, "RIGHT", 0, 0)
+        self.seconds = o.seconds
+        self.left = (o.seconds or 0) > 0 and o.seconds or nil
+        self.track:SetShown(self.left ~= nil)
+        self.timer:SetShown(self.left ~= nil)
+        if self.left then self.timer:SetWidth((self:GetWidth() or S.TOAST_W) - 5) end
+        self:Show()
+    end
+    t:Hide()
+    return t
+end
+
+-- Notices of every Gulli addon share one stack at the top of the screen, so they never cover
+-- each other. Each copy of this file uses the same global list.
+local function stack()
+    GulliHUD = GulliHUD or {}
+    GulliHUD.toasts = GulliHUD.toasts or {}
+    return GulliHUD
+end
+
+local function restack()
+    local H = stack()
+    local y = -150
+    local keep = {}
+    for _, t in ipairs(H.toasts) do
+        if t:IsShown() then
+            keep[#keep + 1] = t
+            t:ClearAllPoints()
+            t:SetPoint("TOP", UIParent, "TOP", 0, y)
+            y = y - (t:GetHeight() or S.TOAST_H) - 8
+        end
+    end
+    H.toasts = keep
+end
+
+-- Shows a notice in the shared stack; the same key replaces its card. Returns the card.
+-- o as in ToastFrame:Set, plus key.
+function S.Toast(o)
+    local H = stack()
+    H.byKey = H.byKey or {}
+    local key = tostring(addon) .. ":" .. tostring(o.key or "")
+    local t = H.byKey[key]
+    if not t then
+        t = S.ToastFrame(nil, UIParent)
+        H.byKey[key] = t
+        t.restack = restack
+        t:HookScript("OnHide", function() restack() end)
+    end
+    local onClose = o.onClose
+    t:Set(o)
+    t.onClose = onClose
+    local found = false
+    for _, x in ipairs(H.toasts) do if x == t then found = true end end
+    if not found then table.insert(H.toasts, 1, t) end
+    restack()
+    return t
+end
+
+-- Moving ------------------------------------------------------------------------------------
+
+-- Makes a frame placeable for /gulli move: f:SetMoving(true) puts an accent frame with the
+-- name over it, and dragging it moves f; a right click puts it back (opts.reset).
+-- opts: { label, save = function(point, relPoint, x, y), reset = function() }.
+-- Nothing moves in combat.
+function S.Mover(f, opts)
+    opts = opts or {}
+    f:SetMovable(true)
+    f:SetClampedToScreen(true)
+    local m = CreateFrame("Button", nil, f)
+    m:SetPoint("TOPLEFT", -4, 4)
+    m:SetPoint("BOTTOMRIGHT", 4, -4)
+    m:SetFrameLevel((tonumber((f:GetFrameLevel())) or 0) + 20)
+    local a = S.Accent()
+    S.Box(m, { a[1], a[2], a[3], 0.12 }, a)
+    m.name = CreateFrame("Frame", nil, m)
+    m.name:SetPoint("BOTTOMLEFT", m, "TOPLEFT", 0, 2)
+    m.name:SetHeight(18)
+    S.Box(m.name, a, a)
+    m.name.text = S.Text(m.name, 10, { 0.05, 0.05, 0.06, 1 })
+    m.name.text:SetShadowColor(0, 0, 0, 0)
+    m.name.text:SetPoint("LEFT", 5, 0)
+    m.name.text:SetText(shortTitle(opts.label))
+    m.name:SetWidth(math.floor(strw(m.name.text) + 10))
+    m:RegisterForDrag("LeftButton")
+    m:RegisterForClicks("RightButtonUp")
+    m:SetScript("OnDragStart", function()
+        if not (InCombatLockdown and InCombatLockdown()) then f:StartMoving() end
+    end)
+    m:SetScript("OnDragStop", function()
+        f:StopMovingOrSizing()
+        local p, _, rp, x, y = f:GetPoint()
+        if opts.save then opts.save(p, rp, x, y) end
+    end)
+    m:SetScript("OnClick", function() if opts.reset then opts.reset() end end)
+    m:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(opts.label or "")
+        if opts.hint then GameTooltip:AddLine(opts.hint, S.MUTED[1], S.MUTED[2], S.MUTED[3], true) end
+        GameTooltip:Show()
+    end)
+    m:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    m:Hide()
+    f.mover = m
+    function f:SetMoving(on)
+        self.mover:SetShown(on and true or false)
+    end
+    return m
 end

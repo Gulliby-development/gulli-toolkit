@@ -325,7 +325,9 @@ end
 function ns.Alert(post)
     if post.kind ~= "GROUP" or not post.dungeon or not ns.db.alert[post.dungeon] then return false end
     if post.short == UnitName("player") then return false end
-    return ns.Ring(L.ALERT:format(post.short, ns.DungeonName(post.dungeon)))
+    local rang = ns.Ring(L.ALERT:format(post.short, ns.DungeonName(post.dungeon)))
+    if rang and ns.ShowAlert then ns.ShowAlert(post) end
+    return rang
 end
 
 -- A post that has a word the player watches (an item, a profession...).
@@ -552,6 +554,7 @@ if GulliToolkit and GulliToolkit.Register then
         key = "Bulletin",
         icon = "Interface\\AddOns\\Gulli-Bulletin\\icon",
         slash = "/gbul",
+        move = function(on) if ns.MoveFeed then ns.MoveFeed(on) end end,
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
     })

@@ -580,5 +580,54 @@ test("the switches work on a client that names the character by GUID", function(
     assert(lines and lines[1]:find("Gulli-MobFinder", 1, true))
 end)
 
+test("Gulli HUD: short keys, notices stack and replace by key, icons show their state", function()
+    Fake({})
+    local ns = Load()
+    local S = ns.Skin
+    eq(S.ShortKey("SHIFT-F"), "sF")
+    eq(S.ShortKey("CTRL-BUTTON4"), "cM4")
+    eq(S.ShortKey(nil), "")
+    GulliHUD = nil
+    local a = S.Toast({ key = "a", title = "A", seconds = 5 })
+    local b = S.Toast({ key = "b", title = "B", buttons = { { text = "Go", primary = true } } })
+    eq(#GulliHUD.toasts, 2)
+    eq(GulliHUD.toasts[1], b, "the newest is on top")
+    eq(S.Toast({ key = "a", title = "A again" }), a, "the same key reuses its card")
+    eq(#GulliHUD.toasts, 2)
+    eq(a.title:GetText(), "A again")
+    a:Dismiss()
+    eq(#GulliHUD.toasts, 1, "a closed card leaves the stack")
+    local closed = false
+    local c = S.Toast({ key = "c", title = "C", seconds = 1, onClose = function() closed = true end })
+    c:GetScript("OnUpdate")(c, 2)
+    eq(c:IsShown(), false, "the card hides when its time runs out")
+    eq(closed, true)
+    local icon = S.HudIcon(CreateFrame("Button"), 40)
+    icon:SetState("need")
+    eq(icon.pulser:IsShown(), true, "a missing one pulses")
+    icon:SetState("soon")
+    eq(icon.pulser:IsShown(), false)
+    icon:SetKey("ALT-Q")
+    eq(icon.key:GetText(), "aQ")
+end)
+
+test("move mode shows the grid and the bar, and a fight ends it", function()
+    Fake({})
+    local ns = Load()
+    local moved
+    GulliToolkit.Register({ key = "XP", open = function() end, move = function(on) moved = on end })
+    eq(ns.SetMoving(true), 1)
+    eq(moved, true)
+    eq(ns.MoveGrid():IsShown(), true)
+    eq(ns.MoveGrid().bar:IsShown(), true)
+    for _, f in ipairs(W.frames) do
+        local fn = f.GetScript and f:GetScript("OnEvent")
+        if fn then fn(f, "PLAYER_REGEN_DISABLED") end
+    end
+    eq(ns.moving, false)
+    eq(moved, false)
+    eq(ns.MoveGrid().bar:IsShown(), false)
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

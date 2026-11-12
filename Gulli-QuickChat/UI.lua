@@ -295,12 +295,45 @@ end
 
 ---- Whispers -------------------------------------------------------------------
 
+-- A phrase row of the Gulli HUD lists (the favourites panel, the reply picker): a stripe in the
+-- colour of its group, the text, and its number on the right.
+local CAT_COLOR = { GROUP = "GOOD", TRADE = "WARN", SOCIAL = "MUTED" }
+
+local function catColor(text)
+    local c = text and S[CAT_COLOR[ns.Category(text)] or ""]
+    return c or S.Accent()
+end
+
+local function phraseRow(parent, width)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(width, 30)
+    S.Box(b, S.CLEAR, S.CLEAR)
+    b.stripe = S.Tex(b, "ARTWORK", 0, S.Accent())
+    b.stripe:SetSize(3, 16)
+    b.stripe:SetPoint("LEFT", 8, 0)
+    b.text = S.Text(b, 12)
+    b.text:SetPoint("LEFT", b.stripe, "RIGHT", 8, 0)
+    b.text:SetPoint("RIGHT", -24, 0)
+    b.text:SetWordWrap(false)
+    b.num = S.Text(b, 10, S.FAINT)
+    b.num:SetPoint("RIGHT", -8, 0)
+    b:SetScript("OnEnter", function(self) S.Fill(self, S.HOVER) end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR) end)
+    function b:SetPhrase(text, n, color)
+        self.text:SetText(text or "")
+        local c = color or catColor(text)
+        self.stripe:SetVertexColor(c[1], c[2], c[3], 1)
+        self.num:SetText(n and tostring(n) or "")
+    end
+    return b
+end
+
 local function showPicker(anchor, entry)
     if not picker then
         picker = CreateFrame("Frame", "GulliQuickChatPicker", UIParent)
         picker:SetFrameStrata("TOOLTIP")
         picker:SetClampedToScreen(true)
-        S.Box(picker, S.SURFACE, S.EDGE)
+        S.HudPanel(picker)
         picker.buttons = {}
         picker:EnableMouse(true)
         tinsert(UISpecialFrames, "GulliQuickChatPicker")
@@ -311,16 +344,16 @@ local function showPicker(anchor, entry)
     for i = 1, n do
         local b = picker.buttons[i]
         if not b then
-            b = S.Button(picker, 248, 28)
-            b:SetPoint("TOPLEFT", 6, -4 - (i - 1) * 32)
+            b = phraseRow(picker, 252)
+            b:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 32)
             picker.buttons[i] = b
         end
         local text = list[i]
         if i == n then
-            b:SetText(S.Hex(S.MUTED) .. L.TYPE .. "|r")
+            b:SetPhrase(S.Hex(S.MUTED) .. L.TYPE .. "|r", nil, S.FAINT)
             b:SetScript("OnClick", function() picker:Hide(); ns.Reply(entry) end)
         else
-            b:SetText(text)
+            b:SetPhrase(text, i < 10 and i or nil)
             b:SetScript("OnClick", function() picker:Hide(); ns.ReplyWith(entry, text) end)
         end
         b:Show()
@@ -810,17 +843,19 @@ local function buildPanel()
         local point, _, rel, x, y = self:GetPoint()
         ns.db.panelPoint = { point, rel, x, y }
     end)
-    S.Box(panel, S.BG, S.EDGE)
+    S.HudPanel(panel)
     panel.buttons = {}
     for i = 1, ns.PANEL_MAX do
-        local b = S.Button(panel, 150, 30)
-        b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 34)
+        local b = phraseRow(panel, 182)
+        b:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 32)
         b:RegisterForDrag("LeftButton")
         b:SetScript("OnDragStart", function() panel:GetScript("OnDragStart")(panel) end)
         b:SetScript("OnDragStop", function() panel:GetScript("OnDragStop")(panel) end)
         b:SetScript("OnClick", function(self) ns.Say(self.phrase) end)
         panel.buttons[i] = b
     end
+    S.Mover(panel, { label = L.TITLE, save = function(point, rel, x, y) ns.db.panelPoint = { point, rel, x, y } end,
+        reset = function() ns.db.panelPoint = nil; ns.Panel() end })
 end
 
 function ns.Panel()
@@ -834,9 +869,10 @@ function ns.Panel()
     for i, b in ipairs(panel.buttons) do
         b.phrase = list[i]
         b:SetShown(list[i] ~= nil)
-        if list[i] then b:SetText(list[i]) end
+        if list[i] then b:SetPhrase(list[i], i) end
     end
-    panel:SetSize(162, math.max(#list, 1) * 34 + 8)
+    panel:SetSize(190, math.max(#list, 1) * 32 + 8)
+    panel:SetMoving(ns.movingPanel)
     panel:EnableMouse(not ns.db.panelLocked or ns.movingPanel)
     panel:ClearAllPoints()
     local p = ns.db.panelPoint

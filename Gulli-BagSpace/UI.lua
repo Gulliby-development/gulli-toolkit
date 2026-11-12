@@ -182,34 +182,16 @@ function ns.UpdateCounter()
     b.gulliFree:SetTextColor(c[1], c[2], c[3], 1)
 end
 
--- "Inventory is full": a small button that sells or deletes the cheapest junk item in one
--- click (the game lets an addon delete only inside a click).
+-- "Inventory is full": a Gulli HUD notice whose button sells or deletes the cheapest junk item
+-- in one click (the game lets an addon delete only inside a click).
 local popup
 function ns.ShowPopup()
     local it = ns.OneItem()
     if not it then return end
-    if not popup then
-        popup = CreateFrame("Frame", "GulliBagSpacePopup", UIParent)
-        popup:SetSize(320, 44)
-        popup:SetPoint("TOP", 0, -160)
-        popup:SetFrameStrata("DIALOG")
-        S.Box(popup, S.BG, S.BORDER)
-        popup.btn = S.Primary(S.Button(popup, 1, 30))
-        popup.btn:SetPoint("LEFT", 7, 0)
-        popup.btn:SetPoint("RIGHT", -40, 0)
-        popup.btn:SetScript("OnClick", function()
-            ns.FreeOne()
-            popup:Hide()
-        end)
-        popup.close = S.Button(popup, 28, 30)
-        popup.close:SetPoint("RIGHT", -7, 0)
-        popup.close:SetText("x")
-        popup.close:SetScript("OnClick", function() popup:Hide() end)
-    end
-    popup.btn:SetText(L.FREE_ONE:format(it.name))
-    popup:Show()
-    popup.shownAt = GetTime()
-    C_Timer.After(10, function() if popup and GetTime() - (popup.shownAt or 0) >= 10 then popup:Hide() end end)
+    popup = S.Toast({ key = "full", icon = it.icon, kind = "warn", title = L.POPUP_TITLE,
+        text = L.POPUP_TEXT:format(it.name or "?"), seconds = 10,
+        buttons = { { text = ns.atMerchant and L.SELL or L.DELETE, primary = true, onClick = function() ns.FreeOne() end } } })
+    return popup
 end
 
 function ns.HidePopup() if popup then popup:Hide() end end

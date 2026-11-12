@@ -223,9 +223,9 @@ function ns.DefaultLimits()
     if ns.Refresh then ns.Refresh() end
 end
 
--- "5" when the game confirmed the limit, "≈5" while it is our guess.
+-- "5" when the game confirmed the limit, "~5" while it is our guess.
 function ns.LimitText(n)
-    return (ns.db.confirmed and "" or "≈") .. n
+    return (ns.db.confirmed and "" or "~") .. n
 end
 
 -- Watches the counter: when no entry was free and one frees, says so once.
@@ -233,6 +233,7 @@ function ns.Tick(now)
     local s = ns.Status(now)
     if ns.lastLeft == 0 and s.left > 0 and ns.db.freeAlert then
         say(L.FREE); notify(L.FREE); ring()
+        if ns.ShowFree then ns.ShowFree(s) end
     end
     if ns.lastLeft ~= s.left then
         ns.lastLeft = s.left

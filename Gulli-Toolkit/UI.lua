@@ -1089,3 +1089,61 @@ function ns.BuildMinimap()
 end
 
 function ns.MinimapButton() return mapButton end
+
+-- /gulli move: a grid over the screen and a bar at the top with Lock frames, so it is clear
+-- that the frames can be dragged and how to end it.
+local overlay
+function ns.MoveOverlay(on)
+    if not overlay then
+        if not on then return end
+        overlay = CreateFrame("Frame", "GulliToolkitMoveGrid", UIParent)
+        overlay:SetAllPoints()
+        overlay:SetFrameStrata("BACKGROUND")
+        overlay:EnableMouse(false)
+        local w = tonumber((UIParent:GetWidth())) or 1366
+        local h = tonumber((UIParent:GetHeight())) or 768
+        -- Lines every 64 pixels out from the middle, so the middle lines (accent) sit on the grid.
+        local step = 64
+        for i = -math.ceil(w / 2 / step), math.ceil(w / 2 / step) do
+            local t = S.Tex(overlay, "ARTWORK", 0, { 1, 1, 1, 0.05 })
+            t:SetPoint("TOP", overlay, "TOP", i * step, 0)
+            t:SetPoint("BOTTOM", overlay, "BOTTOM", i * step, 0)
+            t:SetWidth(1)
+        end
+        for i = -math.ceil(h / 2 / step), math.ceil(h / 2 / step) do
+            local t = S.Tex(overlay, "ARTWORK", 0, { 1, 1, 1, 0.05 })
+            t:SetPoint("LEFT", overlay, "LEFT", 0, i * step)
+            t:SetPoint("RIGHT", overlay, "RIGHT", 0, i * step)
+            t:SetHeight(1)
+        end
+        local a = S.Accent()
+        local cx = S.Tex(overlay, "ARTWORK", 1, { a[1], a[2], a[3], 0.35 })
+        cx:SetPoint("TOP")
+        cx:SetPoint("BOTTOM")
+        cx:SetWidth(1)
+        local cy = S.Tex(overlay, "ARTWORK", 1, { a[1], a[2], a[3], 0.35 })
+        cy:SetPoint("LEFT")
+        cy:SetPoint("RIGHT")
+        cy:SetHeight(1)
+
+        local bar = CreateFrame("Frame", "GulliToolkitMoveBar", UIParent)
+        bar:SetFrameStrata("FULLSCREEN_DIALOG")
+        bar:SetPoint("TOP", 0, -24)
+        bar:SetHeight(44)
+        S.HudPanel(bar)
+        bar.text = S.Text(bar, 12)
+        bar.text:SetPoint("LEFT", 14, 0)
+        bar.text:SetText(L.MOVE_BAR)
+        bar.done = S.Primary(S.FitButton(bar, L.MOVE_DONE, 30, 110))
+        bar.done:SetPoint("RIGHT", -7, 0)
+        bar.done:SetScript("OnClick", function()
+            ns.SetMoving(false)
+            ns.Print(L.MOVE_OFF)
+        end)
+        bar:SetWidth(math.floor((tonumber((bar.text:GetStringWidth())) or 300) + 14 + 16 + bar.done:GetWidth() + 7))
+        overlay.bar = bar
+    end
+    overlay:SetShown(on and true or false)
+    overlay.bar:SetShown(on and true or false)
+end
+function ns.MoveGrid() return overlay end

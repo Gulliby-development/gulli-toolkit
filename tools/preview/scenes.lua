@@ -504,4 +504,100 @@ S.social = { default = {}, recent = { spec = { group = { 3, true } },
     end,
 } }
 
+
+-- Gulli HUD: things on the game screen, each on a dark stand-in screen named GulliHudStage.
+local function hudStage(w, h)
+    return function()
+        local stage = CreateFrame("Frame", "GulliHudStage", UIParent)
+        stage:SetSize(w or 460, h or 220)
+        stage:SetPoint("CENTER")
+        local bg = stage:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.13, 0.16, 0.12, 1)
+    end
+end
+local function fire(W, event, ...)
+    for _, f in ipairs(W.frames) do
+        local fn = f:GetScript("OnEvent")
+        if fn then fn(f, event, ...) end
+    end
+end
+local GB_ICONS = { [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", [588] = "Interface\\Icons\\Spell_Holy_InnerFire",
+    [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow",
+    [21562] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude" }
+local function gbBar(W)
+    hudStage(460, 200)()
+    C_Spell.GetSpellTexture = function(id) return GB_ICONS[id] end
+end
+S.groupbuffs.bar = { spec = { units = gbUnits("PRIEST"), known = { [1243] = true, [588] = true, [14752] = true, [976] = true },
+    db = { point = { "CENTER", -40, 20 }, key = "F" } },
+    before = gbBar, open = function(ns, W) fire(W, "PLAYER_LOGIN") end, crop = "GulliHudStage" }
+S.groupbuffs.move = { spec = S.groupbuffs.bar.spec, before = gbBar,
+    open = function(ns, W) fire(W, "PLAYER_LOGIN"); ns.Move(true) end, crop = "GulliHudStage" }
+
+-- Every Gulli HUD widget on one stand-in screen: notices, an action icon, reminders, a counter,
+-- a feed and the move bar.
+S.toolkit.hud = { spec = S.toolkit.default.spec, before = hudStage(900, 470), crop = "GulliHudStage",
+    open = function(ns)
+        local Sk = ns.Skin
+        local stage = GulliHudStage
+        GulliHUD = nil
+        local I = "Interface\\Icons\\"
+        Sk.Toast({ key = "1", icon = I .. "INV_Misc_Bag_08", kind = "warn", title = "Bags are full",
+            text = "Free 1 slot: Cracked Pottery", seconds = 10, buttons = { { text = "Sell", primary = true } } })
+        Sk.Toast({ key = "2", icon = I .. "INV_Letter_15", title = "Ann asks for a quest", text = "The Defias Brotherhood",
+            seconds = 30, buttons = { { text = "Share", primary = true } } })
+        Sk.Toast({ key = "3", icon = I .. "Spell_Nature_TimeStop", kind = "good", title = "A dungeon entry is free again.",
+            text = "2 of 5 entries left this hour", seconds = 12 })
+        for _, t in ipairs(GulliHUD.toasts) do
+            local p = { t:GetPoint() }
+            t:ClearAllPoints()
+            t:SetPoint("TOP", stage, "TOP", 0, (p[5] or 0) + 130)
+        end
+        local act = Sk.HudIcon(CreateFrame("Button", nil, stage), 52)
+        act:SetPoint("TOPLEFT", 24, -40)
+        act:SetIcon(I .. "Spell_Holy_WordFortitude"); act:SetState("need"); act:SetKey("F"); act:SetCount("+3")
+        local cap = Sk.HudCaption(stage, 52)
+        cap:SetPoint("TOPLEFT", act, "TOPRIGHT", -1, 0)
+        cap:Set("Power Word: Fortitude", "|cffc79c6eHero|r")
+        for i, ic in ipairs({ "Spell_Holy_InnerFire", "Spell_Holy_DivineSpirit", "Spell_Shadow_AntiShadow" }) do
+            local m = Sk.HudIcon(CreateFrame("Button", nil, stage), 28)
+            m:SetPoint("TOPLEFT", act, "BOTTOMLEFT", (i - 1) * 32, -5)
+            m:SetIcon(I .. ic)
+            m:SetDone(i == 3)
+        end
+        local rem = { { "Spell_Holy_InnerFire", "need" }, { "Spell_Holy_WordFortitude", "soon", "4m" },
+                      { "INV_Misc_Food_14", "need" }, { "INV_Ammo_Arrow_02", "soon" } }
+        for i, r in ipairs(rem) do
+            local b = Sk.HudIcon(CreateFrame("Button", nil, stage), 40)
+            b:SetPoint("BOTTOMLEFT", 24 + (i - 1) * 44, 24)
+            b:SetIcon(I .. r[1]); b:SetState(r[2]); b:SetMid(r[3])
+            if i == 4 then b:SetCount("120") end
+        end
+        local chip = Sk.Chip(stage)
+        chip:SetPoint("BOTTOMLEFT", 220, 30)
+        chip:Set(I .. "Spell_Nature_TimeStop", "3/5", nil, 3, 5, "18 m")
+        local list = Sk.HudList(nil, 300, 3, stage)
+        list:SetPoint("BOTTOMRIGHT", -24, 24)
+        list.title:SetText("Bulletin Board")
+        list.right:SetText("3")
+        list:SetRows({ { tag = "Deadmines", tagColor = Sk.LevelColor(20), text = "|cff3fc7ebLFM|r heal  Thorn", right = "1 m" },
+            { tag = "Shadowfang", tagColor = Sk.LevelColor(24), text = "|cff3fc7ebLFM|r tank  Mirela", right = "3 m" },
+            { tag = "Wailing Caverns", tagColor = Sk.LevelColor(19), text = "|cff3fc7ebLFG|r dps  Ann", right = "6 m" } })
+    end }
+S.mobfinder = S.mobfinder or {}
+S.mobfinder.card = { spec = { level = 14 }, before = hudStage(460, 140), crop = "GulliHudStage",
+    open = function(ns)
+        ns.db.cardPoint = { "CENTER", 0, 0 }
+        ns.ShowFind({ { name = "Foreman Grills" } })
+    end }
+S.instancelimit.badge = { spec = S.instancelimit.default.spec, before = function(W, R)
+        hudStage(300, 120)()
+        if S.instancelimit.default.before then S.instancelimit.default.before(W, R) end
+    end, crop = "GulliInstanceLimitBadge",
+    open = function(ns, W, R)
+        ns.db.badgePoint = { "CENTER", "CENTER", 0, 0 }
+        ns.db.badgeMode = ns.BADGE_MODES[1]
+        ns.SetupBadge()
+    end }
 return S
