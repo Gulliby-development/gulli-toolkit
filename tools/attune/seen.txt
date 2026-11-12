@@ -1,4 +1,5 @@
-# Quests check_data.py found that were judged not to gate a raid or a dungeon in WoW Forever.
+# Quests check_data.py found that were judged not to gate a raid or a dungeon in WoW Forever
+# (or that gate one Forever does not have yet: Molten Core, Blackwing Lair, Naxxramas).
 # One "<quest id> <name>" per line. Remove a line to see the quest again.
 328 The Hidden Key
 396 An Audience with the King
@@ -50,3 +51,8 @@
 9225 Epic Armaments of Battle - Revered Amongst the Dawn
 9228 Epic Armaments of Battle - Exalted Amongst the Dawn
 9378 DND FLAG The Dread Citadel - Naxxramas
+7848 Attunement to the Core
+7761 Blackhand's Command
+9121 The Dread Citadel - Naxxramas
+9122 The Dread Citadel - Naxxramas
+9123 The Dread Citadel - Naxxramas

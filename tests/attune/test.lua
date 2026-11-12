@@ -9,14 +9,14 @@ local function raid(ns, char, key)
 end
 
 test("a scan saves done and active quests for this character", function()
-    Fake({ done = { [7848] = true, [4182] = true }, active = { [4183] = true } })
+    Fake({ done = { [4742] = true, [4743] = true, [4182] = true }, active = { [4183] = true } })
     local ns = Load()
     ns.Scan()
     local c = ns.db.chars["Tester-Realm"]
-    eq(c.done[7848], true)
+    eq(c.done[4742], true)
     eq(c.active[4183], true)
     eq(c.faction, "Alliance")
-    eq(raid(ns, c, "MC").ready, true)
+    eq(raid(ns, c, "UBRS").ready, true)
     local ony = raid(ns, c, "ONY")
     eq(ony.done, 1)
     eq(ony.next[1], 4183, "the next step is the first one not done")
@@ -41,14 +41,7 @@ test("the amulet or the key in the bags means ready", function()
     local c = ns.db.chars["Tester-Realm"]
     eq(raid(ns, c, "ONY").ready, true)
     eq(raid(ns, c, "UBRS").ready, true)
-    eq(raid(ns, c, "BWL").ready, false)
-end)
-
-test("Naxxramas: any of the three quests is enough", function()
-    Fake({ done = { [9123] = true } })
-    local ns = Load()
-    ns.Scan()
-    eq(raid(ns, ns.db.chars["Tester-Realm"], "NAXX").ready, true)
+    eq(raid(ns, c, "BRD").ready, false)
 end)
 
 test("other characters stay; this one comes first; forget removes one", function()
@@ -64,14 +57,13 @@ test("other characters stay; this one comes first; forget removes one", function
 end)
 
 test("names: the game's quest and zone names first, then English", function()
-    Fake({ titles = { [7848] = "Настройка на Недра" }, areas = { [25] = "Черная гора" } })
+    Fake({ titles = { [4182] = "Угроза драконов" }, areas = { [46] = "Пылающие степи" } })
     local ns = Load()
-    local mc
-    for _, r in ipairs(ns.RAIDS) do if r.key == "MC" then mc = r end end
-    local step = mc.steps[1]
-    eq(ns.QuestName(step), "Настройка на Недра")
-    eq(ns.Where(step), "Lothos Riftwaker, Черная гора")
-    eq(ns.RaidName(mc), "Molten Core")
+    local ony = ns.RAIDS[1]
+    local step = ony.steps[1]
+    eq(ns.QuestName(step), "Угроза драконов")
+    eq(ns.Where(step), "Helendis Riverhorn, Пылающие степи")
+    eq(ns.RaidName(ony), "Onyxia's Lair")
 end)
 
 test("events scan after a short pause; the window opens", function()
@@ -105,16 +97,12 @@ test("dungeon keys: the chain or the key in the bags; Scholomance has a chain pe
     eq(sch.ready, true, "the Skeleton Key in the bags")
 end)
 
-test("what Forever has now comes first; raids it has not opened are last and marked", function()
+test("only what WoW Forever has: Onyxia first, no Molten Core, Blackwing Lair or Naxxramas", function()
     Fake({})
     local ns = Load()
     eq(ns.RAIDS[1].key, "ONY")
-    local seenLater = false
     for _, r in ipairs(ns.RAIDS) do
-        if r.later then seenLater = true else assert(not seenLater, r.key .. " comes after a later raid") end
-    end
-    assert(seenLater)
-    for _, r in ipairs(ns.RAIDS) do
+        assert(r.key ~= "MC" and r.key ~= "BWL" and r.key ~= "NAXX", r.key .. " is not in Forever")
         assert(ns.T.en["RAID_" .. r.key], "no name for " .. r.key)
     end
 end)
