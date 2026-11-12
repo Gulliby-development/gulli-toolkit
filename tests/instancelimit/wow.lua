@@ -132,12 +132,45 @@ function Fake(spec)
     ResetInstances = function() W.resets = W.resets + 1 end
     INSTANCE_RESET_SUCCESS = "%s has been reset."
     TRANSFER_ABORT_TOO_MANY_INSTANCES = "You have entered too many instances recently."
+    W.said, W.addon, W.members = {}, {}, {}
+    W.xp, W.xpMax, W.money = 0, 1000, 0
+    UnitXP = function() return W.xp end
+    UnitXPMax = function() return W.xpMax end
+    GetMoney = function() return W.money end
+    IsInRaid = function() return false end
+    GetNumGroupMembers = function() return W.group and #W.members + 1 or 0 end
+    UnitExists = function(u) local i = tonumber(u:match("%d+")); return i ~= nil and W.members[i] ~= nil end
+    UnitIsUnit = function() return false end
+    UnitIsConnected = function() return true end
+    UnitPosition = function(u)
+        local m = W.members[tonumber(u:match("%d+"))]
+        if m and m[2] then return nil end
+        return 0, 0, 0, 0
+    end
+    UnitName = function(u)
+        if u == "player" then return spec.name or "Tester" end
+        local m = W.members[tonumber((u or ""):match("%d+") or 0)]
+        return m and m[1]
+    end
+    strsplit = function(sep, s)
+        local out = {}
+        for part in (s .. sep):gmatch("(.-)" .. sep) do out[#out + 1] = part end
+        return unpack(out)
+    end
+    SendChatMessage = function(msg, kind) W.said[#W.said + 1] = kind .. ":" .. msg end
+    C_ChatInfo = { RegisterAddonMessagePrefix = function() end,
+                   SendAddonMessage = function(_, text, kind) W.addon[#W.addon + 1] = kind .. ":" .. text end }
     GulliInstanceLimitDB = spec.db
     return W
 end
 
 function Load()
     return W.Load("Gulli-InstanceLimit", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+end
+
+function W.Printed(text)
+    for _, p in ipairs(W.printed) do if p:find(text, 1, true) then return true end end
+    return false
 end
 
 -- Moves the player and fires the event the game sends.

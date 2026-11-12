@@ -27,7 +27,12 @@ local function tip(owner, m)
     else
         GameTooltip:AddLine(L.TIP_MISSING, 0.93, 0.42, 0.40)
     end
-    GameTooltip:AddLine(ns.db.locked and L.TIP_LOCKED or L.TIP_MOVE, 0.6, 0.61, 0.66, true)
+    if m.none then GameTooltip:AddLine(L.TIP_NONE, 0.93, 0.42, 0.40, true) end
+    local hint = L.TIP_MOVE
+    if ns.db.locked then
+        hint = m.act and L.TIP_ACT or (m.buy and L.TIP_BUY) or L.TIP_LOCKED
+    end
+    GameTooltip:AddLine(hint, 0.6, 0.61, 0.66, true)
     GameTooltip:Show()
 end
 
@@ -58,9 +63,36 @@ local function buildPanel()
     panel.line:SetWordWrap(false)
 end
 
+local function keyDown()
+    return GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") and true or false
+end
+
+-- A left click does what the icon asks (cast, use, apply to the weapon); the button is secure,
+-- so its attributes change only out of combat, and the panel is hidden in combat anyway.
+-- A right click, or a left click on an icon without an action, opens the settings; at an open
+-- vendor a count icon buys what is missing.
+local function postClick(self, button, down)
+    if down ~= keyDown() then return end
+    local m = self.m
+    if button == "RightButton" then ns.Toggle(); return end
+    if not ns.db.locked then return end
+    if m and m.buy and ns.Buy(m) > 0 then return end
+    if not (m and m.act) then ns.Toggle() end
+end
+
+local function aim(b, m)
+    local act = ns.db.locked and m and not m.sample and m.act or nil
+    b:SetAttribute("type1", act and act.type or nil)
+    b:SetAttribute("spell1", act and act.spell or nil)
+    b:SetAttribute("item1", act and act.item or nil)
+    b:SetAttribute("macrotext1", act and act.macrotext or nil)
+    b:SetAttribute("unit1", act and act.type == "spell" and "player" or nil)
+end
+
 local function icon(i)
     if icons[i] then return icons[i] end
-    local b = CreateFrame("Button", nil, panel)
+    local b = CreateFrame("Button", "GulliRemindersIcon" .. i, panel, "SecureActionButtonTemplate")
+    b:RegisterForClicks("AnyUp", "AnyDown")
     b:SetFrameLevel(panel:GetFrameLevel() + 5) -- above the drag frame, so each icon has its tooltip
     b.box = S.IconBox(b, 40)
     b.box:SetAllPoints()
@@ -73,7 +105,7 @@ local function icon(i)
     b:RegisterForDrag("LeftButton")
     b:SetScript("OnDragStart", startDrag)
     b:SetScript("OnDragStop", stopDrag)
-    b:SetScript("OnClick", function() if ns.db.locked then ns.Toggle() end end)
+    b:SetScript("PostClick", postClick)
     b:SetScript("OnEnter", function(self) tip(self, self.m) end)
     b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     icons[i] = b
@@ -94,6 +126,7 @@ local function layout(list, missingKeys)
         if d.vertical then b:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(i - 1) * (size + GAP))
         else b:SetPoint("TOPLEFT", panel, "TOPLEFT", (i - 1) * (size + GAP), 0) end
         b.box:SetIcon(m.icon)
+        aim(b, m)
         local dim = m.sample and missingKeys and not missingKeys[m.key]
         b.box.tex:SetDesaturated(dim and true or false)
         b.box:SetAlpha(dim and 0.45 or 1)
@@ -119,9 +152,25 @@ end
 
 local refreshWindow
 
+local function alert(missing)
+    local d = ns.db
+    local new = ns.NewOnes(missing)
+    if #new == 0 or d.alert == "off" or not d.locked then return end
+    if d.alert == "instance" and not ns.PlaceOK("instance") then return end
+    if PlaySound then PlaySound(SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959, "Master") end
+    if UIErrorsFrame then UIErrorsFrame:AddMessage(new[1].text, 1, 0.72, 0.3) end
+end
+
 function ns.Refresh()
     local missing, why = ns.Missing()
     local d = ns.db
+    -- The icons are secure buttons: in combat nothing on the panel may change (it was hidden
+    -- when the fight started).
+    if InCombatLockdown() then
+        if refreshWindow then refreshWindow(missing, why) end
+        return missing
+    end
+    alert(missing)
     local list, keys
     if not d.locked and d.show and why ~= "combat" then
         keys = {}
@@ -169,37 +218,75 @@ local function switch(key, label, desc, extra)
              extra = extra, icon = ns.OPT_ICON[key] }
 end
 
+-- A button that steps through values on a click (right click: back).
+local function cycleButton(parent, get, set, values, text, width)
+    local b = S.Button(parent, width or 170, 28)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    local function show() b:SetText(text(get())) end
+    b:SetScript("OnClick", function(_, mouse)
+        local at = 1
+        for i, v in ipairs(values) do if v == get() then at = i end end
+        at = (at - 1 + (mouse == "RightButton" and -1 or 1)) % #values + 1
+        set(values[at])
+        show()
+    end)
+    b:SetScript("OnShow", show)
+    show()
+    return b
+end
+
+-- The item on the cursor, or nil.
+local function cursorItem()
+    if not GetCursorInfo then return nil end
+    local kind, id = GetCursorInfo()
+    if kind == "item" and id then
+        if ClearCursor then ClearCursor() end
+        return id
+    end
+end
+
+-- A scrolling column; returns the column frame and its stack.
+local function column(body, width, anchor)
+    local sf = S.Scroll(body)
+    sf:SetPoint("TOP" .. anchor, anchor == "LEFT" and 0 or -10, 0)
+    sf:SetPoint("BOTTOM" .. anchor, anchor == "LEFT" and 0 or -10, 0)
+    sf:SetWidth(width - 10)
+    sf.child:SetWidth(width - 10)
+    return sf, S.Stack(sf.child)
+end
+
+local CUSTOM_ROWS = 5
+
 local function build()
-    frame = S.Window("GulliRemindersFrame", L.TITLE, S.WIDE_W, 560)
+    frame = S.Window("GulliRemindersFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local ft = S.Footer(frame)
     frame.move = ft:Add(S.Primary(S.FitButton(ft, L.MOVE, 32, 150)))
     frame.move:SetScript("OnClick", function() ns.SetPref("locked", not ns.db.locked) end)
     local body, width = frame.body, frame.inner[1]
     local colW = math.floor((width - S.GAP) / 2)
-    local leftCol = CreateFrame("Frame", nil, body)
-    leftCol:SetPoint("TOPLEFT")
-    leftCol:SetPoint("BOTTOMLEFT")
-    leftCol:SetWidth(colW)
-    local rightCol = CreateFrame("Frame", nil, body)
-    rightCol:SetPoint("TOPRIGHT")
-    rightCol:SetPoint("BOTTOMRIGHT")
-    rightCol:SetWidth(colW)
+    local leftScroll, left = column(body, colW, "LEFT")
+    local rightScroll, right = column(body, colW, "RIGHT")
+    local leftCol, rightCol = leftScroll.child, rightScroll.child
+    local cw = colW - 10
     frame.steppers = {}
     local function stepper(key, step, min, max, fmt)
-        local s = S.Stepper(body, function() return ns.db[key] end, function(v) ns.SetPref(key, v) end,
+        local st = S.Stepper(body, function() return ns.db[key] end, function(v) ns.SetPref(key, v) end,
             step, min, max, fmt)
-        frame.steppers[#frame.steppers + 1] = s
-        return s
+        frame.steppers[#frame.steppers + 1] = st
+        return st
+    end
+    local function place(key)
+        return cycleButton(body, function() return ns.db[key] end, function(v) ns.SetPref(key, v) end,
+            ns.PLACES, function(v) return L["PLACE_" .. v] end)
     end
 
     -- Left: what to check.
-    local left = S.Stack(leftCol)
     local className = UnitClass("player")
     local rows = {}
     for _, b in ipairs(ns.ClassBuffs()) do
         local key = b.key
         rows[#rows + 1] = { b.name, not b.known and L.NOT_KNOWN or nil,
-            function() return ns.Tracked({ key = key, on = b.on }) end,
+            function() return ns.Tracked({ key = key, on = b.on, tank = b.tank }) end,
             function(v) ns.SetTracked(key, v) end, icon = b.icon }
     end
     if #rows > 0 then
@@ -207,7 +294,7 @@ local function build()
         left:Add(card, h)
     else
         local card = S.Card(leftCol, L.SEC_BUFFS, className)
-        local p, ph = S.Paragraph(card.body, L.NO_BUFFS, colW - 2 * S.INSET)
+        local p, ph = S.Paragraph(card.body, L.NO_BUFFS, cw - 2 * S.INSET)
         p:SetPoint("TOPLEFT")
         left:Add(card, card:Fit(ph))
     end
@@ -218,23 +305,62 @@ local function build()
         local r = switch("pet", L.OPT_PET)
         r.icon = ns.PetIcon()
         other[#other + 1] = r
+        local _, class = UnitClass("player")
+        if class == "WARLOCK" then
+            local names = {}
+            for _, id in ipairs(ns.WARLOCK_PETS) do names[id] = ns.SpellNameOf(id) end
+            other[#other + 1] = { L.OPT_LOCK_PET, nil, icon = ns.PetIcon(),
+                control = cycleButton(body, function() return ns.db.lockPet or ns.WARLOCK_PETS[1] end,
+                    function(v) ns.SetPref("lockPet", v) end, ns.WARLOCK_PETS,
+                    function(v) return names[v] or "?" end) }
+        end
     end
     if e.ammo then other[#other + 1] = switch("ammo", L.OPT_AMMO, nil, numberEdit(body, "ammoMin")) end
     if e.shards then other[#other + 1] = switch("shards", L.OPT_SHARDS, nil, numberEdit(body, "shardsMin")) end
+    other[#other + 1] = switch("durability", L.OPT_DURABILITY, nil, numberEdit(body, "durMin"))
+    other[#other + 1] = switch("bags", L.OPT_BAGS, nil, numberEdit(body, "bagsMin"))
+    other[#other + 1] = switch("others", L.OPT_OTHERS, L.OPT_OTHERS_D)
     other[#other + 1] = { L.OPT_SOON, nil, icon = ns.OPT_ICON.soonMin,
         control = stepper("soonMin", 1, 0, 15, function(v) return v == 0 and L.OFF or L.MIN:format(v) end) }
+    other[#other + 1] = { L.OPT_WHERE, nil, icon = ns.OPT_ICON.where, control = place("where") }
     local oc, oh = S.SettingsCard(leftCol, L.SEC_OTHER, other)
     left:Add(oc, oh)
 
-    -- Right: when and how the panel shows.
-    local right = S.Stack(rightCol)
+    -- Consumables: food, oils and stones, and the items and spells the player adds.
+    local setFood = S.Button(body, 90, 28)
+    setFood:SetText(L.SET_FOOD)
+    setFood:SetScript("OnClick", function()
+        local id = cursorItem()
+        ns.SetPref("foodItem", id)
+    end)
+    setFood:SetScript("OnReceiveDrag", function() ns.SetPref("foodItem", cursorItem()) end)
+    setFood:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L.SET_FOOD_TIP)
+        local id = ns.db.foodItem
+        if id then GameTooltip:AddLine(ns.ItemName(id) or ("#" .. id), 1, 1, 1) end
+        GameTooltip:Show()
+    end)
+    setFood:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    local cc, ch = S.SettingsCard(leftCol, L.SEC_ITEMS, {
+        switch("food", L.OPT_FOOD, nil, setFood),
+        switch("anyWeapon", L.OPT_ANY_WEAPON, L.OPT_ANY_WEAPON_D),
+        { L.OPT_WHERE_ITEMS, nil, icon = ns.OPT_ICON.whereItems, control = place("whereItems") },
+    })
+    left:Add(cc, ch)
+
+    -- Right: when and how the panel shows, then the player's own reminders.
     local wc, wh = S.SettingsCard(rightCol, L.SEC_WHEN, {
         switch("show", L.OPT_SHOW),
         switch("inRest", L.OPT_REST, L.OPT_REST_D),
+        { L.OPT_ALERT, nil, icon = ns.OPT_ICON.alert,
+          control = cycleButton(body, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
+              ns.ALERTS, function(v) return L["ALERT_" .. v] end) },
     })
     right:Add(wc, wh)
-    local place = S.FitButton(body, L.PLACE_RESET, 28, 110)
-    place:SetScript("OnClick", function() ns.SetPref("point", nil) end)
+    local reset = S.FitButton(body, L.PLACE_RESET, 28, 110)
+    reset:SetScript("OnClick", function() ns.SetPref("point", nil) end)
     local pc, ph = S.SettingsCard(rightCol, L.SEC_PANEL, {
         switch("locked", L.OPT_LOCK, L.OPT_LOCK_D),
         { L.OPT_SIZE, nil, icon = ns.OPT_ICON.size, control = stepper("size", 4, 24, 64) },
@@ -242,15 +368,74 @@ local function build()
           control = stepper("alpha", 10, 20, 100, function(v) return v .. "%" end) },
         switch("labels", L.OPT_LABELS),
         switch("vertical", L.OPT_VERTICAL),
-        { L.OPT_PLACE, nil, icon = ns.OPT_ICON.point, control = place },
+        { L.OPT_PLACE, nil, icon = ns.OPT_ICON.point, control = reset },
     })
     right:Add(pc, ph)
-    S.FitWindow(frame, math.max(left:Height(), right:Height()))
+
+    local own = S.Card(rightCol, L.SEC_CUSTOM, nil, "Interface\\Icons\\INV_Misc_Note_02")
+    local drop = S.DropZone(own.body, L.DROP, function()
+        local id = cursorItem()
+        if id then ns.AddItem(id) end
+    end, 40)
+    drop:SetPoint("TOPLEFT")
+    drop:SetPoint("TOPRIGHT")
+    local hint = S.Note(own.body, 11)
+    hint:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -6)
+    hint:SetPoint("TOPRIGHT", drop, "BOTTOMRIGHT", 0, -6)
+    hint:SetText(L.CUSTOM_HINT)
+    local listH = CUSTOM_ROWS * 36
+    local list = S.List(own.body, 36, function(r)
+        r.icon = S.IconBox(r, 26)
+        r.icon:SetPoint("LEFT", 0, 0)
+        r.del = S.Button(r, 28, 28)
+        r.del:SetText("x")
+        r.del:SetPoint("RIGHT", 0, 0)
+        r.min = S.Stepper(r, function() return r.c and r.c.min or 1 end,
+            function(v) ns.SetCustom(r.i, "min", v) end, 1, 1, 200, nil, 90)
+        r.min:SetPoint("RIGHT", r.del, "LEFT", -6, 0)
+        r.kind = S.Button(r, 70, 28)
+        r.kind:SetPoint("RIGHT", r.min, "LEFT", -6, 0)
+        r.name = S.Text(r, 12)
+        r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+        r.name:SetPoint("RIGHT", r.kind, "LEFT", -8, 0)
+        r.name:SetWordWrap(false)
+        r.del:SetScript("OnClick", function() ns.RemoveCustom(r.i) end)
+        r.kind:SetScript("OnClick", function()
+            if r.c and r.c.id then ns.SetCustom(r.i, "kind", r.c.kind == "count" and "buff" or "count") end
+        end)
+    end, function(r, c, i)
+        r.c, r.i = c, i
+        if c.spell then
+            r.icon:SetIcon(ns.SpellIconOf(c.spell))
+            r.name:SetText(ns.SpellNameOf(c.spell) or ("#" .. c.spell))
+            r.kind:SetText(L.KIND_SPELL)
+            r.kind:SetEnabled(false)
+            r.min:Hide()
+        else
+            r.icon:SetIcon(ns.ItemIcon(c.id))
+            r.name:SetText(ns.ItemName(c.id) or ("#" .. c.id))
+            r.kind:SetText(c.kind == "count" and L.KIND_COUNT or L.KIND_BUFF)
+            r.kind:SetEnabled(true)
+            r.min:SetShown(c.kind == "count")
+            r.min:Refresh()
+        end
+    end)
+    list:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
+    list:SetPoint("RIGHT", own.body, "RIGHT", -10, 0)
+    list:SetHeight(listH)
+    frame.custom = list
+    right:Add(own, own:Fit(40 + 6 + 30 + 8 + listH))
+
+    leftCol:SetHeight(left:Height())
+    leftScroll:Update(left:Height())
+    rightCol:SetHeight(right:Height())
+    rightScroll:Update(right:Height())
 
     refreshWindow = function(missing, why)
         if not frame:IsShown() then return end
         frame.move:SetText(ns.db.locked and L.MOVE or L.DONE)
-        for _, s in ipairs(frame.steppers) do s:Refresh() end
+        for _, st in ipairs(frame.steppers) do st:Refresh() end
+        frame.custom:SetData(ns.db.custom)
         local reason = why and L["STATUS_" .. why:upper()]
         if reason then ft:SetStatus(reason, S.MUTED)
         elseif #missing == 0 then ft:SetStatus(L.STATUS_NONE, S.GOOD)
@@ -261,6 +446,22 @@ local function build()
         end
     end
     frame:HookScript("OnShow", function() ns.Refresh() end)
+    frame.cards = { oc, cc, wc, pc, left.items[1] }
+end
+
+-- After a reset: every switch and button shows the saved value again.
+function ns.RebuildWindow()
+    if not frame then return end
+    for _, card in ipairs(frame.cards) do
+        for _, row in ipairs(card.rows or {}) do
+            local on = row.GetScript and row:GetScript("OnShow")
+            if on then on(row) end
+            local c = row.control
+            local cs = c and c.GetScript and c:GetScript("OnShow")
+            if cs then cs(c) end
+        end
+    end
+    if frame:IsShown() then ns.Refresh() end
 end
 
 function ns.Toggle()

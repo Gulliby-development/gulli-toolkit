@@ -21,11 +21,32 @@ S.toolkit = { default = {
                       icon = "Interface\\Icons\\INV_Misc_Key_14" },
                 } or nil })
         end
+        local sums = { XP = "Level 42 in 35 min (8.4k XP/h)", Attune = "Onyxia: 3 of 7 steps",
+            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups for Scarlet Monastery" }
+        for k, text in pairs(sums) do GulliToolkit.modules[k].summary = function() return text end end
         GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
         GulliToolkit.Notify("XP", "Level 42 in about 35 min at this pace.")
+        GulliToolkitDB.feed[2].t = 1000 - 1500
         SlashCmdList.GULLITOOLKIT("")
     end,
 } }
+
+-- A narrow module open inside the hub, with the card beside it.
+S.toolkit.inside = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        local Sk = ns.Skin
+        local win = Sk.Window("GulliPreviewMerchant", "Gulli Merchant", Sk.NARROW_W, 400, { sub = "/gmc",
+            icon = "Interface\\AddOns\\Gulli-Merchant\\icon" })
+        local c = Sk.SettingsCard(win.body, "Settings", {
+            { "Sell gray items", nil, function() return true end, function() end, icon = "Interface\\Icons\\INV_Misc_Coin_02" },
+            { "Repair", nil, function() return true end, function() end, icon = "Interface\\Icons\\Trade_BlackSmithing" } })
+        c:SetPoint("TOPLEFT"); c:SetPoint("TOPRIGHT")
+        GulliToolkit.modules.Merchant.window = function() return win end
+        GulliToolkit.modules.Merchant.reset = function() end
+        ns.Enter("Merchant")
+    end,
+}
 
 -- The minimap button on a stand-in minimap, after a drag to the lower left.
 S.toolkit.minimap = {
@@ -80,22 +101,38 @@ S.bagspace = { default = {
 S.attune = { default = { spec = { name = "Gulliby", done = { [7848] = true, [4182] = true, [4183] = true },
     active = { [4184] = true } } } }
 
+local function xpQuests()
+    local quests = { { questID = 1, xp = 2450 }, { questID = 2, xp = 1800 } }
+    C_QuestLog = { GetNumQuestLogEntries = function() return #quests end, GetInfo = function(i) return quests[i] end,
+                   IsComplete = function() return true end }
+    GetQuestLogRewardXP = function(id) return quests[id].xp end
+end
+local function xpPlay(W)
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    for i = 1, 30 do W.now = i * 120; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
+    W.now = 3700; W.Fire("QUEST_TURNED_IN", 1, 1450, 0); W.Gain(1450)
+end
 S.xp = { default = {
-    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 4200, now = 0 },
-    open = function(ns, W)
-        W.Fire("PLAYER_LOGIN")
-        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
-        ns.Toggle()
-    end,
+    spec = { level = 41, xp = 12000, xpMax = 31000, rested = 4200, now = 0,
+             cdb = { levels = { { level = 40, time = 4380, kills = 212, killXP = 38100, questXP = 21400 },
+                                { level = 39, time = 3900, kills = 190, killXP = 33000, questXP = 22800 },
+                                { level = 38, time = 5100, kills = 260, killXP = 37200, questXP = 15900, partial = true } } } },
+    before = xpQuests,
+    open = function(ns, W) xpPlay(W); ns.Toggle() end,
+}, levels = {
+    before = xpQuests,
+    open = function(ns, W) S.xp.default.open(ns, W); ns.Tabs():Select(2) end,
+}, settings = {
+    before = xpQuests,
+    open = function(ns, W) S.xp.default.open(ns, W); ns.Tabs():Select(3) end,
 }, bar = {
     spec = { level = 41, xp = 12000, xpMax = 31000, rested = 6200, now = 0, db = { alpha = 60, scale = 140 } },
-    open = function(ns, W)
-        W.Fire("PLAYER_LOGIN")
-        for i = 1, 30 do W.now = i * 60; W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 215 experience."); W.Gain(215) end
-        ns.Refresh()
-    end,
+    before = xpQuests,
+    open = function(ns, W) xpPlay(W); ns.Refresh() end,
     crop = "GulliXPBar",
 } }
+S.xp.levels.spec = S.xp.default.spec
+S.xp.settings.spec = S.xp.default.spec
 
 S.loot = { default = {
     spec = { db = { quality = { [0] = "pass", [1] = "greed" }, items = { [2589] = "need", [2592] = "greed" }, report = true } },
@@ -115,19 +152,36 @@ S.partyquests = { default = { spec = { level = 17,
         { title = "Blackrock Menace", questID = 20, level = 21 },
     },
     party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
-} } }
+    objectives = { [155] = { { text = "Defias Pillager slain: 3/8", type = "monster", numFulfilled = 3, numRequired = 8 } },
+                   [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } },
+    items = { [10] = "Red Leather Bandana" }, bags = { { id = 10, count = 17 } },
+    zone = "Westfall",
+}, open = function(ns)
+    for _, p in ipairs({ "B", "Q155,20", "O155:6/8", "E" }) do ns.Receive(p, "Ann") end
+    ns.Toggle()
+end }, settings = { spec = { party = { { name = "Ann", quests = {} } } }, open = function(ns)
+    ns.ShowTab(3)
+end } }
 
-S.bulletin = { default = { spec = { level = 56 },
+S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "PRIEST", P3 = "MAGE", P4 = "ROGUE" } },
     open = function(ns, W)
         local msgs = {
             { "LF2M Deadmines need tank and heal", "Thrall" }, { "Priest LFG Scholo or Strat", "Anduin" },
-            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" },
-            { "WTS [Linen Cloth] 20x 1g", "Gelbin" },
+            { "LFM SM:GY pst, 1 dps left", "Varian" }, { "UBRS 8/10 need 2", "Jaina" }, { "LF1M Strat UD need heals", "Sylvanas" },
+            { "WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g", "Gelbin" },
         }
-        for _, m in ipairs(msgs) do W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade") end
+        for i, m in ipairs(msgs) do
+            W.Fire("CHAT_MSG_CHANNEL", m[1], m[2] .. "-Realm", "", "2. Trade", "", "", 0, 2, "Trade", nil, i, "P" .. i)
+        end
         ns.Toggle()
     end,
-}, setup = { spec = { level = 56 },
+}, trade = { spec = { level = 56 },
+    open = function(ns, W)
+        ns.Add("WTS |cffffffff|Hitem:2589::::::::|h[Linen Cloth]|h|r 20x 1g, |cff1eff00|Hitem:7909::::::::|h[Aquamarine]|h|r 3g", "Gelbin")
+        ns.Add("WTS [Arcanite Bar] cheap, pst", "Rexxar")
+        ns.ShowTab(2)
+    end,
+}, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
     open = function(ns)
         ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
         ns.ShowTab(7)
@@ -136,7 +190,26 @@ S.bulletin = { default = { spec = { level = 56 },
 
 S.quickchat = {
     default = {},
+    edit = { open = function(ns)
+        ns.ToggleFav("Ready!"); ns.ToggleFav("brb"); ns.db.chan["Need a heal!"] = "PARTY"
+        ns.ShowPage(1, { editing = true })
+    end },
     group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
+    dungeon = { spec = { level = 57, areas = { [2017] = "Stratholme" } }, open = function(ns)
+        ns.ShowPage(2, { mode = 2 })
+    end },
+    whispers = { open = function(ns, W)
+        W.combat = true
+        W.Fire("CHAT_MSG_WHISPER", "can you craft a bag?", "Ann-Realm")
+        W.Fire("CHAT_MSG_WHISPER", "inv for ST?", "Bob")
+        W.combat = false
+        ns.ShowPage(3)
+    end },
+    more = { open = function(ns)
+        ns.Say("Ready!"); ns.Say("brb", "GUILD")
+        ns.ShowPage(4)
+    end },
+    setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
 }
 
 local QC = {
@@ -300,5 +373,19 @@ S.reminders = {
     hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
+
+S.instancelimit = { default = { spec = { name = "Gulliby" },
+    open = function(ns, W)
+        local now = W.now
+        ns.db.entries = {
+            { t = now - 3000, name = "The Deadmines", char = "Gulliby", class = "MAGE", out = now - 1500, secs = 1500, xp = 4200, money = 13250, kills = 41 },
+            { t = now - 1200, name = "Wailing Caverns", char = "Gulliby", class = "MAGE", out = now - 200, secs = 1000, xp = 3100, money = 870, kills = 28 },
+            { t = now - 900, name = "Shadowfang Keep", char = "Thorn", class = "WARRIOR", out = now - 100, secs = 800, xp = 2500, kills = 30 },
+            { t = now - 60, name = "Blackfathom Deeps", char = "Gulliby", class = "MAGE" },
+        }
+        ns.group = { Bob = { leftHour = 1, leftDay = 20, wait = 0, t = now } }
+        ns.Toggle()
+    end,
+}, settings = { open = function(ns) ns.ShowPage(2) end } }
 
 return S

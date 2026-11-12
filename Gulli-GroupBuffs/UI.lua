@@ -15,9 +15,11 @@ local BUTTON = "GulliGroupBuffsButton"
 
 local bar, grip, main, label, header
 local minis = {}
-local plan, far, list = {}, {}, {}
+local plan, far, list, byUnit = {}, {}, {}, {}
 local built, dirty, pendingKey = false, true, false
 local layout
+local lastCast = {}       -- the unit the last press aimed at, and when
+local readyUntil = 0      -- a ready check shows the bar until then
 
 -- Runs in the game's restricted environment on every click of the big button, before
 -- the cast. Outside combat it does nothing (the button is already aimed). In combat it
@@ -80,6 +82,13 @@ local function tooltip(b, text)
     GameTooltip:Show()
 end
 
+local function now() return GetTime and GetTime() or 0 end
+
+-- Remembers where a press went, so a failed cast can skip that unit for a while.
+local function noteCast(self)
+    lastCast.unit, lastCast.t = self:GetAttribute("unit"), now()
+end
+
 local function savePoint()
     local p, _, _, x, y = bar:GetPoint()
     ns.DB().point = { p, x, y }
@@ -117,7 +126,9 @@ local function build()
     main:RegisterForClicks("AnyUp", "AnyDown")
     main:SetAttribute("type", "spell")
     header:WrapScript(main, "OnClick", ns.COMBAT_SNIPPET)
-    main:HookScript("OnClick", function() dirty = true end)
+    main:HookScript("OnClick", function(self) dirty = true; noteCast(self) end)
+    main.count = S.Text(main, 13, nil, "OUTLINE")
+    main.count:SetPoint("BOTTOMRIGHT", -2, 3)
     main:SetScript("OnEnter", function(self)
         local e = self.entry
         tooltip(self, (e and who(e) or L.ALL_DONE) .. "\n|cff8c8c94" .. L.TIP_MAIN .. "|r")
@@ -134,6 +145,7 @@ local function build()
         m:SetPoint("LEFT", main, "RIGHT", GAP + (i - 1) * (MINI + GAP), 0)
         m:RegisterForClicks("AnyUp", "AnyDown")
         m:SetAttribute("type", "spell")
+        m:HookScript("OnClick", function(self) dirty = true; noteCast(self) end)
         m:SetScript("OnEnter", function(self) tooltip(self, self.entry and who(self.entry)) end)
         m:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         m:Hide()
@@ -166,6 +178,53 @@ local function paint(b, e, fallback)
     b.icon:SetDesaturated(done(e))
 end
 
+-- The marks on the game's party and raid frames: the icon of the first buff a unit misses.
+-- Only textures of our own on top of those frames; nothing of theirs changes.
+local marks = setmetatable({}, { __mode = "k" })
+
+local function eachGroupFrame(fn)
+    for i = 1, 5 do local f = _G["CompactPartyFrameMember" .. i]; if f then fn(f) end end
+    for i = 1, 40 do local f = _G["CompactRaidFrame" .. i]; if f then fn(f) end end
+    for g = 1, 8 do
+        for m = 1, 5 do local f = _G["CompactRaidGroup" .. g .. "Member" .. m]; if f then fn(f) end end
+    end
+end
+
+local function paintMarks()
+    local on = ns.DB().marks
+    eachGroupFrame(function(f)
+        local unit = f.displayedUnit or f.unit
+        local icon
+        if on and type(unit) == "string" and UnitExists(unit) then
+            for u, ic in pairs(byUnit) do
+                if UnitIsUnit(u, unit) then icon = ic; break end
+            end
+        end
+        local t = marks[f]
+        if icon and not t then
+            t = f:CreateTexture(nil, "OVERLAY", nil, 7)
+            t:SetSize(14, 14)
+            t:SetPoint("TOPRIGHT", -2, -2)
+            t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            marks[f] = t
+        end
+        if t then
+            t:SetTexture(icon)
+            t:SetShown(icon ~= nil)
+        end
+    end)
+end
+ns.PaintMarks = paintMarks
+
+-- Red: something to cast now; yellow: only out of reach or skipped; green: all done.
+local function state()
+    local n = #plan + #far
+    main.count:SetText(n > 1 and ("+" .. (n - 1)) or "")
+    local c = S.GOOD
+    if #plan > 0 then c = S.BAD elseif n > 0 or ((ns.info or {}).skipped or 0) > 0 then c = S.WARN end
+    S.SetBorder(main, c)
+end
+
 function layout()
     local d = ns.DB()
     local shown = 0
@@ -182,13 +241,24 @@ function layout()
     end
     bar:SetWidth(GRIP + MAIN + shown * (MINI + GAP))
     grip:SetShown(not d.locked)
-    local show = d.who ~= "off" and (d.show == "always" or (d.show == "missing" and #plan > 0))
-    bar:SetShown(show and true or false)
+    local show = false
+    if d.who ~= "off" and d.show ~= "never" then
+        if readyUntil > now() and #plan + #far > 0 then show = true
+        elseif ns.PlaceOK() then show = d.show == "always" or #plan > 0 end
+    end
+    bar:SetShown(show)
+end
+
+-- The first reason why there is nothing to cast, as a line.
+local function reason()
+    local st = ns.Status(plan, far)[1]
+    if not st then return nil end
+    return st[2] and L[st[1]]:format(st[2]) or L[st[1]]
 end
 
 -- Text over the bar: who is next, and how many are out of reach.
 local function caption(e, extra)
-    local text = e and who(e) or L.ALL_DONE
+    local text = e and who(e) or reason() or L.ALL_DONE
     if extra then text = text .. "  |cff8c8c94" .. extra .. "|r" end
     label:SetText(text)
 end
@@ -207,16 +277,20 @@ function ns.Refresh()
             if m.entry then paint(m, m.entry) end
         end
         caption(e, n > 0 and L.COMBAT_N:format(i, n) or L.COMBAT_OFF)
+        paintMarks()
         return
     end
-    plan, far = ns.Plan()
+    plan, far, byUnit = ns.Plan()
+    byUnit = byUnit or {}
     local e = plan[1]
     aim(main, e)
     main:SetAttribute("gb-down", keyDown())
     main:SetAttribute("gb-count", 0)
     paint(main, e, "Interface\\RaidFrame\\ReadyCheck-Ready")
     caption(e, #far > 0 and L.FAR:format(#far) or nil)
+    state()
     layout()
+    paintMarks()
 end
 
 -- The last moment before the lockdown: hand the list to the big button.
@@ -241,10 +315,23 @@ local GROUP_UNIT = { player = true, target = true }
 local driver = CreateFrame("Frame")
 local events = { "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "UNIT_AURA",
     "PLAYER_TARGET_CHANGED", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-    "UNIT_FLAGS", "UNIT_CONNECTION", "UNIT_INVENTORY_CHANGED", "CVAR_UPDATE", "PLAYER_ROLES_ASSIGNED" }
+    "UNIT_FLAGS", "UNIT_CONNECTION", "UNIT_INVENTORY_CHANGED", "CVAR_UPDATE", "PLAYER_ROLES_ASSIGNED",
+    "UI_ERROR_MESSAGE", "READY_CHECK", "UPDATE_MOUSEOVER_UNIT", "PLAYER_UPDATE_RESTING",
+    "ZONE_CHANGED_NEW_AREA", "UNIT_PET", "UNIT_POWER_UPDATE" }
+
+-- Errors after a press that mean "not this unit for now". Out of range is not here:
+-- the range check already handles it.
+local function failMessages()
+    local set = {}
+    for _, k in ipairs({ "SPELL_FAILED_LINE_OF_SIGHT", "SPELL_FAILED_AURA_BOUNCED", "SPELL_FAILED_BAD_TARGETS",
+        "SPELL_FAILED_TARGET_AURASTATE", "SPELL_FAILED_BAD_IMPLICIT_TARGETS", "ERR_INVALID_ATTACK_TARGET" }) do
+        if _G[k] then set[_G[k]] = true end
+    end
+    return set
+end
 for _, ev in ipairs(events) do driver:RegisterEvent(ev) end
 
-driver:SetScript("OnEvent", function(_, event, unit)
+driver:SetScript("OnEvent", function(_, event, unit, ...)
     if event == "PLAYER_LOGIN" then
         if InCombatLockdown() then return end
         build()
@@ -256,6 +343,25 @@ driver:SetScript("OnEvent", function(_, event, unit)
         if not built then build(); pendingKey = true end
         if pendingKey then ns.ApplyKey() end
         ns.Refresh()
+    elseif event == "UI_ERROR_MESSAGE" then
+        local msg = ...
+        if lastCast.unit and lastCast.unit ~= "player" and now() - (lastCast.t or 0) < 1.5
+            and type(msg) == "string" and failMessages()[msg] then
+            ns.Skip(lastCast.unit)
+            lastCast.unit = nil
+            dirty = true
+        end
+    elseif event == "READY_CHECK" then
+        if ns.DB().readyCheck and not InCombatLockdown() then
+            ns.Refresh()
+            if #plan + #far > 0 then
+                readyUntil = now() + 40
+                if PlaySound then PlaySound(SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959, "Master") end
+                layout()
+            end
+        end
+    elseif event == "UNIT_POWER_UPDATE" then
+        if unit == "player" and (ns.DB().mana or 0) > 0 then dirty = true end
     elseif event == "UNIT_AURA" then
         if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then dirty = true end
     else
@@ -285,8 +391,9 @@ local win, scroll, keyButton
 local rows = {}
 
 -- icon: a game icon path, or a function of the current value that gives one (or nil).
-local function option(label, get, values, text, icon)
-    return { kind = "cycle", label = label, get = get, values = values, text = text, icon = icon }
+-- refill: the other rows show something else after a change of this one.
+local function option(label, get, values, text, icon, refill)
+    return { kind = "cycle", label = label, get = get, values = values, text = text, icon = icon, refill = refill }
 end
 
 local function spellIcon(id) return id and ns.SpellIcon(id) end
@@ -323,12 +430,34 @@ local function className(class)
     return names and names[class] or class
 end
 
+local CHOICE_LABEL = { shield = "SHIELD", weapon = "WEAPON", magearmor = "ARMOR", lockarmor = "ARMOR",
+    aura = "AURA", aspect = "ASPECT" }
+
 local function famLabel(f)
     if f.who == "blessing" then return L.BLESSINGS end
-    if f.choice == "shield" then return L.SHIELD end
-    if f.choice == "weapon" then return L.WEAPON end
+    if f.choice then return L[CHOICE_LABEL[f.choice]] end
     return ns.SpellName(f.id) or f.key
 end
+
+-- The group size whose settings the window edits (perSize on); the current one at first.
+local editSize
+
+local function sizeValue(key)
+    return function(v)
+        local d = ns.DB()
+        if not d.perSize then
+            if v ~= nil then d[key] = v end
+            return d[key]
+        end
+        local t = d.size[editSize or ns.Size()]
+        if v ~= nil then t[key] = v end
+        local cur = t[key]
+        if cur == nil then cur = d[key] end
+        return cur
+    end
+end
+
+local function onOff(v) return v and L.YES or L.NO end
 
 local function rowList()
     local list = {
@@ -342,10 +471,27 @@ local function rowList()
         { kind = "key", label = L.KEY, icon = I .. "INV_Gizmo_01" },
         option(L.LOCK, dbValue("locked"), { false, true }, function(v) return v and L.YES or L.NO end,
             I .. "INV_Misc_Key_04"),
-        option(L.LOW, dbValue("low"), ns.LOW,
+        option(L.WHERE, dbValue("where"), ns.WHERE, function(v) return L["WHERE_" .. v] end,
+            I .. "INV_Misc_Map_01"),
+        option(L.READY, dbValue("readyCheck"), { true, false }, onOff, I .. "INV_Misc_Bell_01"),
+        option(L.MARKS, dbValue("marks"), { true, false }, onOff, I .. "Ability_Hunter_MarkedForDeath"),
+        { kind = "header", label = L.TARGETS },
+        option(L.PETS, dbValue("pets"), { true, false }, onOff, I .. "Ability_Hunter_BeastCall"),
+        option(L.FOCUS, dbValue("focus"), { true, false }, onOff, I .. "Ability_Hunter_SniperShot"),
+        option(L.RAID_GROUPS, dbValue("raidGroups"), ns.RAID_GROUPS,
+            function(v) return v == "all" and L.RAID_ALL or L.RAID_N:format(v) end, I .. "INV_Banner_02"),
+        option(L.MANA, dbValue("mana"), ns.MANA,
+            function(v) return v == 0 and L.MANA_OFF or L.MANA_N:format(v) end, I .. "INV_Potion_76"),
+        { kind = "header", label = L.TIMING },
+        option(L.PER_SIZE, dbValue("perSize"), { false, true }, onOff, I .. "Spell_Nature_TimeStop", true),
+        option(L.SIZE_EDIT, function(v)
+            if v ~= nil then editSize = v end
+            return editSize or ns.Size()
+        end, ns.SIZES, function(v) return L["SIZE_" .. v] end, I .. "Achievement_GuildPerk_EverybodysFriend", true),
+        option(L.LOW, sizeValue("low"), ns.LOW,
             function(v) return v == 0 and L.LOW_GONE or L.LOW_MIN:format(v / 60) end,
             I .. "INV_Misc_PocketWatch_01"),
-        option(L.GROUP, dbValue("groupMin"), ns.GROUP_MIN,
+        option(L.GROUP, sizeValue("groupMin"), ns.GROUP_MIN,
             function(v) return v == 0 and L.GROUP_NEVER or L.GROUP_N:format(v) end,
             I .. "Spell_Holy_PrayerOfFortitude"),
     }
@@ -368,21 +514,34 @@ local function rowList()
             return on
         end }
     end
-    if class == "DRUID" then
-        list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
-        list[#list + 1] = option(L.THORNS, dbValue("thorns"), ns.THORNS,
-            function(v) return L["THORNS_" .. v] end, spellIcon(467))
-    elseif class == "SHAMAN" then
-        list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
-        for _, choice in ipairs({ "shield", "weapon" }) do
+    local opts = false
+    local function classHeader()
+        if not opts then list[#list + 1] = { kind = "header", label = L.CLASS_OPTS } end
+        opts = true
+    end
+    -- One row per pick-one family: "auto" (where it is the default), each spell, none.
+    for _, f in ipairs(fams) do
+        if f.choice then
+            classHeader()
             local keys, byKey = {}, {}
-            for _, c in ipairs(B.CHOICES[choice]) do keys[#keys + 1] = c.key; byKey[c.key] = c end
-            list[#list + 1] = option(choice == "shield" and L.SHIELD or L.WEAPON, dbValue(choice), keys,
-                function(v) return byKey[v] and ns.SpellName(byKey[v].id) or v end,
+            if B.CHOICE_DEFAULT[f.choice] == "auto" then keys[1] = "auto" end
+            for _, c in ipairs(B.CHOICES[f.choice]) do keys[#keys + 1] = c.key; byKey[c.key] = c end
+            keys[#keys + 1] = "off"
+            list[#list + 1] = option(famLabel(f), dbValue(f.choice), keys,
+                function(v)
+                    if v == "auto" then return L.AUTO end
+                    if v == "off" then return L.NONE end
+                    return byKey[v] and ns.SpellName(byKey[v].id) or v
+                end,
                 function(v) return byKey[v] and spellIcon(byKey[v].id) end)
         end
+    end
+    if class == "DRUID" then
+        classHeader()
+        list[#list + 1] = option(L.THORNS, dbValue("thorns"), ns.THORNS,
+            function(v) return L["THORNS_" .. v] end, spellIcon(467))
     elseif class == "PALADIN" then
-        list[#list + 1] = { kind = "header", label = L.CLASS_OPTS }
+        classHeader()
         local plain = { "off" }
         for _, b in ipairs(B.BLESSINGS) do plain[#plain + 1] = b.key end
         local roleValues = { "class" }
@@ -399,6 +558,8 @@ local function rowList()
     return list
 end
 
+local fillRows
+
 local function cycle(r, step)
     local cur = r.data.get()
     local values = r.data.values
@@ -408,6 +569,7 @@ local function cycle(r, step)
     r.data.get(values[at])
     r.button:SetText(r.data.text(values[at]))
     r:ShowIcon()
+    if r.data.refill then r.fill() end
     dirty = true
 end
 
@@ -471,6 +633,7 @@ local function makeRow(parent, data)
     local r = S.SettingRow(parent, data.label, nil, control, control and control:GetWidth(),
         data.icon and (I .. "INV_Misc_QuestionMark"))
     r.data = data
+    r.fill = function() fillRows() end
     function r:ShowIcon()
         if not self.icon then return end
         local path = rowIcon(self.data)
@@ -491,7 +654,7 @@ local function makeRow(parent, data)
 end
 
 -- Shows each row's current value.
-local function fillRows()
+function fillRows()
     for _, r in ipairs(rows) do
         local data = r.data
         if data.kind == "cycle" then r.button:SetText(data.text(data.get()))
