@@ -27,7 +27,7 @@
 | [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds. | `/gbul` |
 | [Party Quests](docs/partyquests/README.md) | Shows which quests your group shares and who still needs one. Share in one tap. | `/gpq` |
 | [Instance Limit](docs/instancelimit/README.md) | Counts your dungeon entries this hour and today, and shows when the next one is free. | `/gil` |
-| [Attunements](docs/attune/README.md) | Raid attunement steps for all your characters, with the next step and where it starts. | `/gat` |
+| [Attunements](docs/attune/README.md) | Raid attunements and dungeon keys for all your characters, with the next step and where it starts. | `/gat` |
 | [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
 | [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests you have and can still take, plus a checklist before you go. | `/gdp` |
 | [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons, a group message from a quest, whispers you missed. | `/gqk` |

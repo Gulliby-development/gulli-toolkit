@@ -1,4 +1,5 @@
--- Raid attunements: the quest chains each character must finish before a raid lets them in.
+-- Attunements and dungeon keys: the quest chains each character must finish before a raid or
+-- a dungeon door lets them in.
 -- Each character saves its progress when it plays, so the window shows every character.
 
 local ADDON, ns = ...
@@ -7,11 +8,11 @@ local L = ns.L
 -- Steps: quest id, English quest name (the game's own name is used when it knows the quest),
 -- who starts it (English name) and the area id of where (the game names it in your language).
 -- anyOf: one of these quests is enough. Ids and names come from the QuestieDB Forever data.
+-- Order is the order in the window: what WoW Forever has now first, then the dungeon keys,
+-- then the raids Forever has not opened yet (later = true).
 local BRM, BRD, LBRS, SW, BURNING = 25, 1584, 1583, 1519, 46
+local WPL, TIRISFAL, TANARIS, DESOLACE, MARAUDON = 28, 85, 440, 405, 2100
 ns.RAIDS = {
-    { key = "MC", area = 2717, steps = {
-        { 7848, "Attunement to the Core", "Lothos Riftwaker", BRM },
-    } },
     { key = "ONY", area = 2159, faction = "Alliance", item = 16309, steps = {
         { 4182, "Dragonkin Menace", "Helendis Riverhorn", BURNING },
         { 4183, "The True Masters", "Helendis Riverhorn", BURNING },
@@ -46,15 +47,48 @@ ns.RAIDS = {
         { 6601, "Ascension...", "Emberstrife", 15 },
         { 6602, "Blood of the Black Dragon Champion", "Rexxar", 357 },
     } },
-    { key = "BWL", area = 2677, steps = {
-        { 7761, "Blackhand's Command", "Blackhand's Command", LBRS },
-    } },
-    { key = "NAXX", area = 3456, steps = {
-        { 9121, "The Dread Citadel - Naxxramas", "Archmage Angela Dosantos", 139, anyOf = { 9121, 9122, 9123 } },
-    } },
     { key = "UBRS", area = 1583, item = 12344, steps = {
         { 4742, "Seal of Ascension", "Vaelan", LBRS },
         { 4743, "Seal of Ascension", "Vaelan", LBRS },
+    } },
+    -- Dungeon keys from quest chains. Keys that only drop (Key to the City, Crescent Key) need no tracking.
+    { key = "BRD", area = BRD, item = 11000, steps = {
+        { 3801, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
+        { 3802, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
+    } },
+    { key = "SCHOLO", area = 2057, faction = "Alliance", item = 13704, steps = {
+        { 5092, "Clear the Way", "Commander Ashlam Valorfist", WPL },
+        { 5097, "All Along the Watchtowers", "Commander Ashlam Valorfist", WPL },
+        { 5533, "Scholomance", "Commander Ashlam Valorfist", WPL },
+        { 5537, "Skeletal Fragments", "Alchemist Arbington", WPL },
+        { 5538, "Mold Rhymes With...", "Alchemist Arbington", WPL },
+        { 5801, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
+        { 5803, "Araj's Scarab", "Alchemist Arbington", WPL },
+        { 5505, "The Key to Scholomance", "Alchemist Arbington", WPL },
+    } },
+    { key = "SCHOLO", area = 2057, faction = "Horde", item = 13704, steps = {
+        { 5096, "Scarlet Diversions", "High Executor Derrington", TIRISFAL },
+        { 5098, "All Along the Watchtowers", "High Executor Derrington", TIRISFAL },
+        { 838, "Scholomance", "High Executor Derrington", TIRISFAL },
+        { 964, "Skeletal Fragments", "Apothecary Dithers", TIRISFAL },
+        { 5514, "Mold Rhymes With...", "Apothecary Dithers", TIRISFAL },
+        { 5802, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
+        { 5804, "Araj's Scarab", "Apothecary Dithers", TIRISFAL },
+        { 5511, "The Key to Scholomance", "High Executor Derrington", TIRISFAL },
+    } },
+    { key = "MARA", area = MARAUDON, item = 17191, steps = {
+        { 7044, "Legends of Maraudon", "Cavindra", DESOLACE },
+        { 7046, "The Scepter of Celebras", "Celebras the Redeemed", MARAUDON },
+    } },
+    -- Not open in WoW Forever yet (December 2026: The Barrow Deeps, Hyjal Summit and Onyxia only).
+    { key = "MC", area = 2717, later = true, steps = {
+        { 7848, "Attunement to the Core", "Lothos Riftwaker", BRM },
+    } },
+    { key = "BWL", area = 2677, later = true, steps = {
+        { 7761, "Blackhand's Command", "Blackhand's Command", LBRS },
+    } },
+    { key = "NAXX", area = 3456, later = true, steps = {
+        { 9121, "The Dread Citadel - Naxxramas", "Archmage Angela Dosantos", 139, anyOf = { 9121, 9122, 9123 } },
     } },
 }
 
@@ -138,7 +172,7 @@ function ns.Progress(char, raid)
     return out
 end
 
--- The raids that apply to a character (Onyxia has a chain per faction).
+-- The raids and keys that apply to a character (Onyxia and Scholomance have a chain per faction).
 function ns.RaidsFor(char)
     local out = {}
     for _, r in ipairs(ns.RAIDS) do

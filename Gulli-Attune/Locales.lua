@@ -21,6 +21,10 @@ T.en = {
     RAID_BWL = "Blackwing Lair",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Upper Blackrock Spire",
+    RAID_BRD = "Blackrock Depths",
+    RAID_SCHOLO = "Scholomance",
+    RAID_MARA = "Maraudon",
+    LATER = "not in Forever yet",
 }
 
 T.de = {
@@ -35,6 +39,10 @@ T.de = {
     RAID_BWL = "Pechschwingenhort",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Obere Schwarzfelsspitze",
+    RAID_BRD = "Schwarzfelstiefen",
+    RAID_SCHOLO = "Scholomance",
+    RAID_MARA = "Maraudon",
+    LATER = "noch nicht in Forever",
 }
 
 T.es = {
@@ -49,6 +57,10 @@ T.es = {
     RAID_BWL = "Guarida Alanegra",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Cumbre de Roca Negra Superior",
+    RAID_BRD = "Profundidades de Roca Negra",
+    RAID_SCHOLO = "Scholomance",
+    RAID_MARA = "Maraudon",
+    LATER = "aún no en Forever",
 }
 
 T.fr = {
@@ -63,6 +75,10 @@ T.fr = {
     RAID_BWL = "Repaire de l'Aile noire",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Pic Rochenoire supérieur",
+    RAID_BRD = "Profondeurs de Rochenoire",
+    RAID_SCHOLO = "Scholomance",
+    RAID_MARA = "Maraudon",
+    LATER = "pas encore dans Forever",
 }
 
 T.pl = {
@@ -77,6 +93,10 @@ T.pl = {
     RAID_BWL = "Blackwing Lair",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Upper Blackrock Spire",
+    RAID_BRD = "Blackrock Depths",
+    RAID_SCHOLO = "Scholomance",
+    RAID_MARA = "Maraudon",
+    LATER = "jeszcze nie w Forever",
 }
 
 T.pt = {
@@ -91,6 +111,10 @@ T.pt = {
     RAID_BWL = "Covil Asa Negra",
     RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Pico da Rocha Negra Superior",
+    RAID_BRD = "Abismo Rocha Negra",
+    RAID_SCHOLO = "Scolomântia",
+    RAID_MARA = "Maraudon",
+    LATER = "ainda não no Forever",
 }
 
 T.ru = {
@@ -105,6 +129,10 @@ T.ru = {
     RAID_BWL = "Логово Крыла Тьмы",
     RAID_NAXX = "Наксрамас",
     RAID_UBRS = "Верхняя часть пика Черной горы",
+    RAID_BRD = "Глубины Черной горы",
+    RAID_SCHOLO = "Некроситет",
+    RAID_MARA = "Мародон",
+    LATER = "пока нет в Forever",
 }
 
 T.zh = {
@@ -119,6 +147,10 @@ T.zh = {
     RAID_BWL = "黑翼之巢",
     RAID_NAXX = "纳克萨玛斯",
     RAID_UBRS = "黑石塔上层",
+    RAID_BRD = "黑石深渊",
+    RAID_SCHOLO = "通灵学院",
+    RAID_MARA = "玛拉顿",
+    LATER = "Forever 中尚未开放",
 }
 
 ns.T = T
