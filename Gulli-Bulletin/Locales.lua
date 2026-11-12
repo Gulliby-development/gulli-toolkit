@@ -56,6 +56,7 @@ T.en = {
     EMPTY_SEARCH = "Nothing matches the search.",
     SEARCH = "Search",
     FEED_EMPTY = "No groups yet.",
+    HUB_SUMMARY = "%d groups looking for players, %d trade posts",
 }
 
 T.de = {
@@ -105,6 +106,7 @@ T.de = {
     EMPTY_SEARCH = "Nichts passt zur Suche.",
     SEARCH = "Suchen",
     FEED_EMPTY = "Noch keine Gruppen.",
+    HUB_SUMMARY = "%d Gruppen suchen Spieler, %d Handelsposts",
 }
 
 T.es = {
@@ -154,6 +156,7 @@ T.es = {
     EMPTY_SEARCH = "Nada coincide con la búsqueda.",
     SEARCH = "Buscar",
     FEED_EMPTY = "Aún no hay grupos.",
+    HUB_SUMMARY = "%d grupos buscan jugadores, %d anuncios de comercio",
 }
 
 T.fr = {
@@ -203,6 +206,7 @@ T.fr = {
     EMPTY_SEARCH = "Rien ne correspond à la recherche.",
     SEARCH = "Rechercher",
     FEED_EMPTY = "Pas encore de groupe.",
+    HUB_SUMMARY = "%d groupes cherchent des joueurs, %d annonces de commerce",
 }
 
 T.pl = {
@@ -252,6 +256,7 @@ T.pl = {
     EMPTY_SEARCH = "Nic nie pasuje do wyszukiwania.",
     SEARCH = "Szukaj",
     FEED_EMPTY = "Na razie brak grup.",
+    HUB_SUMMARY = "Grupy szukające graczy: %d, ogłoszenia handlowe: %d",
 }
 
 T.pt = {
@@ -301,6 +306,7 @@ T.pt = {
     EMPTY_SEARCH = "Nada corresponde à busca.",
     SEARCH = "Buscar",
     FEED_EMPTY = "Ainda não há grupos.",
+    HUB_SUMMARY = "%d grupos procuram jogadores, %d anúncios de comércio",
 }
 
 T.ru = {
@@ -350,6 +356,7 @@ T.ru = {
     EMPTY_SEARCH = "По запросу ничего нет.",
     SEARCH = "Поиск",
     FEED_EMPTY = "Групп пока нет.",
+    HUB_SUMMARY = "Групп ищут игроков: %d, торговых объявлений: %d",
 }
 
 T.zh = {
@@ -399,6 +406,7 @@ T.zh = {
     EMPTY_SEARCH = "没有符合搜索的内容。",
     SEARCH = "搜索",
     FEED_EMPTY = "暂时没有队伍。",
+    HUB_SUMMARY = "%d 个队伍在招人，%d 条交易信息",
 }
 
 ns.T = T

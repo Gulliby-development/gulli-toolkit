@@ -204,36 +204,83 @@ function ns.Refresh()
     left:SetText(L.LEFT:format(ns.Short(st.left), st.percent) .. (st.toLevel and "" or ("   " .. S.Hex(S.FAINT) .. L.NO_RATE .. "|r")))
     ready:SetText(st.readyN > 0 and (S.Hex(READY_COLOR) .. L.READY:format(ns.Short(st.ready), st.readyN, st.readyPercent) .. "|r") or "")
     progress:Set(st.percent / 100)
-    local lines = {
-        L.FROM_KILLS:format(st.kills, ns.Short(st.killXP)),
-        L.FROM_QUESTS:format(st.quests, ns.Short(st.questXP)),
-        L.FROM_OTHER:format(ns.Short(st.otherXP)),
-        L.RESTED:format(ns.Short(st.rested)),
-        L.SESSION:format(ns.Span(st.session), ns.Short(st.gained)),
-        st.killsToLevel and L.KILLS_TO:format(st.killsToLevel) or L.KILLS_TO_NONE,
-        st.questsToLevel and L.QUESTS_TO:format(st.questsToLevel) or L.QUESTS_TO_NONE,
-        L.AVG_KILL:format(ns.Short(st.avgKill)),
-    }
-    for i, l in ipairs(lines) do info[i]:SetText(l) end
+    ns.FillInfo(st)
     fillGraph()
     fillLevels()
     if frame.textBtn then frame.textBtn:SetText(textLabel(ns.db.text or "all")) end
 end
 
+-- One line of a session card: a game icon, a grey label on the left, the value on the right.
+local ROW_H = 24
+
+local function infoRow(parent, i, label, icon)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(ROW_H - 4)
+    r:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
+    r:SetPoint("TOPRIGHT", 0, -(i - 1) * ROW_H)
+    local ic = S.IconBox(r, 18, icon)
+    ic:SetPoint("LEFT")
+    r.value = S.Text(r, 13)
+    r.value:SetPoint("RIGHT")
+    r.value:SetJustifyH("RIGHT")
+    r.value:SetWordWrap(false)
+    r.label = S.Text(r, 12, S.MUTED)
+    r.label:SetPoint("LEFT", ic, "RIGHT", 8, 0)
+    r.label:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
+    r.label:SetWordWrap(false)
+    r.label:SetText(label)
+    function r:Set(text, color) self.value:SetText(text); self.value:SetTextColor(unpack(color or S.TEXT)) end
+    return r
+end
+
+-- The session in two cards: where the XP came from, and the pace to the next level.
+local SOURCES = {
+    { "ROW_KILLS", "Interface\\Icons\\INV_Sword_04" },
+    { "ROW_QUESTS", "Interface\\Icons\\INV_Misc_Note_01" },
+    { "ROW_OTHER", "Interface\\Icons\\INV_Misc_Map_01" },
+    { "ROW_RESTED", "Interface\\Icons\\Spell_Nature_Sleep" },
+    { "ROW_TOTAL", "Interface\\Icons\\INV_Misc_Book_11" },
+}
+local PACE = {
+    { "ROW_PLAYED", "Interface\\Icons\\INV_Misc_PocketWatch_01" },
+    { "ROW_PER_KILL", "Interface\\Icons\\Ability_DualWield" },
+    { "ROW_KILLS_TO", "Interface\\Icons\\INV_Sword_04" },
+    { "ROW_QUESTS_TO", "Interface\\Icons\\INV_Misc_Note_01" },
+}
+
+local function fillInfo(st)
+    local function xp(n, color) return ns.Short(n) .. " XP", color end
+    local function count(n, what)
+        return S.Hex(S.FAINT) .. L.TIMES:format(n) .. "|r  " .. what
+    end
+    info[1]:Set(count(st.kills, ns.Short(st.killXP) .. " XP"), st.killXP > 0 and XP_COLOR or S.MUTED)
+    info[2]:Set(count(st.quests, ns.Short(st.questXP) .. " XP"), st.questXP > 0 and READY_COLOR or S.MUTED)
+    info[3]:Set(xp(st.otherXP, st.otherXP > 0 and S.TEXT or S.MUTED))
+    info[4]:Set(xp(st.rested, st.rested > 0 and { 0.45, 0.70, 1.00, 1 } or S.MUTED))
+    info[5]:Set(xp(st.gained, st.gained > 0 and S.Accent() or S.MUTED))
+    info[6]:Set(ns.Span(st.session))
+    info[7]:Set(st.avgKill > 0 and (ns.Short(st.avgKill) .. " XP") or "-", st.avgKill > 0 and S.TEXT or S.MUTED)
+    info[8]:Set(st.killsToLevel and tostring(st.killsToLevel) or "-", st.killsToLevel and S.TEXT or S.MUTED)
+    info[9]:Set(st.questsToLevel and tostring(st.questsToLevel) or "-", st.questsToLevel and S.TEXT or S.MUTED)
+end
+ns.FillInfo = fillInfo
+
 local function sessionPage(body, width)
     local p = CreateFrame("Frame", nil, body)
     local st = S.Stack(p)
-    local card = S.Card(p, L.SEC_SESSION)
-    local half = math.floor((width - 2 * S.INSET - 12) / 2)
-    for i = 1, 8 do
-        local col, row = (i - 1) >= 4 and 1 or 0, (i - 1) % 4
-        local t = S.Text(card.body, 12)
-        t:SetPoint("TOPLEFT", col * (half + 12), -row * 22)
-        t:SetWidth(half)
-        t:SetWordWrap(false)
-        info[i] = t
-    end
-    st:Add(card, card:Fit(4 * 22 - 8))
+    local half = math.floor((width - S.GAP) / 2)
+    local pair = CreateFrame("Frame", nil, p)
+    local src = S.Card(pair, L.SEC_SOURCES)
+    local pace = S.Card(pair, L.SEC_PACE)
+    local h = src:Fit(#SOURCES * ROW_H - 4)
+    pace:SetHeight(h)
+    src:SetPoint("TOPLEFT")
+    src:SetWidth(half)
+    pace:SetPoint("TOPRIGHT")
+    pace:SetWidth(half)
+    for i, d in ipairs(SOURCES) do info[i] = infoRow(src.body, i, L[d[1]], d[2]) end
+    for i, d in ipairs(PACE) do info[#SOURCES + i] = infoRow(pace.body, i, L[d[1]], d[2]) end
+    st:Add(pair, h)
 
     local gc = S.Card(p, L.SEC_GRAPH)
     graph.top = S.Text(gc, 11, S.FAINT)
