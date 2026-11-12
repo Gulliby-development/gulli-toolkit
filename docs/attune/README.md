@@ -2,7 +2,7 @@
 
 <h1 align="center">Gulli-Attune</h1>
 
-<p align="center"><b>Tracks raid attunements and dungeon keys for all your characters: Onyxia, Upper Blackrock Spire, Blackrock Depths, Scholomance, Maraudon, and the raids that come later.</b></p>
+<p align="center"><b>Tracks raid attunements and dungeon keys for all your characters: Onyxia, Upper Blackrock Spire, Blackrock Depths, Scholomance, Maraudon.</b></p>
 
 <p align="center">
   <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=Attune-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
@@ -18,7 +18,7 @@ Some raids and dungeon doors need a quest chain first. Gulli Attunements shows e
 
 - **Onyxia first.** In WoW Forever, Onyxia's Lair is the one raid that needs an attunement: every raider carries the Drakefire Amulet. Both the Alliance and the Horde chain are there. The Barrow Deeps and Hyjal Summit need nothing.
 - **Dungeon keys.** The Seal of Ascension (Upper Blackrock Spire), the Shadowforge Key (Blackrock Depths), the Skeleton Key (Scholomance, both factions) and the Scepter of Celebras (Maraudon).
-- **Raids that come later.** Molten Core, Blackwing Lair and Naxxramas stay at the bottom, marked "not in Forever yet". We update the list when Blizzard adds or changes an attunement.
+- **Only WoW Forever.** Raids that Forever does not have (Molten Core, Blackwing Lair, Naxxramas) are not listed. We update the list when Blizzard adds or changes an attunement.
 - **Every character.** Each character saves its progress when you play it. Pick a character on the left.
 - **The next step.** It is highlighted, with the place where the quest starts.
 - **Done is done.** A finished chain is one green line. A key or an amulet in your bags counts as done.

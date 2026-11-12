@@ -16,15 +16,11 @@ T.en = {
     NEXT = "Next:",
     WHERE = "%s, %s",
     FORGET = "Forget character",
-    RAID_MC = "Molten Core",
     RAID_ONY = "Onyxia's Lair",
-    RAID_BWL = "Blackwing Lair",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Upper Blackrock Spire",
     RAID_BRD = "Blackrock Depths",
     RAID_SCHOLO = "Scholomance",
     RAID_MARA = "Maraudon",
-    LATER = "not in Forever yet",
 }
 
 T.de = {
@@ -34,15 +30,11 @@ T.de = {
     NEXT = "Als Nächstes:",
     WHERE = "%s, %s",
     FORGET = "Charakter vergessen",
-    RAID_MC = "Geschmolzener Kern",
     RAID_ONY = "Onyxias Hort",
-    RAID_BWL = "Pechschwingenhort",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Obere Schwarzfelsspitze",
     RAID_BRD = "Schwarzfelstiefen",
     RAID_SCHOLO = "Scholomance",
     RAID_MARA = "Maraudon",
-    LATER = "noch nicht in Forever",
 }
 
 T.es = {
@@ -52,15 +44,11 @@ T.es = {
     NEXT = "Siguiente:",
     WHERE = "%s, %s",
     FORGET = "Olvidar personaje",
-    RAID_MC = "Núcleo de Magma",
     RAID_ONY = "Guarida de Onyxia",
-    RAID_BWL = "Guarida Alanegra",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Cumbre de Roca Negra Superior",
     RAID_BRD = "Profundidades de Roca Negra",
     RAID_SCHOLO = "Scholomance",
     RAID_MARA = "Maraudon",
-    LATER = "aún no en Forever",
 }
 
 T.fr = {
@@ -70,15 +58,11 @@ T.fr = {
     NEXT = "Suivant :",
     WHERE = "%s, %s",
     FORGET = "Oublier le personnage",
-    RAID_MC = "Cœur du Magma",
     RAID_ONY = "Repaire d'Onyxia",
-    RAID_BWL = "Repaire de l'Aile noire",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Pic Rochenoire supérieur",
     RAID_BRD = "Profondeurs de Rochenoire",
     RAID_SCHOLO = "Scholomance",
     RAID_MARA = "Maraudon",
-    LATER = "pas encore dans Forever",
 }
 
 T.pl = {
@@ -88,15 +72,11 @@ T.pl = {
     NEXT = "Dalej:",
     WHERE = "%s, %s",
     FORGET = "Zapomnij postać",
-    RAID_MC = "Molten Core",
     RAID_ONY = "Onyxia's Lair",
-    RAID_BWL = "Blackwing Lair",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Upper Blackrock Spire",
     RAID_BRD = "Blackrock Depths",
     RAID_SCHOLO = "Scholomance",
     RAID_MARA = "Maraudon",
-    LATER = "jeszcze nie w Forever",
 }
 
 T.pt = {
@@ -106,15 +86,11 @@ T.pt = {
     NEXT = "Próximo:",
     WHERE = "%s, %s",
     FORGET = "Esquecer personagem",
-    RAID_MC = "Núcleo Derretido",
     RAID_ONY = "Covil da Onyxia",
-    RAID_BWL = "Covil Asa Negra",
-    RAID_NAXX = "Naxxramas",
     RAID_UBRS = "Pico da Rocha Negra Superior",
     RAID_BRD = "Abismo Rocha Negra",
     RAID_SCHOLO = "Scolomântia",
     RAID_MARA = "Maraudon",
-    LATER = "ainda não no Forever",
 }
 
 T.ru = {
@@ -124,15 +100,11 @@ T.ru = {
     NEXT = "Дальше:",
     WHERE = "%s, %s",
     FORGET = "Забыть персонажа",
-    RAID_MC = "Огненные Недра",
     RAID_ONY = "Логово Ониксии",
-    RAID_BWL = "Логово Крыла Тьмы",
-    RAID_NAXX = "Наксрамас",
     RAID_UBRS = "Верхняя часть пика Черной горы",
     RAID_BRD = "Глубины Черной горы",
     RAID_SCHOLO = "Некроситет",
     RAID_MARA = "Мародон",
-    LATER = "пока нет в Forever",
 }
 
 T.zh = {
@@ -142,15 +114,11 @@ T.zh = {
     NEXT = "下一步：",
     WHERE = "%s，%s",
     FORGET = "忘记角色",
-    RAID_MC = "熔火之心",
     RAID_ONY = "奥妮克希亚的巢穴",
-    RAID_BWL = "黑翼之巢",
-    RAID_NAXX = "纳克萨玛斯",
     RAID_UBRS = "黑石塔上层",
     RAID_BRD = "黑石深渊",
     RAID_SCHOLO = "通灵学院",
     RAID_MARA = "玛拉顿",
-    LATER = "Forever 中尚未开放",
 }
 
 ns.T = T

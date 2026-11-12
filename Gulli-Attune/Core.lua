@@ -8,9 +8,9 @@ local L = ns.L
 -- Steps: quest id, English quest name (the game's own name is used when it knows the quest),
 -- who starts it (English name) and the area id of where (the game names it in your language).
 -- anyOf: one of these quests is enough. Ids and names come from the QuestieDB Forever data.
--- Order is the order in the window: what WoW Forever has now first, then the dungeon keys,
--- then the raids Forever has not opened yet (later = true).
-local BRM, BRD, LBRS, SW, BURNING = 25, 1584, 1583, 1519, 46
+-- Only what WoW Forever has: a raid or dungeon that is not in Forever does not belong here.
+-- Order is the order in the window: raids first, then the dungeon keys.
+local BRD, LBRS, SW, BURNING = 1584, 1583, 1519, 46
 local WPL, TIRISFAL, TANARIS, DESOLACE, MARAUDON = 28, 85, 440, 405, 2100
 ns.RAIDS = {
     { key = "ONY", area = 2159, faction = "Alliance", item = 16309, steps = {
@@ -79,16 +79,6 @@ ns.RAIDS = {
     { key = "MARA", area = MARAUDON, item = 17191, steps = {
         { 7044, "Legends of Maraudon", "Cavindra", DESOLACE },
         { 7046, "The Scepter of Celebras", "Celebras the Redeemed", MARAUDON },
-    } },
-    -- Not open in WoW Forever yet (December 2026: The Barrow Deeps, Hyjal Summit and Onyxia only).
-    { key = "MC", area = 2717, later = true, steps = {
-        { 7848, "Attunement to the Core", "Lothos Riftwaker", BRM },
-    } },
-    { key = "BWL", area = 2677, later = true, steps = {
-        { 7761, "Blackhand's Command", "Blackhand's Command", LBRS },
-    } },
-    { key = "NAXX", area = 3456, later = true, steps = {
-        { 9121, "The Dread Citadel - Naxxramas", "Archmage Angela Dosantos", 139, anyOf = { 9121, 9122, 9123 } },
     } },
 }
 
