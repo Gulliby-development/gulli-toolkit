@@ -28,7 +28,7 @@ You are about to run a dungeon. Did you take all its quests? Gulli Dungeon Prep 
 - **Search and hide.** Find a quest by its name, its quest giver or a mob it needs. Right-click a quest to hide it. **Hide not yet** folds the quests you cannot take yet.
 - **Quest colours.** Each quest shows its level in the same colours, and says if it is hard or easy for you.
 - **Three lists.** Quests in your log, quests to pick up on the way, and quests for later (with the level or the quest you need first).
-- **A checklist.** Gear durability, free bag slots, food and drink, and your hearthstone. It also checks the dungeon key (the Scarlet Key, the Workshop Key and others) and what your class brings along: arrows or bullets, soul shards, or your reagent. You set the limits on the **Settings** tab.
+- **A checklist.** Gear durability, free bag slots, food and drink, and your hearthstone. It also checks the dungeon key (the Scarlet Key, the Workshop Key and others) and what your class brings along: arrows or bullets, soul shards, or your reagent. With Gulli Restock, it also says what your restock list misses. You set the limits on the **Settings** tab.
 - **Quest data built in.** It comes from the QuestieDB data for WoW Forever.
 
 ## Install

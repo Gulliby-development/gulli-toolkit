@@ -14,7 +14,7 @@ local ICON_OK, ICON_NO = "Interface\\RaidFrame\\ReadyCheck-Ready", "Interface\\R
 -- The game icon of each check in ns.Checklist; keys and class items show their own icon.
 local CHECK_ICON = { REPAIR = "Trade_BlackSmithing", BAGS = "INV_Misc_Bag_10", FOOD = "INV_Misc_Food_14",
                      HEARTH = "INV_Misc_Rune_01", AMMO = "INV_Ammo_Arrow_02", KEY = "INV_Misc_Key_04",
-                     SHARDS = "INV_Misc_Gem_Amethyst_02", REAGENT = "INV_Misc_Dust_02" }
+                     SHARDS = "INV_Misc_Gem_Amethyst_02", REAGENT = "INV_Misc_Dust_02", RESTOCK = "INV_Misc_Bag_08" }
 local MAX_CHECKS, CHECK_ROW = 8, 34
 local REWARD_ICONS = 3
 

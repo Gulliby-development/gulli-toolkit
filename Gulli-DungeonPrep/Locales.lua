@@ -85,6 +85,8 @@ T.en = {
     PIN_ENTRANCE = "Entrance",
     HIDE_LATER = "Hide not yet",
     SEARCH = "Search",
+    CHECK_RESTOCK_OK = "Restock list complete",
+    CHECK_RESTOCK = "Short: %s",
 }
 
 T.de = {
@@ -163,6 +165,8 @@ T.de = {
     PIN_ENTRANCE = "Eingang",
     HIDE_LATER = "Später aus",
     SEARCH = "Suchen",
+    CHECK_RESTOCK_OK = "Vorratsliste vollständig",
+    CHECK_RESTOCK = "Fehlt: %s",
 }
 
 T.es = {
@@ -241,6 +245,8 @@ T.es = {
     PIN_ENTRANCE = "Entrada",
     HIDE_LATER = "Ocultar",
     SEARCH = "Buscar",
+    CHECK_RESTOCK_OK = "Lista de reposición completa",
+    CHECK_RESTOCK = "Falta: %s",
 }
 
 T.fr = {
@@ -319,6 +325,8 @@ T.fr = {
     PIN_ENTRANCE = "Entrée",
     HIDE_LATER = "Masquer",
     SEARCH = "Chercher",
+    CHECK_RESTOCK_OK = "Liste de réassort complète",
+    CHECK_RESTOCK = "Manque : %s",
 }
 
 T.pl = {
@@ -397,6 +405,8 @@ T.pl = {
     PIN_ENTRANCE = "Wejście",
     HIDE_LATER = "Ukryj",
     SEARCH = "Szukaj",
+    CHECK_RESTOCK_OK = "Lista zapasów pełna",
+    CHECK_RESTOCK = "Brakuje: %s",
 }
 
 T.pt = {
@@ -475,6 +485,8 @@ T.pt = {
     PIN_ENTRANCE = "Entrada",
     HIDE_LATER = "Ocultar",
     SEARCH = "Buscar",
+    CHECK_RESTOCK_OK = "Lista de reposição completa",
+    CHECK_RESTOCK = "Falta: %s",
 }
 
 T.ru = {
@@ -553,6 +565,8 @@ T.ru = {
     PIN_ENTRANCE = "Вход",
     HIDE_LATER = "Скрыть",
     SEARCH = "Поиск",
+    CHECK_RESTOCK_OK = "Запасы в норме",
+    CHECK_RESTOCK = "Не хватает: %s",
 }
 
 T.zh = {
@@ -631,6 +645,8 @@ T.zh = {
     PIN_ENTRANCE = "入口",
     HIDE_LATER = "隐藏",
     SEARCH = "搜索",
+    CHECK_RESTOCK_OK = "补货清单已齐",
+    CHECK_RESTOCK = "缺少:%s",
 }
 
 ns.T = T

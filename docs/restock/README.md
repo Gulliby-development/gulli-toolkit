@@ -18,10 +18,17 @@ Out of candles before a raid? Gulli Restock remembers how many reagents, arrows 
 
 ## Features
 
-- **Your list per character.** Drop an item on the window and set how many to keep.
+- **Your list per character, in sets.** Keep one list for levelling and one for a raid. Switch with one tap or `/grs set`.
+- **Add things your way.** Drop an item on the window, Shift-click its link into the box, type its number, or type `/grs add <item> 20`.
+- **"Best for my level".** Water, food, arrows and bullets: Restock counts every kind you carry and buys the best one the vendor has for your level.
 - **Class reagents in one tap.** Candles, powders, runes, symbols, seeds and more, for your class and level.
-- **A list before it buys.** At a vendor you see what it would buy and the cost. Only **Buy** buys. Or tick the box to buy at once.
-- **A warning** in chat when an item drops to a quarter.
+- **A list before it buys.** At a vendor you see what it would buy and the cost. Untick a line or change the number. Only **Buy** buys. Or tick the box to buy at once. Hold **Shift** to skip one visit.
+- **It knows your limits.** It buys only what fits in your bags, and it keeps the gold you set aside.
+- **This vendor tab.** Food, drink, reagents and ammo the open vendor sells, one tap to add them to the list.
+- **Quick buy.** Alt+click an item at the vendor: buy up to what fits in your bags and your purse.
+- **The bank, too.** At the bank it takes what the bags miss out of the bank. With a switch, it also puts the surplus into the bank.
+- **A warning in time.** In chat when an item drops to a quarter, or (forecast) when it lasts less than two hours at the speed you use it.
+- **Works with DungeonPrep.** Its checklist shows what your list still misses.
 
 ## Install
 
@@ -31,9 +38,9 @@ Out of candles before a raid? Gulli Restock remembers how many reagents, arrows 
 
 ## How to use it
 
-1. Type `/grs`. Press **Add class reagents** or drop an item on the window.
+1. Type `/grs`. Press **Add class reagents**, a **+** button for water, food or ammo, or drop an item on the window.
 2. Set the number to keep.
-3. Open a vendor that sells it and press **Buy**.
+3. Open a vendor that sells it and press **Buy**. At the bank, press **OK** to take what is missing.
 
 ## FAQ
 
@@ -41,6 +48,12 @@ Out of candles before a raid? Gulli Restock remembers how many reagents, arrows 
 <summary><b>It buys nothing</b></summary>
 
 The vendor must sell the item for gold. Items for tokens or marks are left out.
+</details>
+
+<details>
+<summary><b>It bought less than my list says</b></summary>
+
+The line in the list tells you why: the bags were full, or the gold you keep aside (Settings) was reached.
 </details>
 
 <details>

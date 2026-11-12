@@ -333,6 +333,14 @@ S.craftprofit.recipes = { spec = S.craftprofit.default.spec, before = S.craftpro
 S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 
+S.craftprofit.auction = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.atAH = true; ns.Select(2) end }
+S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
+    end }
+
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
                        { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
@@ -423,6 +431,20 @@ S.instancelimit = { default = { spec = { name = "Gulliby" },
     end,
 }, settings = { open = function(ns) ns.ShowPage(2) end } }
 
+local RESTOCK_SPEC = { level = 42, class = "MAGE", money = 254000,
+    bags = { [17031] = 3, [17032] = 8, [17020] = 34, [1708] = 12, [4599] = 30, [8766] = 0 },
+    bank = { [17020] = 40, [17031] = 10 },
+    items = { [17031] = { stack = 20, classID = 5 }, [17032] = { stack = 20, classID = 5 },
+              [17020] = { stack = 20, classID = 5 }, [4599] = { stack = 20, classID = 0 } },
+    vendor = { { 17031, 1000 }, { 17032, 2000 }, { 17020, 1000 }, { 1708, 200, 5 }, { 1645, 400, 5 }, { 3927, 500, 5 },
+               { 8766, 800, 5 } },
+    char = { sets = { Main = { [17031] = 10, [17032] = 10, [17020] = 40, ["best:water"] = 40, [4599] = 20 },
+                      Raid = { [17020] = 60 } }, set = "Main" } }
+S.restock = { default = { spec = RESTOCK_SPEC, open = function(ns) ns.Toggle() end },
+    vendor = { spec = RESTOCK_SPEC, open = function(ns) ns.atVendor = true; ns.Toggle(); ns.ShowTab(2) end },
+    settings = { spec = RESTOCK_SPEC, open = function(ns) ns.Toggle(); ns.ShowTab(3) end },
+    plan = { spec = RESTOCK_SPEC, crop = "GulliRestockPlan", open = function(ns) ns.atVendor = true; ns.ShowPlan(ns.Plan()) end },
+}
 S.social = { default = {}, recent = { spec = { group = { 3, true } },
     open = function(ns, W)
         ns.db.blockStrangers, ns.db.noDuels = true, true

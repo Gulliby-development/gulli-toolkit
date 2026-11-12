@@ -157,6 +157,20 @@ test("checklist: gear, bags, food and drink, hearthstone", function()
     eq(c[4].ok, false); eq(c[4].text, "Hearthstone in 44 min")
 end)
 
+test("checklist: what Gulli Restock misses", function()
+    Fake({})
+    local ns = Load()
+    eq(#ns.Checklist(), 4, "no line without Restock")
+    GulliRestock = { Missing = function() return { { name = "Water", have = 5, want = 20 } } end }
+    local c = ns.Checklist()
+    eq(c[5].key, "RESTOCK"); eq(c[5].ok, false); eq(c[5].text, "Short: Water 5/20")
+    GulliRestock.Missing = function() return {} end
+    eq(ns.Checklist()[5].ok, true)
+    ns.Toggle()
+    ns.Refresh()
+    GulliRestock = nil
+end)
+
 test("rewards: which fit the class and which beat what is worn", function()
     Fake({ level = 22, items = {
         [2041] = { "Tunic of Westfall", 2, 26, "INV_CHEST_MAIL", 4, 2 },   -- leather tunic

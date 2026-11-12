@@ -33,7 +33,7 @@ local PERMANENT = {
 -- Generated from QuestieDB (Data.lua): which quests ask for each quest item, who can
 -- still take them, and quest items that stay useful after their quest.
 local function data()
-    return ns.Data or { need = {}, quest = {}, keep = {}, itemStart = {}, chain = {}, class = {} }
+    return ns.Data or { need = {}, quest = {}, keep = {}, itemStart = {}, chain = {}, class = {}, start = {}, giver = {} }
 end
 
 -- Account-wide: what to clean and what to protect, items the player kept.
@@ -41,6 +41,7 @@ local function db()
     GulliQuestCleanerDB = GulliQuestCleanerDB or {}
     local d = GulliQuestCleanerDB
     d.keep = d.keep or {}
+    d.keepQuests = d.keepQuests or {} -- quest id -> title: quests the player unticked
     return d
 end
 ns.db = db
@@ -72,10 +73,23 @@ local function entry(index)
     if C_QuestLog and C_QuestLog.GetInfo then
         local info = C_QuestLog.GetInfo(index)
         if not info then return nil end
-        return info.title, info.level, info.isHeader, info.isHidden, info.questID
+        return info.title, info.level, info.isHeader, info.isHidden, info.questID, info.suggestedGroup
     end
-    local title, level, _, isHeader, _, _, _, questID = GetQuestLogTitle(index)
-    return title, level, isHeader, false, questID
+    local title, level, group, isHeader, _, _, _, questID = GetQuestLogTitle(index)
+    return title, level, isHeader, false, questID, tonumber(group)
+end
+
+-- "complete" when the objectives are done, "failed" when the quest failed, else nil.
+local function questState(questID, index)
+    if C_QuestLog and C_QuestLog.IsFailed and C_QuestLog.IsFailed(questID) then return "failed" end
+    if C_QuestLog and C_QuestLog.IsComplete then
+        if C_QuestLog.IsComplete(questID) then return "complete" end
+        return nil
+    end
+    if GetQuestLogTitle then
+        local c = select(7, GetQuestLogTitle(index))
+        if c == 1 then return "complete" elseif c == -1 then return "failed" end
+    end
 end
 
 -- Every quest in the log: { questID, title, level, index, zone, zoneOrder }. The zone is
@@ -84,12 +98,13 @@ function ns.Quests()
     local out = {}
     local zone, zoneOrder = nil, 0
     for i = 1, numEntries() do
-        local title, level, isHeader, isHidden, questID = entry(i)
+        local title, level, isHeader, isHidden, questID, group = entry(i)
         if isHeader then
             zone, zoneOrder = title, zoneOrder + 1
         elseif title and not isHidden and questID and questID > 0 then
             out[#out + 1] = { questID = questID, title = title, level = level or 0, index = i,
-                              zone = zone or "", zoneOrder = zoneOrder }
+                              zone = zone or "", zoneOrder = zoneOrder, group = group or 0,
+                              state = questState(questID, i) }
         end
     end
     return out
@@ -114,15 +129,29 @@ end
 local TAG_GROUP, TAG_RAID, TAG_DUNGEON = 1, 62, 81
 local TAG_RAID10, TAG_RAID25 = 88, 89
 
--- Why a quest is never planned, as a setting key, or nil.
-local function protectedBy(questID)
+-- Why a quest is never planned, as a setting key, or nil. q is a quest of ns.Quests.
+-- Group quests follow keepElite in saves from before keepGroup existed.
+local function protectedBy(q)
     local d = db()
+    local questID = q.questID
+    if d.keepQuests[questID] then return "locked" end
+    if d.keepComplete ~= false and q.state == "complete" then return "keepComplete" end
     if d.keepClass ~= false and data().class[questID] then return "keepClass" end
     local tag, elite = questTag(questID)
     if d.keepDungeon ~= false and (tag == TAG_DUNGEON or tag == TAG_RAID or tag == TAG_RAID10 or tag == TAG_RAID25) then
         return "keepDungeon"
     end
-    if d.keepElite ~= false and (elite or tag == TAG_GROUP) then return "keepElite" end
+    if d.keepElite ~= false and elite then return "keepElite" end
+    local keepGroup = d.keepGroup
+    if keepGroup == nil then keepGroup = d.keepElite ~= false end
+    if keepGroup and (tag == TAG_GROUP or (q.group or 0) > 1) then return "keepGroup" end
+end
+ns.ProtectedBy = protectedBy
+
+-- The highest quest level that is green for the player: below yellow (two levels under
+-- the player's own), above gray.
+function ns.GreenLevel()
+    return math.max(1, (UnitLevel("player") or 1) - 3)
 end
 
 -- The highest quest level that is gray (trivial) for the player.
@@ -268,10 +297,34 @@ local function canTake(questID)
     return true
 end
 
--- Quest items in the bags: { bag, slot, itemID, link, name, count, icon, starts }.
+-- The bank's containers while the bank is open: the bank tabs of the newer client, else
+-- the old bank (-1) and its bag slots.
+local function bankBags()
+    if not ns.atBank then return {} end
+    local B = Enum and Enum.BagIndex
+    if B and B.CharacterBankTab_1 then
+        local out = {}
+        for i = 1, 6 do
+            local b = B["CharacterBankTab_" .. i]
+            if b then out[#out + 1] = b end
+        end
+        return out
+    end
+    local out = { BANK_CONTAINER or -1 }
+    local first = (NUM_BAG_SLOTS or 4) + 1
+    for b = first, first + (NUM_BANKBAGSLOTS or 7) - 1 do out[#out + 1] = b end
+    return out
+end
+ns.BankBags = bankBags
+
+-- Quest items in the bags (and the bank while it is open):
+-- { bag, slot, itemID, link, name, count, icon, starts, bank }.
 local function bagQuestItems()
     local out = {}
-    for bag = 0, lastBag() do
+    local bags, bank = {}, {}
+    for bag = 0, lastBag() do bags[#bags + 1] = bag end
+    for _, bag in ipairs(bankBags()) do bags[#bags + 1] = bag; bank[bag] = true end
+    for _, bag in ipairs(bags) do
         for slot = 1, numSlots(bag) do
             local id, link, count, _, icon, name = slotInfo(bag, slot)
             if id then
@@ -279,7 +332,7 @@ local function bagQuestItems()
                 if classOf(id) == ITEM_CLASS_QUEST or isQuestItem or startsQuest then
                     name = name or (link and link:match("%[(.-)%]")) or ""
                     out[#out + 1] = { bag = bag, slot = slot, itemID = id, link = link, name = name,
-                                      count = count or 1, icon = icon, starts = startsQuest }
+                                      count = count or 1, icon = icon, starts = startsQuest, bank = bank[bag] }
                 end
             end
         end
@@ -291,11 +344,21 @@ end
 
 -- Quests at or below maxLevel, except the kinds the player protects. A quest that an
 -- item started is hard to take again, so it starts unticked; a quest in a chain gets a mark.
-function ns.PlanQuests(maxLevel)
+-- opts.zone keeps only the quests of that quest log zone. A failed quest is planned at any
+-- level (unless the player locked it), since it cannot be finished.
+function ns.PlanQuests(maxLevel, opts)
+    opts = opts or {}
     local out = {}
     local D = data()
+    local failed = db().offerFailed ~= false
     for _, q in ipairs(ns.Quests()) do
-        if q.level > 0 and q.level <= maxLevel and not protectedBy(q.questID) then
+        local inZone = not opts.zone or q.zone == opts.zone
+        local why = protectedBy(q)
+        if inZone and failed and q.state == "failed" and why ~= "locked" then
+            q.warn = "TAG_FAILED"
+            q.checked = true
+            out[#out + 1] = q
+        elseif inZone and q.level > 0 and q.level <= maxLevel and not why then
             if D.itemStart[q.questID] then
                 q.warn = "TAG_ITEM"
             elseif D.chain[q.questID] then
@@ -312,6 +375,16 @@ function ns.PlanQuests(maxLevel)
         return a.title < b.title
     end)
     return out
+end
+
+-- Where a quest starts: "NPC name (zone)", or nil when the data does not know.
+function ns.WhereToTake(questID)
+    local D = data()
+    local g = D.start and D.giver and D.start[questID] and D.giver[D.start[questID]]
+    if not g then return nil end
+    local zone = g[2] and g[2] > 0 and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(g[2])
+    if zone and zone ~= "" then return L.WHERE:format(g[1], zone) end
+    return g[1]
 end
 
 -- The planned quests grouped by zone, in plan order: { { name, quests = {...} }, ... }.
@@ -463,6 +536,8 @@ function ns.Run(quests, items)
             abandon(q)
             abandoned = abandoned + 1
             last.quests[#last.quests + 1] = q.title
+            last.where = last.where or {}
+            last.where[#last.quests] = ns.WhereToTake(q.questID)
         end
     end
     for _, it in ipairs(items or {}) do
@@ -471,7 +546,7 @@ function ns.Run(quests, items)
             if id == it.itemID and not locked then
                 last.items[#last.items + 1] = it.name
             end
-            if id == it.itemID and not locked and ns.atMerchant and sellPrice(it.itemID) > 0 then
+            if id == it.itemID and not locked and ns.atMerchant and not it.bank and sellPrice(it.itemID) > 0 then
                 useItem(it.bag, it.slot)
                 sold = sold + 1
             elseif id == it.itemID and not locked then
@@ -530,8 +605,23 @@ f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("MERCHANT_SHOW")
 f:RegisterEvent("MERCHANT_CLOSED")
 f:RegisterEvent("QUEST_ACCEPTED")
+f:RegisterEvent("BANKFRAME_OPENED")
+f:RegisterEvent("BANKFRAME_CLOSED")
+f:RegisterEvent("QUEST_LOG_UPDATE")
+f:RegisterEvent("BAG_UPDATE_DELAYED")
+f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function(_, event, name)
-    if event == "MERCHANT_SHOW" then
+    if event == "BANKFRAME_OPENED" then
+        ns.atBank = true
+    elseif event == "BANKFRAME_CLOSED" then
+        ns.atBank = false
+    elseif event == "QUEST_LOG_UPDATE" or event == "BAG_UPDATE_DELAYED" then
+        ns.verdicts = nil
+    elseif event == "PLAYER_LOGIN" then
+        ns.HookTooltip()
+        ns.AddQuestLogButton()
+        ns.ApplyKey()
+    elseif event == "MERCHANT_SHOW" then
         ns.atMerchant = true
     elseif event == "MERCHANT_CLOSED" then
         ns.atMerchant = false
@@ -554,7 +644,10 @@ local function printLast()
         return
     end
     ns.Print(L.LAST:format(#last.quests, #last.items))
-    for _, t in ipairs(last.quests) do print("  " .. t) end
+    for i, t in ipairs(last.quests) do
+        local where = last.where and last.where[i]
+        print("  " .. t .. (where and ("  |cff999999" .. L.TAKE_AGAIN:format(where) .. "|r") or ""))
+    end
     for _, t in ipairs(last.items) do print("  " .. t) end
 end
 
@@ -564,7 +657,10 @@ SlashCmdList.GULLIQUESTCLEANER = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
     if msg == "reset" then
         wipe(db().keep)
+        wipe(db().keepQuests)
         ns.Print(L.KEEP_RESET)
+    elseif msg == "zone" then
+        ns.OpenForZone()
     elseif msg == "last" then
         printLast()
     elseif msg == "help" then
@@ -578,6 +674,125 @@ function GulliQuestCleaner_Toggle()
     ns.Toggle()
 end
 
+---- Tooltip -------------------------------------------------------------------
+
+-- Why the cleaner keeps or offers a quest item, for its tooltip: { key, text } or nil for
+-- an item that is not a quest item. Built once per quest log or bag change.
+local function buildVerdicts()
+    local D = data()
+    local quests = ns.Quests()
+    local logged = {}
+    for _, q in ipairs(quests) do logged[q.questID] = q end
+    local per = {}
+    for _, q in ipairs(quests) do
+        local text, ids = {}, {}
+        questNeeds(q, text, ids)
+        per[#per + 1] = { q = q, blob = table.concat(text, "\n"):lower(), ids = ids }
+    end
+    ns.verdicts = { per = per, logged = logged, D = D }
+    return ns.verdicts
+end
+
+function ns.ItemVerdict(itemID, name)
+    if not itemID then return nil end
+    local starts
+    local D = data()
+    if classOf(itemID) ~= ITEM_CLASS_QUEST and not D.need[itemID] then return nil end
+    local keep = db().keep
+    local protected = GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(itemID)
+    if PERMANENT[itemID] or D.keep[itemID] or keep[itemID] or protected then return { "TT_KEPT" } end
+    local v = ns.verdicts or buildVerdicts()
+    for _, qid in ipairs(D.need[itemID] or {}) do
+        if v.logged[qid] then return { "TT_NEEDED", v.logged[qid].title } end
+    end
+    local it = { itemID = itemID, name = name or "" }
+    for _, e in ipairs(v.per) do
+        if needed(it, e.blob, e.ids) then return { "TT_NEEDED", e.q.title } end
+    end
+    for _, qid in ipairs(D.need[itemID] or {}) do
+        if canTake(qid) then
+            local t = C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(qid)
+            return { "TT_LATER", t or ("#" .. qid) }
+        end
+    end
+    return { "TT_OFFER" }
+end
+
+local function addVerdict(tt, itemID)
+    if db().tooltip == false or not itemID then return end
+    local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID))
+        or (GetItemInfo and GetItemInfo(itemID))
+    local v = ns.ItemVerdict(itemID, name)
+    if not v then return end
+    local text = v[2] and L[v[1]]:format(v[2]) or L[v[1]]
+    local good = v[1] ~= "TT_OFFER"
+    tt:AddLine("Quest Cleaner: " .. text, good and 0.42 or 1, good and 0.84 or 0.72, good and 0.5 or 0.3, true)
+    tt:Show()
+end
+
+local hooked = false
+function ns.HookTooltip()
+    if hooked then return end
+    hooked = true
+    if TooltipDataProcessor and Enum and Enum.TooltipDataType then
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, d)
+            if d then addVerdict(tt, d.id) end
+        end)
+    elseif GameTooltip and GameTooltip.HookScript then
+        GameTooltip:HookScript("OnTooltipSetItem", function(tt)
+            local _, link = tt:GetItem()
+            addVerdict(tt, link and tonumber(link:match("item:(%d+)")))
+        end)
+    end
+end
+
+---- Quest log button and key ---------------------------------------------------
+
+-- Opens the window and plans only the quests of the zone the player is in.
+function ns.OpenForZone(zone)
+    ns.oneZone = zone or (GetRealZoneText and GetRealZoneText()) or nil
+    local w = ns.Window()
+    if not w:IsShown() then ns.Toggle() end
+    if ns.Clear then ns.Clear() end
+end
+
+-- A small button on the game's quest log that opens the preview for this zone.
+function ns.AddQuestLogButton()
+    local parent = _G.QuestLogFrame or (_G.QuestMapFrame and _G.WorldMapFrame)
+    if not parent or ns.logButton or not ns.Skin then return ns.logButton end
+    local b = ns.Skin.FitButton(parent, L.LOG_BUTTON, 22, 60)
+    b:SetFrameStrata("HIGH")
+    if parent == _G.QuestLogFrame then
+        b:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -60, -16)
+    else
+        b:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -70, -2)
+    end
+    b:SetScript("OnClick", function() ns.OpenForZone() end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(L.LOG_BUTTON_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ns.logButton = b
+    return b
+end
+
+-- The key that opens the window, through an override binding on a hidden button (an addon
+-- may not add to the game's Key Bindings list without an XML file).
+function ns.ApplyKey()
+    if InCombatLockdown and InCombatLockdown() then return end
+    if not ns.keyButton then
+        ns.keyButton = CreateFrame("Button", "GulliQuestCleanerKey", UIParent)
+        ns.keyButton:SetScript("OnClick", function() ns.Toggle() end)
+    end
+    if ClearOverrideBindings then ClearOverrideBindings(ns.keyButton) end
+    local key = db().key
+    if key and key ~= "" and SetOverrideBindingClick then
+        SetOverrideBindingClick(ns.keyButton, true, key, "GulliQuestCleanerKey")
+    end
+end
+
 -- In the Gulli Toolkit hub when it is installed; the addon works the same without it.
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
@@ -586,5 +801,23 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gqc",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        options = {
+            { label = L.KEEP_COMPLETE, tip = L.KEEP_COMPLETE_D, icon = "Interface\\Icons\\INV_Misc_Book_09",
+              get = function() return db().keepComplete ~= false end, set = function(v) db().keepComplete = v and true or false end },
+            { label = L.OPT_TOOLTIP, tip = L.OPT_TOOLTIP_D, icon = "Interface\\Icons\\INV_Misc_Note_01",
+              get = function() return db().tooltip ~= false end, set = function(v) db().tooltip = v and true or false end },
+        },
+        summary = function()
+            local n, max = #ns.Quests(), ns.MaxQuests()
+            if max - n > 2 then return nil end
+            return L.SUM_FULL:format(n, max)
+        end,
+        reset = function()
+            local d = db()
+            for _, k in ipairs({ "quests", "items", "keepClass", "keepDungeon", "keepElite", "keepGroup",
+                                 "keepComplete", "offerFailed", "zoneOnly", "tooltip" }) do d[k] = nil end
+            d.quests, d.items = true, true
+            if ns.ApplyTexts and ns.frameBuilt then ns.ApplyTexts() end
+        end,
     })
 end

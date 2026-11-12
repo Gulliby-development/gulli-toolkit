@@ -22,6 +22,7 @@ ns.STOP_ICONS = {
     bank = "Interface\\Minimap\\Tracking\\Banker", ah = "Interface\\Minimap\\Tracking\\Auctioneer",
     vendor = "Interface\\Icons\\INV_Misc_Bag_11", trainer = "Interface\\Icons\\INV_Misc_Book_11",
     craft = "Interface\\Icons\\Trade_Tailoring", sell = "Interface\\Icons\\INV_Misc_Coin_02",
+    mail = "Interface\\Icons\\INV_Letter_15", gather = "Interface\\Icons\\Trade_Herbalism",
 }
 local PATTERN_ICON = "Interface\\Icons\\INV_Scroll_03"
 local RANK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
@@ -161,7 +162,7 @@ local function buildSide(scroll)
     local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, budget })
     st:Add(c0, h0)
 
-    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"),
+    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
         stepRow(col, "maxBuy", 10, 10, 200, function(v) return L.UNITS:format(v) end), sw("buyVendor") })
     st:Add(c1, h1)
     local c2, h2 = rowsCard(col, L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") })
@@ -170,6 +171,26 @@ local function buildSide(scroll)
         stepRow(col, "chance", 5, 30, 100, function(v) return v .. "%" end),
         stepRow(col, "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end) })
     st:Add(c3, h3)
+
+    -- the run log: what the plan promised against what the run really did
+    local log = S.Card(col, L.SIDE_LOG)
+    ui.logBtn = S.Button(log.body, inner - 2 * S.INSET, 30)
+    ui.logBtn:SetPoint("TOPLEFT")
+    ui.logBtn:SetScript("OnClick", function()
+        if ns.char.run then
+            local e = ns.FinishRun()
+            if e then ns.Print(ns.LogLine(e)) end
+        else
+            ns.StartRun()
+        end
+        ns.Refresh()
+    end)
+    ui.logText = S.Text(log.body, 11, S.MUTED)
+    ui.logText:SetPoint("TOPLEFT", 0, -38)
+    ui.logText:SetPoint("RIGHT", 0, 0)
+    ui.logText:SetJustifyH("LEFT")
+    ui.logText:SetWordWrap(true)
+    st:Add(log, log:Fit(38 + 4 * 30))
     ui.sideCards = st.items
     col:SetHeight(st:Height())
     scroll:Update(st:Height())
@@ -183,6 +204,14 @@ local function refreshSide()
         ui[key].plus:SetEnabled(P.level and true or false)
     end
     for _, s in pairs(ui.steppers) do s:Refresh() end
+    if ui.logBtn and ns.char then
+        local run = ns.char.run
+        ui.logBtn:SetText(run and L.LOG_FINISH or L.LOG_START)
+        local lines = {}
+        if run then lines[#lines + 1] = L.LOG_RUNNING:format(run.from, run.to, ns.Money(run.net, true)) end
+        for i = 1, math.min(3, #ns.char.log) do lines[#lines + 1] = ns.LogLine(ns.char.log[i]) end
+        ui.logText:SetText(#lines > 0 and table.concat(lines, "\n") or L.LOG_EMPTY)
+    end
     local d = ns.view.delta
     if d then
         local up = d.net >= 0
@@ -386,7 +415,7 @@ local function drawGraph()
 end
 
 local SRC = { bank = "SRC_bank", ah = "SRC_ah", vendor = "SRC_vendor", trainer = "SRC_trainer", prep = "SRC_prep",
-              sellah = "SRC_sellah", sellv = "SRC_sellv" }
+              sellah = "SRC_sellah", sellv = "SRC_sellv", mail = "SRC_mail", alts = "SRC_alts", gather = "SRC_gather" }
 
 -- The rows under the graph for the chosen stop.
 local function detailRows(n)
@@ -396,7 +425,7 @@ local function detailRows(n)
     -- a craft: the recipe with its skill stretch, then each reagent on its own row
     for _, sg in ipairs(n.segs or {}) do
         local r = st.recipes[sg.rid]
-        rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
+        rows[#rows + 1] = { rid = sg.rid, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(segColor(sg.color)) .. r.name .. "|r x" .. ns.Ceil(sg.n),
                             mid = sg.from .. " - " .. sg.to, right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
         local ids = {}
@@ -405,21 +434,52 @@ local function detailRows(n)
         for _, id in ipairs(ids) do
             local it = st.items[id] or {}
             local k = ns.Ceil(r.r[id] * sg.n)
-            rows[#rows + 1] = { icon = ns.ItemIcon(id), q = it.quality, text = "   " .. (it.name or tostring(id)) .. " x" .. k,
-                                mid = L.REAGENT, right = "" }
+            rows[#rows + 1] = { id = id, icon = ns.ItemIcon(id), q = it.quality, text = "   " .. (it.name or tostring(id)) .. " x" .. k,
+                                mid = it.gather and L.SRC_gather or L.REAGENT, right = "" }
         end
     end
     for _, l in ipairs(n.lines or {}) do
         local icon, q = lineIcon(l)
         local name = l.rank and L.STOP_RANK:format(l.rank) or l.name
         local mid = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
-        rows[#rows + 1] = { icon = icon, n = l.n, q = q, text = name .. " x" .. l.n, mid = mid,
+        if l.src == "alts" then mid = L.SRC_alts:format(l.who or "?") end
+        if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then mid = L.SRC_LADDER end
+        rows[#rows + 1] = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, n = l.n, q = q,
+                            text = name .. " x" .. l.n, mid = mid,
                             right = l.price and ns.Money(l.price * l.n) or "" }
     end
     return rows
 end
 
 local function makeLine(r)
+    -- a click on a recipe opens it in the profession window; a right-click on a reagent marks it
+    -- as gathered (the plan stops buying it)
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    r.click:SetScript("OnClick", function(_, button)
+        local e = r.entry
+        if not e then return end
+        if button == "RightButton" and e.id then
+            ns.SetGather(e.id, not ns.db.gather[e.id])
+        elseif e.rid then
+            if not ns.OpenRecipe(e.rid) then ns.Print(L.OPEN_PROF) end
+        end
+    end)
+    r.click:SetScript("OnEnter", function(self)
+        local e = r.entry
+        if not e or not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if e.id then
+            GameTooltip:SetItemByID(e.id)
+            GameTooltip:AddLine(ns.db.gather[e.id] and L.GATHER_TIP_OFF or L.GATHER_TIP, 0.6, 0.6, 0.6, true)
+        elseif e.rid then
+            GameTooltip:SetText(L.RECIPE_TIP, 1, 1, 1, 1, true)
+        end
+        GameTooltip:Show()
+    end)
+    r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r.entry = false
     r.icon = S.ItemIcon(r, 20)
     r.icon:SetPoint("LEFT", 4, 0)
     r.right = S.Text(r, 11)
@@ -433,6 +493,7 @@ local function makeLine(r)
     r.text:SetWordWrap(false)
 end
 local function fillLine(r, e)
+    r.entry = e
     if e.icon then r.icon:Set(e.icon, e.n, e.q) else r.icon:Hide() end
     r.text:SetText(e.text)
     r.mid:SetText(e.mid or "")
@@ -721,6 +782,14 @@ local function build()
     dcard:SetShown(not ui.expanded)
     ui.detailCard = dcard
     ui.detailTitle = dcard.title
+    -- the stop's action: an Auctionator list and the lots at the auction, Make at a craft stop
+    ui.act2 = S.FitButton(dcard, L.LOTS_UPDATE, 26, 60)
+    ui.act2:SetPoint("TOPRIGHT", -S.INSET, -5)
+    ui.act1 = S.FitButton(dcard, L.MAKE_N:format(999), 26, 60)
+    ui.act1:SetPoint("RIGHT", ui.act2, "LEFT", -6, 0)
+    dcard.title:SetPoint("RIGHT", ui.act1, "LEFT", -8, 0)
+    ui.act1:SetScript("OnClick", function(self) if self.run then self.run() end end)
+    ui.act2:SetScript("OnClick", function(self) if self.run then self.run() end end)
     ui.detail = S.List(dcard.body, 28, makeLine, fillLine)
     ui.detail:SetPoint("TOPLEFT", 0, 0)
     ui.detail:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -949,7 +1018,52 @@ local function refreshRoute()
     local n = v.route[selected]
     ui.detailCard:SetTitle(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")
     ui.detail:SetData(detailRows(n))
+    ns.SetActions(n)
 end
+
+-- The buttons over the chosen stop's rows.
+local function setAct(b, text, run)
+    b:SetShown(text ~= nil)
+    if not text then b.run = nil; return end
+    b:SetText(text)
+    b:SetWidth(math.max(60, math.floor((b.text:GetStringWidth() or 0) + 28)))
+    b.run = run
+end
+function ns.SetActions(n)
+    local a1, a2
+    if n and n.kind == "ah" and n.title == "STOP_AH_BUY" then
+        if ns.HasAuctionator() then
+            a1 = { L.TO_AUCTIONATOR, function()
+                local k = ns.ExportShopping(ns.view.route, L.LIST_NAME:format(ns.view.state.name or ""))
+                ns.Print(k and L.LIST_DONE:format(k, L.LIST_NAME:format(ns.view.state.name or "")) or L.LIST_FAIL)
+            end }
+        end
+        if ns.atAH then
+            a2 = { L.LOTS_UPDATE, function()
+                local k = ns.ScanLots(ns.view.route)
+                ui.toast:SetText(L.LOTS_BUSY:format(k))
+            end }
+        end
+    elseif n and n.kind == "craft" and n.segs then
+        local rid, k = ns.NextCraft(n)
+        if rid then
+            a1 = { L.MAKE_N:format(k), function()
+                if not ns.Craft(rid, k) then ns.Print(L.OPEN_PROF) end
+            end }
+            a2 = { L.OPEN_RECIPE, function() if not ns.OpenRecipe(rid) then ns.Print(L.OPEN_PROF) end end }
+        end
+    end
+    setAct(ui.act1, a1 and a1[1], a1 and a1[2])
+    setAct(ui.act2, a2 and a2[1], a2 and a2[2])
+    if not a2 and a1 then
+        ui.act1:ClearAllPoints()
+        ui.act1:SetPoint("TOPRIGHT", -S.INSET, -5)
+    else
+        ui.act1:ClearAllPoints()
+        ui.act1:SetPoint("RIGHT", ui.act2, "LEFT", -6, 0)
+    end
+end
+function ns.Toast(text) if ui.toast then ui.toast:SetText(text) end end
 
 local function refreshList()
     local spec = LISTS[tab - 1]
@@ -1017,4 +1131,29 @@ function ns.Window()
         end)
     end
     return frame
+end
+
+-- One line of the run log: the skill reached and the money, planned against real.
+function ns.LogLine(e)
+    local real = e.real or 0
+    return L.LOG_LINE:format(e.prof or "", e.from or 0, e.skill or e.to or 0, ns.Money(e.net or 0, true),
+        color(real >= (e.net or 0) - 100 and GOOD or BAD) .. ns.Money(real, true) .. "|r")
+end
+
+-- The item tooltip: how many of it the chosen run needs.
+local function tooltipLine(tip, id)
+    local v = ns.view
+    if not id or not v or not v.route or not v.state or #v.route == 0 then return end
+    local n = ns.RunNeeds(v.state, v.route)[id]
+    if n and n > 0 then tip:AddLine(L.TOOLTIP_NEED:format(n), 0.6, 0.82, 1) end
+end
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip, data)
+        if tip == GameTooltip or tip == ItemRefTooltip then tooltipLine(tip, data and data.id) end
+    end)
+elseif GameTooltip and GameTooltip.HookScript then
+    GameTooltip:HookScript("OnTooltipSetItem", function(tip)
+        local _, link = tip:GetItem()
+        tooltipLine(tip, link and tonumber(link:match("item:(%d+)")))
+    end)
 end
