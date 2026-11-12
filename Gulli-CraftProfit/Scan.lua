@@ -223,8 +223,7 @@ end
 function ns.SetProfession(name)
     if not charDB().profs[name] then return end
     charDB().current = name
-    ns.Recalc(false)
-    if ns.Refresh then ns.Refresh() end
+    ns.Rebuild(false, "pick")
 end
 
 local function itemFor(state, id)
@@ -280,8 +279,7 @@ end
 function ns.SetGather(id, on)
     if not id then return end
     ns.db.gather[id] = on and true or nil
-    ns.Recalc(true)
-    if ns.Refresh then ns.Refresh() end
+    ns.Rebuild(true)
 end
 
 -- The skill levels Data.lua has for a recipe. The modern API keys recipes by spell, the classic
@@ -454,8 +452,7 @@ local function nextSearch()
     scan.busy = id
     if not id then
         if ns.Toast then ns.Toast(ns.L.LOTS_DONE) end
-        ns.Recalc(true)
-        if ns.Refresh then ns.Refresh() end
+        ns.Rebuild(true)
         return
     end
     local A = C_AuctionHouse
@@ -594,7 +591,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         end
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
-            pcall(api.RegisterForDBUpdate, CALLER, function() if ns.Visible and ns.Visible() then ns.Recalc(false); ns.Refresh() end end)
+            pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
         end
         return
     end
@@ -616,6 +613,6 @@ f:SetScript("OnEvent", function(self, event, a1)
             local name = ns.ScanProfession()
             if name and event == "TRADE_SKILL_SHOW" then ns.char.current = name end
         end
-        if ns.Visible and ns.Visible() then ns.Recalc(false); ns.Refresh() end
+        ns.Rebuild(false, "event")
     end)
 end)

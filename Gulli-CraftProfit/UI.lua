@@ -73,9 +73,13 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 local UNLIMITED = { maxSell = true, maxBuy = true }
 local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
 
+-- The saved settings, not the ones of the last result: a calculation may still be running.
 local function pref(key)
-    if key == "target" and ns.view.state then return ns.Target(ns.view.state, ns.view.prefs) end
-    local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.db and ns.db.prefs)
+    if key == "target" then
+        local st = ns.view.state or (ns.State and ns.State())
+        if st then return ns.Target(st, P) end
+    end
     return P[key]
 end
 
@@ -197,7 +201,7 @@ local function buildSide(scroll)
 end
 
 local function refreshSide()
-    local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
     for _, key in ipairs({ "target", "budget" }) do
         ui[key].minus:SetEnabled(P.level and true or false)
@@ -223,7 +227,7 @@ local function refreshSide()
         end
         ui.toast:SetText(text)
     else
-        ui.toast:SetText(L.TOAST_HINT)
+        ui.toast:SetText(ns.view.plan and L.TOAST_HINT or "")
     end
 end
 
@@ -660,6 +664,8 @@ local function build()
     ui.age = frame.sub
     local footer = S.Footer(frame)
     ui.toast = footer.status
+    ui.calc = footer:Add(S.Primary(S.FitButton(footer, L.RECALC, 32, 110)))
+    ui.calc:SetScript("OnClick", function() if ns.Busy() then ns.StopCalc() else ns.Calculate() end end)
     ui.reset = footer:Add(S.FitButton(footer, L.RESET, 32, 96))
     ui.reset:SetScript("OnClick", function() ns.ResetPrefs() end)
     local body = frame.body
@@ -723,7 +729,7 @@ local function build()
         b:SetScript("OnClick", function(self)
             if ns.EARN[m] then ns.SetPref("mode", m); return end
             -- the best route within the budget stays automatic; a levelling tile turns levelling on
-            ns.SetPrefs({ mode = (self.best and (ns.view.prefs.budget or 0) > 0) and "auto" or m, level = true })
+            ns.SetPrefs({ mode = (self.best and (ns.Prefs(ns.db.prefs).budget or 0) > 0) and "auto" or m, level = true })
         end)
         b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
         b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.EDGE) end end)
@@ -823,8 +829,12 @@ local function build()
     emptyBox:SetPoint("TOPLEFT", 0, -top)
     emptyBox:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.empty = S.Empty(emptyBox)
+    -- the calculation in steps: how far it is
+    ui.progress = S.Progress(emptyBox, 8)
+    ui.progress:SetPoint("TOPLEFT", emptyBox, "LEFT", 80, -48)
+    ui.progress:SetPoint("TOPRIGHT", emptyBox, "RIGHT", -80, -48)
 
-    frame:SetScript("OnShow", function() ns.Recalc(false); ns.Refresh() end)
+    frame:SetScript("OnShow", function() ns.Rebuild(false, "open") end)
     ui.tabs:Select(1, true)
 end
 
@@ -1100,8 +1110,21 @@ function ns.Refresh()
     if not ns.HasAuctionator() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
     elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
     else ui.age:SetText("/gcp") end
-    local has = v.state ~= nil and v.plan ~= nil
-    ui.empty:Set(has and "" or L.NO_PROF)
+    local busy = ns.Busy()
+    local has = v.state ~= nil and v.plan ~= nil and not busy
+    local known = ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current]
+    ui.calc:SetText(busy and L.CALC_STOP or (v.plan and L.RECALC or L.CALC))
+    ui.calc:SetWidth(math.max(110, math.floor((ui.calc.text:GetStringWidth() or 0) + 28)))
+    ui.calc:SetEnabled(known and true or false)
+    ui.progress:SetShown(busy)
+    if busy then
+        local f = ns.progress.done
+        ui.empty:Set(L.CALC_BUSY:format(math.floor(f * 100)), L.CALC_SUB)
+        ui.progress:Set(f)
+    elseif not known then ui.empty:Set(L.NO_PROF)
+    elseif not v.plan then ui.empty:Set(L.CALC_TITLE, L.CALC_SUB)
+    else ui.empty:Set("") end
+    if v.stale and not busy then ui.toast:SetText(color(GOLD) .. L.CALC_STALE .. "|r") end
     ui.empty:SetShown(not has)
     ui.route:SetShown(has and tab == 1)
     ui.listFrame:SetShown(has and tab > 1)
@@ -1115,9 +1138,57 @@ function ns.Tab(i) if ui.tabs then ui.tabs:Select(i) end end
 function ns.Selected() return selected, tab end
 
 function ns.Toggle()
-    if S.ToggleWindow(ns.Window()) then
-        ns.Recalc(false); ns.Refresh()
+    if S.ToggleWindow(ns.Window()) then ns.Rebuild(false, "open") end
+end
+
+-- ---------- calculating without freezing the game ----------
+
+-- Milliseconds of each frame the calculation may take.
+local SLICE = 12
+local runner
+local driver = CreateFrame("Frame")
+ns.calcDriver = driver
+driver:Hide()
+local function finish(err)
+    runner = nil
+    driver:Hide()
+    if err and err ~= "cancelled" then
+        ns.Print(L.CALC_FAIL)
+        if geterrorhandler then geterrorhandler()(err) end
     end
+    ns.Refresh()
+end
+driver:SetScript("OnUpdate", function()
+    if not runner then driver:Hide(); return end
+    local done, err = runner:Step(SLICE)
+    if done then finish(err) else ns.Refresh() end
+end)
+
+-- Starts a calculation in steps; the window shows how far it is and the game keeps running.
+function ns.Calculate(flash)
+    if runner then runner:Cancel() end
+    runner = ns.RecalcJob(flash and ns.view.plan ~= nil)
+    local done, err = runner:Step(SLICE)
+    if done then finish(err) else driver:Show(); ns.Refresh() end
+end
+function ns.StopCalc()
+    if runner then runner:Cancel() end
+    finish("cancelled")
+end
+
+-- Nothing is calculated before the first Calculate: the window opens at once. After that the
+-- player's own changes recalculate in steps, and bags or prices only mark the result outdated.
+function ns.Rebuild(flash, why)
+    local v = ns.view
+    if why == "open" then
+        -- nothing new: the last result stays
+    elseif why == "event" then
+        if v.plan then v.stale = true end
+    elseif v.plan or runner then
+        ns.Calculate(flash)
+        return
+    end
+    ns.Refresh()
 end
 
 -- The window, for the hub (/gulli) to show inside it.
@@ -1127,7 +1198,7 @@ function ns.Window()
         -- In the hub the window is shown by the hub, not by ns.Toggle.
         frame:HookScript("OnShow", function(self)
             if not self.docked then return end
-            ns.Recalc(false); ns.Refresh()
+            ns.Rebuild(false, "open")
         end)
     end
     return frame

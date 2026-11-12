@@ -330,10 +330,21 @@ S.craftprofit = { default = {
         W.Fire("MERCHANT_SHOW")
         W.Fire("TRADE_SKILL_SHOW")
         W.RunTimers()
-        ns.Toggle()
+        ns.Toggle(); ns.Calculate()
     end,
 } }
 
+S.craftprofit.prompt = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) W.Fire("MERCHANT_SHOW"); W.Fire("TRADE_SKILL_SHOW"); W.RunTimers(); ns.Toggle() end }
+S.craftprofit.busy = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.prompt.open(ns, W)
+        local t = 0
+        debugprofilestop = function() t = t + 3; return t end
+        ns.Calculate()
+        for _ = 1, 3 do if ns.Busy() then ns.calcDriver:GetScript("OnUpdate")() end end
+        debugprofilestop = nil
+    end }
 S.craftprofit.legs = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(2) end }
 S.craftprofit.nolimit = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,

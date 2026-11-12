@@ -127,12 +127,26 @@ local function left(st, id)
 end
 
 -- Which recipe makes an item, among the recipes the plan may use.
+-- The makers of each item are indexed once per recipes table: a scan over every recipe here
+-- ran for each reagent at each skill point and froze the game on a big profession.
+local makers = setmetatable({}, { __mode = "k" })
 local function maker(state, known, id)
-    for rid in pairs(known) do
-        local r = state.recipes[rid]
-        if r.out == id and (r.count or 1) == 1 and r.learned then return rid end
+    local idx = makers[state.recipes]
+    if not idx then
+        idx = {}
+        for rid, r in pairs(state.recipes) do
+            if r.out and (r.count or 1) == 1 and r.learned then
+                idx[r.out] = idx[r.out] or {}
+                table.insert(idx[r.out], rid)
+            end
+        end
+        for _, l in pairs(idx) do table.sort(l, function(a, b) return tostring(a) < tostring(b) end) end
+        makers[state.recipes] = idx
     end
+    for _, rid in ipairs(idx[id] or {}) do if known[rid] then return rid end end
 end
+-- A recipes table changed in place (tests, a new scan) gets a new index.
+function ns.ForgetMakers(recipes) makers[recipes] = nil end
 
 -- The cost of one unit now: own stock is worth what it would sell for.
 local reagentCost
@@ -313,10 +327,15 @@ local function planWith(state, P, allowed)
     local s, cap, target = state.skill, ns.Cap(state), ns.Target(state, P)
     local w = P.w or ns.TIME[P.mode] or 0
     -- a sorted list keeps the plan the same from run to run
+    -- only recipes that can raise the skill somewhere on the way; the rest still make intermediates
     local ids = {}
-    for rid in pairs(allowed) do ids[#ids + 1] = rid end
+    for rid in pairs(allowed) do
+        local sk = state.recipes[rid].skill
+        if sk and sk[3] > s and sk[1] < target then ids[#ids + 1] = rid end
+    end
     table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
     while s < target do
+        ns.Tick()
         if s >= cap then
             local nxt = rankAbove(cap)
             if not P.trainer then acc.warn = { "WARN_TRAINER", cap }; break end
@@ -418,6 +437,7 @@ local function earnWith(state, P, known, rid)
         return n
     end
     while made() < ns.EARN_MAX do
+        ns.Tick()
         local best
         for _, rid in ipairs(ids) do
             local r = state.recipes[rid]
@@ -495,13 +515,14 @@ end
 -- ns.LEVEL_ROUTES, always with the cheapest and the fastest.
 function ns.Frontier(state, P)
     local plans = {}
-    for _, w in ipairs(ns.SWEEP) do
+    for i, w in ipairs(ns.SWEEP) do
         local Q = {}
         for k, v in pairs(P) do Q[k] = v end
         Q.w = w
         local p = ns.Plan(state, Q)
         p.w = w
         plans[#plans + 1] = p
+        ns.Part(i / #ns.SWEEP)
     end
     local top = 0
     for _, p in ipairs(plans) do top = math.max(top, p.reached) end
@@ -595,6 +616,7 @@ function ns.Legs(state, P, first)
     Q.target = target
     local legs, s = {}, state.skill
     while s < target and #legs < ns.MAX_LEGS do
+        ns.Part((s - state.skill) / math.max(1, target - state.skill))
         st.skill = s
         local run = (#legs == 0 and first) or nil
         if not run then
@@ -654,7 +676,12 @@ function ns.Variants(state, P)
     local out = {}
     local front = {}
     if P.level and state.skill < ns.Target(state, P) then
-        for i, p in ipairs(ns.Frontier(state, P)) do front[i] = ns.NextRun(state, P, p) end
+        local lo, hi = ns.PhaseRange()
+        ns.Phase(lo, lo + (hi - lo) * 0.7)
+        local plans = ns.Frontier(state, P)
+        ns.Phase(lo + (hi - lo) * 0.7, lo + (hi - lo) * 0.85)
+        for i, p in ipairs(plans) do front[i] = ns.NextRun(state, P, p); ns.Part(i / #plans) end
+        ns.Phase(lo + (hi - lo) * 0.85, hi)
     end
     local best
     for i = 1, ns.LEVEL_ROUTES do
@@ -965,51 +992,122 @@ end
 -- The current view: state, plan, route, stops that changed and the change of the totals.
 ns.view = {}
 
--- Rebuilds the plan from the current state and settings. `flash`: light up what changed.
-function ns.Recalc(flash)
-    local state = ns.State and ns.State()
+-- ---------- calculating in steps ----------
+
+-- The game has no threads: a long calculation runs in a coroutine (ns.RecalcJob) that gives the
+-- frame back once its time slice is spent (ns.Tick); the window resumes it on the next frame.
+-- Outside such a job ns.Tick does nothing, so ns.Recalc still runs at once.
+local job, sliceEnd
+local function clock() return debugprofilestop and debugprofilestop() or nil end
+function ns.Tick()
+    if not job or coroutine.running() ~= job then return end
+    local now = clock()
+    if now and now >= sliceEnd then coroutine.yield() end
+end
+-- The share done (0..1) and the stretch of it the current step fills.
+ns.progress = { done = 0, lo = 0, hi = 1 }
+function ns.Phase(lo, hi) ns.progress.lo, ns.progress.hi = lo, hi; ns.progress.done = math.max(ns.progress.done, lo) end
+function ns.PhaseRange() return ns.progress.lo, ns.progress.hi end
+function ns.Part(f)
+    local p = ns.progress
+    p.done = math.max(p.done, p.lo + (p.hi - p.lo) * math.min(1, math.max(0, f)))
+end
+
+-- Builds the whole view from the current state and settings without touching ns.view, so the
+-- window keeps showing the last result while a job runs. `flash`: light up what changed.
+local function build(flash)
     local v = ns.view
-    if not state then v.state, v.plan, v.route = nil, nil, {}; return v end
+    local state = ns.State and ns.State()
+    if not state then return { state = nil, plan = nil, route = {} } end
     local P = ns.Prefs(ns.db and ns.db.prefs)
-    local before = v.plan
-    local oldRoute = v.route
-    v.state, v.prefs = state, P
-    v.variants = ns.Variants(state, P)
+    local out = { state = state, prefs = P }
+    ns.progress.done = 0
+    ns.Phase(0, 0.45)
+    out.variants = ns.Variants(state, P)
     -- dearer lots: price what the routes buy by the lots they take, then plan once more
     local now = time and time() or 0
     local raised = false
-    for _, x in ipairs(v.variants) do if x.plan and ns.ApplyLadder(state, x.plan, now) then raised = true end end
-    if raised then v.variants = ns.Variants(state, P) end
+    for _, x in ipairs(out.variants) do if x.plan and ns.ApplyLadder(state, x.plan, now) then raised = true end end
+    ns.Phase(0.45, 0.6)
+    if raised then out.variants = ns.Variants(state, P) end
     -- nothing left to level: show the profit route, without changing the saved choice
     local want = ns.OLD_MODES[P.mode] or P.mode
     if not P.level and not ns.EARN[want] then want = "earn" end
-    v.mode = nil
-    for _, x in ipairs(v.variants) do
-        if x.plan and (x.mode == want or (want == "auto" and x.best)) then v.mode = x.mode end
+    for _, x in ipairs(out.variants) do
+        if x.plan and (x.mode == want or (want == "auto" and x.best)) then out.mode = x.mode end
     end
     -- the chosen route is gone (nothing left to level, fewer routes): the best one, else profit
-    if not v.mode then
-        for _, x in ipairs(v.variants) do if x.best then v.mode = x.mode end end
+    if not out.mode then
+        for _, x in ipairs(out.variants) do if x.best then out.mode = x.mode end end
     end
-    v.mode = v.mode or "earn"
-    v.auto = want == "auto"
-    for _, x in ipairs(v.variants) do if x.mode == v.mode then v.plan = x.plan end end
+    out.mode = out.mode or "earn"
+    out.auto = want == "auto"
+    for _, x in ipairs(out.variants) do if x.mode == out.mode then out.plan = x.plan end end
     -- the whole way as runs, for the leg chips; a chosen leg stays chosen while it still starts there
+    ns.Phase(0.6, 1)
     local oldLeg = v.legs and v.leg and v.legs[v.leg]
-    v.legs = (not ns.EARN[v.mode] and v.plan and not v.plan.earn) and ns.Legs(state, P, v.plan) or {}
-    v.leg = 1
+    out.legs = (not ns.EARN[out.mode] and out.plan and not out.plan.earn) and ns.Legs(state, P, out.plan) or {}
+    out.leg = 1
     if oldLeg then
-        for i, l in ipairs(v.legs) do if l.from == oldLeg.from and l.unknown == oldLeg.unknown then v.leg = i end end
+        for i, l in ipairs(out.legs) do if l.from == oldLeg.from and l.unknown == oldLeg.unknown then out.leg = i end end
     end
-    v.route = ns.LegRoute(v)
-    v.changed = flash and ns.Changed(oldRoute, v.route) or {}
-    if flash and before then
-        v.delta = { net = v.plan.net - before.net, crafts = ceil(v.plan.crafts) - ceil(before.crafts),
-                    fromNet = before.net, fromCrafts = ceil(before.crafts) }
-    else
-        v.delta = nil
+    out.route = ns.LegRoute(out)
+    out.changed = flash and ns.Changed(v.route, out.route) or {}
+    if flash and v.plan and out.plan then
+        out.delta = { net = out.plan.net - v.plan.net, crafts = ceil(out.plan.crafts) - ceil(v.plan.crafts),
+                      fromNet = v.plan.net, fromCrafts = ceil(v.plan.crafts) }
     end
+    ns.progress.done = 1
+    return out
+end
+
+local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta" }
+local function apply(out)
+    local v = ns.view
+    for _, k in ipairs(FIELDS) do v[k] = out[k] end
+    v.route = v.route or {}
+    v.changed = v.changed or {}
+    v.stale = nil
     return v
+end
+
+-- Rebuilds the plan at once. `flash`: light up what changed.
+function ns.Recalc(flash)
+    if job then job = nil end
+    return apply(build(flash))
+end
+
+-- A calculation in steps: :Step(ms) works for about ms milliseconds and returns true when the
+-- view is ready (or the calculation failed: then also the error). Without the game's frame
+-- clock (debugprofilestop) a step runs to the end.
+function ns.RecalcJob(flash)
+    local co = coroutine.create(function() return build(flash) end)
+    job = co
+    local self = {}
+    function self:Step(ms)
+        if job ~= co then return true, "cancelled" end
+        local now = clock()
+        sliceEnd = (now or 0) + (ms or 12)
+        local ok, res = coroutine.resume(co)
+        if not ok then job = nil; return true, res end
+        if coroutine.status(co) == "dead" then
+            job = nil
+            apply(res)
+            return true
+        end
+        return false
+    end
+    function self:Cancel() if job == co then job = nil end end
+    return self
+end
+function ns.Busy() return job ~= nil end
+
+-- Rebuilds after a change. `why`: "open" or "event" (the window opened, bags or prices changed),
+-- else the player changed something. The window replaces this with a calculation in steps that
+-- starts only on the Calculate button or the player's own changes.
+function ns.Rebuild(flash, why)
+    ns.Recalc(flash)
+    if ns.Refresh then ns.Refresh() end
 end
 
 -- The stops of the chosen leg (the current run for the first one); none for an unknown leg.
@@ -1034,22 +1132,19 @@ function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
     ns.db.prefs = ns.db.prefs or {}
     ns.db.prefs[key] = value
-    ns.Recalc(true)
-    if ns.Refresh then ns.Refresh() end
+    ns.Rebuild(true)
 end
 
 -- Several settings in one rebuild, so the change summary compares the right two plans.
 function ns.SetPrefs(t)
     ns.db.prefs = ns.db.prefs or {}
     for k, v in pairs(t) do if ns.DEFAULTS[k] ~= nil then ns.db.prefs[k] = v end end
-    ns.Recalc(true)
-    if ns.Refresh then ns.Refresh() end
+    ns.Rebuild(true)
 end
 
 function ns.ResetPrefs()
     ns.db.prefs = {}
-    ns.Recalc(true)
-    if ns.Refresh then ns.Refresh() end
+    ns.Rebuild(true)
 end
 
 function ns.Print(msg) print("|cff9ad0ffGulli CraftProfit|r: " .. msg) end

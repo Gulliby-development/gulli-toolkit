@@ -616,7 +616,7 @@ end)
 
 test("each leg chip shows what the run gains or loses; craft reagents get their own rows", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     local v = n.view
     local chip = n.ui.chips[1]:GetText()
     local net = v.legs[1].plan.net
@@ -645,7 +645,7 @@ end)
 test("no profession read yet: the window says how to start", function()
     Fake({})
     local n = Load()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     eq(n.ui.empty.title:GetText(), n.L.NO_PROF)
     assert(not n.ui.route:IsShown())
 end)
@@ -653,7 +653,7 @@ end)
 test("open window: route stops, a setting click rebuilds and lights what changed", function()
     local n = game()
     n.db.prefs.useBags = false -- one run needs little: with the bags off it comes from the bank
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     assert(n.ui.frame:IsShown())
     local route = n.view.route
     assert(#route >= 3, "stops: " .. #route)
@@ -678,7 +678,7 @@ end)
 
 test("mode buttons, the target stepper and reset", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     W.Click(n.ui.modes.l1)
     eq(n.view.prefs.mode, "l1")
     eq(n.view.mode, "l1")
@@ -706,7 +706,7 @@ end)
 
 test("every switch in the column rebuilds the plan", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     for key, c in pairs(n.ui.checks) do
         local before = n.view.prefs[key]
         W.Click(c)
@@ -744,7 +744,7 @@ end)
 
 test("the levelling switch and the route tiles", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     assert(n.view.auto and n.view.mode:sub(1, 1) == "l", "the best levelling route")
     W.Click(n.ui.checks.level)
     eq(n.db.prefs.level, false)
@@ -762,7 +762,7 @@ end)
 
 test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     local v = n.view
     assert(#v.legs >= 2, "legs: " .. #v.legs)
     assert(n.ui.chips[1]:IsShown() and n.ui.chips[2]:IsShown())
@@ -792,7 +792,7 @@ end)
 
 test("a stop click shows its lines; tabs show the lists", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     local craft
     for i, s in ipairs(n.view.route) do if s.title == "STOP_CRAFT" then craft = i end end
     assert(craft)
@@ -808,7 +808,7 @@ end)
 
 test("a craft stop names its recipe and the crafts; the head shows the result with its sign", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     local i
     for k, s in ipairs(n.view.route) do if s.segs then i = k end end
     local s, b = n.view.route[i], n.ui.nodes[i]
@@ -822,7 +822,7 @@ end)
 
 test("the list heads sort the rows; rows have a tooltip; the recipe source in the game's words", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     n.Tab(2)
     local rows = n.Crafts(n.view.state, n.view.prefs)
     assert(n.ui.list.rows[1].text:GetText():find(rows[1].name, 1, true), "profit first")
@@ -844,7 +844,7 @@ end)
 
 test("without Auctionator only vendor prices count, and the window says so", function()
     local n = game({ auctionator = false })
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     eq(n.State().items[4].ah, nil)
     assert(n.ui.age:GetText():find(n.L.NO_AUCTIONATOR, 1, true))
 end)
@@ -938,7 +938,7 @@ test("the auction stop sends the list to Auctionator; a craft stop makes the cra
     C_TradeSkillUI.CraftRecipe = function(rid, k) made = { rid, k } end
     C_TradeSkillUI.OpenRecipe = function(rid) made = { rid, "open" } end
     n.db.prefs.useBags, n.db.prefs.useBank = false, false
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     local ah, craft
     for i, s in ipairs(n.view.route) do
         if s.kind == "ah" and s.title == "STOP_AH_BUY" then ah = ah or i end
@@ -981,7 +981,7 @@ test("the lots of the run are read at the auction one item at a time", function(
         GetCommoditySearchResultInfo = function(_, i) return { unitPrice = i * 1000, quantity = 3 } end,
     }
     n.db.prefs.useBags, n.db.prefs.useBank = false, false
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     eq(n.ScanLots(n.view.route), 0, "only at the auction")
     W.Fire("AUCTION_HOUSE_SHOW")
     local k = n.ScanLots(n.view.route)
@@ -1016,7 +1016,7 @@ end)
 
 test("the run log compares the plan with the money and skill at the end", function()
     local n = game()
-    n.Toggle()
+    n.Toggle(); n.Calculate()
     W.money = 10000
     GetMoney = function() return W.money end
     W.Click(n.ui.logBtn)
@@ -1055,6 +1055,104 @@ test("the hub gets a summary, tips and reset", function()
     n.db.prefs.chance = 50
     reg.reset()
     eq(n.db.prefs.chance, nil)
+end)
+
+-- ---------- calculating without freezing the game ----------
+
+test("opening the window calculates nothing; Calculate builds the routes", function()
+    local n = game()
+    n.Toggle()
+    eq(n.view.plan, nil, "nothing calculated on open")
+    eq(n.ui.empty.title:GetText(), n.L.CALC_TITLE)
+    eq(n.ui.calc:GetText(), n.L.CALC)
+    assert(not n.ui.route:IsShown())
+    -- a setting before the first calculation only changes the setting
+    W.Click(n.ui.checks.useBank)
+    eq(n.view.plan, nil)
+    W.Click(n.ui.calc)
+    assert(n.view.plan, "a plan after Calculate")
+    assert(n.ui.route:IsShown())
+    eq(n.ui.calc:GetText(), n.L.RECALC)
+    eq(n.view.prefs.useBank, false, "the setting chosen before counts")
+end)
+
+test("the calculation runs in steps with a progress bar and keeps the last result until done", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local old = n.view.plan
+    local t = 0
+    debugprofilestop = function() t = t + 5; return t end -- every look at the clock costs 5 ms
+    W.Click(n.ui.checks.useBank)
+    assert(n.Busy(), "still running after the first slice")
+    assert(n.calcDriver:IsShown(), "the next frames go on")
+    eq(n.view.plan, old, "the old result stays while it runs")
+    assert(n.ui.progress:IsShown())
+    assert(n.ui.empty.title:GetText():find("%%"), n.ui.empty.title:GetText())
+    eq(n.ui.calc:GetText(), n.L.CALC_STOP)
+    local last, frames = 0, 0
+    while n.Busy() and frames < 10000 do
+        W.Click(n.calcDriver, "OnUpdate")
+        frames = frames + 1
+        assert(n.progress.done >= last, "the bar never goes back")
+        last = n.progress.done
+    end
+    debugprofilestop = nil
+    assert(frames > 1, "it took several frames: " .. frames)
+    assert(not n.Busy())
+    assert(not n.calcDriver:IsShown())
+    assert(n.view.plan ~= old, "the new result")
+    eq(n.view.prefs.useBank, false)
+    eq(n.progress.done, 1)
+    assert(n.ui.route:IsShown())
+end)
+
+test("Stop ends a running calculation and keeps the last result", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local old = n.view.plan
+    local t = 0
+    debugprofilestop = function() t = t + 5; return t end
+    W.Click(n.ui.checks.useBank)
+    assert(n.Busy())
+    W.Click(n.ui.calc)
+    debugprofilestop = nil
+    assert(not n.Busy())
+    eq(n.view.plan, old)
+    assert(n.ui.route:IsShown())
+end)
+
+test("bags and prices only mark the result outdated", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local old = n.view.plan
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.RunTimers()
+    eq(n.view.plan, old, "no calculation from an event")
+    eq(n.view.stale, true)
+    assert(n.ui.toast:GetText():find(n.L.CALC_STALE, 1, true))
+    W.Click(n.ui.calc)
+    eq(n.view.stale, nil)
+end)
+
+test("a big profession is planned in reasonable time", function()
+    local ns = core()
+    local st = state()
+    -- 150 recipes over the whole range, each from bolts that a learned recipe makes
+    for i = 1, 150 do
+        local y = 100 + (i % 120)
+        st.items["o" .. i] = { name = "Out " .. i, ah = 2000 + i * 7, age = 0.5, vend = 300 }
+        st.recipes["x" .. i] = { name = "X " .. i, skill = { y - 10, y, y + 20 }, r = { bSilk = 1 + i % 3, bMage = i % 2, fine = 1 },
+                                 out = "o" .. i, learned = i % 2 == 0, src = i % 2 == 1 and { t = "vendor", cost = 1000 + i } or nil }
+    end
+    st.skill = 169
+    local t = os.clock()
+    local P = ns.Prefs({ target = 225, maxSell = 0, maxBuy = 0 })
+    local v = ns.Variants(st, P)
+    local plan
+    for _, x in ipairs(v) do if x.best then plan = x.plan end end
+    ns.Legs(st, P, plan)
+    local secs = os.clock() - t
+    assert(secs < 4, "took " .. secs .. " s")
 end)
 
 W.finish()

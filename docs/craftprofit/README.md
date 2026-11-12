@@ -26,7 +26,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **Routes side by side.** Up to four ways to level, from the cheapest to the fastest, and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. A money run is one recipe, crafted while it still pays and the market still takes it. It does not raise your skill, and it buys at most a few stacks of one reagent at the auction (**Auction buy, at most**), because only a few sell at the cheapest price. Each tab shows the gold, so you can compare them.
 - **How much you may lose.** Set **Ready to lose**, and CraftProfit picks the fastest way to level that stays within it. Ways that cost more are marked.
 - **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
-- **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. The route changes at once, and the changed stops light up.
+- **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. After the first **Calculate**, the route changes on its own, and the changed stops light up.
 - **Honest money.** Over the route: what you buy, what your own materials are worth, what the sales bring and the result, red when you lose gold. The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
 - **Straight to Auctionator.** At the auction stop, **To Auctionator** puts everything the run buys there into an Auctionator shopping list, with the amounts.
 - **Real lot prices.** At the auction house, **Update prices** reads the lots of what the run buys. Buying 60 cloth then costs what the cheapest 60 really cost, not 60 times the first lot.
@@ -51,7 +51,7 @@ For auction prices, also install **Auctionator** and scan the auction once.
 
 1. Open your profession window once. CraftProfit reads your recipes.
 2. Open the bank once if you want it to count what is there.
-3. Type `/gcp`. Pick a route at the top, set the switches on the right and follow the stops.
+3. Type `/gcp`. Set the switches on the right and press **Calculate**. A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top and follow the stops. When your bags or prices change, press **Recalculate**.
 
 ## FAQ
 
