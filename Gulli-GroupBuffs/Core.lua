@@ -17,6 +17,7 @@ ns.DEFAULTS = {
     where = "always",    -- always | norest (not in cities and inns) | instance
     readyCheck = true,   -- on a ready check: show the bar and play a sound
     marks = true,        -- a small icon on the game's party and raid frames
+    labels = true,       -- the caption beside the big button (spell and on whom); off: icons only
     focus = true,        -- the unit under the mouse, then the target, come first
     raidGroups = "all",  -- the raid groups you buff, see ns.RAID_GROUPS
     perSize = false,     -- "Buff again when" and "Group spells" kept per group size
