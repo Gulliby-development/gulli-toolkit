@@ -19,6 +19,7 @@ Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and s
 ## Features
 
 - **Tabs instead of a wall of text.** Groups, Selling, Buying, Crafting, Guilds and Other.
+- **Crafting, split in two.** **Need a crafter** lists players who look for one ("LF enchanter", "need a BS"). **Crafters** lists players who offer their work ("LFW", "your mats", an enchant link). Tap professions to see only those: Enchanting, Blacksmith, Tailoring, Leather, Alchemy, Engineering, Cooking, Lockpick.
 - **Groups by dungeon.** LFG and LFM messages are grouped under the dungeon they name (Deadmines, SM Library, Strat...). Tick **Only dungeons for my level** to hide the rest.
 - **Only WoW Forever dungeons.** From Ragefire Chasm to Stratholme, plus Barrow Deeps, Hyjal Summit and Onyxia. Short words such as "dm me" or "st" do not make false groups.
 - **Pick your dungeons.** In **Setup**, tick **Show** to list only those dungeons, and **Alert** to hear a sound and get a chat line when a new group for them comes up. The alert also shows in the hub's Recent feed.

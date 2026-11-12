@@ -7,6 +7,7 @@ local L = ns.L
 local S = ns.Skin
 
 local frame, tabs, card, list, empty, myLevel, search, setup, dlist, blockedRow, channelHint
+local craftTabs, profRow
 local feed
 local current = 1
 local query = ""
@@ -14,6 +15,8 @@ local I = "Interface\\Icons\\"
 -- The board tabs, one per kind, then the setup page.
 local TAB_KEYS = { "TAB_GROUPS", "TAB_WTS", "TAB_WTB", "TAB_CRAFT", "TAB_GUILD", "TAB_OTHER", "TAB_SETUP" }
 local SETUP = #TAB_KEYS
+local CRAFT = 4
+local CRAFT_MODES = { "ALL", "LF", "OFFER" }
 
 local function ago(t)
     local m = math.floor((time() - t) / 60)
@@ -104,12 +107,17 @@ local function fillRow(r, item)
     S.Fill(r, S.CLEAR)
     r.post = item
     local role = item.role and (S.Hex(S.Accent()) .. L[item.role] .. "|r ") or ""
+    if item.kind == "CRAFT" then
+        role = S.Hex(item.craft == "LF" and S.WARN or S.GOOD) .. (item.craft == "LF" and L.TAG_LF or L.TAG_OFFER) .. "|r "
+    end
     local hex = classHex(item.class)
     r.who:SetText(role .. (hex and (hex .. item.short .. "|r") or item.short))
     -- The roles an LFM asks for go under the name, next to the age.
     local needs = {}
     for _, n in ipairs(item.needs or {}) do needs[#needs + 1] = L["ROLE_" .. n] end
-    r.age:SetText(ago(item.t) .. (#needs > 0 and ("  " .. S.Hex(S.WARN) .. table.concat(needs, " ") .. "|r") or ""))
+    local extra = #needs > 0 and ("  " .. S.Hex(S.WARN) .. table.concat(needs, " ") .. "|r") or ""
+    if item.prof then extra = "  " .. S.Hex(S.MUTED) .. L["PROF_" .. item.prof] .. "|r" end
+    r.age:SetText(ago(item.t) .. extra)
     r.text:SetText(item.text)
     local act = item.kind == "GROUP"
     r.act:SetShown(act)
@@ -194,10 +202,41 @@ function ns.Refresh()
         empty:Set(L.EMPTY_SEARCH)
     elseif current == 1 and next(ns.db.only) then
         empty:Set(L.EMPTY_PICKED, channelText())
+    elseif current == CRAFT and (next(ns.db.craftProfs) or ns.db.craftMode ~= "ALL") then
+        empty:Set(L.EMPTY_CRAFT)
     else
         empty:Set(L.EMPTY, channelText())
     end
     myLevel:SetShown(current == 1)
+    ns.Layout()
+end
+
+-- The top of the board: the search box takes the rest of the row after the level switch
+-- (Groups) or the crafting modes (Crafting); Crafting adds a row of professions.
+function ns.Layout()
+    local left = 0
+    if current == 1 then
+        local w = myLevel.label.GetStringWidth and myLevel.label:GetStringWidth() or 0
+        left = 26 + 6 + (w > 0 and w or 220) + 16
+    elseif current == CRAFT then
+        left = craftTabs.frame:GetWidth() + S.GAP
+    end
+    search:ClearAllPoints()
+    search:SetPoint("TOPLEFT", left, 1)
+    search:SetPoint("TOPRIGHT", -10, 1)
+    local crafting = current == CRAFT
+    craftTabs.frame:SetShown(crafting)
+    profRow:SetShown(crafting)
+    if crafting then
+        for i, mode in ipairs(CRAFT_MODES) do
+            local n = ns.CraftCount(mode)
+            craftTabs.buttons[i]:SetText(L["CRAFT_" .. mode] .. (n > 0 and (" " .. n) or ""))
+        end
+        for _, b in ipairs(profRow.pills) do b:SetSelected(ns.db.craftProfs[b.key] == true) end
+    end
+    list:ClearAllPoints()
+    list:SetPoint("TOPLEFT", 0, crafting and -72 or -36)
+    list:SetPoint("BOTTOMRIGHT", -10, 0)
 end
 
 local function textEdit(width, get, set)
@@ -292,6 +331,31 @@ local function build()
     myLevel = S.CheckRow(card.body, L.MY_LEVEL, function() return ns.db.myLevel end,
         function(v) ns.db.myLevel = v; ns.Refresh() end, 300)
     myLevel:SetPoint("TOPLEFT", -6, 2)
+    local modeLabels = {}
+    for i, m in ipairs(CRAFT_MODES) do modeLabels[i] = L["CRAFT_" .. m] end
+    craftTabs = S.Tabs(card.body, modeLabels, 140, function(i)
+        ns.db.craftMode = CRAFT_MODES[i]
+        ns.Refresh()
+    end)
+    craftTabs.frame:SetPoint("TOPLEFT", 0, 2)
+    -- One pill per profession; picked ones filter the list, none picked shows every one.
+    profRow = CreateFrame("Frame", nil, card.body)
+    profRow:SetPoint("TOPLEFT", 0, -36)
+    profRow:SetPoint("TOPRIGHT", -10, -36)
+    profRow:SetHeight(28)
+    profRow.pills = {}
+    local pw = math.floor((width - 2 * S.INSET - 10 - (#ns.PROFS - 1) * 6) / #ns.PROFS)
+    for i, key in ipairs(ns.PROFS) do
+        local b = S.Pill(profRow, pw, 28)
+        b:SetPoint("TOPLEFT", (i - 1) * (pw + 6), 0)
+        b:SetText(L["PROF_" .. key])
+        b.key = key
+        b:SetScript("OnClick", function(self)
+            ns.db.craftProfs[self.key] = (not ns.db.craftProfs[self.key]) or nil
+            ns.Refresh()
+        end)
+        profRow.pills[i] = b
+    end
     search = S.Edit(card.body, 220, 28)
     search:SetPoint("TOPRIGHT", -10, 1)
     search:SetJustifyH("LEFT")
@@ -310,6 +374,7 @@ local function build()
 
     frame:SetScript("OnShow", function()
         myLevel:SetChecked(ns.db.myLevel)
+        for i, m in ipairs(CRAFT_MODES) do if m == ns.db.craftMode then craftTabs:Select(i, true) end end
         tabs:Select(current)
     end)
     -- Ages and expiry move on while the window is open.

@@ -60,6 +60,52 @@ local WORDS = {
 }
 local ORDER = { "GUILD", "CRAFT", "WTB", "WTS", "LFM", "LFG" }
 
+-- Crafting: every profession (not only the player's), by the words that name it. `who` names the
+-- crafter or the service (an enchant, a lockbox); `also` only the trade. A post asks for a crafter
+-- (LF: "lf enchanter", "need bs") or offers one (OFFER: "lfw", "can craft", an enchant link).
+ns.PROFS = { "ENCH", "BS", "TAILOR", "LW", "ALCH", "ENGI", "COOK", "LOCK" }
+local PROF_WORDS = {
+    ENCH = { who = { "enchanter", "enchanters", "enchant", "enchants", "зачарователь", "зачарователя", "энчантер",
+                     "чантер", "verzauberer", "encantador", "enchanteur", "zaklinacz", "附魔师" },
+             also = { "ench", "enchanting", "зачарование", "зачарка", "verzauberkunst", "encantamiento",
+                      "enchantement", "zaklinanie", "encantamento", "附魔" } },
+    BS = { who = { "blacksmith", "кузнец", "кузнеца", "schmied", "herrero", "forgeron", "kowal", "ferreiro", "铁匠" },
+           also = { "bs", "blacksmithing", "кузнечное", "schmiedekunst", "herrería", "forge", "kowalstwo",
+                    "ferraria", "锻造" } },
+    TAILOR = { who = { "tailor", "портной", "портного", "schneider", "sastre", "tailleur", "krawiec", "alfaiate", "裁缝" },
+               also = { "tailoring", "портняжное", "schneiderei", "sastrería", "couture", "krawiectwo", "alfaiataria" } },
+    LW = { who = { "leatherworker", "кожевник", "кожевника", "lederer", "peletero", "travailleur du cuir", "kaletnik",
+                   "coureiro", "制皮师" },
+           also = { "lw", "leatherworking", "кожевничество", "lederverarbeitung", "peletería", "travail du cuir",
+                    "kaletnictwo", "couraria", "制皮" } },
+    ALCH = { who = { "alchemist", "алхимик", "алхимика", "alchimist", "alquimista", "alchimiste", "alchemik", "炼金师" },
+             also = { "alch", "alchemy", "алхимия", "alchemie", "alquimia", "alchimie", "炼金" } },
+    ENGI = { who = { "engineer", "инженер", "инженера", "ingenieur", "ingeniero", "ingénieur", "inżynier",
+                     "engenheiro", "工程师" },
+             also = { "engi", "engy", "engineering", "инженерия", "ingenieurskunst", "ingeniería", "ingénierie",
+                      "inżynieria", "engenharia", "工程学" } },
+    COOK = { who = { "cook", "повар", "повара", "koch", "cocinero", "cuisinier", "kucharz", "cozinheiro", "厨师" },
+             also = { "cooking", "кулинария", "kochkunst", "cocina", "cuisine", "gotowanie", "culinária", "烹饪" } },
+    LOCK = { who = { "lockpick", "lockpicker", "lockpicking", "lockbox", "lockboxes", "взломщик", "вскрыть", "вскрою",
+                     "schlossknacken", "forzar cerraduras", "crochetage", "otwieranie zamków", "arrombamento", "开锁" },
+             also = {} },
+}
+-- Asks for a crafter when one of these comes right before a profession word.
+local LF_WORDS = { "lf", "lf a", "lf an", "need", "need a", "need an", "needs", "looking for", "looking for a",
+                   "looking for an", "any", "wtb", "ищу", "нужен", "нужна", "нужен ли", "suche", "suche einen", "busco",
+                   "busco un", "cherche", "cherche un", "szukam", "procuro", "procuro um", "找" }
+-- Offers a craft: work wanted, own mats, tips.
+local OFFER_WORDS = { "lfw", "lf work", "lf job", "lf jobs", "can craft", "crafting", "your mats", "ur mats", "your mat",
+                      "free enchants", "enchanting service", "скрафчу", "крафчу", "зачарую", "чарю",
+                      "ваши реги", "твои реги", "kann herstellen", "fabrico", "je craft", "craftuję", "faço", "代工" }
+-- Offer words that count only next to a profession ("enchants, tips welcome").
+local OFFER_WEAK = { "tips", "tip", "tips welcome", "чаевые", "trinkgeld", "propina", "pourboire", "napiwek", "gorjeta" }
+-- Generic crafting asks without a profession.
+local ASK_WORDS = { "lf crafter", "need crafter", "ищу крафтера", "ищу зачарователя", "suche handwerker" }
+-- Selling a recipe is selling an item, not a craft.
+local RECIPE_WORDS = { "recipe", "formula", "pattern", "schematic", "plans", "рецепт", "формула", "выкройка",
+                       "чертеж", "чертёж", "rezept", "receta", "recette", "przepis", "receita", "配方", "图纸" }
+
 -- string.lower only knows ASCII: Cyrillic and Latin-1 capitals are lowered by hand.
 local function lowerUtf8(s)
     s = s:lower()
@@ -101,10 +147,52 @@ local function any(padded, list, weakToo)
     end
 end
 
+-- The profession a crafting post names, and whether that name comes after an LF word.
+local function profOf(padded)
+    for _, key in ipairs(ns.PROFS) do
+        local w = PROF_WORDS[key]
+        for _, list in ipairs({ w.who, w.also }) do
+            for _, word in ipairs(list) do
+                if has(padded, word) then
+                    for _, lf in ipairs(LF_WORDS) do
+                        if has(padded, lf .. " " .. word) then return key, true end
+                    end
+                    return key, false, list == w.who
+                end
+            end
+        end
+    end
+end
+
+-- "LF" (asks for a crafter) or "OFFER" (offers a craft) and the profession, or nil when the
+-- message is not about crafting.
+function ns.Craft(msg, padded)
+    padded = padded or ns.Normalize(msg)
+    local prof, asked, named = profOf(padded)
+    local link = msg:find("|Henchant:") or msg:find("|Htrade:")
+    if any(padded, RECIPE_WORDS) and not any(padded, OFFER_WORDS) then return nil end
+    if any(padded, OFFER_WORDS) or link then
+        return "OFFER", prof or (link and msg:find("|Henchant:") and "ENCH") or nil
+    end
+    if asked then return "LF", prof end
+    if prof and any(padded, OFFER_WEAK) then return "OFFER", prof end
+    if any(padded, ASK_WORDS) then return "LF", prof end
+    -- "WTS enchants", "WTB lockbox opened": a service named after selling or buying words.
+    if named then
+        if any(padded, WORDS.WTS) then return "OFFER", prof end
+        if any(padded, WORDS.WTB) then return "LF", prof end
+    end
+end
+
 -- Returns kind ("GROUP", "WTS", ...), the dungeon key or nil, and for groups "LFM" or "LFG".
+-- A crafting post returns "CRAFT", nil, "LF" or "OFFER", and the profession key or nil.
 function ns.Classify(msg)
     if type(msg) ~= "string" or msg == "" then return nil end
     local padded = ns.Normalize(msg)
+    if not any(padded, WORDS.GUILD) then
+        local mode, prof = ns.Craft(msg, padded)
+        if mode then return "CRAFT", nil, mode, prof end
+    end
     local kind
     for _, k in ipairs(ORDER) do
         if any(padded, WORDS[k]) or (k == "LFM" and padded:find(" lf%dm ")) then kind = k; break end
@@ -197,7 +285,9 @@ end
 function ns.Add(msg, author, channel, guid)
     if secret(msg) or secret(author) then return end
     if type(msg) ~= "string" or type(author) ~= "string" or author == "" then return end
-    local kind, dungeon, role = ns.Classify(msg)
+    local kind, dungeon, role, prof = ns.Classify(msg)
+    local craft
+    if kind == "CRAFT" then craft, role = role or "OFFER", nil end
     if not kind then return end
     if kind == "OTHER" and not ns.db.other then return end
     local short = author:match("^[^-]+") or author
@@ -212,6 +302,7 @@ function ns.Add(msg, author, channel, guid)
     end
     local post = { author = author, short = short, text = msg, kind = kind, dungeon = dungeon, role = role,
                    t = time(), channel = channel, class = classOf(guid), item = ns.ItemOf(msg),
+                   craft = craft, prof = prof,
                    needs = role == "LFM" and ns.Needs(msg) or nil }
     table.insert(ns.posts, 1, post)
     while #ns.posts > ns.MAX_POSTS do table.remove(ns.posts) end
@@ -280,7 +371,9 @@ function ns.View(kind, onlyMyLevel, level, query)
             or (p.dungeon and lowerUtf8(ns.DungeonName(p.dungeon)):find(query, 1, true))
     end
     if kind ~= "GROUP" then
-        for _, p in ipairs(ns.posts) do if p.kind == kind and match(p) then out[#out + 1] = p end end
+        for _, p in ipairs(ns.posts) do
+            if p.kind == kind and match(p) and (kind ~= "CRAFT" or ns.CraftShown(p)) then out[#out + 1] = p end
+        end
         return out
     end
     local groups, keys = {}, {}
@@ -306,6 +399,23 @@ function ns.View(kind, onlyMyLevel, level, query)
         end
     end
     return out
+end
+
+-- The Crafting tab: ALL, LF (people who look for a crafter) or OFFER (crafters), and the
+-- professions picked (none = all). A post without a profession shows only while none is picked.
+function ns.CraftShown(p, mode)
+    mode = mode or ns.db.craftMode or "ALL"
+    if mode ~= "ALL" and (p.craft or "OFFER") ~= mode then return false end
+    if not next(ns.db.craftProfs) then return true end
+    return p.prof ~= nil and ns.db.craftProfs[p.prof] == true
+end
+
+function ns.CraftCount(mode)
+    local n = 0
+    for _, p in ipairs(ns.posts) do
+        if p.kind == "CRAFT" and ns.CraftShown(p, mode) then n = n + 1 end
+    end
+    return n
 end
 
 function ns.Count(kind)
@@ -396,6 +506,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _,
         if ns.db.other == nil then ns.db.other = false end
         ns.db.only = ns.db.only or {}
         ns.db.alert = ns.db.alert or {}
+        ns.db.craftProfs = ns.db.craftProfs or {}
+        ns.db.craftMode = ns.db.craftMode or "ALL"
         if ns.db.sound == nil then ns.db.sound = true end
         if ns.db.chat == nil then ns.db.chat = true end
         ns.db.blockNames = ns.db.blockNames or {}
