@@ -68,7 +68,8 @@ local function buildSettings()
     settings = S.Window("GulliMailFrame", L.TITLE, 420, 220)
     local st = S.Stack(settings.body)
     local card, h = S.SettingsCard(settings.body, nil, {
-        { L.OPT_PANEL, nil, function() return ns.db.panel end, function(v) ns.db.panel = v end } })
+        { L.OPT_PANEL, nil, function() return ns.db.panel end, function(v) ns.db.panel = v end,
+          icon = "Interface\\Icons\\INV_Letter_15" } })
     st:Add(card, h)
     local tip, th = S.Paragraph(settings.body, L.HELP, settings.inner[1])
     st:Add(tip, th)

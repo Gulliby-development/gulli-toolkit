@@ -6,6 +6,7 @@ local L = ns.L
 local S = ns.Skin
 
 local frame, sellBtn
+local I = "Interface\\Icons\\"
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
@@ -25,9 +26,10 @@ local function build()
     local body, width = frame.body, frame.inner[1]
     local st = S.Stack(body)
     local rows = {}
-    for _, o in ipairs({ { "sell", L.OPT_SELL }, { "repair", L.OPT_REPAIR }, { "guild", L.OPT_GUILD } }) do
+    for _, o in ipairs({ { "sell", L.OPT_SELL, "INV_Misc_Coin_02" }, { "repair", L.OPT_REPAIR, "Trade_BlackSmithing" },
+                         { "guild", L.OPT_GUILD, "INV_Shirt_GuildTabard_01" } }) do
         local key = o[1]
-        rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v) ns.db[key] = v end }
+        rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v) ns.db[key] = v end, icon = I .. o[3] }
     end
     local card, h = S.SettingsCard(body, nil, rows)
     st:Add(card, h)

@@ -466,16 +466,22 @@ function S.Stack(parent, gap, startY)
     return st
 end
 
--- A card: a lighter panel with an optional title (and a grey hint on the right) for one group
--- of things. card.body is the area inside the padding, under the title.
-function S.Card(parent, title, hint)
+-- A card: a lighter panel with an optional title (a game icon before it, a grey hint on the
+-- right) for one group of things. card.body is the area inside the padding, under the title.
+function S.Card(parent, title, hint, icon)
     local c = CreateFrame("Frame", nil, parent)
     S.Box(c, S.SURFACE, S.EDGE)
     c.body = CreateFrame("Frame", nil, c)
     c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     if title then
         c.title = S.Text(c, 13)
-        c.title:SetPoint("TOPLEFT", S.INSET, -12)
+        if icon then
+            c.icon = S.IconBox(c, 18, icon)
+            c.icon:SetPoint("TOPLEFT", S.INSET, -10)
+            c.title:SetPoint("TOPLEFT", S.INSET + 26, -12)
+        else
+            c.title:SetPoint("TOPLEFT", S.INSET, -12)
+        end
         c.title:SetWordWrap(false)
         c.title:SetText(title)
         c.hint = S.Text(c, 11, S.MUTED)
@@ -503,14 +509,20 @@ end
 
 -- A settings row: the label and an optional grey line under it on the left, a control on the
 -- right (a switch, an edit box, a button...). row.control is that control.
-function S.SettingRow(parent, label, desc, control, controlWidth)
+function S.SettingRow(parent, label, desc, control, controlWidth, icon)
     local row = CreateFrame("Frame", nil, parent)
+    local left = 0
+    if icon then
+        row.icon = S.IconBox(row, 26, icon)
+        row.icon:SetPoint("LEFT", 0, 0)
+        left = 26 + 12
+    end
     row.label = S.Text(row, 12)
     row.label:SetWordWrap(false)
     row.label:SetText(label)
     local right = -((controlWidth or (control and control:GetWidth()) or 0) + 12)
     if desc and desc ~= "" then
-        row.label:SetPoint("TOPLEFT", 0, -10)
+        row.label:SetPoint("TOPLEFT", left, -10)
         row.label:SetPoint("TOPRIGHT", right, -10)
         row.desc = S.Note(row, 11)
         row.desc:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -4)
@@ -519,7 +531,7 @@ function S.SettingRow(parent, label, desc, control, controlWidth)
         row.desc:SetText(desc)
         row.height = S.ROW_DESC_H
     else
-        row.label:SetPoint("LEFT", 0, 0)
+        row.label:SetPoint("LEFT", left, 0)
         row.label:SetPoint("RIGHT", right, 0)
         row.height = S.ROW_H
     end
@@ -538,9 +550,9 @@ end
 
 -- A settings row with an on/off switch. get() and set(value) read and write the setting.
 -- extra (an edit box for a number...) sits left of the switch.
-function S.SwitchRow(parent, label, desc, get, set, extra)
+function S.SwitchRow(parent, label, desc, get, set, extra, icon)
     local sw = S.Switch(parent)
-    local row = S.SettingRow(parent, label, desc, sw, 44 + (extra and (extra:GetWidth() + 8) or 0))
+    local row = S.SettingRow(parent, label, desc, sw, 44 + (extra and (extra:GetWidth() + 8) or 0), icon)
     row.switch = sw
     if extra then
         extra:SetParent(row)
@@ -560,15 +572,16 @@ function S.SwitchRow(parent, label, desc, get, set, extra)
 end
 
 -- A card full of settings rows, stacked with their dividers. rows: { label, desc, get, set }
--- for a switch, or { label, desc, control = frame } for any other control. Returns the card
+-- for a switch, or { label, desc, control = frame } for any other control; icon = a game icon
+-- path shows it at the start of the row. Returns the card
 -- and its height; card.rows has the rows in order.
-function S.SettingsCard(parent, title, rows, hint)
-    local card = S.Card(parent, title, hint)
+function S.SettingsCard(parent, title, rows, hint, icon)
+    local card = S.Card(parent, title, hint, icon)
     card.rows = {}
     local st = S.Stack(card.body, 0)
     for i, r in ipairs(rows) do
-        local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control)
-            or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra)
+        local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control, nil, r.icon)
+            or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra, r.icon)
         st:Add(row, row.height)
         row.line:SetShown(i < #rows)
         card.rows[i] = row
@@ -617,12 +630,18 @@ function S.Empty(parent)
 end
 
 -- A tile with one big number and its name under it, for counters.
-function S.Stat(parent, label)
+function S.Stat(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.EDGE)
+    local right = -S.INSET
+    if icon then
+        t.icon = S.IconBox(t, 30, icon)
+        t.icon:SetPoint("RIGHT", -S.INSET, 0)
+        right = -S.INSET - 38
+    end
     t.value = S.Text(t, 20)
     t.value:SetPoint("TOPLEFT", S.INSET, -12)
-    t.value:SetPoint("TOPRIGHT", -S.INSET, -12)
+    t.value:SetPoint("TOPRIGHT", right, -12)
     t.value:SetWordWrap(false)
     t.label = S.Text(t, 11, S.MUTED)
     t.label:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -6)
@@ -639,11 +658,12 @@ function S.Stat(parent, label)
 end
 
 -- Tiles side by side, all the same width: holder:Layout(width) places them. holder.tiles.
-function S.StatRow(parent, labels, height)
+-- icons (optional) gives each tile a game icon.
+function S.StatRow(parent, labels, height, icons)
     local holder = CreateFrame("Frame", nil, parent)
     holder:SetHeight(height or 62)
     holder.tiles = {}
-    for i, label in ipairs(labels) do holder.tiles[i] = S.Stat(holder, label) end
+    for i, label in ipairs(labels) do holder.tiles[i] = S.Stat(holder, label, icons and icons[i]) end
     function holder:Layout(width)
         local n = #self.tiles
         local w = math.floor((width - (n - 1) * 8) / n)
@@ -714,6 +734,21 @@ function S.Badge(parent, text, color)
         self:SetShown(s ~= nil and s ~= "")
     end
     b:Set(text, color)
+    return b
+end
+
+-- A game icon (an item or a spell, "Interface\\Icons\\...") in a thin dark frame, cropped
+-- like the action bars do. box.tex is the texture.
+function S.IconBox(parent, size, path)
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetSize(size or 26, size or 26)
+    S.Box(b, S.INPUT, S.BORDER)
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetPoint("TOPLEFT", 1, -1)
+    b.tex:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
+    b:SetIcon(path)
     return b
 end
 

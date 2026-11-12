@@ -93,7 +93,8 @@ local function build()
     empty:Set(L.NO_ITEMS)
 
     local report, rh = S.SettingsCard(body, nil, {
-        { L.OPT_REPORT, nil, function() return ns.db.report end, function(v) ns.db.report = v end } })
+        { L.OPT_REPORT, nil, function() return ns.db.report end, function(v) ns.db.report = v end,
+          icon = "Interface\\Icons\\INV_Letter_01" } })
     st:Add(report, rh)
     S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function() ns.Refresh() end)

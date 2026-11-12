@@ -296,7 +296,7 @@ end
 function Region:SetVertexColor(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 function Region:GetVertexColor() local c = self.__color or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
 function Region:SetDesaturated(v) self.__desat = v end
-function Region:SetTexCoord() end
+function Region:SetTexCoord(a) self.__crop = a and a > 0 end
 function Region:SetGradient() end
 function Region:SetStartPoint(point, rel, x, y) self.__start = { point, rel or self.__parent, x or 0, y or 0 } end
 function Region:SetEndPoint(point, rel, x, y) self.__end = { point, rel or self.__parent, x or 0, y or 0 } end
@@ -472,12 +472,29 @@ local function textHtml(r, rect, prect)
         richText(r.__text))
 end
 
+-- A real picture for a texture path, when tools/preview/icons.sh has fetched it.
+local CACHE = (os.getenv("PWD") or ".") .. "/tools/preview/.cache/"
+local function exists(f) local h = io.open(f, "rb"); if h then h:close() return true end end
+local function picture(path)
+    path = tostring(path or ""):lower():gsub("/", "\\")
+    local icon = path:match("interface\\icons\\([%w_]+)")
+    if icon and exists(CACHE .. "icons/" .. icon .. ".png") then return CACHE .. "icons/" .. icon .. ".png" end
+    local addon = path:match("interface\\addons\\([%w%-]+)\\icon")
+    if addon and exists(CACHE .. "addons/" .. addon .. ".png") then return CACHE .. "addons/" .. addon .. ".png" end
+end
+
 local function texHtml(t, rect, prect)
     local tex = t.__tex
     if not tex then return "" end
     local c = t.__color or { 1, 1, 1, 1 }
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
         return string.format('<div class="tx" style="%sbackground:%s"></div>', box(rect, prect), css(c))
+    end
+    local pic = picture(tex)
+    if pic then
+        local crop = t.__crop and "background-size:118%;background-position:center;" or "background-size:100% 100%;"
+        return string.format('<div class="tx" style="%sbackground-image:url(\'file://%s\');%s%s"></div>',
+            box(rect, prect), pic, crop, t.__desat and "filter:grayscale(1);opacity:.6;" or "")
     end
     local name = iconName(tex)
     local cls = "ic"

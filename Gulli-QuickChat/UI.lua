@@ -220,7 +220,8 @@ end
 
 local function buildMissed(page)
     local always, ah = S.SettingsCard(page, nil, {
-        { L.ALWAYS, nil, function() return ns.db.always end, function(v) ns.db.always = v end } })
+        { L.ALWAYS, nil, function() return ns.db.always end, function(v) ns.db.always = v end,
+          icon = "Interface\\Icons\\INV_Letter_02" } })
     always:SetPoint("BOTTOMLEFT")
     always:SetPoint("BOTTOMRIGHT")
     always:SetHeight(ah)
