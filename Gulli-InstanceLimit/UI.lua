@@ -80,7 +80,8 @@ local function build()
 
     local body, width = frame.body, frame.inner[1]
     local st = S.Stack(body)
-    big = S.StatRow(body, { L.STAT_HOUR, L.STAT_DAY })
+    big = S.StatRow(body, { L.STAT_HOUR, L.STAT_DAY }, 62,
+        { "Interface\\Icons\\INV_Misc_PocketWatch_01", "Interface\\Icons\\Spell_Nature_TimeStop" })
     st:Add(big, 62, 8)
     big:Layout(width)
     next = S.Text(body, 12, S.MUTED)
@@ -95,9 +96,12 @@ local function build()
     empty:Set(L.NONE)
 
     local limits, h = S.SettingsCard(body, L.SEC_LIMITS, {
-        { L.ROW_LIMIT, nil, control = numberEdit(body, function() return ns.db.limit end, function(n) ns.db.limit = n end) },
-        { L.ROW_DAY, nil, control = numberEdit(body, function() return ns.db.dayLimit end, function(n) ns.db.dayLimit = n end) },
-        { L.BADGE, nil, function() return ns.db.badge end, function(v) ns.db.badge = v; ns.Refresh() end },
+        { L.ROW_LIMIT, nil, control = numberEdit(body, function() return ns.db.limit end, function(n) ns.db.limit = n end),
+          icon = "Interface\\Icons\\INV_Misc_PocketWatch_02" },
+        { L.ROW_DAY, nil, control = numberEdit(body, function() return ns.db.dayLimit end, function(n) ns.db.dayLimit = n end),
+          icon = "Interface\\Icons\\Spell_Arcane_PortalIronForge" },
+        { L.BADGE, nil, function() return ns.db.badge end, function(v) ns.db.badge = v; ns.Refresh() end,
+          icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
     })
     st:Add(limits, h)
     S.FitWindow(frame, st:Height())

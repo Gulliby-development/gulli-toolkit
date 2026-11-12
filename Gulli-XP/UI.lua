@@ -69,7 +69,9 @@ local function build()
     local body, width = frame.body, frame.inner[1]
     local st = S.Stack(body)
 
-    tiles = S.StatRow(body, { L.STAT_RATE, L.STAT_TIME, L.STAT_KILLS })
+    tiles = S.StatRow(body, { L.STAT_RATE, L.STAT_TIME, L.STAT_KILLS }, 62,
+        { "Interface\\Icons\\INV_Misc_Book_11", "Interface\\Icons\\INV_Misc_PocketWatch_01",
+          "Interface\\Icons\\INV_Sword_04" })
     st:Add(tiles, 62)
     tiles:Layout(width)
 
@@ -95,7 +97,8 @@ local function build()
     st:Add(card, card:Fit(4 * 22 - 8))
 
     local sw, h = S.SettingsCard(body, nil, {
-        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.db.bar = v; ns.Refresh() end } })
+        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.db.bar = v; ns.Refresh() end,
+          icon = "Interface\\Icons\\INV_Misc_Spyglass_02" } })
     st:Add(sw, h)
     S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function() ns.Refresh() end)

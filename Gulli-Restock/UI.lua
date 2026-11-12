@@ -76,7 +76,8 @@ local function build()
 
     local body = frame.body
     local auto, ah = S.SettingsCard(body, nil, {
-        { L.AUTO, nil, function() return ns.db.auto end, function(v) ns.db.auto = v end } })
+        { L.AUTO, nil, function() return ns.db.auto end, function(v) ns.db.auto = v end,
+          icon = "Interface\\Icons\\INV_Misc_Bag_08" } })
     auto:SetPoint("BOTTOMLEFT")
     auto:SetPoint("BOTTOMRIGHT")
     auto:SetHeight(ah)
