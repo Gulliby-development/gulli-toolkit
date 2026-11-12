@@ -157,6 +157,20 @@ test("checklist: gear, bags, food and drink, hearthstone", function()
     eq(c[4].ok, false); eq(c[4].text, "Hearthstone in 44 min")
 end)
 
+test("checklist: what Gulli Restock misses", function()
+    Fake({})
+    local ns = Load()
+    eq(#ns.Checklist(), 4, "no line without Restock")
+    GulliRestock = { Missing = function() return { { name = "Water", have = 5, want = 20 } } end }
+    local c = ns.Checklist()
+    eq(c[5].key, "RESTOCK"); eq(c[5].ok, false); eq(c[5].text, "Short: Water 5/20")
+    GulliRestock.Missing = function() return {} end
+    eq(ns.Checklist()[5].ok, true)
+    ns.Toggle()
+    ns.Refresh()
+    GulliRestock = nil
+end)
+
 test("the window and /gdp <dungeon>", function()
     Fake({ level = 30, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
     local ns = Load()
