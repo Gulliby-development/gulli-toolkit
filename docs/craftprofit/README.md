@@ -28,6 +28,13 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
 - **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. The route changes at once, and the changed stops light up.
 - **Honest money.** Over the route: what you buy, what your own materials are worth, what the sales bring and the result, red when you lose gold. The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
+- **Straight to Auctionator.** At the auction stop, **To Auctionator** puts everything the run buys there into an Auctionator shopping list, with the amounts.
+- **Real lot prices.** At the auction house, **Update prices** reads the lots of what the run buys. Buying 60 cloth then costs what the cheapest 60 really cost, not 60 times the first lot.
+- **Craft from the route.** At a craft stop, **Make 142** crafts the run in the open profession window, and **Recipe** shows it there. Tap the recipe row to show it too.
+- **Mail and your other characters.** Items waiting in your mailbox count as yours. Switch on **Other characters**, and items your alts carry count too (read from Gulli Chores); the route says who sends them.
+- **You gather it?** Right-click a reagent in the stop list, or type `/gcp gather <item link>`, and the route stops buying it. A **Gather** stop shows how much to collect.
+- **Run log.** Press **Start the run**, craft, then **Finish the run**: you see the gold the plan promised and what you really made or spent.
+- **In the item tooltip:** how many of it the chosen run needs.
 - **Crafts now.** Your recipes in their game colour, sorted by profit per craft, and how many you can make from what you have. Tap a column head to sort by it; point at a row to see its reagents.
 - **My items.** For each material in your bags and bank: sell at the auction, sell to a vendor, or craft it.
 - **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first.
