@@ -44,13 +44,20 @@ local function loadable(name)
     if not f then return true end
     return f(name, player())
 end
--- The change is saved at once: without SaveAddOns the game can drop it (the AddOns list resets
--- unsaved changes when it closes), and the module stays off after the reload.
+-- One state: the game's. The change goes to this character by name and to every character
+-- (clients differ on what a call without a name means), and it is saved at once: without
+-- SaveAddOns the game can drop it, and the module stays off after the reload.
 local function setEnabled(name, on)
     local f = on and (A.EnableAddOn or EnableAddOn) or (A.DisableAddOn or DisableAddOn)
+    f(name, player())
     f(name)
     local save = A.SaveAddOns or SaveAddOns
     if save then save() end
+end
+-- On for this character, as the game's AddOns list shows it.
+local function isOn(name)
+    local _, reason = loadable(name)
+    return enableState(name) > 0 and reason ~= "DISABLED"
 end
 
 function ns.Print(msg)
@@ -167,9 +174,6 @@ local function known(key)
     for _, k in ipairs(ns.KNOWN) do if k == key then return true end end
 end
 
--- Pending on/off changes that need a reload, by key.
-ns.pending = {}
-
 -- One row per module for the hub, the known ones first:
 -- { key, addon, title, desc, icon, slash, category, options,
 --   state = "ready" | "off" | "reload" | "blocked" | "missing", on, info, reason }.
@@ -197,26 +201,24 @@ function ns.List()
         row.slash = info and info.slash
         row.category = categoryOf(k, info, addon)
         row.options = optionsOf(info)
-        if ns.pending[k] ~= nil then
-            row.state = "reload"
-            row.on = ns.pending[k]
-        elseif info then
-            row.state, row.on = "ready", true
-        elseif addon then
-            -- The game's own loader decides: an addon it calls DISABLED is off, whatever the
-            -- enable state says for the other characters.
+        if addon then
+            -- The switch is the game's enable state, never a copy of our own. A module that
+            -- runs but is switched off, or is switched on but not running, waits for a reload.
             local ok, reason = loadable(addon)
-            row.on = enableState(addon) > 0 and reason ~= "DISABLED"
-            if not row.on then
+            local loaded = info ~= nil or isLoaded(addon)
+            row.on = isOn(addon)
+            if loaded then
+                row.state = row.on and "ready" or "reload"
+            elseif not row.on then
                 row.state = "off"
-            elseif isLoaded(addon) then
-                row.state = "ready"
             elseif ok ~= false then
                 row.state = "reload"
             else
                 -- Switched on but the game will not load it (out of date, a missing dependency).
                 row.state, row.reason = "blocked", reason
             end
+        elseif info then
+            row.state, row.on = "ready", true
         else
             row.state = "missing"
         end
@@ -337,17 +339,23 @@ function ns.OpenModule(key)
     return false
 end
 
--- Switch a module on or off for every character; it takes effect after a reload.
+-- Switch a module on or off in the game's AddOns list; it takes effect after a reload.
+-- Returns false when the game did not take the change.
 function ns.SetEnabled(row, on)
     if not row.addon then return end
     setEnabled(row.addon, on)
-    local now = row.info ~= nil
-    if on == now then ns.pending[row.key] = nil else ns.pending[row.key] = on end
+    local took = isOn(row.addon) == on
+    if not took then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
     if ns.Refresh then ns.Refresh() end
+    return took
 end
 
+-- A reload is needed when a row's switch and what runs disagree.
 function ns.NeedsReload()
-    return next(ns.pending) ~= nil
+    for _, row in ipairs(ns.List()) do
+        if row.state == "reload" then return true end
+    end
+    return false
 end
 
 local events = CreateFrame("Frame")

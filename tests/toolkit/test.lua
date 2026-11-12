@@ -394,5 +394,27 @@ test("a saved hidden minimap button stays hidden after a reload", function()
     eq(ns.MinimapAngle(), 10)
 end)
 
+test("one state: the switch is the game's AddOns list, also for a module that runs", function()
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } },
+                      { name = "Gulli-XP", enabled = false, stuck = true, meta = { ["X-Gulli-Module"] = "XP" } } } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end })
+    GulliToolkit.Register({ key = "Loot", open = function() end })
+    eq(ns.NeedsReload(), false)
+    -- The player switched Loot off in the game's AddOns list; it still runs until a reload.
+    W.addons[2].enabled = false
+    local r = byKey(ns.List())
+    eq(r.Loot.on, false, "the switch shows the game's off, not that it runs")
+    eq(r.Loot.state, "reload")
+    assert(ns.NeedsReload())
+    ns.SetEnabled(r.Loot, true)
+    eq(byKey(ns.List()).Loot.state, "ready", "switched back on: nothing to reload")
+    eq(ns.NeedsReload(), false)
+    -- The game ignores the switch: the hub keeps showing off and says so.
+    eq(ns.SetEnabled(byKey(ns.List()).XP, true), false)
+    eq(byKey(ns.List()).XP.on, false, "never on when the game says off")
+    assert(W.printed[#W.printed]:find("XP", 1, true), "tells the player")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

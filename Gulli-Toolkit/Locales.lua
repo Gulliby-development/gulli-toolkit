@@ -11,6 +11,7 @@ local T = {}
 
 T.en = {
     STATE_BLOCKED = "Not loaded: %s",
+    SWITCH_FAILED = "The game did not switch %s. Open the game's AddOns list and switch it there.",
     INSIDE_BLOCKED = "The game did not load this module: %s. Check it in the AddOns list of the game menu.",
     INSIDE_OUTDATED = "The game says this module is out of date. In the AddOns list of the game menu, tick \"Load out of date AddOns\", then reload.",
     OFF_HINT = "The module is off. Switch it on and reload the interface to use it.",
@@ -105,6 +106,7 @@ T.en = {
 
 T.de = {
     STATE_BLOCKED = "Nicht geladen: %s",
+    SWITCH_FAILED = "Das Spiel hat %s nicht umgeschaltet. Öffne die AddOn-Liste des Spiels und schalte es dort um.",
     INSIDE_BLOCKED = "Das Spiel hat dieses Modul nicht geladen: %s. Prüfe es in der AddOn-Liste im Spielmenü.",
     INSIDE_OUTDATED = "Das Spiel hält dieses Modul für veraltet. Setze in der AddOn-Liste im Spielmenü den Haken bei „Veraltete AddOns laden“ und lade dann neu.",
     OFF_HINT = "Das Modul ist aus. Schalte es ein und lade die Oberfläche neu, um es zu nutzen.",
@@ -199,6 +201,7 @@ T.de = {
 
 T.es = {
     STATE_BLOCKED = "No cargado: %s",
+    SWITCH_FAILED = "El juego no cambió %s. Abre la lista de accesorios del juego y cámbialo allí.",
     INSIDE_BLOCKED = "El juego no cargó este módulo: %s. Revísalo en la lista de accesorios del menú del juego.",
     INSIDE_OUTDATED = "El juego dice que este módulo está desactualizado. En la lista de accesorios del menú del juego, marca «Cargar accesorios desactualizados» y recarga.",
     OFF_HINT = "El módulo está apagado. Enciéndelo y recarga la interfaz para usarlo.",
@@ -293,6 +296,7 @@ T.es = {
 
 T.fr = {
     STATE_BLOCKED = "Non chargé : %s",
+    SWITCH_FAILED = "Le jeu n'a pas basculé %s. Ouvrez la liste des AddOns du jeu et basculez-le là.",
     INSIDE_BLOCKED = "Le jeu n'a pas chargé ce module : %s. Vérifiez-le dans la liste des AddOns du menu du jeu.",
     INSIDE_OUTDATED = "Le jeu considère ce module comme périmé. Dans la liste des AddOns du menu du jeu, cochez « Charger les AddOns périmés », puis rechargez.",
     OFF_HINT = "Le module est désactivé. Activez-le et rechargez l'interface pour l'utiliser.",
@@ -387,6 +391,7 @@ T.fr = {
 
 T.pl = {
     STATE_BLOCKED = "Nie wczytano: %s",
+    SWITCH_FAILED = "Gra nie przełączyła %s. Otwórz listę modyfikacji w grze i przełącz go tam.",
     INSIDE_BLOCKED = "Gra nie wczytała tego modułu: %s. Sprawdź go na liście dodatków w menu gry.",
     INSIDE_OUTDATED = "Gra uważa ten moduł za nieaktualny. Na liście dodatków w menu gry zaznacz „Wczytuj nieaktualne dodatki” i przeładuj.",
     OFF_HINT = "Moduł jest wyłączony. Włącz go i przeładuj interfejs, aby go używać.",
@@ -481,6 +486,7 @@ T.pl = {
 
 T.pt = {
     STATE_BLOCKED = "Não carregado: %s",
+    SWITCH_FAILED = "O jogo não alternou %s. Abra a lista de AddOns do jogo e altere lá.",
     INSIDE_BLOCKED = "O jogo não carregou este módulo: %s. Verifique-o na lista de AddOns do menu do jogo.",
     INSIDE_OUTDATED = "O jogo diz que este módulo está desatualizado. Na lista de AddOns do menu do jogo, marque \"Carregar AddOns desatualizados\" e recarregue.",
     OFF_HINT = "O módulo está desligado. Ligue-o e recarregue a interface para usá-lo.",
@@ -575,6 +581,7 @@ T.pt = {
 
 T.ru = {
     STATE_BLOCKED = "Не загружен: %s",
+    SWITCH_FAILED = "Игра не переключила %s. Открой список модификаций в игре и переключи там.",
     INSIDE_BLOCKED = "Игра не загрузила этот модуль: %s. Проверьте его в списке модификаций в меню игры.",
     INSIDE_OUTDATED = "Игра считает этот модуль устаревшим. В списке модификаций в меню игры отметьте «Загружать устаревшие модификации» и перезагрузите интерфейс.",
     OFF_HINT = "Модуль выключен. Включите его и перезагрузите интерфейс, чтобы им пользоваться.",
@@ -669,6 +676,7 @@ T.ru = {
 
 T.zh = {
     STATE_BLOCKED = "未加载：%s",
+    SWITCH_FAILED = "游戏没有切换 %s。请打开游戏的插件列表并在那里切换。",
     INSIDE_BLOCKED = "游戏没有加载此模块：%s。请在游戏菜单的插件列表中检查。",
     INSIDE_OUTDATED = "游戏认为此模块已过期。在游戏菜单的插件列表中勾选“加载过期插件”，然后重载。",
     OFF_HINT = "模块已关闭。打开它并重载界面即可使用。",
