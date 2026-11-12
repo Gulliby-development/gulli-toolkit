@@ -299,4 +299,15 @@ S.reminders = {
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
 
+S.social = { default = {}, recent = { spec = { group = { 3, true } },
+    open = function(ns, W)
+        ns.db.blockStrangers, ns.db.noDuels = true, true
+        W.Fire("PARTY_INVITE_REQUEST", "Randomguy")
+        W.Fire("DUEL_REQUESTED", "Ganker")
+        W.Fire("CHAT_MSG_WHISPER", "inv", "Thrall")
+        ns.Log("spam", "Goldseller")
+        ns.ShowPage(2)
+    end,
+} }
+
 return S
