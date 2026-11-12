@@ -237,6 +237,19 @@ local function itemFor(state, id)
                         ah = ah, age = age, buy = ns.db.vendor[id], bags = bags, bank = bank }
 end
 
+-- The skill levels Data.lua has for a recipe. The modern API keys recipes by spell, the classic
+-- one by the item made (then the key is the item and must not be read as a spell).
+local function levels(rid, rec)
+    local D = ns.Data or {}
+    local byItem = rec.out and D.item and D.item[rec.out]
+    local bySpell = rid ~= rec.out and D.spell and D.spell[rid]
+    if bySpell then
+        if byItem then return { byItem[1], bySpell[1], bySpell[2], bySpell[3] } end
+        return bySpell
+    end
+    return byItem
+end
+
 -- The profession the window shows, as a plain table for Core.lua; nil before any scan.
 function ns.State()
     local db = charDB()
@@ -253,13 +266,13 @@ function ns.State()
     local state = { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
                     icon = prof.icon, items = {}, recipes = {} }
     for rid, rec in pairs(prof.recipes) do
-        local skill = ns.Estimate(rec.obs, rec.grey)
+        local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
         local src
         if not rec.learned then
             local cost = rec.name and ns.db.trainer[rec.name]
             if cost then src = { t = "trainer", cost = cost } else src = { t = "text", text = rec.source } end
         end
-        state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = true, r = rec.r or {},
+        state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
         for id in pairs(rec.r or {}) do itemFor(state, id) end
         if rec.out then itemFor(state, rec.out) end
