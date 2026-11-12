@@ -10,7 +10,7 @@
 ## Notes-zhCN: 把材料、弹药、食物和水保持在你设定的数量。预览后从商人处购买。 /grs
 ## Notes-zhTW: 把材料、弹药、食物和水保持在你设定的数量。预览后从商人处购买。 /grs
 ## Author: Gulliby
-## Version: 1.0.0
+## Version: 1.1.0
 ## IconTexture: Interface\AddOns\Gulli-Restock\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Restock

@@ -10,7 +10,7 @@
 ## Notes-zhCN: 密语关键词自动邀请，接受好友和公会邀请，拒绝陌生人、决斗和公会邀请。 /gso
 ## Notes-zhTW: 密语关键词自动邀请，接受好友和公会邀请，拒绝陌生人、决斗和公会邀请。 /gso
 ## Author: Gulliby
-## Version: 1.1.0
+## Version: 1.2.0
 ## IconTexture: Interface\AddOns\Gulli-Social\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Social
