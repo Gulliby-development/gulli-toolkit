@@ -21,8 +21,9 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 - **Ask for a number.** "Free up 5" and you get a plan for 5 slots.
 - **Stacks first.** Half stacks of the same item are merged before anything goes.
 - **Cheapest first.** Gray items first, then white weapons and armour. Other white items are offered unticked.
-- **Never the wrong item.** Quest items, keys, the hearthstone and items you protected in the toolkit are never offered.
-- **Sells at a vendor.** With a vendor open, items are sold, and you can buy them back. Away from a vendor they are deleted.
+- **Never the wrong item.** Quest items, keys, the hearthstone, profession tools (fishing poles, mining picks, skinning knives, ...), items in an equipment set and items you protected in the toolkit are never offered.
+- **Sells at a vendor.** With a vendor open, items are sold in small steps. The vendor keeps only the last 12 for buyback, and the window warns you when you sell more. Away from a vendor items are deleted.
+- **Nothing lost on the way.** If the game keeps an item after **OK**, the window shows it again, ticked, for one more **OK**.
 - **A warning** in chat when only two slots are left.
 
 ## Install
@@ -42,7 +43,7 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 <details>
 <summary><b>Can I get an item back?</b></summary>
 
-Sold items: yes, from the vendor's buyback tab. Deleted items: no. Open a vendor first if you are not sure.
+Sold items: the last 12, from the vendor's buyback tab. Deleted items: no. Open a vendor first if you are not sure.
 </details>
 
 <details>

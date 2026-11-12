@@ -59,17 +59,25 @@ function ns.Junk()
     return out, total
 end
 
--- Sells the junk in steps, so the vendor keeps up. Returns how many items and their value.
-function ns.SellJunk()
+-- Sells the junk in steps, so the vendor keeps up, then calls done(). With the safe switch
+-- on it sells no more than the 12 the vendor can buy back. Returns how many items and their
+-- value.
+function ns.SellJunk(done)
     local junk, total = ns.Junk()
-    if #junk == 0 then return 0, 0 end
+    if ns.db.safe and #junk > BATCH then
+        for k = #junk, BATCH + 1, -1 do total = total - junk[k].value; junk[k] = nil end
+    end
+    if #junk == 0 then if done then done(0) end return 0, 0 end
     local i = 1
     local function step()
         if not ns.atVendor then return end
         for _ = 1, BATCH do
             local it = junk[i]
             if not it then
-                say(L.SOLD:format(#junk, ns.Money(total)))
+                local msg = L.SOLD:format(#junk, ns.Money(total))
+                if #junk > BATCH then msg = msg .. " " .. L.BUYBACK end
+                say(msg)
+                if done then done(#junk) end
                 return
             end
             -- The slot can change while we sell; sell it only if it still holds the same item.
@@ -83,8 +91,10 @@ function ns.SellJunk()
 end
 
 -- Repairs everything: from the guild bank when allowed and the switch is on, else from
--- the player's money. Returns the cost and where it came from ("guild", "own"), or nil.
-function ns.Repair()
+-- the player's money. Returns the cost and where it came from ("guild", "own"), or nil and
+-- "money" when the money is short. `quiet` leaves that out of the chat (the junk is sold
+-- first and the repair tried again).
+function ns.Repair(quiet)
     if not (CanMerchantRepair and CanMerchantRepair()) then return nil end
     local cost, can = GetRepairAllCost()
     if not can or (cost or 0) <= 0 then return nil end
@@ -97,8 +107,8 @@ function ns.Repair()
         end
     end
     if money() < cost then
-        say(L.NO_MONEY:format(ns.Money(cost)))
-        return nil
+        if not quiet then say(L.NO_MONEY:format(ns.Money(cost))) end
+        return nil, "money"
     end
     RepairAllItems()
     say(L.REPAIRED:format(ns.Money(cost)))
@@ -112,7 +122,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         if a1 ~= ADDON then return end
         GulliMerchantDB = GulliMerchantDB or {}
         ns.db = GulliMerchantDB
-        for k, v in pairs({ sell = true, repair = true, guild = true }) do
+        for k, v in pairs({ sell = true, repair = true, guild = true, safe = false }) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
         self:RegisterEvent("MERCHANT_SHOW")
@@ -122,8 +132,17 @@ f:SetScript("OnEvent", function(self, event, a1)
     if event == "MERCHANT_SHOW" then
         ns.atVendor = true
         if IsShiftKeyDown and IsShiftKeyDown() then return end -- Shift skips everything once
-        if ns.db.repair then ns.Repair() end
-        if ns.db.sell then ns.SellJunk() end
+        -- Repair now if the money is there; else sell first, since the junk may pay for it.
+        local short = false
+        if ns.db.repair then short = select(2, ns.Repair(ns.db.sell)) == "money" end
+        if ns.db.sell then
+            ns.SellJunk(function(sold)
+                if not short then return end
+                if sold == 0 then ns.Repair() return end
+                -- The money of the sale comes a moment later.
+                C_Timer.After(STEP * 2, function() if ns.atVendor then ns.Repair() end end)
+            end)
+        end
     else
         ns.atVendor = false
     end
@@ -149,6 +168,7 @@ ns.OPT_ICON = {
     sell = "Interface\\Icons\\INV_Misc_Coin_02",
     repair = "Interface\\Icons\\Trade_BlackSmithing",
     guild = "Interface\\Icons\\INV_Shirt_GuildTabard_01",
+    safe = "Interface\\Icons\\Spell_Nature_TimeStop",
 }
 
 local function option(key, label)
@@ -167,6 +187,7 @@ if GulliToolkit and GulliToolkit.Register then
             option("sell", ns.L.OPT_SELL),
             option("repair", ns.L.OPT_REPAIR),
             option("guild", ns.L.OPT_GUILD),
+            option("safe", ns.L.OPT_SAFE),
         },
     })
 end

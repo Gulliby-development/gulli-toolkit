@@ -86,8 +86,51 @@ test("OK deletes away from a vendor, sells at one, then merges stacks", function
     ns = Load()
     W.Fire("MERCHANT_SHOW")
     sold, deleted = ns.Run(ns.Plan(3))
-    eq(sold, 2); eq(deleted, 0)
+    while #W.timers > 0 do W.RunTimers() end
+    eq(sold, 2); eq(deleted, 0); eq(#W.sold, 2)
     eq(#W.deleted, 0)
+end)
+
+test("profession tools, fishing poles and equipment set items are never offered", function()
+    local items = {
+        [2901] = { name = "Mining Pick", quality = 1, price = 10, classID = 2 },
+        [50] = { name = "Odd Pole", quality = 1, price = 10, classID = 2, subclassID = 20 },
+        [51] = { name = "Set Helm", quality = 1, price = 10, classID = 4 },
+        [52] = { name = "Old Axe", quality = 1, price = 10, classID = 2 },
+    }
+    Fake({ items = items, sets = { [0] = { [3] = true } }, bags = { [0] = { size = 4, slots = {
+        [1] = { id = 2901, count = 1 }, [2] = { id = 50, count = 1 }, [3] = { id = 51, count = 1 },
+        [4] = { id = 52, count = 1 } } } } })
+    local ns = Load()
+    local plan = ns.Plan(10)
+    eq(#plan.items, 1)
+    eq(plan.items[1].name, "Old Axe")
+end)
+
+test("a vendor sells in steps of 12; more than 12 says only the last 12 come back", function()
+    local items, slots = {}, {}
+    for i = 1, 15 do items[100 + i] = { name = "Junk" .. i, quality = 0, price = 1 }; slots[i] = { id = 100 + i, count = 1 } end
+    Fake({ items = items, bags = { [0] = { size = 16, slots = slots } } })
+    local ns = Load()
+    W.Fire("MERCHANT_SHOW")
+    local plan = ns.Plan(1)
+    eq(ns.ToSell(plan), 15)
+    eq(ns.Run(plan), 15)
+    eq(#W.sold, 12, "the first step")
+    W.RunTimers()
+    eq(#W.sold, 15)
+    eq(#ns.Leftover(plan), 0)
+end)
+
+test("what the game did not delete is offered again", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    local plan = ns.Plan(6)
+    W.refuse = { [2] = true }
+    ns.Run(plan)
+    local left = ns.Leftover(plan)
+    eq(#left, 1)
+    eq(left[1].name, "Torn Hide")
 end)
 
 test("nothing in combat", function()

@@ -164,6 +164,13 @@ function Fake(spec)
     return W
 end
 
+function W.Drain()
+    for _ = 1, 100 do
+        if #W.timers == 0 then return end
+        W.RunTimers()
+    end
+end
+
 function Load()
     return W.Load("Gulli-Merchant", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end

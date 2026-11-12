@@ -81,6 +81,38 @@ test("switches and Shift turn it off", function()
     eq(#W.sold, 0); eq(W.repaired, nil)
 end)
 
+test("short of money: sells the junk first, then repairs with what it brought", function()
+    Fake({ slots = { { 0, 1, 10, 1, 0 } }, prices = { [10] = 600 }, repair = { 500 }, money = 100 })
+    local use = C_Container.UseContainerItem
+    C_Container.UseContainerItem = function(b, s) use(b, s); W.money = W.money + 600 end
+    Load()
+    W.Fire("MERCHANT_SHOW")
+    eq(W.repaired, nil, "not before the sale")
+    W.Drain()
+    eq(W.repaired, "own")
+    eq(W.money, 200)
+    for _, line in ipairs(W.printed) do assert(not line:find("not enough money", 1, true), line) end
+end)
+
+test("selling more than 12 says only the last 12 come back; the safe switch sells 12", function()
+    local slots, prices = {}, {}
+    for i = 1, 15 do slots[i] = { 0, i, 100 + i, 1, 0 }; prices[100 + i] = 1 end
+    Fake({ slots = slots, prices = prices })
+    Load()
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.sold, 15)
+    assert(W.printed[#W.printed]:find("last 12", 1, true), W.printed[#W.printed])
+    slots = {}
+    for i = 1, 15 do slots[i] = { 0, i, 100 + i, 1, 0 } end
+    Fake({ slots = slots, prices = prices, db = { safe = true } })
+    Load()
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.sold, 12)
+    assert(not W.printed[#W.printed]:find("last 12", 1, true))
+end)
+
 test("no money, no repair", function()
     Fake({ repair = { 5000 }, money = 10 })
     Load()
