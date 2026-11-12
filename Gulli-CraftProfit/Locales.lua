@@ -10,13 +10,14 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    SIDE_PROF = "Profession",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Levelling route",
     TAB_CRAFTS = "Crafts now",
     TAB_ITEMS = "My items",
     TAB_RECIPES = "Recipes",
     K_BUY = "Buy",
-    K_OWN = "Own items",
+    K_OWN = "Owned",
     K_INCOME = "Income",
     K_NET = "Result",
     K_CRAFTS = "Crafts",
@@ -108,16 +109,17 @@ T.en = {
 }
 
 T.de = {
+    SIDE_PROF = "Beruf",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Skill-Route",
     TAB_CRAFTS = "Jetzt herstellen",
     TAB_ITEMS = "Meine Sachen",
     TAB_RECIPES = "Rezepte",
     K_BUY = "Kaufen",
-    K_OWN = "Eigene Sachen",
+    K_OWN = "Eigenes",
     K_INCOME = "Einnahmen",
     K_NET = "Ergebnis",
-    K_CRAFTS = "Herstellungen",
+    K_CRAFTS = "Stück",
     STOP_BANK = "Aus der Bank nehmen",
     STOP_AH_BUY = "Kaufen",
     STOP_VENDOR_BUY = "Kaufen",
@@ -206,6 +208,7 @@ T.de = {
 }
 
 T.es = {
+    SIDE_PROF = "Profesión",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Ruta de subida",
     TAB_CRAFTS = "Fabricar ahora",
@@ -215,7 +218,7 @@ T.es = {
     K_OWN = "Lo tuyo",
     K_INCOME = "Ingresos",
     K_NET = "Resultado",
-    K_CRAFTS = "Fabricaciones",
+    K_CRAFTS = "Creados",
     STOP_BANK = "Sacar del banco",
     STOP_AH_BUY = "Comprar",
     STOP_VENDOR_BUY = "Comprar",
@@ -304,16 +307,17 @@ T.es = {
 }
 
 T.fr = {
+    SIDE_PROF = "Métier",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Route de montée",
     TAB_CRAFTS = "Fabriquer",
     TAB_ITEMS = "Mes objets",
     TAB_RECIPES = "Recettes",
     K_BUY = "Acheter",
-    K_OWN = "Mes objets",
+    K_OWN = "À moi",
     K_INCOME = "Recettes",
     K_NET = "Résultat",
-    K_CRAFTS = "Fabrications",
+    K_CRAFTS = "Créations",
     STOP_BANK = "Prendre à la banque",
     STOP_AH_BUY = "Acheter",
     STOP_VENDOR_BUY = "Acheter",
@@ -402,13 +406,14 @@ T.fr = {
 }
 
 T.pl = {
+    SIDE_PROF = "Profesja",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Trasa nauki",
     TAB_CRAFTS = "Rzemiosło teraz",
     TAB_ITEMS = "Moje rzeczy",
     TAB_RECIPES = "Przepisy",
     K_BUY = "Kup",
-    K_OWN = "Własne rzeczy",
+    K_OWN = "Własne",
     K_INCOME = "Przychód",
     K_NET = "Wynik",
     K_CRAFTS = "Wytworzeń",
@@ -500,13 +505,14 @@ T.pl = {
 }
 
 T.pt = {
+    SIDE_PROF = "Profissão",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Rota de evolução",
     TAB_CRAFTS = "Criar agora",
     TAB_ITEMS = "Meus itens",
     TAB_RECIPES = "Receitas",
     K_BUY = "Comprar",
-    K_OWN = "Itens próprios",
+    K_OWN = "Próprios",
     K_INCOME = "Receita",
     K_NET = "Resultado",
     K_CRAFTS = "Criações",
@@ -598,13 +604,14 @@ T.pt = {
 }
 
 T.ru = {
+    SIDE_PROF = "Профессия",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Маршрут прокачки",
     TAB_CRAFTS = "Крафты сейчас",
     TAB_ITEMS = "Мои вещи",
     TAB_RECIPES = "Рецепты",
     K_BUY = "Купить",
-    K_OWN = "Свои вещи",
+    K_OWN = "Своё",
     K_INCOME = "Выручка",
     K_NET = "Итог",
     K_CRAFTS = "Крафтов",
@@ -696,6 +703,7 @@ T.ru = {
 }
 
 T.zh = {
+    SIDE_PROF = "专业",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "升级路线",
     TAB_CRAFTS = "现在制作",

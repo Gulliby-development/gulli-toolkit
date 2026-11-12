@@ -549,6 +549,22 @@ end
 
 function GulliCraftProfit_Toggle() if ns.Toggle then ns.Toggle() end end
 
+-- One game icon per setting, in the window and beside the module in the hub.
+ns.OPT_ICON = {
+    useBags = "Interface\\Icons\\INV_Misc_Bag_08", useBank = "Interface\\Icons\\INV_Box_02",
+    buyAH = "Interface\\Icons\\INV_Misc_Bag_10", buyVendor = "Interface\\Icons\\INV_Misc_Bag_11",
+    buyRecipes = "Interface\\Icons\\INV_Scroll_03", trainer = "Interface\\Icons\\INV_Misc_Book_11",
+    sellAH = "Interface\\Icons\\INV_Misc_Coin_02", neutral = "Interface\\Icons\\INV_Misc_Coin_04",
+    freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", target = "Interface\\Icons\\INV_Misc_Note_01",
+    chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
+}
+
+local function option(key)
+    return { label = ns.L["P_" .. key], icon = ns.OPT_ICON[key],
+             get = function() return ns.Prefs(ns.db and ns.db.prefs)[key] == true end,
+             set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
+end
+
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "CraftProfit",
@@ -556,5 +572,7 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gcp",
         category = "Items",
         open = function() if ns.Toggle then ns.Toggle() end end,
+        options = { option("useBank"), option("buyAH"), option("buyRecipes"), option("trainer"),
+                    option("sellAH"), option("neutral") },
     })
 end

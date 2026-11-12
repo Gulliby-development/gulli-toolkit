@@ -121,7 +121,7 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec.items: id -> { name, sell, bind, quality, bags, bank, ah, age }.
+-- spec.items: id -> { name, sell, bind, quality, bags, bank, ah, age, icon }.
 -- spec.prof: { name, skill, cap, recipes = { { id, name, learned, diff, grey, out, count, r = { [id] = n }, source } } }
 -- or spec.classic = true to offer only the old GetTradeSkillInfo API.
 -- spec.auctionator = false: no Auctionator. spec.vendor: { { id, price, stack, extended } }.
@@ -131,7 +131,7 @@ function Fake(spec)
     W.items = spec.items or {}
     C_Item = {
         GetItemNameByID = function(id) return W.items[id] and W.items[id].name or ("Item" .. id) end,
-        GetItemIconByID = function(id) return "icon" .. id end,
+        GetItemIconByID = function(id) return W.items[id] and W.items[id].icon or ("icon" .. id) end,
         GetItemInfo = function(id)
             local it = W.items[id] or {}
             return it.name or ("Item" .. id), nil, it.quality or 1, nil, nil, nil, nil, nil, nil, nil, it.sell or 0, nil, nil, it.bind or 0

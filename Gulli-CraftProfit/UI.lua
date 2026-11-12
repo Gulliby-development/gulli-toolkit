@@ -7,22 +7,25 @@ local L = ns.L
 local S = ns.Skin
 
 local W, H = 940, 640
-local SIDE = 250
-local NODE_W, NODE_H, COL_W, ROW_H, PER_ROW = 150, 80, 168, 92, 4
+local SIDE = 300
+local NODE_W, NODE_H, COL_W, ROW_H, PER_ROW = 130, 74, 140, 84, 4
+local MAIN = W - 2 * S.PAD - SIDE - S.GAP
+local GRAPH_W = MAIN - 2 * S.INSET - 10
 
 -- Icons from the game for the stops; a craft stop shows the profession's own icon.
 ns.STOP_ICONS = {
-    bank = "Interface\\Icons\\INV_Box_02", ah = "Interface\\Icons\\INV_Misc_Coin_02",
-    vendor = "Interface\\Icons\\INV_Misc_Bag_10", trainer = "Interface\\Icons\\INV_Misc_Book_11",
-    craft = "Interface\\Icons\\Trade_Tailoring", sell = "Interface\\Icons\\INV_Misc_Coin_17",
+    bank = "Interface\\Icons\\INV_Box_02", ah = "Interface\\Icons\\INV_Misc_Bag_10",
+    vendor = "Interface\\Icons\\INV_Misc_Bag_11", trainer = "Interface\\Icons\\INV_Misc_Book_11",
+    craft = "Interface\\Icons\\Trade_Tailoring", sell = "Interface\\Icons\\INV_Misc_Coin_02",
 }
 local PATTERN_ICON = "Interface\\Icons\\INV_Scroll_03"
 local RANK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
 local GOLD = { 1, 0.82, 0.25, 1 }
-local GOOD, BAD = { 0.36, 0.82, 0.48, 1 }, { 1, 0.42, 0.42, 1 }
+local GOOD, BAD = S.GOOD, S.BAD
+local NODE_EDGE = S.EDGE
 
 local frame
-local ui = { checks = {}, modes = {}, nodes = {}, lines = {}, profs = {} }
+local ui = { checks = {}, modes = {}, nodes = {}, lines = {}, profs = {}, steppers = {} }
 ns.ui = ui
 local tab = 1
 local selected = 1
@@ -57,111 +60,105 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 
 -- ---------- the settings column ----------
 
-local function header(parent, text, y)
-    local t = S.Text(parent, 10, S.MUTED)
-    t:SetPoint("TOPLEFT", 0, y)
-    t:SetText(text:upper())
-    return t
+local function pref(key)
+    if key == "target" and ns.view.state then return ns.Target(ns.view.state, ns.view.prefs) end
+    local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
+    return P[key]
 end
 
-local PREF_ICONS = {
-    useBags = "Interface\\Icons\\INV_Misc_Bag_08", useBank = "Interface\\Icons\\INV_Box_02",
-    buyAH = "Interface\\Icons\\INV_Misc_Coin_02", buyVendor = "Interface\\Icons\\INV_Misc_Bag_10",
-    buyRecipes = PATTERN_ICON, trainer = "Interface\\Icons\\INV_Misc_Book_11",
-    sellAH = "Interface\\Icons\\INV_Misc_Coin_17", neutral = "Interface\\Icons\\INV_Misc_Coin_04",
-    freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-}
-
-local function check(parent, key, y)
-    local c = S.Check(parent, 26)
-    c:SetPoint("TOPLEFT", 0, y)
-    local icon = S.Icon(parent, 18)
-    icon:SetPoint("LEFT", c, "RIGHT", 2, 0)
-    icon:Set(PREF_ICONS[key])
-    local t = S.Text(parent, 12)
-    t:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-    t:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
-    t:SetText(L["P_" .. key])
-    c:SetScript("OnClick", function() ns.SetPref(key, not ns.view.prefs[key]) end)
-    ui.checks[key] = c
-    return c
+-- A switch row; ui.checks[key] is its switch.
+local function switchRow(key)
+    return { L["P_" .. key], nil, function() return pref(key) and true or false end,
+             function(on) ns.SetPref(key, on and true or false) end, icon = ns.OPT_ICON[key] }
 end
 
--- A row: label, then - value +. `step`, `min`, `max`; `fmt` shows the value.
-local function stepper(parent, key, y, step, min, max, fmt)
-    local minus = S.Button(parent, 28, 28)
-    minus:SetPoint("TOPLEFT", 0, y)
-    minus:SetText("-")
-    local plus = S.Button(parent, 28, 28)
-    plus:SetPoint("TOPRIGHT", 0, y)
-    plus:SetText("+")
-    local value = S.Text(parent, 13)
-    value:SetPoint("LEFT", minus, "RIGHT", 4, 0)
-    value:SetPoint("RIGHT", plus, "LEFT", -4, 0)
-    value:SetJustifyH("CENTER")
-    local function get()
-        if key == "target" and ns.view.state then return ns.Target(ns.view.state, ns.view.prefs) end
-        return ns.view.prefs and ns.view.prefs[key] or ns.DEFAULTS[key]
+-- A row with the label over a - value + stepper, so long labels keep the full width.
+local function stepRow(parent, key, step, min, max, fmt)
+    local row = CreateFrame("Frame", nil, parent)
+    row.height = 70
+    row.icon = S.IconBox(row, 26, ns.OPT_ICON[key])
+    row.icon:SetPoint("TOPLEFT", 0, -8)
+    row.label = S.Text(row, 12)
+    row.label:SetPoint("LEFT", row.icon, "RIGHT", 12, 0)
+    row.label:SetPoint("RIGHT", 0, 0)
+    row.label:SetWordWrap(false)
+    row.label:SetText(key == "target" and L.SIDE_TARGET or L["P_" .. key])
+    local st = S.Stepper(row, function() return pref(key) or ns.DEFAULTS[key] end,
+        function(v) ns.SetPref(key, v) end, step, min, max, fmt)
+    st:SetPoint("BOTTOMLEFT", 38, 8)
+    st:SetPoint("BOTTOMRIGHT", 0, 8)
+    row.line = S.Divider(row)
+    row.line:SetPoint("BOTTOMLEFT")
+    row.line:SetPoint("BOTTOMRIGHT")
+    row.line:SetHeight(1)
+    ui[key] = st
+    ui.steppers[key] = st
+    return row
+end
+
+-- A card of rows: switch rows (tables) and ready frames (stepRow), stacked.
+local function rowsCard(parent, title, rows)
+    local card = S.Card(parent, title)
+    local st = S.Stack(card.body, 0)
+    for i, r in ipairs(rows) do
+        local row = r
+        if type(r) == "table" and not r.GetObjectType then
+            row = S.SwitchRow(card.body, r[1], r[2], r[3], r[4], nil, r.icon)
+            ui.checks[r.key] = row.switch
+        end
+        st:Add(row, row.height)
+        row.line:SetShown(i < #rows)
     end
-    minus:SetScript("OnClick", function() ns.SetPref(key, math.max(min, get() - step)) end)
-    plus:SetScript("OnClick", function() ns.SetPref(key, math.min(max, get() + step)) end)
-    ui[key] = { minus = minus, plus = plus, value = value, fmt = fmt, get = get }
+    return card, card:Fit(st:Height() - 6)
 end
 
-local function buildSide(side)
-    local y = 0
-    header(side, L.SIDE_MODE, y); y = y - 16
-    for i, m in ipairs({ "money", "balance", "speed" }) do
-        local b = S.Button(side, (SIDE - 8) / 3, 30)
-        b:SetPoint("TOPLEFT", (i - 1) * ((SIDE - 8) / 3 + 4), y)
-        b:SetText(L["MODE_" .. m])
-        b:SetScript("OnClick", function() ns.SetPref("mode", m) end)
-        b:SetScript("OnLeave", function(self) S.SetBorder(self, ns.view.prefs.mode == m and S.Accent() or S.BORDER) end)
-        ui.modes[m] = b
-    end
-    y = y - 38
-    header(side, L.SIDE_TARGET, y); y = y - 16
-    stepper(side, "target", y, 5, 1, 300, function(v) return tostring(v) end); y = y - 36
-    header(side, L.SIDE_FROM, y); y = y - 14
-    for _, k in ipairs({ "useBags", "useBank", "buyAH", "buyVendor" }) do check(side, k, y); y = y - 26 end
-    y = y - 4
-    header(side, L.SIDE_LEARN, y); y = y - 14
-    for _, k in ipairs({ "buyRecipes", "trainer" }) do check(side, k, y); y = y - 26 end
-    y = y - 4
-    header(side, L.SIDE_SELL, y); y = y - 14
-    for _, k in ipairs({ "sellAH", "neutral" }) do check(side, k, y); y = y - 26 end
-    local cl = S.Text(side, 11, S.MUTED); cl:SetPoint("TOPLEFT", 0, y - 2); cl:SetText(L.P_chance); y = y - 16
-    stepper(side, "chance", y, 5, 30, 100, function(v) return v .. "%" end); y = y - 32
-    local ml = S.Text(side, 11, S.MUTED); ml:SetPoint("TOPLEFT", 0, y - 2); ml:SetText(L.P_maxSell); y = y - 16
-    stepper(side, "maxSell", y, 1, 1, 40, function(v) return L.UNITS:format(v) end); y = y - 32
-    check(side, "freshOnly", y); y = y - 32
+local function sw(key) local r = switchRow(key); r.key = key; return r end
 
-    local reset = S.Button(side, SIDE, 28)
-    reset:SetPoint("BOTTOMLEFT", 0, 0)
-    reset:SetText(L.RESET)
-    reset:SetScript("OnClick", function() ns.ResetPrefs() end)
-    ui.reset = reset
-    local toast = CreateFrame("Frame", nil, side)
-    toast:SetPoint("TOPLEFT", 0, y)
-    toast:SetPoint("BOTTOMRIGHT", reset, "TOPRIGHT", 0, 6)
-    S.Box(toast, { 0.05, 0.05, 0.06, 1 }, { 0.17, 0.17, 0.19, 1 })
-    ui.toast = S.Text(toast, 11, S.MUTED)
-    ui.toast:SetPoint("TOPLEFT", 6, -6)
-    ui.toast:SetPoint("BOTTOMRIGHT", -6, 6)
-    ui.toast:SetJustifyV("TOP")
+local function buildSide(scroll)
+    local inner = SIDE - 10
+    local col = scroll.child
+    col:SetWidth(inner)
+    local st = S.Stack(col)
+
+    -- the professions this character has seen
+    local prof = S.Card(col, L.SIDE_PROF)
+    ui.profCard = prof
+    st:Add(prof, prof:Fit(4 * 34 - 6))
+
+    local mode = S.Card(col, L.SIDE_MODE)
+    local modes = { "money", "balance", "speed" }
+    local labels = {}
+    for i, m in ipairs(modes) do labels[i] = L["MODE_" .. m] end
+    local each = math.floor((inner - 2 * S.INSET - 4) / 3)
+    ui.modeTabs = S.Tabs(mode.body, labels, each, function(i) ns.SetPref("mode", modes[i]) end)
+    for i, m in ipairs(modes) do ui.modes[m] = ui.modeTabs.buttons[i] end
+    local target = stepRow(mode.body, "target", 5, 1, 300)
+    target:SetPoint("TOPLEFT", 0, -38)
+    target:SetPoint("TOPRIGHT", 0, -38)
+    target:SetHeight(target.height)
+    target.line:Hide()
+    st:Add(mode, mode:Fit(38 + target.height - 6))
+
+    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"), sw("buyVendor") })
+    st:Add(c1, h1)
+    local c2, h2 = rowsCard(col, L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") })
+    st:Add(c2, h2)
+    local c3, h3 = rowsCard(col, L.SIDE_SELL, { sw("sellAH"), sw("neutral"), sw("freshOnly"),
+        stepRow(col, "chance", 5, 30, 100, function(v) return v .. "%" end),
+        stepRow(col, "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end) })
+    st:Add(c3, h3)
+    ui.sideCards = st.items
+    col:SetHeight(st:Height())
+    scroll:Update(st:Height())
 end
 
 local function refreshSide()
-    local P = ns.view.prefs or ns.Prefs()
+    local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    for m, b in pairs(ui.modes) do
-        S.SetBorder(b, P.mode == m and S.Accent() or S.BORDER)
-        b.text:SetTextColor(unpack(P.mode == m and S.Accent() or S.TEXT))
+    for i, m in ipairs({ "money", "balance", "speed" }) do
+        if P.mode == m then ui.modeTabs:Select(i, true) end
     end
-    for _, k in ipairs({ "target", "chance", "maxSell" }) do
-        local s = ui[k]
-        s.value:SetText(s.fmt(s.get()))
-    end
+    for _, s in pairs(ui.steppers) do s:Refresh() end
     local d = ns.view.delta
     if d then
         local up = d.net >= 0
@@ -205,12 +202,12 @@ end
 local function makeNode(parent, i)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(NODE_W, NODE_H)
-    S.Box(b, S.PANEL, { 0.17, 0.17, 0.19, 1 })
-    b.stripe = S.Tex(b, "ARTWORK", { 1, 1, 1, 1 })
+    S.Box(b, S.RAISED, NODE_EDGE)
+    b.stripe = S.Tex(b, "ARTWORK", 0, { 1, 1, 1, 1 })
     b.stripe:SetPoint("TOPLEFT", 1, -1)
     b.stripe:SetPoint("BOTTOMLEFT", 1, 1)
     b.stripe:SetWidth(3)
-    b.icon = S.Icon(b, 28)
+    b.icon = S.ItemIcon(b, 28)
     b.icon:SetPoint("TOPLEFT", 10, -7)
     b.kind = S.Text(b, 9, S.MUTED, "")
     b.kind:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 6, 0)
@@ -222,12 +219,12 @@ local function makeNode(parent, i)
     b.title:SetWordWrap(false)
     b.strip = {}
     for k = 1, 4 do
-        local ic = S.Icon(b, 16)
-        ic:SetPoint("BOTTOMLEFT", 10 + (k - 1) * 19, 8)
+        local ic = S.ItemIcon(b, 16)
+        ic:SetPoint("BOTTOMLEFT", 10 + (k - 1) * 18, 8)
         b.strip[k] = ic
     end
     b.more = S.Text(b, 9, S.MUTED)
-    b.more:SetPoint("BOTTOMLEFT", 10 + 4 * 19, 11)
+    b.more:SetPoint("BOTTOMLEFT", 10 + 4 * 18, 11)
     b.money = S.Text(b, 10, S.MUTED)
     b.money:SetPoint("BOTTOMRIGHT", -6, 10)
     b.bar = {}
@@ -239,7 +236,7 @@ local function nodePos(i)
     local row = math.floor((i - 1) / PER_ROW)
     local c = (i - 1) % PER_ROW
     local col = (row % 2 == 1) and (PER_ROW - 1 - c) or c
-    return 8 + col * COL_W, -(8 + row * ROW_H)
+    return 4 + col * COL_W, -(4 + row * ROW_H)
 end
 
 local function fillNode(b, n)
@@ -275,7 +272,7 @@ local function fillNode(b, n)
         local span = n.to - n.from
         local x = 4
         for k, sg in ipairs(n.segs) do
-            local t = b.bar[k] or S.Tex(b, "OVERLAY")
+            local t = b.bar[k] or S.Tex(b, "OVERLAY", 0, S.TEXT)
             b.bar[k] = t
             local w = math.max(1, (NODE_W - 5) * (sg.to - sg.from) / span)
             local c = segColor(sg.color)
@@ -288,7 +285,7 @@ local function fillNode(b, n)
         end
     end
     n.shownSelected = (n.index == selected)
-    S.SetBorder(b, n.shownSelected and S.Accent() or { 0.17, 0.17, 0.19, 1 })
+    S.SetBorder(b, n.shownSelected and S.Accent() or NODE_EDGE)
 end
 
 local function drawGraph()
@@ -307,7 +304,7 @@ local function drawGraph()
             b.lit = true
             C_Timer.After(1.4, function()
                 b.lit = nil
-                S.SetBorder(b, (selected == i) and S.Accent() or { 0.17, 0.17, 0.19, 1 })
+                S.SetBorder(b, (selected == i) and S.Accent() or NODE_EDGE)
             end)
         end
     end
@@ -335,8 +332,8 @@ local function drawGraph()
     end
     for i = #route + 1, #ui.lines do if ui.lines[i] then ui.lines[i]:Hide() end end
     local rows = math.ceil(#route / PER_ROW)
-    local h = 16 + rows * ROW_H
-    child:SetSize(W - SIDE - 40, h)
+    local h = 8 + rows * ROW_H
+    child:SetSize(GRAPH_W, h)
     ui.graph:Update(h)
 end
 
@@ -367,7 +364,7 @@ local function detailRows(n)
 end
 
 local function makeLine(r)
-    r.icon = S.Icon(r, 20)
+    r.icon = S.ItemIcon(r, 20)
     r.icon:SetPoint("LEFT", 4, 0)
     r.right = S.Text(r, 11)
     r.right:SetPoint("RIGHT", -6, 0)
@@ -429,7 +426,7 @@ local function listRows(which)
 end
 
 local function makeListRow(r)
-    r.icon = S.Icon(r, 22)
+    r.icon = S.ItemIcon(r, 22)
     r.icon:SetPoint("LEFT", 4, 0)
     r.cols = {}
     for k = 2, 6 do
@@ -446,7 +443,7 @@ local function fillListRow(r, e)
     local spec = LISTS[tab - 1]
     if e.icon then r.icon:Set(e.icon, e.n, e.q) else r.icon:Hide() end
     r.text:SetText(e.text)
-    r.text:SetPoint("RIGHT", r, "RIGHT", -(spec[2][2] + 66), 0)
+    r.text:SetPoint("RIGHT", r, "RIGHT", -(spec[2][2] + 80), 0)
     for k = 1, 5 do
         local t = r.cols[k]
         t:ClearAllPoints()
@@ -458,146 +455,152 @@ end
 
 -- ---------- building and refreshing ----------
 
-local function kpi(parent, i, key, icon)
-    local w = (W - SIDE - 40 - 4 * 6) / 5
-    local f = CreateFrame("Frame", nil, parent)
-    f:SetSize(w, 40)
-    f:SetPoint("TOPLEFT", (i - 1) * (w + 6), 0)
-    S.Box(f, S.PANEL)
-    local ic = S.Icon(f, 12)
-    ic:SetPoint("TOPLEFT", 6, -5)
-    ic:Set(icon)
-    local t = S.Text(f, 9, S.MUTED)
-    t:SetPoint("LEFT", ic, "RIGHT", 4, 0)
-    t:SetText(L[key]:upper())
-    f.value = S.Text(f, 13)
-    f.value:SetPoint("BOTTOMLEFT", 6, 5)
-    f.value:SetPoint("RIGHT", -4, 0)
-    f.value:SetWordWrap(false)
-    return f
-end
+local KPI_ICONS = { "Interface\\Icons\\INV_Misc_Bag_10", "Interface\\Icons\\INV_Misc_Bag_08",
+                    "Interface\\Icons\\INV_Misc_Coin_02", "Interface\\Icons\\INV_Misc_Coin_01",
+                    "Interface\\Icons\\Spell_Nature_TimeStop" }
 
 local function build()
     frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
-    local body = frame.body
     ui.frame = frame
+    ui.age = frame.sub
+    local footer = S.Footer(frame)
+    ui.toast = footer.status
+    ui.reset = footer:Add(S.FitButton(footer, L.RESET, 32, 96))
+    ui.reset:SetScript("OnClick", function() ns.ResetPrefs() end)
+    local body = frame.body
+    local bodyH = frame.inner[2]
 
-    -- professions on top, prices on the right
-    ui.profBar = CreateFrame("Frame", nil, body)
-    ui.profBar:SetPoint("TOPLEFT", 0, 0)
-    ui.profBar:SetSize(W - SIDE - 40, 28)
-    ui.age = S.Text(body, 11, S.MUTED)
-    ui.age:SetPoint("TOPRIGHT", 0, -8)
-    ui.age:SetJustifyH("RIGHT")
-
-    local tabsHolder = CreateFrame("Frame", nil, body)
-    tabsHolder:SetPoint("TOPLEFT", 0, -34)
-    tabsHolder:SetSize(W - SIDE - 30, 30)
-    local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES }
-    ui.tabs = S.Tabs(tabsHolder, labels, 158, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
-
-    local main = CreateFrame("Frame", nil, body)
-    main:SetPoint("TOPLEFT", 0, -70)
-    main:SetPoint("BOTTOMRIGHT", -(SIDE + 14), 0)
-    ui.main = main
-    local side = CreateFrame("Frame", nil, body)
-    side:SetPoint("TOPRIGHT", 0, -34)
-    side:SetPoint("BOTTOMRIGHT", 0, 0)
-    side:SetWidth(SIDE)
+    -- the settings column on the right
+    local sideBox = CreateFrame("Frame", nil, body)
+    sideBox:SetPoint("TOPRIGHT", 0, 0)
+    sideBox:SetPoint("BOTTOMRIGHT", 0, 0)
+    sideBox:SetWidth(SIDE)
+    local side = S.Scroll(sideBox)
+    side:SetPoint("TOPLEFT", 0, 0)
+    side:SetPoint("BOTTOMRIGHT", -10, 0)
+    ui.side = side
     buildSide(side)
 
-    -- route tab
-    local route = CreateFrame("Frame", nil, main)
-    route:SetAllPoints()
-    ui.route = route
-    ui.kpis = {
-        kpi(route, 1, "K_BUY", "Interface\\Icons\\INV_Misc_Coin_02"),
-        kpi(route, 2, "K_OWN", "Interface\\Icons\\INV_Misc_Bag_08"),
-        kpi(route, 3, "K_INCOME", "Interface\\Icons\\INV_Misc_Coin_17"),
-        kpi(route, 4, "K_NET", "Interface\\Icons\\INV_Misc_Coin_01"),
-        kpi(route, 5, "K_CRAFTS", "Interface\\Icons\\Trade_BlackSmithing"),
-    }
-    ui.warn = S.Text(route, 11, GOLD)
-    ui.warn:SetPoint("TOPLEFT", 0, -46)
-    ui.warn:SetPoint("RIGHT", 0, 0)
-    local gbox = CreateFrame("Frame", nil, route)
-    gbox:SetPoint("TOPLEFT", 0, -62)
-    gbox:SetPoint("RIGHT", -12, 0)
-    gbox:SetHeight(290)
-    S.Box(gbox, { 0.04, 0.04, 0.05, 1 })
-    ui.graph = S.Scroll(gbox)
-    ui.graph:SetAllPoints()
-    ui.skillFrom = S.Text(route, 10, S.MUTED)
-    ui.skillFrom:SetPoint("TOPLEFT", gbox, "BOTTOMLEFT", 0, -6)
-    ui.skillTo = S.Text(route, 10, S.MUTED)
-    ui.skillTo:SetPoint("TOPRIGHT", gbox, "BOTTOMRIGHT", 0, -6)
-    ui.skillTo:SetJustifyH("RIGHT")
-    local bar = CreateFrame("Frame", nil, route)
-    bar:SetPoint("TOPLEFT", gbox, "BOTTOMLEFT", 0, -20)
-    bar:SetPoint("TOPRIGHT", gbox, "BOTTOMRIGHT", 0, -20)
-    bar:SetHeight(14)
-    S.Box(bar, { 0.04, 0.04, 0.05, 1 })
-    ui.bar, ui.barParts = bar, {}
-    ui.detailTitle = S.Text(route, 12)
-    ui.detailTitle:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -8)
-    ui.detailTitle:SetPoint("RIGHT", -12, 0)
-    ui.detail = S.List(route, 24, makeLine, fillLine)
-    ui.detail:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -26)
-    ui.detail:SetPoint("BOTTOMRIGHT", -12, 0)
+    local main = CreateFrame("Frame", nil, body)
+    main:SetPoint("TOPLEFT", 0, 0)
+    main:SetPoint("BOTTOMLEFT", 0, 0)
+    main:SetWidth(MAIN)
+    ui.main = main
+    local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES }
+    ui.tabs = S.Tabs(main, labels, nil, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
+    local top = 30 + S.GAP
 
-    -- list tabs
-    local list = CreateFrame("Frame", nil, main)
-    list:SetAllPoints()
+    -- route tab: numbers, the graph with the skill bar, the chosen stop
+    local route = CreateFrame("Frame", nil, main)
+    route:SetPoint("TOPLEFT", 0, -top)
+    route:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.route = route
+    local st = S.Stack(route)
+    local kpis = S.StatRow(route, { L.K_BUY, L.K_OWN, L.K_INCOME, L.K_NET, L.K_CRAFTS }, 62, KPI_ICONS)
+    st:Add(kpis, 62)
+    kpis:Layout(MAIN)
+    ui.kpis = kpis.tiles
+    local detailH = 36 + 3 * 28 + S.INSET
+    local graphH = bodyH - top - st.y - S.GAP - detailH
+    local gcard = S.Card(route, L.TAB_ROUTE)
+    st:Add(gcard, graphH)
+    ui.graphCard = gcard
+    ui.warn = gcard.hint
+    ui.warn:SetTextColor(GOLD[1], GOLD[2], GOLD[3], 1)
+    local graphBox = CreateFrame("Frame", nil, gcard.body)
+    graphBox:SetPoint("TOPLEFT", 0, 0)
+    graphBox:SetPoint("BOTTOMRIGHT", 0, 30)
+    ui.graph = S.Scroll(graphBox)
+    ui.graph:SetPoint("TOPLEFT", 0, 0)
+    ui.graph:SetPoint("BOTTOMRIGHT", -10, 0)
+    local bar = CreateFrame("Frame", nil, gcard.body)
+    bar:SetPoint("BOTTOMLEFT", 0, 16)
+    bar:SetPoint("BOTTOMRIGHT", 0, 16)
+    bar:SetHeight(8)
+    S.Box(bar, S.INPUT, S.EDGE)
+    ui.bar, ui.barParts = bar, {}
+    ui.skillFrom = S.Text(gcard.body, 10, S.MUTED)
+    ui.skillFrom:SetPoint("BOTTOMLEFT", 0, 0)
+    ui.skillTo = S.Text(gcard.body, 10, S.MUTED)
+    ui.skillTo:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.skillTo:SetJustifyH("RIGHT")
+    local dcard = S.Card(route, " ")
+    st:Add(dcard, detailH)
+    ui.detailCard = dcard
+    ui.detailTitle = dcard.title
+    ui.detail = S.List(dcard.body, 28, makeLine, fillLine)
+    ui.detail:SetPoint("TOPLEFT", 0, 0)
+    ui.detail:SetPoint("BOTTOMRIGHT", -10, 0)
+
+    -- list tabs: one card with column heads and rows
+    local list = S.Card(main)
+    list:SetPoint("TOPLEFT", 0, -top)
+    list:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.listFrame = list
     ui.listHead = {}
-    for k = 1, 6 do
-        local t = S.Text(list, 10, S.MUTED)
-        ui.listHead[k] = t
-    end
-    ui.list = S.List(list, 30, makeListRow, fillListRow)
+    for k = 1, 6 do ui.listHead[k] = S.Text(list.body, 10, S.MUTED) end
+    ui.list = S.List(list.body, 32, makeListRow, fillListRow)
     ui.list:SetPoint("TOPLEFT", 0, -20)
-    ui.list:SetPoint("BOTTOMRIGHT", -12, 0)
+    ui.list:SetPoint("BOTTOMRIGHT", -10, 0)
 
-    ui.empty = S.Note(main, 13)
-    ui.empty:SetPoint("TOPLEFT", 4, -8)
-    ui.empty:SetPoint("RIGHT", -16, 0)
+    local emptyBox = CreateFrame("Frame", nil, main)
+    emptyBox:SetPoint("TOPLEFT", 0, -top)
+    emptyBox:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.empty = S.Empty(emptyBox)
 
     frame:SetScript("OnShow", function() ns.Recalc(false); ns.Refresh() end)
-    ui.tabs:Select(1)
+    ui.tabs:Select(1, true)
 end
 
 local function refreshProfessions()
     local profs = ns.Professions()
-    local x = 0
+    local body = ui.profCard.body
     for i, p in ipairs(profs) do
         local b = ui.profs[i]
         if not b then
-            b = S.Button(ui.profBar, 150, 26)
+            b = S.Pill(body, 10, 28)
+            b:SetPoint("TOPLEFT", 0, -(i - 1) * 34)
+            b:SetPoint("TOPRIGHT", 0, -(i - 1) * 34)
+            b.icon = S.IconBox(b, 20)
+            b.icon:SetPoint("LEFT", 4, 0)
             b.text:ClearAllPoints()
-            b.text:SetPoint("LEFT", 6, 0)
-            b.text:SetPoint("RIGHT", -6, 0)
-            b.text:SetWordWrap(false)
+            b.text:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
+            b.text:SetPoint("RIGHT", -8, 0)
+            b.text:SetJustifyH("LEFT")
             ui.profs[i] = b
         end
-        b:ClearAllPoints()
-        b:SetPoint("LEFT", x, 0)
-        b:SetText(p.name .. " " .. color(S.MUTED) .. p.skill .. "/" .. p.cap .. "|r")
+        b.icon:SetIcon(p.icon)
+        b:SetText(p.name .. "  " .. color(S.MUTED) .. p.skill .. "/" .. p.cap .. "|r")
         b:SetScript("OnClick", function() ns.SetProfession(p.name) end)
-        S.SetBorder(b, ns.char.current == p.name and S.Accent() or S.BORDER)
+        b:SetSelected(ns.char.current == p.name)
         b:Show()
-        x = x + 154
     end
     for i = #profs + 1, #ui.profs do ui.profs[i]:Hide() end
+    local n = math.max(1, #profs)
+    local h = ui.profCard:Fit(n * 34 - 6)
+    if h ~= ui.profH then
+        -- the cards under it move with the card's height
+        ui.profH = h
+        local y = 0
+        for _, c in ipairs(ui.sideCards) do
+            c:ClearAllPoints()
+            c:SetPoint("TOPLEFT", 0, -y)
+            c:SetPoint("TOPRIGHT", 0, -y)
+            y = y + c:GetHeight() + S.GAP
+        end
+        ui.side.child:SetHeight(y - S.GAP)
+        ui.side:Update(y - S.GAP)
+    end
 end
 
 local function refreshRoute()
     local v = ns.view
     local plan = v.plan
-    ui.kpis[1].value:SetText(ns.Money(plan.spend))
-    ui.kpis[2].value:SetText(ns.Money(plan.own))
-    ui.kpis[3].value:SetText(ns.Money(plan.income))
-    ui.kpis[4].value:SetText(color(plan.net >= 0 and GOOD or BAD) .. ns.Money(plan.net, true) .. "|r")
-    ui.kpis[5].value:SetText(tostring(ns.Ceil(plan.crafts)))
+    ui.kpis[1]:Set(ns.Short(plan.spend))
+    ui.kpis[2]:Set(ns.Short(plan.own))
+    ui.kpis[3]:Set(ns.Short(plan.income))
+    ui.kpis[4]:Set((plan.net < 0 and "-" or "+") .. ns.Short(plan.net), plan.net >= 0 and GOOD or BAD)
+    ui.kpis[5]:Set(tostring(ns.Ceil(plan.crafts)))
     local w = plan.warn
     ui.warn:SetText(w and L[w[1]]:format(w[2], w[3]) or "")
     if selected > #v.route then selected = 1 end
@@ -609,24 +612,24 @@ local function refreshRoute()
     local x, k = 1, 0
     for _, sg in ipairs(plan.segs) do
         k = k + 1
-        local t = ui.barParts[k] or S.Tex(ui.bar, "ARTWORK")
+        local t = ui.barParts[k] or S.Tex(ui.bar, "ARTWORK", 0, S.TEXT)
         ui.barParts[k] = t
         local c = segColor(sg.color)
         local wd = math.max(1, width * (sg.to - sg.from) / span)
         t:SetVertexColor(c[1], c[2], c[3], 1)
         t:ClearAllPoints()
         t:SetPoint("TOPLEFT", x, -1)
-        t:SetSize(wd, 12)
+        t:SetSize(wd, 6)
         t:Show()
         x = x + wd
     end
     ui.skillFrom:SetText(L.SKILL_FROM:format(v.state.skill))
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
-    ui.skillTo:SetText((guess and (L.GUESS .. "  ") or "") .. (plan.reached < plan.target
+    ui.skillTo:SetText((guess and (L.GUESS .. "  ·  ") or "") .. (plan.reached < plan.target
         and L.SKILL_SHORT:format(plan.reached, plan.target) or L.SKILL_TARGET:format(plan.target)))
     local n = v.route[selected]
-    ui.detailTitle:SetText(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")
+    ui.detailCard:SetTitle(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")
     ui.detail:SetData(detailRows(n))
 end
 
@@ -635,7 +638,7 @@ local function refreshList()
     for k = 1, 6 do
         local t = ui.listHead[k]
         t:ClearAllPoints()
-        if k == 1 then t:SetPoint("TOPLEFT", 32, -4) else t:SetPoint("TOPRIGHT", -(spec[k][2] + 12), -4) end
+        if k == 1 then t:SetPoint("TOPLEFT", 34, 0) else t:SetPoint("TOPRIGHT", -(spec[k][2] + 10), 0) end
         t:SetText(L[spec[k][1]]:upper())
     end
     ui.list:SetData(listRows(tab))
@@ -649,11 +652,13 @@ function ns.Refresh()
     refreshSide()
     local v = ns.view
     local age = ns.PriceAge(v.state)
-    if not ns.HasAuctionator() then ui.age:SetText(color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
-    elseif age then ui.age:SetText(L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
-    else ui.age:SetText("") end
+    local slash = "/gcp  ·  "
+    if not ns.HasAuctionator() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
+    elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
+    else ui.age:SetText("/gcp") end
     local has = v.state ~= nil and v.plan ~= nil
-    ui.empty:SetText(has and "" or L.NO_PROF)
+    ui.empty:Set(has and "" or L.NO_PROF)
+    ui.empty:SetShown(not has)
     ui.route:SetShown(has and tab == 1)
     ui.listFrame:SetShown(has and tab > 1)
     if not has then return end

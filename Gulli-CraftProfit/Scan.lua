@@ -185,7 +185,7 @@ end
 
 function ns.Professions()
     local out = {}
-    for name, p in pairs(charDB().profs) do out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0 } end
+    for name, p in pairs(charDB().profs) do out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0, icon = p.icon } end
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
 end

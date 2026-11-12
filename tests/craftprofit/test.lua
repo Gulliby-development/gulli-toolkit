@@ -334,7 +334,7 @@ test("no profession read yet: the window says how to start", function()
     Fake({})
     local n = Load()
     n.Toggle()
-    eq(n.ui.empty:GetText(), n.L.NO_PROF)
+    eq(n.ui.empty.title:GetText(), n.L.NO_PROF)
     assert(not n.ui.route:IsShown())
 end)
 
@@ -386,9 +386,28 @@ test("every switch in the column rebuilds the plan", function()
         local before = n.view.prefs[key]
         W.Click(c)
         eq(n.view.prefs[key], not before, key)
-        eq(c.state, not before, key .. " box")
+        eq(c:GetChecked(), not before, key .. " switch")
         W.Click(c)
     end
+end)
+
+test("the hub's switches change the same settings and rebuild the plan", function()
+    local reg
+    Fake({})
+    GulliToolkit = { Register = function(t) reg = t end }
+    local n = Load()
+    GulliToolkit = nil
+    eq(reg.key, "CraftProfit")
+    assert(#reg.options >= 1 and #reg.options <= 6)
+    for _, o in ipairs(reg.options) do assert(o.icon and o.label, "icon and label") end
+    n.Recalc(false)
+    local o = reg.options[1]
+    local before = o.get()
+    o.set(not before)
+    eq(o.get(), not before)
+    assert(next(n.db.prefs), "saved in the same prefs")
+    o.set(before)
+    eq(o.get(), before)
 end)
 
 test("a stop click shows its lines; tabs show the lists", function()
