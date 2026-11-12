@@ -19,13 +19,26 @@ B.CLASS = {
     },
     MAGE = {
         { key = "int", id = 1459, group = 23028, who = "mana" },
+        { key = "armor", who = "self", choice = "magearmor" },
     },
     DRUID = {
         { key = "motw", id = 1126, group = 21849, who = "all" },
         { key = "thorns", id = 467, who = "thorns" },
+        { key = "omen", id = 16864, who = "self" },
     },
     PALADIN = {
         { key = "blessing", who = "blessing" },
+        { key = "aura", who = "self", choice = "aura" },
+        { key = "fury", id = 25780, who = "self", off = true },
+    },
+    WARRIOR = {
+        { key = "shout", id = 6673, who = "self" },
+    },
+    WARLOCK = {
+        { key = "armor", who = "self", choice = "lockarmor" },
+    },
+    HUNTER = {
+        { key = "aspect", who = "self", choice = "aspect" },
     },
     SHAMAN = {
         { key = "shield", who = "self", choice = "shield" },
@@ -42,8 +55,33 @@ B.BLESSINGS = {
     { key = "sanctuary", id = 20911, also = { 25899 } },
 }
 
--- Shaman self buffs picked in the settings.
+-- Self buffs picked in the settings, one of each list. "auto" takes the last one the
+-- player knows (the lists go from the low level spell to the high level one).
 B.CHOICES = {
+    magearmor = {
+        { key = "frost", id = 168 },
+        { key = "ice", id = 7302 },
+        { key = "mage", id = 6117 },
+    },
+    lockarmor = {
+        { key = "skin", id = 687 },
+        { key = "demon", id = 706 },
+    },
+    aura = {
+        { key = "devotion", id = 465 },
+        { key = "retribution", id = 7294 },
+        { key = "concentration", id = 19746 },
+        { key = "shadowres", id = 19876 },
+        { key = "frostres", id = 19888 },
+        { key = "fireres", id = 19891 },
+    },
+    aspect = {
+        { key = "monkey", id = 13163 },
+        { key = "hawk", id = 13165 },
+        { key = "cheetah", id = 5118 },
+        { key = "pack", id = 13159 },
+        { key = "wild", id = 20043 },
+    },
     shield = {
         { key = "lightning", id = 324 },
         { key = "water", id = 24398 },
@@ -54,6 +92,12 @@ B.CHOICES = {
         { key = "frostbrand", id = 8033 },
         { key = "windfury", id = 8232 },
     },
+}
+
+-- The start value of each choice; "auto" is offered only where it is the default.
+B.CHOICE_DEFAULT = {
+    shield = "lightning", weapon = "off", magearmor = "auto", lockarmor = "auto",
+    aura = "devotion", aspect = "off",
 }
 
 -- Classes without mana get no Intellect or Spirit.
