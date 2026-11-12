@@ -6,36 +6,35 @@ local L = ns.L
 
 ns.KINDS = { "GROUP", "WTS", "WTB", "CRAFT", "GUILD", "OTHER" }
 
--- Dungeons and raids: key, area id (for the game's own localized name), English name,
--- level range, and the words players use for it.
+-- Dungeons and raids of WoW Forever: key, area id (for the game's own localized name; nil when
+-- the area is new in Forever and its name comes from Locales), English name, level range, and
+-- the words players use for it. Only what Forever has: a raid comes in when Blizzard opens it.
+-- A word that starts with "~" is weak: short or common, so it names the dungeon only in a
+-- message that already looks for a group.
 ns.DUNGEONS = {
     { "RFC", 2437, "Ragefire Chasm", 13, 18, { "rfc", "ragefire" } },
-    { "WC", 718, "Wailing Caverns", 17, 24, { "wc", "wailing" } },
-    { "DM", 1581, "The Deadmines", 17, 26, { "dm", "deadmines", "deadmine", "vc", "vancleef", "мертвые копи", "мёртвые копи" } },
+    { "WC", 718, "Wailing Caverns", 17, 24, { "~wc", "wailing" } },
+    { "DM", 1581, "The Deadmines", 17, 26, { "~dm", "deadmines", "deadmine", "~vc", "vancleef", "мертвые копи", "мёртвые копи" } },
     { "SFK", 209, "Shadowfang Keep", 22, 30, { "sfk", "shadowfang" } },
     { "BFD", 719, "Blackfathom Deeps", 24, 32, { "bfd", "blackfathom" } },
-    { "STOCKS", 717, "The Stockade", 24, 32, { "stocks", "stockade", "stockades", "stock" } },
+    { "STOCKS", 717, "The Stockade", 24, 32, { "~stocks", "stockade", "stockades", "~stock" } },
     { "GNOMER", 721, "Gnomeregan", 29, 38, { "gnomer", "gnomeregan", "gnomer run" } },
     { "RFK", 491, "Razorfen Kraul", 30, 40, { "rfk", "kraul" } },
-    { "SM", 796, "Scarlet Monastery", 34, 45, { "sm", "scarlet", "smgy", "sm gy", "smlib", "sm lib", "smarm", "sm arm", "smcath", "sm cath", "cath", "armory" } },
-    { "RFD", 722, "Razorfen Downs", 37, 46, { "rfd", "downs" } },
-    { "ULDA", 1337, "Uldaman", 41, 51, { "ulda", "uld", "uldaman" } },
+    { "SM", 796, "Scarlet Monastery", 34, 45, { "~sm", "~scarlet", "smgy", "sm gy", "smlib", "sm lib", "smarm", "sm arm", "smcath", "sm cath", "~cath", "~armory", "scarlet monastery" } },
+    { "RFD", 722, "Razorfen Downs", 37, 46, { "rfd", "~downs" } },
+    { "ULDA", 1337, "Uldaman", 41, 51, { "ulda", "~uld", "uldaman" } },
     { "ZF", 1176, "Zul'Farrak", 44, 54, { "zf", "zul farrak", "zulfarrak", "farrak" } },
-    { "MARA", 2100, "Maraudon", 46, 55, { "mara", "maraudon" } },
-    { "ST", 1417, "Sunken Temple", 50, 56, { "st", "sunken", "atal hakkar" } },
+    { "MARA", 2100, "Maraudon", 46, 55, { "~mara", "maraudon" } },
+    { "ST", 1417, "Sunken Temple", 50, 56, { "~st", "~sunken", "sunken temple", "atal hakkar" } },
     { "BRD", 1584, "Blackrock Depths", 52, 60, { "brd", "blackrock depths", "emp run", "arena run" } },
     { "LBRS", 1583, "Lower Blackrock Spire", 55, 60, { "lbrs" } },
     { "UBRS", 1583, "Upper Blackrock Spire", 58, 60, { "ubrs", "rend run" } },
-    { "DIREMAUL", 2557, "Dire Maul", 56, 60, { "dme", "dmw", "dmn", "dm e", "dm w", "dm n", "dm east", "dm west", "dm north", "dire maul", "diremaul", "tribute" } },
+    { "DIREMAUL", 2557, "Dire Maul", 56, 60, { "dme", "dmw", "dmn", "~dm e", "~dm w", "~dm n", "dm east", "dm west", "dm north", "dire maul", "diremaul", "~tribute" } },
     { "SCHOLO", 2057, "Scholomance", 58, 60, { "scholo", "scholomance", "sholo", "некроситет" } },
     { "STRAT", 2017, "Stratholme", 58, 60, { "strat", "strath", "stratholme", "ud strat", "live strat", "стратхольм" } },
-    { "ZG", 1977, "Zul'Gurub", 60, 60, { "zg", "zul gurub", "zulgurub" } },
-    { "AQ20", 3429, "Ruins of Ahn'Qiraj", 60, 60, { "aq20", "aq 20", "ruins of ahn qiraj" } },
-    { "MC", 2717, "Molten Core", 60, 60, { "mc", "molten core", "огненные недра" } },
+    { "BARROW", nil, "Barrow Deeps", 60, 60, { "barrow deeps", "barrow", "barrows", "~bd" } },
+    { "HYJAL", nil, "Hyjal Summit", 60, 60, { "hyjal", "hyjal summit", "mount hyjal", "хиджал" } },
     { "ONY", 2159, "Onyxia's Lair", 60, 60, { "ony", "onyxia", "onyxia s lair" } },
-    { "BWL", 2677, "Blackwing Lair", 60, 60, { "bwl", "blackwing" } },
-    { "AQ40", 3428, "Temple of Ahn'Qiraj", 60, 60, { "aq40", "aq 40", "aq" } },
-    { "NAXX", 3456, "Naxxramas", 60, 60, { "naxx", "naxxramas" } },
 }
 local byKey = {}
 for i, d in ipairs(ns.DUNGEONS) do
@@ -90,8 +89,16 @@ local function has(padded, word)
     return padded:find(" " .. word .. " ", 1, true) ~= nil
 end
 
-local function any(padded, list)
-    for _, w in ipairs(list) do if has(padded, w) then return w end end
+local function any(padded, list, weakToo)
+    for _, w in ipairs(list) do
+        if w:sub(1, 1) == "~" then
+            -- "dm me" and "pm me" ask for a private message, not for the Deadmines.
+            w = w:sub(2)
+            if weakToo and has(padded, w) and not has(padded, w .. " me") then return w end
+        elseif has(padded, w) then
+            return w
+        end
+    end
 end
 
 -- Returns kind ("GROUP", "WTS", ...), the dungeon key or nil, and for groups "LFM" or "LFG".
@@ -102,11 +109,12 @@ function ns.Classify(msg)
     for _, k in ipairs(ORDER) do
         if any(padded, WORDS[k]) or (k == "LFM" and padded:find(" lf%dm ")) then kind = k; break end
     end
+    local group = kind == "LFM" or kind == "LFG"
     local dungeon
     for _, d in ipairs(ns.DUNGEONS) do
-        if any(padded, d[6]) then dungeon = d[1]; break end
+        if any(padded, d[6], group) then dungeon = d[1]; break end
     end
-    if kind == "LFM" or kind == "LFG" then return "GROUP", dungeon, kind end
+    if group then return "GROUP", dungeon, kind end
     if not kind and dungeon then return "GROUP", dungeon, "LFM" end
     return kind or "OTHER", dungeon
 end
@@ -125,16 +133,40 @@ function ns.Add(msg, author, channel)
     local kind, dungeon, role = ns.Classify(msg)
     if not kind then return end
     if kind == "OTHER" and not ns.db.other then return end
+    local repost = false
     for i = #ns.posts, 1, -1 do
         local p = ns.posts[i]
-        if p.author == author and p.kind == kind then table.remove(ns.posts, i) end
+        if p.author == author and p.kind == kind then
+            repost = repost or p.dungeon == dungeon
+            table.remove(ns.posts, i)
+        end
     end
     local post = { author = author, short = author:match("^[^-]+") or author, text = msg, kind = kind,
                    dungeon = dungeon, role = role, t = time(), channel = channel }
     table.insert(ns.posts, 1, post)
     while #ns.posts > ns.MAX_POSTS do table.remove(ns.posts) end
+    if not repost then ns.Alert(post) end
     if ns.Refresh then ns.Refresh() end
     return post
+end
+
+-- Whether the group list shows a dungeon: every one while none is picked, else the picked.
+function ns.Shown(key)
+    if not next(ns.db.only) then return true end
+    return key ~= nil and ns.db.only[key] == true
+end
+
+-- A new group for a dungeon the player watches: a sound, a chat line and a line in the hub.
+-- The same poster posting again for the same dungeon is not new.
+function ns.Alert(post)
+    if post.kind ~= "GROUP" or not post.dungeon or not ns.db.alert[post.dungeon] then return false end
+    if post.short == UnitName("player") then return false end
+    local text = L.ALERT:format(post.short, ns.DungeonName(post.dungeon))
+    if ns.db.sound and PlaySound then PlaySound((SOUNDKIT and SOUNDKIT.TELL_MESSAGE) or 3081) end
+    if ns.db.chat then print("|cff9ad0ffGulli Bulletin|r: " .. text) end
+    if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Bulletin", text) end
+    ns.lastAlert = text
+    return true
 end
 
 function ns.Expire()
@@ -161,7 +193,8 @@ function ns.View(kind, onlyMyLevel, level)
     end
     local groups, keys = {}, {}
     for _, p in ipairs(ns.posts) do
-        if p.kind == "GROUP" and (not onlyMyLevel or not p.dungeon or ns.FitsLevel(p.dungeon, level)) then
+        if p.kind == "GROUP" and ns.Shown(p.dungeon)
+            and (not onlyMyLevel or not p.dungeon or ns.FitsLevel(p.dungeon, level)) then
             local k = p.dungeon or "?"
             if not groups[k] then groups[k] = {}; keys[#keys + 1] = k end
             table.insert(groups[k], p)
@@ -190,8 +223,8 @@ end
 function ns.DungeonName(key)
     local d = byKey[key]
     if not d then return L.OTHER_GROUPS end
-    local info = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.area)
-    local name = (type(info) == "string" and info ~= "" and info) or d.name
+    local info = d.area and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.area)
+    local name = (type(info) == "string" and info ~= "" and info) or (not d.area and L["DG_" .. key]) or d.name
     if key == "LBRS" or key == "UBRS" then name = d.name end
     return name
 end
@@ -216,6 +249,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9)
         if ns.db.minutes == nil then ns.db.minutes = 15 end
         if ns.db.myLevel == nil then ns.db.myLevel = true end
         if ns.db.other == nil then ns.db.other = false end
+        ns.db.only = ns.db.only or {}
+        ns.db.alert = ns.db.alert or {}
+        if ns.db.sound == nil then ns.db.sound = true end
+        if ns.db.chat == nil then ns.db.chat = true end
         self:RegisterEvent("CHAT_MSG_CHANNEL")
         self:RegisterEvent("CHAT_MSG_SAY")
         self:RegisterEvent("CHAT_MSG_YELL")
