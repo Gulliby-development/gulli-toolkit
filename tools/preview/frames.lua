@@ -480,6 +480,8 @@ local function picture(path)
     path = tostring(path or ""):lower():gsub("/", "\\")
     local icon = path:match("interface\\icons\\([%w_]+)")
     if icon and exists(CACHE .. "icons/" .. icon .. ".png") then return CACHE .. "icons/" .. icon .. ".png" end
+    local track = path:match("interface\\minimap\\tracking\\([%w_]+)")
+    if track and exists(CACHE .. "tracking/" .. track .. ".png") then return CACHE .. "tracking/" .. track .. ".png" end
     local addon = path:match("interface\\addons\\([%w%-]+)\\icon")
     if addon and exists(CACHE .. "addons/" .. addon .. ".png") then return CACHE .. "addons/" .. addon .. ".png" end
 end

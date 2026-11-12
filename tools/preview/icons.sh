@@ -5,7 +5,14 @@
 # Run from the repository root.
 set -e
 dir=tools/preview/.cache
-mkdir -p "$dir/icons" "$dir/addons"
+mkdir -p "$dir/icons" "$dir/addons" "$dir/tracking"
+# the minimap tracking pictures (auctioneer, banker, ...) the addons use as icons
+grep -ohE 'Interface\\\\+Minimap\\\\+Tracking\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
+  low=$(echo "$n" | tr 'A-Z' 'a-z')
+  [ -s "$dir/tracking/$low.png" ] && continue
+  curl -fsS -o "$dir/tracking/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/MINIMAP/TRACKING/$n.PNG" ||
+    { rm -f "$dir/tracking/$low.png"; echo "no tracking icon: $n" >&2; }
+done
 { grep -ohE 'Interface\\\\+Icons\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua tools/preview/scenes.lua | sed -E 's/.*\\//'
   grep -ohE '"(INV|Spell|Ability|Trade|Racial)_[A-Za-z0-9_]+"' Gulli-*/*.lua | tr -d '"'; } | sort -u | while read -r n; do
   low=$(echo "$n" | tr 'A-Z' 'a-z')

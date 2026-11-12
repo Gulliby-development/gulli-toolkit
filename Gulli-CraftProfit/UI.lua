@@ -19,7 +19,7 @@ local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
 
 -- Icons from the game for the stops; a craft stop shows the profession's own icon.
 ns.STOP_ICONS = {
-    bank = "Interface\\Icons\\INV_Box_02", ah = "Interface\\Icons\\INV_Misc_Bag_10",
+    bank = "Interface\\Minimap\\Tracking\\Banker", ah = "Interface\\Minimap\\Tracking\\Auctioneer",
     vendor = "Interface\\Icons\\INV_Misc_Bag_11", trainer = "Interface\\Icons\\INV_Misc_Book_11",
     craft = "Interface\\Icons\\Trade_Tailoring", sell = "Interface\\Icons\\INV_Misc_Coin_02",
 }

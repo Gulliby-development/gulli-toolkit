@@ -902,8 +902,8 @@ function GulliCraftProfit_Toggle() if ns.Toggle then ns.Toggle() end end
 
 -- One game icon per setting, in the window and beside the module in the hub.
 ns.OPT_ICON = {
-    useBags = "Interface\\Icons\\INV_Misc_Bag_08", useBank = "Interface\\Icons\\INV_Box_02",
-    buyAH = "Interface\\Icons\\INV_Misc_Bag_10", buyVendor = "Interface\\Icons\\INV_Misc_Bag_11",
+    useBags = "Interface\\Icons\\INV_Misc_Bag_08", useBank = "Interface\\Minimap\\Tracking\\Banker",
+    buyAH = "Interface\\Minimap\\Tracking\\Auctioneer", buyVendor = "Interface\\Icons\\INV_Misc_Bag_11",
     buyRecipes = "Interface\\Icons\\INV_Scroll_03", trainer = "Interface\\Icons\\INV_Misc_Book_11",
     sellAH = "Interface\\Icons\\INV_Misc_Coin_02", neutral = "Interface\\Icons\\INV_Misc_Coin_04",
     freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", level = "Interface\\Icons\\Spell_ChargePositive", target = "Interface\\Icons\\INV_Misc_Note_01",
