@@ -139,6 +139,25 @@ function Fake(spec)
         GetNumQuestLogEntries = function() return #quests end,
         GetInfo = function(i) return quests[i] end,
     }
+    -- Health, power, the group leader, emotes, raid marks, key bindings and area names.
+    W.hp, W.mana, W.leader, W.emotes, W.marks, W.bindings = spec.hp or 50, spec.mana or 100, nil, {}, {}, {}
+    UnitHealth = function() return W.hp end
+    UnitHealthMax = function() return 100 end
+    UnitPower = function() return W.mana end
+    UnitPowerMax = function() return 200 end
+    UnitExists = function(u) return u == "target" and W.target ~= nil end
+    GetNumGroupMembers = function() return W.group and 3 or 0 end
+    UnitIsGroupLeader = function(u) return W.leader ~= nil and u == "party2" end
+    local nameBase = UnitName
+    UnitName = function(u) if u == "party2" then return W.leader end return nameBase(u) end
+    DoEmote = function(t) W.emotes[#W.emotes + 1] = t end
+    SetRaidTarget = function(u, i) W.marks[#W.marks + 1] = { u, i } end
+    ClearOverrideBindings = function() W.bindings = {} end
+    SetOverrideBindingClick = function(_, _, key, button) W.bindings[key] = button end
+    C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
+    W.hooks = {}
+    ChatEdit_InsertLink = function() end
+    hooksecurefunc = function(name, fn) W.hooks[name] = fn end
     GulliQuickChatDB = spec.db
     return W
 end

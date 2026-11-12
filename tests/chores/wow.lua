@@ -146,6 +146,37 @@ function Fake(spec)
         GetItemCooldown = function(id) local c = W.char.cooldowns[id] or { 0, 0 }; return c[1], c[2], 1 end,
     }
     C_Item = { GetItemCount = function(id) return W.char.items[id] or 0 end }
+    -- W.char.bags / bank: bag -> { { id, count } }; inbox: { { money, cod, days, items } };
+    -- profs: { { name, skill, cap } }; saved: { { name, reset, locked } }.
+    W.char.bags, W.char.bank, W.char.inbox, W.char.profs, W.char.saved = {}, {}, {}, nil, nil
+    C_Container.GetContainerNumSlots = function(bag)
+        local b = W.char.bags[bag] or W.char.bank[bag]
+        return b and #b or 0
+    end
+    C_Container.GetContainerItemInfo = function(bag, slot)
+        local b = W.char.bags[bag] or W.char.bank[bag]
+        local it = b and b[slot]
+        if it then return { itemID = it[1], stackCount = it[2] } end
+    end
+    GetInboxNumItems = function() return #W.char.inbox end
+    GetInboxHeaderInfo = function(i)
+        local m = W.char.inbox[i]
+        return nil, nil, "Someone", "Subject", m[1], m[2], m[3], m[4]
+    end
+    GetBindLocation = function() return W.char.bind end
+    GetProfessions = function()
+        if not W.char.profs then return end
+        local idx = {}
+        for i = 1, #W.char.profs do idx[i] = i end
+        return unpack(idx)
+    end
+    GetProfessionInfo = function(i) local p = W.char.profs[i]; return p[1], "icon", p[2], p[3] end
+    GetNumSavedInstances = function() return W.char.saved and #W.char.saved or 0 end
+    GetSavedInstanceInfo = function(i) local l = W.char.saved[i]; return l[1], 1, l[2], 1, l[3] end
+    W.playedAsked = 0
+    RequestTimePlayed = function() W.playedAsked = W.playedAsked + 1 end
+    ChatFrame_DisplayTimePlayed = function() W.printed[#W.printed + 1] = "played shown" end
+    GulliCraftProfitCharDB, GulliToolkit = nil, nil
     GulliChoresDB = spec.db
     return W
 end

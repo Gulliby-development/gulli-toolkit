@@ -144,6 +144,23 @@ function Fake(spec)
     CancelDuel = function() did("noduel") end
     DeclineGuild = function() did("noguild") end
     StaticPopup_Hide = function() end
+    W.bnet, W.said, W.filters = spec.bnet or {}, {}, {}
+    BNGetNumFriends = function() return #W.bnet end
+    C_BattleNet = {
+        GetFriendNumGameAccounts = function() return 1 end,
+        GetFriendGameAccountInfo = function(i) return { characterName = W.bnet[i] } end,
+    }
+    SendChatMessage = function(msg, kind, _, to) W.said[#W.said + 1] = kind .. ":" .. tostring(to) .. ":" .. msg end
+    C_PartyInfo.ConvertToRaid = function() did("raid") end
+    W.trader, W.petition = nil, nil
+    local baseName = UnitName
+    UnitName = function(u) if u == "NPC" then return W.trader end return baseName(u) end
+    CancelTrade = function() did("notrade") end
+    GetPetitionInfo = function() return "guild", "Charter", "", 9, W.petition end
+    ClosePetition = function() did("nopetition") end
+    C_SummonInfo = { ConfirmSummon = function() did("summon") end, GetSummonConfirmSummoner = function() return "Mage" end }
+    AcceptResurrect = function() did("res") end
+    ChatFrame_AddMessageEventFilter = function(event, fn) W.filters[event] = fn end
     GulliSocialDB = spec.db
     return W
 end

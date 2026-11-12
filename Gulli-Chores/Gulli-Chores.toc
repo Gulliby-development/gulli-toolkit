@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: |cff9ad0ffGulli|r-Chores
-## Notes: A to-do list for each character: rested XP, mail, cooldowns, trainer, repairs. /gch
+## Notes: A to-do list for each character: mail that runs out, cooldowns, trainer, rested XP, repairs, and all characters in one table. /gch
 ## Notes-ruRU: Список дел для каждого персонажа: отдых, почта, кулдауны, учитель, ремонт. /gch
 ## Notes-deDE: Eine Aufgabenliste je Charakter: Erholung, Post, Abklingzeiten, Lehrer, Reparatur. /gch
 ## Notes-esES: Una lista de tareas por personaje: descanso, correo, tiempos, instructor, reparaciones. /gch
@@ -10,7 +10,7 @@
 ## Notes-zhCN: 每个角色的待办清单：休息经验、邮件、冷却、训练师、修理。 /gch
 ## Notes-zhTW: 每个角色的待办清单：休息经验、邮件、冷却、训练师、修理。 /gch
 ## Author: Gulliby
-## Version: 1.3.0
+## Version: 1.4.0
 ## IconTexture: Interface\AddOns\Gulli-Chores\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Chores
