@@ -66,6 +66,22 @@ test("a new character has no names yet and the panel says how the list fills", f
     assert(ns.L.NO_NAMES ~= "" and ns.L.NO_NAMES_SUB ~= "", "the empty list has its texts")
 end)
 
+test("the panel moves next to an open letter and back", function()
+    Fake({ inbox = { { sender = "A", money = 5 } } })
+    local ns = Load()
+    MailFrame = W.stub()
+    OpenMailFrame = W.stub()
+    W.Fire("MAIL_SHOW")
+    eq(ns.PanelAnchor(), MailFrame, "next to the mailbox")
+    OpenMailFrame:Show()
+    OpenMailFrame._OnShow()
+    eq(ns.PanelAnchor(), OpenMailFrame, "next to the open letter")
+    OpenMailFrame:Hide()
+    OpenMailFrame._OnHide()
+    eq(ns.PanelAnchor(), MailFrame, "back next to the mailbox")
+    MailFrame, OpenMailFrame = nil, nil
+end)
+
 test("the panel opens at the mailbox unless it is turned off", function()
     Fake({ inbox = { { sender = "A", money = 5 } } })
     Load()
