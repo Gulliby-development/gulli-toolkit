@@ -136,11 +136,12 @@ function Fake(spec)
         local m = W.inbox[i]
         local n = 0
         for _ in pairs(m.items or {}) do n = n + 1 end
-        return nil, nil, m.sender, "Subject", m.money or 0, m.cod or 0, 30, n, false, false, false, true, m.gm
+        return nil, nil, m.sender, m.subject or "Subject", m.money or 0, m.cod or 0, m.days or 30, n, false, m.returned,
+            false, m.player ~= false and not m.gm and not m.invoice and m.sender ~= "AH", m.gm
     end
     GetInboxItem = function(i, j)
         local id = W.inbox[i].items and W.inbox[i].items[j]
-        if id then return "Item" .. id, id, 1 end
+        if id then return "Item" .. id, id, 1, 1 end
     end
     -- A letter with nothing left and no text (auction mail) goes away.
     local function gone(i)
@@ -156,7 +157,36 @@ function Fake(spec)
         W.free = W.free - 1
         gone(i)
     end
-    C_Container = { GetContainerNumFreeSlots = function(b) if b == 0 then return W.free, 0 end return 0, 0 end }
+    -- spec.bags = { [bag] = { [slot] = { id, bound } } }, spec.classes = { [id] = { class, subclass } }
+    W.bags, W.classes, W.used = spec.bags or {}, spec.classes or {}, {}
+    C_Container = {
+        GetContainerNumFreeSlots = function(b) if b == 0 then return W.free, 0 end return 0, 0 end,
+        GetContainerNumSlots = function(b) return W.bags[b] and 16 or 0 end,
+        GetContainerItemInfo = function(b, s)
+            local x = W.bags[b] and W.bags[b][s]
+            if x then return { itemID = x.id, isLocked = false } end
+        end,
+        UseContainerItem = function(b, s) W.used[#W.used + 1] = W.bags[b][s].id; W.bags[b][s] = nil end,
+    }
+    C_Item = { GetItemInfo = function(id)
+        local c = W.classes[id] or {}
+        return "Item" .. id, nil, 1, nil, nil, nil, nil, 1, nil, nil, 1, c[1], c[2]
+    end, IsBound = function(loc) local x = W.bags[loc.bag][loc.slot] return x and x.bound end }
+    ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
+    SendMailFrame = W.stub()
+    W.sendMoney = nil
+    SendMailMoney = {}
+    MoneyInputFrame_SetCopper = function(_, c) W.sendMoney = c end
+    W.returned = {}
+    ReturnInboxItem = function(i) W.returned[#W.returned + 1] = W.inbox[i].sender end
+    W.invoices = spec.invoices or {}
+    GetInboxInvoiceInfo = function(i) return W.inbox[i].invoice end
+    W.friends, W.guild = spec.friends or {}, spec.guild or {}
+    C_FriendList = { GetNumFriends = function() return #W.friends end,
+                     GetFriendInfoByIndex = function(i) return { name = W.friends[i] } end }
+    IsInGuild = function() return #W.guild > 0 end
+    GetNumGuildMembers = function() return #W.guild end
+    GetGuildRosterInfo = function(i) return W.guild[i] end
     MailFrameTab2 = { Click = function() W.tab = 2 end }
     SendMailNameEditBox = { SetText = function(_, t) W.to = t end }
     SendMail = function() end
