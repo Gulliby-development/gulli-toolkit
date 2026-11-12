@@ -37,9 +37,20 @@ local function enableState(name)
     return GetAddOnEnableState(player(), name)
 end
 local function version() return metadata(ADDON, "Version") end
+-- Whether the game would load the addon for this character, and why not ("DISABLED",
+-- "INTERFACE_VERSION", "DEP_DISABLED"...).
+local function loadable(name)
+    local f = A.IsAddOnLoadable or IsAddOnLoadable
+    if not f then return true end
+    return f(name, player())
+end
+-- The change is saved at once: without SaveAddOns the game can drop it (the AddOns list resets
+-- unsaved changes when it closes), and the module stays off after the reload.
 local function setEnabled(name, on)
     local f = on and (A.EnableAddOn or EnableAddOn) or (A.DisableAddOn or DisableAddOn)
     f(name)
+    local save = A.SaveAddOns or SaveAddOns
+    if save then save() end
 end
 
 function ns.Print(msg)
@@ -161,7 +172,7 @@ ns.pending = {}
 
 -- One row per module for the hub, the known ones first:
 -- { key, addon, title, desc, icon, slash, category, options,
---   state = "ready" | "off" | "reload" | "missing", on, info }.
+--   state = "ready" | "off" | "reload" | "blocked" | "missing", on, info, reason }.
 function ns.List()
     local disk = installed()
     local keys, seen = {}, {}
@@ -192,8 +203,20 @@ function ns.List()
         elseif info then
             row.state, row.on = "ready", true
         elseif addon then
-            row.on = enableState(addon) > 0
-            row.state = (row.on and not isLoaded(addon)) and "reload" or (row.on and "ready" or "off")
+            -- The game's own loader decides: an addon it calls DISABLED is off, whatever the
+            -- enable state says for the other characters.
+            local ok, reason = loadable(addon)
+            row.on = enableState(addon) > 0 and reason ~= "DISABLED"
+            if not row.on then
+                row.state = "off"
+            elseif isLoaded(addon) then
+                row.state = "ready"
+            elseif ok ~= false then
+                row.state = "reload"
+            else
+                -- Switched on but the game will not load it (out of date, a missing dependency).
+                row.state, row.reason = "blocked", reason
+            end
         else
             row.state = "missing"
         end
@@ -251,6 +274,14 @@ function ns.HubScale(user, screenW, screenH, w, h)
     user = math.max(0.7, math.min(1.3, tonumber(user) or 1))
     local fit = math.min(1, (screenW or w) * 0.96 / w, (screenH or h) * 0.9 / h)
     return user * fit
+end
+
+-- The game's own name for why it did not load an addon (ADDON_INTERFACE_VERSION is "Out of
+-- date"), else the code itself.
+function ns.ReasonText(reason)
+    if not reason then return "?" end
+    local text = _G["ADDON_" .. reason]
+    return type(text) == "string" and text or reason
 end
 
 function ns.Version()
