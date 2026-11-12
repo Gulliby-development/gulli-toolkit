@@ -43,12 +43,14 @@ local function coins(c)
 end
 -- A signed amount; `plus` adds "+" to a gain.
 function ns.Money(c, plus)
+    if c ~= c or c == math.huge or c == -math.huge then return "?" end
     c = math.floor((c or 0) + 0.5)
     local sign = c < 0 and "-" or (plus and c > 0 and "+" or "")
     return sign .. coins(math.abs(c))
 end
 -- The biggest coin only, for the tight space on a stop.
 function ns.Short(c)
+    if c ~= c or c == math.huge or c == -math.huge then return "?" end
     c = math.floor(math.abs(c or 0) + 0.5)
     if c >= 10000 then return coins(math.floor(c / 10000 + 0.5) * 10000) end
     if c >= 100 then return coins(math.floor(c / 100 + 0.5) * 100) end
@@ -418,8 +420,8 @@ local function listRows(which)
             local r = st.recipes[x.recipe]
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name,
                 cols = { L["WHERE_" .. x.src] or "", x.cost and ns.Money(x.cost) or "-", x.skill and tostring(x.skill) or "-",
-                         color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r",
-                         x.pay and L.PAY_AT:format(x.pay) or (x.src == "text" and L.WHERE_text or L.PAY_NEVER) } }
+                         x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r") or L.NO_PRICE,
+                         x.pay and L.PAY_AT:format(x.pay) or (x.src == "text" and L.WHERE_text or (x.profit and L.PAY_NEVER or "-")) } }
         end
     end
     return rows

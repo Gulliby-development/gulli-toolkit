@@ -10,6 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    NO_PRICE = "no price",
     SIDE_PROF = "Profession",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Levelling route",
@@ -109,6 +110,7 @@ T.en = {
 }
 
 T.de = {
+    NO_PRICE = "kein Preis",
     SIDE_PROF = "Beruf",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Skill-Route",
@@ -208,6 +210,7 @@ T.de = {
 }
 
 T.es = {
+    NO_PRICE = "sin precio",
     SIDE_PROF = "Profesión",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Ruta de subida",
@@ -307,6 +310,7 @@ T.es = {
 }
 
 T.fr = {
+    NO_PRICE = "pas de prix",
     SIDE_PROF = "Métier",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Route de montée",
@@ -406,6 +410,7 @@ T.fr = {
 }
 
 T.pl = {
+    NO_PRICE = "brak ceny",
     SIDE_PROF = "Profesja",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Trasa nauki",
@@ -505,6 +510,7 @@ T.pl = {
 }
 
 T.pt = {
+    NO_PRICE = "sem preço",
     SIDE_PROF = "Profissão",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Rota de evolução",
@@ -604,6 +610,7 @@ T.pt = {
 }
 
 T.ru = {
+    NO_PRICE = "нет цены",
     SIDE_PROF = "Профессия",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "Маршрут прокачки",
@@ -703,6 +710,7 @@ T.ru = {
 }
 
 T.zh = {
+    NO_PRICE = "无价格",
     SIDE_PROF = "专业",
     TITLE = "Gulli CraftProfit",
     TAB_ROUTE = "升级路线",
