@@ -50,4 +50,14 @@ test("ids on items and NPCs only when switched on", function()
     ns.Toggle()
 end)
 
+test("the count turns green once the bags hold enough", function()
+    Fake({ items = { [7] = { "Wolf Pelt", 20, 0 } }, log = LOG })
+    local ns = Load()
+    local l = ns.ItemLines(7)[1]
+    eq(l[4][1], 1, "3/10 stays white")
+    ns.QuestNeeds("Wolf Pelt")[1].have = 10
+    l = ns.ItemLines(7)[1]
+    eq(l[4][1], 0.42, "10/10 is green")
+end)
+
 W.finish()

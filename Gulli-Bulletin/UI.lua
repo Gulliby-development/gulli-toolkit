@@ -24,11 +24,11 @@ local function makeRow(r)
     r.who:SetWordWrap(false)
     r.age = S.Text(r, 11, S.FAINT)
     r.age:SetPoint("TOPLEFT", r.who, "BOTTOMLEFT", 0, -4)
-    r.invite = S.Button(r, 76, 28)
+    r.invite = S.Button(r, 96, 28)
     r.invite:SetPoint("RIGHT", 0, 0)
     r.invite:SetText(L.INVITE)
     r.invite:SetScript("OnClick", function(self) ns.Invite(self:GetParent().post.author) end)
-    r.whisper = S.Button(r, 76, 28)
+    r.whisper = S.Button(r, 86, 28)
     r.whisper:SetPoint("RIGHT", r.invite, "LEFT", -6, 0)
     r.whisper:SetText(L.WHISPER)
     r.whisper:SetScript("OnClick", function(self) ns.Whisper(self:GetParent().post.author) end)
@@ -44,7 +44,15 @@ local function fillRow(r, item)
     r.head:SetShown(header)
     for _, w in ipairs({ r.who, r.age, r.text, r.whisper, r.invite }) do w:SetShown(not header) end
     if header then
-        r.head:SetText(ns.DungeonName(item.dungeon) .. "  " .. S.Hex(S.MUTED) .. item.count .. "|r")
+        -- The dungeon in the quest log colour of its level for you, with its level range.
+        local d = item.dungeon and ns.Dungeon(item.dungeon)
+        local name = ns.DungeonName(item.dungeon)
+        local range = ""
+        if d then
+            name = S.Hex(S.LevelColor(math.floor((d.min + d.max) / 2))) .. name .. "|r"
+            range = "  " .. S.Hex(S.MUTED) .. (d.min == d.max and tostring(d.min) or (d.min .. "-" .. d.max)) .. "|r"
+        end
+        r.head:SetText(name .. range .. "   " .. S.Hex(S.FAINT) .. "(" .. item.count .. ")|r")
         S.Fill(r, S.RAISED)
         return
     end

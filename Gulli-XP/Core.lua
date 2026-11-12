@@ -60,6 +60,31 @@ function ns.Stats(now)
     }
 end
 
+-- The bar's settings; a new one gets its default here.
+ns.DEFAULTS = { bar = true, locked = false, alpha = 100, scale = 100 }
+ns.BAR_POINT = { "TOP", 0, -150 }
+ns.OPT_ICON = {
+    bar = "Interface\\Icons\\INV_Misc_Spyglass_02",
+    locked = "Interface\\Icons\\INV_Misc_Key_04",
+}
+
+-- Changes one setting and redraws the bar. key "point" with nil puts the bar back in its place.
+function ns.SetPref(key, value)
+    ns.db[key] = value
+    if ns.StyleBar then ns.StyleBar() end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- The bottom line of the bar: the share of the level done, and the rested part after it
+-- (never past the end of the level).
+function ns.BarParts(st)
+    local cur, max = UnitXP("player"), UnitXPMax("player")
+    if secret(cur) or secret(max) or not max or max <= 0 then return 0, 0 end
+    local done = math.min(1, cur / max)
+    local rested = math.min(1 - done, (st.rested or 0) / max)
+    return done, math.max(0, rested)
+end
+
 function ns.MaxLevel()
     return UnitLevel("player") >= (GetMaxPlayerLevel and GetMaxPlayerLevel() or 60)
 end
@@ -91,7 +116,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if a1 ~= ADDON then return end
         GulliXPDB = GulliXPDB or {}
         ns.db = GulliXPDB
-        if ns.db.bar == nil then ns.db.bar = true end
+        for k, v in pairs(ns.DEFAULTS) do
+            if ns.db[k] == nil then ns.db[k] = v end
+        end
         for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_XP_UPDATE", "CHAT_MSG_COMBAT_XP_GAIN", "QUEST_TURNED_IN",
                              "PLAYER_LEVEL_UP" }) do
             self:RegisterEvent(e)
@@ -135,5 +162,11 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gxp",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        options = {
+            { label = ns.L.OPT_BAR, icon = ns.OPT_ICON.bar,
+              get = function() return ns.db ~= nil and ns.db.bar == true end, set = function(v) ns.SetPref("bar", v) end },
+            { label = ns.L.OPT_LOCK, icon = ns.OPT_ICON.locked,
+              get = function() return ns.db ~= nil and ns.db.locked == true end, set = function(v) ns.SetPref("locked", v) end },
+        },
     })
 end

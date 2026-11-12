@@ -758,6 +758,33 @@ end
 -- An item in a game icon frame, with a stack count in the corner and the border in the
 -- item's quality colour: icon:Set(texture, count, quality).
 S.QUALITY = { [2] = { 0.12, 1, 0, 1 }, [3] = { 0, 0.44, 0.87, 1 }, [4] = { 0.64, 0.21, 0.93, 1 } }
+-- The game's item quality colour (0 grey .. 5 orange) as a "|cff..." prefix.
+local QUALITY_HEX = { [0] = "|cff9d9d9d", [1] = "|cffffffff", [2] = "|cff1eff00", [3] = "|cff0070dd",
+                      [4] = "|cffa335ee", [5] = "|cffff8000" }
+function S.QualityHex(q)
+    local c = ITEM_QUALITY_COLORS and q and ITEM_QUALITY_COLORS[q]
+    if c and c.hex then return c.hex end
+    return QUALITY_HEX[q or 1] or QUALITY_HEX[1]
+end
+
+-- The quest log colour of a level against the player's: grey, green, yellow, orange, red.
+-- The game's own rule when it has it, else the same steps by hand.
+function S.LevelColor(level, mine)
+    if not level then return S.MUTED end
+    if GetQuestDifficultyColor and not mine then
+        local c = GetQuestDifficultyColor(level)
+        if c and c.r then return { c.r, c.g, c.b, 1 } end
+    end
+    mine = mine or (UnitLevel and UnitLevel("player")) or 60
+    local d = level - mine
+    if d >= 5 then return { 1, 0.1, 0.1, 1 } end
+    if d >= 3 then return { 1, 0.5, 0.25, 1 } end
+    if d >= -2 then return { 1, 1, 0, 1 } end
+    local gray = mine <= 5 and 0 or (mine <= 39 and mine - math.floor(mine / 10) - 5 or mine - math.floor(mine / 5) - 1)
+    if level > gray then return { 0.25, 0.75, 0.25, 1 } end
+    return { 0.5, 0.5, 0.5, 1 }
+end
+
 function S.ItemIcon(parent, size)
     local b = S.IconBox(parent, size)
     b.count = S.Text(b, math.max(8, math.floor((size or 26) * 0.45)), S.TEXT, "OUTLINE")

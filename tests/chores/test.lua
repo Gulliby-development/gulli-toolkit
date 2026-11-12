@@ -123,4 +123,28 @@ test("time spans read in days, hours and minutes", function()
     eq(ns.Span(20), "1 min")
 end)
 
+test("tasks are coloured by how urgent they are", function()
+    Fake({})
+    local ns = Load()
+    local S = ns.Skin
+    eq(ns.TaskColor("REPAIR"), S.BAD); eq(ns.TaskColor("BAGS"), S.BAD)
+    eq(ns.TaskColor("CD"), S.GOOD); eq(ns.TaskColor("RESTED"), S.GOOD)
+    eq(ns.TaskColor("MAIL"), S.TEXT)
+end)
+
+test("the shared skin colours levels like the quest log and items by quality", function()
+    Fake({ level = 30 })
+    local ns = Load()
+    local S = ns.Skin
+    GetQuestDifficultyColor = nil
+    eq(S.LevelColor(36)[2], 0.1, "red"); eq(S.LevelColor(33)[2], 0.5, "orange")
+    eq(S.LevelColor(29)[2], 1, "yellow"); eq(S.LevelColor(24)[2], 0.75, "green")
+    eq(S.LevelColor(20)[1], 0.5, "grey")
+    eq(S.LevelColor(nil), S.MUTED)
+    GetQuestDifficultyColor = function() return { r = 0.1, g = 0.2, b = 0.3 } end
+    eq(S.LevelColor(30)[1], 0.1, "the game's rule wins")
+    GetQuestDifficultyColor = nil
+    eq(S.QualityHex(0), "|cff9d9d9d"); eq(S.QualityHex(4), "|cffa335ee"); eq(S.QualityHex(nil), "|cffffffff")
+end)
+
 W.finish()

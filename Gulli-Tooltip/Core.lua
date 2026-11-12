@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local MUTED, QUEST = { 0.6, 0.6, 0.62 }, { 1, 0.82, 0 }
+local WHITE, DONE = { 1, 1, 1 }, { 0.42, 0.84, 0.50 }
 
 -- Game API wrappers.
 local function itemInfo(id)
@@ -71,7 +72,9 @@ function ns.ItemLines(id)
     end
     if ns.db.quest then
         for _, n in ipairs(ns.QuestNeeds(name)) do
-            out[#out + 1] = { L.QUEST:format(n.title), n.have .. "/" .. n.need, QUEST }
+            -- The count turns green once the bags hold enough.
+            out[#out + 1] = { L.QUEST:format(n.title), n.have .. "/" .. n.need, QUEST,
+                              n.need > 0 and n.have >= n.need and DONE or WHITE }
         end
     end
     if ns.db.id then out[#out + 1] = { L.ITEM_ID, tostring(id), MUTED } end
@@ -92,8 +95,8 @@ end
 
 local function add(tt, lines)
     for _, l in ipairs(lines) do
-        local c = l[3]
-        tt:AddDoubleLine(l[1], l[2], c[1], c[2], c[3], 1, 1, 1)
+        local c, r = l[3], l[4] or WHITE
+        tt:AddDoubleLine(l[1], l[2], c[1], c[2], c[3], r[1], r[2], r[3])
     end
     if #lines > 0 then tt:Show() end
 end

@@ -43,8 +43,9 @@ local function fillRow(r, e)
     r.entry = e
     r.icon:SetIcon(ns.ItemIcon(e.id))
     r.text:SetText(ns.ItemName(e.id))
-    local low = e.have < e.want
-    r.have:SetText((low and S.Hex(S.WARN) or "") .. L.HAVE:format(e.have) .. (low and "|r" or ""))
+    -- None left red, too few orange, enough green.
+    local c = e.have == 0 and S.BAD or (e.have < e.want and S.WARN or S.GOOD)
+    r.have:SetText(S.Hex(c) .. L.HAVE:format(e.have) .. "|r")
     r.edit:SetText(tostring(e.want))
 end
 
