@@ -53,7 +53,16 @@ function Fake(spec)
         IsQuestFlaggedCompleted = function(id) return W.done[id] == true end,
         GetQuestTagInfo = function(id) return W.tags[id] end,
         GetMaxNumQuestsCanAccept = function() return spec.maxQuests or 20 end,
+        IsComplete = function(id) return spec.complete and spec.complete[id] or false end,
+        IsFailed = function(id) return spec.failed and spec.failed[id] or false end,
+        GetTitleForQuestID = function(id) return spec.titles and spec.titles[id] end,
     }
+    C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
+    GetRealZoneText = function() return spec.zone or "Zone" end
+    W.bank = spec.bank or {}
+    W.bindings = {}
+    SetOverrideBindingClick = function(_, _, key, name) W.bindings[key] = name end
+    ClearOverrideBindings = function() W.bindings = {} end
     GetQuestLogQuestText = function(i)
         local q = W.quests[i]
         if q then return q.description, q.summary end
@@ -65,24 +74,27 @@ function Fake(spec)
     NUM_BAG_SLOTS = 4
     NUM_TOTAL_EQUIPPED_BAG_SLOTS = nil
     C_Container = {
-        GetContainerNumSlots = function(b) return b == 0 and #W.bag or 0 end,
+        GetContainerNumSlots = function(b) return (b == 0 and #W.bag) or (b == -1 and #W.bank) or 0 end,
         GetContainerItemInfo = function(b, s)
-            local it = b == 0 and W.bag[s]
+            local it = (b == 0 and W.bag[s]) or (b == -1 and W.bank[s])
             if not it or it.gone then return nil end
             return { itemID = it.id, hyperlink = "|cffffffff|Hitem:" .. it.id .. "|h[" .. it.name .. "]|h|r",
                      stackCount = it.count or 1, isLocked = false, iconFileID = 1 }
         end,
         GetContainerItemQuestInfo = function(b, s)
-            local it = W.bag[s]
+            local it = b == -1 and W.bank[s] or W.bag[s]
             return { isQuestItem = it and it.questItem or false, questID = it and it.starts }
         end,
-        PickupContainerItem = function(b, s) W.cursor = s end,
+        PickupContainerItem = function(b, s) W.cursor, W.cursorBag = s, b end,
         UseContainerItem = function(b, s) W.sold[W.bag[s].name] = true; W.bag[s].gone = true end,
         GetContainerNumFreeSlots = function(b) return b == 0 and (spec.free or 0) or 0 end,
     }
     C_Item = {
         GetItemInfoInstant = function(id)
             for _, it in ipairs(W.bag) do
+                if it.id == id then return id, nil, nil, nil, nil, it.class end
+            end
+            for _, it in ipairs(W.bank) do
                 if it.id == id then return id, nil, nil, nil, nil, it.class end
             end
         end,
@@ -92,11 +104,12 @@ function Fake(spec)
             end
         end,
     }
-    GetCursorInfo = function() if W.cursor then return "item", W.bag[W.cursor].id end end
+    local function held() return (W.cursorBag == -1 and W.bank or W.bag)[W.cursor] end
+    GetCursorInfo = function() if W.cursor then return "item", held().id end end
     ClearCursor = function() W.cursor = nil end
     DeleteCursorItem = function()
         if W.refuseDelete then return end
-        W.bag[W.cursor].gone = true
+        held().gone = true
         -- The real client confirms a delete later; until then the cursor may still show it.
         if not W.slowCursor then W.cursor = nil end
     end

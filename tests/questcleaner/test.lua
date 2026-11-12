@@ -207,7 +207,8 @@ end)
 -- Small quest data in place of the generated Data.lua.
 local function fakeData(ns, d)
     ns.Data = { need = d.need or {}, quest = d.quest or {}, keep = d.keep or {},
-                itemStart = d.itemStart or {}, chain = d.chain or {}, class = d.class or {} }
+                itemStart = d.itemStart or {}, chain = d.chain or {}, class = d.class or {},
+                start = d.start or {}, giver = d.giver or {} }
 end
 
 local function planned(ns, level)
@@ -307,6 +308,112 @@ test("a quest an item started starts unticked; a chain quest is marked", functio
     eq(wolf.warn, "TAG_ITEM")
     eq(letter.checked, true, "chain quest ticked")
     eq(letter.warn, "TAG_CHAIN")
+end)
+
+
+test("finished quests stay by default; failed quests are offered at any level", function()
+    Fake { quests = QUESTS, bag = bag(), complete = { [101] = true }, failed = { [103] = true } }
+    local ns = Load()
+    fakeData(ns, {})
+    local q = ns.PlanQuests(10)
+    eq(names(q), "Deliver Letter,Ogres", "Wolf Pelts is done, Ogres failed")
+    eq(has(q, "Ogres").warn, "TAG_FAILED")
+    ns.db().keepComplete = false
+    eq(#ns.PlanQuests(10), 3)
+    ns.db().offerFailed = false
+    eq(names(ns.PlanQuests(10)), "Deliver Letter,Wolf Pelts")
+end)
+
+test("an unticked quest stays locked after OK until /gqc reset", function()
+    Fake { quests = QUESTS, bag = bag() }
+    local ns = Load()
+    fakeData(ns, {})
+    ns.db().keepQuests[101] = "Wolf Pelts"
+    eq(names(ns.PlanQuests(10)), "Deliver Letter")
+    SlashCmdList.GULLIQUESTCLEANER("reset")
+    eq(#ns.PlanQuests(10), 2)
+end)
+
+test("group quests have their own switch; old saves follow the elite switch", function()
+    local quests = { QUESTS[1], { title = "Group", level = 5, questID = 110, suggestedGroup = 3 } }
+    Fake { quests = quests, bag = {} }
+    local ns = Load()
+    fakeData(ns, {})
+    eq(#ns.PlanQuests(10), 0, "kept by default")
+    ns.db().keepElite = false
+    eq(#ns.PlanQuests(10), 1, "an old save with elite off")
+    ns.db().keepElite, ns.db().keepGroup = true, false
+    eq(#ns.PlanQuests(10), 1)
+end)
+
+test("only the zone I am in, and the green level", function()
+    local quests = { QUESTS[1], QUESTS[2], { title = "Other", isHeader = true }, { title = "Far", level = 6, questID = 120 } }
+    Fake { quests = quests, bag = {}, level = 20 }
+    local ns = Load()
+    fakeData(ns, {})
+    eq(names(ns.PlanQuests(10, { zone = "Other" })), "Far")
+    eq(#ns.PlanQuests(10), 2)
+    eq(ns.GreenLevel(), 17)
+end)
+
+test("quest items in the open bank are offered too and never sold", function()
+    Fake { quests = QUESTS, bag = {}, bank = { { id = 4, name = "Old Note", class = 12, price = 5 } } }
+    local ns = Load()
+    fakeData(ns, {})
+    eq(#ns.PlanItems(ns.PlanQuests(10), 10), 0, "bank closed")
+    Fire("BANKFRAME_OPENED")
+    local items = ns.PlanItems(ns.PlanQuests(10), 10)
+    eq(#items, 1); eq(items[1].bank, true); eq(items[1].bag, -1)
+    Fire("MERCHANT_SHOW")
+    ns.Run({}, items)
+    eq(W.sold["Old Note"], nil, "a bank item is deleted, not sold")
+end)
+
+test("where to take a quest again comes from the data and goes into /gqc last", function()
+    Fake { quests = QUESTS, bag = bag(), areas = { [12] = "Elwynn Forest" } }
+    local ns = Load()
+    fakeData(ns, { start = { [101] = 240 }, giver = { [240] = { "Marshal Dughan", 12 } } })
+    eq(ns.WhereToTake(101), "Marshal Dughan (Elwynn Forest)")
+    eq(ns.WhereToTake(102), nil)
+    local quests = ns.PlanQuests(10)
+    ns.Run(quests, {})
+    SlashCmdList.GULLIQUESTCLEANER("last")
+    assert(table.concat(W.printed, "\n"):find("Marshal Dughan", 1, true))
+end)
+
+test("the tooltip says why an item stays or goes", function()
+    Fake { quests = QUESTS, bag = bag(), titles = { [900] = "Later Quest" } }
+    local ns = Load()
+    fakeData(ns, { need = { [3] = { 103 }, [9] = { 900 } }, quest = { [900] = { 50, 0, 0, 0 } } })
+    eq(ns.ItemVerdict(3, "Ogre Tooth")[2], "Ogres")
+    eq(ns.ItemVerdict(1, "Wolf Pelt")[1], "TT_NEEDED", "found by the objective text")
+    eq(ns.ItemVerdict(4, "Old Note")[1], "TT_OFFER")
+    eq(ns.ItemVerdict(16309, "Drakefire Amulet")[1], "TT_KEPT")
+    eq(ns.ItemVerdict(5, "Linen Cloth"), nil, "not a quest item")
+    eq(ns.ItemVerdict(9, "Future")[2], "Later Quest")
+end)
+
+test("the quest log button, the key, the gamepad and the hub fields", function()
+    Fake { quests = QUESTS, bag = bag() }
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end, Notify = function() end }
+    QuestLogFrame = W.frames[1] or CreateFrame("Frame")
+    local ns = Load()
+    fakeData(ns, {})
+    ns.db().key = "CTRL-Q"
+    Fire("PLAYER_LOGIN")
+    assert(ns.logButton, "a button on the quest log")
+    eq(W.bindings["CTRL-Q"], "GulliQuestCleanerKey")
+    ns.OpenForZone("Zone")
+    eq(ns.Pad("PADDDOWN"), true)
+    ns.Pad("PAD1")
+    eq(ns.Pad("PADLSHOULDER"), false)
+    assert(reg.options and #reg.options == 2)
+    eq(reg.summary(), nil, "the log is not full")
+    ns.db().keepComplete = false
+    reg.reset()
+    eq(ns.db().keepComplete, nil)
+    GulliToolkit, QuestLogFrame = nil, nil
 end)
 
 test("the gray level", function()

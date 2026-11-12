@@ -12,13 +12,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import luadata  # noqa: E402
 
 ITEM_CLASS_QUEST = 12
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Gulli-QuestCleaner", "Data.lua")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Gulli-QuestCleaner", "Data.lua")
 
 # questKeys and itemKeys of QuestieDB (src/meta/*Meta.lua).
 Q_STARTED_BY, Q_LEVEL, Q_RACES, Q_CLASSES = 2, 5, 6, 7
 Q_OBJECTIVES, Q_SOURCE_ITEM, Q_PRE_GROUP, Q_PRE_SINGLE = 10, 11, 12, 13
 Q_EXCLUSIVE, Q_SOURCE_ITEMS, Q_NEXT, Q_BREADCRUMB_FOR, Q_MAX_LEVEL = 16, 21, 22, 27, 32
 I_START_QUEST, I_REWARD_OF, I_CLASS = 5, 6, 12
+N_NAME, N_ZONE = 1, 9
+O_NAME, O_ZONE = 1, 5
 
 
 def seq(t):
@@ -32,6 +34,8 @@ def lua_list(values):
 def main(root):
     quests = luadata.load(os.path.join(root, "data/Forever/foreverQuestDB.lua"), "questData")
     items = luadata.load(os.path.join(root, "data/Forever/foreverItemDB.lua"), "itemData")
+    npcs = luadata.load(os.path.join(root, "data/Forever/foreverNpcDB.lua"), "npcData")
+    objects = luadata.load(os.path.join(root, "data/Forever/foreverObjectDB.lua"), "objectData")
 
     def is_quest_item(i):
         return items.get(i, {}).get(I_CLASS) == ITEM_CLASS_QUEST
@@ -96,6 +100,37 @@ def main(root):
     id_set("chain", "Quests that need an earlier quest.",
            [qid for qid, q in quests.items() if q.get(Q_PRE_GROUP) or q.get(Q_PRE_SINGLE)])
     id_set("class", "Class quests.", [qid for qid, q in quests.items() if q.get(Q_CLASSES)])
+
+    # Who starts each quest that an NPC or an object starts, so the player knows where to
+    # take an abandoned quest again: quest -> giver key, giver key -> { name, area id }.
+    # NPCs keep their id, objects get a minus sign.
+    givers, start = {}, {}
+    for qid, q in quests.items():
+        by = q.get(Q_STARTED_BY) or {}
+        for key, table, name_k, zone_k, sign in ((1, npcs, N_NAME, N_ZONE, 1), (2, objects, O_NAME, O_ZONE, -1)):
+            ids = seq(by.get(key) or {})
+            rec = ids and table.get(ids[0])
+            if rec and rec.get(name_k):
+                start[qid] = sign * ids[0]
+                givers[sign * ids[0]] = (rec[name_k], rec.get(zone_k) or 0)
+                break
+    lines.append("-- Quest -> who starts it (an NPC id, or minus an object id).")
+    lines.append("D.start = {")
+    row = []
+    for qid in sorted(start):
+        row.append("[%d]=%d" % (qid, start[qid]))
+        if len(row) == 10:
+            lines.append(",".join(row) + ",")
+            row = []
+    if row:
+        lines.append(",".join(row) + ",")
+    lines.append("}")
+    lines.append("-- Quest giver -> { name, zone (area id) }.")
+    lines.append("D.giver = {")
+    for g in sorted(givers):
+        name, zone = givers[g]
+        lines.append('[%d]={"%s",%d},' % (g, name.replace("\\", "\\\\").replace('"', '\\"'), zone))
+    lines.append("}")
 
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
