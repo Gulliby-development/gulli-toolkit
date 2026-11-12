@@ -83,3 +83,10 @@ jobs:
           fi
           gh release create "$TAG" "$FOLDER-$VERSION-forever.zip" release.json \
             --repo "$REPO" --target "$GITHUB_SHA" --title "$FOLDER $VERSION" --generate-notes
+
+  # Rebuild the all-in-one zip with the release that was just published.
+  bundle:
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/bundle.yml
