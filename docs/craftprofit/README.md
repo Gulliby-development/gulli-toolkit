@@ -19,7 +19,9 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 ## Features
 
 - **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. Tap a stop to see the list.
-- **You choose what matters.** Money, balance or speed. Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. The route changes at once, and the changed stops light up.
+- **Five routes side by side.** Three ways to level (cheapest, balanced, fastest) and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. Each tab shows the result in gold and the number of crafts, so you can compare them.
+- **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
+- **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. The route changes at once, and the changed stops light up.
 - **Honest money.** The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
 - **Crafts now.** Your recipes sorted by profit per craft, and how many you can make from what you have.
 - **My items.** For each material in your bags and bank: sell at the auction, sell to a vendor, or craft it.
@@ -37,7 +39,7 @@ For auction prices, also install **Auctionator** and scan the auction once.
 
 1. Open your profession window once. CraftProfit reads your recipes.
 2. Open the bank once if you want it to count what is there.
-3. Type `/gcp`. Pick what matters on the right and follow the route.
+3. Type `/gcp`. Pick a route at the top, set the switches on the right and follow the stops.
 
 ## FAQ
 

@@ -291,6 +291,70 @@ test("money never shows nan or inf", function()
     eq(n.Short(math.huge - math.huge), "?")
 end)
 
+-- ---------- the profit routes ----------
+
+test("the profit route crafts only what gains, and the market cap lowers the gain", function()
+    local c, st = core(), state()
+    local P = prefs({ maxSell = 3 })
+    local e = c.Earn(st, P)
+    assert(e.earn and #e.segs > 0, "some crafts")
+    assert(e.net > 0, "it earns: " .. e.net)
+    eq(e.reached, st.skill)
+    for _, sg in ipairs(e.segs) do eq(sg.from, sg.to) end
+    for id, n in pairs(e.sellAH) do assert(n <= 3, id .. " at most maxSell at the auction") end
+    -- a wider market takes more of the same craft
+    local wide = c.Earn(st, prefs({ maxSell = 20 }))
+    assert(wide.crafts >= e.crafts and wide.net >= e.net)
+    assert(c.Route(st, e)[1], "a route")
+    assert(has(c.Route(st, e), "STOP_EARN"), "a craft stop for sale")
+end)
+
+test("from my stock buys nothing at the auction and no recipe", function()
+    local c, st = core(), state()
+    local P = prefs({})
+    local own = c.Earn(st, P, true)
+    eq(next(own.ahBuy), nil)
+    eq(next(own.buyRecipes), nil)
+    local buy = c.Earn(st, P)
+    assert(buy.net >= own.net, "buying can only add")
+end)
+
+test("the profit route buys a recipe when it pays back", function()
+    local c, st = core(), state()
+    st.skill = 190
+    -- a cheap pattern for a craft that sells well
+    st.items.gold = { name = "Golden Robe", ah = 20000, age = 0.1, vend = 2000 }
+    st.recipes.robe = { name = "Golden Robe", skill = { 180, 190, 200 }, r = { bMage = 2 }, out = "gold",
+                        src = { t = "vendor", cost = 3000 } }
+    local e = c.Earn(st, prefs({ buyRecipes = true, buyVendor = true }))
+    assert(e.buyRecipes.robe, "the pattern is bought")
+    local no = c.Earn(st, prefs({ buyRecipes = false }))
+    eq(no.buyRecipes.robe, nil)
+    assert(e.net > no.net)
+end)
+
+test("nothing gains: the profit route says so", function()
+    local c, st = core(), state()
+    for _, it in pairs(st.items) do it.ah = nil; it.age = nil; it.vend = 1 end
+    local e = c.Earn(st, prefs({ buyAH = false }))
+    eq(#e.segs, 0)
+    eq(e.warn[1], "WARN_EARN")
+end)
+
+test("every route side by side; with levelling off only the profit ones", function()
+    local c, st = core(), state()
+    local v = c.Variants(st, prefs({}))
+    eq(#v, #c.MODES)
+    for _, x in ipairs(v) do assert(x.plan, x.mode) end
+    local off = c.Variants(st, prefs({ level = false }))
+    for _, x in ipairs(off) do
+        if c.EARN[x.mode] then assert(x.plan, x.mode) else eq(x.plan, nil, x.mode) end
+    end
+    st.skill = 225
+    local top = c.Variants(st, prefs({}))
+    eq(top[1].plan, nil, "nothing left to level")
+end)
+
 -- ---------- the game and the window ----------
 
 local SKILL = 150
@@ -430,6 +494,23 @@ test("the hub's switches change the same settings and rebuild the plan", functio
     assert(next(n.db.prefs), "saved in the same prefs")
     o.set(before)
     eq(o.get(), before)
+end)
+
+test("the levelling switch and the route tiles", function()
+    local n = game()
+    n.Toggle()
+    eq(n.view.mode, "balance")
+    W.Click(n.ui.checks.level)
+    eq(n.db.prefs.level, false)
+    eq(n.view.mode, "earn", "only profit routes")
+    assert(n.ui.varTiles[1].sub:GetText():find(n.L.VAR_OFF, 1, true))
+    assert(has(n.view.route, "STOP_EARN") or #n.view.route == 0)
+    W.Click(n.ui.modes.own)
+    eq(n.view.mode, "own")
+    W.Click(n.ui.modes.money)
+    eq(n.db.prefs.level, true, "a levelling tile turns levelling on")
+    eq(n.view.mode, "money")
+    assert(n.ui.graphCard.title:GetText():find(n.L.VAR_money, 1, true))
 end)
 
 test("a stop click shows its lines; tabs show the lists", function()

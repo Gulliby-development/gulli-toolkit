@@ -194,4 +194,7 @@ S.craftprofit = { default = {
 S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(2) end }
 
+S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
+
 return S
