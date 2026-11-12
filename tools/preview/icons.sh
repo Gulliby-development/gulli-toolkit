@@ -6,8 +6,8 @@
 set -e
 dir=tools/preview/.cache
 mkdir -p "$dir/icons" "$dir/addons"
-grep -ohE 'Interface\\\\+Icons\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua tools/preview/scenes.lua |
-  sed -E 's/.*\\//' | sort -u | while read -r n; do
+{ grep -ohE 'Interface\\\\+Icons\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua tools/preview/scenes.lua | sed -E 's/.*\\//'
+  grep -ohE '"(INV|Spell|Ability|Trade|Racial)_[A-Za-z0-9_]+"' Gulli-*/*.lua | tr -d '"'; } | sort -u | while read -r n; do
   low=$(echo "$n" | tr 'A-Z' 'a-z')
   [ -s "$dir/icons/$low.png" ] && continue
   curl -fsS -o "$dir/icons/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/ICONS/$n.PNG" ||
