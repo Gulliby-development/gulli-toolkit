@@ -479,8 +479,11 @@ function ns.Recipes(state, P)
     local rows = {}
     for rid, r in pairs(state.recipes) do
         if not r.learned and r.src then
-            local profit = (r.out and ns.SellValue(state, P, r.out, 0) or 0) * (r.count or 1) - reagentCost(state, P, st, known, rid)
-            local pay = (profit > 0 and r.src.cost and r.src.cost > 0) and math.max(1, math.ceil(r.src.cost / profit)) or nil
+            -- a reagent with no price anywhere makes the cost unknown, not a number
+            local cost = reagentCost(state, P, st, known, rid)
+            local profit = cost < math.huge
+                and (r.out and ns.SellValue(state, P, r.out, 0) or 0) * (r.count or 1) - cost or nil
+            local pay = (profit and profit > 0 and r.src.cost and r.src.cost > 0) and math.max(1, math.ceil(r.src.cost / profit)) or nil
             rows[#rows + 1] = { recipe = rid, name = r.name, src = r.src.t, text = r.src.text, cost = r.src.cost,
                                 skill = r.skill and r.skill[1],
                                 profit = profit, pay = pay }

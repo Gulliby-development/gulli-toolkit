@@ -269,6 +269,28 @@ test("crafts, items and recipes tabs", function()
     end
 end)
 
+test("a recipe with a reagent no one sells has no profit, not a broken number", function()
+    local c, st = core(), state()
+    st.items.ghost = { name = "Ghost Thread" }
+    st.recipes.odd = { name = "Odd Robe", skill = { 150, 160, 170 }, r = { bSilk = 2, ghost = 1 }, out = "hood",
+                       src = { t = "vendor", cost = 500 } }
+    local P = prefs({})
+    local found
+    for _, r in ipairs(c.Recipes(st, P)) do if r.recipe == "odd" then found = r end end
+    assert(found, "listed")
+    eq(found.profit, nil)
+    eq(found.pay, nil)
+end)
+
+test("money never shows nan or inf", function()
+    Fake({})
+    local n = Load()
+    eq(n.Money(math.huge), "?")
+    eq(n.Money(-math.huge), "?")
+    eq(n.Money(0 / 0), "?")
+    eq(n.Short(math.huge - math.huge), "?")
+end)
+
 -- ---------- the game and the window ----------
 
 local SKILL = 150
