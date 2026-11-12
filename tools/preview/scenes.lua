@@ -197,6 +197,15 @@ S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "
         ns.Add("WTS [Arcanite Bar] cheap, pst", "Rexxar")
         ns.ShowTab(2)
     end,
+}, craft = { spec = { level = 56 },
+    open = function(ns)
+        ns.Add("LF enchanter for Crusader, have mats", "Ann")
+        ns.Add("Tailor LFW, your mats, tips welcome", "Bob")
+        ns.Add("need a BS to make Arcanite Reaper", "Cid")
+        ns.Add("WTS |cffffd000|Henchant:13644|h[Enchant Boots - Lesser Stamina]|h|r 1s/each", "Dan")
+        ns.Add("any lockpick around? got a lockbox", "Eve")
+        ns.ShowTab(4)
+    end,
 }, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
     open = function(ns)
         ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true

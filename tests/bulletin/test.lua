@@ -37,6 +37,75 @@ test("selling, buying, crafting, guilds and other", function()
     eq(kind("WTS DM summons"), "WTS", "selling wins over the dungeon")
 end)
 
+test("crafting: who looks for a crafter, who offers one, and the profession", function()
+    local function craft(msg)
+        local k, _, mode, prof = kind(msg)
+        return k, mode, prof
+    end
+    local k, m, p = craft("LF enchanter for Crusader, have mats")
+    eq(k, "CRAFT"); eq(m, "LF"); eq(p, "ENCH")
+    k, m, p = craft("need a BS to make Arcanite Reaper")
+    eq(m, "LF"); eq(p, "BS")
+    k, m, p = craft("Tailor LFW, your mats, tips welcome")
+    eq(m, "OFFER"); eq(p, "TAILOR")
+    k, m, p = craft("WTS [Enchant Chest - Lesser Stamina] 1s/each")
+    eq(k, "CRAFT", "selling an enchant is a crafter's offer"); eq(m, "OFFER"); eq(p, "ENCH")
+    eq((craft("WTS 12slot [Green Silk Pack] 65s")), "WTS")
+    k, m, p = craft("WTS |cffffd000|Henchant:13644|h[Enchant Boots - Lesser Stamina]|h|r 1s")
+    eq(k, "CRAFT"); eq(m, "OFFER"); eq(p, "ENCH")
+    k, m, p = craft("WTS enchants, your mats")
+    eq(m, "OFFER"); eq(p, "ENCH")
+    k, m, p = craft("ищу кузнеца на пушку")
+    eq(m, "LF"); eq(p, "BS")
+    k, m, p = craft("any lockpick around? got a lockbox")
+    eq(m, "LF"); eq(p, "LOCK")
+    eq((craft("WTS Formula: Enchant Chest - Minor Health")), "WTS", "a recipe is an item")
+    eq((craft("any tips for the Stockade quest?")), "GROUP", "tips alone are not a craft")
+    eq((craft("<Crafters> guild recruiting tailors")), "GUILD")
+end)
+
+test("the crafting tab splits asks and offers and filters by profession", function()
+    Fake({})
+    local ns = Load()
+    ns.Add("LF enchanter for Crusader", "Ann", 1)
+    ns.Add("Tailor LFW, your mats", "Bob", 1)
+    ns.Add("LF blacksmith", "Cid", 1)
+    ns.Add("can craft anything, pst", "Dan", 1)
+    eq(#ns.View("CRAFT", false, 60), 4)
+    ns.db.craftMode = "LF"
+    eq(#ns.View("CRAFT", false, 60), 2)
+    eq(ns.CraftCount("OFFER"), 2)
+    ns.db.craftProfs.ENCH = true
+    local v = ns.View("CRAFT", false, 60)
+    eq(#v, 1); eq(v[1].short, "Ann")
+    ns.db.craftMode = "OFFER"
+    eq(#ns.View("CRAFT", false, 60), 0, "a post without a profession hides while one is picked")
+    ns.db.craftProfs.ENCH = nil
+    eq(#ns.View("CRAFT", false, 60), 2)
+    ns.ShowTab(4)
+    ns.Refresh()
+end)
+
+test("the list scroll bar shows only when the rows do not fit", function()
+    Fake({})
+    local ns = Load()
+    local S = ns.Skin
+    local list = S.List(UIParent, 50, function() end, function() end)
+    local h = 450
+    list.GetHeight = function() return h end
+    local rows = {}
+    for i = 1, 9 do rows[i] = {} end
+    list:SetData(rows)
+    eq(list.bar:IsShown(), false, "nine rows of 50 fit 450")
+    rows[10] = {}
+    list:SetData(rows)
+    eq(list.bar:IsShown(), true)
+    h = 600
+    list:GetScript("OnSizeChanged")(list, 400, 600)
+    eq(list.bar:IsShown(), false, "a taller view counts again")
+    eq(list.step, 50)
+end)
+
 test("other languages", function()
     eq(kind("Продам Медную руду"), "WTS")
     eq(kind("куплю ткань"), "WTB")

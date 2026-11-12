@@ -328,15 +328,28 @@ function S.Scroll(parent)
     bar:SetValueStep(1)
     bar:SetScript("OnValueChanged", function(_, v) sf:SetVerticalScroll(v) end)
     sf:EnableMouseWheel(true)
-    sf:SetScript("OnMouseWheel", function(_, delta)
-        bar:SetValue(bar:GetValue() - delta * 40)
+    sf:SetScript("OnMouseWheel", function(self, delta)
+        bar:SetValue(bar:GetValue() - delta * (self.step or 40))
     end)
+    -- The bar shows only when the content is taller than the view; the thumb is as long as the
+    -- share in view. The view's own size can change later (docked in the hub), so it counts again.
     function sf:Update(contentHeight)
-        local range = math.max(0, contentHeight - self:GetHeight())
+        self.content = contentHeight or self.content or 0
+        local view = self:GetHeight()
+        local range = self.content - view
+        if range < 2 then range = 0 end
         bar:SetMinMaxValues(0, range)
         bar:SetShown(range > 0)
+        if range > 0 and view > 0 then
+            thumb:SetHeight(math.max(24, math.floor(view * view / self.content)))
+        end
         if bar:GetValue() > range then bar:SetValue(range) end
+        if range == 0 then self:SetVerticalScroll(0) end
     end
+    sf:SetScript("OnSizeChanged", function(self, w)
+        if self.onResize then self.onResize(self, w) end
+        if self.content then self:Update() end
+    end)
     function sf:Top() bar:SetValue(0); self:SetVerticalScroll(0) end
     sf.child, sf.bar = child, bar
     return sf
@@ -1095,6 +1108,8 @@ function S.List(parent, rowHeight, make, fill, gap)
     gap = gap or 0
     local sf = S.Scroll(parent)
     local rows = {}
+    sf.step = rowHeight + gap
+    sf.onResize = function(self, w) if w and w > 1 then self.child:SetWidth(w) end end
     function sf:SetData(items)
         local width = self:GetWidth()
         self.child:SetWidth(width > 1 and width or 400)
