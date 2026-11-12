@@ -378,4 +378,15 @@ S.instancelimit = { default = { spec = { name = "Gulliby" },
     end,
 }, settings = { open = function(ns) ns.ShowPage(2) end } }
 
+S.social = { default = {}, recent = { spec = { group = { 3, true } },
+    open = function(ns, W)
+        ns.db.blockStrangers, ns.db.noDuels = true, true
+        W.Fire("PARTY_INVITE_REQUEST", "Randomguy")
+        W.Fire("DUEL_REQUESTED", "Ganker")
+        W.Fire("CHAT_MSG_WHISPER", "inv", "Thrall")
+        ns.Log("spam", "Goldseller")
+        ns.ShowPage(2)
+    end,
+} }
+
 return S
