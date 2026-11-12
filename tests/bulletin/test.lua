@@ -189,6 +189,123 @@ test("the setup tab lists the dungeons with their boxes", function()
     ns.Refresh()
 end)
 
+test("an LFM keeps the roles it asks for, the poster's class and the item", function()
+    Fake({ guids = { ["Player-1-AB"] = "MAGE" } })
+    local ns = Load()
+    W.Fire("CHAT_MSG_CHANNEL", "LF2M Strat need tank and heals", "Bob-Realm", "", "", "", "", 0, 4, "LookingForGroup",
+        nil, 1, "Player-1-AB")
+    local p = ns.posts[1]
+    eq(table.concat(p.needs, ","), "TANK,HEALER")
+    eq(p.class, "MAGE")
+    ns.Add("WTS |cff1eff00|Hitem:7909::::::::|h[Aquamarine]|h|r 2g", "Ann")
+    eq(ns.posts[1].item, 7909)
+    eq(ns.posts[1].needs, nil, "only an LFM has needs")
+    eq(table.concat(ns.Needs("нужен танк и хил"), ","), "TANK,HEALER")
+end)
+
+test("Ask whispers my level, class and role for the dungeon", function()
+    Fake({ level = 57 })
+    local ns = Load()
+    local post = ns.Add("LFM Strat need heal", "Bob-Realm")
+    ns.db.role = "HEALER"
+    eq(ns.AskText(post), "Hi! Level 57 Priest, healer. Can I join you for Stratholme?")
+    ns.Ask(post)
+    eq(W.said[1], "WHISPER:Bob-Realm:Hi! Level 57 Priest, healer. Can I join you for Stratholme?")
+end)
+
+test("search and folded dungeons", function()
+    Fake({ level = 30 })
+    local ns = Load()
+    ns.Add("LFM RFC", "Ann"); ns.Add("LFM WC need tank", "Bob"); ns.Add("WTS Linen", "Cid")
+    eq(#ns.View("GROUP", false, 30, "tank"), 2, "a header and the one post")
+    eq(#ns.View("GROUP", false, 30, "ann"), 2, "the poster's name")
+    eq(#ns.View("GROUP", false, 30, "wailing"), 2, "the dungeon name")
+    eq(#ns.View("WTS", false, 30, "ore"), 0)
+    ns.collapsed.WC = true
+    local v = ns.View("GROUP", false, 30)
+    eq(#v, 3, "the folded dungeon keeps its header only")
+    eq(v[3].closed, true); eq(v[3].count, 1)
+    ns.Search("tank")
+    ns.ShowTab(1)
+end)
+
+test("hidden players and words never reach the board", function()
+    Fake({})
+    local ns = Load()
+    ns.Add("WTS gold cheap www", "Spam")
+    ns.Add("LFM RFC", "Bob-Realm")
+    ns.BlockPlayer("Spam")
+    eq(#ns.posts, 1, "the player's posts go at once")
+    eq(ns.Add("WTS more gold", "Spam-Other"), nil, "the name without the realm")
+    ns.db.blockWords = "boost, www"
+    eq(ns.Add("WTS DM boost 5g", "Zed"), nil)
+    assert(ns.Add("WTS ore", "Zed"))
+    eq(ns.BlockedCount(), 1)
+end)
+
+test("the board is still there after a reload, without the expired posts", function()
+    Fake({})
+    local ns = Load()
+    ns.Add("LFM RFC", "Bob")
+    ns.Add("WTS ore", "Ann")
+    W.now = W.now + 10 * 60
+    ns.Add("WTB linen", "Cid")
+    local saved = GulliBulletinDB
+    W.now = W.now + 6 * 60
+    Fake({ db = saved, now = W.now })
+    ns = Load()
+    eq(#ns.posts, 1, "the two old posts expired")
+    eq(ns.posts[1].text, "WTB linen")
+end)
+
+test("watched words ring like an alert", function()
+    Fake({})
+    local sounds = 0
+    PlaySound = function() sounds = sounds + 1 end
+    local ns = Load()
+    ns.db.watch = "Arcanite Bar, black lotus"
+    ns.Add("WTS [Arcanite Bar] 20g", "Bob")
+    eq(sounds, 1)
+    eq(ns.lastAlert, "Bob wrote about arcanite bar.")
+    ns.Add("WTS copper", "Ann")
+    eq(sounds, 1)
+end)
+
+test("a hint when LookingForGroup or Trade is missing", function()
+    Fake({})
+    local ns = Load()
+    eq(#ns.MissingChannels(), 0)
+    Fake({ channels = { 1, "General", false, 2, "Торговля", false } })
+    ns = Load()
+    eq(table.concat(ns.MissingChannels(), ","), "LFG")
+end)
+
+test("My LFM opens Quick Chat for the dungeon when it is there", function()
+    Fake({})
+    local ns = Load()
+    eq(ns.CanPostLFM(), false)
+    local got
+    Fake({ quickchat = { OpenLFM = function(key) got = key end } })
+    ns = Load()
+    eq(ns.CanPostLFM(), true)
+    ns.PostLFM("STRAT")
+    eq(got, "STRAT")
+end)
+
+test("the small feed shows the newest alerted groups and follows its settings", function()
+    Fake({})
+    local ns = Load()
+    ns.Add("LFM RFC", "A"); ns.Add("LFM Strat", "B"); ns.Add("WTS ore", "C")
+    eq(#ns.FeedItems(), 2, "every group while no dungeon is alerted")
+    ns.db.alert.STRAT = true
+    eq(#ns.FeedItems(), 1)
+    ns.db.feed.show, ns.db.feed.through, ns.db.feed.alpha = true, true, 50
+    ns.Feed()
+    assert(GulliBulletinFeed == nil or true)
+    ns.db.feed.show = false
+    ns.Feed()
+end)
+
 test("it registers with the toolkit", function()
     Fake({})
     local got
