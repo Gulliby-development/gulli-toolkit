@@ -171,6 +171,152 @@ test("checklist: what Gulli Restock misses", function()
     GulliRestock = nil
 end)
 
+test("rewards: which fit the class and which beat what is worn", function()
+    Fake({ level = 22, items = {
+        [2041] = { "Tunic of Westfall", 2, 26, "INV_CHEST_MAIL", 4, 2 },   -- leather tunic
+        [2042] = { "Staff of Westfall", 2, 26, "INV_2HWEAPON", 2, 10 },
+        [6087] = { "Chausses of Westfall", 2, 26, "INVTYPE_LEGS", 4, 3 },  -- mail legs
+        [9001] = { "Worn Legs", 1, 30, "INVTYPE_LEGS", 4, 3 },
+    }, worn = { [7] = 9001 } })
+    local ns = Load()
+    local r = ns.Rewards({ reward = { 2041, 2042, 6087 } })
+    eq(r[1].fits, false, "a warrior below 40 wears mail, not leather")
+    eq(r[2].fits, true, "warriors can learn staves")
+    eq(r[3].fits, true); eq(r[3].better, false, "worn legs have a higher item level")
+    eq(ns.Fits(4, 4, "INVTYPE_CHEST", "WARRIOR", 40), true, "plate from 40")
+    eq(ns.Fits(4, 1, "INVTYPE_CLOAK", "WARRIOR", 20), true, "a cloak fits everyone")
+    eq(ns.Fits(2, 19, "INVTYPE_RANGEDRIGHT", "WARRIOR", 20), false, "no wands for warriors")
+    eq(ns.Fits(4, 6, "INVTYPE_SHIELD", "PRIEST", 20), false)
+    local unknown = ns.Rewards({ reward = { 5 } })[1]
+    eq(unknown.name, nil); eq(unknown.fits, nil, "not judged before the game has the item")
+end)
+
+test("quests carry who takes them back, their chain step, mobs and the missing earlier quest", function()
+    Fake({ areas = { [40] = "Westfall" } })
+    local ns = Load()
+    local q = ns.Quests("DM", 22)
+    local later = {}
+    for _, x in ipairs(q.later) do later[x.id] = x end
+    local stew = later[214]
+    assert(stew and stew.need, "Red Silk Bandanas names what is missing")
+    eq(stew.need.id, 155)
+    eq(ns.NeedText(stew.need), "Needs The Defias Brotherhood (The Defias Traitor, Westfall)")
+    local vc = later[166]
+    eq(vc.turnin.who, "Gryan Stoutmantle")
+    assert(vc.steps > 1 and vc.step == vc.steps, "the last step of the Defias chain")
+    eq(vc.targets[1], "Edwin VanCleef")
+    eq(ns.NeedText(nil), "Needs an earlier quest")
+end)
+
+test("the way ends at the dungeon entrance, before the quests inside", function()
+    Fake({ areas = { [40] = "Westfall", [1519] = "Stormwind City" } })
+    local ns = Load()
+    local dm
+    for _, d in ipairs(ns.Dungeons(20)) do if d.key == "DM" then dm = d end end
+    eq(dm.entrance.area, 40)
+    local stops = ns.Route({ { id = 1, who = "Nogg", area = 1519, x = 50, y = 50 }, { id = 2, who = "", area = 0, x = 0, y = 0 } },
+                           {}, dm)
+    eq(#stops, 3)
+    eq(stops[2].entrance, true); eq(stops[2].zone, "Westfall"); eq(stops[2].x, 42.5)
+    eq(stops[3].inside, true)
+    for _, d in ipairs(ns.Dungeons(20)) do assert(d.entrance and d.entrance.area > 0, "an entrance for " .. d.key) end
+end)
+
+test("hidden quests and the search", function()
+    Fake({ active = { [168] = true } })
+    local ns = Load()
+    ns.SetHidden(2040, true)
+    local q = ns.Quests("DM", 18)
+    eq(#q.hidden, 1); eq(q.hidden[1].id, 2040)
+    for _, x in ipairs(q.take) do assert(x.id ~= 2040, "hidden is not in take") end
+    ns.SetHidden(2040, false)
+    eq(#ns.Quests("DM", 18).hidden, 0)
+    local found = ns.Quests("DM", 18, "brother")
+    eq(#found.take, 1); eq(found.take[1].id, 167)
+    eq(#ns.Quests("DM", 18, "VanCleef").later, 1, "found by the mob it needs")
+end)
+
+test("checklist: the dungeon key and class supplies follow their switches and thresholds", function()
+    Fake({ className = "HUNTER", level = 40, ammo = 250, counts = { [7146] = 1 },
+           items = { [7146] = { "The Scarlet Key", 1, 1, "", 13, 0 } } })
+    local ns = Load()
+    local by = {}
+    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
+    eq(by.KEY.ok, true); eq(by.KEY.text, "The Scarlet Key in your bags")
+    eq(by.AMMO.ok, false, "250 is below 400")
+    ns.Set("ammoMin", 200)
+    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
+    eq(by.AMMO.ok, true)
+    ns.Set("keys", false); ns.Set("classCheck", false)
+    eq(#ns.Checklist("SM"), 4, "only the four basic checks")
+    Fake({ className = "WARLOCK", level = 30, counts = { [6265] = 2 } })
+    ns = Load()
+    local last = ns.Checklist("DM")[5]
+    eq(last.key, "SHARDS"); eq(last.ok, false); eq(last.text, "2 item:6265")
+    eq(#ns.Checklist("DM"), 5, "the Deadmines need no key")
+    ns.Set("durMin", 20)
+    Fake({ durability = { [1] = { 30, 100 } } })
+    ns = Load()
+    ns.Set("durMin", 20)
+    eq(ns.Checklist()[1].ok, true, "30% passes a 20% threshold")
+    ns.Reset()
+    eq(ns.Get("durMin"), 50)
+end)
+
+test("leaving a dungeon: finished quests and where to hand them in, unless switched off", function()
+    local W = Fake({ active = { [168] = true, [167] = true }, complete = { [168] = true }, instance = "party",
+                     areas = { [1519] = "Stormwind City" }, map = { maps = { [1415] = { "Eastern Kingdoms", 2 },
+                     [1453] = { "Stormwind City", 3, 1415 } } } })
+    local ns = Load()
+    local notes = {}
+    GulliToolkit = { Notify = function(_, text) notes[#notes + 1] = text end }
+    W.Fire("PLAYER_ENTERING_WORLD")
+    W.instance = "none"
+    W.Fire("ZONE_CHANGED_NEW_AREA")
+    eq(#W.printed, 2, "the hand-in line and the map pin line")
+    assert(W.printed[1]:find("Collecting Memories: Wilder Thistlenettle, Stormwind City", 1, true), W.printed[1])
+    eq(notes[1], "1 dungeon quests to hand in")
+    eq(W.pins[1].map, 1453)
+    W.printed = {}
+    ns.Set("remind", false)
+    W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    W.instance = "none"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    eq(#W.printed, 0, "the switch stops the reminder")
+    GulliToolkit = nil
+end)
+
+test("group: who else has the quest, share it, the TomTom arrow", function()
+    local W = Fake({ active = { [168] = true }, party = { { name = "Bob", quests = { [168] = true } }, { name = "Ann", quests = {} } },
+                     tomtom = true, areas = AREAS, map = { maps = MAPS } })
+    local ns = Load()
+    eq(table.concat(ns.GroupOn(168), ","), "Bob")
+    eq(ns.Share(168), true); eq(W.shared[1], 168)
+    local xp, money = ns.LogReward(168)
+    eq(xp, 1450); eq(money, 2500)
+    ns.SetPin({ who = "Nogg", zone = "Orgrimmar", x = 76, y = 25 })
+    eq(W.tomtom[1], 1454); eq(W.tomtom[4], "Nogg")
+    W.tomtom = nil
+    ns.Set("tomtom", false)
+    ns.SetPin({ who = "Nogg", zone = "Orgrimmar", x = 76, y = 25 })
+    eq(W.tomtom, nil, "the switch stops the arrow")
+end)
+
+test("hub: a summary line, reset and the switches", function()
+    local reg
+    Fake({ level = 18, active = { [168] = true } })
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    local line = reg.summary()
+    eq(line, "The Deadmines: 1 in log, 2 to pick up")
+    eq(#reg.options, 4)
+    for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
+    reg.options[1].set(false)
+    eq(ns.Get("remind"), false)
+    reg.reset()
+    eq(ns.Get("remind"), true)
+    GulliToolkit = nil
+end)
+
 test("the window and /gdp <dungeon>", function()
     Fake({ level = 30, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
     local ns = Load()
@@ -179,6 +325,8 @@ test("the window and /gdp <dungeon>", function()
     ns.Refresh()
     SlashCmdList.GULLIDUNGEONPREP("gnomer")
     ns.Refresh()
+    ns.ShowTab(2)
+    ns.ShowTab(1)
 end)
 
 test("every language has every key, with the same placeholders", function()
