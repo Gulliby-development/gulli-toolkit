@@ -96,4 +96,9 @@ S.bulletin = { default = {
     end,
 } }
 
+S.quickchat = {
+    default = {},
+    group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
+}
+
 return S
