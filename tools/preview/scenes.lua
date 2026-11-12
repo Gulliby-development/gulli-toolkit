@@ -334,9 +334,19 @@ S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 
 S.mail = { panel = {
-    spec = { inbox = { { sender = "Auction House", money = 4210 }, { sender = "Auction House", items = { 2589 } } } },
+    spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
+                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
+                       { sender = "Bob", subject = "Herbs", items = { 765, 785 }, days = 2.4 },
+                       { sender = "Auction House", subject = "Auction expired: Copper Ore", items = { 2770 }, days = 25, player = false } } },
     open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW") end,
     crop = "GulliMailPanel",
+}, write = {
+    spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {} },
+    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.ShowTab(2) end,
+    crop = "GulliMailPanel",
+}, settings = {
+    spec = {},
+    open = function(ns) ns.Toggle() end,
 } }
 
 -- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.
