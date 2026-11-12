@@ -130,7 +130,38 @@ function Fake(spec)
         GetTitleForQuestID = function(id) return spec.titles and spec.titles[id] end,
     }
     C_Item = { GetItemCount = function(id) return W.items[id] or 0 end }
-    C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
+    local maps = spec.maps or {}
+    W.pins, W.addon, W.chat = {}, {}, {}
+    C_Map = {
+        GetAreaInfo = function(id) return spec.areas and spec.areas[id] end,
+        GetMapChildrenInfo = function(parent)
+            local out = {}
+            for id, m in pairs(maps) do if m[2] == parent then out[#out + 1] = { mapID = id, name = m[1] } end end
+            return out
+        end,
+        SetUserWaypoint = function(p) W.pins[#W.pins + 1] = p end,
+    }
+    UiMapPoint = { CreateFromCoordinates = function(id, x, y) return { map = id, x = x, y = y } end }
+    C_SuperTrack = nil
+    TomTom = nil
+    -- spec.party: names in the group; spec.guild: in a guild.
+    local party = spec.party or {}
+    IsInGroup = function() return #party > 0 end
+    IsInRaid = function() return false end
+    IsInGuild = function() return spec.guild == true end
+    UnitExists = function(u) return party[tonumber(u:match("party(%d)") or 0)] ~= nil end
+    UnitName = function(u)
+        if u == "player" then return spec.name or "Tester" end
+        return party[tonumber((u or ""):match("party(%d)") or 0)]
+    end
+    UnitIsPlayer = function() return true end
+    C_ChatInfo = {
+        RegisterAddonMessagePrefix = function() end,
+        SendAddonMessage = function(prefix, msg, channel, target)
+            W.addon[#W.addon + 1] = { prefix = prefix, msg = msg, channel = channel, target = target }
+        end,
+    }
+    SendChatMessage = function(msg, channel) W.chat[#W.chat + 1] = { msg = msg, channel = channel } end
     GulliAttuneDB = spec.db
     return W
 end
