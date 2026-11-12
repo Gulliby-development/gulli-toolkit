@@ -562,5 +562,23 @@ test("one state: the switch is the game's AddOns list, also for a module that ru
     assert(W.printed[#W.printed]:find("XP", 1, true), "tells the player")
 end)
 
+test("the switches work on a client that names the character by GUID", function()
+    Fake({ guidOnly = true, addons = { QC, { name = "Gulli-MobFinder", enabled = true, loaded = true,
+        meta = { ["X-Gulli-Module"] = "MobFinder" } } } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end })
+    GulliToolkit.Register({ key = "MobFinder", open = function() end })
+    eq(byKey(ns.List()).MobFinder.on, true)
+    eq(ns.SetEnabled(byKey(ns.List()).MobFinder, false), true, "the game took it")
+    eq(W.addons[2].enabled, false)
+    eq(byKey(ns.List()).MobFinder.on, false, "the switch shows the game's off")
+    eq(byKey(ns.List()).MobFinder.state, "reload")
+    eq(ns.SetEnabled(byKey(ns.List()).MobFinder, true), true)
+    eq(byKey(ns.List()).MobFinder.on, true)
+    eq(byKey(ns.List()).MobFinder.state, "ready")
+    local lines = ns.Debug("MobFinder")
+    assert(lines and lines[1]:find("Gulli-MobFinder", 1, true))
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

@@ -43,20 +43,38 @@ function Fake(spec)
         GetAddOnMetadata = function(name, field) local a = find(name); return a and a.meta and a.meta[field] end,
         IsAddOnLoaded = function(name) local a = find(name); return a and a.loaded or false end,
         -- a.state forces what the game answers, as a client that reads another character would.
-        GetAddOnEnableState = function(name) local a = find(name); return a and (a.state or (a.enabled and 2 or 0)) or 0 end,
-        IsAddOnLoadable = function(name)
+        -- W.guidOnly: a client that names the character only by GUID; other names and no name
+        -- are ignored on writes, and a read by name gets the saved state of no character.
+        GetAddOnEnableState = function(name, c)
+            local a = find(name)
+            if not a then return 0 end
+            if W.guidOnly and c ~= W.GUID then return a.startState or 2 end
+            return a.state or (a.enabled and 2 or 0)
+        end,
+        IsAddOnLoadable = function(name, c)
             local a = find(name)
             if not a then return false, "MISSING" end
+            if W.guidOnly and c ~= W.GUID then return true end
             if not a.enabled then return false, "DISABLED" end
             if a.blocked then return false, a.blocked end
             return true
         end,
         -- a.stuck: the game ignores the switch.
-        EnableAddOn = function(name) local a = find(name); if not a.stuck then a.enabled = true end; W.unsaved = true end,
-        DisableAddOn = function(name) local a = find(name); if not a.stuck then a.enabled = false end; W.unsaved = true end,
+        EnableAddOn = function(name, c)
+            local a = find(name)
+            if W.guidOnly and c ~= W.GUID then return end
+            if not a.stuck then a.enabled = true end; W.unsaved = true
+        end,
+        DisableAddOn = function(name, c)
+            local a = find(name)
+            if W.guidOnly and c ~= W.GUID then return end
+            if not a.stuck then a.enabled = false end; W.unsaved = true
+        end,
         SaveAddOns = function() W.unsaved = false end,
     }
     UnitName = function() return "Tester" end
+    W.GUID, W.guidOnly = "Player-1234-0000ABCD", spec.guidOnly
+    UnitGUID = function() return W.GUID end
     UnitClass = function() return "Priest", "PRIEST" end
     GetLocale = function() return spec.locale or "enUS" end
     SlashCmdList = {}

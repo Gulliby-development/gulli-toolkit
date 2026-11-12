@@ -32,9 +32,26 @@ local function addOnInfo(i) return (A.GetAddOnInfo or GetAddOnInfo)(i) end
 local function metadata(name, field) return (A.GetAddOnMetadata or GetAddOnMetadata)(name, field) end
 local function isLoaded(name) return (A.IsAddOnLoaded or IsAddOnLoaded)(name) end
 local function player() return UnitName("player") end
+-- Clients differ on how they name "this character" in the enable calls: by name, or by GUID.
+-- Both forms are tried; a form the client does not know only fails or changes nothing.
+local function charForms()
+    local out = {}
+    local guid = UnitGUID and UnitGUID("player")
+    if type(guid) == "string" and guid ~= "" then out[#out + 1] = guid end
+    out[#out + 1] = player()
+    return out
+end
+-- The enable state for this character: 0 off, above 0 on. The lowest answer of the forms wins,
+-- so an answer for "some characters" never hides that this one is off.
 local function enableState(name)
-    if A.GetAddOnEnableState then return A.GetAddOnEnableState(name, player()) end
-    return GetAddOnEnableState(player(), name)
+    local low
+    for _, c in ipairs(charForms()) do
+        local ok, s
+        if A.GetAddOnEnableState then ok, s = pcall(A.GetAddOnEnableState, name, c)
+        elseif GetAddOnEnableState then ok, s = pcall(GetAddOnEnableState, c, name) end
+        if ok and type(s) == "number" and (not low or s < low) then low = s end
+    end
+    return low or 0
 end
 local function version() return metadata(ADDON, "Version") end
 local function memoryKB(name)
@@ -50,15 +67,24 @@ end
 local function loadable(name)
     local f = A.IsAddOnLoadable or IsAddOnLoadable
     if not f then return true end
-    return f(name, player())
+    local first, firstReason
+    for _, c in ipairs(charForms()) do
+        local ok, can, reason = pcall(f, name, c)
+        if ok then
+            if reason == "DISABLED" then return false, reason end
+            if first == nil then first, firstReason = can, reason end
+        end
+    end
+    if first == nil then return true end
+    return first, firstReason
 end
 -- One state: the game's. The change goes to this character by name and to every character
 -- (clients differ on what a call without a name means), and it is saved at once: without
 -- SaveAddOns the game can drop it, and the module stays off after the reload.
 local function setEnabled(name, on)
     local f = on and (A.EnableAddOn or EnableAddOn) or (A.DisableAddOn or DisableAddOn)
-    f(name, player())
-    f(name)
+    for _, c in ipairs(charForms()) do pcall(f, name, c) end
+    pcall(f, name)
     local save = A.SaveAddOns or SaveAddOns
     if save then save() end
 end
@@ -387,6 +413,27 @@ function ns.SetEnabled(row, on)
     if not took then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
     if ns.Refresh then ns.Refresh() end
     return took
+end
+
+-- What the game answers about one module, for a bug report (/gulli debug <module>).
+function ns.Debug(key)
+    local want = (key or ""):lower()
+    for _, row in ipairs(ns.List()) do
+        if row.addon and (row.key:lower() == want or row.addon:lower() == want) then
+            local lines = { row.addon .. ": loaded=" .. tostring(isLoaded(row.addon)) .. " on=" .. tostring(row.on)
+                            .. " state=" .. tostring(row.state) }
+            for _, c in ipairs(charForms()) do
+                local okS, st = pcall(A.GetAddOnEnableState or function() end, row.addon, c)
+                local okL, can, why = pcall(A.IsAddOnLoadable or IsAddOnLoadable or function() end, row.addon, c)
+                lines[#lines + 1] = (c:find("%-") and "guid" or "name") .. ": enable=" .. tostring(okS and st or "error")
+                    .. " loadable=" .. tostring(okL and can or "error") .. " " .. tostring(why)
+            end
+            local okA, all = pcall(A.GetAddOnEnableState or function() end, row.addon)
+            lines[#lines + 1] = "all: enable=" .. tostring(okA and all or "error")
+            for _, l in ipairs(lines) do ns.Print(l) end
+            return lines
+        end
+    end
 end
 
 -- A reload is needed when a row's switch and what runs disagree.
@@ -768,6 +815,8 @@ SlashCmdList.GULLITOOLKIT = function(msg)
     elseif msg:lower() == "move" then
         local n = ns.SetMoving(not ns.moving)
         ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
+    elseif msg:lower():match("^debug%s") then
+        if not ns.Debug(msg:match("^%S+%s+(.+)$")) then ns.Print(L.UNKNOWN:format(msg)) end
     elseif msg:lower() == "help" then
         for _, l in ipairs(ns.HelpLines()) do ns.Print(l) end
     elseif not ns.OpenModule(msg) then
