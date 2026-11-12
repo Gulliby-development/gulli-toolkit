@@ -174,6 +174,14 @@ T.en = {
     LOG_EMPTY = "Start a run to compare the plan with what really happened.",
     LOG_LINE = "%s %d to %d: plan %s, real %s",
     TOOLTIP_NEED = "Craft run needs: %d",
+    CALC = "Calculate",
+    RECALC = "Recalculate",
+    CALC_STOP = "Stop",
+    CALC_TITLE = "Press Calculate to build the routes.",
+    CALC_SUB = "Choose the profession and the settings first. A big profession takes a few seconds; the game keeps running.",
+    CALC_BUSY = "Calculating... %d%%",
+    CALC_STALE = "Bags or prices changed: press Recalculate.",
+    CALC_FAIL = "The calculation failed. Please report the error.",
 }
 
 T.de = {
@@ -341,6 +349,14 @@ T.de = {
     LOG_EMPTY = "Starte einen Lauf, um Plan und Ergebnis zu vergleichen.",
     LOG_LINE = "%s %d bis %d: Plan %s, echt %s",
     TOOLTIP_NEED = "Lauf braucht: %d",
+    CALC = "Berechnen",
+    RECALC = "Neu berechnen",
+    CALC_STOP = "Stopp",
+    CALC_TITLE = "Drücke Berechnen, um die Routen zu erstellen.",
+    CALC_SUB = "Wähle zuerst Beruf und Einstellungen. Ein großer Beruf braucht ein paar Sekunden; das Spiel läuft weiter.",
+    CALC_BUSY = "Berechne... %d%%",
+    CALC_STALE = "Taschen oder Preise haben sich geändert: drücke Neu berechnen.",
+    CALC_FAIL = "Die Berechnung ist fehlgeschlagen. Bitte melde den Fehler.",
 }
 
 T.es = {
@@ -508,6 +524,14 @@ T.es = {
     LOG_EMPTY = "Empieza una ruta para comparar el plan con lo real.",
     LOG_LINE = "%s %d a %d: plan %s, real %s",
     TOOLTIP_NEED = "La ruta necesita: %d",
+    CALC = "Calcular",
+    RECALC = "Recalcular",
+    CALC_STOP = "Detener",
+    CALC_TITLE = "Pulsa Calcular para crear las rutas.",
+    CALC_SUB = "Elige antes la profesión y los ajustes. Una profesión grande tarda unos segundos; el juego sigue funcionando.",
+    CALC_BUSY = "Calculando... %d%%",
+    CALC_STALE = "Han cambiado las bolsas o los precios: pulsa Recalcular.",
+    CALC_FAIL = "El cálculo ha fallado. Informa del error, por favor.",
 }
 
 T.fr = {
@@ -675,6 +699,14 @@ T.fr = {
     LOG_EMPTY = "Lancez une session pour comparer le plan au réel.",
     LOG_LINE = "%s %d à %d : plan %s, réel %s",
     TOOLTIP_NEED = "La session demande : %d",
+    CALC = "Calculer",
+    RECALC = "Recalculer",
+    CALC_STOP = "Arrêter",
+    CALC_TITLE = "Appuie sur Calculer pour créer les itinéraires.",
+    CALC_SUB = "Choisis d'abord le métier et les réglages. Un grand métier prend quelques secondes ; le jeu continue de tourner.",
+    CALC_BUSY = "Calcul... %d%%",
+    CALC_STALE = "Les sacs ou les prix ont changé : appuie sur Recalculer.",
+    CALC_FAIL = "Le calcul a échoué. Merci de signaler l'erreur.",
 }
 
 T.pl = {
@@ -842,6 +874,14 @@ T.pl = {
     LOG_EMPTY = "Zacznij przebieg, by porównać plan z wynikiem.",
     LOG_LINE = "%s %d do %d: plan %s, wynik %s",
     TOOLTIP_NEED = "Przebieg potrzebuje: %d",
+    CALC = "Oblicz",
+    RECALC = "Przelicz",
+    CALC_STOP = "Zatrzymaj",
+    CALC_TITLE = "Naciśnij Oblicz, aby zbudować trasy.",
+    CALC_SUB = "Najpierw wybierz zawód i ustawienia. Duży zawód zajmuje kilka sekund; gra działa dalej.",
+    CALC_BUSY = "Obliczanie... %d%%",
+    CALC_STALE = "Zmieniły się torby lub ceny: naciśnij Przelicz.",
+    CALC_FAIL = "Obliczenie nie powiodło się. Zgłoś błąd.",
 }
 
 T.pt = {
@@ -1009,6 +1049,14 @@ T.pt = {
     LOG_EMPTY = "Comece uma rota para comparar o plano com o real.",
     LOG_LINE = "%s %d a %d: plano %s, real %s",
     TOOLTIP_NEED = "A rota precisa: %d",
+    CALC = "Calcular",
+    RECALC = "Recalcular",
+    CALC_STOP = "Parar",
+    CALC_TITLE = "Clique em Calcular para montar as rotas.",
+    CALC_SUB = "Escolha antes a profissão e as opções. Uma profissão grande leva alguns segundos; o jogo continua rodando.",
+    CALC_BUSY = "Calculando... %d%%",
+    CALC_STALE = "Bolsas ou preços mudaram: clique em Recalcular.",
+    CALC_FAIL = "O cálculo falhou. Por favor, informe o erro.",
 }
 
 T.ru = {
@@ -1176,6 +1224,14 @@ T.ru = {
     LOG_EMPTY = "Начните забег, чтобы сравнить план с фактом.",
     LOG_LINE = "%s %d → %d: план %s, факт %s",
     TOOLTIP_NEED = "Нужно для забега: %d",
+    CALC = "Рассчитать",
+    RECALC = "Пересчитать",
+    CALC_STOP = "Остановить",
+    CALC_TITLE = "Нажмите «Рассчитать», чтобы построить маршруты.",
+    CALC_SUB = "Сначала выберите профессию и настройки. Большая профессия считается несколько секунд, игра при этом не зависает.",
+    CALC_BUSY = "Расчёт... %d%%",
+    CALC_STALE = "Сумки или цены изменились: нажмите «Пересчитать».",
+    CALC_FAIL = "Расчёт не удался. Сообщите об ошибке.",
 }
 
 T.zh = {
@@ -1343,6 +1399,14 @@ T.zh = {
     LOG_EMPTY = "开始一条路线,以对比计划与实际。",
     LOG_LINE = "%s %d 到 %d:计划 %s,实际 %s",
     TOOLTIP_NEED = "路线需要:%d",
+    CALC = "计算",
+    RECALC = "重新计算",
+    CALC_STOP = "停止",
+    CALC_TITLE = "点击“计算”生成路线。",
+    CALC_SUB = "请先选择专业和设置。大型专业需要几秒钟，游戏不会卡住。",
+    CALC_BUSY = "计算中... %d%%",
+    CALC_STALE = "背包或价格已变化：请点击“重新计算”。",
+    CALC_FAIL = "计算失败，请报告此错误。",
 }
 
 ns.T = T
