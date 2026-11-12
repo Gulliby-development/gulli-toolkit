@@ -77,7 +77,7 @@ end
 -- A row with the label over a - value + stepper, so long labels keep the full width.
 local function stepRow(parent, key, step, min, max, fmt)
     local row = CreateFrame("Frame", nil, parent)
-    row.height = 70
+    row.height, row.isRow = 70, true
     row.icon = S.IconBox(row, 26, ns.OPT_ICON[key])
     row.icon:SetPoint("TOPLEFT", 0, -8)
     row.label = S.Text(row, 12)
@@ -104,7 +104,8 @@ local function rowsCard(parent, title, rows)
     local st = S.Stack(card.body, 0)
     for i, r in ipairs(rows) do
         local row = r
-        if type(r) == "table" and not r.GetObjectType then
+        if r.isRow then r:SetParent(card.body) end
+        if not r.isRow then
             row = S.SwitchRow(card.body, r[1], r[2], r[3], r[4], nil, r.icon)
             ui.checks[r.key] = row.switch
         end
@@ -127,19 +128,10 @@ local function buildSide(scroll)
     ui.profCard = prof
     st:Add(prof, prof:Fit(4 * 34 - 6))
 
-    local mode = S.Card(col, L.SIDE_MODE)
-    local modes = { "money", "balance", "speed" }
-    local labels = {}
-    for i, m in ipairs(modes) do labels[i] = L["MODE_" .. m] end
-    local each = math.floor((inner - 2 * S.INSET - 4) / 3)
-    ui.modeTabs = S.Tabs(mode.body, labels, each, function(i) ns.SetPref("mode", modes[i]) end)
-    for i, m in ipairs(modes) do ui.modes[m] = ui.modeTabs.buttons[i] end
-    local target = stepRow(mode.body, "target", 5, 1, 300)
-    target:SetPoint("TOPLEFT", 0, -38)
-    target:SetPoint("TOPRIGHT", 0, -38)
-    target:SetHeight(target.height)
-    target.line:Hide()
-    st:Add(mode, mode:Fit(38 + target.height - 6))
+    local lv = sw("level")
+    local target = stepRow(col, "target", 5, 1, 300)
+    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target })
+    st:Add(c0, h0)
 
     local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("buyAH"), sw("buyVendor") })
     st:Add(c1, h1)
@@ -157,9 +149,8 @@ end
 local function refreshSide()
     local P = ns.view.prefs or ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    for i, m in ipairs({ "money", "balance", "speed" }) do
-        if P.mode == m then ui.modeTabs:Select(i, true) end
-    end
+    ui.target.minus:SetEnabled(P.level and true or false)
+    ui.target.plus:SetEnabled(P.level and true or false)
     for _, s in pairs(ui.steppers) do s:Refresh() end
     local d = ns.view.delta
     if d then
@@ -189,6 +180,7 @@ end
 
 local function stopTitle(n)
     if n.title == "STOP_CRAFT" then return L.STOP_CRAFT:format(n.from, n.to) end
+    if n.title == "STOP_EARN" then return L.STOP_EARN end
     if n.title == "STOP_RANK" then return L.STOP_RANK:format(n.rank.cap) end
     return L[n.title]
 end
@@ -245,7 +237,7 @@ local function fillNode(b, n)
     local kc = (n.kind == "craft" and n.segs) and segColor(n.segs[1].color) or ns.STOPS[n.kind]
     b.stripe:SetVertexColor(kc[1], kc[2], kc[3], 1)
     b.icon:Set(stopIcon(n))
-    b.kind:SetText(color(kc) .. n.index .. ". " .. (L["KIND_" .. n.kind] or n.kind):upper() .. "|r")
+    b.kind:SetText(color(kc) .. n.index .. ". " .. (L["KIND_" .. n.kind] or n.kind) .. "|r")
     b.title:SetText(stopTitle(n))
     local icons = {}
     if n.segs then
@@ -457,9 +449,6 @@ end
 
 -- ---------- building and refreshing ----------
 
-local KPI_ICONS = { "Interface\\Icons\\INV_Misc_Bag_10", "Interface\\Icons\\INV_Misc_Bag_08",
-                    "Interface\\Icons\\INV_Misc_Coin_02", "Interface\\Icons\\INV_Misc_Coin_01",
-                    "Interface\\Icons\\Spell_Nature_TimeStop" }
 
 local function build()
     frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
@@ -498,17 +487,51 @@ local function build()
     route:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.route = route
     local st = S.Stack(route)
-    local kpis = S.StatRow(route, { L.K_BUY, L.K_OWN, L.K_INCOME, L.K_NET, L.K_CRAFTS }, 62, KPI_ICONS)
-    st:Add(kpis, 62)
-    kpis:Layout(MAIN)
-    ui.kpis = kpis.tiles
+    -- the routes side by side: pick one, compare the result and the crafts
+    local vars = CreateFrame("Frame", nil, route)
+    st:Add(vars, 62)
+    local nv = #ns.MODES
+    local vw = math.floor((MAIN - (nv - 1) * 8) / nv)
+    ui.varTiles = {}
+    for i, m in ipairs(ns.MODES) do
+        local b = CreateFrame("Button", nil, vars)
+        b:SetSize(vw, 62)
+        b:SetPoint("TOPLEFT", (i - 1) * (vw + 8), 0)
+        S.Box(b, S.SURFACE, S.EDGE)
+        b.mark = S.Tex(b, "ARTWORK", 0, S.Accent())
+        b.mark:SetPoint("TOPLEFT", 1, -1)
+        b.mark:SetPoint("TOPRIGHT", -1, -1)
+        b.mark:SetHeight(2)
+        b.icon = S.IconBox(b, 18, ns.EARN[m] and "Interface\\Icons\\INV_Misc_Coin_02" or ns.OPT_ICON.level)
+        b.icon:SetPoint("TOPRIGHT", -6, -6)
+        b.label = S.Text(b, 10, S.MUTED)
+        b.label:SetPoint("TOPLEFT", 8, -8)
+        b.label:SetPoint("RIGHT", b.icon, "LEFT", -4, 0)
+        b.label:SetWordWrap(false)
+        b.label:SetText(i .. ". " .. L["TILE_" .. m])
+        b.value = S.Text(b, 15)
+        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -5)
+        b.value:SetPoint("RIGHT", -6, 0)
+        b.value:SetWordWrap(false)
+        b.sub = S.Text(b, 10, S.MUTED)
+        b.sub:SetPoint("BOTTOMLEFT", 8, 7)
+        b.sub:SetPoint("RIGHT", -6, 0)
+        b.sub:SetWordWrap(false)
+        b:SetScript("OnClick", function()
+            -- a levelling route turns levelling back on
+            if ns.EARN[m] then ns.SetPref("mode", m) else ns.SetPrefs({ mode = m, level = true }) end
+        end)
+        b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
+        b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.EDGE) end end)
+        ui.varTiles[i] = b
+        ui.modes[m] = b
+    end
     local detailH = 36 + 3 * 28 + S.INSET
     local graphH = bodyH - top - st.y - S.GAP - detailH
     local gcard = S.Card(route, L.TAB_ROUTE)
     st:Add(gcard, graphH)
     ui.graphCard = gcard
-    ui.warn = gcard.hint
-    ui.warn:SetTextColor(GOLD[1], GOLD[2], GOLD[3], 1)
+    ui.money = gcard.hint
     local graphBox = CreateFrame("Frame", nil, gcard.body)
     graphBox:SetPoint("TOPLEFT", 0, 0)
     graphBox:SetPoint("BOTTOMRIGHT", 0, 30)
@@ -525,6 +548,8 @@ local function build()
     ui.skillFrom:SetPoint("BOTTOMLEFT", 0, 0)
     ui.skillTo = S.Text(gcard.body, 10, S.MUTED)
     ui.skillTo:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.skillTo:SetPoint("LEFT", ui.skillFrom, "RIGHT", 12, 0)
+    ui.skillTo:SetWordWrap(false)
     ui.skillTo:SetJustifyH("RIGHT")
     local dcard = S.Card(route, " ")
     st:Add(dcard, detailH)
@@ -595,16 +620,38 @@ local function refreshProfessions()
     end
 end
 
+-- The route card is named after the chosen route.
+local function i18nRoute()
+    local i
+    for k, m in ipairs(ns.MODES) do if m == ns.view.mode then i = k end end
+    return (i and (i .. ". ") or "") .. L["VAR_" .. (ns.view.mode or "balance")]
+end
+
 local function refreshRoute()
     local v = ns.view
     local plan = v.plan
-    ui.kpis[1]:Set(ns.Short(plan.spend))
-    ui.kpis[2]:Set(ns.Short(plan.own))
-    ui.kpis[3]:Set(ns.Short(plan.income))
-    ui.kpis[4]:Set((plan.net < 0 and "-" or "+") .. ns.Short(plan.net), plan.net >= 0 and GOOD or BAD)
-    ui.kpis[5]:Set(tostring(ns.Ceil(plan.crafts)))
+    for i, x in ipairs(v.variants or {}) do
+        local b = ui.varTiles[i]
+        local on = x.mode == v.mode
+        local p = x.plan
+        S.Fill(b, on and S.RAISED or S.SURFACE)
+        S.SetBorder(b, on and S.Accent() or S.EDGE)
+        b.mark:SetShown(on)
+        if p then
+            b.value:SetText(color(p.net >= 0 and GOOD or BAD) .. (p.net < 0 and "-" or "+") .. ns.Short(p.net) .. "|r")
+            local short = p.reached and p.target and p.reached < p.target
+            b.sub:SetText(short and L.VAR_STOP:format(p.reached) or L.VAR_CRAFTS:format(ns.Ceil(p.crafts)))
+            b:SetAlpha(1)
+        else
+            b.value:SetText(color(S.FAINT) .. "-|r")
+            b.sub:SetText(v.prefs.level and L.VAR_MAXED or L.VAR_OFF)
+            b:SetAlpha(0.6)
+        end
+    end
+    ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income)))
+    ui.graphCard:SetTitle(i18nRoute())
     local w = plan.warn
-    ui.warn:SetText(w and L[w[1]]:format(w[2], w[3]) or "")
+    local warn = w and (color(GOLD) .. L[w[1]]:format(w[2], w[3]) .. "|r") or nil
     if selected > #v.route then selected = 1 end
     drawGraph()
     -- the skill bar: one colour per recipe stretch, a mark at each rank cap
@@ -625,11 +672,16 @@ local function refreshRoute()
         t:Show()
         x = x + wd
     end
+    ui.bar:SetShown(not plan.earn)
     ui.skillFrom:SetText(L.SKILL_FROM:format(v.state.skill))
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
-    ui.skillTo:SetText((guess and (L.GUESS .. "  ·  ") or "") .. (plan.reached < plan.target
-        and L.SKILL_SHORT:format(plan.reached, plan.target) or L.SKILL_TARGET:format(plan.target)))
+    if plan.earn then
+        ui.skillTo:SetText(warn or "")
+    else
+        ui.skillTo:SetText((warn and (warn .. "  ·  ") or "") .. (guess and (L.GUESS .. "  ·  ") or "") .. (plan.reached < plan.target
+            and L.SKILL_SHORT:format(plan.reached, plan.target) or L.SKILL_TARGET:format(plan.target)))
+    end
     local n = v.route[selected]
     ui.detailCard:SetTitle(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")
     ui.detail:SetData(detailRows(n))
@@ -641,7 +693,7 @@ local function refreshList()
         local t = ui.listHead[k]
         t:ClearAllPoints()
         if k == 1 then t:SetPoint("TOPLEFT", 34, 0) else t:SetPoint("TOPRIGHT", -(spec[k][2] + 10), 0) end
-        t:SetText(L[spec[k][1]]:upper())
+        t:SetText(L[spec[k][1]])
     end
     ui.list:SetData(listRows(tab))
 end
