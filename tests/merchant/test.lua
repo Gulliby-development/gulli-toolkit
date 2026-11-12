@@ -210,4 +210,18 @@ test("the window shows the junk value", function()
     eq(ns.Money(total), "2g 46s 90c")
 end)
 
+test("the hub gets a summary, a reset and a tip on each switch", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
+    ns.db.sell = false
+    reg.reset()
+    eq(ns.db.sell, true)
+    ns.session.sold, ns.session.value = 3, 120
+    assert(reg.summary():find("3", 1, true))
+end)
+
 W.finish()

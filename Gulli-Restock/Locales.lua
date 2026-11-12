@@ -66,6 +66,10 @@ T.en = {
     KIND_FOOD = "Food",
     KIND_ARROW = "Arrows",
     KIND_BULLET = "Bullets",
+    HUB_SUMMARY = "%d items short of your list",
+    TIP_auto = "Buy at once, without the preview.",
+    TIP_deposit = "At the bank, put the surplus in.",
+    TIP_forecast = "Warn when the stock lasts less than two hours.",
 }
 
 T.de = {
@@ -125,6 +129,10 @@ T.de = {
     KIND_FOOD = "Essen",
     KIND_ARROW = "Pfeile",
     KIND_BULLET = "Kugeln",
+    HUB_SUMMARY = "%d Gegenstände fehlen",
+    TIP_auto = "Kauft sofort, ohne Vorschau.",
+    TIP_deposit = "Legt den Überschuss in die Bank.",
+    TIP_forecast = "Warnt, wenn der Vorrat unter zwei Stunden reicht.",
 }
 
 T.es = {
@@ -184,6 +192,10 @@ T.es = {
     KIND_FOOD = "Comida",
     KIND_ARROW = "Flechas",
     KIND_BULLET = "Balas",
+    HUB_SUMMARY = "Faltan %d objetos",
+    TIP_auto = "Compra al instante, sin vista previa.",
+    TIP_deposit = "Deja el sobrante en el banco.",
+    TIP_forecast = "Avisa si dura menos de dos horas.",
 }
 
 T.fr = {
@@ -243,6 +255,10 @@ T.fr = {
     KIND_FOOD = "Nourriture",
     KIND_ARROW = "Flèches",
     KIND_BULLET = "Balles",
+    HUB_SUMMARY = "%d objets manquent",
+    TIP_auto = "Achète tout de suite, sans aperçu.",
+    TIP_deposit = "Dépose le surplus à la banque.",
+    TIP_forecast = "Avertit si le stock dure moins de deux heures.",
 }
 
 T.pl = {
@@ -302,6 +318,10 @@ T.pl = {
     KIND_FOOD = "Jedzenie",
     KIND_ARROW = "Strzały",
     KIND_BULLET = "Kule",
+    HUB_SUMMARY = "Brakuje %d przedmiotów",
+    TIP_auto = "Kupuje od razu, bez podglądu.",
+    TIP_deposit = "Odkłada nadwyżkę do banku.",
+    TIP_forecast = "Ostrzega, gdy zapas starczy na mniej niż dwie godziny.",
 }
 
 T.pt = {
@@ -361,6 +381,10 @@ T.pt = {
     KIND_FOOD = "Comida",
     KIND_ARROW = "Flechas",
     KIND_BULLET = "Balas",
+    HUB_SUMMARY = "Faltam %d itens",
+    TIP_auto = "Compra na hora, sem prévia.",
+    TIP_deposit = "Deposita o excedente no banco.",
+    TIP_forecast = "Avisa se durar menos de duas horas.",
 }
 
 T.ru = {
@@ -420,6 +444,10 @@ T.ru = {
     KIND_FOOD = "Еда",
     KIND_ARROW = "Стрелы",
     KIND_BULLET = "Пули",
+    HUB_SUMMARY = "Не хватает: %d",
+    TIP_auto = "Покупать сразу, без предпросмотра.",
+    TIP_deposit = "Излишки класть в банк.",
+    TIP_forecast = "Предупреждать, если запаса меньше чем на два часа.",
 }
 
 T.zh = {
@@ -479,6 +507,10 @@ T.zh = {
     KIND_FOOD = "食物",
     KIND_ARROW = "箭",
     KIND_BULLET = "子弹",
+    HUB_SUMMARY = "清单缺 %d 项",
+    TIP_auto = "直接购买,不预览。",
+    TIP_deposit = "在银行存入多余的。",
+    TIP_forecast = "库存不足两小时时提醒。",
 }
 
 ns.T = T

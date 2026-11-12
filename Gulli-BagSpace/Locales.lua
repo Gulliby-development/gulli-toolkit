@@ -40,6 +40,10 @@ T.en = {
     SORT = "Sort",
     FREE_ONE = "Free 1 slot: %s",
     RESET_DONE = "items you unticked are offered again.",
+    HUB_SUMMARY = "%d free bag slots",
+    TIP_unusable = "Offer bound gear your class cannot use.",
+    TIP_counter = "Free slots on the bag button.",
+    TIP_popup = "When the bags are full, offer to free one slot.",
 }
 
 T.de = {
@@ -73,6 +77,10 @@ T.de = {
     SORT = "Sortieren",
     FREE_ONE = "1 Platz frei: %s",
     RESET_DONE = "abgewählte Gegenstände werden wieder angeboten.",
+    HUB_SUMMARY = "%d freie Taschenplätze",
+    TIP_unusable = "Bietet unbrauchbare gebundene Ausrüstung an.",
+    TIP_counter = "Freie Plätze auf dem Taschenknopf.",
+    TIP_popup = "Bei vollen Taschen einen Platz frei machen.",
 }
 
 T.es = {
@@ -106,6 +114,10 @@ T.es = {
     SORT = "Ordenar",
     FREE_ONE = "Liberar 1 hueco: %s",
     RESET_DONE = "los objetos desmarcados se ofrecen de nuevo.",
+    HUB_SUMMARY = "%d huecos libres",
+    TIP_unusable = "Ofrece equipo ligado que no puedes usar.",
+    TIP_counter = "Huecos libres en el botón de la bolsa.",
+    TIP_popup = "Con la bolsa llena, ofrece liberar un hueco.",
 }
 
 T.fr = {
@@ -139,6 +151,10 @@ T.fr = {
     SORT = "Trier",
     FREE_ONE = "Libérer 1 place : %s",
     RESET_DONE = "les objets décochés sont de nouveau proposés.",
+    HUB_SUMMARY = "%d emplacements libres",
+    TIP_unusable = "Propose l'équipement lié inutilisable.",
+    TIP_counter = "Emplacements libres sur le bouton du sac.",
+    TIP_popup = "Sacs pleins : propose de libérer une place.",
 }
 
 T.pl = {
@@ -172,6 +188,10 @@ T.pl = {
     SORT = "Sortuj",
     FREE_ONE = "Zwolnij 1 miejsce: %s",
     RESET_DONE = "odznaczone przedmioty znów są proponowane.",
+    HUB_SUMMARY = "%d wolnych miejsc",
+    TIP_unusable = "Proponuje związany sprzęt, którego nie użyjesz.",
+    TIP_counter = "Wolne miejsca na przycisku torby.",
+    TIP_popup = "Gdy torby pełne, proponuje zwolnić miejsce.",
 }
 
 T.pt = {
@@ -205,6 +225,10 @@ T.pt = {
     SORT = "Ordenar",
     FREE_ONE = "Liberar 1 espaço: %s",
     RESET_DONE = "itens desmarcados são oferecidos de novo.",
+    HUB_SUMMARY = "%d espaços livres",
+    TIP_unusable = "Oferece equipamento vinculado inútil.",
+    TIP_counter = "Espaços livres no botão da bolsa.",
+    TIP_popup = "Com bolsas cheias, oferece liberar um espaço.",
 }
 
 T.ru = {
@@ -238,6 +262,10 @@ T.ru = {
     SORT = "Сортировать",
     FREE_ONE = "Освободить ячейку: %s",
     RESET_DONE = "предметы со снятой галочкой снова предлагаются.",
+    HUB_SUMMARY = "Свободно ячеек: %d",
+    TIP_unusable = "Предлагать привязанные вещи, которые класс не носит.",
+    TIP_counter = "Свободные ячейки на кнопке сумки.",
+    TIP_popup = "При полных сумках предложить освободить ячейку.",
 }
 
 T.zh = {
@@ -271,6 +299,10 @@ T.zh = {
     SORT = "整理",
     FREE_ONE = "腾出 1 格：%s",
     RESET_DONE = "取消勾选的物品会再次列出。",
+    HUB_SUMMARY = "背包空位 %d",
+    TIP_unusable = "列出本职业无法使用的绑定装备。",
+    TIP_counter = "在背包按钮上显示空位。",
+    TIP_popup = "背包满时提示腾出一格。",
 }
 
 ns.T = T

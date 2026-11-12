@@ -291,4 +291,19 @@ test("the panel and the settings window build", function()
     ns.Refresh()
 end)
 
+test("the hub gets a summary, a reset and a tip on each switch", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
+    ns.db.money = false
+    reg.reset()
+    eq(ns.db.money, true)
+    eq(reg.summary(), nil, "no letters run out")
+    ns.db.chars[GetRealmName()] = { Alt = { ends = { time() + 2 * 86400 } } }
+    assert(reg.summary():find("1", 1, true))
+end)
+
 W.finish()
