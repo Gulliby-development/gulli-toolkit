@@ -24,7 +24,13 @@ local function stub()
 end
 
 function Fake(spec)
-    W.addons = spec.addons or {}
+    -- A copy, so a test that switches an addon does not change it for the next test.
+    W.addons = {}
+    for i, a in ipairs(spec.addons or {}) do
+        local c = {}
+        for k, v in pairs(a) do c[k] = v end
+        W.addons[i] = c
+    end
     W.frames, W.printed, W.reloaded, W.unsaved = {}, {}, false, false
     local function find(name)
         for i, a in ipairs(W.addons) do
@@ -45,8 +51,9 @@ function Fake(spec)
             if a.blocked then return false, a.blocked end
             return true
         end,
-        EnableAddOn = function(name) find(name).enabled = true; W.unsaved = true end,
-        DisableAddOn = function(name) find(name).enabled = false; W.unsaved = true end,
+        -- a.stuck: the game ignores the switch.
+        EnableAddOn = function(name) local a = find(name); if not a.stuck then a.enabled = true end; W.unsaved = true end,
+        DisableAddOn = function(name) local a = find(name); if not a.stuck then a.enabled = false end; W.unsaved = true end,
         SaveAddOns = function() W.unsaved = false end,
     }
     UnitName = function() return "Tester" end
