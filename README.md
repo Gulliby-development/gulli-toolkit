@@ -45,8 +45,9 @@
 
 ## Features
 
-- **One window for all.** Type `/gulli`, or click the toolkit in the addon button on the minimap. Modules are sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with how many are on. Pick a module to see what it does, its command and its main switches, and press **Open**.
+- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). Modules are sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts), each with how many are on. Pick a module to see what it does, its command and its main switches, and press **Open**.
 - **Modules open inside the toolkit.** **Open** (or **>** in a row) shows the module's own window right in `/gulli`, with the groups still on the left, **<** to go back and the on/off switch at the top. **Open in its own window** takes it out. The module's own command, such as `/gbs`, still opens it in a window of its own.
+- **A button on the minimap.** The toolkit icon sits on the edge of the minimap: click it to open `/gulli`, drag it to move it around the minimap. Turn off **Minimap button** in `/gulli` (or type `/gulli minimap`) to hide it.
 - **Search.** Type in the search box to find a module by name, what it does or its command. **All**, **On** and **Off** show only the modules you want.
 - **Switch off what you do not need.** Flip a module's switch in `/gulli` and press **Reload**: the game does not load it at all. Modules that act on their own (Merchant, Auto Quest, Loot, Social) also have a switch for each thing they do.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
@@ -71,7 +72,7 @@
 
 ## How to use it
 
-1. Type `/gulli`.
+1. Type `/gulli`, or click the toolkit icon on the minimap.
 2. Pick a group on the left, or type in **Search modules**.
 3. Click a module to see it on the right, and press **Open** (or **>** in its row). The module opens inside the toolkit window; **<** brings you back to the list. Or use the module's own command, such as `/gqc`, for a window of its own.
 4. To switch a module off, flip its switch and press **Reload**.

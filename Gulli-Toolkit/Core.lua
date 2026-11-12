@@ -284,6 +284,44 @@ function ns.ReasonText(reason)
     return type(text) == "string" and text or reason
 end
 
+-- The minimap button: GulliToolkitDB.minimap = { hide = true|nil, angle = degrees }.
+-- 0 degrees is right of the minimap, 90 is above it; the default sits at the lower left.
+ns.MINIMAP_ANGLE = 225
+
+function ns.MinimapAngle()
+    local m = GulliToolkitDB and GulliToolkitDB.minimap
+    return (m and tonumber(m.angle)) or ns.MINIMAP_ANGLE
+end
+
+function ns.MinimapShown()
+    local m = GulliToolkitDB and GulliToolkitDB.minimap
+    return not (m and m.hide)
+end
+
+function ns.SetMinimap(field, value)
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.minimap = GulliToolkitDB.minimap or {}
+    GulliToolkitDB.minimap[field] = value
+    if ns.PlaceMinimap then ns.PlaceMinimap() end
+end
+
+-- Where the button goes: its offset from the minimap's centre. A square minimap puts it on
+-- the edge of the square, a round one on the circle.
+function ns.MinimapOffset(angle, radius, square)
+    local a = math.rad(angle)
+    local x, y = math.cos(a), math.sin(a)
+    if square then
+        local m = math.max(math.abs(x), math.abs(y))
+        x, y = x / m, y / m
+    end
+    return x * radius, y * radius
+end
+
+-- The angle of the cursor around the minimap's centre, 0 to 360.
+function ns.AngleTo(cx, cy, px, py)
+    return math.deg(math.atan2(py - cy, px - cx)) % 360
+end
+
 function ns.Version()
     return version() or ""
 end
@@ -319,6 +357,7 @@ events:SetScript("OnEvent", function(self, _, name)
     self:UnregisterEvent("ADDON_LOADED")
     GulliToolkitDB = GulliToolkitDB or {}
     if ns.RegisterSettings then ns.RegisterSettings() end
+    if ns.BuildMinimap then ns.BuildMinimap() end
 end)
 
 SLASH_GULLITOOLKIT1 = "/gulli"
@@ -334,6 +373,10 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         local on = not Toolkit.IsProtected(id)
         Toolkit.Protect(id, on)
         ns.Print((on and L.PROTECT_ON or L.PROTECT_OFF):format(link))
+    elseif msg:lower() == "minimap" then
+        local on = not ns.MinimapShown()
+        ns.SetMinimap("hide", (not on) or nil)
+        ns.Print(on and L.MINIMAP_ON or L.MINIMAP_OFF)
     elseif msg:lower() == "help" then
         ns.Print(L.HELP)
     elseif not ns.OpenModule(msg) then

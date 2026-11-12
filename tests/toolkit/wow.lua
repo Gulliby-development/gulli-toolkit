@@ -58,6 +58,11 @@ function Fake(spec)
     tinsert = table.insert
     time = function() return 1000 end
     GetCursorInfo = function() end
+    Minimap = setmetatable({ GetWidth = function() return 140 end, GetCenter = function() return 100, 100 end,
+        GetEffectiveScale = function() return 1 end, GetFrameLevel = function() return 2 end }, { __index = stub() })
+    W.cursor = { 100, 100 }
+    GetCursorPosition = function() return W.cursor[1], W.cursor[2] end
+    GetMinimapShape = nil
     ClearCursor = function() end
     C_Item = { GetItemInfo = function() end }
     ReloadUI = function() W.reloaded = true end

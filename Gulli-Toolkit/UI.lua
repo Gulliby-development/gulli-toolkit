@@ -24,7 +24,7 @@ local LINE, HOVER = S.LINE, S.HOVER
 
 local view = { cat = "All", state = "all", query = "" }
 local frame, side, mid, detail, search, placeholder, midTitle, scroll, list, empty
-local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, recent
+local scaleText, reloadBtn, reloadHint, protectBtn, protectFrame, recent, mapRow
 local host, hubSwitch, offWin, insideWin
 local cats, pills, rows, heads, recentLines, optRows = {}, {}, {}, {}, {}, {}
 
@@ -607,6 +607,27 @@ local function buildHeader()
     minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
 end
 
+-- A switch row for the minimap button: in the hub's side card and on the Options page.
+local mapSwitches = {}
+local function minimapRow(parent)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetHeight(30)
+    local sw = S.Switch(row)
+    sw:SetPoint("RIGHT", 0, 0)
+    sw:SetChecked(ns.MinimapShown())
+    sw:SetScript("OnClick", function()
+        ns.SetMinimap("hide", ns.MinimapShown() or nil)
+    end)
+    local label = S.Text(row, 12)
+    label:SetPoint("LEFT", 0, 0)
+    label:SetPoint("RIGHT", sw, "LEFT", -6, 0)
+    label:SetWordWrap(false)
+    label:SetText(L.MINIMAP)
+    row.switch = sw
+    mapSwitches[#mapSwitches + 1] = sw
+    return row
+end
+
 local function buildSide()
     side = S.Card(frame.body)
     side:SetWidth(SIDE)
@@ -655,9 +676,12 @@ local function buildSide()
         if not protectFrame then buildProtected() end
         protectFrame:SetShown(not protectFrame:IsShown())
     end)
+    mapRow = minimapRow(body)
+    mapRow:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 8)
+    mapRow:SetPoint("BOTTOMRIGHT", protectBtn, "TOPRIGHT", 0, 8)
     reloadBtn = S.Primary(S.Button(body, SIDE - 2 * S.INSET, 30))
-    reloadBtn:SetPoint("BOTTOMLEFT", protectBtn, "TOPLEFT", 0, 8)
-    reloadBtn:SetPoint("BOTTOMRIGHT", protectBtn, "TOPRIGHT", 0, 8)
+    reloadBtn:SetPoint("BOTTOMLEFT", mapRow, "TOPLEFT", 0, 8)
+    reloadBtn:SetPoint("BOTTOMRIGHT", mapRow, "TOPRIGHT", 0, 8)
     reloadBtn:SetText(L.RELOAD)
     reloadBtn:SetScript("OnClick", function() ReloadUI() end)
     reloadHint = S.Note(body, 11)
@@ -866,6 +890,9 @@ function ns.RegisterSettings()
         if SettingsPanel and SettingsPanel.Close then SettingsPanel:Close(true) end
         if not frame or not frame:IsShown() then ns.Toggle() end
     end)
+    local map = minimapRow(panel)
+    map:SetWidth(240)
+    map:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -12)
     if Settings and Settings.RegisterCanvasLayoutCategory then
         local category = Settings.RegisterCanvasLayoutCategory(panel, L.TITLE)
         Settings.RegisterAddOnCategory(category)
@@ -873,3 +900,80 @@ function ns.RegisterSettings()
         InterfaceOptions_AddCategory(panel)
     end
 end
+
+-- The minimap button: our icon on the minimap's edge. A click opens the hub, a drag moves it
+-- around the minimap, and the switch in the hub or under Options hides it.
+local mapButton
+
+local function minimapRadius()
+    return (Minimap:GetWidth() or 140) / 2 + 6
+end
+
+local function squareMinimap()
+    return GetMinimapShape ~= nil and GetMinimapShape() == "SQUARE"
+end
+
+function ns.PlaceMinimap()
+    for _, sw in ipairs(mapSwitches) do sw:SetChecked(ns.MinimapShown()) end
+    if not mapButton then return end
+    local x, y = ns.MinimapOffset(ns.MinimapAngle(), minimapRadius(), squareMinimap())
+    mapButton:ClearAllPoints()
+    mapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    mapButton:SetShown(ns.MinimapShown())
+end
+
+local function followCursor(self)
+    local cx, cy = Minimap:GetCenter()
+    local px, py = GetCursorPosition()
+    local scale = Minimap:GetEffectiveScale()
+    if not cx or not px then return end
+    GulliToolkitDB.minimap = GulliToolkitDB.minimap or {}
+    GulliToolkitDB.minimap.angle = math.floor(ns.AngleTo(cx, cy, px / scale, py / scale) + 0.5)
+    ns.PlaceMinimap()
+end
+
+function ns.BuildMinimap()
+    if mapButton or not Minimap then return mapButton end
+    local b = CreateFrame("Button", "GulliToolkitMinimapButton", Minimap)
+    b:SetSize(32, 32)
+    b:SetFrameStrata("MEDIUM")
+    b:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 8)
+    b:RegisterForClicks("LeftButtonUp")
+    b:RegisterForDrag("LeftButton")
+    local icon = b:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetTexture("Interface\\AddOns\\Gulli-Toolkit\\icon")
+    -- The icon is square with dark corners: a round mask fits it to the minimap.
+    if icon.SetMask then icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
+    b.icon = icon
+    local glow = b:CreateTexture(nil, "HIGHLIGHT")
+    glow:SetAllPoints()
+    glow:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    glow:SetBlendMode("ADD")
+    b:SetScript("OnMouseDown", function() icon:SetPoint("TOPLEFT", 1, -1); icon:SetPoint("BOTTOMRIGHT", -1, 1) end)
+    b:SetScript("OnMouseUp", function() icon:SetAllPoints() end)
+    b:SetScript("OnClick", function() ns.Toggle() end)
+    b:SetScript("OnDragStart", function(self)
+        self.dragging = true
+        self:SetScript("OnUpdate", followCursor)
+        GameTooltip:Hide()
+    end)
+    b:SetScript("OnDragStop", function(self)
+        self.dragging = nil
+        self:SetScript("OnUpdate", nil)
+        icon:SetAllPoints()
+    end)
+    b:SetScript("OnEnter", function(self)
+        if self.dragging then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText(L.TITLE, 1, 1, 1)
+        GameTooltip:AddLine(L.MINIMAP_TIP, 0.6, 0.61, 0.66, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    mapButton = b
+    ns.PlaceMinimap()
+    return b
+end
+
+function ns.MinimapButton() return mapButton end

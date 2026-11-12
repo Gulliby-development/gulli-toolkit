@@ -71,6 +71,7 @@ function Region:GetPoint(i)
     if p then return p[1], p[2], p[3], p[4], p[5] end
 end
 
+function Region:SetMask(m) self.__mask = m end
 function Region:SetSize(w, h) self.__w, self.__h = w, h; changed() end
 function Region:SetWidth(w) self.__w = w; changed() end
 function Region:SetHeight(h) self.__h = h; changed() end
@@ -373,6 +374,10 @@ function R.Install(W)
         return f
     end
     UIParent = R.UIParent
+    Minimap = R.CreateFrame("Frame", "Minimap", R.UIParent)
+    Minimap:SetSize(140, 140)
+    Minimap:SetPoint("TOPRIGHT", -30, -30)
+    GetMinimapShape = nil
     GameTooltip = R.CreateFrame("GameTooltip", "GameTooltip")
     GameTooltip:Hide()
     STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
@@ -490,14 +495,15 @@ local function texHtml(t, rect, prect)
     local tex = t.__tex
     if not tex then return "" end
     local c = t.__color or { 1, 1, 1, 1 }
+    local round = t.__mask and "border-radius:50%;" or ""
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
-        return string.format('<div class="tx" style="%sbackground:%s"></div>', box(rect, prect), css(c))
+        return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), round, css(c))
     end
     local pic = picture(tex)
     if pic then
         local crop = t.__crop and "background-size:118%;background-position:center;" or "background-size:100% 100%;"
-        return string.format('<div class="tx" style="%sbackground-image:url(\'file://%s\');%s%s"></div>',
-            box(rect, prect), pic, crop, t.__desat and "filter:grayscale(1);opacity:.6;" or "")
+        return string.format('<div class="tx" style="%s%sbackground-image:url(\'file://%s\');%s%s"></div>',
+            box(rect, prect), round, pic, crop, t.__desat and "filter:grayscale(1);opacity:.6;" or "")
     end
     local name = iconName(tex)
     local cls = "ic"
