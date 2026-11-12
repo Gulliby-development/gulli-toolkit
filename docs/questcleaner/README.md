@@ -21,20 +21,27 @@ After a few zones, your quest log is full of grey quests, and your bags are full
 
 ## Features
 
-- **Old quests out.** Enter a level, and every quest of that level and lower is abandoned. Or press **Gray** to clean every quest that gives you almost no experience now.
+- **Old quests out.** Enter a level, and every quest of that level and lower is abandoned. Or press **Gray** to clean every quest that gives you almost no experience now, or **Green** for every green and gray quest.
 - **Leftover quest items out.** Pelts for a quest you abandon, notes nobody asks for any more, items that start a quest you already did: they go too.
 - **See it before it goes.** Nothing is removed until you press **OK**. The list shows your quests on the left and their items on the right, with a line from each quest to its items. Items no quest needs hang under **No quest**.
 - **Sorted by zone.** Quests are grouped by zone, as in your quest log. Tick or untick a whole zone with one click.
-- **Keep what you want.** Untick a quest, and its items stay too. Untick an item, and the addon remembers it and does not offer it again.
+- **Keep what you want.** Untick a quest, and its items stay too. Untick a quest or an item and press **OK**: the addon remembers it and does not offer it again until `/gqc reset` (or **Reset** in the window).
 - **Safe by design.** An item a quest in your log still needs is never offered. Dungeon keys, Drakefire Amulet, Juju, arcanums, summoning braziers and other items that stay useful after their quest are never offered either.
 - **Knows the quests ahead.** The addon carries a quest database. An item for a quest you have not taken yet, above your cleaning level, stays in your bags.
-- **Important quests stay.** Class quests, dungeon and raid quests and elite quests are not touched. Each has its own switch.
+- **Important quests stay.** Finished quests (handing them in pays more), class quests, dungeon and raid quests, elite quests and group quests are not touched. Each has its own switch.
+- **Failed quests go.** A failed quest is offered at any level, because it cannot be finished any more.
+- **One zone at a time.** **Clean** on the game's quest log, `/gqc zone`, or the **Only the zone I am in** switch cleans just the zone you are in.
+- **Explains itself.** The tooltip of a quest item says which quest needs it, or that no quest does and it will be offered.
+- **The bank too.** With the bank open, leftover quest items in the bank are listed as well.
+- **Where to take it again.** The list and `/gqc last` show the quest giver and the zone of an abandoned quest.
 - **Warns you.** A quest that started from an item is unticked, because it is hard to get again. A quest from a chain gets a mark.
 - **Sells when it can.** With a merchant open, items that have a price are sold instead of deleted.
 - **Shows what you get.** The list says how many places the quest log and the bags will have after **OK**.
 - **Reminds you.** When your quest log is almost full, one line in the chat says how many old quests `/gqc` can clean. `/gqc last` shows what the last cleaning removed.
 - **Small and quick.** One window, with the main button at the bottom right. Open it with `/gqc`, from the addon button on the minimap, or from the [Gulli Toolkit](../../README.md) window (`/gulli`).
-- **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android.
+- **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android. With a gamepad: up and down move through the list, A ticks, X presses **Clear** or **OK**, B goes back.
+- **Your own key.** Pick a key that opens the window, right in the window.
+- **In the Gulli Toolkit feed.** What the last cleaning removed shows in `/gulli`.
 - **Clean, modern look.** A flat dark window in your class colour, in the style of ElvUI. It fits a modern interface.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 
@@ -59,7 +66,7 @@ After a few zones, your quest log is full of grey quests, and your bags are full
 ## How to use it
 
 1. Type `/gqc`, or click the addon button on the minimap.
-2. Enter a level, or press **Gray**. Quests of this level and lower are cleaned. Each character keeps its own level.
+2. Enter a level, or press **Gray** or **Green**. Quests of this level and lower are cleaned. Each character keeps its own level.
 3. Press **Clear**. The list shows what will go, zone by zone.
 4. Untick anything you want to keep: a quest, an item or a whole zone.
 5. Press **OK**.
@@ -78,7 +85,7 @@ The game refused to remove something, for example because the item was busy. The
 <details>
 <summary><b>An item I need is in the list</b></summary>
 
-Untick it. The addon remembers it and does not offer it again. To forget all items you kept, type `/gqc reset`.
+Untick it and press **OK**. The addon remembers it and does not offer it again. To forget all quests and items you kept, type `/gqc reset` or press **Reset**.
 </details>
 
 <details>
@@ -96,7 +103,7 @@ The addon uses the language of your game client. If your game's language is not 
 <details>
 <summary><b>What did the last cleaning remove?</b></summary>
 
-Type `/gqc last`. An abandoned quest can be taken again from its quest giver.
+Type `/gqc last`. It also says where to take each abandoned quest again.
 </details>
 
 <details>
@@ -114,6 +121,7 @@ No. Leave combat first. The addon never removes anything during a fight.
 - It is offered when no quest that stays in your log needs it: its name is not in that quest's objectives, summary or description, it is not the quest's usable item, and the quest database does not list it for that quest.
 - It stays when the database lists it for a quest above the cleaning level that the character can still take: not done, not closed by a quest already done, and open to the character's race, class and level.
 - An item that starts a quest is offered only when that quest is already done.
+- Quests are never planned when they are locked (unticked before), finished (`keepComplete`), class, dungeon or raid, elite or group quests while their switch is on. A failed quest is planned at any level.
 - Items in the built-in list of lasting items (keys, attunements, raid summoning items), quest-class rewards no quest asks for, and items you unticked before are never offered.
 </details>
 

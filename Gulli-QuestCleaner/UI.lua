@@ -12,12 +12,13 @@ local LEFT_W, GAP = 262, 52
 local DIM = { 0.55, 0.55, 0.58, 0.35 }
 
 local frame, footer, setup, preview, summary, frees, setupH
-local edit, levelRow, clearButton
+local edit, levelRow, clearButton, locksRow
 local scroll, content, okButton, backButton, questHead, itemHead
 local plan = { quests = {}, items = {}, future = {} }
 local totals = { quests = 0, items = 0 }
 local pools = { zone = {}, quest = {}, item = {}, label = {}, line = {}, band = {} }
 local used = {}
+local focusList, focus = {}, 0 -- rows a gamepad can step through, and the one it is on
 
 -- The footer line: a message, else the hint of the preview.
 local function setStatus(text)
@@ -54,6 +55,7 @@ local function releaseAll()
         for i = 1, #p do p[i]:Hide() end
         used[kind] = 0
     end
+    focusList = {}
 end
 
 local refresh
@@ -78,6 +80,11 @@ local function checkRow(width, height, onToggle)
     end
     r:SetScript("OnClick", toggle)
     r.check:SetScript("OnClick", toggle)
+    r.focus = r:CreateTexture(nil, "BACKGROUND")
+    r.focus:SetAllPoints()
+    r.focus:SetColorTexture(1, 1, 1, 0.10)
+    r.focus:Hide()
+    r.toggle = toggle
     return r
 end
 
@@ -103,6 +110,16 @@ local function makeQuestRow()
     r.text:SetPoint("LEFT", r.check, "RIGHT", 2, 0)
     r.text:SetPoint("RIGHT", -4, 0)
     r.text:SetWordWrap(false)
+    r:SetScript("OnEnter", function(self)
+        local q = self.data
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(q.title, 1, 1, 1)
+        local where = ns.WhereToTake(q.questID)
+        if where then GameTooltip:AddLine(L.TAKE_AGAIN:format(where), 0.6, 0.6, 0.6, true) end
+        GameTooltip:AddLine(L.LOCK_HINT, 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return r
 end
 
@@ -192,7 +209,8 @@ local function placeItem(it, y, x, width)
     r.check:SetEnabled(not blocked)
     r.icon:SetTexture(it.icon)
     r.text:SetText((it.link or it.name) .. (it.count > 1 and (S.Hex(S.MUTED) .. "  x" .. it.count .. "|r") or ""))
-    r.sub:SetText(L[blocked and "WHY_QUEST_STAYS" or it.why])
+    r.sub:SetText(L[blocked and "WHY_QUEST_STAYS" or it.why] .. (it.bank and ("  ·  " .. L.IN_BANK) or ""))
+    focusList[#focusList + 1] = r
     r:SetAlpha(ns.ItemGoes(it) and 1 or 0.45)
     return r
 end
@@ -228,6 +246,7 @@ refresh = function()
         z.check:SetChecked(on == #zone.quests or (on > 0 and "some"))
         z.text:SetText(S.Hex(accent) .. (zone.name ~= "" and zone.name or "?") .. "|r")
         z.count:SetText(on .. "/" .. #zone.quests)
+        focusList[#focusList + 1] = z
         y = y + ZONE_H + 2
 
         for _, q in ipairs(zone.quests) do
@@ -241,6 +260,7 @@ refresh = function()
             local tag = q.warn and ("  " .. S.Hex({ 1, 0.6, 0.2 }) .. L[q.warn] .. "|r") or ""
             r.text:SetText(levelText(q.level) .. q.title .. tag)
             r:SetAlpha(q.checked and 1 or 0.45)
+            focusList[#focusList + 1] = r
             questRow[q] = r
             for i, it in ipairs(items) do
                 itemRow[it] = placeItem(it, y + (i - 1) * ROW_H, rightX, rightW)
@@ -270,6 +290,8 @@ refresh = function()
     end
     content:SetHeight(math.max(y, 1))
     scroll:Update(y)
+    if focus > #focusList then focus = #focusList end
+    for i, r in ipairs(focusList) do r.focus:SetShown(i == focus) end
 
     local nq, ni = 0, 0
     for _, q in ipairs(plan.quests) do if q.checked then nq = nq + 1 end end
@@ -292,8 +314,17 @@ local function showView(isPreview)
     backButton:SetShown(isPreview)
 end
 
+function ns.ShowLocks()
+    if not locksRow then return end
+    local q, i = 0, 0
+    for _ in pairs(ns.db().keepQuests) do q = q + 1 end
+    for _ in pairs(ns.db().keep) do i = i + 1 end
+    locksRow.desc:SetText(L.LOCKED_N:format(q, i))
+end
+
 local function showSetup()
     showView(false)
+    ns.ShowLocks()
     S.FitWindow(frame, setupH)
     edit:SetText(tostring(ns.charDB().level or math.max(1, UnitLevel("player") - 10)))
     levelRow.desc:SetText(L.YOUR_LEVEL:format(UnitLevel("player")))
@@ -317,7 +348,9 @@ local function onClear()
     local d = ns.db()
     ns.charDB().level = level
     d.quests, d.items = d.quests ~= false, d.items ~= false
-    plan.quests = d.quests and ns.PlanQuests(level) or {}
+    local zone = ns.oneZone or (d.zoneOnly and GetRealZoneText and GetRealZoneText()) or nil
+    ns.oneZone = nil
+    plan.quests = d.quests and ns.PlanQuests(level, { zone = zone }) or {}
     plan.items, plan.future = {}, {}
     if d.items then plan.items, plan.future = ns.PlanItems(plan.quests, level) end
     totals.quests, totals.items = 0, 0
@@ -331,9 +364,13 @@ local function onClear()
 end
 
 local function onOK()
-    local keep = ns.db().keep
+    local keep, keepQuests = ns.db().keep, ns.db().keepQuests
     for _, it in ipairs(plan.items) do
         if not it.checked then keep[it.itemID] = true end
+    end
+    -- A quest the player unticked stays locked until /gqc reset, like an item.
+    for _, q in ipairs(plan.quests) do
+        if not q.checked then keepQuests[q.questID] = q.title end
     end
     local beforeQ, beforeI = ns.Leftover(plan.quests, plan.items)
     ns.Run(plan.quests, plan.items)
@@ -349,6 +386,7 @@ local function onOK()
         if #q + #i == 0 then
             local done = L.DONE:format(totals.quests, totals.items)
             ns.Print(done)
+            if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("QuestCleaner", done) end
             plan.quests, plan.items = {}, {}
             showSetup()
             setStatus(done)
@@ -356,6 +394,7 @@ local function onOK()
             plan.quests, plan.items = q, i
             showPreview()
             setStatus(L.LEFT:format(#q + #i))
+            if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("QuestCleaner", L.LEFT:format(#q + #i)) end
         end
     end)
 end
@@ -400,33 +439,88 @@ local function build()
 
     local level = CreateFrame("Frame", nil, setup)
     level:SetSize(44 + 8 + 90, 32)
-    edit = S.Edit(level, 44, 32)
+    edit = S.Edit(level, 40, 32)
     edit:SetPoint("LEFT")
     edit:SetNumeric(true)
     edit:SetMaxLetters(2)
     edit:SetScript("OnEnterPressed", function(self) self:ClearFocus(); onClear() end)
     edit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    local gray = button(level, "GRAY", 90)
-    gray:SetPoint("LEFT", edit, "RIGHT", 8, 0)
+    local gray = button(level, "GRAY", 64)
+    gray:SetPoint("LEFT", edit, "RIGHT", 6, 0)
     gray:SetScript("OnClick", function() edit:SetText(tostring(math.max(1, ns.GrayLevel()))) end)
+    local green = button(level, "GREEN", 64)
+    green:SetPoint("LEFT", gray, "RIGHT", 6, 0)
+    green:SetScript("OnClick", function() edit:SetText(tostring(ns.GreenLevel())) end)
+    level:SetWidth(40 + 6 + 64 + 6 + 64)
     local levelCard, h = S.SettingsCard(setup, nil, {
-        { L.LEVEL .. " " .. L.OR_LOWER, L.YOUR_LEVEL:format(UnitLevel("player")), control = level,
-          icon = I .. "INV_Misc_Note_01" } })
+        { L.LEVEL .. " " .. L.OR_LOWER, L.YOUR_LEVEL:format(UnitLevel("player")), control = level } })
     levelRow = levelCard.rows[1]
     st:Add(levelCard, h)
 
     local what, wh = S.SettingsCard(setup, L.SEC_WHAT, {
         setting("quests", "DO_QUESTS", "INV_Scroll_03"),
         setting("items", "DO_ITEMS", "INV_Misc_Bag_10"),
+        setting("offerFailed", "DO_FAILED", "Spell_ChargeNegative"),
+        { L.ZONE_ONLY, nil, function() return ns.db().zoneOnly == true end,
+          function(v) ns.db().zoneOnly = v and true or false end, icon = I .. "INV_Misc_Map_01" },
     })
     st:Add(what, wh)
-    local keep, kh = S.SettingsCard(setup, L.SEC_KEEP, {
-        setting("keepClass", "KEEP_CLASS", "INV_Misc_Book_09"),
+
+    -- The right column: what always stays, and the rest.
+    local right = CreateFrame("Frame", nil, setup)
+    local half = math.floor((width - S.GAP) / 2)
+    right:SetPoint("TOPLEFT", half + S.GAP, 0)
+    right:SetPoint("BOTTOMRIGHT")
+    local rt = S.Stack(right)
+    local keep, kh = S.SettingsCard(right, L.SEC_KEEP, {
+        setting("keepComplete", "KEEP_COMPLETE", "INV_Misc_Book_09"),
+        setting("keepClass", "KEEP_CLASS", "INV_Misc_Book_11"),
         setting("keepDungeon", "KEEP_DUNGEON", "INV_Misc_Key_14"),
         setting("keepElite", "KEEP_ELITE", "INV_Misc_Head_Dragon_01"),
+        { L.KEEP_GROUP, nil, function()
+            local d = ns.db()
+            if d.keepGroup == nil then return d.keepElite ~= false end
+            return d.keepGroup
+        end, function(v) ns.db().keepGroup = v and true or false end, icon = I .. "Spell_Holy_PrayerOfHealing" },
     })
-    st:Add(keep, kh)
-    setupH = st:Height()
+    rt:Add(keep, kh)
+    local keyButton = S.Button(right, 110, 28)
+    keyButton:EnableKeyboard(false)
+    local function showKey() keyButton:SetText(ns.db().key or L.KEY_NONE) end
+    keyButton:SetScript("OnClick", function(self)
+        self:SetText(L.KEY_PRESS)
+        self:EnableKeyboard(true)
+    end)
+    keyButton:SetScript("OnKeyDown", function(self, key)
+        if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL" or key == "LALT" or key == "RALT" then return end
+        self:EnableKeyboard(false)
+        if key == "ESCAPE" then ns.db().key = nil
+        else
+            local mod = (IsShiftKeyDown and IsShiftKeyDown() and "SHIFT-" or "") ..
+                        (IsControlKeyDown and IsControlKeyDown() and "CTRL-" or "") ..
+                        (IsAltKeyDown and IsAltKeyDown() and "ALT-" or "")
+            ns.db().key = mod .. key
+        end
+        ns.ApplyKey()
+        showKey()
+    end)
+    showKey()
+    local locks = S.Button(right, 110, 28)
+    say(locks, "RESET")
+    locks:SetScript("OnClick", function()
+        SlashCmdList.GULLIQUESTCLEANER("reset")
+        ns.ShowLocks()
+    end)
+    local more, mh = S.SettingsCard(right, nil, {
+        setting("tooltip", "OPT_TOOLTIP", "INV_Misc_Note_01"),
+        { L.KEY, L.KEY_D, control = keyButton, icon = I .. "INV_Misc_Key_04" },
+        { L.LOCKED, L.LOCKED_N:format(0, 0), control = locks, icon = I .. "INV_Box_01" },
+    })
+    locksRow = more.rows[3]
+    rt:Add(more, mh)
+    what:SetPoint("TOPRIGHT", setup, "TOPLEFT", half, -(st.y - wh - st.gap))
+    levelCard:SetPoint("TOPRIGHT", setup, "TOPLEFT", half, 0)
+    setupH = math.max(st:Height(), rt:Height())
 
     -- Preview view: quests on the left, items on the right, the totals under them.
     preview = CreateFrame("Frame", nil, body)
@@ -463,9 +557,36 @@ local function build()
     content = scroll.child
     content:SetWidth(width - 2 * S.INSET - 12)
 
-    frame:SetScript("OnShow", function() showSetup(); setStatus("") end)
+    frame:SetScript("OnShow", function()
+        showSetup(); setStatus("")
+        if frame.EnableGamePadButton then frame:EnableGamePadButton(true) end
+    end)
+    -- A gamepad steps through the preview rows: up and down move, A ticks, X runs the main
+    -- button (Clear, then OK), B goes back.
+    frame:SetScript("OnGamePadButtonDown", function(_, b) ns.Pad(b) end)
+    ns.frameBuilt = true
     ns.ApplyTexts()
 end
+
+function ns.Pad(b)
+    local inPreview = preview:IsShown()
+    if b == "PADDDOWN" and inPreview then
+        focus = math.min(#focusList, focus + 1); refresh()
+    elseif b == "PADDUP" and inPreview then
+        focus = math.max(1, focus - 1); refresh()
+    elseif b == "PAD1" and inPreview and focusList[focus] then
+        focusList[focus].toggle()
+    elseif b == "PAD3" then
+        if inPreview then if okButton:IsEnabled() then onOK() end else onClear() end
+    elseif b == "PAD2" then
+        if inPreview then showSetup(); setStatus("") else frame:Hide() end
+    else
+        return false
+    end
+    return true
+end
+
+function ns.Clear() onClear() end
 
 function ns.ApplyTexts()
     for _, e in ipairs(labels) do e[1]:SetText(L[e[2]]) end

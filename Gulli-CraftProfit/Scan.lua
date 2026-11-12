@@ -233,8 +233,55 @@ local function itemFor(state, id)
     local ah, age = ns.AuctionPrice(id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
+    local alts, who = ns.AltCount(id)
     state.items[id] = { name = itemName(id) or ("#" .. id), vend = sell, bop = bind == 1, quality = quality,
-                        ah = ah, age = age, buy = ns.db.vendor[id], bags = bags, bank = bank }
+                        ah = ah, age = age, buy = ns.db.vendor[id], bags = bags, bank = bank,
+                        mail = ns.char.mail and ns.char.mail[id] or 0, alts = alts, altWho = who,
+                        gather = ns.db.gather[id] == true, lots = ns.db.lots[id] }
+end
+
+-- ---------- the mailbox, the other characters, gathering ----------
+
+-- What the mailbox holds: attachments of letters without cash on delivery. Read at the mailbox.
+local function snapshotMail()
+    if not GetInboxNumItems then return end
+    local out = {}
+    for i = 1, GetInboxNumItems() do
+        local _, _, _, _, _, cod = GetInboxHeaderInfo(i)
+        if (cod or 0) == 0 then
+            for a = 1, (ATTACHMENTS_MAX_RECEIVE or 16) do
+                local _, id, _, n = GetInboxItem(i, a)
+                if id then out[id] = (out[id] or 0) + (n or 1) end
+            end
+        end
+    end
+    ns.char.mail = out
+end
+ns.SnapshotMail = snapshotMail
+
+-- Units of an item on this account's other characters, from Gulli Chores (read only), and the
+-- character with the most.
+function ns.AltCount(id)
+    local db = GulliChoresDB
+    if type(db) ~= "table" or type(db.chars) ~= "table" then return 0, nil end
+    local me = (UnitName("player") or "") .. "-" .. (GetRealmName and GetRealmName() or "")
+    local n, who, most = 0, nil, 0
+    for key, c in pairs(db.chars) do
+        if key ~= me and type(c) == "table" then
+            local k = (c.items and c.items[id] or 0) + (c.bank and c.bank[id] or 0)
+            n = n + k
+            if k > most then who, most = c.name or key, k end
+        end
+    end
+    return n, who
+end
+
+-- Marks an item the player gathers (herbs, ore, skins): the plan never buys it.
+function ns.SetGather(id, on)
+    if not id then return end
+    ns.db.gather[id] = on and true or nil
+    ns.Recalc(true)
+    if ns.Refresh then ns.Refresh() end
 end
 
 -- The skill levels Data.lua has for a recipe. The modern API keys recipes by spell, the classic
@@ -370,6 +417,155 @@ function ns.Probe()
     return lines
 end
 
+-- ---------- the auction house: lots of the items a run buys ----------
+
+local LOTS_MAX = 40
+local scan = { queue = {}, busy = nil }
+ns.scan = scan
+
+local function saveLots(id, lots)
+    table.sort(lots, function(a, b) return a[1] < b[1] end)
+    while #lots > LOTS_MAX do table.remove(lots) end
+    ns.db.lots[id] = { t = time(), l = lots }
+end
+
+-- Reads the answer to the search for `id` (modern commodities, else the classic list).
+local function readLots(id)
+    local A = C_AuctionHouse
+    local lots = {}
+    if A and A.GetNumCommoditySearchResults then
+        for i = 1, A.GetNumCommoditySearchResults(id) or 0 do
+            local r = A.GetCommoditySearchResultInfo(id, i)
+            if r and r.unitPrice and r.quantity then lots[#lots + 1] = { r.unitPrice, r.quantity } end
+        end
+    elseif GetNumAuctionItems then
+        for i = 1, (GetNumAuctionItems("list")) or 0 do
+            local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemID = GetAuctionItemInfo("list", i)
+            if itemID == id and buyout and buyout > 0 and (count or 0) > 0 then
+                lots[#lots + 1] = { math.floor(buyout / count), count }
+            end
+        end
+    end
+    return lots
+end
+
+local function nextSearch()
+    local id = table.remove(scan.queue, 1)
+    scan.busy = id
+    if not id then
+        if ns.Toast then ns.Toast(ns.L.LOTS_DONE) end
+        ns.Recalc(true)
+        if ns.Refresh then ns.Refresh() end
+        return
+    end
+    local A = C_AuctionHouse
+    if A and A.SendSearchQuery and C_AuctionHouse.MakeItemKey then
+        A.SendSearchQuery(A.MakeItemKey(id), {}, false)
+    elseif QueryAuctionItems then
+        QueryAuctionItems(itemName(id) or "", nil, nil, 0, false, nil, false, true)
+    else
+        scan.queue, scan.busy = {}, nil
+        return
+    end
+    -- no answer in time: the next item
+    C_Timer.After(5, function() if scan.busy == id then nextSearch() end end)
+end
+
+function ns.OnLots()
+    local id = scan.busy
+    if not id then return end
+    saveLots(id, readLots(id))
+    C_Timer.After(0.5, function() if scan.busy == id then nextSearch() end end)
+end
+
+-- "Update the run's prices": searches each item the run buys at the auction, one at a time.
+function ns.ScanLots(route)
+    if not ns.atAH then return 0 end
+    scan.queue = {}
+    for _, e in ipairs(ns.Shopping(route)) do if e.id then scan.queue[#scan.queue + 1] = e.id end end
+    local n = #scan.queue
+    if n > 0 and not scan.busy then nextSearch() end
+    return n
+end
+
+-- ---------- Auctionator shopping list ----------
+
+-- Puts what the run buys at the auction into an Auctionator shopping list with the amounts.
+-- Returns the number of lines, or nil without Auctionator.
+function ns.ExportShopping(route, listName)
+    local api = auctionator()
+    if not api or not api.CreateShoppingList then return nil end
+    local terms = {}
+    for _, e in ipairs(ns.Shopping(route)) do
+        local term = { searchString = e.name, isExact = true, quantity = e.n }
+        local ok, text = false, nil
+        if api.ConvertToSearchString then ok, text = pcall(api.ConvertToSearchString, CALLER, term) end
+        terms[#terms + 1] = ok and text or ('"' .. e.name .. '"')
+    end
+    if #terms == 0 then return 0 end
+    local ok = pcall(api.CreateShoppingList, CALLER, listName, terms)
+    return ok and #terms or nil
+end
+
+-- ---------- crafting from a stop ----------
+
+-- The classic profession window lists recipes by index: the index of a recipe by its name.
+local function classicIndex(name)
+    if not GetNumTradeSkills then return nil end
+    for i = 1, GetNumTradeSkills() do
+        if GetTradeSkillInfo(i) == name then return i end
+    end
+end
+
+-- Shows the recipe in the open profession window. Returns false when the window is closed.
+function ns.OpenRecipe(rid)
+    local rec = ns.char.profs[ns.char.current or ""] and ns.char.profs[ns.char.current].recipes[rid]
+    local name = rec and rec.name
+    if C_TradeSkillUI and C_TradeSkillUI.OpenRecipe and type(rid) == "number" and rid ~= (rec and rec.out) then
+        C_TradeSkillUI.OpenRecipe(rid)
+        return true
+    end
+    local i = name and classicIndex(name)
+    if not i then return false end
+    if TradeSkillFrame_SetSelection then TradeSkillFrame_SetSelection(i) elseif SelectTradeSkill then SelectTradeSkill(i) end
+    if TradeSkillFrame_Update then TradeSkillFrame_Update() end
+    return true
+end
+
+-- Crafts n of a recipe; runs from the Make click (the game wants a hardware event).
+function ns.Craft(rid, n)
+    local rec = ns.char.profs[ns.char.current or ""] and ns.char.profs[ns.char.current].recipes[rid]
+    if not rec then return false end
+    if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe and type(rid) == "number" and rid ~= rec.out then
+        C_TradeSkillUI.CraftRecipe(rid, n)
+        return true
+    end
+    local i = classicIndex(rec.name)
+    if not i or not DoTradeSkill then return false end
+    DoTradeSkill(i, n)
+    return true
+end
+
+-- ---------- the run log ----------
+
+function ns.StartRun()
+    local e = ns.LogStart(ns.view, GetMoney and GetMoney() or 0, time())
+    if not e then return nil end
+    ns.char.run = e
+    return e
+end
+
+function ns.FinishRun()
+    local e = ns.char.run
+    if not e then return nil end
+    local prof = ns.char.profs[e.prof]
+    ns.LogFinish(e, prof and prof.skill or e.from, GetMoney and GetMoney() or 0, time())
+    ns.char.run = nil
+    table.insert(ns.char.log, 1, e)
+    while #ns.char.log > 10 do table.remove(ns.char.log) end
+    return e
+end
+
 -- ---------- events ----------
 
 local pending = false
@@ -383,12 +579,17 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.prefs = ns.db.prefs or {}
         ns.db.vendor = ns.db.vendor or {}
         ns.db.trainer = ns.db.trainer or {}
+        ns.db.gather = ns.db.gather or {}
+        ns.db.lots = ns.db.lots or {}
         GulliCraftProfitCharDB = GulliCraftProfitCharDB or {}
         ns.char = GulliCraftProfitCharDB
         ns.char.profs = ns.char.profs or {}
+        ns.char.log = ns.char.log or {}
         for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
         for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
-                             "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED" }) do
+                             "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
+                             "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
+                             "AUCTION_ITEM_LIST_UPDATE" }) do
             self:RegisterEvent(e)
         end
         local api = auctionator()
@@ -399,6 +600,14 @@ f:SetScript("OnEvent", function(self, event, a1)
     end
     if event == "MERCHANT_SHOW" then learnVendor(); return end
     if event == "TRAINER_SHOW" then learnTrainer(); return end
+    if event == "MAIL_INBOX_UPDATE" then snapshotMail(); return end
+    if event == "AUCTION_HOUSE_SHOW" then ns.atAH = true; if ns.Refresh then ns.Refresh() end return end
+    if event == "AUCTION_HOUSE_CLOSED" then
+        ns.atAH, scan.queue, scan.busy = false, {}, nil
+        if ns.Refresh then ns.Refresh() end
+        return
+    end
+    if event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "AUCTION_ITEM_LIST_UPDATE" then ns.OnLots(); return end
     if pending then return end
     pending = true
     C_Timer.After(0.5, function()
