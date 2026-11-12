@@ -18,8 +18,11 @@ You are about to run a dungeon. Did you take all its quests? Gulli Dungeon Prep 
 
 ## Features
 
-- **Suggests a dungeon** for your level.
-- **Three lists.** Quests in your log, quests you can take now (and where they start), and quests for later (with the level or the quest you need first).
+- **Suggests a dungeon** for your level. Each dungeon has its icon, and its level range has the game's colours: red is too hard, yellow is right for you, green is easy, gray gives little experience.
+- **Only your quests.** Horde and Alliance quests are kept apart. Repeatable turn-ins with no experience (like the Sparklematic 5200 in Gnomeregan) are not listed.
+- **A way to pick them up.** The quests you can take now come as stops: first the ones in your zone, nearest first, then other zones. Click a stop to put a pin on the map.
+- **Quest colours.** Each quest shows its level in the same colours, and says if it is hard or easy for you.
+- **Three lists.** Quests in your log, quests to pick up on the way, and quests for later (with the level or the quest you need first).
 - **A checklist.** Gear durability, free bag slots, food and drink, and your hearthstone.
 - **Quest data built in.** It comes from the QuestieDB data for WoW Forever.
 
@@ -33,7 +36,7 @@ You are about to run a dungeon. Did you take all its quests? Gulli Dungeon Prep 
 
 1. Type `/gdp`, or `/gdp DM` for a dungeon by its short name.
 2. Pick a dungeon on the left.
-3. Take the quests in the second list before you go.
+3. Follow the stops in **Pick up on the way** before you go. Click a stop for a map pin.
 
 ## FAQ
 

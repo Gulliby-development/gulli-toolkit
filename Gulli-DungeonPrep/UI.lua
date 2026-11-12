@@ -1,4 +1,6 @@
--- Dungeons on the left; on the right the checklist and the dungeon's quests in three groups.
+-- Dungeons on the left (icon, name, level range in the game's difficulty colours); on the
+-- right the checklist and the dungeon's quests: in the log, the stops of the way to take the
+-- rest, and the ones that come later.
 
 local _, ns = ...
 local L = ns.L
@@ -14,8 +16,10 @@ local CHECK_ICON = { REPAIR = "Trade_BlackSmithing", BAGS = "INV_Misc_Bag_10", F
 local function makeDungeon(r)
     S.NavRow(r)
     r.line:Hide()
+    r.icon = S.IconBox(r, 20)
+    r.icon:SetPoint("LEFT", 8, 0)
     r.name = S.Text(r, 12)
-    r.name:SetPoint("LEFT", 12, 0)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
     r.name:SetPoint("RIGHT", -40, 0)
     r.name:SetWordWrap(false)
     r.range = S.Text(r, 11, S.FAINT)
@@ -30,49 +34,90 @@ local function fillDungeon(r, d)
     r.d = d
     r.name:SetText(ns.DungeonName(d))
     r.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
+    r.icon:SetIcon(ns.Icon(d.key))
     r.range:SetText(d.min .. "-" .. d.max)
+    r.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
     r:SetSelected(d.key == ns.selected)
 end
 
+function ns.DiffColor(key) return ns.DIFF_COLOR[key] or S.TEXT end
+
 local function makeRow(r)
+    r.num = S.Text(r, 12, S.Accent())
+    r.num:SetPoint("LEFT", 10, 0)
+    r.num:SetWidth(18)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("TOPLEFT", 10, -5)
-    r.text:SetPoint("RIGHT", -8, 0)
     r.text:SetWordWrap(false)
     r.sub = S.Text(r, 11, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
     r.sub:SetPoint("RIGHT", -8, 0)
     r.sub:SetWordWrap(false)
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:SetScript("OnClick", function(self)
+        local stop = self:GetParent().stop
+        if stop then ns.SetPin(stop) end
+    end)
+end
+
+local function coords(stop)
+    return string.format("%.1f, %.1f", stop.x, stop.y)
 end
 
 local function fillRow(r, item)
     r.text:ClearAllPoints()
+    r.stop = nil
+    r.click:Hide()
+    r.num:SetText("")
     if item.header then
         S.Fill(r, S.RAISED)
         r.text:SetPoint("LEFT", 10, 0)
         r.text:SetPoint("RIGHT", -8, 0)
+        r.text:SetTextColor(unpack(S.TEXT))
         r.text:SetText(item.text)
         r.sub:SetText("")
         return
     end
-    r.text:SetPoint("TOPLEFT", 10, -5)
+    local indent = (item.indent or item.stop) and 32 or 10
+    r.text:SetPoint("TOPLEFT", indent, -5)
     r.text:SetPoint("RIGHT", -8, 0)
     S.Fill(r, S.CLEAR)
+    local stop = item.stop
+    if stop then
+        r.num:SetText(item.n)
+        r.text:SetTextColor(unpack(S.TEXT))
+        if stop.inside then
+            r.text:ClearAllPoints()
+            r.text:SetPoint("LEFT", indent, 0)
+            r.text:SetPoint("RIGHT", -8, 0)
+            r.text:SetText(L.INSIDE)
+            r.sub:SetText("")
+            return
+        end
+        r.text:SetText(stop.zone and L.WHERE:format(stop.who, stop.zone) or stop.who)
+        local at = stop.here and L.STOP_HERE:format(coords(stop)) or L.STOP_AT:format(coords(stop))
+        r.stop = stop
+        r.click:Show()
+        r.sub:SetText(at .. "  ·  " .. L.STOP_PIN)
+        return
+    end
     local q = item.quest
-    local color = item.group == "later" and S.Hex(S.MUTED) or ""
-    r.text:SetText(color .. "[" .. q.level .. "] " .. q.name .. "|r")
+    local diff = ns.Difficulty(q.level, ns.level or 1)
+    r.text:SetTextColor(unpack(item.group == "later" and S.MUTED or ns.DiffColor(diff)))
+    r.text:SetText("[" .. q.level .. "] " .. q.name)
     if item.group == "take" then
-        r.sub:SetText(ns.Where(q))
+        r.sub:SetText(L["DIFF_" .. diff])
     elseif item.group == "later" then
         r.sub:SetText(q.why == "WHY_LEVEL" and L.WHY_LEVEL:format(q.minLevel) or L.WHY_EARLIER)
     else
-        r.sub:SetText(L.IN_LOG)
+        r.sub:SetText(L.IN_LOG .. "  ·  " .. L["DIFF_" .. diff])
     end
 end
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local level = UnitLevel("player") or 1
+    ns.level = level
     if not ns.selected then
         local s = ns.Suggest(level)
         ns.selected = s and s.key
@@ -94,7 +139,13 @@ function ns.Refresh()
             for _, x in ipairs(list) do items[#items + 1] = { quest = x, group = group } end
         end
         section("IN_LOG_N", "log", q.log)
-        section("TAKE_N", "take", q.take)
+        if #q.take > 0 then
+            items[#items + 1] = { header = true, text = L.TAKE_N:format(#q.take) }
+            for n, stop in ipairs(ns.Route(q.take, ns.Here())) do
+                items[#items + 1] = { stop = stop, n = n }
+                for _, x in ipairs(stop.quests) do items[#items + 1] = { quest = x, group = "take", indent = true } end
+            end
+        end
         section("LATER_N", "later", q.later)
         if q.done > 0 then items[#items + 1] = { header = true, text = L.DONE_N:format(q.done) } end
         if #items == 0 then items[1] = { header = true, text = L.NO_QUESTS } end
