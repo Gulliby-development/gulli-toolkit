@@ -67,6 +67,13 @@ T.en = {
     ADD_RULE = "Add a rule",
     RULES_HELP = "Tap the kind to change it, type the character. At the mailbox, Write fills one letter per rule.",
     RETURN_SHORT = "Return",
+    HUB_SUMMARY = "%d letters run out within %d days",
+    TIP_panel = "Show the panel beside the mailbox.",
+    TIP_money = "Take all takes gold from letters.",
+    TIP_sold = "Take all takes the gold of auction sales.",
+    TIP_bought = "Take all takes items won at the auction.",
+    TIP_expired = "Take all takes auctions that did not sell.",
+    TIP_player = "Take all takes items players sent.",
 }
 
 T.de = {
@@ -127,6 +134,13 @@ T.de = {
     ADD_RULE = "Regel hinzufügen",
     RULES_HELP = "Tippe auf die Art, um sie zu ändern, und gib den Charakter ein. Am Briefkasten füllt Schreiben einen Brief pro Regel.",
     RETURN_SHORT = "Zurück",
+    HUB_SUMMARY = "%d Briefe laufen in %d Tagen ab",
+    TIP_panel = "Zeigt das Fenster am Briefkasten.",
+    TIP_money = "Alles nehmen holt Gold aus Briefen.",
+    TIP_sold = "Alles nehmen holt Gold aus Verkäufen.",
+    TIP_bought = "Alles nehmen holt ersteigerte Gegenstände.",
+    TIP_expired = "Alles nehmen holt abgelaufene Auktionen.",
+    TIP_player = "Alles nehmen holt Sendungen von Spielern.",
 }
 
 T.es = {
@@ -187,6 +201,13 @@ T.es = {
     ADD_RULE = "Añadir regla",
     RULES_HELP = "Toca el tipo para cambiarlo y escribe el personaje. En el buzón, Escribir llena una carta por regla.",
     RETURN_SHORT = "Devolver",
+    HUB_SUMMARY = "%d cartas caducan en %d días",
+    TIP_panel = "Muestra el panel junto al buzón.",
+    TIP_money = "Tomar todo recoge el oro.",
+    TIP_sold = "Tomar todo recoge ventas de subasta.",
+    TIP_bought = "Tomar todo recoge lo comprado en subasta.",
+    TIP_expired = "Tomar todo recoge subastas caducadas.",
+    TIP_player = "Tomar todo recoge envíos de jugadores.",
 }
 
 T.fr = {
@@ -247,6 +268,13 @@ T.fr = {
     ADD_RULE = "Ajouter une règle",
     RULES_HELP = "Touchez le type pour le changer, tapez le personnage. À la boîte, Écrire remplit une lettre par règle.",
     RETURN_SHORT = "Renvoyer",
+    HUB_SUMMARY = "%d lettres expirent sous %d jours",
+    TIP_panel = "Affiche le panneau à côté de la boîte.",
+    TIP_money = "Tout prendre récupère l'or.",
+    TIP_sold = "Tout prendre récupère les ventes aux enchères.",
+    TIP_bought = "Tout prendre récupère les achats aux enchères.",
+    TIP_expired = "Tout prendre récupère les enchères expirées.",
+    TIP_player = "Tout prendre récupère les envois des joueurs.",
 }
 
 T.pl = {
@@ -307,6 +335,13 @@ T.pl = {
     ADD_RULE = "Dodaj regułę",
     RULES_HELP = "Dotknij rodzaju, aby go zmienić, wpisz postać. Przy skrzynce Napisz wypełnia jeden list na regułę.",
     RETURN_SHORT = "Odeślij",
+    HUB_SUMMARY = "%d listów wygaśnie w ciągu %d dni",
+    TIP_panel = "Pokazuje panel przy skrzynce.",
+    TIP_money = "Weź wszystko bierze złoto.",
+    TIP_sold = "Weź wszystko bierze złoto ze sprzedaży.",
+    TIP_bought = "Weź wszystko bierze kupione na aukcji.",
+    TIP_expired = "Weź wszystko bierze niesprzedane aukcje.",
+    TIP_player = "Weź wszystko bierze przesyłki graczy.",
 }
 
 T.pt = {
@@ -367,6 +402,13 @@ T.pt = {
     ADD_RULE = "Adicionar regra",
     RULES_HELP = "Toque no tipo para mudar e digite o personagem. No correio, Escrever preenche uma carta por regra.",
     RETURN_SHORT = "Devolver",
+    HUB_SUMMARY = "%d cartas expiram em %d dias",
+    TIP_panel = "Mostra o painel ao lado da caixa.",
+    TIP_money = "Pegar tudo pega o ouro.",
+    TIP_sold = "Pegar tudo pega vendas do leilão.",
+    TIP_bought = "Pegar tudo pega compras do leilão.",
+    TIP_expired = "Pegar tudo pega leilões expirados.",
+    TIP_player = "Pegar tudo pega envios de jogadores.",
 }
 
 T.ru = {
@@ -427,6 +469,13 @@ T.ru = {
     ADD_RULE = "Добавить правило",
     RULES_HELP = "Нажмите на вид, чтобы сменить его, и впишите персонажа. У ящика на вкладке «Написать» правило заполняет одно письмо.",
     RETURN_SHORT = "Вернуть",
+    HUB_SUMMARY = "%d писем истекают за %d дн.",
+    TIP_panel = "Показывать панель рядом с почтой.",
+    TIP_money = "«Забрать всё» берёт золото.",
+    TIP_sold = "«Забрать всё» берёт выручку аукциона.",
+    TIP_bought = "«Забрать всё» берёт покупки с аукциона.",
+    TIP_expired = "«Забрать всё» берёт непроданные лоты.",
+    TIP_player = "«Забрать всё» берёт посылки игроков.",
 }
 
 T.zh = {
@@ -487,6 +536,13 @@ T.zh = {
     ADD_RULE = "添加规则",
     RULES_HELP = "点击类型可切换，输入角色名。在邮箱的写信页，每条规则填一封信。",
     RETURN_SHORT = "退回",
+    HUB_SUMMARY = "%d 封信将在 %d 天内过期",
+    TIP_panel = "在邮箱旁显示面板。",
+    TIP_money = "全部拿取会拿金币。",
+    TIP_sold = "全部拿取会拿拍卖所得。",
+    TIP_bought = "全部拿取会拿拍得物品。",
+    TIP_expired = "全部拿取会拿流拍物品。",
+    TIP_player = "全部拿取会拿玩家寄来的物品。",
 }
 
 ns.T = T
