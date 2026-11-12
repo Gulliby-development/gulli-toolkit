@@ -672,6 +672,10 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gpq",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        summary = function()
+            local rows, party = ns.Ours()
+            return (ns.Summary(rows, party))
+        end,
         options = {
             { label = L.OPT_AUTOSHARE, icon = ns.OPT_ICON.autoShare,
               get = function() return ns.Get("autoShare") end, set = function(v) ns.Set("autoShare", v) end },

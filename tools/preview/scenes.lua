@@ -9,8 +9,15 @@ end
 S.toolkit = { default = {
     spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.3.0" } },
         mod("QuestCleaner"), mod("BagSpace"), mod("Merchant"), mod("MobFinder", nil, false), mod("Bulletin"),
-        mod("Attune"), mod("XP"), mod("Restock"), mod("Mail") } },
+        mod("Attune"), mod("XP"), mod("Restock"), mod("Mail"),
+        { name = "Gulli-Loot", enabled = false, loaded = true, meta = { ["X-Gulli-Module"] = "Loot", Version = "1.0.0" } } } },
     open = function(ns)
+        UpdateAddOnMemoryUsage = function() end
+        GetAddOnMemoryUsage = function(name)
+            return ({ ["Gulli-QuestCleaner"] = 1900, ["Gulli-XP"] = 360, ["Gulli-Mail"] = 240 })[name] or 120
+        end
+        GulliToolkit.Register({ key = "Loot", open = function() end, slash = "/glt",
+            icon = "Interface\\AddOns\\Gulli-Loot\\icon", summary = function() return "12 item rules" end })
         for _, k in ipairs({ "QuestCleaner", "BagSpace", "Merchant", "Bulletin", "Attune", "XP", "Restock", "Mail" }) do
             GulliToolkit.Register({ key = k, open = function() end, slash = "/g" .. k:sub(1, 2):lower(),
                 icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon",
@@ -22,7 +29,8 @@ S.toolkit = { default = {
                 } or nil })
         end
         local sums = { XP = "Level 42 in 35 min (8.4k XP/h)", Attune = "Onyxia: 3 of 7 steps",
-            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups for Scarlet Monastery" }
+            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups looking for players, 6 trade posts",
+            Merchant = "5 junk items, 1g 20s", Restock = "3 items to buy", QuestCleaner = "Quest log 23 of 25" }
         for k, text in pairs(sums) do GulliToolkit.modules[k].summary = function() return text end end
         GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
         GulliToolkit.Notify("XP", "Level 42 in about 35 min at this pace.")

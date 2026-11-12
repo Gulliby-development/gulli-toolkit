@@ -25,7 +25,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 - **Hover** the bar for every number. **Shift-click** it to tell your group your pace.
 - **Choose the text** on the bar: everything, XP per hour, time to level, XP to go or percent.
 - **Your last levels:** how long each one took in play time, and the XP from kills and quests. The Gulli Toolkit shows a line when you level up.
-- **Where the XP came from:** kills, quests and the rest (exploring and so on), plus a small graph of XP per 10 minutes.
+- **Where the XP came from:** kills, quests, the rest (exploring and so on) and the rested bonus, each in its own colour, next to your **pace** (play time, XP per kill, kills and quests to level), plus a small graph of XP per 10 minutes.
 - **A /reload keeps the session.** A new one starts when you log in again or after a long break.
 - **Lock** the bar, or unlock it and drag it. **Across the whole screen** makes it as wide as the screen. Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
 - At the top level the bar shows the **reputation** you watch, or hides.

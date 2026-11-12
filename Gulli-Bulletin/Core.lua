@@ -547,6 +547,19 @@ SlashCmdList.GULLIBULLETIN = function(msg)
     end
 end
 
+-- The hub's home line: groups for the shown dungeons and the trade posts on the board now.
+function ns.HubSummary()
+    if not ns.db then return nil end
+    ns.Expire()
+    local groups, trade = 0, 0
+    for _, p in ipairs(ns.posts) do
+        if p.kind == "GROUP" and p.role ~= "LFG" and ns.Shown(p.dungeon) then groups = groups + 1 end
+        if p.kind == "WTS" or p.kind == "WTB" then trade = trade + 1 end
+    end
+    if groups + trade == 0 then return nil end
+    return ns.L.HUB_SUMMARY:format(groups, trade)
+end
+
 function GulliBulletin_Toggle() ns.Toggle() end
 
 if GulliToolkit and GulliToolkit.Register then
@@ -557,5 +570,6 @@ if GulliToolkit and GulliToolkit.Register then
         move = function(on) if ns.MoveFeed then ns.MoveFeed(on) end end,
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
+        summary = function() return ns.HubSummary() end,
     })
 end
