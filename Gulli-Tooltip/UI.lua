@@ -8,7 +8,8 @@ local S = ns.Skin
 local frame, example
 local LEFT_W = 500
 
-local QUEST, MUTED, GOOD, WHITE = { 1, 0.82, 0 }, { 0.6, 0.6, 0.62 }, { 0.42, 0.84, 0.50 }, { 1, 1, 1 }
+local C = ns.COLORS
+local QUEST, MUTED, GOOD, WHITE, FAINT, PROF = C.QUEST, C.MUTED, C.DONE, C.WHITE, C.FAINT, C.PROF
 
 local function row(key)
     local K = key:upper()
@@ -16,22 +17,30 @@ local function row(key)
              icon = ns.OPT_ICON[key] }
 end
 
--- The example tooltip: an item, then an NPC, each with the lines that are on.
+-- The example tooltip: an item, then an NPC, each with the lines that are on, in the same
+-- colours and order as the real ones. rule marks where the line above our lines goes.
 local function exampleLines()
     local d = ns.db
     local shift = d.shift
     local out = { { L.EX_ITEM, "", WHITE, nil, 14 } }
+    local first = #out + 1
     if d.protect then out[#out + 1] = { L.PROTECTED, "", GOOD } end
-    if d.price and not shift then out[#out + 1] = { L.STACK:format(20), "2s 60c", MUTED } end
-    if d.auction and not shift then out[#out + 1] = { L.AUCTION, "1s 5c", MUTED } end
-    if d.quest then out[#out + 1] = { L.QUEST:format(L.EX_QUEST), "3/10", QUEST } end
-    if d.alts then out[#out + 1] = { L.EX_ALT, L.BAGS_BANK:format(12, 5), MUTED } end
-    if d.reagent then out[#out + 1] = { L.REAGENT:format(L.EX_PROF), "", MUTED } end
-    if d.id and not shift then out[#out + 1] = { L.ITEM_ID, "2589", MUTED } end
+    if d.quest then out[#out + 1] = { L.QUEST:format(L.EX_QUEST), "3/10", QUEST, WHITE } end
+    if d.price and not shift then out[#out + 1] = { L.STACK:format(20), S.MoneyText(260), MUTED, WHITE } end
+    if d.auction and not shift then out[#out + 1] = { L.AUCTION_STACK, S.MoneyText(2100), MUTED, WHITE } end
+    if d.alts then
+        out[#out + 1] = { L.YOUR_CHARS, "17", MUTED, WHITE }
+        out[#out + 1] = { "  |cff3fc7eb" .. L.EX_ALT .. "|r", "12" .. S.Hex(MUTED) .. L.PLUS_BANK:format(5) .. "|r", WHITE, WHITE }
+    end
+    if d.reagent then out[#out + 1] = { L.REAGENT_FOR, L.EX_PROF, MUTED, PROF } end
+    if d.id and not shift then out[#out + 1] = { L.ITEM_ID, "2589", FAINT, FAINT } end
+    if #out >= first then out[first].rule = true end
     out[#out + 1] = { " ", "" }
     out[#out + 1] = { L.EX_MOB, "", WHITE, nil, 14 }
-    if d.mobs then out[#out + 1] = { L.QUEST:format(L.EX_MOB_QUEST), "1/5", QUEST } end
-    if d.id and not shift then out[#out + 1] = { L.NPC_ID, "113", MUTED } end
+    first = #out + 1
+    if d.mobs then out[#out + 1] = { L.QUEST:format(L.EX_MOB_QUEST), "1/5", QUEST, WHITE } end
+    if d.id and not shift then out[#out + 1] = { L.NPC_ID, "113", FAINT, FAINT } end
+    if out[first] then out[first].rule = true end
     if shift and (d.price or d.auction or d.id) then out[#out + 1] = { L.SHIFT_NOTE, "", MUTED } end
     return out
 end
@@ -54,11 +63,21 @@ function ns.Refresh()
         fs.left:SetText(l[1])
         fs.left:SetTextColor(c[1], c[2], c[3], 1)
         fs.right:SetText(l[2])
-        local rc = (c == QUEST) and WHITE or c
+        local rc = l[4] or c
         fs.right:SetTextColor(rc[1], rc[2], rc[3], 1)
         fs.left:Show(); fs.right:Show()
+        if not fs.rule then
+            fs.rule = S.Tex(example.box, "ARTWORK", 0, { 1, 1, 1, 0.16 })
+            fs.rule:SetHeight(1)
+            fs.rule:SetPoint("BOTTOMLEFT", fs.left, "TOPLEFT", 0, 3)
+            fs.rule:SetPoint("RIGHT", example.box, "RIGHT", -10, 0)
+        end
+        fs.rule:SetShown(l.rule == true)
     end
-    for i = #lines + 1, #example.lines do example.lines[i].left:Hide(); example.lines[i].right:Hide() end
+    for i = #lines + 1, #example.lines do
+        local fs = example.lines[i]
+        fs.left:Hide(); fs.right:Hide(); fs.rule:Hide()
+    end
     example.box:SetHeight(20 + #lines * 20)
     local q = ns.db.quality and { 0.12, 1, 0, 1 } or { 0.3, 0.3, 0.33, 1 }
     S.SetBorder(example.box, q)

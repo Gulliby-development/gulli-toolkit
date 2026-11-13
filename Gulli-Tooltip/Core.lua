@@ -8,6 +8,8 @@ local L = ns.L
 
 local MUTED, QUEST = { 0.6, 0.6, 0.62 }, { 1, 0.82, 0 }
 local WHITE, DONE = { 1, 1, 1 }, { 0.42, 0.84, 0.50 }
+local FAINT, PROF = { 0.45, 0.46, 0.5 }, { 0.56, 0.77, 0.91 }
+ns.COLORS = { MUTED = MUTED, QUEST = QUEST, WHITE = WHITE, DONE = DONE, FAINT = FAINT, PROF = PROF }
 
 -- Game API wrappers.
 local function itemInfo(id)
@@ -28,8 +30,10 @@ local function questEntries()
     return out
 end
 
+-- Money as text in coin colours (the skin loads after this file, so it is read at call time).
 function ns.Money(copper)
     copper = math.floor(copper or 0)
+    if ns.Skin and ns.Skin.MoneyText then return ns.Skin.MoneyText(copper) end
     if GetCoinTextureString then return GetCoinTextureString(copper) end
     local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
     local parts = {}
@@ -115,7 +119,9 @@ function ns.AltCounts(id)
         local bags = c.items and c.items[id] or 0
         local bank = c.bank and c.bank[id] or 0
         if key == me then bags = 0 end
-        if bags + bank > 0 then out[#out + 1] = { name = c.name or key, bags = bags, bank = bank, me = key == me } end
+        if bags + bank > 0 then
+            out[#out + 1] = { name = c.name or key, class = c.class, bags = bags, bank = bank, me = key == me }
+        end
     end
     table.sort(out, function(a, b) if a.me ~= b.me then return a.me end return a.name < b.name end)
     return out
@@ -145,20 +151,38 @@ function ns.ReagentFor(id)
     return out
 end
 
--- The lines for an item: { { left, right, color, rightColor } }.
+local function classHex(class)
+    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    return c and string.format("|cff%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255) or "|cffffffff"
+end
+local function mutedHex(t) return string.format("|cff%02x%02x%02x", MUTED[1] * 255, MUTED[2] * 255, MUTED[3] * 255) .. t .. "|r" end
+
+-- The lines of the other characters: a total, then each one in its class colour.
+function ns.AltLines(id)
+    local alts = ns.AltCounts(id)
+    if #alts == 0 then return {} end
+    local total = 0
+    for _, a in ipairs(alts) do total = total + a.bags + a.bank end
+    local out = { { L.YOUR_CHARS, tostring(total), MUTED, WHITE } }
+    for _, a in ipairs(alts) do
+        if a.me then
+            out[#out + 1] = { "  " .. L.YOUR_BANK, tostring(a.bank), MUTED, WHITE }
+        else
+            out[#out + 1] = { "  " .. classHex(a.class) .. a.name .. "|r",
+                              a.bags .. (a.bank > 0 and mutedHex(L.PLUS_BANK:format(a.bank)) or ""), WHITE, WHITE }
+        end
+    end
+    return out
+end
+
+-- The lines for an item: { { left, right, color, rightColor } }, in groups: protected, quests,
+-- prices, characters, professions, ids.
 function ns.ItemLines(id)
     local out = {}
     if not id or secret(id) then return out end
     local name, maxStack, price = itemInfo(id)
     if ns.db.protect and GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id) then
         out[#out + 1] = { L.PROTECTED, "", DONE }
-    end
-    if extra("price") and price > 0 and maxStack > 1 then
-        out[#out + 1] = { L.STACK:format(maxStack), ns.Money(price * maxStack), MUTED }
-    end
-    if extra("auction") then
-        local ah = auctionPrice(id)
-        if ah and ah > 0 then out[#out + 1] = { L.AUCTION, ns.Money(ah), MUTED } end
     end
     if ns.db.quest then
         for _, n in ipairs(ns.QuestNeeds(name)) do
@@ -167,18 +191,25 @@ function ns.ItemLines(id)
                               n.need > 0 and n.have >= n.need and DONE or WHITE }
         end
     end
-    if ns.db.alts then
-        for _, a in ipairs(ns.AltCounts(id)) do
-            local right = a.me and L.BANK_N:format(a.bank)
-                or (a.bank > 0 and L.BAGS_BANK:format(a.bags + a.bank, a.bank) or tostring(a.bags))
-            out[#out + 1] = { a.me and L.YOUR_BANK or a.name, right, MUTED }
+    if extra("price") and price > 0 and maxStack > 1 then
+        out[#out + 1] = { L.STACK:format(maxStack), ns.Money(price * maxStack), MUTED, WHITE }
+    end
+    if extra("auction") then
+        -- Auctionator shows the price of one; for a stack item this line gives the full stack.
+        local ah = auctionPrice(id)
+        if ah and ah > 0 then
+            if maxStack > 1 then out[#out + 1] = { L.AUCTION_STACK, ns.Money(ah * maxStack), MUTED, WHITE }
+            else out[#out + 1] = { L.AUCTION, ns.Money(ah), MUTED, WHITE } end
         end
+    end
+    if ns.db.alts then
+        for _, l in ipairs(ns.AltLines(id)) do out[#out + 1] = l end
     end
     if ns.db.reagent then
         local profs = ns.ReagentFor(id)
-        if #profs > 0 then out[#out + 1] = { L.REAGENT:format(table.concat(profs, ", ")), "", MUTED } end
+        if #profs > 0 then out[#out + 1] = { L.REAGENT_FOR, table.concat(profs, ", "), MUTED, PROF } end
     end
-    if extra("id") then out[#out + 1] = { L.ITEM_ID, tostring(id), MUTED } end
+    if extra("id") then out[#out + 1] = { L.ITEM_ID, tostring(id), FAINT, FAINT } end
     return out
 end
 
@@ -197,14 +228,14 @@ function ns.UnitLines(guid, name)
         end
     end
     local id = extra("id") and ns.NpcID(guid)
-    if id then out[#out + 1] = { L.NPC_ID, tostring(id), MUTED } end
+    if id then out[#out + 1] = { L.NPC_ID, tostring(id), FAINT, FAINT } end
     return out
 end
 
 -- Spell and aura ids, under the same switch.
 function ns.SpellLines(id)
     if not extra("id") or not id or secret(id) then return {} end
-    return { { L.SPELL_ID, tostring(id), MUTED } }
+    return { { L.SPELL_ID, tostring(id), FAINT, FAINT } }
 end
 
 -- The tooltip's border in the item's quality colour.
@@ -217,12 +248,36 @@ local function paintBorder(tt, id)
     elseif tt.SetBackdropBorderColor then tt:SetBackdropBorderColor(c.r, c.g, c.b) end
 end
 
+-- A thin line above our lines sets them apart from the game's and other addons' lines. The
+-- line lives in our own weak table, never as a field on the game's tooltip.
+local rules = setmetatable({}, { __mode = "k" })
+local function rule(tt, first)
+    local name = tt.GetName and tt:GetName()
+    local fs = name and _G[name .. "TextLeft" .. first]
+    if not fs or first < 2 or not tt.CreateTexture then return end
+    local t = rules[tt]
+    if not t then
+        t = tt:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(1, 1, 1, 0.16)
+        t:SetHeight(1)
+        rules[tt] = t
+        if tt.HookScript then tt:HookScript("OnTooltipCleared", function(self) rules[self]:Hide() end) end
+    end
+    t:ClearAllPoints()
+    t:SetPoint("BOTTOMLEFT", fs, "TOPLEFT", 0, 3)
+    t:SetPoint("RIGHT", tt, "RIGHT", -10, 0)
+    t:Show()
+end
+
 local function add(tt, lines)
+    if #lines == 0 then return end
+    local first = (tt.NumLines and tt:NumLines() or 0) + 1
     for _, l in ipairs(lines) do
         local c, r = l[3], l[4] or WHITE
         tt:AddDoubleLine(l[1], l[2], c[1], c[2], c[3], r[1], r[2], r[3])
     end
-    if #lines > 0 then tt:Show() end
+    rule(tt, first)
+    tt:Show()
 end
 
 local function unitName(data)
@@ -282,9 +337,11 @@ f:SetScript("OnEvent", function(self, event, a1)
         if a1 ~= ADDON then return end
         GulliTooltipDB = GulliTooltipDB or {}
         ns.db = GulliTooltipDB
+        local fresh = next(ns.db) == nil
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
+        if fresh then ns.db.defaultsV = ns.DEFAULTS_V else ns.Migrate(ns.db) end
         self:RegisterEvent("QUEST_LOG_UPDATE")
         self:RegisterEvent("MODIFIER_STATE_CHANGED")
         self:RegisterEvent("TRADE_SKILL_CLOSE")
@@ -328,9 +385,17 @@ ns.OPT_ICON = {
 -- The switches in window order; a new line gets its key here, a default, a text and a test.
 ns.LINES = { "price", "auction", "quest", "mobs", "protect", "alts", "reagent", "id" }
 ns.LOOK = { "shift", "quality", "cursor" }
--- The engine may already show kill objectives on NPCs, so that line starts off.
-ns.DEFAULTS = { price = true, auction = true, quest = true, mobs = false, protect = true, alts = true,
-                reagent = true, id = false, shift = false, quality = false, cursor = false }
+-- The engine may already show kill objectives on NPCs, and Auctionator its own auction line,
+-- and the game says "Crafting Reagent", so those lines start off.
+ns.DEFAULTS = { price = true, auction = false, quest = true, mobs = false, protect = true, alts = true,
+                reagent = false, id = false, shift = false, quality = false, cursor = false }
+-- Raise when a default changes for players who already have saved settings; ns.Migrate turns
+-- the changed lines to their new default once.
+ns.DEFAULTS_V = 2
+function ns.Migrate(db)
+    if (db.defaultsV or 1) < 2 then db.auction, db.reagent = false, false end
+    db.defaultsV = ns.DEFAULTS_V
+end
 
 function ns.Set(key, on)
     ns.db[key] = on and true or false
