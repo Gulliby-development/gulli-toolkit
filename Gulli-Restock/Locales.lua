@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "not enough money for %s; stopped there.",
     LOW = "running low: %s",
     HAVE = "have %d",
@@ -73,7 +73,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "nicht genug Geld für %s; dort angehalten.",
     LOW = "wird knapp: %s",
     HAVE = "hast %d",
@@ -136,7 +136,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "no hay dinero suficiente para %s; se detuvo ahí.",
     LOW = "queda poco: %s",
     HAVE = "tienes %d",
@@ -199,7 +199,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "pas assez d'argent pour %s ; arrêt ici.",
     LOW = "bientôt épuisé : %s",
     HAVE = "vous avez %d",
@@ -262,7 +262,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "za mało pieniędzy na %s; zatrzymano.",
     LOW = "kończy się: %s",
     HAVE = "masz %d",
@@ -325,7 +325,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "dinheiro insuficiente para %s; parou aí.",
     LOW = "acabando: %s",
     HAVE = "você tem %d",
@@ -388,7 +388,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "не хватает денег на %s; остановлено.",
     LOW = "заканчивается: %s",
     HAVE = "есть %d",
@@ -451,7 +451,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Restock",
+    TITLE = "Restock",
     NO_MONEY = "金钱不足以购买 %s，已停止。",
     LOW = "即将用完：%s",
     HAVE = "拥有 %d",

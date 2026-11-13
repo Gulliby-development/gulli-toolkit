@@ -10,7 +10,7 @@
 ## Notes-zhCN: 整理交易和组队频道：按副本分组、出售、收购、制造、公会。/gbul
 ## Notes-zhTW: 整理交易和组队频道：按副本分组、出售、收购、制造、公会。/gbul
 ## Author: Gulliby
-## Version: 1.7.1
+## Version: 1.8.0
 ## IconTexture: Interface\AddOns\Gulli-Bulletin\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Bulletin

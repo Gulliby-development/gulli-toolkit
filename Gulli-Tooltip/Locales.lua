@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Stack of %d",
     QUEST = "Quest: %s",
     ITEM_ID = "Item ID",
@@ -58,7 +58,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Stapel von %d",
     QUEST = "Quest: %s",
     ITEM_ID = "Gegenstands-ID",
@@ -106,7 +106,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Montón de %d",
     QUEST = "Misión: %s",
     ITEM_ID = "ID de objeto",
@@ -154,7 +154,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Pile de %d",
     QUEST = "Quête : %s",
     ITEM_ID = "ID d'objet",
@@ -202,7 +202,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Stos %d",
     QUEST = "Zadanie: %s",
     ITEM_ID = "ID przedmiotu",
@@ -250,7 +250,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Pilha de %d",
     QUEST = "Missão: %s",
     ITEM_ID = "ID do item",
@@ -298,7 +298,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "Стопка из %d",
     QUEST = "Квест: %s",
     ITEM_ID = "ID предмета",
@@ -346,7 +346,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Tooltip",
+    TITLE = "Tooltip",
     STACK = "%d 个一组",
     QUEST = "任务：%s",
     ITEM_ID = "物品 ID",

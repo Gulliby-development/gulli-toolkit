@@ -163,6 +163,7 @@ function ns.ShowFind(hits)
     local portrait
     if h.unit and UnitExists(h.unit) then
         local lvl = UnitLevel and UnitLevel(h.unit)
+        if issecretvalue and issecretvalue(lvl) then lvl = nil end
         if lvl then parts[#parts + 1] = L.LEVEL:format(lvl > 0 and tostring(lvl) or "??") end
         parts[#parts + 1] = classification(h.unit)
         portrait = h.unit
@@ -532,7 +533,7 @@ local function build()
     pageTabs = S.Tabs(holder, { L.PAGE_SEARCH, L.PAGE_MOBS, L.PAGE_HISTORY }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end)
+    end, nil, { S.TAB.search, "Interface\\Icons\\Ability_Hunter_SniperShot", S.TAB.recent })
     for i = 1, 3 do
         local p = i == 1 and S.Scroll(body) or CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -38)
