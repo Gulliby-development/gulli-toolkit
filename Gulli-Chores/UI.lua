@@ -82,7 +82,7 @@ local function makeRow(r)
 end
 
 local function fillRow(r, task)
-    r.icon:SetIcon(task.cd and cdIcon(task.cd) or ICON[task.key])
+    r.icon:SetIcon(task.icon or (task.cd and cdIcon(task.cd)) or ICON[task.key])
     r.text:SetText(task.text)
     r.text:SetTextColor(unpack(ns.TaskColor(task.key)))
 end
@@ -119,10 +119,11 @@ function ns.CardInfo(c, key, now)
         info.rested = { math.floor(r * 100) .. "%", tone and S[tone] or S.TEXT, sub, r / ns.RESTED_MAX }
     end
     local total = realmMoney(c)
-    info.money = { S.MoneyText(c.money), S.TEXT,
-                   -- The realm's total in whole gold, so it fits under the tile's value.
-                   (total and total ~= (c.money or 0)) and L.REALM_MONEY:format(S.MoneyText(total >= 10000 and total - total % 10000 or total))
-                   or (c.realm or "") }
+    -- Without copper, and the realm's total in whole gold, so both fit the tile. The realm's
+    -- name is already in the card's head.
+    info.money = { S.MoneyText(c.money, true), S.TEXT,
+                   (total and total ~= (c.money or 0)) and L.REALM_MONEY:format(S.MoneyText(total >= 10000 and total - total % 10000 or total, true))
+                   or "" }
     if c.hearth or c.bind then
         local ready = not c.hearth or c.hearth <= now
         info.hearth = { ready and L.READY_UP or ns.Span(c.hearth - now), ready and S.GOOD or S.TEXT, c.bind or "?" }
@@ -160,7 +161,7 @@ local function placeTasks(withProfs)
     taskCard:SetPoint("BOTTOMRIGHT")
 end
 local PROF_MAX, PROF_H = 6, 26
-local TILE_H, HEAD_H = 74, 28
+local TILE_H, HEAD_H = 80, 28
 
 local function fillCard(c)
     local info = ns.CardInfo(c, selected)

@@ -10,7 +10,7 @@
 ## Notes-zhCN: 每个角色的待办清单：休息经验、邮件、冷却、训练师、修理。 /gch
 ## Notes-zhTW: 每个角色的待办清单：休息经验、邮件、冷却、训练师、修理。 /gch
 ## Author: Gulliby
-## Version: 1.7.0
+## Version: 1.7.1
 ## IconTexture: Interface\AddOns\Gulli-Chores\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Chores
