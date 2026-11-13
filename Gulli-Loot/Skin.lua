@@ -73,6 +73,10 @@ S.HEADER_H, S.FOOTER_H, S.ROW_H, S.ROW_DESC_H = 44, 56, 40, 56
 -- Window sizes that fit the hub (/gulli): a narrow window takes the place of the module list and
 -- leaves the module card beside it, a wide one takes both. No window is taller than DOCK_H.
 S.NARROW_W, S.WIDE_W, S.DOCK_H = 540, 832, 624
+-- Corner radii: small controls (check boxes), buttons and inputs, cards and tiles, windows.
+S.R_SM, S.R_MD, S.R_LG, S.R_XL = 4, 6, 8, 10
+-- The soft blue around round icons.
+S.GLOW = { 0.36, 0.72, 1, 1 }
 
 -- The player's class colour, like ElvUI's default accent.
 function S.Accent()
@@ -97,19 +101,108 @@ local function tex(f, layer, sub, color)
 end
 S.Tex = tex
 
--- A filled rectangle with a 1 pixel border around it.
-function S.Box(f, bg, border)
-    f.bg = tex(f, "BACKGROUND", -7, bg or S.BG)
-    f.bg:SetAllPoints()
+-- Round shapes are white textures from the addon's Media folder, tinted: Round is a disc, Glow
+-- a soft halo, Ring<R> the 1 pixel border of a corner of radius R (tools/skin/media.py draws
+-- them; RADII lists the ones there are).
+local MEDIA = "Interface\\AddOns\\" .. tostring(addon) .. "\\Media\\"
+S.ROUND, S.GLOW_TEX = MEDIA .. "Round", MEDIA .. "Glow"
+local RADII = { 2, 3, 4, 6, 8, 9, 10, 11, 14 }
+local QUAD = { TOPLEFT = { 0, 0.5, 0, 0.5 }, TOPRIGHT = { 0.5, 1, 0, 0.5 },
+               BOTTOMLEFT = { 0, 0.5, 0.5, 1 }, BOTTOMRIGHT = { 0.5, 1, 0.5, 1 } }
+local CORNERS = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
+local WHICH = { top = { TOPLEFT = true, TOPRIGHT = true }, bottom = { BOTTOMLEFT = true, BOTTOMRIGHT = true } }
+
+-- The largest radius there is a ring for, at most r.
+local function ringRadius(r)
+    local best = 0
+    for _, x in ipairs(RADII) do if x <= r then best = x end end
+    return best
+end
+
+-- One corner piece of size r, i pixels in from the corner (out when i < 0): a quarter of
+-- `file`, or a plain square for a corner that stays sharp.
+local function corner(f, layer, sub, color, point, r, i, file)
+    local t = f:CreateTexture(nil, layer, nil, sub)
+    if file then
+        t:SetTexture(file)
+        local q = QUAD[point]
+        t:SetTexCoord(q[1], q[2], q[3], q[4])
+    else
+        t:SetTexture(WHITE)
+    end
+    t:SetVertexColor(color[1], color[2], color[3], color[4])
+    t:SetSize(r, r)
+    t:SetPoint(point, point:find("LEFT") and i or -i, point:find("TOP") and -i or i)
+    return t
+end
+
+-- A filled shape with corners of radius r, i pixels in from the frame's edges: three bands and
+-- four corners that never overlap, so a see-through colour stays even. Returns the textures.
+local function roundRect(f, layer, sub, color, r, i, round)
+    local list = {}
+    local function band(a, ax, ay, b, rel, bx, by)
+        local t = tex(f, layer, sub, color)
+        t:SetPoint(a, ax, ay)
+        t:SetPoint(b, f, rel, bx, by)
+        list[#list + 1] = t
+    end
+    local k = i + r
+    band("TOPLEFT", i, -k, "BOTTOMRIGHT", "BOTTOMRIGHT", -i, k)
+    band("TOPLEFT", k, -i, "BOTTOMRIGHT", "TOPRIGHT", -k, -k)
+    band("BOTTOMLEFT", k, i, "TOPRIGHT", "BOTTOMRIGHT", -k, k)
+    for _, p in ipairs(CORNERS) do
+        list[#list + 1] = corner(f, layer, sub, color, p, r, i, round[p] and S.ROUND or nil)
+    end
+    return list
+end
+
+-- A filled rectangle with a 1 pixel border around it. radius (optional) rounds its corners;
+-- corners = "top" or "bottom" rounds only those two. f.fills and f.edges are its textures.
+function S.Box(f, bg, border, radius, corners)
     local b = border or S.BORDER
-    f.edges = {}
-    for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 0, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, 1 },
-                         { "TOPLEFT", "BOTTOMLEFT", 1, 0 }, { "TOPRIGHT", "BOTTOMRIGHT", 1, 0 } }) do
+    radius = ringRadius(math.floor(radius or 0))
+    f.edges, f.radius = {}, radius
+    if radius < 2 then
+        f.bg = tex(f, "BACKGROUND", -7, bg or S.BG)
+        f.bg:SetAllPoints()
+        f.fills = { f.bg }
+        for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 0, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, 1 },
+                             { "TOPLEFT", "BOTTOMLEFT", 1, 0 }, { "TOPRIGHT", "BOTTOMRIGHT", 1, 0 } }) do
+            local e = tex(f, "BORDER", 7, b)
+            e:SetPoint(p[1])
+            e:SetPoint(p[2])
+            if p[3] == 1 then e:SetWidth(1) else e:SetHeight(1) end
+            f.edges[i] = e
+        end
+        return f
+    end
+    local round = WHICH[corners or ""] or { TOPLEFT = true, TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true }
+    -- The fill sits inside the border; its corners are discs of radius - 1, the ring takes the rest.
+    f.fills = roundRect(f, "BACKGROUND", -7, bg or S.BG, radius - 1, 1, round)
+    f.bg = f.fills[1]
+    local r = radius
+    for i, p in ipairs({ { "TOPLEFT", r, 0, "TOPRIGHT", -r, 0, "h" }, { "BOTTOMLEFT", r, 0, "BOTTOMRIGHT", -r, 0, "h" },
+                         { "TOPLEFT", 0, -r, "BOTTOMLEFT", 0, r, "v" }, { "TOPRIGHT", 0, -r, "BOTTOMRIGHT", 0, r, "v" } }) do
         local e = tex(f, "BORDER", 7, b)
-        e:SetPoint(p[1])
-        e:SetPoint(p[2])
-        if p[3] == 1 then e:SetWidth(1) else e:SetHeight(1) end
+        e:SetPoint(p[1], p[2], p[3])
+        e:SetPoint(p[4], p[5], p[6])
+        if p[7] == "v" then e:SetWidth(1) else e:SetHeight(1) end
         f.edges[i] = e
+    end
+    for _, p in ipairs(CORNERS) do
+        if round[p] then
+            f.edges[#f.edges + 1] = corner(f, "BORDER", 7, b, p, r, 0, MEDIA .. "Ring" .. r)
+        else
+            -- A sharp corner: the two edges run on to the corner.
+            local e1 = tex(f, "BORDER", 7, b)
+            e1:SetSize(r, 1)
+            e1:SetPoint(p, 0, 0)
+            local e2 = tex(f, "BORDER", 7, b)
+            e2:SetSize(1, r)
+            e2:SetPoint(p, 0, 0)
+            f.edges[#f.edges + 1] = e1
+            f.edges[#f.edges + 1] = e2
+        end
     end
     return f
 end
@@ -119,7 +212,20 @@ function S.SetBorder(f, c)
 end
 
 function S.Fill(f, c)
-    f.bg:SetVertexColor(c[1], c[2], c[3], c[4])
+    for _, t in ipairs(f.fills or { f.bg }) do t:SetVertexColor(c[1], c[2], c[3], c[4]) end
+end
+
+-- A soft shadow around a box with corners of radius r (0 = square): n rings that fade out.
+function S.Shadow(f, r, n, strength)
+    local list = {}
+    local all = { TOPLEFT = true, TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true }
+    for i = 1, n or 4 do
+        local a = (strength or 0.16) - i * ((strength or 0.16) / ((n or 4) + 1))
+        for _, t in ipairs(roundRect(f, "BACKGROUND", -8, { 0, 0, 0, a }, (r or 0) + i, -i, r and r > 0 and all or {})) do
+            list[#list + 1] = t
+        end
+    end
+    return list
 end
 
 function S.Text(parent, size, color, flags)
@@ -183,7 +289,7 @@ end
 function S.Button(parent, width, height)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 110, height or 30)
-    S.Box(b, S.RAISED, S.EDGE)
+    S.Box(b, S.RAISED, S.EDGE, S.R_MD)
     b.text = S.Text(b, 12)
     b.text:SetPoint("LEFT", 6, 0)
     b.text:SetPoint("RIGHT", -6, 0)
@@ -245,7 +351,7 @@ function S.IconTile(parent, width, height, vertical)
     height = height or (vertical and 54 or 36)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 110, height)
-    S.Box(b, S.RAISED, S.EDGE)
+    S.Box(b, S.RAISED, S.EDGE, S.R_MD)
     b.kind = "normal"
     b.title = S.Text(b, vertical and 10 or 11)
     b.title:SetWordWrap(false)
@@ -315,11 +421,11 @@ function S.FitButton(parent, text, height, minWidth)
     return b
 end
 
--- A square close button with an X drawn from two lines.
+-- A round close button with an X drawn from two lines.
 local function closeButton(parent, onClick)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(28, 28)
-    S.Box(b, S.CLEAR, S.CLEAR)
+    S.Box(b, S.CLEAR, S.CLEAR, 14)
     local lines = {}
     for i, d in ipairs({ { "TOPLEFT", 9, -9, "BOTTOMRIGHT", -9, 9 }, { "BOTTOMLEFT", 9, 9, "TOPRIGHT", -9, -9 } }) do
         local l = b:CreateLine(nil, "ARTWORK")
@@ -339,8 +445,9 @@ S.Close = closeButton
 
 -- Inputs -------------------------------------------------------------------------------------
 
--- A flat check box: a dark square that fills with the accent colour when ticked. It is 26
--- pixels so it is easy to hit by touch. state: true, false or "some" (part of a group).
+-- A flat check box: a dark rounded square that fills with the accent colour and shows a tick
+-- when ticked. It is 26 pixels so it is easy to hit by touch. state: true, false or "some"
+-- (part of a group: a dash instead of the tick).
 function S.Check(parent, size)
     local c = CreateFrame("Button", nil, parent)
     size = size or 26
@@ -348,36 +455,59 @@ function S.Check(parent, size)
     local box = CreateFrame("Frame", nil, c)
     box:SetSize(16, 16)
     box:SetPoint("CENTER")
-    S.Box(box, S.INPUT, S.EDGE)
+    S.Box(box, S.INPUT, S.EDGE, S.R_SM)
     c.box = box
-    c.mark = tex(box, "ARTWORK", 0, S.Accent())
-    c.mark:SetPoint("TOPLEFT", 3, -3)
-    c.mark:SetPoint("BOTTOMRIGHT", -3, 3)
+    local ink = { 0.05, 0.05, 0.06, 1 }
+    local function line(x1, y1, x2, y2)
+        local l = box:CreateLine(nil, "OVERLAY")
+        l:SetThickness(2)
+        l:SetColorTexture(ink[1], ink[2], ink[3], 1)
+        l:SetStartPoint("TOPLEFT", box, x1, y1)
+        l:SetEndPoint("TOPLEFT", box, x2, y2)
+        return l
+    end
+    c.tick = { line(3.5, -8, 6.5, -11), line(6.5, -11, 12.5, -4.5) }
+    c.dash = line(4, -8, 12, -8)
     c.state = false
     function c:SetChecked(state)
         self.state = state
-        self.mark:SetShown(state and true or false)
-        self.mark:SetAlpha(state == "some" and 0.45 or 1)
+        local a = S.Accent()
+        local on = state and true or false
+        S.Fill(self.box, on and a or S.INPUT)
+        S.SetBorder(self.box, on and a or S.EDGE)
+        for _, l in ipairs(self.tick) do l:SetShown(state == true) end
+        self.dash:SetShown(state == "some")
     end
     function c:GetChecked() return self.state == true end
     c:SetScript("OnEnter", function(self) S.SetBorder(self.box, S.Accent()) end)
-    c:SetScript("OnLeave", function(self) S.SetBorder(self.box, S.EDGE) end)
+    c:SetScript("OnLeave", function(self) S.SetBorder(self.box, self.state and S.Accent() or S.EDGE) end)
     c:SetChecked(false)
     return c
 end
 
--- An on/off switch: a track that fills with the accent colour and a knob that slides over.
--- The button is 44 by 28 so it is easy to hit by touch.
+-- An on/off switch like a phone's: a pill that fills with the accent colour and a round knob
+-- with a soft shadow that slides over. The button is 44 by 28 so it is easy to hit by touch.
 function S.Switch(parent)
     local s = CreateFrame("Button", nil, parent)
     s:SetSize(44, 28)
     local track = CreateFrame("Frame", nil, s)
-    track:SetSize(36, 18)
+    track:SetSize(38, 22)
     track:SetPoint("CENTER")
-    S.Box(track, S.INPUT, S.EDGE)
+    S.Box(track, S.INPUT, S.EDGE, 11)
     s.track = track
-    s.knob = tex(track, "ARTWORK", 0, S.TEXT)
-    s.knob:SetSize(14, 14)
+    s.shade = track:CreateTexture(nil, "ARTWORK", nil, 0)
+    s.shade:SetTexture(S.GLOW_TEX)
+    s.shade:SetVertexColor(0, 0, 0, 0.55)
+    s.shade:SetSize(26, 26)
+    s.knob = track:CreateTexture(nil, "ARTWORK", nil, 1)
+    s.knob:SetTexture(S.ROUND)
+    s.knob:SetSize(18, 18)
+    s.shade:SetPoint("CENTER", s.knob, "CENTER", 0, -1)
+    local function edge(self)
+        local a = S.Accent()
+        if self.on then S.SetBorder(self.track, a)
+        else S.SetBorder(self.track, self.hover and a or S.EDGE) end
+    end
     function s:SetChecked(on)
         self.on = on and true or false
         local a = S.Accent()
@@ -385,16 +515,17 @@ function S.Switch(parent)
         if self.on then
             self.knob:SetPoint("RIGHT", -2, 0)
             self.knob:SetVertexColor(1, 1, 1, 1)
-            S.Fill(self.track, { a[1], a[2], a[3], 0.85 })
+            S.Fill(self.track, a)
         else
             self.knob:SetPoint("LEFT", 2, 0)
-            self.knob:SetVertexColor(0.45, 0.45, 0.48, 1)
+            self.knob:SetVertexColor(0.58, 0.59, 0.63, 1)
             S.Fill(self.track, S.INPUT)
         end
+        edge(self)
     end
     function s:GetChecked() return self.on end
-    s:SetScript("OnEnter", function(self) S.SetBorder(self.track, S.Accent()) end)
-    s:SetScript("OnLeave", function(self) S.SetBorder(self.track, S.EDGE) end)
+    s:SetScript("OnEnter", function(self) self.hover = true; edge(self) end)
+    s:SetScript("OnLeave", function(self) self.hover = false; edge(self) end)
     s:SetScript("OnDisable", function(self) self:SetAlpha(0.4) end)
     s:SetScript("OnEnable", function(self) self:SetAlpha(1) end)
     s:SetChecked(false)
@@ -404,7 +535,7 @@ end
 function S.Edit(parent, width, height)
     local e = CreateFrame("EditBox", nil, parent)
     e:SetSize(width or 44, height or 28)
-    S.Box(e, S.INPUT, S.EDGE)
+    S.Box(e, S.INPUT, S.EDGE, S.R_MD)
     S.SetFont(e, 13)
     e:SetTextInsets(8, 8, 0, 0)
     e:SetJustifyH("CENTER")
@@ -448,7 +579,7 @@ function S.Scroll(parent)
     bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 4, 0)
     bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 4, 0)
     bar:SetOrientation("VERTICAL")
-    S.Box(bar, { 1, 1, 1, 0.03 }, S.CLEAR)
+    S.Box(bar, { 1, 1, 1, 0.03 }, S.CLEAR, 3)
     local thumb = bar:CreateTexture(nil, "OVERLAY")
     thumb:SetTexture(WHITE)
     thumb:SetVertexColor(1, 1, 1, 0.22)
@@ -489,7 +620,7 @@ end
 function S.Memo(parent, width, height)
     local box = CreateFrame("Frame", nil, parent)
     box:SetSize(width, height)
-    S.Box(box, S.INPUT, S.EDGE)
+    S.Box(box, S.INPUT, S.EDGE, S.R_MD)
     local sf = S.Scroll(box)
     sf:SetPoint("TOPLEFT", 8, -8)
     sf:SetPoint("BOTTOMRIGHT", -16, 8)
@@ -522,7 +653,19 @@ end
 
 -- A flat pill that can be selected, for filters such as All / On / Off.
 function S.Pill(parent, width, height)
-    local b = S.Button(parent, width, height or 28)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(width or 110, height or 28)
+    S.Box(b, S.RAISED, S.EDGE, math.floor((height or 28) / 2))
+    b.text = S.Text(b, 12)
+    b.text:SetPoint("LEFT", 8, 0)
+    b.text:SetPoint("RIGHT", -8, 0)
+    b.text:SetJustifyH("CENTER")
+    b.text:SetWordWrap(false)
+    b.kind = "normal"
+    b.SetText = function(self, s) self.text:SetText(s) end
+    b.GetText = function(self) return self.text:GetText() end
+    b:SetScript("OnDisable", function(self) self.text:SetAlpha(0.4) end)
+    b:SetScript("OnEnable", function(self) self.text:SetAlpha(1) end)
     function b:SetSelected(on)
         self.selected = on
         local a = S.Accent()
@@ -551,12 +694,12 @@ function S.Tabs(parent, labels, width, onSelect, height, icons)
     local t = { buttons = {}, selected = 1 }
     local track = CreateFrame("Frame", nil, parent)
     track:SetPoint("TOPLEFT")
-    S.Box(track, S.INPUT, S.EDGE)
+    S.Box(track, S.INPUT, S.EDGE, S.R_LG)
     t.frame = track
     local x = 2
     for i, label in ipairs(labels) do
         local b = CreateFrame("Button", nil, track)
-        S.Box(b, S.CLEAR, S.CLEAR)
+        S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
         b.text = S.Text(b, 12, S.MUTED)
         b.text:SetPoint("LEFT", 6, 0)
         b.text:SetPoint("RIGHT", -6, 0)
@@ -601,7 +744,8 @@ function S.Tabs(parent, labels, width, onSelect, height, icons)
         for j, b in ipairs(self.buttons) do
             local on = j == i
             S.Fill(b, on and S.RAISED or S.CLEAR)
-            b.bar:SetShown(on)
+            S.SetBorder(b, on and S.EDGE or S.CLEAR)
+            b.bar:SetShown(false)
             local c = on and S.TEXT or S.MUTED
             b.text:SetTextColor(c[1], c[2], c[3], 1)
             if rawget(b, "btnIcon") then b.btnIcon:SetAlpha(on and 1 or 0.55) end
@@ -636,7 +780,7 @@ end
 -- right) for one group of things. card.body is the area inside the padding, under the title.
 function S.Card(parent, title, hint, icon)
     local c = CreateFrame("Frame", nil, parent)
-    S.Box(c, S.SURFACE, S.EDGE)
+    S.Box(c, S.SURFACE, S.EDGE, S.R_LG)
     c.body = CreateFrame("Frame", nil, c)
     c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     if title then
@@ -817,7 +961,7 @@ end
 -- tile:Set(value, color, sub[, fraction, barColor]). For a card's key facts side by side.
 function S.InfoTile(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
-    S.Box(t, S.RAISED, S.EDGE)
+    S.Box(t, S.RAISED, S.EDGE, S.R_LG)
     t.icon = S.IconBox(t, 30, icon)
     t.icon:SetPoint("TOPLEFT", 8, -8)
     t.label = S.Text(t, 10, S.MUTED)
@@ -859,7 +1003,7 @@ end
 S.STAT_SIZE, S.STAT_MIN = 20, 11
 function S.Stat(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
-    S.Box(t, S.SURFACE, S.EDGE)
+    S.Box(t, S.SURFACE, S.EDGE, S.R_LG)
     local right = -S.INSET
     if icon then
         t.icon = S.IconBox(t, 30, icon)
@@ -919,7 +1063,7 @@ end
 function S.DropZone(parent, text, onDrop, height)
     local d = CreateFrame("Button", nil, parent)
     d:SetHeight(height or 40)
-    S.Box(d, S.INPUT, S.EDGE)
+    S.Box(d, S.INPUT, S.EDGE, S.R_LG)
     d.text = S.Text(d, 12, S.MUTED)
     d.text:SetPoint("LEFT", 10, 0)
     d.text:SetPoint("RIGHT", -10, 0)
@@ -938,18 +1082,27 @@ function S.DropZone(parent, text, onDrop, height)
     return d
 end
 
--- A thin bar that fills from the left: bar:Set(fraction[, color]).
+-- A thin rounded bar that fills from the left: bar:Set(fraction[, color]).
 function S.Progress(parent, height)
+    height = height or 6
     local p = CreateFrame("Frame", nil, parent)
-    p:SetHeight(height or 6)
-    S.Box(p, S.INPUT, S.EDGE)
-    p.fill = tex(p, "ARTWORK", 0, S.Accent())
+    p:SetHeight(height)
+    S.Box(p, S.INPUT, S.EDGE, math.floor(height / 2))
+    local r = math.floor((height - 2) / 2)
+    p.fill = CreateFrame("Frame", nil, p)
     p.fill:SetPoint("TOPLEFT", 1, -1)
     p.fill:SetPoint("BOTTOMLEFT", 1, 1)
+    local a = S.Accent()
+    S.Box(p.fill, a, a, r)
+    function p.fill:SetVertexColor(cr, cg, cb, ca)
+        local c = { cr, cg, cb, ca or 1 }
+        S.Fill(self, c)
+        S.SetBorder(self, c)
+    end
     function p:Set(f, c)
         f = math.max(0, math.min(1, f or 0))
         local w = (tonumber(self:GetWidth()) or 0) - 2
-        self.fill:SetWidth(math.max(0.01, w * f))
+        self.fill:SetWidth(math.max(2 * math.max(r, 1), w * f))
         self.fill:SetShown(f > 0)
         if c then self.fill:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
     end
@@ -959,7 +1112,7 @@ end
 -- A small coloured label, like "On" or "3 new".
 function S.Badge(parent, text, color)
     local b = CreateFrame("Frame", nil, parent)
-    S.Box(b, S.CLEAR, S.CLEAR)
+    S.Box(b, S.CLEAR, S.CLEAR, 9)
     b.text = S.Text(b, 10)
     b.text:SetPoint("CENTER")
     function b:Set(s, c)
@@ -975,16 +1128,23 @@ function S.Badge(parent, text, color)
     return b
 end
 
--- A game icon (an item or a spell, "Interface\\Icons\\...") in a thin dark frame, cropped
--- like the action bars do. box.tex is the texture.
--- Round shapes for rings and radial menus: the game's round portrait mask on a flat texture.
-local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+-- Clips texture t to a circle (or to the shape of `file`), where the client has masks.
+function S.RoundMask(owner, t, file)
+    if not owner.CreateMaskTexture then return end
+    local m = owner:CreateMaskTexture()
+    if not m then return end
+    m:SetTexture(file or S.ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    m:SetAllPoints(t)
+    t:AddMaskTexture(m)
+    return m
+end
 
 -- A disc of one colour; size is the diameter.
 function S.Circle(parent, size, color, layer, sub)
-    local t = tex(parent, layer or "BACKGROUND", sub or 0, color)
+    local t = parent:CreateTexture(nil, layer or "BACKGROUND", nil, sub or 0)
+    t:SetTexture(S.ROUND)
+    t:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
     t:SetSize(size, size)
-    if t.SetMask then t:SetMask(ROUND) end
     return t
 end
 
@@ -999,21 +1159,41 @@ function S.RoundIcon(parent, size, path)
     b.tex = b:CreateTexture(nil, "ARTWORK")
     b.tex:SetSize(size - 12, size - 12)
     b.tex:SetPoint("CENTER")
-    if b.tex.SetMask then b.tex:SetMask(ROUND) end
+    b.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    S.RoundMask(b, b.tex)
     function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
     function b:SetRing(c) self.ring:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
     b:SetIcon(path)
     return b
 end
 
+-- A game icon (an item or a spell, "Interface\\Icons\\...") cut round, in a thin blue ring
+-- with a soft blue glow. box.tex is the texture; S.SetBorder(box, c) colours the ring and
+-- box:SetGlow(c) the glow.
 function S.IconBox(parent, size, path)
+    size = size or 26
     local b = CreateFrame("Frame", nil, parent)
-    b:SetSize(size or 26, size or 26)
-    S.Box(b, S.INPUT, S.BORDER)
+    b:SetSize(size, size)
+    local g = S.GLOW
+    b.glow = b:CreateTexture(nil, "BACKGROUND", nil, -8)
+    b.glow:SetTexture(S.GLOW_TEX)
+    b.glow:SetSize(size + math.max(8, math.floor(size * 0.4)), size + math.max(8, math.floor(size * 0.4)))
+    b.glow:SetPoint("CENTER")
+    b.glow:SetVertexColor(g[1], g[2], g[3], 0.42)
+    b.ring = S.Circle(b, size, { g[1], g[2], g[3], 0.9 }, "BACKGROUND", -7)
+    b.ring:SetPoint("CENTER")
+    b.bg = S.Circle(b, size - 2, S.INPUT, "BACKGROUND", -6)
+    b.bg:SetPoint("CENTER")
+    b.edges, b.fills = { b.ring }, { b.bg }
     b.tex = b:CreateTexture(nil, "ARTWORK")
-    b.tex:SetPoint("TOPLEFT", 1, -1)
-    b.tex:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.tex:SetSize(size - 2, size - 2)
+    b.tex:SetPoint("CENTER")
     b.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    S.RoundMask(b, b.tex)
+    function b:SetGlow(c, a)
+        c = c or S.GLOW
+        self.glow:SetVertexColor(c[1], c[2], c[3], a or 0.42)
+    end
     function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
     b:SetIcon(path)
     return b
@@ -1056,7 +1236,9 @@ function S.ItemIcon(parent, size)
     function b:Set(texture, n, quality)
         self:SetIcon(texture)
         self.count:SetText((n and n > 1) and (n > 999 and (math.floor(n / 100) / 10 .. "k") or tostring(n)) or "")
-        S.SetBorder(self, S.QUALITY[quality or 1] or S.BORDER)
+        local q = S.QUALITY[quality or 1]
+        S.SetBorder(self, q or { S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.9 })
+        self:SetGlow(q)
         self:Show()
     end
     return b
@@ -1096,11 +1278,11 @@ end
 
 -- Windows ------------------------------------------------------------------------------------
 
--- A square back button with a < drawn from two lines.
+-- A round back button with a < drawn from two lines.
 local function backButton(parent, onClick)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(28, 28)
-    S.Box(b, S.CLEAR, S.EDGE)
+    S.Box(b, S.CLEAR, S.EDGE, 14)
     local lines = {}
     for i, d in ipairs({ { "LEFT", 10, 0, "TOPRIGHT", -11, -8 }, { "LEFT", 10, 0, "BOTTOMRIGHT", -11, 8 } }) do
         local l = b:CreateLine(nil, "ARTWORK")
@@ -1207,21 +1389,15 @@ function S.Window(name, title, width, height, opts)
     f:SetMovable(true)
     f:EnableMouse(true)
     -- A soft shadow: a few dark rings outside the edge.
-    f.shadow = {}
-    for i = 1, 4 do
-        local sh = tex(f, "BACKGROUND", -8, { 0, 0, 0, 0.16 - i * 0.03 })
-        sh:SetPoint("TOPLEFT", -i, i)
-        sh:SetPoint("BOTTOMRIGHT", i, -i - 1)
-        f.shadow[i] = sh
-    end
-    S.Box(f, S.BG, S.BORDER)
+    f.shadow = S.Shadow(f, S.R_XL, 4, 0.16)
+    S.Box(f, S.BG, S.BORDER, S.R_XL)
     if name then tinsert(UISpecialFrames, name) end
 
     local bar = CreateFrame("Frame", nil, f)
     bar:SetPoint("TOPLEFT", 1, -1)
     bar:SetPoint("TOPRIGHT", -1, -1)
     bar:SetHeight(S.HEADER_H)
-    S.Box(bar, S.HEAD, S.CLEAR)
+    S.Box(bar, S.HEAD, S.CLEAR, S.R_XL - 1, "top")
     local line = S.Divider(bar, S.EDGE)
     line:SetPoint("BOTTOMLEFT")
     line:SetPoint("BOTTOMRIGHT")
@@ -1304,7 +1480,7 @@ function S.Footer(f)
     ft:SetPoint("BOTTOMLEFT", 1, 1)
     ft:SetPoint("BOTTOMRIGHT", -1, 1)
     ft:SetHeight(S.FOOTER_H)
-    S.Box(ft, S.HEAD, S.CLEAR)
+    S.Box(ft, S.HEAD, S.CLEAR, S.R_XL - 1, "bottom")
     local line = S.Divider(ft, S.EDGE)
     line:SetPoint("TOPLEFT")
     line:SetPoint("TOPRIGHT")
@@ -1346,9 +1522,9 @@ end
 function S.NavRow(r)
     S.Fill(r, S.CLEAR)
     r.mark = tex(r, "ARTWORK", 0, S.Accent())
-    r.mark:SetPoint("TOPLEFT")
-    r.mark:SetPoint("BOTTOMLEFT")
-    r.mark:SetWidth(2)
+    r.mark:SetPoint("TOPLEFT", 1, -8)
+    r.mark:SetPoint("BOTTOMLEFT", 1, 8)
+    r.mark:SetWidth(3)
     r.mark:Hide()
     function r:SetSelected(on)
         self.selected = on
@@ -1377,7 +1553,7 @@ function S.List(parent, rowHeight, make, fill, gap)
                 r:SetHeight(rowHeight)
                 r:SetPoint("TOPLEFT", 0, -(i - 1) * (rowHeight + gap))
                 r:SetPoint("TOPRIGHT", 0, -(i - 1) * (rowHeight + gap))
-                S.Box(r, S.CLEAR, S.CLEAR)
+                S.Box(r, S.CLEAR, S.CLEAR, S.R_MD)
                 r.line = S.Divider(r)
                 r.line:SetPoint("BOTTOMLEFT")
                 r.line:SetPoint("BOTTOMRIGHT")
@@ -1428,17 +1604,11 @@ local function showLines(lines, on)
     for _, e in ipairs(lines) do e:SetShown(on and true or false) end
 end
 
--- A translucent HUD panel: black edge, a faint inner line and a soft shadow.
+-- A translucent HUD panel with rounded corners: a faint edge and a soft shadow.
 function S.HudPanel(f)
-    S.Box(f, S.HUD_BG, S.BORDER)
-    f.inner = frameLines(f, "BORDER", 6, { 1, 1, 1, 0.06 }, 1, 1)
-    f.shadow = {}
-    for i = 1, 3 do
-        local sh = tex(f, "BACKGROUND", -8, { 0, 0, 0, 0.22 - i * 0.06 })
-        sh:SetPoint("TOPLEFT", -i, i)
-        sh:SetPoint("BOTTOMRIGHT", i, -i - 1)
-        f.shadow[i] = sh
-    end
+    S.Box(f, S.HUD_BG, { 1, 1, 1, 0.10 }, S.R_LG)
+    f.inner = {}
+    f.shadow = S.Shadow(f, S.R_LG, 3, 0.24)
     return f
 end
 
@@ -1462,15 +1632,26 @@ local STATE = { need = "BAD", soon = "WARN", ok = "GOOD" }
 function S.HudIcon(b, size)
     size = size or 40
     b:SetSize(size, size)
-    S.Box(b, { 0, 0, 0, 1 }, S.BORDER)
-    b.outline = frameLines(b, "BACKGROUND", -6, { 1, 1, 1, 0.10 }, 1, -1)
+    local r = size >= 32 and S.R_LG or S.R_MD
+    S.Box(b, { 0, 0, 0, 1 }, { 1, 1, 1, 0.14 }, r)
+    b.outline = {}
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", 1, -1)
     b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
     b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    b.ring = frameLines(b, "OVERLAY", 6, S.BAD, size >= 32 and 2 or 1, 1)
+    S.RoundMask(b, b.icon, MEDIA .. "RoundSq")
+    -- The state ring: one or two rounded 1 pixel rings on a frame above the icon.
+    b.ring = {}
+    for k = 1, size >= 32 and 2 or 1 do
+        local rf = CreateFrame("Frame", nil, b)
+        rf:SetPoint("TOPLEFT", k - 1, -(k - 1))
+        rf:SetPoint("BOTTOMRIGHT", -(k - 1), k - 1)
+        S.Box(rf, S.CLEAR, S.BAD, r - (k - 1))
+        for _, e in ipairs(rf.edges) do b.ring[#b.ring + 1] = e end
+    end
     showLines(b.ring, false)
-    b.glow = frameLines(b, "BACKGROUND", -7, S.BAD, 4, -2)
+    b.glow = roundRect(b, "BACKGROUND", -7, S.BAD, r + 3, -3,
+        { TOPLEFT = true, TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true })
     showLines(b.glow, false)
     b.key = S.Text(b, math.max(9, math.floor(size * 0.22)), S.TEXT, "OUTLINE")
     b.key:SetPoint("TOPLEFT", 3, -3)
@@ -1665,8 +1846,8 @@ function S.ToastFrame(name, parent)
     t:EnableMouse(true)
     S.HudPanel(t)
     t.stripe = tex(t, "ARTWORK", 1, S.Accent())
-    t.stripe:SetPoint("TOPLEFT", 1, -1)
-    t.stripe:SetPoint("BOTTOMLEFT", 1, 1)
+    t.stripe:SetPoint("TOPLEFT", 2, -S.R_LG)
+    t.stripe:SetPoint("BOTTOMLEFT", 2, S.R_LG)
     t.stripe:SetWidth(3)
     t.ico = S.IconBox(t, 40)
     t.ico:SetPoint("LEFT", 13, 0)
@@ -1677,17 +1858,17 @@ function S.ToastFrame(name, parent)
     t.close = closeButton(t, function() t:Dismiss() end)
     t.close:SetPoint("TOPRIGHT", 0, 0)
     t.track = tex(t, "ARTWORK", 0, { 1, 1, 1, 0.06 })
-    t.track:SetPoint("BOTTOMLEFT", 4, 1)
-    t.track:SetPoint("BOTTOMRIGHT", -1, 1)
+    t.track:SetPoint("BOTTOMLEFT", S.R_LG, 2)
+    t.track:SetPoint("BOTTOMRIGHT", -S.R_LG, 2)
     t.track:SetHeight(2)
     t.timer = tex(t, "ARTWORK", 1, S.Accent())
-    t.timer:SetPoint("BOTTOMLEFT", 4, 1)
+    t.timer:SetPoint("BOTTOMLEFT", S.R_LG, 2)
     t.timer:SetHeight(2)
     t.buttons = {}
     t:SetScript("OnUpdate", function(self, dt)
         if not self.left then return end
         self.left = self.left - (dt or 0)
-        local w = (self:GetWidth() or S.TOAST_W) - 5
+        local w = (self:GetWidth() or S.TOAST_W) - 2 * S.R_LG
         self.timer:SetWidth(math.max(1, w * math.max(0, self.left) / self.seconds))
         if self.left <= 0 then self:Dismiss() end
     end)
@@ -1749,7 +1930,7 @@ function S.ToastFrame(name, parent)
         self.left = (o.seconds or 0) > 0 and o.seconds or nil
         self.track:SetShown(self.left ~= nil)
         self.timer:SetShown(self.left ~= nil)
-        if self.left then self.timer:SetWidth((self:GetWidth() or S.TOAST_W) - 5) end
+        if self.left then self.timer:SetWidth((self:GetWidth() or S.TOAST_W) - 2 * S.R_LG) end
         self:Show()
     end
     t:Hide()
@@ -1817,11 +1998,11 @@ function S.Mover(f, opts)
     m:SetPoint("BOTTOMRIGHT", 4, -4)
     m:SetFrameLevel((tonumber((f:GetFrameLevel())) or 0) + 20)
     local a = S.Accent()
-    S.Box(m, { a[1], a[2], a[3], 0.12 }, a)
+    S.Box(m, { a[1], a[2], a[3], 0.12 }, a, S.R_MD)
     m.name = CreateFrame("Frame", nil, m)
     m.name:SetPoint("BOTTOMLEFT", m, "TOPLEFT", 0, 2)
     m.name:SetHeight(18)
-    S.Box(m.name, a, a)
+    S.Box(m.name, a, a, S.R_SM)
     m.name.text = S.Text(m.name, 10, { 0.05, 0.05, 0.06, 1 })
     m.name.text:SetShadowColor(0, 0, 0, 0)
     m.name.text:SetPoint("LEFT", 5, 0)

@@ -18,9 +18,9 @@ local function makeRow(r)
         if it.tier < 3 then ns.SetKept(it, not it.checked) end
         ns.Refresh(false)
     end)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(22, 22)
-    r.icon:SetPoint("LEFT", r.check, "RIGHT", 2, 0)
+    r.iconBox = S.IconBox(r, 22)
+    r.iconBox:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
+    r.icon = r.iconBox.tex
     r.value = S.Text(r, 11, S.MUTED)
     r.value:SetPoint("RIGHT", -4, 0)
     r.value:SetJustifyH("RIGHT")
