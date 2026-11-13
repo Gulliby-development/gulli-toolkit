@@ -12,7 +12,7 @@ Toolkit.api = 1
 -- Modules we make, shown in the hub even before they are installed.
 ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
              "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
-             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit" }
+             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy" }
 
 -- The hub's categories in sidebar order. A known module has its category here; another module
 -- names one of these keys in Register (category = "Items") or in its TOC (## X-Gulli-Category).
@@ -22,7 +22,7 @@ ns.CATEGORY_OF = {
     GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group",
     BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items",
     Bulletin = "Social", QuickChat = "Social", Social = "Social",
-    XP = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info",
+    XP = "Info", Legacy = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info",
 }
 
 -- Game API wrappers: the C_AddOns namespace with a fallback to the old globals.

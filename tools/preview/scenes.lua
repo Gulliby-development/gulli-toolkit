@@ -636,4 +636,24 @@ S.instancelimit.badge = { spec = S.instancelimit.default.spec, before = function
         ns.db.badgeMode = ns.BADGE_MODES[1]
         ns.SetupBadge()
     end }
+-- Legacy: the sample account of its test, with an alt and the XP module's pace.
+local function lgSpec()
+    local W = dofile("tests/legacy/wow.lua")
+    return W.World({ db = { chars = { ["Gulliwar-Realm"] = { name = "Gulliwar", class = "WARLOCK", level = 22, skills = { [333] = 61 }, rate = 9800, spent = 4 },
+                                       ["Gullihunt-Realm"] = { name = "Gullihunt", class = "HUNTER", level = 14, skills = {} } } },
+                     xpdb = { s = { active = 3600, gained = 11800 } } })
+end
+local function lgOpen(tab)
+    return function(ns)
+        ns.Scan(); ns.Snapshot()
+        ns.Pin(70010)
+        ns.Toggle()
+        if tab then ns.ShowTab(tab) end
+    end
+end
+S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = { open = lgOpen(3) },
+    settings = { open = lgOpen(4) },
+    goal = { open = function(ns) lgOpen()(ns); ns.SetGoal(15) end },
+    tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end } }
+for _, sc in pairs(S.legacy) do sc.spec = lgSpec() end
 return S
