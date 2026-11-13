@@ -440,7 +440,7 @@ function ns.Names(filter)
     table.sort(friends)
     for _, name in ipairs(friends) do add(name, "friend") end
     local guild = {}
-    if IsInGuild and IsInGuild() and GetNumGuildMembers then
+    if IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
         for i = 1, GetNumGuildMembers() or 0 do
             local name = GetGuildRosterInfo(i)
             if name then guild[#guild + 1] = name end

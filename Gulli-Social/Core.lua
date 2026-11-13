@@ -75,7 +75,7 @@ function ns.Known(name)
         if info and short(info.name) == want then return true end
     end
     if ns.db.bnet and bnetFriend(want) then return true end
-    if IsInGuild and IsInGuild() then
+    if IsInGuild and IsInGuild() and GetGuildRosterInfo then
         for i = 1, (GetNumGuildMembers and GetNumGuildMembers() or 0) do
             if short((GetGuildRosterInfo(i))) == want then return true end
         end
