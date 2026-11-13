@@ -408,6 +408,11 @@ local function option(label, get, values, text, icon, refill)
     return { kind = "cycle", label = label, get = get, values = values, text = text, icon = icon, refill = refill }
 end
 
+-- An on/off setting: a switch, never a Yes/No button.
+local function toggle(label, get, icon, refill)
+    return { kind = "check", label = label, get = get, icon = icon, refill = refill }
+end
+
 local function spellIcon(id) return id and ns.SpellIcon(id) end
 
 local function dbValue(key)
@@ -469,8 +474,6 @@ local function sizeValue(key)
     end
 end
 
-local function onOff(v) return v and L.YES or L.NO end
-
 local function rowList()
     local list = {
         { kind = "header", label = L.QUICK },
@@ -478,25 +481,23 @@ local function rowList()
             I .. "Spell_Holy_PrayerOfHealing02"),
         option(L.SHOW, dbValue("show"), ns.SHOW, function(v) return L["SHOW_" .. v] end,
             I .. "INV_Misc_Spyglass_02"),
-        option(L.COMBAT, dbValue("combat"), { true, false },
-            function(v) return v and L.COMBAT_ON or L.COMBAT_OFF end, I .. "Ability_Warrior_OffensiveStance"),
+        toggle(L.COMBAT, dbValue("combat"), I .. "Ability_Warrior_OffensiveStance"),
         { kind = "key", label = L.KEY, icon = I .. "INV_Gizmo_01" },
-        option(L.LOCK, dbValue("locked"), { false, true }, function(v) return v and L.YES or L.NO end,
-            I .. "INV_Misc_Key_04"),
+        toggle(L.LOCK, dbValue("locked"), I .. "INV_Misc_Key_04"),
         option(L.WHERE, dbValue("where"), ns.WHERE, function(v) return L["WHERE_" .. v] end,
             I .. "INV_Misc_Map_01"),
-        option(L.READY, dbValue("readyCheck"), { true, false }, onOff, I .. "INV_Misc_Bell_01"),
-        option(L.MARKS, dbValue("marks"), { true, false }, onOff, I .. "Ability_Hunter_MarkedForDeath"),
-        option(L.LABELS, dbValue("labels"), { true, false }, onOff, I .. "INV_Misc_Note_01"),
+        toggle(L.READY, dbValue("readyCheck"), I .. "INV_Misc_Bell_01"),
+        toggle(L.MARKS, dbValue("marks"), I .. "Ability_Hunter_MarkedForDeath"),
+        toggle(L.LABELS, dbValue("labels"), I .. "INV_Misc_Note_01"),
         { kind = "header", label = L.TARGETS },
-        option(L.PETS, dbValue("pets"), { true, false }, onOff, I .. "Ability_Hunter_BeastCall"),
-        option(L.FOCUS, dbValue("focus"), { true, false }, onOff, I .. "Ability_Hunter_SniperShot"),
+        toggle(L.PETS, dbValue("pets"), I .. "Ability_Hunter_BeastCall"),
+        toggle(L.FOCUS, dbValue("focus"), I .. "Ability_Hunter_SniperShot"),
         option(L.RAID_GROUPS, dbValue("raidGroups"), ns.RAID_GROUPS,
             function(v) return v == "all" and L.RAID_ALL or L.RAID_N:format(v) end, I .. "INV_Banner_02"),
         option(L.MANA, dbValue("mana"), ns.MANA,
             function(v) return v == 0 and L.MANA_OFF or L.MANA_N:format(v) end, I .. "INV_Potion_76"),
         { kind = "header", label = L.TIMING },
-        option(L.PER_SIZE, dbValue("perSize"), { false, true }, onOff, I .. "Spell_Nature_TimeStop", true),
+        toggle(L.PER_SIZE, dbValue("perSize"), I .. "Spell_Nature_TimeStop", true),
         option(L.SIZE_EDIT, function(v)
             if v ~= nil then editSize = v end
             return editSize or ns.Size()
@@ -665,6 +666,7 @@ local function makeRow(parent, data)
         r.check = control
         control:SetScript("OnClick", function(self)
             self:SetChecked(r.data.get(not r.data.get()))
+            if r.data.refill then r.fill() end
             dirty = true
         end)
     end

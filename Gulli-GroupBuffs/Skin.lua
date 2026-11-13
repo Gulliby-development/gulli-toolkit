@@ -755,22 +755,24 @@ function S.SettingsCard(parent, title, rows, hint, icon)
     return card, card:Fit(st:Height() - (title and 6 or 0))
 end
 
--- A check box with its label to the right; get() and set(value) read and write the setting.
--- The label is anchored to the box, so put the box where the row goes.
-function S.CheckRow(parent, label, get, set, width)
-    local c = S.Check(parent, 26)
-    c.label = S.Text(c, 12)
-    c.label:SetPoint("LEFT", c, "RIGHT", 6, 0)
-    c.label:SetWidth(width or 300)
-    c.label:SetWordWrap(false)
-    c.label:SetText(label)
-    c:SetScript("OnClick", function(self)
+-- An on/off switch with its label to the right, for a setting outside a settings card (a list
+-- filter). get() and set(value) read and write the setting. The label is anchored to the switch,
+-- so put the switch where the row goes. Check boxes are for picking entries of a list, never for
+-- a setting.
+function S.SwitchLabel(parent, label, get, set, width)
+    local s = S.Switch(parent)
+    s.label = S.Text(s, 12)
+    s.label:SetPoint("LEFT", s, "RIGHT", 4, 0)
+    s.label:SetWidth(width or 300)
+    s.label:SetWordWrap(false)
+    s.label:SetText(label)
+    s:SetScript("OnClick", function(self)
         set(not get())
         self:SetChecked(get())
     end)
-    c:SetScript("OnShow", function(self) self:SetChecked(get()) end)
-    c:SetChecked(get())
-    return c
+    s:SetScript("OnShow", function(self) self:SetChecked(get()) end)
+    s:SetChecked(get())
+    return s
 end
 
 -- Showing state ------------------------------------------------------------------------------

@@ -225,7 +225,7 @@ function ns.Layout()
     local left = 0
     if current == 1 then
         local w = myLevel.label.GetStringWidth and myLevel.label:GetStringWidth() or 0
-        left = 26 + 6 + (w > 0 and w or 220) + 16
+        left = 44 + 4 + (w > 0 and w or 220) + 16
     elseif current == CRAFT then
         left = craftTabs.frame:GetWidth() + S.GAP
     end
@@ -338,9 +338,9 @@ local function build()
     card = S.Card(body)
     card:SetPoint("TOPLEFT", 0, -30 - S.GAP)
     card:SetPoint("BOTTOMRIGHT")
-    myLevel = S.CheckRow(card.body, L.MY_LEVEL, function() return ns.db.myLevel end,
+    myLevel = S.SwitchLabel(card.body, L.MY_LEVEL, function() return ns.db.myLevel end,
         function(v) ns.db.myLevel = v; ns.Refresh() end, 300)
-    myLevel:SetPoint("TOPLEFT", -6, 2)
+    myLevel:SetPoint("TOPLEFT", -4, 2)
     local modeLabels = {}
     for i, m in ipairs(CRAFT_MODES) do modeLabels[i] = L["CRAFT_" .. m] end
     craftTabs = S.Tabs(card.body, modeLabels, 140, function(i)
