@@ -188,7 +188,7 @@ function ns.Stats(now)
         ready = ready, readyN = readyN,
         -- Where the level stands after handing in every finished quest.
         readyPercent = max > 0 and math.min(100, math.floor((cur + ready) * 100 / max)) or 0,
-        level = UnitLevel("player"),
+        level = UnitLevel("player"), cur = cur, max = max,
     }
 end
 
@@ -221,8 +221,12 @@ end
 -- Settings -------------------------------------------------------------------------------------
 
 -- The bar's settings; a new one gets its default here. text: what the bar says (ns.TEXTS).
-ns.DEFAULTS = { bar = true, locked = false, alpha = 100, scale = 100, text = "all", wide = false, rep = true }
+ns.DEFAULTS = { bar = true, locked = false, alpha = 100, scale = 100, text = "all", wide = false, rep = true,
+                style = "fill" }
 ns.TEXTS = { "all", "rate", "eta", "left", "pct" }
+-- How the bar looks: filled from end to end, or the old thin line under the text. A new look
+-- gets a key here and a STYLE_<KEY> text in every language.
+ns.STYLES = { "fill", "line" }
 ns.BAR_POINT = { "TOP", 0, -150 }
 ns.OPT_ICON = {
     bar = "Interface\\Icons\\INV_Misc_Spyglass_02",

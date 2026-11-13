@@ -162,6 +162,9 @@ S.xp = { default = {
     open = function(ns, W) xpPlay(W); ns.Refresh() end,
     crop = "GulliXPBar",
 } }
+S.xp.bar = { before = xpQuests, crop = "GulliXPBar",
+    open = function(ns, W) xpPlay(W); ns.SetPref("wide", false); ns.Refresh() end }
+S.xp.bar.spec = S.xp.default.spec
 S.xp.levels.spec = S.xp.default.spec
 S.xp.settings.spec = S.xp.default.spec
 
