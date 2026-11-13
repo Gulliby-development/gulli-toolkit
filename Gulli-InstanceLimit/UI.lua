@@ -247,7 +247,7 @@ local function build()
     resetBtn:SetScript("OnClick", function() ns.Reset() end)
 
     local body, width = frame.body, frame.inner[1]
-    tabs = S.Tabs(body, { L.TAB_STATUS, L.TAB_SETTINGS }, 120, function(i) page = i; ns.Refresh() end)
+    tabs = S.Tabs(body, { L.TAB_STATUS, L.TAB_SETTINGS }, 120, function(i) page = i; ns.Refresh() end, nil, { S.TAB.overview, S.TAB.settings })
 
     statusPage = CreateFrame("Frame", nil, body)
     statusPage:SetPoint("TOPLEFT", 0, -30 - S.GAP)

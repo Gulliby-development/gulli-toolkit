@@ -17,6 +17,14 @@ local TAB_KEYS = { "TAB_GROUPS", "TAB_WTS", "TAB_WTB", "TAB_CRAFT", "TAB_GUILD",
 local SETUP = #TAB_KEYS
 local CRAFT = 4
 local CRAFT_MODES = { "ALL", "LF", "OFFER" }
+local I = "Interface\\Icons\\"
+local TAB_ICONS = { S.TAB.group, I .. "INV_Misc_Coin_02", S.TAB.vendor, I .. "INV_Gizmo_01",
+                    I .. "INV_Shirt_GuildTabard_01", S.TAB.chat, S.TAB.settings }
+-- Each profession's own icon from the game.
+local PROF_ICON = { ENCH = I .. "Trade_Engraving", BS = I .. "Trade_BlackSmithing", TAILOR = I .. "Trade_Tailoring",
+                    LW = I .. "INV_Misc_ArmorKit_17", ALCH = I .. "Trade_Alchemy", ENGI = I .. "Trade_Engineering",
+                    COOK = I .. "INV_Misc_Food_15", LOCK = I .. "INV_Misc_Key_03" }
+ns.PROF_ICON = PROF_ICON
 
 local function ago(t)
     local m = math.floor((time() - t) / 60)
@@ -114,9 +122,9 @@ local function fillRow(r, item)
     r.who:SetText(role .. (hex and (hex .. item.short .. "|r") or item.short))
     -- The roles an LFM asks for go under the name, next to the age.
     local needs = {}
-    for _, n in ipairs(item.needs or {}) do needs[#needs + 1] = L["ROLE_" .. n] end
+    for _, n in ipairs(item.needs or {}) do needs[#needs + 1] = S.IconTag(S.ROLE_ICON[n]) .. " " .. L["ROLE_" .. n] end
     local extra = #needs > 0 and ("  " .. S.Hex(S.WARN) .. table.concat(needs, " ") .. "|r") or ""
-    if item.prof then extra = "  " .. S.Hex(S.MUTED) .. L["PROF_" .. item.prof] .. "|r" end
+    if item.prof then extra = "  " .. S.IconTag(PROF_ICON[item.prof]) .. " " .. S.Hex(S.MUTED) .. L["PROF_" .. item.prof] .. "|r" end
     r.age:SetText(ago(item.t) .. extra)
     r.text:SetText(item.text)
     local act = item.kind == "GROUP"
@@ -296,8 +304,10 @@ local function buildSetup(body, width)
     local roleLabels = {}
     for i, r in ipairs(ns.ROLES) do roleLabels[i] = L["ROLE_" .. r] end
     local roleHolder = CreateFrame("Frame", nil, body)
-    roleHolder:SetSize(3 * 64 + 4, 30)
-    local roles = S.Tabs(roleHolder, roleLabels, 64, function(i) ns.db.role = ns.ROLES[i] end)
+    roleHolder:SetSize(3 * 84 + 4, 30)
+    local roleIcons = {}
+    for i, r in ipairs(ns.ROLES) do roleIcons[i] = S.ROLE_ICON[r] end
+    local roles = S.Tabs(roleHolder, roleLabels, 84, function(i) ns.db.role = ns.ROLES[i] end, nil, roleIcons)
     roleHolder:SetScript("OnShow", function()
         for i, r in ipairs(ns.ROLES) do if r == ns.db.role then roles:Select(i, true) end end
     end)
@@ -323,7 +333,7 @@ local function build()
     local body, width = frame.body, frame.inner[1]
     local labels = {}
     for i, k in ipairs(TAB_KEYS) do labels[i] = L[k] end
-    tabs = S.Tabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end)
+    tabs = S.Tabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end, nil, TAB_ICONS)
 
     card = S.Card(body)
     card:SetPoint("TOPLEFT", 0, -30 - S.GAP)
@@ -349,6 +359,7 @@ local function build()
         local b = S.Pill(profRow, pw, 28)
         b:SetPoint("TOPLEFT", (i - 1) * (pw + 6), 0)
         b:SetText(L["PROF_" .. key])
+        S.SetButtonIcon(b, PROF_ICON[key])
         b.key = key
         b:SetScript("OnClick", function(self)
             ns.db.craftProfs[self.key] = (not ns.db.craftProfs[self.key]) or nil

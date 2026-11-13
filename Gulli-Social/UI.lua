@@ -167,7 +167,7 @@ end
 local function build()
     frame = S.Window("GulliSocialFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
-    tabs = S.Tabs(body, { L.TAB_RULES, L.TAB_RECENT }, 120, function(i) page = i; ns.Refresh() end)
+    tabs = S.Tabs(body, { L.TAB_RULES, L.TAB_RECENT }, 120, function(i) page = i; ns.Refresh() end, nil, { S.TAB.rules, S.TAB.recent })
     buildRules(body, width)
     buildRecent(body)
     frame:SetScript("OnShow", function() tabs:Select(page) end)

@@ -756,5 +756,35 @@ test("text uses a font family with Cyrillic and CJK glyphs when the game has one
     eq(t.object and t.object.name, "GulliFont13", "the text uses the family")
 end)
 
+test("tabs take an icon per label, and an empty label shows the icon alone with a tooltip", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local t = S.Tabs(CreateFrame("Frame"), { "Rules", "" }, 60, nil, nil, { S.TAB.rules, "dice" })
+    assert(rawget(t.buttons[1], "btnIcon"), "a labelled tab has its icon")
+    assert(rawget(t.buttons[2], "btnIcon"), "an icon-only tab has its icon")
+    local shown
+    GameTooltip = { SetOwner = function() end, SetText = function(_, s) shown = s end, Show = function() end, Hide = function() end }
+    t.buttons[2].tip = "Need"
+    t.buttons[2]._OnEnter(t.buttons[2])
+    GameTooltip = nil
+    eq(shown, "Need", "the cursor names an icon-only tab")
+end)
+
+test("an icon tile shows its title and count and greys out when disabled", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local tile = S.IconTile(CreateFrame("Frame"), 80, 52, true)
+    tile.title, tile.item.count = stubText(), stubText()
+    local texts = {}
+    tile.title.SetText = function(_, v) texts.title = v end
+    tile.item.count.SetText = function(_, v) texts.count = v end
+    tile:Set({ icon = "x", title = "Cloth", count = 3 })
+    eq(texts.title, "Cloth"); eq(texts.count, "3")
+    tile:Set({ icon = "x", title = "Herbs", count = 0 })
+    eq(texts.count, "", "no count on an empty kind")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

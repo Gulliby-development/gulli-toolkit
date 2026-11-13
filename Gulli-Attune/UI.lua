@@ -330,7 +330,7 @@ end
 local function build()
     frame = S.Window("GulliAttuneFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body = frame.body
-    tabs = S.Tabs(body, { L.TAB_CHAR, L.TAB_ALL, L.TAB_GROUP, L.TAB_SETTINGS }, nil, showTab)
+    tabs = S.Tabs(body, { L.TAB_CHAR, L.TAB_ALL, L.TAB_GROUP, L.TAB_SETTINGS }, nil, showTab, nil, { S.TAB.char, S.TAB.list, S.TAB.group, S.TAB.settings })
 
     -- Character
     local p1 = page(body)

@@ -412,8 +412,19 @@ S.mail = { panel = {
     open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW") end,
     crop = "GulliMailPanel",
 }, write = {
-    spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {} },
-    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.ShowTab(2) end,
+    spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {},
+             bags = { [0] = { { id = 2589, count = 20 }, { id = 2589, count = 20 }, { id = 4306, count = 12 },
+                              { id = 2770, count = 10 }, { id = 2318, count = 8 }, { id = 2318, count = 4 },
+                              { id = 10940, count = 6 }, { id = 774, count = 1 } } },
+             classes = { [2589] = { 7, 5 }, [4306] = { 7, 5 }, [2770] = { 7, 7 }, [2318] = { 7, 6 },
+                         [10940] = { 7, 12 }, [774] = { 3, 0 } } },
+    open = function(ns, W)
+        local icons = { [2589] = "Interface\\Icons\\INV_Fabric_Linen_01", [4306] = "Interface\\Icons\\INV_Fabric_Silk_01", [2770] = "Interface\\Icons\\INV_Ore_Copper_01",
+                        [2318] = "Interface\\Icons\\INV_Misc_LeatherScrap_03", [10940] = "Interface\\Icons\\INV_Enchant_DustStrange", [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03",
+                        [2447] = "Interface\\Icons\\INV_Misc_Flower_02", [7067] = "Interface\\Icons\\INV_Stone_02" }
+        C_Item.GetItemIconByID = function(id) return icons[id] end
+        W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); SendMailFrame:Show(); ns.ShowTab(2)
+    end,
     crop = "GulliMailPanel",
 }, settings = {
     spec = {},

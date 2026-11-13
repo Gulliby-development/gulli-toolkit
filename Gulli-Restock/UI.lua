@@ -126,7 +126,7 @@ local function build()
     ft:SetStatus(L.FOOT_HINT)
 
     local body, width = frame.body, frame.inner[1]
-    tabs = S.Tabs(body, { L.TAB_LIST, L.TAB_VENDOR, L.TAB_SETTINGS }, math.floor((width - 4) / 3), showTab)
+    tabs = S.Tabs(body, { L.TAB_LIST, L.TAB_VENDOR, L.TAB_SETTINGS }, math.floor((width - 4) / 3), showTab, nil, { S.TAB.list, S.TAB.vendor, S.TAB.settings })
     for i = 1, 3 do
         local p = CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
@@ -157,7 +157,14 @@ local function build()
         b:SetPoint("BOTTOMLEFT", (k - 1) * (bw + 6), 0)
         b:SetText("+ " .. L["KIND_" .. kind:upper()])
         b:SetScript("OnClick", function() ns.AddFromText(kind) end)
+        b.kindKey = "best:" .. kind
+        S.SetButtonIcon(b, ns.EntryIcon(b.kindKey))
+        bottom[k] = b
     end
+    -- The icon is the best item of the kind for the level now.
+    bottom:SetScript("OnShow", function(self)
+        for k in ipairs(ns.BEST_ORDER) do S.SetButtonIcon(self[k], ns.EntryIcon(self[k].kindKey)) end
+    end)
     local addBtn = S.FitButton(bottom, L.ADD, 30, 70)
     addBtn:SetPoint("TOPRIGHT")
     addEdit = S.Edit(bottom, 1, 30)

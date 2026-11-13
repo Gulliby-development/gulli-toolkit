@@ -407,7 +407,7 @@ local function build()
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if i == 3 then for _, x in ipairs(frame.steppers) do x:Refresh() end end
         ns.Refresh()
-    end)
+    end, nil, { S.TAB.recent, "Interface\\Icons\\Spell_ChargePositive", S.TAB.overview })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
     st:Space(30 + S.GAP)

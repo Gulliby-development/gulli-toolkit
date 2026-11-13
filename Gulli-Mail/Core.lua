@@ -30,15 +30,17 @@ ns.OPT_ICON = {
     keepGold = "Interface\\Icons\\INV_Misc_Coin_02",
 }
 
--- Quick attach: item class 7 (trade goods) subclasses, and class 3 (gems).
+-- Quick attach: item class 7 (trade goods) subclasses, and class 3 (gems). `sample` is a
+-- typical item whose icon the tile shows when the bags hold none; `all` takes every kind above it.
 ns.ATTACH_KINDS = {
-    { key = "cloth", class = 7, sub = 5 },
-    { key = "herb", class = 7, sub = 9 },
-    { key = "ore", class = 7, sub = 7 },
-    { key = "leather", class = 7, sub = 6 },
-    { key = "elemental", class = 7, sub = 10 },
-    { key = "enchanting", class = 7, sub = 12 },
-    { key = "gem", class = 3 },
+    { key = "cloth", class = 7, sub = 5, sample = 2589 },       -- Linen Cloth
+    { key = "herb", class = 7, sub = 9, sample = 2447 },        -- Peacebloom
+    { key = "ore", class = 7, sub = 7, sample = 2770 },         -- Copper Ore
+    { key = "leather", class = 7, sub = 6, sample = 2318 },     -- Light Leather
+    { key = "elemental", class = 7, sub = 10, sample = 7067 },  -- Elemental Earth
+    { key = "enchanting", class = 7, sub = 12, sample = 10940 }, -- Strange Dust
+    { key = "gem", class = 3, sample = 774 },                   -- Malachite
+    { key = "all", all = true, icon = "Interface\\Icons\\INV_Misc_Bag_10" },
 }
 
 -- Game API wrappers.
@@ -75,6 +77,21 @@ local function slotItem(bag, slot)
     end
     local _, _, locked, _, _, _, _, _, _, id = GetContainerItemInfo(bag, slot)
     return id, locked
+end
+local function itemIcon(id)
+    if C_Item and C_Item.GetItemIconByID then return C_Item.GetItemIconByID(id) end
+    return GetItemIcon and GetItemIcon(id) or nil
+end
+local function itemName(id)
+    return (((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id))
+end
+local function stackCount(bag, slot)
+    if C.GetContainerItemInfo then
+        local i = C.GetContainerItemInfo(bag, slot)
+        return i and i.stackCount or 1
+    end
+    local _, n = GetContainerItemInfo(bag, slot)
+    return n or 1
 end
 local function itemClass(id)
     local _, _, _, _, _, _, _, _, _, _, _, classID, subclassID = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
@@ -472,6 +489,59 @@ local function kindOf(key)
     for _, k in ipairs(ns.ATTACH_KINDS) do if k.key == key then return k end end
 end
 
+-- Whether an item of this class and subclass belongs to the kind (`all`: to any kind).
+function ns.KindHas(k, class, sub)
+    if k.all then
+        for _, o in ipairs(ns.ATTACH_KINDS) do
+            if not o.all and ns.KindHas(o, class, sub) then return true end
+        end
+        return false
+    end
+    return class == k.class and (not k.sub or sub == k.sub)
+end
+
+-- Free attachment places in the letter being written.
+function ns.Room()
+    local room = SEND_MAX
+    if GetSendMailItem then
+        for j = 1, SEND_MAX do if GetSendMailItem(j) then room = room - 1 end end
+    end
+    return room
+end
+
+-- The icon of a kind without looking in the bags: its sample item, or its own icon.
+function ns.KindIcon(key)
+    local k = kindOf(key)
+    if not k then return nil end
+    return k.icon or (k.sample and itemIcon(k.sample)) or nil
+end
+
+-- What a quick-attach tile shows: { icon, stacks, going (stacks that fit), total (items),
+-- top (name of the item with most), items = { { id, name, count } } most first }.
+function ns.KindInfo(key)
+    local k = kindOf(key)
+    local info = { stacks = 0, total = 0, items = {} }
+    if not k then return info end
+    local by = {}
+    for _, it in ipairs(ns.ItemsOfKind(key)) do
+        local n = stackCount(it.bag, it.slot)
+        local e = by[it.id]
+        if not e then
+            e = { id = it.id, name = itemName(it.id) or ("#" .. it.id), count = 0, stacks = 0 }
+            by[it.id] = e
+            info.items[#info.items + 1] = e
+        end
+        e.count, e.stacks = e.count + n, e.stacks + 1
+        info.stacks, info.total = info.stacks + 1, info.total + n
+    end
+    table.sort(info.items, function(a, b) if a.count ~= b.count then return a.count > b.count end return a.id < b.id end)
+    local top = info.items[1]
+    info.top = top and top.name
+    info.icon = k.icon or (top and itemIcon(top.id)) or ns.KindIcon(key)
+    info.going = math.min(info.stacks, sendOpen() and ns.Room() or SEND_MAX)
+    return info
+end
+
 -- Bag items of one quick-attach kind that can go by mail: not bound, not protected, not
 -- locked. { { bag, slot, id } }
 function ns.ItemsOfKind(key)
@@ -483,7 +553,7 @@ function ns.ItemsOfKind(key)
             local id, locked = slotItem(bag, slot)
             if id and not locked and not protected(id) then
                 local class, sub = itemClass(id)
-                if class == k.class and (not k.sub or sub == k.sub) and not bound(bag, slot) then
+                if ns.KindHas(k, class, sub) and not bound(bag, slot) then
                     out[#out + 1] = { bag = bag, slot = slot, id = id }
                 end
             end
@@ -496,10 +566,7 @@ end
 -- while the send tab is open), up to the free attachment places. Returns how many.
 function ns.AttachKind(key)
     if not sendOpen() then return 0 end
-    local room = SEND_MAX
-    if GetSendMailItem then
-        for j = 1, SEND_MAX do if GetSendMailItem(j) then room = room - 1 end end
-    end
+    local room = ns.Room()
     local n = 0
     for _, it in ipairs(ns.ItemsOfKind(key)) do
         if n >= room then break end

@@ -20,7 +20,7 @@ In a dungeon group, every gray drop asks you to roll. Gulli Loot answers by your
 
 - **A rule per quality.** Gray, white and green: Ask, Greed or Pass. Gray is passed by default. Choose where these rules count: always, only in a party, or only in a raid.
 - **A rule per item type.** Recipes, cloth and trade goods, food and potions, quest items: for example "recipes: always ask".
-- **A rule per item.** Ask, Need, Greed or Pass, picked with one tap. Add an item without dragging: Alt-click it in your bags, in a roll frame or in a chat link, or type `/glt need <link>` (also `greed`, `pass`, `ask`). You can also drop it on the window. An item rule wins over everything else.
+- **A rule per item.** Ask, Need, Greed or Pass, picked with one tap on the game's own roll icons (question mark, dice, coin, cross). Add an item without dragging: Alt-click it in your bags, in a roll frame or in a chat link, or type `/glt need <link>` (also `greed`, `pass`, `ask`). You can also drop it on the window. An item rule wins over everything else.
 - **Recent rolls.** The last 30 rolls, with what was done, why (item rule, quality, bind on pickup...), and who won. One tap on **Make rule** turns a roll into a rule. What you win also goes to the toolkit's **Recent** feed.
 - **Smart extras, off by default.** Greed on green bind-on-equip items your class cannot use. Need on a green item that is better than what you wear in that slot.
 - **One switch, and Shift.** Turn the whole module off with one switch (also in the toolkit hub, or `/glt off`). Hold Shift when a roll starts to make that one yourself.

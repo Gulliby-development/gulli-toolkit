@@ -164,16 +164,18 @@ function Fake(spec)
         GetContainerNumSlots = function(b) return W.bags[b] and 16 or 0 end,
         GetContainerItemInfo = function(b, s)
             local x = W.bags[b] and W.bags[b][s]
-            if x then return { itemID = x.id, isLocked = false } end
+            if x then return { itemID = x.id, isLocked = false, stackCount = x.count or 1 } end
         end,
         UseContainerItem = function(b, s) W.used[#W.used + 1] = W.bags[b][s].id; W.bags[b][s] = nil end,
     }
     C_Item = { GetItemInfo = function(id)
         local c = W.classes[id] or {}
         return "Item" .. id, nil, 1, nil, nil, nil, nil, 1, nil, nil, 1, c[1], c[2]
-    end, IsBound = function(loc) local x = W.bags[loc.bag][loc.slot] return x and x.bound end }
+    end, GetItemIconByID = function(id) return "icon" .. id end, IsBound = function(loc) local x = W.bags[loc.bag][loc.slot] return x and x.bound end }
     ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
     SendMailFrame = W.stub()
+    W.sendItems = 0
+    GetSendMailItem = function(j) return j <= W.sendItems and "x" or nil end
     W.sendMoney = nil
     SendMailMoney = {}
     MoneyInputFrame_SetCopper = function(_, c) W.sendMoney = c end
