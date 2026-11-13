@@ -26,7 +26,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 - **Group spells when they pay off.** When three or more players in a party need the same buff, it casts Prayer of Fortitude, Arcane Brilliance or Gift of the Wild instead, if you have the reagent.
 - **Buff again in time.** A buff with less than one minute left counts as missing. You choose: when it is gone, or 1, 3 or 5 minutes before.
 - **Every class.**
-  - Priest: Power Word: Fortitude, Divine Spirit, Shadow Protection (off by default), Inner Fire.
+  - Priest: Power Word: Fortitude, Divine Spirit, Shadow Protection (off by default), Inner Fire, and the racial Touch of Weakness (Undead) and Shadowguard (Troll), only on yourself.
   - Mage: Arcane Intellect, and your armor (the best one you know, or the one you pick).
   - Druid: Mark of the Wild, Thorns on you, on your tanks or on everyone, and Omen of Clarity.
   - Paladin: one blessing per class, one for tanks and one for healers, your aura, and Righteous Fury (off by default).

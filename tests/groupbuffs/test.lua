@@ -43,6 +43,17 @@ test("solo priest: your own buffs, in the class order; unknown and default-off o
     eq(show(ns.Plan()), "Power Word: Fortitude@player,Inner Fire@player")
 end)
 
+test("racial self buffs: Touch of Weakness by any known rank, only on you", function()
+    Fake { known = { [588] = true, [19262] = true }, db = { groupMin = 0 }, units = party() }
+    local ns = Load()
+    eq(show(ns.Plan()), "Inner Fire@player,Touch of Weakness@player")
+    W.units.player.auras["Touch of Weakness"] = 600
+    eq(show(ns.Plan()), "Inner Fire@player")
+    local keys = {}
+    for _, f in ipairs(ns.Families()) do keys[#keys + 1] = f.key end
+    eq(table.concat(keys, ","), "innerfire,touch", "Shadowguard is not known, so it is left out")
+end)
+
 test("you first, then the party; no Spirit for classes without mana; self buffs only on you", function()
     Fake { known = PRIEST, db = { groupMin = 0 }, units = party() }
     local ns = Load()
