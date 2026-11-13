@@ -135,7 +135,7 @@ function ns.RunText(e)
     if (e.xp or 0) > 0 then parts[#parts + 1] = L.RUN_XP:format(e.xp) end
     local m = e.money or 0
     if m ~= 0 then
-        parts[#parts + 1] = (GetCoinTextureString and GetCoinTextureString(math.abs(m)) or (math.floor(m / 100) / 100 .. "g"))
+        parts[#parts + 1] = (ns.Skin and ns.Skin.MoneyText) and ns.Skin.MoneyText(m) or (math.floor(m / 100) / 100 .. "g")
     end
     if (e.kills or 0) > 0 then parts[#parts + 1] = L.RUN_KILLS:format(e.kills) end
     return table.concat(parts, ", ")

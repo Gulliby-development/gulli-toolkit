@@ -61,7 +61,7 @@ local function fillRow(r, e)
     if it then r.check:SetChecked(it.checked) end
     r.icon:Set(icon, count, quality)
     r.name:SetText(S.QualityHex(quality) .. name .. "|r" .. (tag and ("  " .. S.Hex(S.FAINT) .. L[tag] .. "|r") or ""))
-    r.value:SetText(it and ns.Money(it.value) or "")
+    r.value:SetText(it and S.MoneyText(it.value) or "")
     -- The row's button: remove from the "always" list, or add a suggestion to it.
     local showBtn = e.kind == "suggest" or e.kind == "always" or (it and it.why == "always")
     r.btn:SetShown(showBtn)
@@ -100,14 +100,14 @@ function ns.Refresh()
     local selling, sellValue = ns.ToSell()
     list:SetData(rows)
     empty:SetShown(#rows == 0)
-    listCard:SetTitle(L.WILL_SELL, #junk > 0 and ns.Money(total) or "")
-    stats.tiles[1]:Set(ns.ShortMoney(total))
-    stats.tiles[2]:Set(ns.ShortMoney(ns.session.value), nil, L.STAT_SOLD:format(ns.session.sold))
-    stats.tiles[3]:Set(ns.ShortMoney(ns.session.repair))
+    listCard:SetTitle(L.WILL_SELL, #junk > 0 and S.MoneyText(total) or "")
+    stats.tiles[1]:Set(S.MoneyText(total, true))
+    stats.tiles[2]:Set(S.MoneyText(ns.session.value, true), nil, L.STAT_SOLD:format(ns.session.sold))
+    stats.tiles[3]:Set(S.MoneyText(ns.session.repair, true))
     local status, color
     if #selling == 0 then status, color = L.NO_JUNK, S.MUTED
-    elseif #selling > 12 then status, color = L.JUNK:format(#selling, ns.Money(sellValue)) .. " " .. L.BUYBACK, S.WARN
-    else status, color = L.JUNK:format(#selling, ns.Money(sellValue)), S.TEXT end
+    elseif #selling > 12 then status, color = L.JUNK:format(#selling, S.MoneyText(sellValue)) .. " " .. L.BUYBACK, S.WARN
+    else status, color = L.JUNK:format(#selling, S.MoneyText(sellValue)), S.TEXT end
     frame.footer:SetStatus(status, color)
     sellBtn:SetEnabled(ns.atVendor and #selling > 0)
 end

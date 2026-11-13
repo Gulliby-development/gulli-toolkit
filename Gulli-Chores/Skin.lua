@@ -797,14 +797,20 @@ function S.Empty(parent)
     return e
 end
 
-function S.MoneyText(copper)
-    copper = math.floor(copper or 0)
+-- Money in the coin colours, so gold, silver and copper read at a glance. `short` drops the
+-- copper from 1 gold up (for tiles). A negative amount starts with a minus.
+function S.MoneyText(copper, short)
+    copper = tonumber(copper) or 0
+    if copper ~= copper or copper == math.huge or copper == -math.huge then return "?" end
+    copper = math.floor(copper + 0.5)
+    local sign = copper < 0 and "-" or ""
+    copper = math.abs(copper)
     local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
     local parts = {}
     if g > 0 then parts[#parts + 1] = S.Hex(S.GOLD) .. g .. "g|r" end
     if s > 0 then parts[#parts + 1] = S.Hex(S.SILVER) .. s .. "s|r" end
-    if c > 0 or #parts == 0 then parts[#parts + 1] = S.Hex(S.COPPER) .. c .. "c|r" end
-    return table.concat(parts, " ")
+    if (c > 0 and not (short and g > 0)) or #parts == 0 then parts[#parts + 1] = S.Hex(S.COPPER) .. c .. "c|r" end
+    return sign .. table.concat(parts, " ")
 end
 
 -- A tile with a game icon, a small label, one value and a line under it, and an optional bar:

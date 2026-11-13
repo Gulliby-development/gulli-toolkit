@@ -811,5 +811,17 @@ test("an icon tile shows its title and count and greys out when disabled", funct
     eq(texts.count, "", "no count on an empty kind")
 end)
 
+test("money shows each coin in its colour, short drops copper from 1 gold, a loss keeps its minus", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local plain = function(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    eq(plain(S.MoneyText(26664)), "2g 66s 64c")
+    eq(plain(S.MoneyText(26664, true)), "2g 66s")
+    eq(plain(S.MoneyText(-150)), "-1s 50c")
+    eq(plain(S.MoneyText(0)), "0c")
+    assert(S.MoneyText(26664):find(S.Hex(S.GOLD) .. "2g", 1, true), "gold in the gold colour")
+    assert(S.MoneyText(26664):find(S.Hex(S.COPPER) .. "64c", 1, true), "copper in the copper colour")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

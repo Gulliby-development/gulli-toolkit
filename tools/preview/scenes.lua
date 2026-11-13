@@ -419,7 +419,7 @@ S.mail = { panel = {
                        { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
                        { sender = "Bob", subject = "Herbs", items = { 765, 785 }, days = 2.4 },
                        { sender = "Auction House", subject = "Auction expired: Copper Ore", items = { 2770 }, days = 25, player = false } } },
-    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW") end,
+    open = function(ns, W) W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.visit.items, ns.visit.money, ns.visit.sold = 3, 26664, 26664; ns.Refresh() end,
     crop = "GulliMailPanel",
 }, write = {
     spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {},
