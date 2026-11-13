@@ -170,13 +170,19 @@ function ns.Auras(unit, names)
     if not ok then return nil end
     if hidden == 0 then return out end
     if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then return nil end
+    -- In a fight the game hides names, so "not found" by name proves nothing: then only a
+    -- found buff counts, and a unit with nothing found is left alone.
+    local fighting = (InCombatLockdown and InCombatLockdown())
+        or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+    local found = false
     for _, n in ipairs(names) do
         if not out[n] then
             local has, left = byName(unit, n)
             if has == nil then return nil end
-            if has then out[n] = left end
+            if has then out[n], found = left, true end
         end
     end
+    if fighting and not found then return nil end
     return out
 end
 

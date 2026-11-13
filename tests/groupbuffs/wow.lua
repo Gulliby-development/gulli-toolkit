@@ -117,6 +117,7 @@ function Fake(spec)
 
     UnitExists = function(unit) return u(unit) ~= nil end
     UnitName = function(unit) local x = u(unit); return x and x.name end
+    UnitGUID = function(unit) local x = u(unit); return x and ("Player-" .. x.name) end
     UnitClass = function(unit)
         local x = u(unit)
         local c = x and x.class or "PRIEST"

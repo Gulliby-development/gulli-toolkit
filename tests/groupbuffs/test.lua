@@ -131,6 +131,12 @@ test("one hidden buff does not hide the rest: the missing buff is still offered"
     ns = Load()
     eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party3",
         "without a by-name lookup both are left alone")
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, byName = true }
+    ns = Load()
+    W.combat = true
+    eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party3",
+        "in a fight a hidden unit with nothing found is left alone")
+    W.combat = false
 end)
 
 test("in a raid the group spell is counted per party", function()
@@ -596,6 +602,29 @@ test("in combat, presses spammed within a global cooldown stay on the same unit"
     click(main)
     eq(main.attrs.unit, "party1")
     W.combat = false
+end)
+
+test("in combat a buff our press landed counts as done, even when the auras are hidden", function()
+    local units = party()
+    units.party1.auras = { ["Power Word: Fortitude"] = 0 }
+    units.party2.auras = { ["Power Word: Fortitude"] = 0 }
+    units.player.auras = { ["Power Word: Fortitude"] = 0 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local main = GulliGroupBuffsButton
+    Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    eq(main.attrs["gb-count"], 1)
+    eq(main.attrs["gb-unit1"], "party3")
+    units.party3.hidden = true          -- the game hides its auras in the fight
+    click(main)
+    main.hooks.OnClick(main)
+    Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast-1", 1243)
+    ns.Refresh()
+    eq(main.state, "ok", "nothing left to buff")
+    W.combat = false
+    Fire("PLAYER_REGEN_ENABLED")
 end)
 
 test("with in-combat buffing off, a press in combat casts nothing", function()

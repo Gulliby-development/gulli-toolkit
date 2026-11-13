@@ -21,6 +21,7 @@ local built, dirty, pendingKey = false, true, false
 local urgent = false      -- a buff came or went: rebuild on the next frame, not the next tick
 local layout
 local lastCast = {}       -- the unit the last press aimed at, and when
+local landed = {}         -- in combat: unit GUID .. spell -> true for our casts that went through
 local readyUntil = 0      -- a ready check shows the bar until then
 
 -- Runs in the game's restricted environment on every click of the big button, before
@@ -72,8 +73,17 @@ local function who(e)
     return L.NEXT:format(e.spell, name)
 end
 
+local function guidOf(unit)
+    local g = unit and UnitGUID and UnitGUID(unit)
+    if g and not (issecretvalue and issecretvalue(g)) then return g end
+end
+
 local function done(e)
-    if not e or not e.names then return false end
+    if not e then return false end
+    -- In combat the game may hide other players' auras: trust our own cast that went through.
+    local g = e.guid or guidOf(e.unit)
+    if g and landed[g .. "|" .. (e.spell or "")] then return true end
+    if not e.names then return false end
     local auras = ns.Auras(e.unit, e.names)
     return auras and ns.Present(e.names, auras, 0) or false
 end
@@ -100,6 +110,7 @@ local function now() return GetTime and GetTime() or 0 end
 local function noteCast(self)
     lastCast.unit, lastCast.t = self:GetAttribute("unit"), now()
     lastCast.spell = self:GetAttribute("spell")
+    lastCast.guid = guidOf(lastCast.unit)
 end
 
 local function savePoint()
@@ -314,7 +325,7 @@ end
 local function caption(e, extra)
     local sub
     if e then
-        local name = UnitName(e.unit) or e.unit
+        local name = e.name or UnitName(e.unit) or e.unit
         local _, class = UnitClass(e.unit)
         local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
         if c then name = S.Hex({ c.r, c.g, c.b }) .. name .. "|r" end
@@ -341,7 +352,15 @@ function ns.Refresh()
         for _, m in ipairs(minis) do
             if m.entry then paint(m, m.entry) end
         end
-        caption(e, n > 0 and L.COMBAT_N:format(i, n) or L.COMBAT_OFF)
+        -- Everything on the list got its buff: say so instead of naming someone who has it.
+        local left = 0
+        for _, x in ipairs(list) do if not done(x) then left = left + 1 end end
+        if n > 0 and left == 0 then
+            main:SetState("ok")
+            caption(nil, L.COMBAT_N:format(n, n))
+        else
+            caption(e, n > 0 and L.COMBAT_N:format(i, n) or L.COMBAT_OFF)
+        end
         paintMarks()
         return
     end
@@ -365,6 +384,10 @@ local function enterCombat()
     local d = ns.DB()
     list = d.combat and ns.CombatList(plan, far) or {}
     for i, e in ipairs(list) do
+        -- Who it was when the fight began: "target" may point at someone else later.
+        e.guid = guidOf(e.unit)
+        local name = UnitName(e.unit)
+        if name and not (issecretvalue and issecretvalue(name)) then e.name = name end
         main:SetAttribute("gb-spell" .. i, e.spell)
         main:SetAttribute("gb-unit" .. i, e.unit)
     end
@@ -397,6 +420,8 @@ local function failMessages()
     return set
 end
 for _, ev in ipairs(events) do driver:RegisterEvent(ev) end
+if driver.RegisterUnitEvent then driver:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+else driver:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED") end
 
 driver:SetScript("OnEvent", function(_, event, unit, ...)
     if event == "PLAYER_LOGIN" then
@@ -407,6 +432,7 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
     elseif event == "PLAYER_REGEN_DISABLED" then
         enterCombat()
     elseif event == "PLAYER_REGEN_ENABLED" then
+        for k in pairs(landed) do landed[k] = nil end   -- out of combat the auras tell
         if not built then build(); pendingKey = true end
         if pendingKey then ns.ApplyKey() end
         ns.Refresh()
@@ -432,6 +458,15 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
                 if PlaySound then PlaySound(SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959, "Master") end
                 layout()
             end
+        end
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        -- Our own press that went through: that unit has the buff now, even if its auras are hidden.
+        local spellID = select(2, ...)
+        if unit == "player" and lastCast.guid and lastCast.spell and now() - (lastCast.t or 0) < 1.5
+            and spellID and not (issecretvalue and issecretvalue(spellID))
+            and ns.SpellName(spellID) == lastCast.spell then
+            landed[lastCast.guid .. "|" .. lastCast.spell] = true
+            dirty = true
         end
     elseif event == "UNIT_POWER_UPDATE" then
         if unit == "player" and (ns.DB().mana or 0) > 0 then dirty = true end
