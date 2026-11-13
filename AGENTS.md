@@ -21,7 +21,7 @@ Gulli Toolkit is a set of our own small World of Warcraft addons for WoW Forever
   - `GulliToolkit.IsProtected(itemID)`: items the player protected in the hub. A module that sells, deletes, moves or offers bag items skips them (QuestCleaner, BagSpace). A new module that removes items checks it too, with a test.
   - `GulliToolkit.Notify(key, text)`: one line in the hub's **Recent** feed (newest first, `FEED_MAX` lines). Use it for news the player may miss in chat (a limit reached, a cooldown ready), not for every event.
 - Each module has its own copy of `Skin.lua` (same look, no shared code at run time). The copy in `Gulli-Toolkit/` is the original: change only that one, then run `tools/skin/sync.sh` to copy it into every module. CI fails when a copy differs.
-- A new module gets: its folder `Gulli-<Name>/`, its tests in `tests/<name>/` (lowercase, its own fake client `wow.lua`), its player page `docs/<name>/README.md` with its images, a row in the module table of `README.md`, its key in `ns.KNOWN` in `Gulli-Toolkit/Core.lua` with `M_<Name>` and `D_<Name>` in every language of `Gulli-Toolkit/Locales.lua`, and its tag group in [Releases](#releases).
+- A new module gets: its icon from the Codex template in `docs/toolkit/PROMPTS.md` (a row in its table; `docs/<name>/icon.png` 256 px and `Gulli-<Name>/icon.tga` 64 px; never a hand-drawn stand-in), its folder `Gulli-<Name>/`, its tests in `tests/<name>/` (lowercase, its own fake client `wow.lua`), its player page `docs/<name>/README.md` with its images, a row in the module table of `README.md`, its key in `ns.KNOWN` in `Gulli-Toolkit/Core.lua` with `M_<Name>` and `D_<Name>` in every language of `Gulli-Toolkit/Locales.lua`, and its tag group in [Releases](#releases).
 
 ### Gulli-Toolkit (the core)
 
