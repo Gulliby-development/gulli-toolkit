@@ -61,8 +61,15 @@ S.BAD = { 0.93, 0.42, 0.40, 1 }
 S.CLEAR = { 0, 0, 0, 0 }
 -- Coin colours: money as coloured text, "28g 42s 5c", empty parts left out.
 S.GOLD = { 1, 0.82, 0, 1 }
-S.SILVER = { 0.78, 0.78, 0.81, 1 }
+-- Silver is a cool blue-grey, so it does not read as plain text (S.TEXT).
+S.SILVER = { 0.72, 0.82, 0.97, 1 }
 S.COPPER = { 0.93, 0.65, 0.37, 1 }
+-- The parts of a stat line ("12:30 · 3400 XP · 1g 20s · 25 kills"), each in its own colour:
+-- time, experience (the XP bar's purple) and kills. Join the parts with S.DOT.
+S.TIME = { 0.45, 0.85, 0.80, 1 }
+S.XP = { 0.79, 0.63, 1.00, 1 }
+S.KILLS = { 0.95, 0.55, 0.50, 1 }
+S.DOT = "  |cff6b6e7a·|r  "
 -- Older names, still used by some windows.
 S.PANEL = S.RAISED
 S.ROW = { 1, 1, 1, 0.025 }

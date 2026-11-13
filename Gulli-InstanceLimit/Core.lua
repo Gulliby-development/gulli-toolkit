@@ -129,16 +129,18 @@ local function endRun(e, now)
     if ns.db.summary then say(L.SUMMARY:format(e.name or "?", ns.RunText(e))) end
 end
 
--- "12:30, 3400 XP, 1g 20s, 25 kills" for a finished run.
+-- "12:30 · 3400 XP · 1g 20s · 25 kills" for a finished run, each part in its own colour.
 function ns.RunText(e)
-    local parts = { ns.Clock(e.secs or 0) }
-    if (e.xp or 0) > 0 then parts[#parts + 1] = L.RUN_XP:format(e.xp) end
+    local S = ns.Skin
+    local function paint(color, text) return (S and S.Hex and color) and (S.Hex(color) .. text .. "|r") or text end
+    local parts = { paint(S and S.TIME, ns.Clock(e.secs or 0)) }
+    if (e.xp or 0) > 0 then parts[#parts + 1] = paint(S and S.XP, L.RUN_XP:format(e.xp)) end
     local m = e.money or 0
     if m ~= 0 then
-        parts[#parts + 1] = (ns.Skin and ns.Skin.MoneyText) and ns.Skin.MoneyText(m) or (math.floor(m / 100) / 100 .. "g")
+        parts[#parts + 1] = (S and S.MoneyText) and S.MoneyText(m) or (math.floor(m / 100) / 100 .. "g")
     end
-    if (e.kills or 0) > 0 then parts[#parts + 1] = L.RUN_KILLS:format(e.kills) end
-    return table.concat(parts, ", ")
+    if (e.kills or 0) > 0 then parts[#parts + 1] = paint(S and S.KILLS, L.RUN_KILLS:format(e.kills)) end
+    return table.concat(parts, (S and S.DOT) or ", ")
 end
 
 local function current()

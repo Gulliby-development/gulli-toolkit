@@ -161,7 +161,17 @@ test("run stats: time, XP with a level up, money and kills, and a summary", func
     W.Go("Westfall", "none", 0)
     local e = ns.db.entries[1]
     eq(e.secs, 1500); eq(e.xp, 250); eq(e.money, 2000); eq(e.kills, 2)
-    assert(W.Printed("The Deadmines: 25:00, 250 XP"), "the summary")
+    assert(W.Printed("The Deadmines:"), "the summary")
+    local S = ns.Skin
+    local line = ns.RunText(e)
+    local plain = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    eq(plain, "25:00  ·  250 XP  ·  20s  ·  2 kills")
+    -- every part has its own colour, and silver does not look like plain text
+    for _, c in ipairs({ S.TIME, S.XP, S.SILVER, S.KILLS }) do
+        assert(line:find(S.Hex(c), 1, true), "a coloured part")
+    end
+    local d = math.abs(S.SILVER[1] - S.TEXT[1]) + math.abs(S.SILVER[2] - S.TEXT[2]) + math.abs(S.SILVER[3] - S.TEXT[3])
+    assert(d > 0.2, "silver stands out from the text")
 end)
 
 test("learning raises the limit too, and the limit is an estimate until confirmed", function()
