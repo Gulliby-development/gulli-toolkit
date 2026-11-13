@@ -524,6 +524,7 @@ local function click(main, down)
     local f = assert(loadstring("local self, button, down = ...\n" .. main.wrapped))
     setfenv(f, {
         PlayerInCombat = function() return W.combat end,
+        GetTime = GetTime,
         SecureCmdOptionParse = function(s)
             local unit = s:match("^%[@([%w]+),exists,nodead%] ok$")
             assert(unit, "unexpected conditional " .. s)
@@ -557,18 +558,43 @@ test("in combat each press walks the list from before the fight, skips the dead,
     Fire("PLAYER_REGEN_DISABLED")
     W.combat = true
     eq(main.attrs["gb-count"], 4)
+    local function later() W.spec.time = (W.spec.time or 100) + 2 end
     click(main)
     eq(main.attrs.unit, "player")
     units.party1.dead = true
-    click(main)
+    later(); click(main)
     eq(main.attrs.unit, "party2", "dead tank skipped")
-    click(main)
+    later(); click(main)
     eq(main.attrs.unit, "party3")
-    click(main)
+    later(); click(main)
     eq(main.attrs.unit, "player", "wraps to the start")
-    click(main, true)
+    later(); click(main, true)
     eq(main.attrs.unit, "player", "the other key edge does not move on")
     ns.Refresh()
+    W.combat = false
+end)
+
+test("in combat, presses spammed within a global cooldown stay on the same unit", function()
+    local units = party()
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local main = GulliGroupBuffsButton
+    Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    click(main)
+    eq(main.attrs.unit, "player")
+    for k = 1, 5 do
+        W.spec.time = 100 + k * 0.2
+        click(main)
+        eq(main.attrs.unit, "player", "press " .. k .. " in the cooldown")
+    end
+    W.spec.time = 101.6
+    click(main)
+    eq(main.attrs.unit, "party1", "after the cooldown the next one")
+    W.spec.time = 101.7
+    click(main)
+    eq(main.attrs.unit, "party1")
     W.combat = false
 end)
 
