@@ -1326,6 +1326,12 @@ function S.Footer(f)
     f.body:SetPoint("BOTTOMRIGHT", -S.PAD, S.FOOTER_H + S.PAD)
     f.inner[2] = f.inner[2] - S.FOOTER_H
     f.footer = ft
+    -- A page that hides the footer gets its height back (IsShown, not visibility: the window may be hidden).
+    local function fit(self)
+        f.body:SetPoint("BOTTOMRIGHT", -S.PAD, (self:IsShown() and S.FOOTER_H or 0) + S.PAD)
+    end
+    ft:HookScript("OnShow", fit)
+    ft:HookScript("OnHide", fit)
     return ft
 end
 

@@ -279,6 +279,18 @@ test("the hub gets a summary, a move and a reset", function()
     got.move(true); eq(ns.moving, true)
 end)
 
+test("the Settings page takes the footer's space when the footer hides", function()
+    Fake({})
+    local ns = Load()
+    local f = ns.Window()
+    local y
+    rawset(f.body, "SetPoint", function(_, p, _, oy) if p == "BOTTOMRIGHT" then y = oy end end)
+    f.footer:Hide(); f.footer._OnHide(f.footer)
+    local hidden = y
+    f.footer:Show(); f.footer._OnShow(f.footer)
+    assert(hidden and y and hidden < y, "body reaches lower without the footer")
+end)
+
 test("every language has every key, with the same placeholders", function()
     Fake({})
     W.CheckLocales(Load())
