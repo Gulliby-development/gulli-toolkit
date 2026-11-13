@@ -103,10 +103,26 @@ end
 ns.Known = known
 
 -- Usable now, or only short of mana (worth waiting for). False without the reagent.
+-- A game answer, or nil when it is a secret value (the game hides it in some places).
+local function val(v)
+    if issecretvalue and issecretvalue(v) then return nil end
+    return v
+end
+
+-- Calls a game function; nil when it fails or answers with a secret value.
+local function ask(fn, ...)
+    if not fn then return nil end
+    local ok, a, b = pcall(fn, ...)
+    if not ok then return nil end
+    return val(a), val(b)
+end
+
+ns.Ask = ask
+
 local function usable(name)
     local ok, noMana
-    if C_Spell and C_Spell.IsSpellUsable then ok, noMana = C_Spell.IsSpellUsable(name)
-    elseif IsUsableSpell then ok, noMana = IsUsableSpell(name)
+    if C_Spell and C_Spell.IsSpellUsable then ok, noMana = ask(C_Spell.IsSpellUsable, name)
+    elseif IsUsableSpell then ok, noMana = ask(IsUsableSpell, name)
     else return true end
     return (ok or noMana) and true or false
 end
@@ -115,8 +131,8 @@ end
 local function inRange(name, unit)
     if unit == "player" then return true end
     local r
-    if C_Spell and C_Spell.IsSpellInRange then r = C_Spell.IsSpellInRange(name, unit)
-    elseif IsSpellInRange then r = IsSpellInRange(name, unit) end
+    if C_Spell and C_Spell.IsSpellInRange then r = ask(C_Spell.IsSpellInRange, name, unit)
+    elseif IsSpellInRange then r = ask(IsSpellInRange, name, unit) end
     return not (r == false or r == 0)
 end
 
@@ -188,10 +204,10 @@ end
 
 local function role(unit)
     if UnitGroupRolesAssigned then
-        local r = UnitGroupRolesAssigned(unit)
+        local r = ask(UnitGroupRolesAssigned, unit)
         if r == "TANK" or r == "HEALER" then return r end
     end
-    if GetPartyAssignment and GetPartyAssignment("MAINTANK", unit) then return "TANK" end
+    if ask(GetPartyAssignment, "MAINTANK", unit) then return "TANK" end
 end
 ns.Role = role
 
@@ -226,7 +242,7 @@ function ns.Units()
         for i = 1, n do
             local unit = "raid" .. i
             local _, _, sub = GetRaidRosterInfo(i)
-            if UnitIsUnit(unit, "player") then mine = sub or 1
+            if ask(UnitIsUnit, unit, "player") then mine = sub or 1
             elseif ns.InRaidGroups(sub or 1) then rest[#rest + 1] = { unit = unit, group = sub or 1, i = i } end
         end
         add("player", mine, "pet")
@@ -236,19 +252,20 @@ function ns.Units()
         local n = GetNumSubgroupMembers and GetNumSubgroupMembers() or 0
         for i = 1, n do add("party" .. i, 1, "partypet" .. i) end
     end
-    if d.who == "target" and UnitExists("target") and UnitIsPlayer("target")
-        and UnitIsFriend("player", "target") and not UnitIsUnit("target", "player")
-        and not (UnitInParty and UnitInParty("target")) and not (UnitInRaid and UnitInRaid("target")) then
+    if d.who == "target" and ask(UnitExists, "target") and ask(UnitIsPlayer, "target")
+        and ask(UnitIsFriend, "player", "target") and not ask(UnitIsUnit, "target", "player")
+        and not ask(UnitInParty, "target") and not ask(UnitInRaid, "target") then
         list[#list + 1] = { unit = "target" }
     end
     return list
 end
 
+-- A check the game hides (a secret value) does not count against the unit.
 local function alive(unit)
-    if not UnitExists(unit) then return false end
-    if UnitIsConnected and UnitIsConnected(unit) == false then return false end
-    if UnitIsDeadOrGhost(unit) then return false end
-    if UnitIsVisible and UnitIsVisible(unit) == false then return false end
+    if not ask(UnitExists, unit) then return false end
+    if ask(UnitIsConnected, unit) == false then return false end
+    if ask(UnitIsDeadOrGhost, unit) then return false end
+    if ask(UnitIsVisible, unit) == false then return false end
     return true
 end
 
@@ -326,13 +343,13 @@ local function applies(fam, unit, ctx, pet)
     if pet then
         -- Pets get the buffs for everyone, and the mana ones when they have mana.
         if fam.who == "all" then return true end
-        if fam.who == "mana" then return UnitPowerType and UnitPowerType(unit) == 0 or false end
+        if fam.who == "mana" then return ask(UnitPowerType, unit) == 0 end
         return false
     end
     if fam.who == "self" then return unit == "player" end
     if fam.who == "mana" then
-        local _, class = UnitClass(unit)
-        return not B.NO_MANA[class]
+        local _, class = ask(UnitClass, unit)
+        return not (class and B.NO_MANA[class])
     end
     if fam.who == "thorns" then
         local t = ctx.db.thorns
@@ -525,37 +542,47 @@ function ns.Plan()
         end
     end
     local need = {}
+    -- One unit's needs; an error from the game (a hidden value in an instance) leaves only
+    -- that unit out.
+    local function check(u, auras)
+        local found = {}
+        for _, fam in ipairs(fams) do
+            if fam.who == "blessing" then
+                local opt = not u.pet and fam.options[ns.BlessingFor(u.unit) or ""]
+                if opt and not present(opt.names, auras, low) and not ns.IsBounced(u.unit, opt.name) then
+                    found[#found + 1] = { unit = u.unit, sub = u.group, key = fam.key,
+                                          spell = opt.name, id = opt.id, names = opt.names }
+                end
+            elseif applies(fam, u.unit, ctx, u.pet) then
+                local missing
+                if fam.weapon then missing = weaponMissing(low)
+                else
+                    missing = not present(fam.names, auras, low)
+                    if missing and (ns.IsBounced(u.unit, fam.name) or ns.Covered(u.unit, fam.id, low)) then
+                        missing = false
+                        info.stronger = info.stronger + 1
+                    end
+                end
+                if missing then
+                    found[#found + 1] = { unit = u.unit, sub = u.group, key = fam.key,
+                                          spell = fam.name, id = fam.id, fam = fam,
+                                          names = not fam.weapon and fam.names or nil }
+                end
+            end
+        end
+        return found
+    end
     for _, u in ipairs(units) do
         if alive(u.unit) and ns.Skipped(u.unit) then
             info.skipped = info.skipped + 1
         elseif alive(u.unit) then
             local auras = ns.Auras(u.unit, watched)
-            if not auras then info.hidden = info.hidden + 1 end
-            if auras then
-                for _, fam in ipairs(fams) do
-                    if fam.who == "blessing" then
-                        local opt = not u.pet and fam.options[ns.BlessingFor(u.unit) or ""]
-                        if opt and not present(opt.names, auras, low) and not ns.IsBounced(u.unit, opt.name) then
-                            need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
-                                                spell = opt.name, id = opt.id, names = opt.names }
-                        end
-                    elseif applies(fam, u.unit, ctx, u.pet) then
-                        local missing
-                        if fam.weapon then missing = weaponMissing(low)
-                        else
-                            missing = not present(fam.names, auras, low)
-                            if missing and (ns.IsBounced(u.unit, fam.name) or ns.Covered(u.unit, fam.id, low)) then
-                                missing = false
-                                info.stronger = info.stronger + 1
-                            end
-                        end
-                        if missing then
-                            need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
-                                                spell = fam.name, id = fam.id, fam = fam,
-                                                names = not fam.weapon and fam.names or nil }
-                        end
-                    end
-                end
+            local ok, found = false, nil
+            if auras then ok, found = pcall(check, u, auras) end
+            if ok then
+                for _, e in ipairs(found) do need[#need + 1] = e end
+            else
+                info.hidden = info.hidden + 1
             end
         end
     end
@@ -622,9 +649,9 @@ function ns.Plan()
     if d.focus then
         local front, rest = {}, {}
         for _, focus in ipairs({ "mouseover", "target" }) do
-            if UnitExists(focus) then
+            if ask(UnitExists, focus) then
                 for i, e in ipairs(need) do
-                    if e and e.unit ~= "player" and UnitIsUnit(e.unit, focus) then
+                    if e and e.unit ~= "player" and ask(UnitIsUnit, e.unit, focus) then
                         front[#front + 1] = e
                         need[i] = false
                     end

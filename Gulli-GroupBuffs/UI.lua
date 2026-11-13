@@ -65,8 +65,13 @@ local function keyDown()
     return GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") and true or false
 end
 
+-- A unit's name, or the unit token while the game hides the name.
+local function nameOf(unit)
+    return ns.Ask(UnitName, unit) or unit
+end
+
 local function who(e)
-    local name = UnitName(e.unit) or e.unit
+    local name = e.name or nameOf(e.unit)
     if e.group and e.covers and e.covers > 1 then
         return L.NEXT_GROUP:format(e.spell, name, e.covers - 1)
     end
@@ -254,9 +259,9 @@ local function paintMarks()
     if on and not InCombatLockdown() and (not scannedAt or t0 - scannedAt >= SCAN_SECONDS) then scanFrames() end
     eachGroupFrame(function(f, unit, corner)
         local icon
-        if on and type(unit) == "string" and UnitExists(unit) then
+        if on and type(unit) == "string" and ns.Ask(UnitExists, unit) then
             for u, ic in pairs(byUnit) do
-                if UnitIsUnit(u, unit) then icon = ic; break end
+                if ns.Ask(UnitIsUnit, u, unit) then icon = ic; break end
             end
         end
         local t = marks[f]
@@ -325,8 +330,8 @@ end
 local function caption(e, extra)
     local sub
     if e then
-        local name = e.name or UnitName(e.unit) or e.unit
-        local _, class = UnitClass(e.unit)
+        local name = e.name or nameOf(e.unit)
+        local _, class = ns.Ask(UnitClass, e.unit)
         local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
         if c then name = S.Hex({ c.r, c.g, c.b }) .. name .. "|r" end
         if e.group and e.covers and e.covers > 1 then name = name .. " +" .. (e.covers - 1) end
@@ -386,8 +391,7 @@ local function enterCombat()
     for i, e in ipairs(list) do
         -- Who it was when the fight began: "target" may point at someone else later.
         e.guid = guidOf(e.unit)
-        local name = UnitName(e.unit)
-        if name and not (issecretvalue and issecretvalue(name)) then e.name = name end
+        e.name = ns.Ask(UnitName, e.unit)
         main:SetAttribute("gb-spell" .. i, e.spell)
         main:SetAttribute("gb-unit" .. i, e.unit)
     end
