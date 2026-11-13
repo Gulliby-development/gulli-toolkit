@@ -220,6 +220,10 @@ test("bags, bank, hearthstone, professions, lockouts and played time are saved",
     eq(c.bind, "Goldshire")
     eq(#c.lockouts, 1)
     eq(has(ns.Tasks(c), "PROF").text, "Tailoring 75/75: learn the next rank")
+    local tailoring
+    for _, p in ipairs(c.profs) do if p.name == "Tailoring" then tailoring = p end end
+    assert(tailoring.icon, "the profession keeps its icon")
+    eq(has(ns.Tasks(c), "PROF").icon, tailoring.icon, "a full rank shows the profession's own icon")
     local info = ns.CardInfo(c, ns.CharKey(), W.now)
     eq(info.hearth[1], "50 min"); eq(info.hearth[3], "Goldshire")
     local lines = table.concat(info.extra, "\n")

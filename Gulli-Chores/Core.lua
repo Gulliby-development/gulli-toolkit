@@ -241,12 +241,14 @@ local function pref(key)
     return v
 end
 
--- What is waiting for a character: { { key, text, cd } }, the most useful first; cd is the
--- cooldown's text key.
+-- What is waiting for a character: { { key, text, cd, icon } }, the most useful first; cd is the
+-- cooldown's text key, icon the profession's own for a full rank.
 function ns.Tasks(c, now)
     now = now or time()
     local out = {}
-    local function add(key, text, cd) if on(key) then out[#out + 1] = { key = key, text = text, cd = cd } end end
+    local function add(key, text, cd, icon)
+        if on(key) then out[#out + 1] = { key = key, text = text, cd = cd, icon = icon } end
+    end
     if c.mailUntil and c.mailUntil > now and c.mailUntil - now < pref("mailDays") * 86400 then
         add("EXPIRE", L.TASK_EXPIRE:format(ns.Span(c.mailUntil - now)))
     end
@@ -259,7 +261,7 @@ function ns.Tasks(c, now)
     if ns.TrainerDue(c) then add("TRAINER", L.TASK_TRAINER) end
     for _, p in ipairs(c.profs or {}) do
         if (p.cap or 0) > 0 and p.cap < 300 and (p.skill or 0) >= p.cap then
-            add("PROF", L.TASK_PROF:format(p.name, p.skill, p.cap))
+            add("PROF", L.TASK_PROF:format(p.name, p.skill, p.cap), nil, p.icon)
         end
     end
     if c.mail then add("MAIL", L.TASK_MAIL) end
