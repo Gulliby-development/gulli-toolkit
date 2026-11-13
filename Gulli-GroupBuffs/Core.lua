@@ -460,9 +460,10 @@ end
 local function manaShare()
     if not UnitPower or not UnitPowerMax then return nil end
     if UnitPowerType and UnitPowerType("player") ~= 0 then return nil end
-    local max = UnitPowerMax("player", 0)
+    local max, cur = UnitPowerMax("player", 0), UnitPower("player", 0)
+    if secret(max) or secret(cur) then return nil end
     if not max or max <= 0 then return nil end
-    return UnitPower("player", 0) / max * 100
+    return cur / max * 100
 end
 
 ---- The plan --------------------------------------------------------------------
@@ -668,7 +669,6 @@ end
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "GroupBuffs",
-        title = ns.L.TITLE,
         desc = ns.L.DESC,
         icon = "Interface\\AddOns\\Gulli-GroupBuffs\\icon",
         open = function() GulliGroupBuffs_Toggle() end,

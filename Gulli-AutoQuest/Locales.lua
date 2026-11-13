@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "choose your reward. The best vendor price: %s.",
     CHOOSE_ANY = "choose your reward.",
     OPT_ACCEPT = "Take quests",
@@ -78,7 +78,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "wähle deine Belohnung. Bester Händlerpreis: %s.",
     CHOOSE_ANY = "wähle deine Belohnung.",
     OPT_ACCEPT = "Quests annehmen",
@@ -146,7 +146,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "elige tu recompensa. Mejor precio de venta: %s.",
     CHOOSE_ANY = "elige tu recompensa.",
     OPT_ACCEPT = "Aceptar misiones",
@@ -214,7 +214,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "choisissez votre récompense. Meilleur prix de vente : %s.",
     CHOOSE_ANY = "choisissez votre récompense.",
     OPT_ACCEPT = "Accepter les quêtes",
@@ -282,7 +282,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "wybierz nagrodę. Najlepsza cena u handlarza: %s.",
     CHOOSE_ANY = "wybierz nagrodę.",
     OPT_ACCEPT = "Przyjmuj zadania",
@@ -350,7 +350,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "escolha sua recompensa. Melhor preço de venda: %s.",
     CHOOSE_ANY = "escolha sua recompensa.",
     OPT_ACCEPT = "Aceitar missões",
@@ -418,7 +418,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "выберите награду. Дороже всего у торговца: %s.",
     CHOOSE_ANY = "выберите награду.",
     OPT_ACCEPT = "Брать квесты",
@@ -486,7 +486,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli AutoQuest",
+    TITLE = "Auto Quest",
     CHOOSE = "请选择奖励。商人价格最高：%s。",
     CHOOSE_ANY = "请选择奖励。",
     OPT_ACCEPT = "接受任务",

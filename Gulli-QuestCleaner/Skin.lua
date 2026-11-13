@@ -199,6 +199,92 @@ function S.Button(parent, width, height)
     return b
 end
 
+-- Tab icons with one meaning in every module (pass them as the icons of S.Tabs).
+local TI = "Interface\\Icons\\"
+S.TAB = {
+    settings = TI .. "Trade_Engineering", rules = TI .. "INV_Scroll_05", recent = TI .. "INV_Misc_PocketWatch_01",
+    list = TI .. "INV_Scroll_02", group = TI .. "INV_Misc_GroupNeedMore", char = TI .. "INV_Misc_Head_Human_01",
+    overview = TI .. "INV_Misc_Spyglass_02", quests = TI .. "INV_Scroll_03", items = TI .. "INV_Misc_Bag_10",
+    search = TI .. "INV_Misc_Spyglass_03", mail = TI .. "INV_Letter_15", write = TI .. "INV_Letter_01",
+    vendor = TI .. "INV_Misc_Coin_01", chat = TI .. "INV_Letter_02", more = TI .. "INV_Misc_Note_05",
+}
+
+-- Group roles, in every module that names one.
+S.ROLE_ICON = { TANK = TI .. "Ability_Warrior_DefensiveStance", HEALER = TI .. "Spell_Holy_FlashHeal",
+                DPS = TI .. "INV_Sword_04" }
+
+-- A game icon inside a line of text (|T...|t), cropped like the icon boxes.
+function S.IconTag(path, size)
+    size = size or 14
+    return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:0:64:64:5:59:5:59|t"
+end
+
+-- A small game icon on the left of a button or tab, before its text (nil removes it). Only for
+-- tabs, filters and pick-one choices (a kind, a role, a roll); main actions stay text.
+function S.SetButtonIcon(b, path, size)
+    size = size or 16
+    if not rawget(b, "btnIcon") then
+        b.btnIcon = b:CreateTexture(nil, "ARTWORK")
+        b.btnIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+    b.btnIcon:SetSize(size, size)
+    b.btnIcon:ClearAllPoints()
+    b.btnIcon:SetPoint("LEFT", 7, 0)
+    b.btnIcon:SetTexture(path)
+    b.btnIcon:SetShown(path ~= nil)
+    b.text:ClearAllPoints()
+    b.text:SetPoint("LEFT", path and size + 11 or 6, 0)
+    b.text:SetPoint("RIGHT", -6, 0)
+    return b
+end
+
+-- A choice with a game icon: the icon (with a count in its corner) on the left, a title and a
+-- muted line under it; `vertical` puts the icon on top and the title under it (no line).
+-- tile:Set{ icon, title, sub, count, quality }; SetEnabled greys it out.
+function S.IconTile(parent, width, height, vertical)
+    height = height or (vertical and 54 or 36)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(width or 110, height)
+    S.Box(b, S.RAISED, S.EDGE)
+    b.kind = "normal"
+    b.title = S.Text(b, vertical and 10 or 11)
+    b.title:SetWordWrap(false)
+    b.sub = S.Text(b, 9, S.MUTED)
+    b.sub:SetWordWrap(false)
+    if vertical then
+        b.item = S.ItemIcon(b, height - 24)
+        b.item:SetPoint("TOP", 0, -4)
+        b.title:SetPoint("BOTTOMLEFT", 3, 4)
+        b.title:SetPoint("BOTTOMRIGHT", -3, 4)
+        b.title:SetJustifyH("CENTER")
+        b.sub:Hide()
+    else
+        b.item = S.ItemIcon(b, height - 8)
+        b.item:SetPoint("LEFT", 4, 0)
+        b.title:SetPoint("TOPLEFT", b.item, "TOPRIGHT", 5, -1)
+        b.title:SetPoint("RIGHT", -4, 0)
+        b.title:SetJustifyH("LEFT")
+        b.sub:SetPoint("BOTTOMLEFT", b.item, "BOTTOMRIGHT", 5, 1)
+        b.sub:SetPoint("RIGHT", -4, 0)
+        b.sub:SetJustifyH("LEFT")
+    end
+    b.text = b.title
+    function b:Set(o)
+        self.item:Set(o.icon, o.count, o.quality)
+        self.item.count:SetText(o.count and o.count > 0 and tostring(o.count) or "")
+        self.title:SetText(o.title or "")
+        self.sub:SetText(o.sub or "")
+    end
+    b.SetText = function(self, s) self.title:SetText(s) end
+    b.GetText = function(self) return self.title:GetText() end
+    local function dim(self, a) self.item:SetAlpha(a); self.title:SetAlpha(a); self.sub:SetAlpha(a) end
+    b:SetScript("OnEnter", function(self) self.hover = true; paint(self) end)
+    b:SetScript("OnLeave", function(self) self.hover = false; paint(self) end)
+    b:SetScript("OnDisable", function(self) dim(self, 0.4); paint(self) end)
+    b:SetScript("OnEnable", function(self) dim(self, 1); paint(self) end)
+    return b
+end
+
 -- The one main action of a view: filled with the accent colour.
 function S.Primary(b)
     b.kind = "primary"
@@ -458,7 +544,9 @@ end
 -- A segmented control: one track with a part per label, the chosen one filled. width is the
 -- width of each part (nil fits each label). onSelect(i) runs on a click and on Select(i).
 -- t.frame is the track (anchored to the top left of parent; move it freely), t.buttons the parts.
-function S.Tabs(parent, labels, width, onSelect, height)
+-- icons (optional) is a list of game icon paths, one per label, shown left of the text; with
+-- an empty label the icon alone fills the part (set button.tip so the cursor names it).
+function S.Tabs(parent, labels, width, onSelect, height, icons)
     height = height or 30
     local t = { buttons = {}, selected = 1 }
     local track = CreateFrame("Frame", nil, parent)
@@ -477,7 +565,14 @@ function S.Tabs(parent, labels, width, onSelect, height)
         b.text:SetText(label)
         b.SetText = function(self, s) self.text:SetText(s) end
         b.GetText = function(self) return self.text:GetText() end
-        local w = width or math.floor(strw(b.text) + 28)
+        if icons and icons[i] and label == "" then
+            S.SetButtonIcon(b, icons[i], 18)
+            b.btnIcon:ClearAllPoints()
+            b.btnIcon:SetPoint("CENTER")
+        elseif icons and icons[i] then
+            S.SetButtonIcon(b, icons[i], 14)
+        end
+        local w = width or math.floor(strw(b.text) + 28 + (icons and icons[i] and 18 or 0))
         b:SetSize(w, height - 4)
         b:SetPoint("TOPLEFT", x, -2)
         x = x + w
@@ -486,8 +581,18 @@ function S.Tabs(parent, labels, width, onSelect, height)
         b.bar:SetPoint("BOTTOMRIGHT", -6, 0)
         b.bar:SetHeight(2)
         b:SetScript("OnClick", function() t:Select(i) end)
-        b:SetScript("OnEnter", function(self) if t.selected ~= i then S.Fill(self, S.HOVER) end end)
-        b:SetScript("OnLeave", function(self) if t.selected ~= i then S.Fill(self, S.CLEAR) end end)
+        b:SetScript("OnEnter", function(self)
+            if t.selected ~= i then S.Fill(self, S.HOVER) end
+            if self.tip and GameTooltip and GameTooltip.SetOwner then
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:SetText(self.tip)
+                GameTooltip:Show()
+            end
+        end)
+        b:SetScript("OnLeave", function(self)
+            if t.selected ~= i then S.Fill(self, S.CLEAR) end
+            if self.tip and GameTooltip then GameTooltip:Hide() end
+        end)
         t.buttons[i] = b
     end
     track:SetSize(x + 2, height)
@@ -499,6 +604,7 @@ function S.Tabs(parent, labels, width, onSelect, height)
             b.bar:SetShown(on)
             local c = on and S.TEXT or S.MUTED
             b.text:SetTextColor(c[1], c[2], c[3], 1)
+            if rawget(b, "btnIcon") then b.btnIcon:SetAlpha(on and 1 or 0.55) end
         end
         if onSelect and not quiet then onSelect(i) end
     end

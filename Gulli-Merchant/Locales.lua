@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "sold %d junk items for %s.",
     REPAIRED = "repaired for %s.",
     REPAIRED_GUILD = "repaired from the guild bank for %s.",
@@ -54,7 +54,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "%d Plunder-Gegenstände für %s verkauft.",
     REPAIRED = "für %s repariert.",
     REPAIRED_GUILD = "aus der Gildenbank für %s repariert.",
@@ -98,7 +98,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "vendidos %d objetos basura por %s.",
     REPAIRED = "reparado por %s.",
     REPAIRED_GUILD = "reparado con el banco de hermandad por %s.",
@@ -142,7 +142,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "%d objets de camelote vendus pour %s.",
     REPAIRED = "réparé pour %s.",
     REPAIRED_GUILD = "réparé avec la banque de guilde pour %s.",
@@ -186,7 +186,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "sprzedano %d śmieci za %s.",
     REPAIRED = "naprawiono za %s.",
     REPAIRED_GUILD = "naprawiono z banku gildii za %s.",
@@ -230,7 +230,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "%d itens de lixo vendidos por %s.",
     REPAIRED = "reparado por %s.",
     REPAIRED_GUILD = "reparado com o banco da guilda por %s.",
@@ -274,7 +274,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "продано хлама: %d на %s.",
     REPAIRED = "починено за %s.",
     REPAIRED_GUILD = "починено за счёт гильдии: %s.",
@@ -318,7 +318,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Merchant",
+    TITLE = "Merchant",
     SOLD = "已出售 %d 件垃圾，获得 %s。",
     REPAIRED = "已修理，花费 %s。",
     REPAIRED_GUILD = "已用公会银行修理，花费 %s。",

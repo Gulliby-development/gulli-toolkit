@@ -135,7 +135,10 @@ function ns.Fill(text)
     if secret(target) then target = nil end
     local tclass = target and UnitClass and UnitClass("target") or nil
     local tlevel = target and UnitLevel("target") or nil
+    if secret(tlevel) then tlevel = nil end
+    -- Health and power are secret values in combat: no percent then, never arithmetic on them.
     local function pct(cur, max)
+        if secret(cur) or secret(max) then return "" end
         cur, max = cur or 0, max or 0
         if max <= 0 then return "" end
         return tostring(math.floor(cur / max * 100 + 0.5)) .. "%"

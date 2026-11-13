@@ -287,6 +287,15 @@ test("the big button counts what waits and shows the state by colour", function(
     eq(GulliGroupBuffsButton.count._text, "+3")
 end)
 
+test("secret mana in combat never limits the plan", function()
+    Fake { known = { [1243] = true }, units = party(), db = { groupMin = 0, mana = 30 }, mana = W.SECRET }
+    local ns = Load()
+    local plan, far = ns.Plan()
+    assert(#plan > 1, "the group is still buffed")
+    local st = ns.Status(plan, far)
+    assert(not (st[1] and st[1][1] == "ST_MANA"), "no low-mana reason")
+end)
+
 test("low on mana only buffs you; /ggb status prints the reason", function()
     Fake { known = { [1243] = true }, units = party(), db = { groupMin = 0, mana = 30 }, mana = 20 }
     local ns = Load()

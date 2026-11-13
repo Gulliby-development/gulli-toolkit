@@ -69,7 +69,7 @@ test("a registered module is ready, a disabled one is off, an unknown module is 
     eq(r.MobFinder.state, "off")
     eq(r.GroupBuffs.state, "missing")
     eq(rows[#ns.KNOWN + 1].key, "Zeta")
-    eq(r.Zeta.title, "Gulli-Zeta", "the title from the TOC without colour codes")
+    eq(r.Zeta.title, "Zeta", "the title from the TOC without colour codes or the Gulli prefix")
 end)
 
 test("a module that can pause stops and starts at once; not loading it waits for a reload", function()
@@ -526,6 +526,31 @@ test("every module gives its window to the hub, in a size the hub has room for",
     assert(n > 0, "found the modules")
 end)
 
+test("a module's name in the game has no Gulli prefix, in the hub and in its own window", function()
+    Fake({ addons = {} })
+    local ns = Load()
+    eq(ns.ShortName("Gulli-Zeta"), "Zeta"); eq(ns.ShortName("Gulli Zeta"), "Zeta"); eq(ns.ShortName("Gulli"), "Gulli")
+    local p = io.popen("ls -d Gulli-*/")
+    local n = 0
+    for dir in p:lines() do
+        local name = dir:gsub("/$", "")
+        local fh = name ~= "Gulli-Toolkit" and io.open(name .. "/Locales.lua")
+        if fh then
+            local text = fh:read("*a"); fh:close()
+            for title in text:gmatch('\n%s*TITLE = "([^"]*)"') do
+                n = n + 1
+                assert(not title:find("^Gulli"), name .. ": TITLE starts with Gulli: " .. title)
+            end
+            local core = io.open(name .. "/Core.lua")
+            local body = core and core:read("*a") or ""
+            if core then core:close() end
+            assert(not body:find("title = ns.L.TITLE", 1, true), name .. ": the hub's own name is enough")
+        end
+    end
+    p:close()
+    assert(n > 0, "found the titles")
+end)
+
 test("the switch shows what the game will load: off is off, a module it refuses says why", function()
     Fake({ addons = {
         { name = "Gulli-MobFinder", enabled = false, state = 1, meta = { ["X-Gulli-Module"] = "MobFinder" } },
@@ -754,6 +779,36 @@ test("text uses a font family with Cyrillic and CJK glyphs when the game has one
     assert(made.GulliFont13, "family made")
     assert(made.GulliFont13.russian and made.GulliFont13.korean and made.GulliFont13.simplifiedchinese)
     eq(t.object and t.object.name, "GulliFont13", "the text uses the family")
+end)
+
+test("tabs take an icon per label, and an empty label shows the icon alone with a tooltip", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local t = S.Tabs(CreateFrame("Frame"), { "Rules", "" }, 60, nil, nil, { S.TAB.rules, "dice" })
+    assert(rawget(t.buttons[1], "btnIcon"), "a labelled tab has its icon")
+    assert(rawget(t.buttons[2], "btnIcon"), "an icon-only tab has its icon")
+    local shown
+    GameTooltip = { SetOwner = function() end, SetText = function(_, s) shown = s end, Show = function() end, Hide = function() end }
+    t.buttons[2].tip = "Need"
+    t.buttons[2]._OnEnter(t.buttons[2])
+    GameTooltip = nil
+    eq(shown, "Need", "the cursor names an icon-only tab")
+end)
+
+test("an icon tile shows its title and count and greys out when disabled", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local tile = S.IconTile(CreateFrame("Frame"), 80, 52, true)
+    tile.title, tile.item.count = stubText(), stubText()
+    local texts = {}
+    tile.title.SetText = function(_, v) texts.title = v end
+    tile.item.count.SetText = function(_, v) texts.count = v end
+    tile:Set({ icon = "x", title = "Cloth", count = 3 })
+    eq(texts.title, "Cloth"); eq(texts.count, "3")
+    tile:Set({ icon = "x", title = "Herbs", count = 0 })
+    eq(texts.count, "", "no count on an empty kind")
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))

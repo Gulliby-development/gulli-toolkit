@@ -257,7 +257,7 @@ local function build()
         footer:SetStatus(L.SHARED_N:format(ns.ShareAll()), S.GOOD)
     end)
 
-    tabs = S.Tabs(body, { L.TAB_OURS, L.TAB_THEIRS, L.TAB_SETTINGS }, 150, function(i) current = i; ns.Refresh() end)
+    tabs = S.Tabs(body, { L.TAB_OURS, L.TAB_THEIRS, L.TAB_SETTINGS }, 150, function(i) current = i; ns.Refresh() end, nil, { S.TAB.quests, S.TAB.group, S.TAB.settings })
 
     zonePill = S.Pill(body, 110, 30)
     zonePill:SetText(L.THIS_ZONE)

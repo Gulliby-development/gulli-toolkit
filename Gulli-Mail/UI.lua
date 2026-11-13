@@ -15,6 +15,28 @@ local settings, rulesList, logList
 local selected = {}
 
 local PANEL_W, PANEL_H = 380, 560
+local TILE_H = 52
+local GOLD_ICON = "Interface\\Icons\\INV_Misc_Coin_01"
+
+-- The tooltip of a quick-attach tile: what goes, most first, and how many fit.
+local function kindTip(self)
+    if not (GameTooltip and GameTooltip.SetOwner) then return end
+    local info = self.info or ns.KindInfo(self.kind)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["KIND_" .. self.kind:upper()])
+    if info.stacks == 0 then
+        GameTooltip:AddLine(L.TILE_NONE, 0.6, 0.6, 0.6)
+    else
+        for i, it in ipairs(info.items) do
+            if i > 10 then break end
+            GameTooltip:AddDoubleLine(it.name, "x" .. it.count, 1, 1, 1, 1, 1, 1)
+        end
+        if info.going < info.stacks then
+            GameTooltip:AddLine(L.TILE_FIT:format(info.going, info.stacks), 1, 0.82, 0)
+        end
+    end
+    GameTooltip:Show()
+end
 
 -- Letters tab ---------------------------------------------------------------------------------
 
@@ -132,8 +154,10 @@ function ns.Refresh()
     noNames:SetShown(#nm == 0)
     local sending = SendMailFrame and SendMailFrame.IsShown and SendMailFrame:IsShown()
     for _, b in ipairs(attachRow.buttons) do
-        local count = #ns.ItemsOfKind(b.kind)
-        b:SetEnabled(sending and count > 0)
+        local info = ns.KindInfo(b.kind)
+        b.info = info
+        b:Set({ icon = info.icon, title = L["KIND_" .. b.kind:upper()], count = info.going })
+        b:SetEnabled(sending and info.stacks > 0)
     end
     goldBtn:SetEnabled(sending)
     goldBtn:SetText(L.FILL_GOLD:format(ns.db.keepGold))
@@ -151,7 +175,8 @@ end
 local function buildPanel()
     panel = S.Window("GulliMailPanel", L.TITLE, PANEL_W, PANEL_H)
     local body = panel.body
-    tabs = S.Tabs(body, { L.TAB_LETTERS, L.TAB_WRITE }, math.floor((PANEL_W - 2 * S.PAD - 4) / 2), showPage)
+    tabs = S.Tabs(body, { L.TAB_LETTERS, L.TAB_WRITE }, math.floor((PANEL_W - 2 * S.PAD - 4) / 2), showPage, nil,
+        { S.TAB.mail, S.TAB.write })
     for i = 1, 2 do
         local p = CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
@@ -199,23 +224,25 @@ local function buildPanel()
     local tools = CreateFrame("Frame", nil, p)
     tools:SetPoint("BOTTOMLEFT")
     tools:SetPoint("BOTTOMRIGHT")
-    tools:SetHeight(4 * 30 + 3 * 6 + 18)
+    tools:SetHeight(TILE_H * 2 + 6 + 2 * (30 + 6) + 18)
     attachRow = CreateFrame("Frame", nil, tools)
     attachRow:SetPoint("TOPLEFT")
     attachRow:SetPoint("TOPRIGHT")
-    attachRow:SetHeight(30 * 2 + 6)
+    attachRow:SetHeight(TILE_H * 2 + 6)
     attachRow.buttons = {}
     local bw = math.floor((PANEL_W - 2 * S.PAD - 3 * 6) / 4)
     for k, kind in ipairs(ns.ATTACH_KINDS) do
-        local b = S.Button(attachRow, bw, 30)
+        local b = S.IconTile(attachRow, bw, TILE_H, true)
         local row, col = math.floor((k - 1) / 4), (k - 1) % 4
-        b:SetPoint("TOPLEFT", col * (bw + 6), -row * 36)
-        b:SetText(L["KIND_" .. kind.key:upper()])
+        b:SetPoint("TOPLEFT", col * (bw + 6), -row * (TILE_H + 6))
         b.kind = kind.key
         b:SetScript("OnClick", function() ns.AttachKind(kind.key); ns.Refresh() end)
+        b:HookScript("OnEnter", kindTip)
+        b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         attachRow.buttons[#attachRow.buttons + 1] = b
     end
     goldBtn = S.Button(tools, 1, 30)
+    S.SetButtonIcon(goldBtn, GOLD_ICON)
     goldBtn:SetPoint("TOPLEFT", attachRow, "BOTTOMLEFT", 0, -6)
     goldBtn:SetPoint("TOPRIGHT", attachRow, "BOTTOMRIGHT", 0, -6)
     goldBtn:SetScript("OnClick", function() ns.FillGold() end)
@@ -223,6 +250,7 @@ local function buildPanel()
     ruleBtn:SetPoint("TOPLEFT", goldBtn, "BOTTOMLEFT", 0, -6)
     ruleBtn:SetPoint("TOPRIGHT", goldBtn, "BOTTOMRIGHT", 0, -6)
     ruleBtn:SetScript("OnClick", function() ns.ApplyRule(); ns.Refresh() end)
+    S.SetButtonIcon(ruleBtn, S.TAB.rules)
     local hint = S.Note(tools, 10)
     hint:SetPoint("TOPLEFT", ruleBtn, "BOTTOMLEFT", 0, -4)
     hint:SetPoint("RIGHT")
@@ -304,6 +332,7 @@ end
 local function fillRule(r, rule, i)
     r.rule, r.index = rule, i
     r.kind:SetText(L["KIND_" .. rule.kind:upper()])
+    S.SetButtonIcon(r.kind, ns.KindIcon(rule.kind))
     if r.to:GetText() ~= rule.to then r.to:SetText(rule.to or "") end
 end
 
@@ -335,7 +364,7 @@ local function buildSettings()
     local stabs = S.Tabs(body, { L.TAB_SETTINGS, L.TAB_RULES, L.TAB_LOG }, math.floor((width - 4) / 3), function(i)
         for j, sp in ipairs(spages) do sp:SetShown(i == j) end
         ns.RefreshSettings()
-    end)
+    end, nil, { S.TAB.settings, S.TAB.rules, S.TAB.recent })
     for i = 1, 3 do
         local sp = CreateFrame("Frame", nil, body)
         sp:SetPoint("TOPLEFT", 0, -30 - S.GAP)

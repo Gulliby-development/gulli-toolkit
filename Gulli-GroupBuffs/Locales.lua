@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Group Buffs",
+    TITLE = "Group Buffs",
     DESC = "Casts the buffs your group is missing, one press at a time.",
     HELP = "/ggb opens the settings, /ggb lock locks or unlocks the bar.",
     DRAG = "Drag to move the bar",
@@ -100,7 +100,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Gruppenbuffs",
+    TITLE = "Gruppenbuffs",
     DESC = "Wirkt die Buffs, die deiner Gruppe fehlen, einen pro Tastendruck.",
     HELP = "/ggb öffnet die Einstellungen, /ggb lock sperrt oder entsperrt die Leiste.",
     DRAG = "Ziehen, um die Leiste zu verschieben",
@@ -190,7 +190,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Beneficios de grupo",
+    TITLE = "Beneficios de grupo",
     DESC = "Lanza los beneficios que le faltan a tu grupo, uno por pulsación.",
     HELP = "/ggb abre los ajustes, /ggb lock bloquea o desbloquea la barra.",
     DRAG = "Arrastra para mover la barra",
@@ -280,7 +280,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Améliorations de groupe",
+    TITLE = "Améliorations de groupe",
     DESC = "Lance les améliorations qui manquent à ton groupe, une par appui.",
     HELP = "/ggb ouvre les réglages, /ggb lock verrouille ou déverrouille la barre.",
     DRAG = "Glisser pour déplacer la barre",
@@ -370,7 +370,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Buffy grupy",
+    TITLE = "Buffy grupy",
     DESC = "Rzuca buffy, których brakuje grupie, jeden na wciśnięcie.",
     HELP = "/ggb otwiera ustawienia, /ggb lock blokuje lub odblokowuje pasek.",
     DRAG = "Przeciągnij, aby przesunąć pasek",
@@ -460,7 +460,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Bônus de grupo",
+    TITLE = "Bônus de grupo",
     DESC = "Lança os bônus que faltam ao seu grupo, um por toque.",
     HELP = "/ggb abre as opções, /ggb lock trava ou destrava a barra.",
     DRAG = "Arraste para mover a barra",
@@ -550,7 +550,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Баффы группы",
+    TITLE = "Баффы группы",
     DESC = "Накладывает баффы, которых не хватает группе, по одному за нажатие.",
     HELP = "/ggb открывает настройки, /ggb lock закрепляет или открепляет панель.",
     DRAG = "Перетащите, чтобы сдвинуть панель",
@@ -640,7 +640,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli 团队增益",
+    TITLE = "团队增益",
     DESC = "每按一次，为队伍补上一个缺少的增益。",
     HELP = "/ggb 打开设置，/ggb lock 锁定或解锁按钮条。",
     DRAG = "拖动以移动按钮条",

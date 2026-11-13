@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "Transmute is ready",
     CD_MOONCLOTH = "Mooncloth is ready",
     CD_SALT = "Salt Shaker is ready",
@@ -88,7 +88,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "Transmutation ist bereit",
     CD_MOONCLOTH = "Mondstoff ist bereit",
     CD_SALT = "Salzstreuer ist bereit",
@@ -166,7 +166,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "La transmutación está lista",
     CD_MOONCLOTH = "El paño lunar está listo",
     CD_SALT = "El salero está listo",
@@ -244,7 +244,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "La transmutation est prête",
     CD_MOONCLOTH = "L'étoffe lunaire est prête",
     CD_SALT = "La salière est prête",
@@ -322,7 +322,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "Transmutacja gotowa",
     CD_MOONCLOTH = "Księżycowa tkanina gotowa",
     CD_SALT = "Solniczka gotowa",
@@ -400,7 +400,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "A transmutação está pronta",
     CD_MOONCLOTH = "O pano lunar está pronto",
     CD_SALT = "O saleiro está pronto",
@@ -478,7 +478,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "Трансмутация готова",
     CD_MOONCLOTH = "Луноткань готова",
     CD_SALT = "Солонка готова",
@@ -556,7 +556,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Chores",
+    TITLE = "Chores",
     CD_TRANSMUTE = "转化已就绪",
     CD_MOONCLOTH = "月布已就绪",
     CD_SALT = "盐瓶已就绪",

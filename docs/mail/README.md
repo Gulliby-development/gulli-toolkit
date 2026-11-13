@@ -26,7 +26,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 - **A total.** What this visit brought, with the auction sales apart. It also goes to the toolkit's Recent feed.
 - **No lost mail.** A warning when letters with items or money run out within three days, also for your other characters when you log in.
 - **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to, your friends and your guild. Type to search.
-- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust or gems into the letter with one tap; fill in all your gold but what you keep; mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
+- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust or gems (or all of them) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; fill in all your gold but what you keep; mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
 - **A log** of the last 50 letters you took from.
 
 ## Install

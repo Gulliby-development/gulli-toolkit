@@ -159,6 +159,15 @@ test("the wheel opens on its key and sends a favourite", function()
     eq(ns.WheelSend(5), false, "only two favourites")
 end)
 
+test("secret health and mana in combat leave {hp} and {mana} empty, without an error", function()
+    Fake({ target = "Hogger" })
+    local ns = Load()
+    local SECRET = {}
+    issecretvalue = function(v) return v == SECRET end
+    W.hp, W.mana = SECRET, SECRET
+    eq(ns.Fill("hp {hp} mana {mana} ok"), "hp mana ok")
+end)
+
 test("more tokens: target class and level, health, mana, leader, item, quest", function()
     Fake({ target = "Hogger" })
     local ns = Load()

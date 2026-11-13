@@ -213,6 +213,14 @@ local function stripColors(s)
     return s and s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
 end
 
+-- A module's name without the family prefix: "Gulli-Zeta" and "Gulli Zeta" read "Zeta".
+function ns.ShortName(s)
+    if not s then return nil end
+    local short = s:gsub("^Gulli[%- ]+", "")
+    if short == "" then return s end
+    return short
+end
+
 local function isCategory(c)
     for _, k in ipairs(ns.CATEGORIES) do if k == c then return true end end
 end
@@ -260,10 +268,11 @@ function ns.List()
     for _, k in ipairs(keys) do
         local info, addon = Toolkit.modules[k], disk[k]
         local row = { key = k, addon = addon, info = info }
-        local title = info and info.title
-        if not title and ns.T.en["M_" .. k] then title = L["M_" .. k] end
+        -- The hub's own name comes first, so every known module reads the same way.
+        local title = ns.T.en["M_" .. k] and L["M_" .. k]
+        if not title then title = info and info.title end
         if not title and addon then title = stripColors(metadata(addon, "Title")) end
-        row.title = title or k
+        row.title = ns.ShortName(title) or k
         row.desc = (info and info.desc) or (ns.T.en["D_" .. k] and L["D_" .. k]) or (addon and metadata(addon, "Notes")) or ""
         row.icon = (info and info.icon) or (addon and metadata(addon, "IconTexture"))
         row.slash = info and info.slash

@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "took %d items and %s.",
     FULL = "Your bags are full.",
     SUMMARY = "In the mailbox: %d items and %s.",
@@ -57,6 +57,9 @@ T.en = {
     KIND_ELEMENTAL = "Elemental",
     KIND_ENCHANTING = "Dust",
     KIND_GEM = "Gems",
+    KIND_ALL = "All goods",
+    TILE_NONE = "None in your bags",
+    TILE_FIT = "%d of %d stacks fit in this letter",
     FILL_GOLD = "Put in all gold but %dg",
     APPLY_RULE = "Rule: %s to %s",
     NO_RULE = "No rule has anything to send",
@@ -77,7 +80,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "%d Gegenstände und %s genommen.",
     FULL = "Deine Taschen sind voll.",
     SUMMARY = "Im Briefkasten: %d Gegenstände und %s.",
@@ -124,6 +127,9 @@ T.de = {
     KIND_ELEMENTAL = "Elementar",
     KIND_ENCHANTING = "Staub",
     KIND_GEM = "Edelsteine",
+    KIND_ALL = "Alle Waren",
+    TILE_NONE = "Nichts in den Taschen",
+    TILE_FIT = "%d von %d Stapeln passen in diesen Brief",
     FILL_GOLD = "Alles Gold außer %dg einlegen",
     APPLY_RULE = "Regel: %s an %s",
     NO_RULE = "Keine Regel hat etwas zu senden",
@@ -144,7 +150,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "recogidos %d objetos y %s.",
     FULL = "Tus bolsas están llenas.",
     SUMMARY = "En el buzón: %d objetos y %s.",
@@ -191,6 +197,9 @@ T.es = {
     KIND_ELEMENTAL = "Elemental",
     KIND_ENCHANTING = "Polvo",
     KIND_GEM = "Gemas",
+    KIND_ALL = "Todo",
+    TILE_NONE = "Nada en las bolsas",
+    TILE_FIT = "Caben %d de %d montones en esta carta",
     FILL_GOLD = "Poner todo el oro menos %do",
     APPLY_RULE = "Regla: %s a %s",
     NO_RULE = "Ninguna regla tiene algo que enviar",
@@ -211,7 +220,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "%d objets et %s récupérés.",
     FULL = "Vos sacs sont pleins.",
     SUMMARY = "Dans la boîte : %d objets et %s.",
@@ -258,6 +267,9 @@ T.fr = {
     KIND_ELEMENTAL = "Élémentaire",
     KIND_ENCHANTING = "Poudre",
     KIND_GEM = "Gemmes",
+    KIND_ALL = "Tout",
+    TILE_NONE = "Rien dans les sacs",
+    TILE_FIT = "%d piles sur %d tiennent dans cette lettre",
     FILL_GOLD = "Mettre tout l'or sauf %dpo",
     APPLY_RULE = "Règle : %s à %s",
     NO_RULE = "Aucune règle n'a rien à envoyer",
@@ -278,7 +290,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "zabrano %d przedmiotów i %s.",
     FULL = "Twoje torby są pełne.",
     SUMMARY = "W skrzynce: %d przedmiotów i %s.",
@@ -325,6 +337,9 @@ T.pl = {
     KIND_ELEMENTAL = "Żywioły",
     KIND_ENCHANTING = "Pył",
     KIND_GEM = "Klejnoty",
+    KIND_ALL = "Wszystko",
+    TILE_NONE = "Brak w torbach",
+    TILE_FIT = "%d z %d stosów zmieści się w tym liście",
     FILL_GOLD = "Włóż całe złoto oprócz %dg",
     APPLY_RULE = "Reguła: %s do %s",
     NO_RULE = "Żadna reguła nie ma nic do wysłania",
@@ -345,7 +360,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "pegos %d itens e %s.",
     FULL = "Suas bolsas estão cheias.",
     SUMMARY = "No correio: %d itens e %s.",
@@ -392,6 +407,9 @@ T.pt = {
     KIND_ELEMENTAL = "Elemental",
     KIND_ENCHANTING = "Pó",
     KIND_GEM = "Gemas",
+    KIND_ALL = "Tudo",
+    TILE_NONE = "Nada nas bolsas",
+    TILE_FIT = "Cabem %d de %d pilhas nesta carta",
     FILL_GOLD = "Colocar todo o ouro menos %dg",
     APPLY_RULE = "Regra: %s para %s",
     NO_RULE = "Nenhuma regra tem algo a enviar",
@@ -412,7 +430,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "забрано предметов: %d и %s.",
     FULL = "Сумки заполнены.",
     SUMMARY = "В почте: %d предметов и %s.",
@@ -459,6 +477,9 @@ T.ru = {
     KIND_ELEMENTAL = "Стихии",
     KIND_ENCHANTING = "Чары",
     KIND_GEM = "Самоцветы",
+    KIND_ALL = "Всё сырьё",
+    TILE_NONE = "В сумках нет",
+    TILE_FIT = "В письмо войдёт %d из %d стопок",
     FILL_GOLD = "Вложить всё золото, кроме %dз",
     APPLY_RULE = "Правило: %s » %s",
     NO_RULE = "По правилам отправлять нечего",
@@ -479,7 +500,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "已收取 %d 件物品和 %s。",
     FULL = "你的背包已满。",
     SUMMARY = "邮箱中：%d 件物品和 %s。",
@@ -526,6 +547,9 @@ T.zh = {
     KIND_ELEMENTAL = "元素",
     KIND_ENCHANTING = "附魔",
     KIND_GEM = "宝石",
+    KIND_ALL = "全部材料",
+    TILE_NONE = "背包里没有",
+    TILE_FIT = "这封信能放 %d / %d 组",
     FILL_GOLD = "放入全部金币，保留 %d 金",
     APPLY_RULE = "规则：%s 寄给 %s",
     NO_RULE = "没有规则需要寄送",

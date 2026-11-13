@@ -13,6 +13,14 @@ grep -ohE 'Interface\\\\+Minimap\\\\+Tracking\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua |
   curl -fsS -o "$dir/tracking/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/MINIMAP/TRACKING/$n.PNG" ||
     { rm -f "$dir/tracking/$low.png"; echo "no tracking icon: $n" >&2; }
 done
+# the game's button pictures (the loot roll dice, coin and pass)
+mkdir -p "$dir/buttons"
+grep -ohE 'Interface\\\\+Buttons\\\\+UI-GroupLoot-[A-Za-z-]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
+  low=$(echo "$n" | tr 'A-Z' 'a-z')
+  [ -s "$dir/buttons/$low.png" ] && continue
+  curl -fsS -o "$dir/buttons/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/Buttons/$n.PNG" ||
+    { rm -f "$dir/buttons/$low.png"; echo "no button: $n" >&2; }
+done
 { grep -ohE 'Interface\\\\+Icons\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua tools/preview/scenes.lua | sed -E 's/.*\\//'
   grep -ohE '"(INV|Spell|Ability|Trade|Racial)_[A-Za-z0-9_]+"' Gulli-*/*.lua | tr -d '"'; } | sort -u | while read -r n; do
   low=$(echo "$n" | tr 'A-Z' 'a-z')
