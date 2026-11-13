@@ -138,7 +138,7 @@ local function build()
     S.Danger(undo)
     footer:Add(undo)
     undo:SetScript("OnClick", function() ns.Undo() end)
-    tabs = S.Tabs(body, { L.TAB_MAIN, L.TAB_RULES, L.TAB_IGNORED }, nil, function(i) current = i; ns.Refresh() end)
+    tabs = S.Tabs(body, { L.TAB_MAIN, L.TAB_RULES, L.TAB_IGNORED }, nil, function(i) current = i; ns.Refresh() end, nil, { S.TAB.quests, S.TAB.rules, "Interface\\Icons\\Spell_ChargeNegative" })
     pages = { mainPage(body), rulesPage(body), ignoredPage(body) }
     for _, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)

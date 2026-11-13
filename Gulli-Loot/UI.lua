@@ -10,7 +10,23 @@ local frame, pages, pageTabs
 local qtabs, ttabs = {}, {}
 local itemList, itemEmpty, search, logList, logEmpty
 local QUALITY_COLOR = { [0] = "|cff9d9d9d", [1] = "|cffffffff", [2] = "|cff1eff00" }
-local SEG_W = 64
+local SEG_W = 40
+-- The game's own roll pictures, so a rule reads like the roll window.
+local ROLL_ICON = {
+    ask = "Interface\\Icons\\INV_Misc_QuestionMark",
+    need = "Interface\\Buttons\\UI-GroupLoot-Dice-Up",
+    greed = "Interface\\Buttons\\UI-GroupLoot-Coin-Up",
+    pass = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
+}
+
+-- A segmented choice of rolls drawn as the game's roll icons; the cursor names each one.
+local function rollTabs(holder, values, onSelect, height)
+    local labels, icons = {}, {}
+    for i, v in ipairs(values) do labels[i] = ""; icons[i] = ROLL_ICON[v] end
+    local t = S.Tabs(holder, labels, SEG_W, onSelect, height, icons)
+    for i, v in ipairs(values) do t.buttons[i].tip = L["SEG_" .. v:upper()] end
+    return t
+end
 
 local function indexOf(t, v) for i, x in ipairs(t) do if x == v then return i end end return 1 end
 
@@ -38,12 +54,10 @@ local function makeItemRow(r)
     r.icon:SetPoint("LEFT", 2, 0)
     r.remove = S.Close(r, function(self) ns.SetItem(self:GetParent().entry.id, nil) end)
     r.remove:SetPoint("RIGHT", 0, 0)
-    local labels = {}
-    for i, rule in ipairs(ns.ITEM_RULES) do labels[i] = L["SEG_" .. rule:upper()] end
     local holder = CreateFrame("Frame", nil, r)
-    holder:SetSize(#labels * SEG_W + 4, 28)
+    holder:SetSize(#ns.ITEM_RULES * SEG_W + 4, 28)
     holder:SetPoint("RIGHT", r.remove, "LEFT", -6, 0)
-    r.seg = S.Tabs(holder, labels, SEG_W, function(i)
+    r.seg = rollTabs(holder, ns.ITEM_RULES, function(i)
         if r.entry and r.entry.rule ~= ns.ITEM_RULES[i] then ns.SetItem(r.entry.id, ns.ITEM_RULES[i]) end
     end, 28)
     r.text = S.Text(r, 12)
@@ -122,11 +136,17 @@ end
 ---- Building -----------------------------------------------------------------------
 
 local function segRow(values, get, set)
-    local labels = {}
-    for i, v in ipairs(values) do labels[i] = L["SEG_" .. v:upper()] end
     local holder = CreateFrame("Frame", nil, frame.body)
-    holder:SetSize(#labels * 78 + 4, 30)
-    local t = S.Tabs(holder, labels, 78, function(sel) set(values[sel]) end)
+    local t
+    if ROLL_ICON[values[1]] then
+        holder:SetSize(#values * SEG_W + 4, 30)
+        t = rollTabs(holder, values, function(sel) set(values[sel]) end)
+    else
+        local labels = {}
+        for i, v in ipairs(values) do labels[i] = L["SEG_" .. v:upper()] end
+        holder:SetSize(#labels * 78 + 4, 30)
+        t = S.Tabs(holder, labels, 78, function(sel) set(values[sel]) end)
+    end
     t:Select(indexOf(values, get()), true)
     return holder, t
 end
@@ -219,7 +239,7 @@ local function build()
     pageTabs = S.Tabs(holder, { L.PAGE_RULES, L.PAGE_ITEMS, L.PAGE_RECENT }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end)
+    end, nil, { S.TAB.rules, S.TAB.items, S.TAB.recent })
     for i = 1, 3 do
         local p = i == 1 and S.Scroll(body) or CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -38)

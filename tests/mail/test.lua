@@ -246,6 +246,21 @@ test("quick attach puts unbound, unprotected items of a kind into the letter", f
     GulliToolkit = nil
 end)
 
+test("a quick attach tile counts the stacks that fit and shows the icon of the item it has most of", function()
+    Fake({ bags = { [0] = { [1] = { id = 10, count = 5 }, [2] = { id = 20, count = 20 }, [3] = { id = 20, count = 20 },
+                            [4] = { id = 12, count = 3 } } },
+           classes = { [10] = { 7, 5 }, [20] = { 7, 5 }, [12] = { 7, 9 } } })
+    local ns = Load()
+    local cloth = ns.KindInfo("cloth")
+    eq(cloth.stacks, 3); eq(cloth.total, 45); eq(cloth.items[1].id, 20); eq(cloth.icon, "icon20")
+    local ore = ns.KindInfo("ore")
+    eq(ore.stacks, 0); eq(ore.icon, "icon2770", "an empty kind shows its sample item")
+    eq(ns.KindInfo("all").stacks, 4, "all takes cloth and herbs")
+    W.sendItems = 11
+    SendMailFrame:Show()
+    eq(ns.KindInfo("cloth").going, 1, "one place left in the letter")
+end)
+
 test("gold for another character keeps what the player asked for", function()
     Fake({})
     local ns = Load()

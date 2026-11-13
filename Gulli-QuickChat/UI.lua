@@ -17,6 +17,9 @@ local whisperView, whoFilter = 1, nil
 local wheel, wheelButton, panel, picker
 local I = "Interface\\Icons\\"
 local CAT_TABS = { "ALL", "GROUP", "TRADE", "SOCIAL", "OWN" }
+local CAT_ICONS = { ALL = S.TAB.list, GROUP = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude",
+                    TRADE = "Interface\\Icons\\INV_Misc_Coin_02", SOCIAL = "Interface\\Icons\\Spell_Holy_Heal",
+                    OWN = "Interface\\Icons\\INV_Misc_Note_05" }
 
 local function chanLabel(ch) return ch and L["CH_" .. ch] or L.CH_DEFAULT end
 
@@ -56,8 +59,13 @@ local function layoutPhrases()
                 ns.ToggleFav(self:GetParent().phrase); layoutPhrases()
                 if ns.Panel then ns.Panel() end
             end)
+            b.pIcon = b:CreateTexture(nil, "ARTWORK")
+            b.pIcon:SetSize(20, 20)
+            b.pIcon:SetPoint("LEFT", 8, 0)
+            b.pIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             phraseButtons[i] = b
         end
+        b.pIcon:SetTexture(ns.PhraseIcon and ns.PhraseIcon(text))
         b:SetSize(w, BTN_H)
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", ((i - 1) % COLS) * (w + 8), -math.floor((i - 1) / COLS) * (BTN_H + 8))
@@ -68,7 +76,7 @@ local function layoutPhrases()
         b.chan:SetShown(editing)
         b.fav:SetShown(editing)
         b.text:ClearAllPoints()
-        b.text:SetPoint("LEFT", 6, 0)
+        b.text:SetPoint("LEFT", 34, 0)
         if editing then
             b.text:SetPoint("RIGHT", b.fav, "LEFT", -4, 0)
             b.text:SetText(S.Hex(S.BAD) .. "x|r  " .. text)
@@ -98,9 +106,9 @@ local function layoutPhrases()
 end
 
 local function buildPhrases(page)
-    local catLabels = {}
-    for i, c in ipairs(CAT_TABS) do catLabels[i] = L["CAT_" .. c] end
-    page.cats = S.Tabs(page, catLabels, 96, function(i) catFilter = CAT_TABS[i]; layoutPhrases() end)
+    local catLabels, catIcons = {}, {}
+    for i, c in ipairs(CAT_TABS) do catLabels[i] = L["CAT_" .. c]; catIcons[i] = CAT_ICONS[c] end
+    page.cats = S.Tabs(page, catLabels, 104, function(i) catFilter = CAT_TABS[i]; layoutPhrases() end, nil, catIcons)
     page.edit = S.Ghost(S.Button(page, 90, 30))
     page.edit:SetPoint("TOPRIGHT", 0, 0)
     page.edit:SetScript("OnClick", function() editing = not editing; layoutPhrases() end)
@@ -209,7 +217,7 @@ local function buildGroup(page)
     for i = #ns.ROLES, 1, -1 do
         local r = ns.ROLES[i]
         local t = S.Text(cb, 12)
-        t:SetText(L["ROLE_" .. r])
+        t:SetText(S.IconTag(S.ROLE_ICON[r], 16) .. " " .. L["ROLE_" .. r])
         if prevRole then t:SetPoint("RIGHT", prevRole, "LEFT", -14, 0) else t:SetPoint("RIGHT", cb, "TOPRIGHT", 0, -65) end
         local c = S.Check(cb, 26)
         c:SetPoint("RIGHT", t, "LEFT", -2, 0)
@@ -602,7 +610,7 @@ local function build()
     frame = S.Window("GulliQuickChatFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
     tabs = S.Tabs(body, { L.TAB_PHRASES, L.TAB_GROUP, L.TAB_MISSED, L.TAB_MORE, L.TAB_SETUP }, 150,
-        function(i) current = i; ns.Refresh() end)
+        function(i) current = i; ns.Refresh() end, nil, { S.TAB.chat, S.TAB.group, S.TAB.recent, S.TAB.more, S.TAB.settings })
     for i, b in ipairs({ buildPhrases, buildGroup, buildWhispers, buildMore, buildSetup }) do
         local page = CreateFrame("Frame", nil, body)
         page:SetPoint("TOPLEFT", 0, -30 - S.GAP)
@@ -648,8 +656,6 @@ end
 -- click (or press the wheel key again, or 1-8) to send; a click in the middle or Escape closes it.
 ns.WHEEL_R = 150
 local SLOT = 58
-local CAT_ICONS = { GROUP = I .. "Spell_Holy_PrayerOfFortitude", TRADE = I .. "INV_Misc_Coin_02",
-                    SOCIAL = I .. "Spell_Holy_Heal", OWN = I .. "INV_Misc_Note_05" }
 -- Each default phrase has its own picture; the player's own phrases show their category's.
 local PHRASE_ICONS = { "INV_Letter_02", "Ability_Warrior_BattleShout", "INV_Misc_PocketWatch_01", "Ability_Rogue_Sprint",
                        "INV_Misc_Gift_01", "Ability_Mount_RidingHorse", "Spell_Holy_FlashHeal", "INV_Drink_18",
@@ -661,6 +667,7 @@ local function phraseIcon(text)
     end
     return CAT_ICONS[ns.Category(text)] or CAT_ICONS.OWN
 end
+ns.PhraseIcon = phraseIcon
 
 local hovered -- the lit slot (kept outside the frame)
 

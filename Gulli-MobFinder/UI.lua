@@ -533,7 +533,7 @@ local function build()
     pageTabs = S.Tabs(holder, { L.PAGE_SEARCH, L.PAGE_MOBS, L.PAGE_HISTORY }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end)
+    end, nil, { S.TAB.search, "Interface\\Icons\\Ability_Hunter_SniperShot", S.TAB.recent })
     for i = 1, 3 do
         local p = i == 1 and S.Scroll(body) or CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -38)
