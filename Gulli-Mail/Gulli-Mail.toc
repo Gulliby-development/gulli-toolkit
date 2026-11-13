@@ -10,7 +10,7 @@
 ## Notes-zhCN: 一键收取邮箱，并一键选择你的角色和最近的收件人。 /gml
 ## Notes-zhTW: 一键收取邮箱，并一键选择你的角色和最近的收件人。 /gml
 ## Author: Gulliby
-## Version: 1.4.1
+## Version: 1.4.2
 ## IconTexture: Interface\AddOns\Gulli-Mail\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Mail

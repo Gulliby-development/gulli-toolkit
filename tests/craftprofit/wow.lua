@@ -218,10 +218,13 @@ function Fake(spec)
     W.vendor = spec.vendor or {}
     GetMerchantNumItems = function() return #W.vendor end
     GetMerchantItemID = function(i) return W.vendor[i][1] end
-    GetMerchantItemInfo = function(i)
+    -- Like the retail client: only C_MerchantFrame.GetItemInfo, no GetMerchantItemInfo.
+    GetMerchantItemInfo = nil
+    C_MerchantFrame = { GetItemInfo = function(i)
         local v = W.vendor[i]
-        return "Item" .. v[1], 1, v[2], v[3] or 1, -1, true, true, v[4] or false
-    end
+        return { name = "Item" .. v[1], price = v[2], stackCount = v[3] or 1, numAvailable = -1,
+                 hasExtendedCost = v[4] or false }
+    end }
     W.trainer = spec.trainer or {}
     GetNumTrainerServices = function() return #W.trainer end
     GetTrainerServiceInfo = function(i) return W.trainer[i][1], "available" end

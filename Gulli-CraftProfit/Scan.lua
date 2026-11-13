@@ -366,10 +366,24 @@ end
 
 -- ---------- learning prices at vendors and trainers ----------
 
+-- Retail has only C_MerchantFrame.GetItemInfo; GetMerchantItemInfo is the classic one.
+local function merchantInfo(i)
+    if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
+        local t = C_MerchantFrame.GetItemInfo(i)
+        if not t then return nil end
+        return t.price, t.stackCount, t.hasExtendedCost
+    end
+    if GetMerchantItemInfo then
+        local _, _, price, stack, _, _, _, extended = GetMerchantItemInfo(i)
+        return price, stack, extended
+    end
+end
+ns.MerchantInfo = merchantInfo
+
 local function learnVendor()
     for i = 1, (GetMerchantNumItems and GetMerchantNumItems() or 0) do
         local id = GetMerchantItemID and GetMerchantItemID(i)
-        local _, _, price, stack, _, _, _, extended = GetMerchantItemInfo(i)
+        local price, stack, extended = merchantInfo(i)
         if id and price and price > 0 and not extended then
             ns.db.vendor[id] = math.floor(price / math.max(1, stack or 1) + 0.5)
         end

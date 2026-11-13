@@ -585,7 +585,14 @@ function ns.Buy(m)
     if not (MerchantFrame and MerchantFrame:IsShown()) or not GetMerchantNumItems then return 0 end
     for i = 1, GetMerchantNumItems() do
         if GetMerchantItemID(i) == m.buy then
-            local _, _, price, per = GetMerchantItemInfo(i)
+            local price, per
+            if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
+                local t = C_MerchantFrame.GetItemInfo(i)
+                price, per = t and t.price, t and t.stackCount
+            elseif GetMerchantItemInfo then
+                local _
+                _, _, price, per = GetMerchantItemInfo(i)
+            end
             per = per or 1
             local each = (price or 0) / per
             local want = m.want

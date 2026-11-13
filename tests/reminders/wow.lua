@@ -203,7 +203,9 @@ function Fake(spec)
     MerchantFrame = { IsShown = function() return W.merchant ~= nil end }
     GetMerchantNumItems = function() return W.merchant and #W.merchant or 0 end
     GetMerchantItemID = function(i) return W.merchant[i][1] end
-    GetMerchantItemInfo = function(i) local m = W.merchant[i]; return "x", 1, m[2], m[3] end
+    -- Like the retail client: only C_MerchantFrame.GetItemInfo, no GetMerchantItemInfo.
+    GetMerchantItemInfo = nil
+    C_MerchantFrame = { GetItemInfo = function(i) local m = W.merchant[i]; return { price = m[2], stackCount = m[3] } end }
     GetMerchantItemMaxStack = function(i) return W.merchant[i][4] end
     BuyMerchantItem = function(i, n) W.bought[#W.bought + 1] = { i, n } end
     GetMoney = function() return W.money end
