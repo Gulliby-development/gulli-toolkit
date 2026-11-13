@@ -338,6 +338,37 @@ test("in a raid your own camp covers only you, never the others", function()
     eq(keys.ST_HIDDEN, 1, "a unit whose buffs the game hides is counted")
 end)
 
+test("a game check that fails or hides its answer on one member leaves the others offered", function()
+    local units = party()
+    units.party1.auras = { ["Camp Benefits"] = 7200 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100,
+           camp = { party1 = { "First Aid Kit: Stamina increased by 1." } } }
+    local ns = Load()
+    -- party1: its camp tooltip raises an error; party2: range and death answers are secret.
+    C_TooltipInfo.GetUnitBuffByAuraInstanceID = function(unit) error("tooltip of " .. unit) end
+    local range, dead = C_Spell.IsSpellInRange, UnitIsDeadOrGhost
+    C_Spell.IsSpellInRange = function(n, unit) if unit == "party2" then return W.SECRET end return range(n, unit) end
+    UnitIsDeadOrGhost = function(unit) if unit == "party2" then return W.SECRET end return dead(unit) end
+    UnitGroupRolesAssigned = function() error("roles") end
+    local plan, far = ns.Plan()
+    eq(show(plan), "Power Word: Fortitude@player,Power Word: Fortitude@party2,Power Word: Fortitude@party3")
+    local keys = {}
+    for _, st in ipairs(ns.Status(plan, far)) do keys[st[1]] = st[2] end
+    eq(keys.ST_HIDDEN, 1, "the member the game would not answer for is counted")
+    Fire("PLAYER_LOGIN")
+    ns.Refresh()
+    eq(GulliGroupBuffsButton.attrs.unit, "player", "the bar still shows")
+    -- A hidden name is never joined into the caption.
+    units.player.auras = { ["Power Word: Fortitude"] = 1800 }
+    local name = UnitName
+    UnitName = function(unit) if unit == "player" then return name(unit) end return W.SECRET end
+    ns.Refresh()
+    eq(GulliGroupBuffsButton.attrs.unit, "party2")
+    W.combat = true
+    Fire("PLAYER_REGEN_DISABLED")
+    eq(GulliGroupBuffsButton.attrs["gb-unit1"], "party2")
+end)
+
 test("a bounce on you does not stop the buff on anyone else", function()
     local units = party()
     units.player.auras = { ["Camp Benefits"] = 7200 }
