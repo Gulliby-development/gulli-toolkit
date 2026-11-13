@@ -117,6 +117,22 @@ test("a unit whose buffs the game hides is left alone", function()
     eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party2,Power Word: Fortitude@party3")
 end)
 
+test("one hidden buff does not hide the rest: the missing buff is still offered", function()
+    local units = party()
+    units.party1.auras = { ["Some Secret Buff"] = 0 }
+    units.party1.secret = { ["Some Secret Buff"] = true }
+    units.party2.auras = { ["Power Word: Fortitude"] = 600 }
+    units.party2.secret = { ["Power Word: Fortitude"] = true }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, byName = true }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party1,Power Word: Fortitude@party3",
+        "party1 misses it, party2 has it hidden")
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party3",
+        "without a by-name lookup both are left alone")
+end)
+
 test("in a raid the group spell is counted per party", function()
     local units = { player = { name = "Me", class = "PRIEST", auras = {} } }
     local raid = {}
@@ -406,6 +422,34 @@ test("marks on the game's party frames show the first missing buff", function()
     ns.Refresh()
     eq(made[1].shown, false)
     CompactPartyFrameMember1, CompactPartyFrameMember2 = nil, nil
+end)
+
+test("marks also go on other addons' party frames, found by their unit attribute", function()
+    local units = party()
+    units.party2.auras = { ["Power Word: Fortitude"] = 0 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    local theirs, made = {}, {}
+    for i = 1, 3 do
+        local f = W.frame()
+        f.attrs.unit = ({ "party1", "party2", "nameplate1" })[i]
+        rawset(f, "CreateTexture", function() local t = W.frame(); made[i] = t; return t end)
+        theirs[i] = f
+    end
+    local forbidden = W.frame()
+    forbidden.attrs.unit = "party1"
+    rawset(forbidden, "IsForbidden", function() return true end)
+    rawset(forbidden, "CreateTexture", function() error("touched a forbidden frame") end)
+    theirs[4] = forbidden
+    EnumerateFrames = function(f)
+        if not f then return theirs[1] end
+        for i, x in ipairs(theirs) do if x == f then return theirs[i + 1] end end
+    end
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    assert(made[1] and made[1].shown, "mark on party1's frame of another addon")
+    eq(made[2], nil, "no mark on the buffed one")
+    eq(made[3], nil, "nameplates are not group frames")
+    EnumerateFrames = nil
 end)
 
 test("settings by group size: a raid can use other values than a party", function()

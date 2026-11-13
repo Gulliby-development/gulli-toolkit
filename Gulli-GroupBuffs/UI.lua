@@ -58,7 +58,7 @@ end
 
 local function done(e)
     if not e or not e.names then return false end
-    local auras = ns.Auras(e.unit)
+    local auras = ns.Auras(e.unit, e.names)
     return auras and ns.Present(e.names, auras, 0) or false
 end
 
@@ -170,22 +170,62 @@ local function paint(b, e, fallback)
     b:SetDone(done(e))
 end
 
--- The marks on the game's party and raid frames: the icon of the first buff a unit misses.
+-- The marks on the party and raid frames: the icon of the first buff a unit misses.
 -- Only textures of our own on top of those frames; nothing of theirs changes.
 local marks = setmetatable({}, { __mode = "k" })
 
+-- Party and raid frames of other addons (HealKit, ElvUI, ...): any frame whose "unit"
+-- attribute is a party or raid unit. Found by walking every frame, so only now and then.
+local others, scannedAt, SCAN_SECONDS = setmetatable({}, { __mode = "k" }), nil, 15
+
+local function groupUnit(unit)
+    return type(unit) == "string" and (unit:match("^party%d+$") or unit:match("^raid%d+$")) and true or false
+end
+
+local function scanFrames()
+    scannedAt = GetTime and GetTime() or 0
+    if not EnumerateFrames then return end
+    for k in pairs(others) do others[k] = nil end
+    local f, n = EnumerateFrames(), 0
+    while f and n < 50000 do
+        n = n + 1
+        local forbidden = f.IsForbidden and f:IsForbidden()
+        if not forbidden and f.GetAttribute then
+            local ok, unit = pcall(f.GetAttribute, f, "unit")
+            if ok and groupUnit(unit) then others[f] = true end
+        end
+        f = EnumerateFrames(f)
+    end
+end
+ns.ScanFrames = scanFrames
+
+-- Look again in a second: after a roster change the other addons build or reuse their frames.
+function ns.RescanFrames()
+    scannedAt = (GetTime and GetTime() or 0) - SCAN_SECONDS + 1
+end
+
 local function eachGroupFrame(fn)
-    for i = 1, 5 do local f = _G["CompactPartyFrameMember" .. i]; if f then fn(f) end end
-    for i = 1, 40 do local f = _G["CompactRaidFrame" .. i]; if f then fn(f) end end
+    local blizz = {}
+    local function add(f) if f then blizz[f] = true; fn(f, f.displayedUnit or f.unit, "TOPRIGHT") end end
+    for i = 1, 5 do add(_G["CompactPartyFrameMember" .. i]) end
+    for i = 1, 40 do add(_G["CompactRaidFrame" .. i]) end
     for g = 1, 8 do
-        for m = 1, 5 do local f = _G["CompactRaidGroup" .. g .. "Member" .. m]; if f then fn(f) end end
+        for m = 1, 5 do add(_G["CompactRaidGroup" .. g .. "Member" .. m]) end
+    end
+    for f in pairs(others) do
+        if not blizz[f] then
+            local ok, unit = pcall(f.GetAttribute, f, "unit")
+            -- Their own icons often sit top right: ours goes bottom right.
+            fn(f, ok and groupUnit(unit) and unit or nil, "BOTTOMRIGHT")
+        end
     end
 end
 
 local function paintMarks()
     local on = ns.DB().marks
-    eachGroupFrame(function(f)
-        local unit = f.displayedUnit or f.unit
+    local t0 = GetTime and GetTime() or 0
+    if on and not InCombatLockdown() and (not scannedAt or t0 - scannedAt >= SCAN_SECONDS) then scanFrames() end
+    eachGroupFrame(function(f, unit, corner)
         local icon
         if on and type(unit) == "string" and UnitExists(unit) then
             for u, ic in pairs(byUnit) do
@@ -193,10 +233,10 @@ local function paintMarks()
             end
         end
         local t = marks[f]
-        if icon and not t then
+        if icon and not t and not InCombatLockdown() then
             t = f:CreateTexture(nil, "OVERLAY", nil, 7)
             t:SetSize(14, 14)
-            t:SetPoint("TOPRIGHT", -2, -2)
+            t:SetPoint(corner, -2, corner == "TOPRIGHT" and -2 or 2)
             t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             marks[f] = t
         end
@@ -377,6 +417,7 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
     elseif event == "UNIT_AURA" then
         if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then dirty = true end
     else
+        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then ns.RescanFrames() end
         dirty = true
     end
 end)
