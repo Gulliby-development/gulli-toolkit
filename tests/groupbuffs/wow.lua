@@ -92,10 +92,17 @@ function Fake(spec)
             local name = names[i]
             if not name then return nil end
             local left = x.auras[name]
+            if x.secret and x.secret[name] then return { name = W.SECRET, expirationTime = W.SECRET } end
             local a = { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
             if name == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
             return a
         end,
+        -- Only with spec.byName, so the tests without it cover a client that lacks it.
+        GetAuraDataBySpellName = spec.byName and function(unit, name)
+            local x = u(unit)
+            if not x or not x.auras or not x.auras[name] then return nil end
+            return { name = W.SECRET, expirationTime = W.SECRET }
+        end or nil,
     }
     -- The camp aura's tooltip: W.camp[unit] = { "First Aid Kit: Stamina increased by 34." }.
     W.camp = spec.camp or {}

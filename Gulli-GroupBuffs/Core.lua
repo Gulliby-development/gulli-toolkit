@@ -126,10 +126,10 @@ local function secret(v)
     return issecretvalue and issecretvalue(v) or false
 end
 
--- The unit's buffs as name -> seconds left (math.huge: no end). Nil when the game hides
--- them (secret values, a battleground): then the unit is left alone rather than nagged.
+-- The unit's buffs as name -> seconds left (math.huge: no end), and how many of them the
+-- game hides (secret values). One hidden aura must not hide the rest.
 local function readAuras(unit)
-    local out, t = {}, now()
+    local out, hidden, t = {}, 0, now()
     for i = 1, 40 do
         local name, expires
         if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
@@ -143,18 +143,41 @@ local function readAuras(unit)
         else
             break
         end
-        if secret(name) or secret(expires) then return nil end
-        if name then
-            local left = (not expires or expires == 0) and math.huge or (expires - t)
+        if secret(name) then
+            hidden = hidden + 1
+        elseif name then
+            local left = (secret(expires) or not expires or expires == 0) and math.huge or (expires - t)
             if not out[name] or out[name] < left then out[name] = left end
         end
     end
-    return out
+    return out, hidden
 end
 
-function ns.Auras(unit)
-    local ok, res = pcall(readAuras, unit)
-    if ok then return res end
+-- Asks the game for one buff by name: true and seconds left when the unit has it.
+local function byName(unit, name)
+    local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, name, "HELPFUL")
+    if not ok then return nil end
+    if not a then return false end
+    local e = a.expirationTime
+    if secret(e) or not e or e == 0 then return true, math.huge end
+    return true, e - now()
+end
+
+-- The unit's buffs, as readAuras. When the game hides some of them, each of `names` that
+-- did not show is asked for by name; nil when the game cannot tell (the unit is left alone).
+function ns.Auras(unit, names)
+    local ok, out, hidden = pcall(readAuras, unit)
+    if not ok then return nil end
+    if hidden == 0 then return out end
+    if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then return nil end
+    for _, n in ipairs(names) do
+        if not out[n] then
+            local has, left = byName(unit, n)
+            if has == nil then return nil end
+            if has then out[n] = left end
+        end
+    end
+    return out
 end
 
 local function role(unit)
@@ -487,12 +510,20 @@ function ns.Plan()
     local low, groupMin = ns.Setting("low"), ns.Setting("groupMin")
     local info = { families = #fams, skipped = 0 }
     ns.info = info
+    -- Every buff name the plan may look for, for units whose auras the game partly hides.
+    local watched = {}
+    for _, fam in ipairs(fams) do
+        for _, n in ipairs(fam.names or {}) do watched[#watched + 1] = n end
+        for _, opt in pairs(fam.options or {}) do
+            for _, n in ipairs(opt.names or {}) do watched[#watched + 1] = n end
+        end
+    end
     local need = {}
     for _, u in ipairs(units) do
         if alive(u.unit) and ns.Skipped(u.unit) then
             info.skipped = info.skipped + 1
         elseif alive(u.unit) then
-            local auras = ns.Auras(u.unit)
+            local auras = ns.Auras(u.unit, watched)
             if auras then
                 for _, fam in ipairs(fams) do
                     if fam.who == "blessing" then
