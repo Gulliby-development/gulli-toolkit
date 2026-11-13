@@ -53,7 +53,7 @@ function W.Base(spec)
     UIParent, GameTooltip, UISpecialFrames = stub(), stub(), {}
     tinsert, tremove, wipe = table.insert, table.remove, function(t) for k in pairs(t) do t[k] = nil end return t end
     strtrim = function(s) return (s or ""):match("^%s*(.-)%s*$") end
-    C_Timer = { After = function(_, fn) W.timers[#W.timers + 1] = fn end,
+    C_Timer = { After = function(d, fn) W.timers[#W.timers + 1] = fn; W.lastDelay = d end,
                 NewTicker = function(_, fn) W.timers[#W.timers + 1] = fn; return stub() end }
     hooksecurefunc = function() end
     PlaySound = function() end

@@ -329,6 +329,21 @@ test("a new reminder plays a sound once, in instances by default", function()
     eq(#W.sounds, 1, "not outside")
 end)
 
+test("a buff of yours that comes or goes shows on the next frame", function()
+    Fake({ class = "PRIEST", known = { 588 } })
+    Load()
+    W.RunTimers()
+    W.lastDelay = nil
+    local before = #W.timers
+    W.Fire("UNIT_AURA", "player")
+    eq(W.lastDelay, 0, "UNIT_AURA refreshes without the half-second wait")
+    W.Fire("UNIT_AURA", "player")
+    eq(#W.timers, before + 1, "a burst gives one refresh")
+    W.RunTimers()
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(W.lastDelay, 0.5, "other events still wait")
+end)
+
 test("the hub gets a summary, move and reset", function()
     Fake({ class = "PRIEST", known = { 588 } })
     local got

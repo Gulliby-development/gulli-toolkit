@@ -10,7 +10,7 @@
 ## Notes-zhCN: 战斗前缺少什么一目了然：职业增益、毒药和附魔、弹药、灵魂碎片。 /grm
 ## Notes-zhTW: 战斗前缺少什么一目了然：职业增益、毒药和附魔、弹药、灵魂碎片。 /grm
 ## Author: Gulliby
-## Version: 1.6.4
+## Version: 1.6.5
 ## IconTexture: Interface\AddOns\Gulli-Reminders\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Reminders
