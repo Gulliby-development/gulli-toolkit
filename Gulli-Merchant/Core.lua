@@ -24,6 +24,13 @@ function ns.Money(copper)
     return table.concat(parts, " ")
 end
 
+-- For the stat tiles: copper is left out once there is gold, so the value stays big.
+function ns.ShortMoney(copper)
+    copper = math.floor(copper or 0)
+    if copper >= 10000 then copper = copper - copper % 100 end
+    return ns.Money(copper)
+end
+
 -- What a visit sells and earns, for the window.
 ns.session = { sold = 0, value = 0, repair = 0 }
 ns.DEFAULTS = { sell = true, repair = true, guild = true, safe = false, unusable = false }

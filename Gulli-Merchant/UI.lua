@@ -101,9 +101,9 @@ function ns.Refresh()
     list:SetData(rows)
     empty:SetShown(#rows == 0)
     listCard:SetTitle(L.WILL_SELL, #junk > 0 and ns.Money(total) or "")
-    stats.tiles[1]:Set(ns.Money(total))
-    stats.tiles[2]:Set(ns.Money(ns.session.value), nil, L.STAT_SOLD:format(ns.session.sold))
-    stats.tiles[3]:Set(ns.Money(ns.session.repair))
+    stats.tiles[1]:Set(ns.ShortMoney(total))
+    stats.tiles[2]:Set(ns.ShortMoney(ns.session.value), nil, L.STAT_SOLD:format(ns.session.sold))
+    stats.tiles[3]:Set(ns.ShortMoney(ns.session.repair))
     local status, color
     if #selling == 0 then status, color = L.NO_JUNK, S.MUTED
     elseif #selling > 12 then status, color = L.JUNK:format(#selling, ns.Money(sellValue)) .. " " .. L.BUYBACK, S.WARN

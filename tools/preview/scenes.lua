@@ -84,6 +84,11 @@ S.merchant = { default = {
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
              prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = false } },
     open = function(ns) ns.atVendor = true; ns.Toggle() end,
+}, rich = {
+    -- a long money value in the junk tile
+    spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
+             prices = { [10] = 4892, [11] = 8189, [13] = 112 }, db = { sell = true, repair = true, guild = false } },
+    open = function(ns) ns.atVendor = true; ns.Toggle() end,
 } }
 
 local BAG_ITEMS = {

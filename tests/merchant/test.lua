@@ -274,4 +274,12 @@ test("bag coins read each slot once, and a burst of updates redraws them once", 
     ContainerFrame1 = nil
 end)
 
+test("the stat tiles leave out copper once there is gold", function()
+    Fake({})
+    local ns = Load()
+    eq(ns.ShortMoney(25676), "2g 56s")
+    eq(ns.ShortMoney(5676), "56s 76c")
+    eq(ns.ShortMoney(0), "0c")
+end)
+
 W.finish()
