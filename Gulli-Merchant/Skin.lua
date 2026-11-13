@@ -646,6 +646,7 @@ function S.Empty(parent)
 end
 
 -- A tile with one big number and its name under it, for counters.
+S.STAT_SIZE, S.STAT_MIN = 20, 11
 function S.Stat(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.EDGE)
@@ -655,7 +656,7 @@ function S.Stat(parent, label, icon)
         t.icon:SetPoint("RIGHT", -S.INSET, 0)
         right = -S.INSET - 38
     end
-    t.value = S.Text(t, 20)
+    t.value = S.Text(t, S.STAT_SIZE)
     t.value:SetPoint("TOPLEFT", S.INSET, -12)
     t.value:SetPoint("TOPRIGHT", right, -12)
     t.value:SetWordWrap(false)
@@ -664,8 +665,18 @@ function S.Stat(parent, label, icon)
     t.label:SetPoint("TOPRIGHT", t.value, "BOTTOMRIGHT", 0, -6)
     t.label:SetWordWrap(false)
     t.label:SetText(label or "")
+    -- A long value (money such as "2g 56s 76c") shrinks to fit the tile instead of ending in "...".
+    function t:Fit()
+        local v = self.value
+        v:SetFont(FONT, S.STAT_SIZE, "")
+        local avail = (tonumber(self:GetWidth()) or 0) - S.INSET + right
+        if avail <= 0 then return end
+        local w = tonumber((v.GetUnboundedStringWidth and v:GetUnboundedStringWidth()) or v:GetStringWidth()) or 0
+        if w > avail then v:SetFont(FONT, math.max(S.STAT_MIN, math.floor(S.STAT_SIZE * avail / w)), "") end
+    end
     function t:Set(value, color, label2)
         self.value:SetText(value)
+        self:Fit()
         local c = color or S.TEXT
         self.value:SetTextColor(c[1], c[2], c[3], 1)
         if label2 then self.label:SetText(label2) end
@@ -687,6 +698,7 @@ function S.StatRow(parent, labels, height, icons)
             t:ClearAllPoints()
             t:SetPoint("TOPLEFT", (i - 1) * (w + 8), 0)
             t:SetSize(w, self:GetHeight())
+            t:Fit()
         end
     end
     return holder
