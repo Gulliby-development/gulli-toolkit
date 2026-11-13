@@ -18,13 +18,14 @@ Is this worth keeping? Which quest wanted it? Gulli Tooltip puts the answer in t
 
 ## Features
 
+- **Easy to read.** A thin line sets the Gulli lines apart from the game's and other addons' lines. Quests are yellow, money shows in gold, silver and copper colours, your characters in their class colours.
 - **Stack price.** What a full stack sells for at a vendor.
-- **Auction price** from Auctionator, when you have it.
+- **Auction price of a full stack** from Auctionator, when you have it. Off by default, because Auctionator already shows the price of one.
 - **Quests that need it.** "Quest: Wolves 3/10" on a Wolf Pelt, from the quests in your log. The count turns green when your bags hold enough. Only the whole name counts: a Large Wolf Pelt is not a Wolf Pelt.
 - **Kill quests on NPCs** ("Quest: Kill boars 1/5" on a boar). Off by default, because the game may show this already.
 - **Protected** on items you protected in the Gulli Toolkit.
-- **Your other characters:** how many each one holds in the bags and the bank, from Gulli Chores.
-- **Reagent for** your professions, from Gulli Craft Profit.
+- **Your other characters:** how many you have in all, then each character with its bags and bank, from Gulli Chores.
+- **Reagent for** your professions, from Gulli Craft Profit. Off by default, because the game already says "Crafting Reagent".
 - **Ids** of items, NPCs and spells, for guides and bug reports. Off by default.
 - **Look:** prices and ids only while you hold **Shift**, the border in the item's quality colour, the tooltip at the cursor.
 - The window shows an **example tooltip** with only the lines you switched on.
