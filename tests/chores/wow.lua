@@ -170,7 +170,7 @@ function Fake(spec)
         for i = 1, #W.char.profs do idx[i] = i end
         return unpack(idx)
     end
-    GetProfessionInfo = function(i) local p = W.char.profs[i]; return p[1], "icon", p[2], p[3] end
+    GetProfessionInfo = function(i) local p = W.char.profs[i]; return p[1], p[4] or "icon", p[2], p[3] end
     GetNumSavedInstances = function() return W.char.saved and #W.char.saved or 0 end
     GetSavedInstanceInfo = function(i) local l = W.char.saved[i]; return l[1], 1, l[2], 1, l[3] end
     W.playedAsked = 0

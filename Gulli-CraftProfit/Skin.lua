@@ -59,6 +59,10 @@ S.GOOD = { 0.42, 0.84, 0.50, 1 }
 S.WARN = { 1.00, 0.72, 0.30, 1 }
 S.BAD = { 0.93, 0.42, 0.40, 1 }
 S.CLEAR = { 0, 0, 0, 0 }
+-- Coin colours: money as coloured text, "28g 42s 5c", empty parts left out.
+S.GOLD = { 1, 0.82, 0, 1 }
+S.SILVER = { 0.78, 0.78, 0.81, 1 }
+S.COPPER = { 0.93, 0.65, 0.37, 1 }
 -- Older names, still used by some windows.
 S.PANEL = S.RAISED
 S.ROW = { 1, 1, 1, 0.025 }
@@ -683,6 +687,58 @@ function S.Empty(parent)
         self.sub:SetText(sub or "")
     end
     return e
+end
+
+function S.MoneyText(copper)
+    copper = math.floor(copper or 0)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = S.Hex(S.GOLD) .. g .. "g|r" end
+    if s > 0 then parts[#parts + 1] = S.Hex(S.SILVER) .. s .. "s|r" end
+    if c > 0 or #parts == 0 then parts[#parts + 1] = S.Hex(S.COPPER) .. c .. "c|r" end
+    return table.concat(parts, " ")
+end
+
+-- A tile with a game icon, a small label, one value and a line under it, and an optional bar:
+-- tile:Set(value, color, sub[, fraction, barColor]). For a card's key facts side by side.
+function S.InfoTile(parent, label, icon)
+    local t = CreateFrame("Frame", nil, parent)
+    S.Box(t, S.RAISED, S.EDGE)
+    t.icon = S.IconBox(t, 30, icon)
+    t.icon:SetPoint("TOPLEFT", 8, -8)
+    t.label = S.Text(t, 10, S.MUTED)
+    t.label:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 8, 1)
+    t.label:SetPoint("RIGHT", -8, 0)
+    t.label:SetWordWrap(false)
+    t.label:SetText(label and label:upper() or "")
+    t.value = S.Text(t, 15)
+    t.value:SetPoint("TOPLEFT", t.label, "BOTTOMLEFT", 0, -3)
+    t.value:SetPoint("RIGHT", -8, 0)
+    t.value:SetWordWrap(false)
+    t.bar = S.Progress(t, 5)
+    t.bar:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -4)
+    t.bar:SetPoint("RIGHT", -8, 0)
+    t.sub = S.Text(t, 11, S.MUTED)
+    t.sub:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -4)
+    t.sub:SetPoint("RIGHT", -8, 0)
+    t.sub:SetWordWrap(false)
+    function t:Set(value, color, sub, fraction, barColor)
+        self.value:SetText(value or "")
+        local c = color or S.TEXT
+        self.value:SetTextColor(c[1], c[2], c[3], 1)
+        self.sub:SetText(sub or "")
+        self.sub:ClearAllPoints()
+        if fraction then
+            self.bar:Show()
+            self.bar:Set(fraction, barColor)
+            self.sub:SetPoint("TOPLEFT", self.bar, "BOTTOMLEFT", 0, -3)
+        else
+            self.bar:Hide()
+            self.sub:SetPoint("TOPLEFT", self.value, "BOTTOMLEFT", 0, -4)
+        end
+        self.sub:SetPoint("RIGHT", -8, 0)
+    end
+    return t
 end
 
 -- A tile with one big number and its name under it, for counters.
