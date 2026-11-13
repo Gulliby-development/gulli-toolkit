@@ -2,6 +2,15 @@
 local W = dofile("tests/toolkit/wow.lua")
 local failed, count = 0, 0
 
+-- A font string that remembers what the skin set on it.
+function stubText()
+    local s = { shown = true }
+    function s:SetShown(v) self.shown = v and true or false end
+    function s:SetFontObject(o) self.object = o end
+    function s:SetFont(_, size) self.size = size end
+    return setmetatable(s, { __index = function() return function() end end })
+end
+
 local function test(name, fn)
     count = count + 1
     local ok, err = pcall(fn)
@@ -702,6 +711,49 @@ test("move mode shows the grid and the bar, and a fight ends it", function()
     eq(ns.moving, false)
     eq(moved, false)
     eq(ns.MoveGrid().bar:IsShown(), false)
+end)
+
+test("an edit box hint hides while there is text, even after the module sets OnTextChanged", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    -- Like the game: SetScript drops the hooks set before it.
+    local edit = { text = "", hooks = {} }
+    function edit:GetText() return self.text end
+    function edit:HookScript(_, fn) self.hooks[#self.hooks + 1] = fn end
+    function edit:SetScript(_, fn) self.handler, self.hooks = fn, {} end
+    function edit:CreateFontString() return stubText() end
+    local function type(s)
+        edit.text = s
+        if edit.handler then edit.handler(edit) end
+        for _, h in ipairs(edit.hooks) do h(edit) end
+    end
+    local hint = S.Placeholder(edit, "Search a name")
+    local refreshed = 0
+    edit:SetScript("OnTextChanged", function() refreshed = refreshed + 1 end)
+    type("Гул")
+    eq(hint.shown, false, "hint hidden while typing")
+    eq(refreshed, 1, "the module's own handler still runs")
+    type("")
+    eq(hint.shown, true, "hint back on an empty box")
+end)
+
+test("text uses a font family with Cyrillic and CJK glyphs when the game has one", function()
+    Fake({ addons = { QC } })
+    local made = {}
+    CreateFontFamily = function(name, members)
+        local alphabets = {}
+        for _, m in ipairs(members) do alphabets[m.alphabet] = m.file end
+        made[name] = alphabets
+        return { name = name }
+    end
+    local ns = Load()
+    local t = stubText()
+    ns.Skin.SetFont(t, 13)
+    CreateFontFamily = nil
+    assert(made.GulliFont13, "family made")
+    assert(made.GulliFont13.russian and made.GulliFont13.korean and made.GulliFont13.simplifiedchinese)
+    eq(t.object and t.object.name, "GulliFont13", "the text uses the family")
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))

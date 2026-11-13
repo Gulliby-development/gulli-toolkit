@@ -10,7 +10,7 @@
 ## Notes-zhCN: 根据背包、银行和 Auctionator 价格，找出赚钱的制作和最省钱的专业升级路线。 /gcp
 ## Notes-zhTW: 根据背包、银行和 Auctionator 价格，找出赚钱的制作和最省钱的专业升级路线。 /gcp
 ## Author: Gulliby
-## Version: 1.7.6
+## Version: 1.7.7
 ## IconTexture: Interface\AddOns\Gulli-CraftProfit\icon
 ## OptionalDeps: Gulli-Toolkit, Auctionator
 ## X-Gulli-Module: CraftProfit

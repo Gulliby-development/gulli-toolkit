@@ -10,7 +10,7 @@
 ## Notes-zhCN: 每按一次为队伍补上一个缺少的增益，战斗中也可以。/ggb
 ## Notes-zhTW: 每按一次为队伍补上一个缺少的增益，战斗中也可以。/ggb
 ## Author: Gulliby
-## Version: 1.4.1
+## Version: 1.4.2
 ## IconTexture: Interface\AddOns\Gulli-GroupBuffs\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: GroupBuffs

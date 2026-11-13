@@ -11,6 +11,37 @@ ns.Skin = S
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local FONT = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 
+-- The English game font has no Cyrillic or CJK glyphs, so Russian names and chat came out
+-- blank. Text goes through a font family with the game's font for each alphabet.
+local ALPHABETS = {
+    { "roman", FONT }, { "russian", "Fonts\\FRIZQT___CYR.TTF" }, { "korean", "Fonts\\2002.TTF" },
+    { "simplifiedchinese", "Fonts\\ARKai_T.ttf" }, { "traditionalchinese", "Fonts\\blei00d.TTF" },
+}
+local families = {}
+local function family(size, flags)
+    if not CreateFontFamily then return nil end
+    flags = flags or ""
+    local key = "GulliFont" .. size .. flags:gsub("%W", "")
+    if families[key] == nil then
+        local f = _G[key]
+        if not f then
+            local members = {}
+            for _, a in ipairs(ALPHABETS) do
+                members[#members + 1] = { alphabet = a[1], file = a[2], height = size, flags = flags }
+            end
+            local ok, made = pcall(CreateFontFamily, key, members)
+            f = ok and made or false
+        end
+        families[key] = f
+    end
+    return families[key] or nil
+end
+function S.SetFont(region, size, flags)
+    size = math.floor(size or 12)
+    local f = family(size, flags)
+    if f then region:SetFontObject(f) else region:SetFont(FONT, size, flags or "") end
+end
+
 -- Colours. A window is the darkest layer, a card sits on it, a button sits on a card.
 S.BG = { 0.067, 0.071, 0.082, 0.97 }
 S.HEAD = { 0.090, 0.094, 0.108, 1 }
@@ -89,7 +120,7 @@ end
 
 function S.Text(parent, size, color, flags)
     local t = parent:CreateFontString(nil, "OVERLAY")
-    t:SetFont(FONT, size or 12, flags or "")
+    S.SetFont(t, size or 12, flags)
     t:SetShadowOffset(1, -1)
     t:SetShadowColor(0, 0, 0, 0.8)
     local c = color or S.TEXT
@@ -284,7 +315,7 @@ function S.Edit(parent, width, height)
     local e = CreateFrame("EditBox", nil, parent)
     e:SetSize(width or 44, height or 28)
     S.Box(e, S.INPUT, S.EDGE)
-    e:SetFont(FONT, 13, "")
+    S.SetFont(e, 13)
     e:SetTextInsets(8, 8, 0, 0)
     e:SetJustifyH("CENTER")
     e:SetAutoFocus(false)
@@ -302,7 +333,16 @@ function S.Placeholder(edit, text)
     p:SetPoint("RIGHT", -8, 0)
     p:SetWordWrap(false)
     p:SetText(text)
-    edit:HookScript("OnTextChanged", function(self) p:SetShown((self:GetText() or "") == "") end)
+    local function update(self) p:SetShown((self:GetText() or "") == "") end
+    edit:HookScript("OnTextChanged", update)
+    -- A later SetScript("OnTextChanged") would drop the hook and leave the hint over the text.
+    local set = edit.SetScript
+    edit.SetScript = function(self, name, fn, ...)
+        if name == "OnTextChanged" then
+            return set(self, name, function(e, ...) update(e); if fn then return fn(e, ...) end end)
+        end
+        return set(self, name, fn, ...)
+    end
     edit.placeholder = p
     return p
 end
@@ -366,7 +406,7 @@ function S.Memo(parent, width, height)
     local e = CreateFrame("EditBox", nil, sf)
     e:SetMultiLine(true)
     e:SetAutoFocus(false)
-    e:SetFont(FONT, 13, "")
+    S.SetFont(e, 13)
     e:SetWidth(width - 28)
     e:SetHeight(height - 16)
     sf:SetScrollChild(e)
@@ -668,11 +708,11 @@ function S.Stat(parent, label, icon)
     -- A long value (money such as "2g 56s 76c") shrinks to fit the tile instead of ending in "...".
     function t:Fit()
         local v = self.value
-        v:SetFont(FONT, S.STAT_SIZE, "")
+        S.SetFont(v, S.STAT_SIZE)
         local avail = (tonumber(self:GetWidth()) or 0) - S.INSET + right
         if avail <= 0 then return end
         local w = tonumber((v.GetUnboundedStringWidth and v:GetUnboundedStringWidth()) or v:GetStringWidth()) or 0
-        if w > avail then v:SetFont(FONT, math.max(S.STAT_MIN, math.floor(S.STAT_SIZE * avail / w)), "") end
+        if w > avail then S.SetFont(v, math.max(S.STAT_MIN, math.floor(S.STAT_SIZE * avail / w))) end
     end
     function t:Set(value, color, label2)
         self.value:SetText(value)
