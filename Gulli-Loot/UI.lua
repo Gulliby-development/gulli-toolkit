@@ -24,8 +24,10 @@ local function quality(id)
     return q
 end
 
-local function colored(name, q)
-    return q and S.QualityHex(q) and ("|cff" .. S.QualityHex(q) .. name .. "|r") or name
+-- The rule's item name in its quality colour (S.QualityHex already starts with |cff).
+function ns.ItemLabel(e)
+    local q = quality(e.id)
+    return q and (S.QualityHex(q) .. e.name .. "|r") or e.name
 end
 
 ---- Items page ---------------------------------------------------------------------
@@ -53,7 +55,7 @@ end
 local function fillItemRow(r, e)
     r.entry = e
     r.icon:SetTexture(itemIcon(e.id))
-    r.text:SetText(colored(e.name, quality(e.id)))
+    r.text:SetText(ns.ItemLabel(e))
     r.seg:Select(indexOf(ns.ITEM_RULES, e.rule), true)
 end
 
