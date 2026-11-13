@@ -7,6 +7,8 @@ local _, ns = ...
 --          "blessing" (a setting per class and role)
 --   also:  other spells whose buff counts as this one (the group versions, Greater Blessings)
 --   group: the spell that buffs a whole party at once
+--   race:  a racial spell, shown only for that race
+--   ranks: the higher rank ids, for a client that knows only the rank it taught
 local B = {}
 ns.Buffs = B
 
@@ -16,6 +18,11 @@ B.CLASS = {
         { key = "spirit", id = 14752, group = 27681, who = "mana" },
         { key = "shadow", id = 976, group = 27683, who = "all", off = true },
         { key = "innerfire", id = 588, who = "self" },
+        -- Racial self buffs: listed only for that race (UnitRace's second value) or when known.
+        { key = "touch", id = 2652, who = "self", race = "Scourge",
+          ranks = { 19261, 19262, 19264, 19265, 19266 } },
+        { key = "shadowguard", id = 18137, who = "self", race = "Troll",
+          ranks = { 19308, 19309, 19310, 19311, 19312 } },
     },
     MAGE = {
         { key = "int", id = 1459, group = 23028, who = "mana" },

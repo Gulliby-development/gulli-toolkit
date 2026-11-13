@@ -248,6 +248,9 @@ function ns.Families()
                         if c.key == d[f.choice] or (d[f.choice] == "auto" and known(c.id)) then id = c.id end
                     end
                 end
+                if id and not known(id) and f.ranks then
+                    for _, r in ipairs(f.ranks) do if known(r) then id = r end end
+                end
                 if id and known(id) and spellName(id) then
                     fam.id, fam.name = id, spellName(id)
                     fam.names = { fam.name }
