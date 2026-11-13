@@ -424,6 +424,34 @@ test("marks on the game's party frames show the first missing buff", function()
     CompactPartyFrameMember1, CompactPartyFrameMember2 = nil, nil
 end)
 
+test("a buff that lands or falls off shows on the next frame, not the next tick", function()
+    local units = party()
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 } }
+    Load()
+    Fire("PLAYER_LOGIN")
+    local function frame(dt)
+        for _, f in ipairs(W.frames) do
+            if f.scripts.OnUpdate then f.scripts.OnUpdate(f, dt) end
+        end
+    end
+    frame(1)
+    eq(GulliGroupBuffsButton.attrs.unit, "player")
+    units.player.auras["Power Word: Fortitude"] = 1800
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(GulliGroupBuffsButton.attrs.unit, "party1", "the next one at once")
+    units.player.auras["Power Word: Fortitude"] = nil
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(GulliGroupBuffsButton.attrs.unit, "player", "a lost buff at once")
+    W.combat = true
+    units.player.auras["Power Word: Fortitude"] = 1800
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(GulliGroupBuffsButton.attrs.unit, "player", "in combat the buttons stay")
+    W.combat = false
+end)
+
 test("marks also go on other addons' party frames, found by their unit attribute", function()
     local units = party()
     units.party2.auras = { ["Power Word: Fortitude"] = 0 }

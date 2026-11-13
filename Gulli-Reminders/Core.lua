@@ -655,12 +655,22 @@ function ns.SetTracked(key, on)
     if ns.Refresh then ns.Refresh() end
 end
 
-local pending = false
+local pending, quick = false, false
 local function soon()
     if pending then return end
     pending = true
     C_Timer.After(0.5, function()
         pending = false
+        if ns.Refresh then ns.Refresh() end
+    end)
+end
+
+-- A buff of yours came or went: show it on the next frame (one refresh for a burst of auras).
+local function atOnce()
+    if quick then return end
+    quick = true
+    C_Timer.After(0, function()
+        quick = false
         if ns.Refresh then ns.Refresh() end
     end)
 end
@@ -705,6 +715,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if ns.Refresh then ns.Refresh() end -- hide at once when a fight starts
         return
     end
+    if event == "UNIT_AURA" then atOnce(); return end
     soon()
 end)
 

@@ -18,6 +18,7 @@ local moving = false
 local minis = {}
 local plan, far, list, byUnit = {}, {}, {}, {}
 local built, dirty, pendingKey = false, true, false
+local urgent = false      -- a buff came or went: rebuild on the next frame, not the next tick
 local layout
 local lastCast = {}       -- the unit the last press aimed at, and when
 local readyUntil = 0      -- a ready check shows the bar until then
@@ -415,18 +416,28 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
     elseif event == "UNIT_POWER_UPDATE" then
         if unit == "player" and (ns.DB().mana or 0) > 0 then dirty = true end
     elseif event == "UNIT_AURA" then
-        if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then dirty = true end
+        if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then
+            dirty = true
+            -- Out of combat a new or lost buff shows at once; in combat the plan is fixed anyway.
+            if not InCombatLockdown() then urgent = true end
+        end
     else
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then ns.RescanFrames() end
         dirty = true
     end
 end)
 
--- Events mark the plan dirty; it is rebuilt at most five times a second. Once a second
+-- Events mark the plan dirty; it is rebuilt at most five times a second, and on the next
+-- frame when a buff came or went out of combat (many auras in one frame: one rebuild). Once a second
 -- it is rebuilt anyway, for range and for buffs that run low without an event.
 local since, tick = 0, 0
 driver:SetScript("OnUpdate", function(_, elapsed)
     since, tick = since + elapsed, tick + elapsed
+    if urgent and dirty then
+        urgent, since = false, 0
+        ns.Refresh()
+        return
+    end
     if since < 0.2 then return end
     since = 0
     if tick >= 1 then
