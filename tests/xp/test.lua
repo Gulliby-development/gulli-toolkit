@@ -268,4 +268,17 @@ test("the window builds with its three tabs", function()
     ns.Refresh()
 end)
 
+test("the tooltip comes in blocks and the bar can be filled or a thin line", function()
+    Fake({ level = 20, xp = 200, xpMax = 1000, now = 0 })
+    local ns = Load()
+    local heads = {}
+    for _, r in ipairs(ns.TipRows()) do if r.head then heads[#heads + 1] = r.head end end
+    eq(table.concat(heads, ","), "Pace,Level,Session")
+    eq(ns.db.style, "fill")
+    ns.Refresh()
+    ns.SetPref("style", "line")
+    eq(ns.db.style, "line")
+    for _, k in ipairs(ns.STYLES) do assert(ns.L["STYLE_" .. k:upper()], k) end
+end)
+
 W.finish()

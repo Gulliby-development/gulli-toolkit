@@ -13,6 +13,9 @@ local GRAPH_BARS = 18
 
 local XP_COLOR, RESTED_COLOR = { 0.58, 0.36, 0.90, 1 }, { 0.25, 0.55, 1.00, 0.55 }
 local READY_COLOR, REP_COLOR = { 1.00, 0.78, 0.25, 0.95 }, { 0.30, 0.75, 0.45, 1 }
+-- On the filled bar the quests' gold is darker, so white text stays readable on it.
+ns.BAR_W, ns.BAR_W_FILL = 260, 400
+local READY_FILL = { 0.80, 0.58, 0.16, 1 }
 
 -- What the bar says, by the chosen text (ns.TEXTS).
 function ns.BarText(st)
@@ -29,20 +32,36 @@ function ns.BarText(st)
     return table.concat(parts, "  ·  ")
 end
 
--- The numbers behind the bar, for its tooltip.
-function ns.TipLines(st)
+-- The bar's colours, also used by its tooltip so the two read the same.
+local TIP = { pace = { 0.79, 0.63, 1 }, ready = { 1, 0.78, 0.25 }, rested = { 0.47, 0.67, 1 },
+              gain = { 0.42, 0.84, 0.50 } }
+
+-- The tooltip in three blocks (pace, level, session): { head = text } or { left, right, rightColor }.
+function ns.TipRows(st)
     st = st or ns.Stats()
-    local lines = {
-        L.RATE:format(ns.Short(st.rate)),
-        st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.NO_RATE,
-        L.LEFT:format(ns.Short(st.left), st.percent),
-        L.RESTED:format(ns.Short(st.rested)),
-    }
-    if st.readyN > 0 then lines[#lines + 1] = L.READY:format(ns.Short(st.ready), st.readyN, st.readyPercent) end
-    if st.killsToLevel then lines[#lines + 1] = L.KILLS_TO:format(st.killsToLevel) end
-    if st.questsToLevel then lines[#lines + 1] = L.QUESTS_TO:format(st.questsToLevel) end
-    lines[#lines + 1] = L.SESSION:format(ns.Span(st.session), ns.Short(st.gained))
-    return lines
+    local rows = { { head = L.SEC_PACE } }
+    rows[#rows + 1] = { L.STAT_RATE, ns.Short(st.rate) }
+    rows[#rows + 1] = { L.TIP_TO_LEVEL, st.toLevel and ns.Span(st.toLevel) or "-", st.toLevel and TIP.pace }
+    if st.killsToLevel then rows[#rows + 1] = { L.ROW_KILLS_TO, tostring(st.killsToLevel) } end
+    if st.questsToLevel then rows[#rows + 1] = { L.ROW_QUESTS_TO, tostring(st.questsToLevel) } end
+    rows[#rows + 1] = { head = L.TIP_LEVEL_HEAD }
+    rows[#rows + 1] = { L.TIP_DONE, ns.Short(st.cur or 0) .. S.Hex(S.MUTED) .. " / " .. ns.Short(st.max or 0) .. "|r" }
+    rows[#rows + 1] = { L.TIP_LEFT, ns.Short(st.left) }
+    rows[#rows + 1] = { L.TIP_RESTED, ns.Short(st.rested), st.rested > 0 and TIP.rested or S.MUTED }
+    if st.readyN > 0 then
+        rows[#rows + 1] = { L.TIP_READY:format(st.readyN),
+            ns.Short(st.ready) .. S.Hex(S.MUTED) .. " » " .. st.readyPercent .. "%|r", TIP.ready }
+    end
+    rows[#rows + 1] = { head = L.TIP_SESSION }
+    rows[#rows + 1] = { ns.Span(st.session), "+" .. ns.Short(st.gained) .. " XP", st.gained > 0 and TIP.gain or S.MUTED }
+    return rows
+end
+
+-- The same as plain lines, for tests and chat.
+function ns.TipLines(st)
+    local out = {}
+    for _, r in ipairs(ns.TipRows(st)) do out[#out + 1] = r.head or (r[1] .. " " .. r[2]) end
+    return out
 end
 
 local function textLabel(mode) return L["TEXT_" .. mode:upper()] end
@@ -60,6 +79,19 @@ function ns.StyleBar()
     S.Fill(bar, { S.BG[1], S.BG[2], S.BG[3], S.BG[4] * a })
     S.SetBorder(bar, { 0, 0, 0, a })
     bar.track:SetAlpha(math.max(0.35, a))
+    local fill = (d.style or "fill") == "fill"
+    bar.fill = fill
+    bar.track:ClearAllPoints()
+    bar.track:SetPoint("BOTTOMLEFT", 1, 1)
+    bar.track:SetPoint("BOTTOMRIGHT", -1, 1)
+    if fill then bar.track:SetPoint("TOPLEFT", 1, -1) else bar.track:SetHeight(2) end
+    -- An outline keeps the text readable over the colours of the filled bar.
+    for _, fs in ipairs({ bar.text, bar.lv, bar.pct }) do S.SetFont(fs, 12, fill and "OUTLINE" or nil) end
+    bar.lv:SetShown(fill)
+    bar.pct:SetShown(fill)
+    for _, t in ipairs(bar.ticks) do t:SetShown(fill) end
+    bar.shine:SetShown(fill)
+    bar.ready:SetVertexColor(unpack(fill and READY_FILL or READY_COLOR))
     bar:SetScale(d.scale / 100)
     local p = d.point or ns.BAR_POINT
     bar:ClearAllPoints()
@@ -69,7 +101,8 @@ function ns.StyleBar()
         bar:SetWidth(w)
         bar:SetPoint(p[1], UIParent, p[1], 0, p[3])
     else
-        bar:SetWidth(260)
+        -- The filled bar is wider: the level and the percent sit at its ends.
+        bar:SetWidth(fill and ns.BAR_W_FILL or ns.BAR_W)
         bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
     end
 end
@@ -97,20 +130,49 @@ local function buildBar()
     bar.rested = S.Tex(bar.track, "ARTWORK", 0, RESTED_COLOR)
     bar.rested:SetPoint("TOPLEFT", bar.ready, "TOPRIGHT")
     bar.rested:SetPoint("BOTTOMLEFT", bar.ready, "BOTTOMRIGHT")
-    bar.text = S.Text(bar, 12)
+    -- A soft light on the upper half gives the filled bar some depth.
+    bar.shine = S.Tex(bar.track, "OVERLAY", 1, { 1, 1, 1, 0.10 })
+    bar.shine:SetPoint("TOPLEFT")
+    bar.shine:SetPoint("TOPRIGHT")
+    bar.shine:SetHeight(10)
+    -- Ticks every tenth of the level, only on the filled bar.
+    bar.ticks = {}
+    for i = 1, 9 do bar.ticks[i] = S.Tex(bar.track, "OVERLAY", 0, { 0, 0, 0, 0.35 }); bar.ticks[i]:SetWidth(1) end
+    -- The texts sit on their own frame, above the fill.
+    bar.over = CreateFrame("Frame", nil, bar)
+    bar.over:SetAllPoints()
+    bar.over:SetFrameLevel((tonumber(bar.track:GetFrameLevel()) or 1) + 1)
+    bar.text = S.Text(bar.over, 12)
     bar.text:SetPoint("CENTER", 0, 1)
     bar.text:SetJustifyH("CENTER")
+    bar.lv = S.Text(bar.over, 12)
+    bar.lv:SetPoint("LEFT", 7, 1)
+    bar.pct = S.Text(bar.over, 12)
+    bar.pct:SetPoint("RIGHT", -7, 1)
     bar:SetScript("OnClick", function()
         if IsShiftKeyDown and IsShiftKeyDown() then ns.Share() else ns.Toggle() end
     end)
     bar:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:SetText(L.TITLE, 1, 1, 1)
-        if not bar.atCap then
-            for _, l in ipairs(ns.TipLines()) do GameTooltip:AddLine(l, 0.93, 0.93, 0.94) end
+        local st = not bar.atCap and ns.Stats()
+        local m, a = S.MUTED, S.Accent()
+        if st then
+            GameTooltip:AddDoubleLine(L.TITLE, L.TIP_LEVEL:format(st.level, st.percent), 1, 1, 1, m[1], m[2], m[3])
+            for _, r in ipairs(ns.TipRows(st)) do
+                if r.head then
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(r.head, a[1], a[2], a[3])
+                else
+                    local c = r[3] or S.TEXT
+                    GameTooltip:AddDoubleLine(r[1], r[2], m[1], m[2], m[3], c[1], c[2], c[3])
+                end
+            end
+            GameTooltip:AddLine(" ")
+        else
+            GameTooltip:SetText(L.TITLE, 1, 1, 1)
         end
-        GameTooltip:AddLine(ns.Locked() and L.TIP_LOCKED or L.TIP_MOVE, 0.6, 0.61, 0.66, true)
+        GameTooltip:AddLine(ns.Locked() and L.TIP_LOCKED or L.TIP_MOVE, S.FAINT[1], S.FAINT[2], S.FAINT[3], true)
         GameTooltip:Show()
     end)
     bar:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -124,6 +186,11 @@ end
 
 local function setLine(done, readyPart, rested)
     local w = (tonumber(bar:GetWidth()) or 260) - 2
+    for i, t in ipairs(bar.ticks) do
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", bar.track, "TOPLEFT", math.floor(w * i / 10), 0)
+        t:SetPoint("BOTTOMLEFT", bar.track, "BOTTOMLEFT", math.floor(w * i / 10), 0)
+    end
     bar.xp:SetWidth(math.max(0.01, w * done))
     bar.ready:SetWidth(math.max(0.01, w * readyPart))
     bar.ready:SetShown(readyPart > 0)
@@ -135,6 +202,8 @@ local function paintBar()
     if bar.atCap then
         local name, standing, v, size = ns.WatchedFaction()
         bar.text:SetText(name and L.REP_BAR:format(name, standing, ns.Short(v), ns.Short(size)) or L.MOVE_ME)
+        bar.lv:SetText("")
+        bar.pct:SetText(name and size > 0 and string.format("%.1f%%", v * 100 / size) or "")
         bar.xp:SetVertexColor(REP_COLOR[1], REP_COLOR[2], REP_COLOR[3], 1)
         setLine(name and math.min(1, v / size) or 0, 0, 0)
         return
@@ -142,6 +211,8 @@ local function paintBar()
     bar.xp:SetVertexColor(XP_COLOR[1], XP_COLOR[2], XP_COLOR[3], 1)
     local st = ns.Stats()
     bar.text:SetText(ns.BarText(st))
+    bar.lv:SetText(tostring(st.level or ""))
+    bar.pct:SetText(st.max and st.max > 0 and string.format("%.1f%%", (st.cur or 0) * 100 / st.max) or "")
     local xp, rested, readyPart = ns.BarParts(st)
     setLine(xp, readyPart, rested)
 end
@@ -208,6 +279,7 @@ function ns.Refresh()
     fillGraph()
     fillLevels()
     if frame.textBtn then frame.textBtn:SetText(textLabel(ns.db.text or "all")) end
+    if frame.styleBtn then frame.styleBtn:SetText(L["STYLE_" .. (ns.db.style or "fill"):upper()]) end
 end
 
 -- One line of a session card: a game icon, a grey label on the left, the value on the right.
@@ -357,11 +429,20 @@ local function barPage(body)
         ns.SetPref("text", nxt)
     end)
     frame.textBtn = text
+    local look = S.Button(p, 130, 28)
+    look:SetScript("OnClick", function()
+        local cur = ns.db.style or "fill"
+        local nxt = ns.STYLES[1]
+        for i, m in ipairs(ns.STYLES) do if m == cur then nxt = ns.STYLES[i % #ns.STYLES + 1] end end
+        ns.SetPref("style", nxt)
+    end)
+    frame.styleBtn = look
     local sw = S.SettingsCard(p, L.SEC_BAR, {
         { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
           icon = ns.OPT_ICON.bar },
         { L.OPT_LOCK, nil, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
           icon = ns.OPT_ICON.locked },
+        { L.OPT_STYLE, nil, control = look, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02" },
         { L.OPT_TEXT, nil, control = text, icon = "Interface\\Icons\\INV_Misc_Note_01" },
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
