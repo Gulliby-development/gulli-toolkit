@@ -91,6 +91,8 @@ test("the auction price comes from Auctionator when it is there", function()
     local ns = Load()
     Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function(caller, id)
         assert(caller == "Gulli-Tooltip"); return id == 2 and 12345 or nil end } } }
+    eq(#W.HoverItem(2), 0, "off by default: Auctionator shows its own line")
+    ns.db.auction = true
     eq(W.HoverItem(2)[1], "Auction=1g 23s 45c")
     ns.db.auction = false
     eq(#W.HoverItem(2), 0)
@@ -110,22 +112,25 @@ test("other characters' bags and banks come from Gulli Chores", function()
         ["Empty-Realm"] = { name = "Empty", items = {} },
     } }
     local lines = W.HoverItem(7)
-    eq(#lines, 3)
-    eq(lines[1], "Your bank=6")
-    eq(lines[2], "Alt=5 (bank 2)")
-    eq(lines[3], "Bob=1")
+    eq(#lines, 4)
+    eq(lines[1], "Your characters=12", "a total first")
+    eq(lines[2], "  Your bank=6")
+    eq(lines[3], "  Alt=3 + bank 2")
+    eq(lines[4], "  Bob=1")
     GulliChoresDB = nil
     eq(#W.HoverItem(7), 0, "no Chores, no lines")
 end)
 
 test("a reagent of a learned recipe names the profession", function()
     Fake({ items = { [7] = { "Wolf Pelt", 20, 0 } } })
-    Load()
+    local ns = Load()
+    eq(ns.db.reagent, false, "off by default: the game says Crafting Reagent")
+    ns.db.reagent = true
     GulliCraftProfitCharDB = { profs = {
         Leatherworking = { recipes = { { learned = true, r = { [7] = 2 } } } },
         Tailoring = { recipes = { { learned = false, r = { [7] = 1 } } } },
     } }
-    eq(W.HoverItem(7)[1], "Reagent for: Leatherworking=")
+    eq(W.HoverItem(7)[1], "Reagent for=Leatherworking")
     GulliCraftProfitCharDB = nil
 end)
 
@@ -167,10 +172,10 @@ test("summary, reset and the hub options", function()
     local ns = Load()
     eq(reg.key, "Tooltip")
     eq(#reg.options, 6)
-    eq(reg.summary(), "6 of 8 tooltip lines on")
+    eq(reg.summary(), "4 of 8 tooltip lines on")
     reg.options[1].set(false)
     eq(ns.db.price, false)
-    eq(reg.summary(), "5 of 8 tooltip lines on")
+    eq(reg.summary(), "3 of 8 tooltip lines on")
     reg.reset()
     eq(ns.db.price, true)
     eq(ns.db.mobs, false)
@@ -185,6 +190,25 @@ test("the window builds and the example follows the switches", function()
     ns.Refresh()
     ns.Set("id", true)
     ns.Toggle()
+end)
+
+test("the auction line gives a full stack for stack items", function()
+    Fake({ items = { [1] = { "Linen", 20, 13 } } })
+    local ns = Load()
+    ns.db.auction, ns.db.price = true, false
+    Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return 13 end } } }
+    eq(W.HoverItem(1)[1], "Auction, stack=2s 60c")
+    Auctionator = nil
+end)
+
+test("new defaults reach saved settings once, then the player's choice stays", function()
+    Fake({ items = {}, db = { price = true, auction = true, reagent = true, quest = true } })
+    local ns = Load()
+    eq(ns.db.auction, false); eq(ns.db.reagent, false); eq(ns.db.price, true)
+    eq(ns.db.defaultsV, ns.DEFAULTS_V)
+    ns.db.auction = true
+    ns.Migrate(ns.db)
+    eq(ns.db.auction, true, "a choice made after the change stays")
 end)
 
 W.finish()

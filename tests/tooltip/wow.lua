@@ -138,7 +138,9 @@ function Fake(spec)
     }
     Enum = { TooltipDataType = { Item = 0, Unit = 2, Spell = 1 } }
     TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) W.post[kind] = fn end }
-    W.tooltip = { AddDoubleLine = function(_, a, b) W.lines[#W.lines + 1] = a .. "=" .. b end, Show = function() end }
+    -- Lines are kept without colour codes, so the tests read the words.
+    local function plain(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    W.tooltip = { AddDoubleLine = function(_, a, b) W.lines[#W.lines + 1] = plain(a .. "=" .. b) end, Show = function() end }
     GulliTooltipDB = spec.db
     GulliChoresDB, GulliCraftProfitCharDB, Auctionator, IsShiftKeyDown = nil, nil, nil, nil
     return W
