@@ -125,14 +125,9 @@ end
 
 local function makeItemRow()
     local r = checkRow(200, ROW_H, function(self) self.data.checked = not self.data.checked end)
-    local frameIcon = CreateFrame("Frame", nil, r)
-    frameIcon:SetSize(24, 24)
-    frameIcon:SetPoint("LEFT", r.check, "RIGHT", 2, 0)
-    S.Box(frameIcon, { 0, 0, 0, 1 })
-    r.icon = frameIcon:CreateTexture(nil, "ARTWORK")
-    r.icon:SetPoint("TOPLEFT", 1, -1)
-    r.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    local frameIcon = S.IconBox(r, 24)
+    frameIcon:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
+    r.icon = frameIcon.tex
     r.text = S.Text(r, 12)
     r.text:SetPoint("TOPLEFT", frameIcon, "TOPRIGHT", 6, 1)
     r.text:SetPoint("RIGHT", -4, 0)

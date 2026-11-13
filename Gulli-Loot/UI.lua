@@ -49,9 +49,9 @@ end
 ---- Items page ---------------------------------------------------------------------
 
 local function makeItemRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(22, 22)
-    r.icon:SetPoint("LEFT", 2, 0)
+    r.iconBox = S.IconBox(r, 22)
+    r.iconBox:SetPoint("LEFT", 4, 0)
+    r.icon = r.iconBox.tex
     r.remove = S.Close(r, function(self) ns.SetItem(self:GetParent().entry.id, nil) end)
     r.remove:SetPoint("RIGHT", 0, 0)
     local holder = CreateFrame("Frame", nil, r)
@@ -76,9 +76,9 @@ end
 ---- Recent page --------------------------------------------------------------------
 
 local function makeLogRow(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(22, 22)
-    r.icon:SetPoint("LEFT", 2, 0)
+    r.iconBox = S.IconBox(r, 22)
+    r.iconBox:SetPoint("LEFT", 4, 0)
+    r.icon = r.iconBox.tex
     r.make = S.Button(r, 90, 28)
     r.make:SetPoint("RIGHT", 0, 0)
     r.make:SetText(L.MAKE_RULE)

@@ -72,6 +72,12 @@ function Region:GetPoint(i)
 end
 
 function Region:SetMask(m) self.__mask = m end
+-- A mask is kept apart from the regions that are drawn; a masked texture is drawn round.
+function Region:CreateMaskTexture()
+    local m = setmetatable({ __kind = "Mask", __points = {}, __regions = {}, __children = {}, _events = {} }, regionMeta)
+    return m
+end
+function Region:AddMaskTexture(m) self.__mask = (m and m.__tex) or true end
 function Region:SetSize(w, h) self.__w, self.__h = w, h; changed() end
 function Region:SetWidth(w) self.__w = w; changed() end
 function Region:SetHeight(h) self.__h = h; changed() end
@@ -298,7 +304,10 @@ end
 function Region:SetVertexColor(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 function Region:GetVertexColor() local c = self.__color or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
 function Region:SetDesaturated(v) self.__desat = v end
-function Region:SetTexCoord(a) self.__crop = a and a > 0 end
+function Region:SetTexCoord(a, b, c, d)
+    self.__crop = a and a > 0 and a < 0.5 and b and b > 0.5 or false
+    self.__tc = { a, b, c, d }
+end
 function Region:SetGradient() end
 function Region:SetStartPoint(point, rel, x, y) self.__start = { point, rel or self.__parent, x or 0, y or 0 } end
 function Region:SetEndPoint(point, rel, x, y) self.__end = { point, rel or self.__parent, x or 0, y or 0 } end
@@ -497,7 +506,32 @@ local function texHtml(t, rect, prect)
     local tex = t.__tex
     if not tex then return "" end
     local c = t.__color or { 1, 1, 1, 1 }
-    local round = t.__mask and "border-radius:50%;" or ""
+    local round = ""
+    if t.__mask then
+        round = tostring(t.__mask):find("RoundSq") and "border-radius:20%;" or "border-radius:50%;"
+    end
+    -- The round shapes of Skin.lua: a disc, a ring or a halo, whole or one quarter (a corner).
+    local media = tostring(tex):match("\\Media\\(%w+)$")
+    if media then
+        local tc = t.__tc or { 0, 1, 0, 1 }
+        local side
+        if tc[2] <= 0.5 and tc[4] <= 0.5 then side = "top-left"
+        elseif tc[1] >= 0.5 and tc[4] <= 0.5 then side = "top-right"
+        elseif tc[2] <= 0.5 and tc[3] >= 0.5 then side = "bottom-left"
+        elseif tc[1] >= 0.5 and tc[3] >= 0.5 then side = "bottom-right" end
+        local rad = side and ("border-" .. side .. "-radius:100%;") or "border-radius:50%;"
+        if media == "Glow" then
+            return string.format('<div class="tx" style="%sbackground:radial-gradient(circle closest-side,%s 0,%s 55%%,transparent 100%%)"></div>',
+                box(rect, prect), css(c), css(c))
+        elseif media:match("^Ring") then
+            local b = "1px solid " .. css(c)
+            local sides = side and ("border-" .. side:match("^(%a+)") .. ":" .. b .. ";border-" .. side:match("%-(%a+)$") .. ":" .. b .. ";")
+                or ("border:" .. b .. ";")
+            return string.format('<div class="tx" style="%s%s%s"></div>', box(rect, prect), rad, sides)
+        else
+            return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), rad, css(c))
+        end
+    end
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
         return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), round, css(c))
     end

@@ -110,7 +110,7 @@ local function build()
     example.box = CreateFrame("Frame", nil, example.body)
     example.box:SetPoint("TOPLEFT")
     example.box:SetPoint("TOPRIGHT")
-    S.Box(example.box, { 0.03, 0.03, 0.05, 0.95 }, S.EDGE)
+    S.Box(example.box, { 0.03, 0.03, 0.05, 0.95 }, S.EDGE, S.R_MD)
     example.lines = {}
     S.FitWindow(frame, st:Height())
     frame:SetScript("OnShow", function() ns.Refresh() end)

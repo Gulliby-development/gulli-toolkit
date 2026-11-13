@@ -10,7 +10,7 @@
 ## Notes-zhCN: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
 ## Notes-zhTW: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
 ## Author: Gulliby
-## Version: 1.5.3
+## Version: 1.6.0
 ## IconTexture: Interface\AddOns\Gulli-BagSpace\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: BagSpace
