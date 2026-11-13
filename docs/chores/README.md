@@ -21,8 +21,8 @@ You have many characters. Gulli Chores remembers what waits for each of them.
 - **Every character.** Each one saves its state when you play it.
 - **What waits.** Mail with items or money that runs out soon, ready crafting cooldowns (transmutes, Mooncloth, Salt Shaker), new spells at the trainer (on even levels), a profession at its rank limit, new mail, full rested XP, gear to repair and full bags.
 - **Rested XP keeps growing** while you are away, and the card tells you when it is full.
-- **The card** of a character: money, hearthstone and home, letters with items, cash on delivery letters, professions, saved raids and played time. Write a **note** (bank, crafter...).
-- **Overview:** every character in one table: level, rested XP, money, gear, free slots, next cooldown and tasks. Tap a column head to sort. Under it, your money per realm.
+- **The card** of a character: four tiles with rested XP, money, the hearthstone and its home, and played time; each profession with a bar (yellow when the rank is full and the trainer waits); letters with items, cash on delivery letters and saved raids when there are some. Write a **note** (bank, crafter...).
+- **Overview:** every character in one table: level, rested XP, money, gear, free slots, next cooldown and tasks. Tap a column head to sort. Colours show what needs you: gear from 90% and more than 10 free slots are green, gear under your repair limit, fewer than 5 slots and 6 or more tasks are red, the rest in between is yellow. Money shows in gold, silver and copper colours. Under it, your money per realm.
 - **Filter** by realm or faction. **Hide** a bank character so it does not count.
 - **At login,** one chat line tells you what waits on your other characters. **While you play,** it tells you once when a cooldown is ready or rested XP is full on any character.
 - **Settings:** switch each task off, and choose when gear needs repair, how few free slots count as full and how early mail warns you.

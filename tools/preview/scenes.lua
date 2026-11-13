@@ -306,12 +306,19 @@ local function choresChars(W)
     W.char.mail, W.char.free, W.char.durability = true, 2, { 22, 60 }
     W.char.spells[17187], W.char.rested = true, 600
     W.char.items[6948], W.char.bind = 1, "Goldshire"
-    W.char.profs = { { "Tailoring", 150, 150 }, { "Cooking", 112, 225 } }
+    W.char.profs = { { "Tailoring", 150, 150, "Interface\\Icons\\Trade_Tailoring" }, { "Cooking", 112, 225, "Interface\\Icons\\INV_Misc_Food_15" },
+                     { "First Aid", 1, 75, "Interface\\Icons\\Spell_Holy_SealOfSacrifice" } }
     W.char.inbox = { { 0, 0, 1.6, 2 } }
     GulliChoresDB = { chars = {
         ["Lirra-Realm"] = { name = "Lirra", class = "MAGE", level = 38, t = W.now - 30 * 3600, realm = "Realm",
             faction = "Alliance", rested = 0.9, resting = true, money = 1234500, durability = 88, free = 9,
-            trainer = 38, cooldowns = { CD_MOONCLOTH = W.now - 60 } },
+            trainer = 38, cooldowns = { CD_MOONCLOTH = W.now - 60 }, hearth = W.now - 10, bind = "Shadowprey Village",
+            played = 3 * 86400 + 14 * 3600, mailUntil = W.now + 2 * 86400, mailItems = 3,
+            profs = { { name = "Tailoring", icon = "Interface\\Icons\\Trade_Tailoring", skill = 171, cap = 225 },
+                      { name = "Enchanting", icon = "Interface\\Icons\\Trade_Engraving", skill = 164, cap = 225 },
+                      { name = "Fishing", icon = "Interface\\Icons\\Trade_Fishing", skill = 198, cap = 225 },
+                      { name = "Cooking", icon = "Interface\\Icons\\INV_Misc_Food_15", skill = 150, cap = 150 },
+                      { name = "First Aid", icon = "Interface\\Icons\\Spell_Holy_SealOfSacrifice", skill = 1, cap = 75 } } },
         ["Bankie-Realm"] = { name = "Bankie", class = "ROGUE", level = 6, t = W.now - 5 * 86400, realm = "Realm",
             faction = "Alliance", rested = 1.5, resting = true, money = 40000, durability = 100, free = 1,
             trainer = 6, cooldowns = {}, note = "bank" },

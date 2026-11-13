@@ -78,14 +78,14 @@ local function professions()
     local out = {}
     if GetProfessions and GetProfessionInfo then
         for _, i in ipairs({ GetProfessions() }) do
-            local name, _, rank, max = GetProfessionInfo(i)
-            if name then out[#out + 1] = { name = name, skill = rank or 0, cap = max or 0 } end
+            local name, icon, rank, max = GetProfessionInfo(i)
+            if name then out[#out + 1] = { name = name, icon = icon, skill = rank or 0, cap = max or 0 } end
         end
         if #out > 0 then return out end
     end
     local db = GulliCraftProfitCharDB
     for name, p in pairs(type(db) == "table" and type(db.profs) == "table" and db.profs or {}) do
-        if type(p) == "table" and p.skill then out[#out + 1] = { name = name, skill = p.skill, cap = p.cap or 0 } end
+        if type(p) == "table" and p.skill then out[#out + 1] = { name = name, icon = p.icon, skill = p.skill, cap = p.cap or 0 } end
     end
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
@@ -329,6 +329,28 @@ function ns.Overview(col, desc, now)
         return x < y
     end)
     return rows
+end
+
+-- The state colour of an overview cell: "GOOD", "WARN", "BAD", "MUTED" or nil (plain).
+-- Gear and bags turn red at the player's own task limits, or below a floor that always warns.
+ns.TONE_GEAR_GOOD, ns.TONE_FREE_GOOD, ns.TONE_FREE_BAD = 90, 10, 5
+ns.TONE_TASKS_WARN, ns.TONE_TASKS_BAD = 3, 6
+function ns.Tone(col, v)
+    if col == "durability" then
+        if v >= ns.TONE_GEAR_GOOD then return "GOOD" end
+        return v < pref("repairAt") and "BAD" or "WARN"
+    elseif col == "free" then
+        if v > ns.TONE_FREE_GOOD then return "GOOD" end
+        return (v < ns.TONE_FREE_BAD or v <= pref("bagsAt")) and "BAD" or "WARN"
+    elseif col == "tasks" then
+        if v >= ns.TONE_TASKS_BAD then return "BAD" end
+        return v >= ns.TONE_TASKS_WARN and "WARN" or nil
+    elseif col == "rested" then
+        if v >= RESTED_MAX then return "GOOD" end
+        return v <= 0 and "MUTED" or nil
+    elseif col == "cd" then
+        return v == 0 and "GOOD" or nil
+    end
 end
 
 -- Money per realm of the visible characters: { { realm, money } }, the most first.

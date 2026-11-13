@@ -7,7 +7,7 @@ local L = ns.L
 local S = ns.Skin
 
 local frame, tabs, filterTabs, pages = nil, nil, nil, {}
-local chars, list, info, forget, hide, head, empty, note
+local chars, list, forget, hide, head, empty, note
 local over, overHeads, gold
 local selected
 local sortCol, sortDesc = "name", false
@@ -38,13 +38,6 @@ end
 local function classColor(class)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     return c and string.format("|cff%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255) or ""
-end
-
-local function money(copper)
-    if GetCoinTextureString then return GetCoinTextureString(copper or 0) end
-    local g = math.floor((copper or 0) / 10000)
-    local s = math.floor((copper or 0) / 100) % 100
-    return g > 0 and (g .. "g " .. s .. "s") or (s .. "s")
 end
 
 -- How urgent a task is: what hurts when it waits red, what is ready to use green.
@@ -94,38 +87,106 @@ local function fillRow(r, task)
     r.text:SetTextColor(unpack(ns.TaskColor(task.key)))
 end
 
--- The lines of the character card.
-function ns.InfoLines(c, key, now)
+-- The facts of the character card: four tiles, the professions and the lines that only some
+-- characters have. Each tile is { value, color, sub, frac }.
+local HEARTH_ID = 6948
+local function itemIcon(id)
+    local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+    return get and get(id)
+end
+local TILE_ICON = {
+    rested = "Interface\\Icons\\Spell_Nature_Sleep",
+    money = "Interface\\Icons\\INV_Misc_Coin_01",
+    played = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+}
+
+local function realmMoney(c)
+    for _, g in ipairs(ns.RealmGold()) do
+        if g.realm == c.realm then return g.money end
+    end
+end
+
+function ns.CardInfo(c, key, now)
     now = now or time()
-    local lines = {}
-    if not c.maxLevel then
+    local info = { extra = {}, profs = {} }
+    if c.maxLevel then
+        info.rested = { L.MAX_LEVEL, S.MUTED, "" }
+    else
+        local r = ns.RestedNow(c, now)
         local full = ns.RestedFullIn(c, now)
-        local line = L.RESTED:format(math.floor(ns.RestedNow(c, now) * 100))
-        if full and full > 0 then line = line .. ", " .. L.FULL_IN:format(ns.Span(full)) end
-        lines[#lines + 1] = line
+        local sub = (full and full > 0) and L.FULL_IN:format(ns.Span(full)) or L.RESTED_FULL
+        local tone = ns.Tone("rested", r)
+        info.rested = { math.floor(r * 100) .. "%", tone and S[tone] or S.TEXT, sub, r / ns.RESTED_MAX }
     end
-    lines[#lines + 1] = L.MONEY:format(money(c.money))
-    if key ~= ns.CharKey() then lines[#lines + 1] = L.SEEN:format(ns.Span(now - c.t)) end
-    local nextCd = ns.NextReady(c, now)
-    if nextCd then lines[#lines + 1] = L.NEXT_CD:format(ns.Span(nextCd - now)) end
+    local total = realmMoney(c)
+    info.money = { S.MoneyText(c.money), S.TEXT,
+                   -- The realm's total in whole gold, so it fits under the tile's value.
+                   (total and total ~= (c.money or 0)) and L.REALM_MONEY:format(S.MoneyText(total >= 10000 and total - total % 10000 or total))
+                   or (c.realm or "") }
     if c.hearth or c.bind then
-        local h = (not c.hearth or c.hearth <= now) and L.READY or ns.Span(c.hearth - now)
-        lines[#lines + 1] = L.HEARTH:format(h, c.bind or "?")
+        local ready = not c.hearth or c.hearth <= now
+        info.hearth = { ready and L.READY_UP or ns.Span(c.hearth - now), ready and S.GOOD or S.TEXT, c.bind or "?" }
+    else
+        info.hearth = { "-", S.MUTED, "" }
     end
+    local seen = key == ns.CharKey() and L.SEEN_NOW or L.SEEN_AGO:format(ns.Span(now - (c.t or now)))
+    info.played = { c.played and ns.Span(c.played) or "-", c.played and S.TEXT or S.MUTED, seen }
+    local nextCd = ns.NextReady(c, now)
+    if nextCd then info.extra[#info.extra + 1] = L.NEXT_CD:format(ns.Span(nextCd - now)) end
     if c.mailUntil and c.mailUntil > now then
-        lines[#lines + 1] = L.MAIL_LINE:format(c.mailItems or 0, ns.Span(c.mailUntil - now))
+        info.extra[#info.extra + 1] = L.MAIL_LINE:format(c.mailItems or 0, ns.Span(c.mailUntil - now))
     end
-    if (c.cod or 0) > 0 then lines[#lines + 1] = L.COD_LINE:format(c.cod) end
-    local profs = {}
-    for _, p in ipairs(c.profs or {}) do profs[#profs + 1] = p.name .. " " .. p.skill .. "/" .. p.cap end
-    if #profs > 0 then lines[#lines + 1] = L.PROFS:format(table.concat(profs, ", ")) end
+    if (c.cod or 0) > 0 then info.extra[#info.extra + 1] = L.COD_LINE:format(c.cod) end
     local locks = {}
     for _, l in ipairs(c.lockouts or {}) do
         if l.til > now then locks[#locks + 1] = l.name .. " " .. ns.Span(l.til - now) end
     end
-    if #locks > 0 then lines[#lines + 1] = L.LOCKS:format(table.concat(locks, ", ")) end
-    if c.played then lines[#lines + 1] = L.PLAYED:format(ns.Span(c.played)) end
-    return lines
+    if #locks > 0 then info.extra[#info.extra + 1] = L.LOCKS:format(table.concat(locks, ", ")) end
+    for _, p in ipairs(c.profs or {}) do
+        local cap = p.cap or 0
+        -- A rank that is full waits for the trainer: yellow, like the task.
+        local full = cap > 0 and cap < 300 and (p.skill or 0) >= cap
+        info.profs[#info.profs + 1] = { name = p.name, icon = p.icon, skill = p.skill or 0, cap = cap,
+            frac = cap > 0 and (p.skill or 0) / cap or 0, color = full and S.WARN or S.Accent(), full = full }
+    end
+    return info
+end
+
+local tiles, extra, top, profCard, profRows, taskCard
+-- The task list takes what is left under the professions, or under the card without them.
+local function placeTasks(withProfs)
+    taskCard:ClearAllPoints()
+    taskCard:SetPoint("TOPLEFT", withProfs and profCard or top, "BOTTOMLEFT", 0, -S.GAP)
+    taskCard:SetPoint("BOTTOMRIGHT")
+end
+local PROF_MAX, PROF_H = 6, 26
+local TILE_H, HEAD_H = 74, 28
+
+local function fillCard(c)
+    local info = ns.CardInfo(c, selected)
+    tiles.rested:Set(info.rested[1], info.rested[2], info.rested[3], info.rested[4], { 0.36, 0.55, 0.88, 1 })
+    tiles.money:Set(info.money[1], nil, info.money[3])
+    tiles.hearth.icon:SetIcon(itemIcon(HEARTH_ID))
+    tiles.hearth:Set(info.hearth[1], info.hearth[2], info.hearth[3])
+    tiles.played:Set(info.played[1], info.played[2], info.played[3])
+    extra:SetText(table.concat(info.extra, "\n"))
+    local lines = #info.extra
+    top:Fit(HEAD_H + 10 + TILE_H + (lines > 0 and (8 + lines * 16) or 0))
+    local n = math.min(#info.profs, PROF_MAX)
+    for i = 1, PROF_MAX do
+        local r, p = profRows[i], info.profs[i]
+        r:SetShown(i <= n)
+        if p and i <= n then
+            r.icon:SetIcon(p.icon)
+            r.name:SetText(p.name)
+            r.bar:Set(p.frac, p.color)
+            r.value:SetText(p.full and (S.Hex(S.WARN) .. p.skill .. "/" .. p.cap .. "|r")
+                or (p.skill .. S.Hex(S.MUTED) .. "/" .. p.cap .. "|r"))
+        end
+    end
+    profCard:SetShown(n > 0)
+    if n > 0 then profCard:Fit(n * PROF_H) end
+    placeTasks(n > 0)
 end
 
 local function refreshChars()
@@ -136,15 +197,21 @@ local function refreshChars()
     local tasks = c and ns.Tasks(c) or {}
     list:SetData(tasks)
     if c then
-        info:SetText(table.concat(ns.InfoLines(c, selected), "\n"))
-        head:SetText(classColor(c.class) .. c.name .. "|r  " .. S.Hex(S.MUTED) .. (c.level or "") ..
-            (c.realm and ("  " .. c.realm) or "") .. "|r")
+        local lc = S.LevelColor(c.level, UnitLevel and UnitLevel("player"))
+        local fac = c.faction == "Horde" and "|cffe0503c" or c.faction == "Alliance" and "|cff4a8ef0" or nil
+        head:SetText(classColor(c.class) .. c.name .. "|r  " .. S.Hex(lc) .. (c.level or "") .. "|r" ..
+            (c.realm and ("   " .. S.Hex(S.MUTED) .. c.realm .. "|r") or "") ..
+            (fac and c.faction and ("   " .. fac .. (L["FACTION_" .. c.faction] or c.faction) .. "|r") or ""))
         if not note:HasFocus() then note:SetText(c.note or "") end
+        fillCard(c)
     else
-        info:SetText("")
         head:SetText("")
         note:SetText("")
+        extra:SetText("")
+        profCard:Hide()
+        placeTasks(false)
     end
+    for _, t in pairs(tiles) do t:SetShown(c ~= nil) end
     note:SetShown(c ~= nil)
     empty:SetShown(c ~= nil and #tasks == 0)
     empty:Set(L.NOTHING)
@@ -152,6 +219,28 @@ local function refreshChars()
     forget:SetEnabled(other)
     hide:SetEnabled(other)
     hide:SetText(ns.db.hidden[selected or ""] and L.SHOW_CHAR or L.HIDE_CHAR)
+end
+
+local function makeProf(parent, i)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(PROF_H)
+    r:SetPoint("TOPLEFT", 0, -(i - 1) * PROF_H)
+    r:SetPoint("RIGHT")
+    r.icon = S.IconBox(r, 22)
+    r.icon:SetPoint("LEFT")
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
+    r.name:SetWidth(110)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r.value = S.Text(r, 12)
+    r.value:SetPoint("RIGHT")
+    r.value:SetWidth(70)
+    r.value:SetJustifyH("RIGHT")
+    r.bar = S.Progress(r, 6)
+    r.bar:SetPoint("LEFT", r.name, "RIGHT", 8, 0)
+    r.bar:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
+    return r
 end
 
 local function buildChars(page)
@@ -174,30 +263,62 @@ local function buildChars(page)
     chars:SetPoint("TOPLEFT")
     chars:SetPoint("BOTTOMRIGHT", -10, 76)
 
-    local top = S.Card(page)
+    top = S.Card(page)
     top:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     top:SetPoint("TOPRIGHT")
-    top:SetHeight(214)
-    head = S.Text(top.body, 15)
-    head:SetPoint("TOPLEFT")
-    head:SetPoint("TOPRIGHT", -230, 0)
+    top:Fit(HEAD_H + 10 + TILE_H)
+    head = S.Text(top.body, 16)
+    head:SetPoint("TOPLEFT", 0, -4)
+    head:SetPoint("TOPRIGHT", -230, -4)
     head:SetWordWrap(false)
     note = S.Edit(top.body, 220, 28)
-    note:SetPoint("TOPRIGHT", 0, 4)
+    note:SetPoint("TOPRIGHT", 0, 0)
     note:SetJustifyH("LEFT")
     S.Placeholder(note, L.NOTE_HINT)
     local function save(self) if selected then ns.SetNote(selected, self:GetText()) end; self:ClearFocus() end
     note:SetScript("OnEnterPressed", save)
     note:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); if selected then ns.SetNote(selected, self:GetText()) end end)
-    info = S.Text(top.body, 12, S.MUTED)
-    info:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -12)
-    info:SetPoint("RIGHT")
-    info:SetJustifyV("TOP")
-    info:SetSpacing(4)
+    local row = CreateFrame("Frame", nil, top.body)
+    row:SetPoint("TOPLEFT", 0, -(HEAD_H + 10))
+    row:SetPoint("TOPRIGHT", 0, -(HEAD_H + 10))
+    row:SetHeight(TILE_H)
+    tiles = {
+        rested = S.InfoTile(row, L.TILE_RESTED, TILE_ICON.rested),
+        money = S.InfoTile(row, L.TILE_MONEY, TILE_ICON.money),
+        hearth = S.InfoTile(row, L.TILE_HEARTH, itemIcon(HEARTH_ID)),
+        played = S.InfoTile(row, L.TILE_PLAYED, TILE_ICON.played),
+    }
+    local order = { tiles.rested, tiles.money, tiles.hearth, tiles.played }
+    local function layout()
+        local w = tonumber(row:GetWidth()) or 0
+        if w <= 0 then return end
+        local tw = math.floor((w - 3 * 8) / 4)
+        for i, t in ipairs(order) do
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", (i - 1) * (tw + 8), 0)
+            t:SetSize(tw, TILE_H)
+        end
+    end
+    row:SetScript("OnSizeChanged", layout)
+    for i, t in ipairs(order) do t:SetPoint("TOPLEFT", (i - 1) * 145, 0); t:SetSize(137, TILE_H) end
+    layout()
+    extra = S.Text(top.body, 12, S.MUTED)
+    extra:SetPoint("TOPLEFT", row, "BOTTOMLEFT", 0, -8)
+    extra:SetPoint("RIGHT")
+    extra:SetJustifyH("LEFT")
+    extra:SetJustifyV("TOP")
+    extra:SetSpacing(3)
 
-    local right = S.Card(page)
-    right:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
-    right:SetPoint("BOTTOMRIGHT")
+    profCard = S.Card(page, L.SEC_PROFS)
+    profCard:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
+    profCard:SetPoint("TOPRIGHT", top, "BOTTOMRIGHT", 0, -S.GAP)
+    profRows = {}
+    for i = 1, PROF_MAX do profRows[i] = makeProf(profCard.body, i) end
+    profCard:Fit(PROF_H)
+
+    taskCard = S.Card(page)
+    placeTasks(true)
+    local right = taskCard
     list = S.List(right.body, 34, makeRow, fillRow)
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -247,28 +368,30 @@ local function makeOver(r)
     end)
 end
 
+local function tint(fs, tone)
+    local c = tone and S[tone] or S.TEXT
+    fs:SetTextColor(c[1], c[2], c[3], 1)
+end
+
 local function fillOver(r, e)
     r.entry = e
     local c, cell = e.char, r.cells
     local now = time()
     cell[1]:SetText(classColor(c.class) .. e.name .. "|r" .. (c.note and (" " .. S.Hex(S.MUTED) .. c.note .. "|r") or ""))
     cell[2]:SetText(tostring(e.level))
+    local lc = S.LevelColor(e.level, UnitLevel and UnitLevel("player"))
+    cell[2]:SetTextColor(lc[1], lc[2], lc[3], 1)
     cell[3]:SetText(e.rested < 0 and "-" or (math.floor(e.rested * 100) .. "%"))
-    local rc = e.rested >= ns.RESTED_MAX and S.GOOD or S.TEXT
-    cell[3]:SetTextColor(rc[1], rc[2], rc[3], 1)
-    cell[4]:SetText(money(e.money))
+    tint(cell[3], e.rested < 0 and "MUTED" or ns.Tone("rested", e.rested))
+    cell[4]:SetText(S.MoneyText(e.money))
     cell[5]:SetText(e.durability .. "%")
-    local dc = e.durability < ns.Pref("repairAt") and S.BAD or S.TEXT
-    cell[5]:SetTextColor(dc[1], dc[2], dc[3], 1)
+    tint(cell[5], ns.Tone("durability", e.durability))
     cell[6]:SetText(tostring(e.free))
-    local fc = e.free <= ns.Pref("bagsAt") and S.BAD or S.TEXT
-    cell[6]:SetTextColor(fc[1], fc[2], fc[3], 1)
-    cell[7]:SetText(e.cd == 0 and L.READY or e.cd == math.huge and "-" or ns.Span(e.cd - now))
-    local cc = e.cd == 0 and S.GOOD or S.TEXT
-    cell[7]:SetTextColor(cc[1], cc[2], cc[3], 1)
+    tint(cell[6], ns.Tone("free", e.free))
+    cell[7]:SetText(e.cd == 0 and L.READY_UP or e.cd == math.huge and "-" or ns.Span(e.cd - now))
+    tint(cell[7], e.cd == math.huge and "MUTED" or ns.Tone("cd", e.cd))
     cell[8]:SetText(tostring(e.tasks))
-    local tc = e.tasks > 0 and S.Accent() or S.MUTED
-    cell[8]:SetTextColor(tc[1], tc[2], tc[3], 1)
+    tint(cell[8], e.tasks == 0 and "MUTED" or ns.Tone("tasks", e.tasks))
 end
 
 local function refreshOver()
@@ -278,7 +401,7 @@ local function refreshOver()
     end
     over:SetData(ns.Overview(sortCol, sortDesc))
     local parts = {}
-    for _, g in ipairs(ns.RealmGold()) do parts[#parts + 1] = g.realm .. ": " .. money(g.money) end
+    for _, g in ipairs(ns.RealmGold()) do parts[#parts + 1] = g.realm .. ": " .. S.MoneyText(g.money) end
     gold:SetText(L.GOLD:format(table.concat(parts, "   ")))
 end
 
