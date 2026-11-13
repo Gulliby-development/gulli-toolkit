@@ -171,6 +171,7 @@ local function footerStatus(rows, party)
         footer:SetStatus(last.title .. " — " .. table.concat(out, ", "), S.MUTED)
         return
     end
+    if #party == 0 then footer:SetStatus(L.NO_GROUP, S.MUTED); return end
     local text, synced = ns.Summary(rows, party)
     footer:SetStatus(text or "", synced and S.GOOD or S.MUTED)
 end
@@ -199,9 +200,12 @@ function ns.Refresh()
         local canShare = false
         for _, r in ipairs(rows) do if r.canShare then canShare = true end end
         shareAll:SetEnabled(canShare)
-        if #party == 0 then empty:Set(L.NO_GROUP)
-        elseif #rows == 0 then empty:Set(ns.Get("zoneOnly") and L.NONE_ZONE or L.NONE_MINE) end
-        empty:SetShown(#party == 0 or #rows == 0)
+        -- The empty state sits over the list, so it shows only when the list is empty;
+        -- with quests but no group, the footer says so instead.
+        if #rows == 0 then
+            empty:Set(#party == 0 and L.NO_GROUP or (ns.Get("zoneOnly") and L.NONE_ZONE or L.NONE_MINE))
+        end
+        empty:SetShown(#rows == 0)
         footerStatus(rows, party)
     elseif current == 2 then
         listTheirs:SetData(theirs)
