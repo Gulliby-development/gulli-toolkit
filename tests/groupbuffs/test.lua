@@ -191,6 +191,23 @@ test("who it buffs: a friendly target outside the group, or nobody", function()
     eq(show(ns.Plan()), "")
 end)
 
+test("a friendly target outside the group is offered by default, also for older saves, until you pick Group", function()
+    local function units()
+        return { player = { name = "Me", class = "PRIEST", auras = { ["Power Word: Fortitude"] = 0 } },
+                 target = { name = "Stranger", class = "HUNTER", auras = {} } }
+    end
+    Fake { known = { [1243] = true }, units = units() }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@target", "new save")
+    Fake { known = { [1243] = true }, units = units(), db = { who = "group" } }
+    ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@target", "old default moved once")
+    ns.DB().who = "group"
+    Fake { known = { [1243] = true }, units = units(), db = ns.DB() }
+    ns = Load()
+    eq(show(ns.Plan()), "", "a later pick of Group stays")
+end)
+
 test("other classes: Battle Shout, the best armor known, an aura, Omen of Clarity; Righteous Fury starts off", function()
     Fake { known = { [6673] = true }, units = { player = { name = "Me", class = "WARRIOR", auras = {} } } }
     local ns = Load()
@@ -546,14 +563,14 @@ test("the settings window builds for every class and its buttons cycle", functio
     ns.Toggle()
     local who
     for _, f in ipairs(W.frames) do
-        if rawget(f, "text") and f.text._text == "Your group" then who = f end
+        if rawget(f, "text") and f.text._text == "Group and target" then who = f end
     end
     assert(who, "no 'Who it buffs' button")
     who.scripts.OnClick(who, "LeftButton")
-    eq(ns.DB().who, "target")
-    eq(who.text._text, "Group and target")
+    eq(ns.DB().who, "off")
     who.scripts.OnClick(who, "RightButton")
-    eq(ns.DB().who, "group", "right-click goes back")
+    eq(ns.DB().who, "target", "right-click goes back")
+    eq(who.text._text, "Group and target")
     eq(ns.DB().locked, true, "a new bar starts locked")
     SlashCmdList.GULLIGROUPBUFFS("lock")
     eq(ns.DB().locked, false)
