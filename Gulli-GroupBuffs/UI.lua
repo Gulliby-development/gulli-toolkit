@@ -26,10 +26,23 @@ local readyUntil = 0      -- a ready check shows the bar until then
 -- Runs in the game's restricted environment on every click of the big button, before
 -- the cast. Outside combat it does nothing (the button is already aimed). In combat it
 -- aims the button at the next living unit of the list and moves on, wrapping at the end.
+-- It stays on one unit for a global cooldown (gb-held, gb-at), so presses spammed while
+-- the cast cannot happen yet do not walk past people nobody buffed.
+ns.HOLD = 1.5
 ns.COMBAT_SNIPPET = [[
     if not PlayerInCombat() then return end
     if down ~= self:GetAttribute("gb-down") then return end
     local n = self:GetAttribute("gb-count") or 0
+    local now = GetTime and GetTime()
+    local held, at = self:GetAttribute("gb-held"), self:GetAttribute("gb-at")
+    if now and held and at and now - at < ]] .. ns.HOLD .. [[ then
+        local unit = self:GetAttribute("gb-unit" .. held)
+        if unit and SecureCmdOptionParse("[@" .. unit .. ",exists,nodead] ok") == "ok" then
+            self:SetAttribute("spell", self:GetAttribute("gb-spell" .. held))
+            self:SetAttribute("unit", unit)
+            return
+        end
+    end
     local i = self:GetAttribute("gb-index") or 1
     for _ = 1, n do
         if i > n then i = 1 end
@@ -38,6 +51,8 @@ ns.COMBAT_SNIPPET = [[
             self:SetAttribute("spell", self:GetAttribute("gb-spell" .. i))
             self:SetAttribute("unit", unit)
             self:SetAttribute("gb-index", i + 1)
+            self:SetAttribute("gb-held", i)
+            self:SetAttribute("gb-at", now)
             return
         end
         i = i + 1
@@ -317,6 +332,9 @@ function ns.Refresh()
         -- Only the look may change now: dim what got buffed, show where the key is.
         local n = main:GetAttribute("gb-count") or 0
         local i = main:GetAttribute("gb-index") or 1
+        -- Within a global cooldown of the last aim, the next press goes to the same unit.
+        local held, at = main:GetAttribute("gb-held"), main:GetAttribute("gb-at")
+        if held and at and now() - at < ns.HOLD then i = held end
         if i > n then i = 1 end
         local e = list[i]
         paint(main, e, "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -352,6 +370,8 @@ local function enterCombat()
     end
     main:SetAttribute("gb-count", #list)
     main:SetAttribute("gb-index", 1)
+    main:SetAttribute("gb-held", nil)
+    main:SetAttribute("gb-at", nil)
 end
 ns.EnterCombat = enterCombat
 
@@ -442,7 +462,7 @@ driver:SetScript("OnUpdate", function(_, elapsed)
     since = 0
     if tick >= 1 then
         tick = 0
-        if not InCombatLockdown() then dirty = true end
+        dirty = true      -- in combat too: the shown unit moves on when a hold ends
     end
     if dirty then ns.Refresh() end
 end)

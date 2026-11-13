@@ -74,7 +74,7 @@ The camp gives stats such as Stamina. When the camp gives as much as your buff o
 <details>
 <summary><b>Why does it skip a buff in combat?</b></summary>
 
-In combat the game does not tell the button who still needs a buff. The button walks through the list made when the fight started. If a press does not cast (the spell is on cooldown, or you are moving), the button still moves on. After the last one it starts the list again, so just keep pressing. Out of combat it always aims at the right player.
+In combat the game does not tell the button who still needs a buff. The button walks through the list made when the fight started. Presses during the global cooldown stay on the same player, so pressing fast does not skip anyone. A press after that moves on, even when the cast did not happen (you were moving, or out of sight). After the last one it starts the list again, so just keep pressing. Out of combat it always aims at the right player.
 </details>
 
 <details>
