@@ -98,23 +98,28 @@ end
 -- classID, subclassID, equipLoc, icon, inSet, bound, value }. normalOnly leaves out herb,
 -- soul and other special bags.
 J.BAGS = { 0, 1, 2, 3, 4 }
+-- One bag slot as a Scan record, or nil when it is empty.
+function J.Item(bag, slot)
+    local id, count, locked, link, icon, slotQuality, noValue = slotInfo(bag, slot)
+    if not id then return nil end
+    local name, quality, maxStack, price, classID, icon2, subclassID, equipLoc = itemInfo(id)
+    quality = slotQuality or quality
+    if noValue then price = 0 end
+    count = count or 1
+    return { bag = bag, slot = slot, id = id, count = count, locked = locked, link = link,
+             name = name or link or ("item:" .. id), quality = quality or 1,
+             maxStack = maxStack, price = price, classID = classID, subclassID = subclassID,
+             equipLoc = equipLoc, icon = icon or icon2, inSet = inSet(bag, slot),
+             bound = isBound(bag, slot), value = price * count }
+end
+
 function J.Scan(normalOnly)
     local out = {}
     for _, bag in ipairs(J.BAGS) do
         if not normalOnly or bagFamily(bag) == 0 then
             for slot = 1, numSlots(bag) do
-                local id, count, locked, link, icon, slotQuality, noValue = slotInfo(bag, slot)
-                if id then
-                    local name, quality, maxStack, price, classID, icon2, subclassID, equipLoc = itemInfo(id)
-                    quality = slotQuality or quality
-                    if noValue then price = 0 end
-                    count = count or 1
-                    out[#out + 1] = { bag = bag, slot = slot, id = id, count = count, locked = locked, link = link,
-                                      name = name or link or ("item:" .. id), quality = quality or 1,
-                                      maxStack = maxStack, price = price, classID = classID, subclassID = subclassID,
-                                      equipLoc = equipLoc, icon = icon or icon2, inSet = inSet(bag, slot),
-                                      bound = isBound(bag, slot), value = price * count }
-                end
+                local it = J.Item(bag, slot)
+                if it then out[#out + 1] = it end
             end
         end
     end
@@ -227,8 +232,10 @@ end
 local function junkFor(id, bag, slot)
     if not id then return nil end
     local it
+    -- Only this slot: a whole bag scan per button froze the game ("script ran too long").
     if bag and slot then
-        for _, x in ipairs(J.Scan()) do if x.bag == bag and x.slot == slot then it = x break end end
+        it = J.Item(bag, slot)
+        if it and it.id ~= id then it = nil end
     end
     if not it then
         local name, quality, _, price, classID, _, subclassID = itemInfo(id)
@@ -268,6 +275,13 @@ local function eachButton(fn)
             end
         end
     end
+end
+
+-- Bag events and frame updates come in bursts: the coins are redrawn once, on the next frame.
+function J.QueueCoins()
+    if shared.coinsQueued then return end
+    shared.coinsQueued = true
+    C_Timer.After(0, function() shared.coinsQueued = false; J.UpdateCoins() end)
 end
 
 function J.UpdateCoins()
@@ -329,7 +343,7 @@ function J.InstallMarks(texts)
     end
     local f = CreateFrame("Frame")
     f:RegisterEvent("BAG_UPDATE_DELAYED")
-    f:SetScript("OnEvent", function() J.UpdateCoins() end)
-    if ContainerFrame_Update then hooksecurefunc("ContainerFrame_Update", function() J.UpdateCoins() end) end
-    J.OnChange(J.UpdateCoins)
+    f:SetScript("OnEvent", function() J.QueueCoins() end)
+    if ContainerFrame_Update then hooksecurefunc("ContainerFrame_Update", function() J.QueueCoins() end) end
+    J.OnChange(J.QueueCoins)
 end

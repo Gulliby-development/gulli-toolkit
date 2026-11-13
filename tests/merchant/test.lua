@@ -241,4 +241,37 @@ test("paused from the hub it sells nothing until it is started again", function(
     eq(#W.sold, 1, "started again")
 end)
 
+test("bag coins read each slot once, and a burst of updates redraws them once", function()
+    local slots = {}
+    for s = 1, 16 do slots[s] = { 0, s, 100 + s, 1, s % 2 == 0 and 0 or 1 } end
+    local prices = {}
+    for s = 1, 16 do prices[100 + s] = 5 end
+    Fake({ slots = slots, prices = prices })
+    local ns = Load()
+    local buttons = {}
+    for s = 1, 16 do
+        local b = { GetBagID = function() return 0 end, GetID = function() return s end }
+        b.CreateTexture = function()
+            return { SetTexture = function() end, SetSize = function() end, SetPoint = function() end,
+                     SetShown = function(_, v) b.shown = v end }
+        end
+        buttons[s] = b
+    end
+    ContainerFrame1 = { IsShown = function() return true end,
+                        EnumerateValidItems = function() return ipairs(buttons) end }
+    local reads, get = 0, C_Container.GetContainerItemInfo
+    C_Container.GetContainerItemInfo = function(...) reads = reads + 1; return get(...) end
+    ns.J.UpdateCoins()
+    assert(reads <= 2 * 16, "slot reads: " .. reads)
+    assert(buttons[2].shown and not buttons[1].shown, "coin on the gray item only")
+    W.Drain()
+    for _ = 1, 5 do W.Fire("BAG_UPDATE_DELAYED") end
+    if W.hooks.ContainerFrame_Update then W.hooks.ContainerFrame_Update() end
+    eq(#W.timers, 1, "one redraw queued")
+    reads = 0
+    W.RunTimers()
+    assert(reads > 0 and reads <= 2 * 16, "redraw reads: " .. reads)
+    ContainerFrame1 = nil
+end)
+
 W.finish()
