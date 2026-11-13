@@ -515,17 +515,22 @@ local function rowList()
         list[#list + 1] = { kind = "note", label = L.NO_BUFFS }
         return list
     end
+    local race = UnitRace and select(2, UnitRace("player"))
     for _, f in ipairs(fams) do
         local id = f.id
-        if f.who == "blessing" then id = B.BLESSINGS[1].id
-        elseif f.choice then id = B.CHOICES[f.choice][1].id end
-        list[#list + 1] = { kind = "check", label = famLabel(f), icon = spellIcon(id), get = function(v)
-            local d = ns.DB()
-            if v ~= nil then d.watch[f.key] = v end
-            local on = d.watch[f.key]
-            if on == nil then on = not f.off end
-            return on
-        end }
+        local shown = not f.race or f.race == race or ns.Known(f.id)
+        for _, r in ipairs(f.ranks or {}) do shown = shown or ns.Known(r) end
+        if shown then
+            if f.who == "blessing" then id = B.BLESSINGS[1].id
+            elseif f.choice then id = B.CHOICES[f.choice][1].id end
+            list[#list + 1] = { kind = "check", label = famLabel(f), icon = spellIcon(id), get = function(v)
+                local d = ns.DB()
+                if v ~= nil then d.watch[f.key] = v end
+                local on = d.watch[f.key]
+                if on == nil then on = not f.off end
+                return on
+            end }
+        end
     end
     local opts = false
     local function classHeader()
