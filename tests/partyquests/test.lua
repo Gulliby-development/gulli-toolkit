@@ -290,4 +290,17 @@ test("a secret unit or name on the world cursor tooltip is skipped", function()
     issecretvalue = nil
 end)
 
+test("without a group the note goes to the footer, never over my quests", function()
+    Fake({ quests = LOG })
+    local ns = Load()
+    local S, made = ns.Skin, {}
+    local empty, footer = S.Empty, S.Footer
+    S.Empty = function(...) local e = empty(...); made.empty = e; return e end
+    S.Footer = function(...) local f = footer(...); made.footer = f; return f end
+    SlashCmdList.GULLIPARTYQUESTS("")
+    ns.Refresh()
+    eq(made.empty:IsShown(), false, "the list has quests: no empty state over it")
+    eq(made.footer.status:GetText(), ns.L.NO_GROUP)
+end)
+
 W.finish()
