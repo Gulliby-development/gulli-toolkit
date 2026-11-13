@@ -10,7 +10,7 @@
 ## Notes-zhCN: 进副本前：已有和还能接的副本任务、在哪接，以及检查清单。 /gdp
 ## Notes-zhTW: 进副本前：已有和还能接的副本任务、在哪接，以及检查清单。 /gdp
 ## Author: Gulliby
-## Version: 1.5.0
+## Version: 1.5.1
 ## IconTexture: Interface\AddOns\Gulli-DungeonPrep\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: DungeonPrep
