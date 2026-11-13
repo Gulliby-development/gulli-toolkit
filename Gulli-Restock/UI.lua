@@ -15,10 +15,7 @@ local bankFrame, bankList, bankMoves
 local quick
 local currentPlan
 
-local function money(copper)
-    if GetCoinTextureString then return GetCoinTextureString(copper or 0) end
-    return tostring(copper or 0)
-end
+local function money(copper) return S.MoneyText(copper or 0) end
 
 -- The keep list ------------------------------------------------------------------------------
 

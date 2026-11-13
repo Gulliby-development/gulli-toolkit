@@ -37,12 +37,12 @@ local function fillRow(r, it)
     local tags = {}
     if it.why == "always" then tags[#tags + 1] = L.TAG_ALWAYS end
     if it.why == "unusable" then tags[#tags + 1] = L.TAG_UNUSABLE end
-    if it.ah then tags[#tags + 1] = L.TAG_AH:format(ns.Money(it.ah)) end
+    if it.ah then tags[#tags + 1] = L.TAG_AH:format(S.MoneyText(it.ah)) end
     if it.boe then tags[#tags + 1] = L.TAG_BOE end
     if it.tier == 3 and #tags == 0 then tags[#tags + 1] = L.MAYBE end
     r.name:SetText(S.QualityHex(it.quality) .. it.name .. "|r" .. (it.count > 1 and (" x" .. it.count) or "") ..
         (#tags > 0 and ("  " .. S.Hex(S.FAINT) .. table.concat(tags, ", ") .. "|r") or ""))
-    r.value:SetText(it.value > 0 and ns.Money(it.value) or "")
+    r.value:SetText(it.value > 0 and S.MoneyText(it.value) or "")
 end
 
 -- rebuild: true makes a new plan from the bags, false keeps the ticks.
@@ -54,7 +54,7 @@ function ns.Refresh(rebuild)
     local slots, value = ns.Summary(plan)
     empty:SetShown(#plan.items == 0)
     empty:Set(plan.merged > 0 and L.ONLY_MERGE:format(plan.merged) or L.NOTHING)
-    card:SetTitle(L.SUMMARY:format(slots, plan.merged), value > 0 and ns.Money(value) or "")
+    card:SetTitle(L.SUMMARY:format(slots, plan.merged), value > 0 and S.MoneyText(value) or "")
     ok:SetText(ns.atMerchant and L.SELL or L.DELETE)
     if ns.atMerchant then S.Primary(ok) else S.Danger(ok) end
     ok:SetEnabled(slots > 0)

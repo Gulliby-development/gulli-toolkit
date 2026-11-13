@@ -9,7 +9,7 @@ local L = ns.L
 local S = ns.Skin
 
 local panel, tabs, pages = nil, nil, {}
-local summary, takeBtn, letters, noLetters, takeSel
+local summary, stats, takeBtn, letters, noLetters, takeSel
 local names, noNames, search, attachRow, goldBtn, ruleBtn
 local settings, rulesList, logList
 local selected = {}
@@ -88,9 +88,9 @@ local function fillLetter(r, h)
     r.icon:SetIcon(KIND_ICON[h.kind])
     r.from:SetText((h.sender or "?") .. (h.subject and h.subject ~= "" and ("  " .. S.Hex(S.FAINT) .. h.subject .. "|r") or ""))
     local parts = {}
-    if h.money > 0 then parts[#parts + 1] = ns.Money(h.money) end
+    if h.money > 0 then parts[#parts + 1] = S.MoneyText(h.money) end
     if h.items > 0 then parts[#parts + 1] = L.N_ITEMS:format(h.items) end
-    if h.cod > 0 then parts[#parts + 1] = L.COD_SHORT:format(ns.Money(h.cod)) end
+    if h.cod > 0 then parts[#parts + 1] = L.COD_SHORT:format(S.MoneyText(h.cod)) end
     local days = h.days < 1 and L.HOURS:format(math.max(0, math.floor(h.days * 24))) or L.DAYS:format(math.floor(h.days))
     local dc = h.days < 3 and S.Hex(S.BAD) or S.Hex(S.FAINT)
     r.what:SetText(dc .. days .. "|r  " .. table.concat(parts, ", "))
@@ -128,15 +128,18 @@ function ns.Refresh()
     if settings and settings:IsShown() and ns.RefreshSettings then ns.RefreshSettings() end
     if not panel or not panel:IsShown() then return end
     local s = ns.Summary()
-    local lines = { L.SUMMARY:format(s.items, ns.Money(s.money)) }
+    stats.tiles[1]:Set(S.MoneyText(s.money), nil, L.ST_BOX:format(s.items))
+    stats.tiles[2]:Set(S.MoneyText(ns.visit.money), nil, L.ST_VISIT:format(ns.visit.items))
+    local lines = {}
     if s.cod > 0 then lines[#lines + 1] = L.COD:format(s.cod) end
     if s.off > 0 then lines[#lines + 1] = L.OFF:format(s.off) end
     if s.more > 0 then lines[#lines + 1] = L.MORE:format(s.more) end
     if ns.taking and ns.taking.waiting then lines[#lines + 1] = L.WAITING end
     if ns.visit.money > 0 or ns.visit.items > 0 then
-        lines[#lines + 1] = L.VISIT:format(ns.visit.items, ns.Money(ns.visit.money), ns.Money(ns.visit.sold))
+        if ns.visit.sold > 0 then lines[#lines + 1] = L.VISIT_SOLD:format(S.MoneyText(ns.visit.sold)) end
     end
     summary:SetText(table.concat(lines, "\n"))
+    summary:SetShown(#lines > 0)
     takeBtn:SetEnabled(not ns.taking and (s.items > 0 or s.money > 0 or s.more > 0))
     takeBtn:SetText(ns.taking and L.TAKING or L.TAKE_ALL)
 
@@ -190,8 +193,12 @@ local function buildPanel()
     takeBtn:SetPoint("TOPLEFT")
     takeBtn:SetPoint("TOPRIGHT")
     takeBtn:SetScript("OnClick", function() ns.TakeAll(); ns.Refresh() end)
+    stats = S.StatRow(p, { "", "" }, 56, { "Interface\\Icons\\INV_Letter_15", "Interface\\Icons\\INV_Misc_Coin_01" })
+    stats:SetPoint("TOPLEFT", takeBtn, "BOTTOMLEFT", 0, -8)
+    stats:SetPoint("TOPRIGHT", takeBtn, "BOTTOMRIGHT", 0, -8)
+    stats:Layout(PANEL_W - 2 * S.PAD)
     summary = S.Note(p, 11)
-    summary:SetPoint("TOPLEFT", takeBtn, "BOTTOMLEFT", 0, -8)
+    summary:SetPoint("TOPLEFT", stats, "BOTTOMLEFT", 0, -6)
     summary:SetPoint("RIGHT")
     summary:SetMaxLines(6)
     takeSel = S.Button(p, 1, 30)
@@ -205,7 +212,7 @@ local function buildPanel()
         ns.Refresh()
     end)
     local card = S.Card(p, nil)
-    card:SetPoint("TOPLEFT", summary, "BOTTOMLEFT", 0, -8)
+    card:SetPoint("TOPLEFT", stats, "BOTTOMLEFT", 0, -(8 + 16 * 2))
     card:SetPoint("BOTTOMRIGHT", takeSel, "TOPRIGHT", 0, 8)
     letters = S.List(card.body, 40, makeLetter, fillLetter)
     letters:SetPoint("TOPLEFT")
@@ -346,7 +353,7 @@ end
 local function fillLog(r, e)
     local when = date and date("%d.%m %H:%M", e.t) or tostring(e.t)
     local what = {}
-    if e.money > 0 then what[#what + 1] = ns.Money(e.money) end
+    if e.money > 0 then what[#what + 1] = S.MoneyText(e.money) end
     if e.items > 0 then what[#what + 1] = L.N_ITEMS:format(e.items) end
     r.text:SetText(S.Hex(S.FAINT) .. when .. "|r  " .. e.sender .. "  " .. table.concat(what, ", "))
 end
