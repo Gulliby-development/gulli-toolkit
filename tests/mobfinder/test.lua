@@ -263,6 +263,13 @@ test("the card's Target button gets a /targetexact macro out of combat, and wait
     eq(btn:GetAttribute("macrotext1") or btn:GetAttribute("macrotext"), "/targetexact Alice", "applied after combat")
 end)
 
+test("a secret level in combat shows the card without an error", function()
+    Fake { db = { names = { "Bob" }, enabled = true }, plates = { { name = "Bob", guid = "G", level = W.SECRET_VALUE } } }
+    Load()
+    Fire("PLAYER_LOGIN")
+    assert(W.named.GulliMobFinderCard:IsShown(), "the card shows")
+end)
+
 test("with the card off no card shows", function()
     Fake { db = { names = { "Bob" }, enabled = true, card = false }, plates = { { name = "Bob" } } }
     Load()

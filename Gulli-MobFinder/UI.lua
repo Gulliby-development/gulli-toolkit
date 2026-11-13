@@ -163,6 +163,7 @@ function ns.ShowFind(hits)
     local portrait
     if h.unit and UnitExists(h.unit) then
         local lvl = UnitLevel and UnitLevel(h.unit)
+        if issecretvalue and issecretvalue(lvl) then lvl = nil end
         if lvl then parts[#parts + 1] = L.LEVEL:format(lvl > 0 and tostring(lvl) or "??") end
         parts[#parts + 1] = classification(h.unit)
         portrait = h.unit

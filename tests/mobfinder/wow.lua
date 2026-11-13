@@ -31,6 +31,7 @@ W.stub = stub
 
 -- A secret value: a table the fake issecretvalue knows.
 local SECRET = {}
+W.SECRET_VALUE = { secret = SECRET }
 
 function Fake(spec)
     spec = spec or {}
