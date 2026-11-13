@@ -41,7 +41,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 - **Save mana.** Below the mana you choose, it only buffs you.
 - **Raid groups.** In a raid, buff only the groups you are given (1–2, 3–4, 1–4, ...). You always buff yourself.
 - **Different for solo, party and raid.** Turn on **By group size** to keep **Buff again when** and **Group spells** apart for each.
-- **Your target too.** Set **Who it buffs** to **Group and target** to buff a friendly player outside your group.
+- **Your target too.** A friendly player you target is offered too, even outside your group. Set **Who it buffs** to **Your group** to skip them.
 - **Your bar, your place.** A big buff icon with your key and how many casts are left, and a line with the buff and who gets it. The icon pulses red while someone misses a buff. Place it with `/gulli move` (or `/ggb lock`). Show it only when a buff is missing, always, or never (key only). Hide it in cities and inns, or show it only in dungeons and raids. On a ready check it shows up with a sound when someone misses a buff. `/ggb lock` locks it.
 - **It tells you why.** When there is nothing to cast, the bar says why: no reagent, low mana, everyone out of range. `/ggb status` prints it in the chat.
 - **Made for handhelds.** Big buttons, so it works with a mouse and with touch on WoW Forever for Android.

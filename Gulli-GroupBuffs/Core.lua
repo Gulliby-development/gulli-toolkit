@@ -5,7 +5,7 @@ local B = ns.Buffs
 -- Nothing here casts; UI.lua puts the plan on the secure buttons.
 
 ns.DEFAULTS = {
-    who = "group",       -- off | group | target
+    who = "target",      -- off | group | target (the group and a friendly player you target)
     show = "missing",    -- missing | always | never
     combat = true,       -- keep buffing in combat from the list made before it
     low = 60,            -- seconds left at which a buff counts as running low (0: only when gone)
@@ -46,6 +46,11 @@ function ns.DB()
         end
         -- Gulli HUD: an unlocked bar now shows a mover that takes the clicks, so start locked.
         if not db.hud then db.hud, db.locked = 1, true end
+        -- The owner wants a targeted friendly player offered by default: move the old default once.
+        if not db.whoTarget then
+            db.whoTarget = true
+            if db.who == "group" then db.who = "target" end
+        end
         db.watch = db.watch or {}
         db.bless = db.bless or {}
         db.size = db.size or {}
