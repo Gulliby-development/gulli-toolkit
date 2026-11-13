@@ -310,6 +310,49 @@ test("Camp Benefits with as much Stamina or more covers Fortitude; a weaker camp
     assert(show(ns.Plan()):find("Power Word: Fortitude@player", 1, true), "another stat")
 end)
 
+test("in a raid your own camp covers only you, never the others", function()
+    local units = { player = { name = "Me", class = "PRIEST", auras = { ["Camp Benefits"] = 7200 } } }
+    local raid = {}
+    for i = 1, 7 do
+        local unit = "raid" .. i
+        if i == 1 then units[unit] = units.player
+        else units[unit] = { name = "R" .. i, class = i == 3 and "DRUID" or "WARRIOR", auras = {}, inGroup = true } end
+        raid[i] = { name = i == 1 and "Me" or ("R" .. i), group = i <= 4 and 1 or 2 }
+    end
+    local stam = { "First Aid Kit: Stamina increased by 34." }
+    Fake { known = { [1243] = true, [2791] = true }, units = units, raid = raid, db = { groupMin = 0 },
+           camp = { player = stam, raid1 = stam } }
+    local ns = Load()
+    local plan = show(ns.Plan())
+    assert(not plan:find("@player", 1, true) and not plan:find("@raid1,", 1, true), "covered on you: " .. plan)
+    for i = 2, 7 do
+        assert(plan:find("Power Word: Fortitude@raid" .. i, 1, true), "raid" .. i .. " still needs it: " .. plan)
+    end
+    local p, far = ns.Plan()
+    local st = ns.Status(p, far)
+    eq(st[1] and st[1][1], "ST_STRONGER", "/ggb status names the covered unit")
+    units.raid4.hidden = true
+    p, far = ns.Plan()
+    local keys = {}
+    for _, s in ipairs(ns.Status(p, far)) do keys[s[1]] = s[2] end
+    eq(keys.ST_HIDDEN, 1, "a unit whose buffs the game hides is counted")
+end)
+
+test("a bounce on you does not stop the buff on anyone else", function()
+    local units = party()
+    units.player.auras = { ["Camp Benefits"] = 7200 }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100,
+           camp = { player = { "First Aid Kit: Stamina increased by 1." } } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local main = GulliGroupBuffsButton
+    ns.Refresh()
+    eq(main.attrs.unit, "player")
+    main.hooks.OnClick(main)
+    Fire("UI_ERROR_MESSAGE", 50, "A more powerful spell is already active")
+    eq(show(ns.Plan()), "Power Word: Fortitude@party1,Power Word: Fortitude@party2,Power Word: Fortitude@party3")
+end)
+
 test("a buff the game refuses as weaker is left alone on that unit", function()
     local units = party()
     Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
