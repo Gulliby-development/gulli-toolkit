@@ -317,7 +317,7 @@ local function buildSearch(page, width)
         { L.ENABLE, nil, function() return ns.db.enabled end, function(on) ns.SetEnabled(on) end,
           icon = "Interface\\Icons\\Ability_Hunter_SniperShot" } })
     frame.enable = main.rows[1]
-    frame.enable.label:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 14, "")
+    S.SetFont(frame.enable.label, 14)
     frame.switches[#frame.switches + 1] = { Refresh = function() frame.enable:SetChecked(ns.db.enabled) end }
     st:Add(main, mh)
 
