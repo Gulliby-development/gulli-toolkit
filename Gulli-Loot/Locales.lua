@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s on %s.",
     RULE_ASK = "Ask me",
     RULE_NEED = "Need",
@@ -80,7 +80,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s auf %s.",
     RULE_ASK = "Fragen",
     RULE_NEED = "Bedarf",
@@ -150,7 +150,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s en %s.",
     RULE_ASK = "Preguntar",
     RULE_NEED = "Necesidad",
@@ -220,7 +220,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s sur %s.",
     RULE_ASK = "Me demander",
     RULE_NEED = "Besoin",
@@ -290,7 +290,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s na %s.",
     RULE_ASK = "Pytaj",
     RULE_NEED = "Potrzeba",
@@ -360,7 +360,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s em %s.",
     RULE_ASK = "Perguntar",
     RULE_NEED = "Necessidade",
@@ -430,7 +430,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s: %s.",
     RULE_ASK = "Спросить",
     RULE_NEED = "Нужно",
@@ -500,7 +500,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Loot",
+    TITLE = "Loot",
     ROLLED = "%s：%s。",
     RULE_ASK = "询问我",
     RULE_NEED = "需求",

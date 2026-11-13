@@ -69,7 +69,7 @@ test("a registered module is ready, a disabled one is off, an unknown module is 
     eq(r.MobFinder.state, "off")
     eq(r.GroupBuffs.state, "missing")
     eq(rows[#ns.KNOWN + 1].key, "Zeta")
-    eq(r.Zeta.title, "Gulli-Zeta", "the title from the TOC without colour codes")
+    eq(r.Zeta.title, "Zeta", "the title from the TOC without colour codes or the Gulli prefix")
 end)
 
 test("a module that can pause stops and starts at once; not loading it waits for a reload", function()
@@ -524,6 +524,31 @@ test("every module gives its window to the hub, in a size the hub has room for",
     end
     p:close()
     assert(n > 0, "found the modules")
+end)
+
+test("a module's name in the game has no Gulli prefix, in the hub and in its own window", function()
+    Fake({ addons = {} })
+    local ns = Load()
+    eq(ns.ShortName("Gulli-Zeta"), "Zeta"); eq(ns.ShortName("Gulli Zeta"), "Zeta"); eq(ns.ShortName("Gulli"), "Gulli")
+    local p = io.popen("ls -d Gulli-*/")
+    local n = 0
+    for dir in p:lines() do
+        local name = dir:gsub("/$", "")
+        local fh = name ~= "Gulli-Toolkit" and io.open(name .. "/Locales.lua")
+        if fh then
+            local text = fh:read("*a"); fh:close()
+            for title in text:gmatch('\n%s*TITLE = "([^"]*)"') do
+                n = n + 1
+                assert(not title:find("^Gulli"), name .. ": TITLE starts with Gulli: " .. title)
+            end
+            local core = io.open(name .. "/Core.lua")
+            local body = core and core:read("*a") or ""
+            if core then core:close() end
+            assert(not body:find("title = ns.L.TITLE", 1, true), name .. ": the hub's own name is enough")
+        end
+    end
+    p:close()
+    assert(n > 0, "found the titles")
 end)
 
 test("the switch shows what the game will load: off is off, a module it refuses says why", function()

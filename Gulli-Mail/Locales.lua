@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "took %d items and %s.",
     FULL = "Your bags are full.",
     SUMMARY = "In the mailbox: %d items and %s.",
@@ -80,7 +80,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "%d Gegenstände und %s genommen.",
     FULL = "Deine Taschen sind voll.",
     SUMMARY = "Im Briefkasten: %d Gegenstände und %s.",
@@ -150,7 +150,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "recogidos %d objetos y %s.",
     FULL = "Tus bolsas están llenas.",
     SUMMARY = "En el buzón: %d objetos y %s.",
@@ -220,7 +220,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "%d objets et %s récupérés.",
     FULL = "Vos sacs sont pleins.",
     SUMMARY = "Dans la boîte : %d objets et %s.",
@@ -290,7 +290,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "zabrano %d przedmiotów i %s.",
     FULL = "Twoje torby są pełne.",
     SUMMARY = "W skrzynce: %d przedmiotów i %s.",
@@ -360,7 +360,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "pegos %d itens e %s.",
     FULL = "Suas bolsas estão cheias.",
     SUMMARY = "No correio: %d itens e %s.",
@@ -430,7 +430,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "забрано предметов: %d и %s.",
     FULL = "Сумки заполнены.",
     SUMMARY = "В почте: %d предметов и %s.",
@@ -500,7 +500,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Mail",
+    TITLE = "Mail",
     TAKEN = "已收取 %d 件物品和 %s。",
     FULL = "你的背包已满。",
     SUMMARY = "邮箱中：%d 件物品和 %s。",

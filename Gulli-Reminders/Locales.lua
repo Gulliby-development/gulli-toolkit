@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Arcane Intellect",
     BUFF_ARMOR = "Armor spell",
     BUFF_MAGIC = "Amplify or Dampen Magic",
@@ -117,7 +117,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Arkane Intelligenz",
     BUFF_ARMOR = "Rüstungszauber",
     BUFF_MAGIC = "Magie verstärken oder dämpfen",
@@ -224,7 +224,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Intelecto Arcano",
     BUFF_ARMOR = "Hechizo de armadura",
     BUFF_MAGIC = "Amplificar o Atenuar magia",
@@ -331,7 +331,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Intelligence des Arcanes",
     BUFF_ARMOR = "Sort d'armure",
     BUFF_MAGIC = "Amplifier ou Atténuer la magie",
@@ -438,7 +438,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Tajemny Intelekt",
     BUFF_ARMOR = "Czar pancerza",
     BUFF_MAGIC = "Wzmocnienie lub Osłabienie magii",
@@ -545,7 +545,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Intelecto Arcano",
     BUFF_ARMOR = "Feitiço de armadura",
     BUFF_MAGIC = "Ampliar ou Amortecer Magia",
@@ -652,7 +652,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "Чародейский интеллект",
     BUFF_ARMOR = "Броня (заклинание)",
     BUFF_MAGIC = "Усиление или Ослабление магии",
@@ -759,7 +759,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Reminders",
+    TITLE = "Reminders",
     BUFF_INTELLECT = "奥术智慧",
     BUFF_ARMOR = "护甲法术",
     BUFF_MAGIC = "魔法增效或魔法抑制",

@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "invited %s.",
     CANT_INVITE = "%s asked for an invite, but you cannot invite now.",
     ACCEPTED = "joined the group of %s.",
@@ -94,7 +94,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "%s eingeladen.",
     CANT_INVITE = "%s wollte eine Einladung, aber du kannst gerade nicht einladen.",
     ACCEPTED = "der Gruppe von %s beigetreten.",
@@ -178,7 +178,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "invitado %s.",
     CANT_INVITE = "%s pidió invitación, pero ahora no puedes invitar.",
     ACCEPTED = "te uniste al grupo de %s.",
@@ -262,7 +262,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "%s invité.",
     CANT_INVITE = "%s demande une invitation, mais vous ne pouvez pas inviter.",
     ACCEPTED = "groupe de %s rejoint.",
@@ -346,7 +346,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "zaproszono %s.",
     CANT_INVITE = "%s prosi o zaproszenie, ale teraz nie możesz zapraszać.",
     ACCEPTED = "dołączono do grupy %s.",
@@ -430,7 +430,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "%s convidado.",
     CANT_INVITE = "%s pediu convite, mas agora você não pode convidar.",
     ACCEPTED = "entrou no grupo de %s.",
@@ -514,7 +514,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "приглашён %s.",
     CANT_INVITE = "%s просит инвайт, но вы сейчас не можете приглашать.",
     ACCEPTED = "вы в группе %s.",
@@ -598,7 +598,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli Social",
+    TITLE = "Social",
     INVITED = "已邀请 %s。",
     CANT_INVITE = "%s 请求邀请，但你现在无法邀请。",
     ACCEPTED = "已加入 %s 的队伍。",

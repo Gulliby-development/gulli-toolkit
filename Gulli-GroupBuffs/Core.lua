@@ -669,7 +669,6 @@ end
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "GroupBuffs",
-        title = ns.L.TITLE,
         desc = ns.L.DESC,
         icon = "Interface\\AddOns\\Gulli-GroupBuffs\\icon",
         open = function() GulliGroupBuffs_Toggle() end,
