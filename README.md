@@ -42,6 +42,7 @@
 | [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
 | [Reminders](docs/reminders/README.md) | A movable panel of icons for missing class buffs, poisons, pet, ammo and soul shards. | `/grm` |
 | [Craft Profit](docs/craftprofit/README.md) | Profitable crafts and the cheapest way to level a profession, drawn as a route: where to buy, what to craft, where to sell. | `/gcp` |
+| [Legacy](docs/legacy/README.md) | The fastest next steps to your Legacy points and the next reward of the Progress Track, on every character. | `/glg` |
 
 ## Features
 

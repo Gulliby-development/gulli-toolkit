@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Legacy
+## Notes: The fastest next steps to your Legacy points and the next reward of the Progress Track. /glg
+## Notes-ruRU: Самые быстрые следующие шаги к очкам Наследия и к следующей награде трека. /glg
+## Notes-deDE: Die schnellsten nächsten Schritte zu deinen Legacy-Punkten und zur nächsten Belohnung. /glg
+## Notes-esES: Los pasos más rápidos hacia tus puntos de legado y la siguiente recompensa. /glg
+## Notes-esMX: Los pasos más rápidos hacia tus puntos de legado y la siguiente recompensa. /glg
+## Notes-frFR: Les étapes les plus rapides vers vos points d'héritage et la prochaine récompense. /glg
+## Notes-ptBR: Os passos mais rápidos até seus pontos de legado e a próxima recompensa. /glg
+## Notes-zhCN: 获取传承点数和下一个进度奖励的最快步骤。 /glg
+## Notes-zhTW: 获取传承点数和下一个进度奖励的最快步骤。 /glg
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Legacy\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Legacy
+## SavedVariables: GulliLegacyDB
+## AddonCompartmentFunc: GulliLegacy_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua
