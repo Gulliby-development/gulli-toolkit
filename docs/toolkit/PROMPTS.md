@@ -62,6 +62,9 @@ Wide 2:1 preview banner, flat minimal vector style, for Gulli-`<Name>`, a World 
 | XP | shows XP per hour and time to the next level | a gold star above a cream progress bar that is two thirds filled with gold |
 | GroupBuffs | shows which party members miss which buffs | five small round cream portrait frames in an arc with small glowing gold buff auras (a sun, a shield, a leaf) above them |
 | MobFinder | finds named mobs nearby by their nameplates | a gold crosshair compass ring over a cream wolf head silhouette, with a small magnifying glass |
+| CraftProfit | plans the cheapest way to level a profession and the most profitable crafts | a small brown anvil with a cream recipe scroll and a short stack of gold coins beside it, with a small gold upward arrow |
 | QuestCleaner | abandons low quests and deletes leftover quest items | a cream quest scroll with check boxes and a brown pouch under a gold sweeping arc of sparkles (icon already in `../gulli-questcleaner/`) |
+
+The icons of GroupBuffs, MobFinder, CraftProfit, Reminders, Restock, Social, Tooltip and XP came from a second run on 2026-11-13 (Codex CLI 0.167.0-alpha.4.1), with `../gulli-questcleaner/icon.png` as the reference; until then they were hand-drawn stand-ins. Every new module icon comes from this template, so the set stays one style.
 
 The copies in this repository are resized: `docs/<module>/icon.png` to 256x256, `Gulli-<Module>/icon.tga` to 64x64, the toolkit wordmarks and preview to 1120x560. The originals are in the project files under `branding/`.

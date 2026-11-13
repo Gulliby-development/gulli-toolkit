@@ -10,7 +10,7 @@
 ## Notes-zhCN: 每小时经验、升级所需时间和击杀数，以及经验来源。 /gxp
 ## Notes-zhTW: 每小时经验、升级所需时间和击杀数，以及经验来源。 /gxp
 ## Author: Gulliby
-## Version: 1.7.0
+## Version: 1.7.1
 ## IconTexture: Interface\AddOns\Gulli-XP\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: XP
