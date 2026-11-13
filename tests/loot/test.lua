@@ -170,6 +170,16 @@ test("item rules are sorted by name and can be searched; the window has three pa
     ns.Refresh()
 end)
 
+test("an item rule shows its name in the quality colour, not a broken colour code", function()
+    Fake({ items = { [2907] = { nil, nil, nil, 2 } } })
+    ITEM_QUALITY_COLORS = { [2] = { r = 0.12, g = 1, b = 0, hex = "|cff1eff00" } }
+    local ns = Load()
+    ns.SetItem(2907, "greed")
+    eq(ns.ItemLabel(ns.Items()[1]), "|cff1eff00Item2907|r")
+    ITEM_QUALITY_COLORS = nil
+    eq(ns.ItemLabel(ns.Items()[1]), "|cff1eff00Item2907|r", "the fallback colours too")
+end)
+
 test("paused from the hub it rolls nothing", function()
     Fake({ rolls = { { 1, 0 } } })
     local reg
