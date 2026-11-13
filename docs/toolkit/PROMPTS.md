@@ -50,6 +50,7 @@ Wide 2:1 preview banner, flat minimal vector style, for Gulli-`<Name>`, a World 
 | Chores | keeps a daily to-do list for each character | a cream clipboard checklist with gold check marks and a small gold hourglass beside it |
 | DungeonPrep | prepares a dungeon run: its quests and a checklist | a stone dungeon archway with a cream scroll and a small brown backpack in front of it |
 | InstanceLimit | counts dungeon entries per hour | a gold hourglass in front of a stone dungeon archway, with five small cream tally marks below |
+| Legacy | plans the fastest next steps to the account's Legacy points | a cream heraldic shield topped by a small gold crown, with a gold path of three stepping dots climbing across it to a small gold star |
 | Loot | rolls Need, Greed or Pass by rules | a small open brown treasure chest with gold coins and two cream dice showing dots |
 | Mail | takes all mail and fills recipient names | a cream envelope with a gold wax seal and a small brown mail sack |
 | Merchant | sells gray items and repairs gear at a vendor | a gold balance scale with a small pile of coins on one side and a small brown hammer on the other |
