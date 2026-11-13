@@ -514,7 +514,7 @@ function ns.Plan()
     local fams = ns.Families()
     local ctx = { db = d, tank = hasTank(units) }
     local low, groupMin = ns.Setting("low"), ns.Setting("groupMin")
-    local info = { families = #fams, skipped = 0 }
+    local info = { families = #fams, skipped = 0, hidden = 0, stronger = 0 }
     ns.info = info
     -- Every buff name the plan may look for, for units whose auras the game partly hides.
     local watched = {}
@@ -530,6 +530,7 @@ function ns.Plan()
             info.skipped = info.skipped + 1
         elseif alive(u.unit) then
             local auras = ns.Auras(u.unit, watched)
+            if not auras then info.hidden = info.hidden + 1 end
             if auras then
                 for _, fam in ipairs(fams) do
                     if fam.who == "blessing" then
@@ -542,8 +543,11 @@ function ns.Plan()
                         local missing
                         if fam.weapon then missing = weaponMissing(low)
                         else
-                            missing = not present(fam.names, auras, low) and not ns.IsBounced(u.unit, fam.name)
-                                and not ns.Covered(u.unit, fam.id, low)
+                            missing = not present(fam.names, auras, low)
+                            if missing and (ns.IsBounced(u.unit, fam.name) or ns.Covered(u.unit, fam.id, low)) then
+                                missing = false
+                                info.stronger = info.stronger + 1
+                            end
                         end
                         if missing then
                             need[#need + 1] = { unit = u.unit, sub = u.group, key = fam.key,
@@ -655,6 +659,8 @@ function ns.Status(plan, far)
     if info.mana then add("ST_MANA", d.mana) end
     if #plan == 0 and #far > 0 then add("ST_FAR", #far) end
     if (info.skipped or 0) > 0 then add("ST_SKIPPED", info.skipped) end
+    if (info.hidden or 0) > 0 then add("ST_HIDDEN", info.hidden) end
+    if (info.stronger or 0) > 0 then add("ST_STRONGER", info.stronger) end
     if info.reagent then add("ST_REAGENT", info.reagent) end
     if not ns.PlaceOK() then add("ST_PLACE") end
     return out

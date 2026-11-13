@@ -69,7 +69,7 @@ On a gamepad or a phone you can also put `/click GulliGroupBuffsButton` in a mac
 ## FAQ
 
 **I have Camp Benefits. Why does it not ask for Fortitude?**
-The camp gives stats such as Stamina. When the camp gives as much as your buff or more, the game does not let you cast the weaker buff, so it is not shown. When the game refuses a buff as weaker for any other reason, it is not asked for again while that effect lasts (ten minutes at most).
+The camp gives stats such as Stamina. When the camp gives as much as your buff or more, the game does not let you cast the weaker buff, so it is not shown. This is checked for each person on their own: your camp only covers you, the others are still asked for. When the game refuses a buff as weaker for any other reason, it is not asked for again while that effect lasts (ten minutes at most).
 
 <details>
 <summary><b>Why does it skip a buff in combat?</b></summary>
@@ -80,7 +80,7 @@ In combat the game does not tell the button who still needs a buff. The button w
 <details>
 <summary><b>The bar is empty, but someone has no buff</b></summary>
 
-Type `/ggb status`. It tells you the reason: the spell is not learned, a reagent is missing, your mana is low, they are out of range, or a cast on them failed a moment ago.
+Type `/ggb status`. It tells you the reason: the spell is not learned, a reagent is missing, your mana is low, they are out of range, a cast on them failed a moment ago, they already have something stronger, or the game hides their buffs (then the addon leaves them alone instead of guessing).
 </details>
 
 <details>
