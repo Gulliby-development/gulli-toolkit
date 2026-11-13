@@ -106,6 +106,11 @@ def main(repo, out_dir):
                 "Unpack it into `Interface/AddOns`.\n\n" + "\n".join(lines) + "\n")
     print("\n".join(lines))
     print("%d addons" % len(lines))
+    # Every module folder of the checkout belongs in the bundle; one without a release yet is
+    # reported, not fatal, since its first release may still be running.
+    missing = sorted(d for d in os.listdir(".") if d.startswith("Gulli-") and os.path.isdir(d) and d not in seen)
+    for d in missing:
+        print("::warning::%s has no published release, so it is not in %s. Run Release for it." % (d, BUNDLE_NAME))
 
 
 if __name__ == "__main__":
