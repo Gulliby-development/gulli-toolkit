@@ -10,7 +10,7 @@
 ## Notes-zhCN: 按你为品质和物品设定的规则自动需求、贪婪或放弃。拾取绑定的物品仍由你决定。 /glt
 ## Notes-zhTW: 按你为品质和物品设定的规则自动需求、贪婪或放弃。拾取绑定的物品仍由你决定。 /glt
 ## Author: Gulliby
-## Version: 1.5.0
+## Version: 1.5.1
 ## IconTexture: Interface\AddOns\Gulli-Loot\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Loot

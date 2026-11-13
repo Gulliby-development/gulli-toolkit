@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s XP/h",
     KILLS = "%d kills",
     LEFT = "To the next level: %s XP (%d%% done)",
@@ -82,7 +82,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s EP/h",
     KILLS = "%d Kills",
     LEFT = "Bis zur nächsten Stufe: %s EP (%d%% geschafft)",
@@ -154,7 +154,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s PX/h",
     KILLS = "%d muertes",
     LEFT = "Al siguiente nivel: %s PX (%d%% hecho)",
@@ -226,7 +226,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s XP/h",
     KILLS = "%d victimes",
     LEFT = "Jusqu'au niveau suivant : %s XP (%d%% fait)",
@@ -298,7 +298,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s PD/h",
     KILLS = "%d zabójstw",
     LEFT = "Do następnego poziomu: %s PD (%d%% zrobione)",
@@ -370,7 +370,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s XP/h",
     KILLS = "%d abates",
     LEFT = "Até o próximo nível: %s XP (%d%% feito)",
@@ -442,7 +442,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "%s опыта/ч",
     KILLS = "%d убийств",
     LEFT = "До уровня: %s опыта (пройдено %d%%)",
@@ -514,7 +514,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Gulli XP",
+    TITLE = "XP",
     RATE = "每小时 %s 经验",
     KILLS = "%d 次击杀",
     LEFT = "距下一级：%s 经验（已完成 %d%%）",
