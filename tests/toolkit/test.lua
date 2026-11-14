@@ -846,5 +846,43 @@ test("money on a coloured button: plain numbers with the game's coin pictures, n
     eq((S.MoneyIcons(-150):gsub("|T.-UI%-(%a+)Icon.-|t", "%1")), "-1Silver 50Copper")
 end)
 
+test("errors of Gulli addons are kept to copy, others only go on to the game", function()
+    local W = Fake({ addons = { { name = "Gulli-XP", meta = { Version = "1.4.0" } } } })
+    local ns = Load()
+    W.handler("Interface/AddOns/Gulli-XP/Core.lua:12: attempt to index a nil value")
+    W.handler("Interface/AddOns/OtherAddon/Main.lua:3: boom")
+    W.stack = "[string \"@Interface/AddOns/Gulli-XP/UI.lua\"]:40: in function <...>\n[C]: in ?"
+    W.handler("attempt to compare number with nil")
+    W.handler("Interface/AddOns/Gulli-XP/Core.lua:12: attempt to index a nil value")
+    eq(#W.handled, 4, "every error still reaches the handler that was there before")
+    local list = ns.Errors()
+    eq(#list, 2, "two different Gulli errors; the other addon's is not kept")
+    eq(list[1].msg, "Interface/AddOns/Gulli-XP/Core.lua:12: attempt to index a nil value", "a repeat moves to the top")
+    eq(list[1].count, 2)
+    eq(list[1].version, "1.4.0")
+    eq(list[2].addon, "Gulli-XP", "found from the stack")
+    -- the game's blocked calls name the addon
+    for _, f in ipairs(W.frames) do
+        local h = rawget(f, "_OnEvent")
+        if h then h(f, "ADDON_ACTION_BLOCKED", "Gulli-Crates", "C_AuctionHouse.ConfirmCommoditiesPurchase()") end
+    end
+    eq(ns.Errors()[1].kind, "blocked")
+    eq(ns.Errors()[1].addon, "Gulli-Crates")
+    local text = ns.ErrorsText()
+    assert(text:find("client 1.16.1 (70783)", 1, true), text)
+    assert(text:find("Gulli-XP 1.4.0, 2x", 1, true), text)
+    assert(text:find("ConfirmCommoditiesPurchase", 1, true), text)
+    eq(ns.Overview().errors, 3)
+    ns.OpenErrors()
+    local view = ns.View()
+    eq(view.page, "errors", "the Errors line and /gulli errors open the errors page")
+    ns.ClearErrors()
+    eq(#ns.Errors(), 0)
+    eq(ns.Overview().errors, 0)
+    for i = 1, ns.ERRORS_MAX + 5 do W.handler("Interface/AddOns/Gulli-XP/Core.lua:" .. i .. ": x") end
+    eq(#ns.Errors(), ns.ERRORS_MAX, "at most ERRORS_MAX kept")
+    eq(ns.RecordError(nil, nil), nil, "nothing to keep without a Gulli file")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

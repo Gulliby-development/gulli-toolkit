@@ -58,10 +58,11 @@
 - **Search.** Type in the search box to find a module by name, what it does, its command or one of its settings. **Enter** opens the first one found.
 - **Updates.** A dot on a module's icon means it was updated since you last opened it. When someone in your group has a newer version, the toolkit tells you once in chat.
 - **Switch off what you do not need, at once.** Open a module in `/gulli` and flip the switch at the top right. Merchant, Loot, Auto Quest, Social, Mail and Restock stop and start right away, with no reload. To free its memory too, press **Do not load in the game** on the module's card and reload. Other modules still switch after a reload; they get the instant switch step by step. Modules that act on their own also have a switch for each thing they do.
+- **Errors in one place.** When a Gulli module hits an error, the **Modules** card on the home page says so. Click the line (or type `/gulli errors`) to see the errors, press **Copy** and paste the text into a [bug report](../../issues/new?template=bug.yml). The game's own error window still shows them as before.
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** On the home page of `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
-- **One look.** Every module has the same flat dark window in your class colour, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
+- **One look.** Every module has the same flat dark window with a blue accent, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
 - **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 
@@ -114,6 +115,12 @@ A module that can pause stops at once. Any other one, and **Do not load in the g
 <summary><b>The switch does not move, and chat says "The game did not switch it"</b></summary>
 
 Update the toolkit: version 1.6.1 fixed this. If it still happens, type `/gulli debug <module>` (for example `/gulli debug PartyQuests`) and send us the lines it prints.
+</details>
+
+<details>
+<summary><b>Something does not work. What do I send?</b></summary>
+
+Type `/gulli errors`, press **Copy** and paste the text into a [bug report](../../issues/new?template=bug.yml), with what you did. The text has the module, its version and where the error happened, and nothing about your character.
 </details>
 
 <details>

@@ -450,7 +450,7 @@ local function readLots(id)
             local r = A.GetCommoditySearchResultInfo(id, i)
             if r and r.unitPrice and r.quantity then lots[#lots + 1] = { r.unitPrice, r.quantity } end
         end
-    elseif GetNumAuctionItems then
+    elseif GetNumAuctionItems and GetAuctionItemInfo then
         for i = 1, (GetNumAuctionItems("list")) or 0 do
             local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemID = GetAuctionItemInfo("list", i)
             if itemID == id and buyout and buyout > 0 and (count or 0) > 0 then

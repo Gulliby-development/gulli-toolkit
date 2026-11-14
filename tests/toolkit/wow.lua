@@ -93,6 +93,13 @@ function Fake(spec)
     ReloadUI = function() W.reloaded = true end
     Settings = nil
     print = function(...) W.printed[#W.printed + 1] = table.concat({ ... }, " ") end
+    W.handled, W.stack = {}, nil
+    W.handler = function(msg) W.handled[#W.handled + 1] = msg end
+    geterrorhandler = function() return W.handler end
+    seterrorhandler = function(f) W.handler = f end
+    debugstack = function() return W.stack or "" end
+    GetBuildInfo = function() return "1.16.1", "70783" end
+    date = os.date
     GulliToolkit = nil
     GulliToolkitDB = nil
     return W

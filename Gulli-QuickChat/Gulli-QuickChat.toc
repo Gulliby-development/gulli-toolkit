@@ -10,7 +10,7 @@
 ## Notes-zhCN: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
 ## Notes-zhTW: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
 ## Author: Gulliby
-## Version: 1.7.3
+## Version: 1.7.4
 ## IconTexture: Interface\AddOns\Gulli-QuickChat\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: QuickChat

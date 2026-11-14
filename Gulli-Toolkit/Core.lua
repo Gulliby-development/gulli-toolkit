@@ -542,6 +542,7 @@ function ns.Overview(rows)
         end
     end
     table.sort(o.heavy, function(a, b) return a.kb > b.kb end)
+    o.errors = #ns.Errors()
     return o
 end
 
@@ -848,6 +849,93 @@ function ns.OnVersions(msg)
 end
 
 -- /gulli help: the toolkit's commands, then each module's.
+-- Errors of our own addons, kept in GulliToolkitDB.errors (newest first) so the player can copy
+-- them into a bug report. Only errors whose message or stack names a Gulli-<Name> file count.
+ns.ERRORS_MAX = 50
+
+local function errorList()
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.errors = GulliToolkitDB.errors or {}
+    return GulliToolkitDB.errors
+end
+
+function ns.Errors()
+    return GulliToolkitDB and GulliToolkitDB.errors or {}
+end
+
+function ns.ClearErrors()
+    if GulliToolkitDB then GulliToolkitDB.errors = {} end
+end
+
+-- The Gulli addon a message or stack points at, such as "Gulli-XP" for ".../Gulli-XP/Core.lua:12".
+function ns.ErrorSource(msg, stack)
+    local text = tostring(msg or "") .. "\n" .. tostring(stack or "")
+    return text:match("(Gulli%-%w+)[\\/][%w_]+%.lua")
+end
+
+-- addon is given for the game's blocked calls, which name it; else it is read from the text.
+function ns.RecordError(msg, stack, kind, addon)
+    if issecretvalue and (issecretvalue(msg) or issecretvalue(stack)) then return end
+    msg = tostring(msg or "")
+    addon = addon or ns.ErrorSource(msg, stack)
+    if not addon or not addon:match("^Gulli%-") then return end
+    local list = errorList()
+    msg = msg:sub(1, 500)
+    for i, e in ipairs(list) do
+        if e.msg == msg and e.addon == addon then
+            e.count, e.at = (e.count or 1) + 1, time()
+            table.remove(list, i)
+            table.insert(list, 1, e)
+            return e
+        end
+    end
+    local ok, version = pcall(metadata, addon, "Version")
+    local e = { at = time(), addon = addon, msg = msg, count = 1, kind = kind or "error",
+                version = ok and version or nil, stack = stack and tostring(stack):sub(1, 1500) or nil }
+    table.insert(list, 1, e)
+    while #list > ns.ERRORS_MAX do table.remove(list) end
+    return e
+end
+
+-- The text to paste into a bug report: the client, then every error with its first stack lines.
+function ns.ErrorsText()
+    local out = {}
+    local version, build = "", ""
+    if GetBuildInfo then version, build = GetBuildInfo() end
+    out[1] = "Gulli errors: " .. #ns.Errors() .. ", client " .. tostring(version) .. " (" .. tostring(build) .. ")"
+        .. ", locale " .. tostring(GetLocale and GetLocale() or "?")
+    for _, e in ipairs(ns.Errors()) do
+        out[#out + 1] = ""
+        out[#out + 1] = string.format("[%s] %s %s, %dx, %s", e.kind or "error", e.addon, e.version or "?",
+            e.count or 1, date and date("%Y-%m-%d %H:%M", e.at) or tostring(e.at))
+        out[#out + 1] = e.msg
+        local n = 0
+        for l in tostring(e.stack or ""):gmatch("[^\n]+") do
+            n = n + 1
+            if n > 8 then break end
+            out[#out + 1] = "  " .. l
+        end
+    end
+    return table.concat(out, "\n")
+end
+
+-- Chains to the handler that was set before (the game's error window or another addon), so the
+-- player sees errors as before; ours only takes a copy.
+function ns.HookErrors()
+    if ns.errorsHooked or not (geterrorhandler and seterrorhandler) then return end
+    ns.errorsHooked = true
+    local old, busy = geterrorhandler(), false
+    seterrorhandler(function(msg, ...)
+        if not busy then
+            busy = true
+            pcall(ns.RecordError, msg, debugstack and debugstack(3) or nil, "error")
+            busy = false
+        end
+        if old then return old(msg, ...) end
+    end)
+end
+ns.HookErrors()
+
 function ns.HelpLines()
     local lines = { L.HELP, L.HELP_MORE }
     for _, row in ipairs(ns.List()) do
@@ -862,8 +950,16 @@ events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("CHAT_MSG_ADDON")
 events:RegisterEvent("PLAYER_REGEN_DISABLED")
+events:RegisterEvent("ADDON_ACTION_BLOCKED")
+events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 local lastSent = 0
 events:SetScript("OnEvent", function(self, event, a, b, c, d)
+    if event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
+        if type(a) == "string" then
+            ns.RecordError(event .. ": " .. tostring(b), debugstack and debugstack(2) or nil, "blocked", a)
+        end
+        return
+    end
     if event == "PLAYER_REGEN_DISABLED" then
         -- Nothing moves in combat: a fight ends the move mode.
         if ns.moving then ns.SetMoving(false) end
@@ -915,6 +1011,9 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
     elseif msg:lower():match("^debug%s") then
         if not ns.Debug(msg:match("^%S+%s+(.+)$")) then ns.Print(L.UNKNOWN:format(msg)) end
+    elseif msg:lower() == "errors" then
+        ns.Print(L.ERRORS_COUNT:format(#ns.Errors()))
+        if ns.OpenErrors then ns.OpenErrors() end
     elseif msg:lower() == "help" then
         for _, l in ipairs(ns.HelpLines()) do ns.Print(l) end
     elseif not ns.OpenModule(msg) then

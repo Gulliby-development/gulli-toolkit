@@ -282,4 +282,36 @@ test("the stat tiles leave out copper once there is gold", function()
     eq(ns.ShortMoney(0), "0c")
 end)
 
+-- Random bags at a vendor: only gray items with a price are sold, never a protected one.
+test("random bags: sell only gray items with a price", function()
+    math.randomseed(20261114)
+    local sold = 0
+    for round = 1, 200 do
+        local slots, prices, quality = {}, {}, {}
+        for i = 1, math.random(1, 30) do
+            local id = 100 + math.random(40)
+            quality[id] = quality[id] or math.random(0, 4)
+            prices[id] = prices[id] or (math.random() < 0.8 and math.random(1, 500) or 0)
+            slots[#slots + 1] = { math.floor((i - 1) / 16), (i - 1) % 16 + 1, id, 1, quality[id] }
+        end
+        local protectedId = 100 + math.random(40)
+        Fake({ slots = slots, prices = prices })
+        local ok, err = pcall(function()
+            Load()
+            GulliToolkit = { IsProtected = function(id) return id == protectedId end }
+            W.Fire("MERCHANT_SHOW")
+            for _ = 1, 5 do W.RunTimers() end
+            sold = sold + #W.sold
+            for _, id in ipairs(W.sold) do
+                assert(id ~= protectedId, "sold a protected item")
+                assert(quality[id] == 0, "sold item " .. id .. " of quality " .. quality[id])
+                assert(prices[id] > 0, "sold item " .. id .. " without a price")
+            end
+        end)
+        GulliToolkit = nil
+        if not ok then error("round " .. round .. ": " .. tostring(err), 0) end
+    end
+    assert(sold > 100, "the rounds sold too little to prove anything: " .. sold)
+end)
+
 W.finish()

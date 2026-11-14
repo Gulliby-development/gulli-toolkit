@@ -18,8 +18,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Lua 5.1
-        run: sudo apt-get install -y lua5.1 > /dev/null
+      - name: Lua 5.1 and luacheck
+        run: sudo apt-get install -y lua5.1 lua-check > /dev/null
 
       - name: Lua syntax
         run: for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
@@ -32,6 +32,16 @@ jobs:
           rc=0
           for t in tests/*/test.lua; do echo "== $t"; lua5.1 "$t" || rc=1; done
           exit $rc
+
+      - name: Lint (luacheck, only the warnings that are bugs)
+        run: python3 tools/lint/luacheck.py
+
+      - name: Client API (events and functions the retail client has)
+        run: |
+          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/Gethe/wow-ui-source /tmp/wus
+          git -C /tmp/wus sparse-checkout set Interface/AddOns/Blizzard_APIDocumentationGenerated
+          echo "Client build: $(git -C /tmp/wus log -1 --format=%s)"
+          python3 tools/apicheck/check.py /tmp/wus/Interface/AddOns/Blizzard_APIDocumentationGenerated
 
       - name: Every module has the same Skin.lua and Media as the core
         run: |

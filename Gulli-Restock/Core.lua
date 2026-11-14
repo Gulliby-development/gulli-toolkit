@@ -66,6 +66,7 @@ local function merchantItem(i)
         if not t then return nil end
         return id, t.price or 0, t.stackCount or 1, t.numAvailable or -1, t.hasExtendedCost
     end
+    if not GetMerchantItemInfo then return id, 0, 1, -1, false end
     local _, _, price, stack, available, _, _, extended = GetMerchantItemInfo(i)
     return id, price or 0, stack or 1, available or -1, extended
 end

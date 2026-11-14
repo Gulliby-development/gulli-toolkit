@@ -809,7 +809,8 @@ function ns.ToggleWheel()
     hovered = -1
     wheelSelect(nil)
     wheel:ClearAllPoints()
-    local x, y = GetCursorPosition and GetCursorPosition()
+    local x, y
+    if GetCursorPosition then x, y = GetCursorPosition() end
     if x and y and x > 0 then
         local scale = UIParent:GetEffectiveScale()
         wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)

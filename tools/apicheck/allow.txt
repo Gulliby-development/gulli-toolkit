@@ -1,0 +1,2 @@
+# Findings of tools/apicheck/check.py that were looked at and are fine, one per line:
+# an event name, `C_Namespace.Function`, `C_Namespace.` (the whole namespace) or a global name.

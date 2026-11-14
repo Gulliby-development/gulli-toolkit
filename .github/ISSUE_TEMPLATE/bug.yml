@@ -1,0 +1,36 @@
+name: Bug
+description: Something in a Gulli addon does not work as it should.
+type: Bug
+body:
+  - type: input
+    id: module
+    attributes:
+      label: Addon
+      description: Which one, as the hub or the game's AddOns list names it.
+      placeholder: Quest Cleaner
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown on the module's card in /gulli.
+      placeholder: "1.9.2"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Errors
+      description: Open /gulli, press "Errors" on the home page, press "Copy" and paste the text here. Leave it empty when there are none.
+      render: text
+  - type: input
+    id: client
+    attributes:
+      label: Client and device
+      placeholder: WoW Forever on Android, Retroid Pocket 5

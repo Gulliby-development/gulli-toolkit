@@ -490,5 +490,63 @@ test("registers with Gulli Toolkit when it is loaded, works without it", functio
     assert(Load().PlanQuests, "loads without the toolkit")
 end)
 
+-- Random quest logs and bags: whatever the plan, an item a staying quest names is never offered,
+-- a protected item never is, and an item goes only when every quest linked to it goes.
+test("random logs: never offer an item a quest that stays needs", function()
+    local POOL = { "Bone Chip", "Murloc Fin", "Sealed Crate", "Ogre Tooth", "Red Feather", "Gnoll Paw",
+                   "Old Map", "Silk Pouch", "Iron Key Part", "Kobold Candle", "Glowing Shard", "Bat Wing" }
+    math.randomseed(20261114)
+    local offered = 0
+    for round = 1, 300 do
+        local quests, header = {}, 0
+        for i = 1, math.random(1, 14) do
+            if math.random() < 0.2 then
+                header = header + 1
+                quests[#quests + 1] = { title = "Zone " .. header, isHeader = true }
+            end
+            local q = { title = "Quest " .. i, level = math.random(1, 40), questID = 990000 + i }
+            local item = POOL[math.random(#POOL)]
+            local r = math.random(4)
+            if r == 1 then q.objectives = { { text = item .. ": 1/" .. math.random(2, 10) } }
+            elseif r == 2 then q.description = "Bring me the " .. item .. ", please."
+            elseif r == 3 then q.summary = "Find a " .. item .. "." end
+            quests[#quests + 1] = q
+        end
+        local bagItems = {}
+        for i, name in ipairs(POOL) do
+            if math.random() < 0.6 then bagItems[#bagItems + 1] = { id = 900000 + i, name = name, class = 12 } end
+        end
+        local protectedId = 900000 + math.random(#POOL)
+        Fake { quests = quests, bag = bagItems }
+        GulliToolkit = { IsProtected = function(id) return id == protectedId end }
+        local ok, err = pcall(function()
+            local ns = Load()
+            local level = math.random(1, 45)
+            local planned = ns.PlanQuests(level)
+            local goes = {}
+            for _, q in ipairs(planned) do goes[q.questID] = true end
+            local items = ns.PlanItems(planned, level)
+            offered = offered + #items
+            for _, it in ipairs(items) do
+                assert(it.id ~= protectedId, "offered a protected item")
+                for _, q in ipairs(quests) do
+                    if q.questID and not goes[q.questID] then
+                        local text = (q.description or "") .. (q.summary or "")
+                        for _, o in ipairs(q.objectives or {}) do text = text .. o.text end
+                        assert(not text:find(it.name, 1, true),
+                            it.name .. " offered while " .. q.title .. " (level " .. q.level .. ") stays at level " .. level)
+                    end
+                end
+                for _, l in ipairs(it.links or {}) do
+                    assert(goes[l.questID], it.name .. " linked to a quest that stays")
+                end
+            end
+        end)
+        GulliToolkit = nil
+        if not ok then error("round " .. round .. ": " .. tostring(err), 0) end
+    end
+    assert(offered > 100, "the rounds offered too little to prove anything: " .. offered)
+end)
+
 io.write(count - failed, "/", count, " passed\n")
 os.exit(failed == 0 and 0 or 1)
