@@ -7,7 +7,8 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, dungeons, checks, list, tabs, search, laterPill, entranceBtn, settings, questPage
+local frame, dungeons, checks, list, tabs, search, laterPill, entranceBtn, settings, questPage, listCard
+local detail
 local checkLines = {}
 local showHidden = false
 local ICON_OK, ICON_NO = "Interface\\RaidFrame\\ReadyCheck-Ready", "Interface\\RaidFrame\\ReadyCheck-NotReady"
@@ -32,7 +33,11 @@ local function makeDungeon(r)
     r.name:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
-    r.click:SetScript("OnClick", function(self) ns.selected = self:GetParent().d.key; ns.Refresh() end)
+    r.click:SetScript("OnClick", function(self)
+        ns.selected = self:GetParent().d.key
+        ns.openQuest = nil
+        ns.Refresh()
+    end)
 end
 
 local function fillDungeon(r, d)
@@ -94,7 +99,7 @@ local function questTooltip(owner, item)
         end
     end
     GameTooltip:AddLine(" ")
-    if item.group == "log" then GameTooltip:AddLine(L.TT_CLICK_SHARE, 0.6, 0.6, 0.6) end
+    GameTooltip:AddLine(L.TT_CLICK_OPEN, 0.6, 0.6, 0.6)
     GameTooltip:AddLine(item.hidden and L.TT_RIGHT_SHOW or L.TT_RIGHT_HIDE, 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
@@ -115,11 +120,7 @@ local function onRowClick(self, button)
         ns.SetHidden(q.id, not ns.Hidden(q.id))
         return
     end
-    if item.group == "log" then
-        if not ns.Share(q.id) and q.turnin and q.turnin.x > 0 then ns.SetPin(q.turnin) end
-    elseif item.group == "take" and q.x > 0 then
-        ns.SetPin({ who = q.who, zone = q.area and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(q.area), x = q.x, y = q.y })
-    end
+    ns.OpenQuest(q.id)
 end
 
 local function makeRow(r)
@@ -265,6 +266,14 @@ function ns.Refresh()
         end
     end
     if tabs.selected ~= 1 then return end
+    local open = ns.openQuest ~= nil
+    checks:SetShown(not open)
+    listCard:SetShown(not open)
+    detail:SetShown(open)
+    if open then
+        ns.FillDetail(level)
+        return
+    end
     refreshChecks()
     local items = {}
     if ns.selected then
@@ -299,6 +308,282 @@ function ns.Refresh()
         if #items == 0 then items[1] = { header = true, text = L.NO_QUESTS } end
     end
     list:SetData(items)
+end
+
+-- The page of one quest (like a dungeon journal): what to do, where it starts and ends with a
+-- map pin for each, the whole chain as numbered steps, the rewards and the mobs, and Track,
+-- Share and Hide. ns.openQuest is the quest shown; nil shows the list.
+local REWARD_MAX, CHAIN_ROW = 6, 28
+local SIDE_TEXT = { A = "FACTION_A", H = "FACTION_H" }
+local SIDE_ICON = { A = "Interface\\Icons\\INV_BannerPVP_02", H = "Interface\\Icons\\INV_BannerPVP_01" }
+local STATE_COLOR = { log = S.Accent and S.Accent() or S.TEXT, take = S.GOOD, done = S.MUTED, later = S.WARN,
+                      closed = S.MUTED, hidden = S.MUTED }
+
+function ns.OpenQuest(id)
+    ns.openQuest = id
+    ns.Refresh()
+end
+
+local function label(parent, text)
+    local t = S.Text(parent, 11, S.FAINT)
+    t:SetText(text)
+    t:SetWordWrap(false)
+    return t
+end
+
+local function makeStep(r)
+    r.state = r:CreateTexture(nil, "ARTWORK")
+    r.state:SetSize(14, 14)
+    r.state:SetPoint("LEFT", 6, 0)
+    r.text = S.Text(r, 12)
+    r.text:SetPoint("LEFT", 26, 0)
+    r.text:SetPoint("RIGHT", -6, 0)
+    r.text:SetWordWrap(false)
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:SetScript("OnClick", function(self)
+        local st = self:GetParent().step
+        if not st then return end
+        if st.dungeon and not st.this then ns.OpenQuest(st.id) return end
+        ns.PinAt(st.who, st.area, st.x, st.y)
+    end)
+    r.click:SetScript("OnEnter", function(self)
+        local st = self:GetParent().step
+        if not (GameTooltip and st) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("[" .. (st.level or "?") .. "] " .. st.name, 1, 0.82, 0)
+        local where = ns.Where({ who = st.who or "", area = st.area or 0 })
+        if where ~= "" then GameTooltip:AddLine(L.TT_FROM:format(where), 1, 1, 1) end
+        GameTooltip:AddLine(st.dungeon and not st.this and L.TT_CLICK_OPEN or L.CHAIN_PIN, 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+local function fillStep(r, st)
+    r.step = st
+    r.text:SetText(st.n .. ".  " .. st.name)
+    local c = S.TEXT
+    if st.this then c = S.Accent() elseif st.missing then c = S.BAD elseif st.done then c = S.MUTED end
+    r.text:SetTextColor(unpack(c))
+    S.Fill(r, st.this and S.RAISED or S.CLEAR)
+    r.state:SetShown(st.done or st.active or st.missing)
+    if st.done then r.state:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+    elseif st.missing then r.state:SetTexture("Interface\\RaidFrame\\ReadyCheck-NotReady")
+    else r.state:SetTexture("Interface\\RaidFrame\\ReadyCheck-Waiting") end
+end
+
+local function buildDetail(parent)
+    local d = CreateFrame("Frame", nil, parent)
+    -- Header: back, title, faction and state.
+    local head = S.Card(d)
+    head:SetPoint("TOPLEFT")
+    head:SetPoint("TOPRIGHT")
+    head:Fit(44)
+    d.back = S.Button(head.body, 30, 30)
+    d.back:SetText("<")
+    d.back:SetPoint("LEFT")
+    d.back:SetScript("OnClick", function() ns.openQuest = nil; ns.Refresh() end)
+    d.back:HookScript("OnEnter", function(self)
+        if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L.BACK); GameTooltip:Show() end
+    end)
+    d.back:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    d.side = S.IconBox(head.body, 22)
+    d.side:SetPoint("TOPRIGHT", 0, 0)
+    d.state = S.Badge(head.body, "")
+    d.state:SetPoint("RIGHT", d.side, "LEFT", -8, 0)
+    d.title = S.Text(head.body, 14)
+    d.title:SetPoint("TOPLEFT", d.back, "TOPRIGHT", 10, 0)
+    d.title:SetPoint("RIGHT", d.state, "LEFT", -8, 0)
+    d.title:SetWordWrap(false)
+    d.sub = S.Text(head.body, 11, S.MUTED)
+    d.sub:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -4)
+    d.sub:SetPoint("RIGHT", head.body, "RIGHT")
+    d.sub:SetWordWrap(false)
+
+    -- Footer: the actions.
+    local foot = CreateFrame("Frame", nil, d)
+    foot:SetPoint("BOTTOMLEFT")
+    foot:SetPoint("BOTTOMRIGHT")
+    foot:SetHeight(30)
+    d.track = S.Button(foot, 120, 30)
+    d.track:SetPoint("LEFT")
+    d.track:SetScript("OnClick", function() if ns.openQuest then ns.Track(ns.openQuest) end end)
+    d.share = S.Button(foot, 120, 30)
+    d.share:SetText(L.SHARE)
+    d.share:SetPoint("LEFT", d.track, "RIGHT", 8, 0)
+    d.share:SetScript("OnClick", function()
+        if ns.openQuest and not ns.Share(ns.openQuest) then print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.NOT_IN_GROUP) end
+    end)
+    d.hide = S.Button(foot, 120, 30)
+    d.hide:SetPoint("LEFT", d.share, "RIGHT", 8, 0)
+    d.hide:SetScript("OnClick", function()
+        if ns.openQuest then ns.SetHidden(ns.openQuest, not ns.Hidden(ns.openQuest)) end
+    end)
+    d.status = S.Text(foot, 11, S.MUTED)
+    d.status:SetPoint("LEFT", d.hide, "RIGHT", 12, 0)
+    d.status:SetPoint("RIGHT")
+    d.status:SetWordWrap(false)
+
+    -- Left: objective, start, turn-in, what it needs, rewards, mobs.
+    local info = S.Card(d)
+    info:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -S.GAP)
+    info:SetPoint("BOTTOMLEFT", foot, "TOPLEFT", 0, S.GAP)
+    info:SetPoint("RIGHT", d, "CENTER", 20, 0)
+    local b = info.body
+    d.objLabel = label(b, L.DETAIL_OBJECTIVE)
+    d.objLabel:SetPoint("TOPLEFT")
+    d.obj = S.Text(b, 12)
+    d.obj:SetPoint("TOPLEFT", d.objLabel, "BOTTOMLEFT", 0, -4)
+    d.obj:SetPoint("RIGHT", b, "RIGHT")
+    d.obj:SetHeight(62)
+    d.obj:SetJustifyV("TOP")
+    d.obj:SetWordWrap(true)
+
+    local function place(name, title, anchor, gap)
+        local l = label(b, title)
+        l:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -(gap or 10))
+        local btn = S.FitButton(b, L.SHOW_ON_MAP, 24, 60)
+        btn:SetPoint("TOPRIGHT", b, "TOPRIGHT", 0, 0)
+        btn:SetPoint("TOP", l, "TOP", 0, 4)
+        local t = S.Text(b, 12)
+        t:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -4)
+        t:SetPoint("RIGHT", b, "RIGHT")
+        t:SetWordWrap(false)
+        d[name .. "Label"], d[name], d[name .. "Map"] = l, t, btn
+        return t
+    end
+    place("start", L.DETAIL_START, d.obj, 8)
+    d.startMap:SetScript("OnClick", function()
+        local q = d.q
+        if q then ns.PinAt(q.who, q.area, q.x, q.y) end
+    end)
+    place("turnin", L.DETAIL_TURNIN, d.start)
+    d.turninMap:SetScript("OnClick", function()
+        local t = d.q and d.q.turnin
+        if t then ns.PinAt(t.who, t.area, t.x, t.y) end
+    end)
+    d.need = S.Text(b, 12, S.BAD)
+    d.need:SetPoint("TOPLEFT", d.turnin, "BOTTOMLEFT", 0, -10)
+    d.need:SetPoint("RIGHT", b, "RIGHT")
+    d.need:SetWordWrap(false)
+    d.rewLabel = label(b, L.DETAIL_REWARDS)
+    d.rewards = {}
+    for i = 1, REWARD_MAX do
+        local ic = S.IconBox(b, 28)
+        ic:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 2 + (i - 1) * 36, -6)
+        ic:EnableMouse(true)
+        ic:SetScript("OnEnter", function(self)
+            if not (GameTooltip and self.id) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.id) end
+            if self.note then GameTooltip:AddLine(self.note, 0.6, 0.9, 0.6) end
+            GameTooltip:Show()
+        end)
+        ic:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        d.rewards[i] = ic
+    end
+    d.mobLabel = label(b, L.DETAIL_MOBS)
+    d.mobLabel:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 0, -44)
+    d.mobs = S.Text(b, 12)
+    d.mobs:SetPoint("TOPLEFT", d.mobLabel, "BOTTOMLEFT", 0, -4)
+    d.mobs:SetPoint("RIGHT", b, "RIGHT")
+    d.mobs:SetWordWrap(false)
+
+    -- Right: the chain.
+    local chain = S.Card(d, L.DETAIL_CHAIN, nil, "Interface\\Icons\\INV_Scroll_03")
+    chain:SetPoint("TOPLEFT", info, "TOPRIGHT", S.GAP, 0)
+    chain:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT", 0, S.GAP)
+    d.chainCard = chain
+    d.chain = S.List(chain.body, CHAIN_ROW, makeStep, fillStep)
+    d.chain:SetPoint("TOPLEFT")
+    d.chain:SetPoint("BOTTOMRIGHT", -10, 0)
+    return d
+end
+
+local function whereLine(who, area, x, y)
+    local where = ns.Where({ who = who or "", area = area or 0 })
+    if x and x > 0 then where = where .. "  ·  " .. string.format("%.1f, %.1f", x, y) end
+    return where
+end
+
+-- Fills the page of ns.openQuest.
+function ns.FillDetail(level)
+    local d = detail
+    local q = ns.Quest(ns.openQuest, level)
+    d.q = q
+    if not q then ns.openQuest = nil return end
+    local diff = ns.Difficulty(q.level, level)
+    d.title:SetText("[" .. q.level .. "] " .. q.name)
+    d.title:SetTextColor(unpack(ns.DiffColor(diff)))
+    local sub = { L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) }
+    if q.steps and q.steps > 1 then sub[#sub + 1] = L.STEP:format(q.step, q.steps) end
+    sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"]
+    d.sub:SetText(table.concat(sub, "  ·  "))
+    local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state
+    d.state:Set(L["STATE_" .. (state == "hidden" and "TAKE" or state):upper()] or "", STATE_COLOR[state] or S.MUTED)
+    d.side:SetShown(SIDE_ICON[q.side] ~= nil)
+    if SIDE_ICON[q.side] then d.side:SetIcon(SIDE_ICON[q.side]) end
+
+    local lines = {}
+    for _, o in ipairs(q.objectives) do
+        lines[#lines + 1] = (o.done and (S.Hex(S.GOOD) .. o.text .. "|r")) or o.text
+    end
+    d.obj:SetText(#lines > 0 and table.concat(lines, "\n") or "-")
+
+    if q.area and q.area > 0 then
+        d.start:SetText(whereLine(q.who, q.area, q.x, q.y))
+    elseif q.who ~= "" then
+        d.start:SetText(L.FROM_ITEM:format(q.who))
+    else
+        d.start:SetText(L.INSIDE)
+    end
+    d.startMap:SetEnabled(q.area > 0 and q.x > 0)
+    local t = q.turnin
+    d.turnin:SetText(t and whereLine(t.who, t.area, t.x, t.y) or "-")
+    d.turninMap:SetEnabled(t ~= nil and t.area > 0 and t.x > 0)
+
+    local need
+    for _, st in ipairs(q.chain) do if st.missing then need = st end end
+    if need then
+        d.need:SetText(L.REQUIRES:format(need.name))
+    elseif q.state == "later" and q.why == "WHY_LEVEL" then
+        d.need:SetText(L.WHY_LEVEL:format(q.minLevel))
+    elseif q.state == "later" then
+        d.need:SetText(ns.NeedText(q.need))
+    else
+        d.need:SetText("")
+    end
+    d.rewLabel:ClearAllPoints()
+    d.rewLabel:SetPoint("TOPLEFT", d.need:GetText() ~= "" and d.need or d.turnin, "BOTTOMLEFT", 0, -12)
+
+    local rewards = ns.Rewards(q)
+    for i, ic in ipairs(d.rewards) do
+        local r = rewards[i]
+        ic:SetShown(r ~= nil)
+        if r then
+            ic.id = r.id
+            ic.note = r.better and L.BETTER or (r.name and not r.fits and L.NOT_FOR_YOU) or nil
+            ic:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            ic:SetAlpha((r.name and not r.fits) and 0.35 or 1)
+            S.SetBorder(ic, r.better and S.GOOD or S.BORDER)
+        end
+    end
+    d.rewLabel:SetText(#rewards > 0 and L.DETAIL_REWARDS or "")
+    d.mobLabel:SetText(q.targets and #q.targets > 0 and L.DETAIL_MOBS or "")
+    d.mobs:SetText(q.targets and table.concat(q.targets, ", ") or "")
+
+    d.chainCard:SetTitle(L.DETAIL_CHAIN, #q.chain > 0 and tostring(#q.chain) or "")
+    d.chain:SetData(#q.chain > 0 and q.chain or { { n = 1, name = q.name, this = true, id = q.id, level = q.level,
+                                                    who = q.who, area = q.area, x = q.x, y = q.y } })
+
+    local inLog = q.state == "log"
+    d.track:SetText(inLog and ns.Tracked(q.id) and L.UNTRACK or L.TRACK)
+    d.track:SetEnabled(inLog)
+    d.share:SetEnabled(inLog)
+    d.hide:SetText(ns.Hidden(q.id) and L.UNHIDE or L.HIDE)
+    local others = inLog and ns.GroupOn(q.id) or {}
+    d.status:SetText(#others > 0 and L.TT_GROUP:format(table.concat(others, ", ")) or "")
 end
 
 local function buildSettings(parent)
@@ -414,11 +699,16 @@ local function build()
     end
 
     local right = S.Card(questPage)
+    listCard = right
     right:SetPoint("TOPLEFT", checks, "BOTTOMLEFT", 0, -S.GAP)
     right:SetPoint("BOTTOMRIGHT")
     list = S.List(right.body, 40, makeRow, fillRow)
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
+
+    detail = buildDetail(questPage)
+    detail:SetAllPoints()
+    detail:Hide()
 
     ns.settingsPage = buildSettings(area)
     ns.settingsPage:SetPoint("TOPLEFT", 0, -30 - S.GAP)

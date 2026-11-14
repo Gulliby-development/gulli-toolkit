@@ -29,6 +29,11 @@ ns.DUNGEONS = {
     { "BRD", 1584, "Blackrock Depths", 52, 60 }, { "LBRS", 1583, "Lower Blackrock Spire", 55, 60 },
     { "UBRS", 1583, "Upper Blackrock Spire", 58, 60 }, { "DIREMAUL", 2557, "Dire Maul", 56, 60 },
     { "SCHOLO", 2057, "Scholomance", 58, 60 }, { "STRAT", 2017, "Stratholme", 58, 60 },
+    { "THANES", 16919, "The Hall of Thanes", 13, 18 }, { "LORDAERON", 16611, "Ruins of Lordaeron", 15, 20 },
+    { "EXCAVATION", 16732, "Excavation Site: Wetlands", 24, 29 }, { "DALARAN", 16544, "City of Dalaran", 28, 33 },
+    { "DROWNED", nil, "The Drowned City", 35, 40 }, { "KROLDOK", 17780, "Krol'dok Stronghold", 40, 45 },
+    { "ALCAZ", nil, "Alcaz Prison", 48, 53 }, { "BLACKMAW", nil, "Blackmaw Hold", 55, 60 },
+    { "SHAPERS", 16985, "Shaper's Terrace", 58, 60 },
     { "BARROW", nil, "Barrow Deeps", 60, 60 }, { "HYJAL", nil, "Hyjal Summit", 60, 60 },
     { "ONY", 2159, "Onyxia's Lair", 60, 60 },
 }

@@ -479,6 +479,9 @@ local dpSpec = { level = 33, raceID = 6, faction = "Horde", className = "HUNTER"
 S.dungeonprep = {
     default = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle() end },
     settings = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
+    quest = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.OpenQuest(2841) end },
+    forever = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle() end },
+    chain = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.OpenQuest(95775) end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).

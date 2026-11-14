@@ -217,7 +217,8 @@ test("group messages for a Forever dungeon and looking for a group", function()
         assert(d[1] ~= "MC" and d[1] ~= "BWL" and d[1] ~= "NAXX" and d[1] ~= "AQ40", d[1] .. " is not in Forever")
     end
     local list = ns.DungeonsFor(20)
-    eq(list[1], "WC"); eq(list[2], "DM"); eq(list[3], "RFC")
+    eq(list[1], "WC"); eq(list[2], "DM"); eq(list[3], "LORDAERON", "Forever's own dungeons are there too")
+    eq(ns.DungeonName("ALCAZ"), "Alcaz Prison")
     eq(#list, #ns.DUNGEONS)
 end)
 
