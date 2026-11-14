@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- The same languages as the Runeloader app. The addon always follows the game client's
+-- The same languages as every Gulli module. The addon always follows the game client's
 -- language; English is the base and the fallback for a missing key or another client.
 ns.TAGS = { "en", "de", "es", "fr", "pl", "pt", "ru", "zh" }
 
