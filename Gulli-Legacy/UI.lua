@@ -12,7 +12,10 @@ local pages = {}
 local track, goalText, goalSub, goalBtn, stepList, stepsCard, emptySteps
 local charList, chalList, switchRows = nil, nil, {}
 local tracker
+local detail, detailID, partList, partEmpty, sortTabs
 local TRACK_W = 520
+local GUIDE_LINES = 7
+local PART_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", open = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local ACTIVITY_ICON = {
     level = "Interface\\Icons\\Spell_Holy_SurgeOfLight", skill = "Interface\\Icons\\INV_Misc_Note_01",
@@ -110,6 +113,10 @@ end
 -- Steps -------------------------------------------------------------------------------------
 
 local function makeStep(r)
+    -- A click on the row (outside its buttons) shows how to do the step.
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:SetScript("OnClick", function(self) ns.ShowDetail(self:GetParent().step.ch.id) end)
     r.icon = S.IconBox(r, 34)
     r.icon:SetPoint("LEFT", 4, 0)
     r.helper = S.Button(r, 108, 26)
@@ -142,6 +149,34 @@ local function makeStep(r)
     r.bar = S.Progress(r, 4)
     r.bar:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 10, 1)
     r.bar:SetPoint("RIGHT", r.eta, "LEFT", -12, 0)
+    local lvl = (tonumber((r:GetFrameLevel())) or 0) + 3
+    for _, b in ipairs({ r.helper, r.game, r.pin }) do b:SetFrameLevel(lvl) end
+end
+
+-- A pin button in its pinned or normal look.
+local function paintPin(b, pinned)
+    b:SetText(pinned and L.UNPIN or L.PIN)
+    if pinned then
+        S.Primary(b)
+    elseif b.kind ~= "normal" then
+        b.kind = "normal"
+        b.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
+        b.text:SetShadowColor(0, 0, 0, 1)
+        b:GetScript("OnLeave")(b)
+    end
+end
+
+-- The helper button of a step: the other module that helps, with its icon.
+local function paintHelper(b, s)
+    local helper = s and ns.Helper(s)
+    b.helperKey = helper or false
+    b:SetShown(helper ~= nil)
+    if helper then
+        local mods = GulliToolkit and GulliToolkit.modules
+        local info = mods and mods[helper]
+        b:SetText(L["HELP_" .. helper])
+        if info and info.icon then S.SetButtonIcon(b, info.icon, 14) end
+    end
 end
 
 -- How far a step is: the levels or skill of its character, else the open parts.
@@ -161,25 +196,9 @@ local function fillStep(r, s)
     r.eta:SetText(s.eta and ("~" .. ns.Span(s.eta)) or ns.Span(nil))
     r.etaSub:SetText(s.new and L.ETA_NEW or (not s.me and s.char) and (classColor(s.char.class) .. (s.char.name or "") .. "|r")
         or (s.others and s.others > 0) and L.ETA_OTHERS:format(s.others) or "")
-    local pinned = ns.db.pins[s.ch.id]
-    r.pin:SetText(pinned and L.UNPIN or L.PIN)
-    if pinned then
-        S.Primary(r.pin)
-    elseif r.pin.kind ~= "normal" then
-        r.pin.kind = "normal"
-        r.pin.text:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
-        r.pin.text:SetShadowColor(0, 0, 0, 1)
-        r.pin:GetScript("OnLeave")(r.pin)
-    end
-    local helper = ns.Helper(s)
-    r.helperKey = helper or false
-    r.helper:SetShown(helper ~= nil)
-    if helper then
-        local mods = GulliToolkit and GulliToolkit.modules
-        local info = mods and mods[helper]
-        r.helper:SetText(L["HELP_" .. helper])
-        if info and info.icon then S.SetButtonIcon(r.helper, info.icon, 14) end
-    end
+    paintPin(r.pin, ns.db.pins[s.ch.id])
+    paintHelper(r.helper, s)
+    r.helperKey = r.helper.helperKey
 end
 
 -- Characters --------------------------------------------------------------------------------
@@ -253,7 +272,7 @@ local function makeChal(r)
     r.bar:SetPoint("RIGHT", r.state, "LEFT", -12, 0)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
-    r.click:SetScript("OnClick", function(self) ns.OpenInGame(self:GetParent().ch.id) end)
+    r.click:SetScript("OnClick", function(self) ns.ShowDetail(self:GetParent().ch.id) end)
 end
 
 local KIND_TAG = { level = "TAG_LEVEL", skill = "TAG_SKILL", dungeon = "TAG_GROUP", raid = "TAG_RAID",
@@ -278,17 +297,219 @@ local function fillChal(r, ch)
 end
 
 local ORDER = { level = 1, skill = 2, dungeon = 3, raid = 4, solo = 5, pvp = 6 }
-local function challenges()
+ns.SORTS = { "progress", "kind", "name" }
+local function share(ch) return ch.done and 1 or (ch.total - ch.open) / math.max(1, ch.total) end
+local function byKind(a, b)
+    local oa, ob = ORDER[a.kind] or 9, ORDER[b.kind] or 9
+    if oa ~= ob then return oa < ob end
+    return a.id < b.id
+end
+local SORT = {
+    -- Done first, then the most finished: what is closest to a point comes right after.
+    progress = function(a, b)
+        local sa, sb = share(a), share(b)
+        if sa ~= sb then return sa > sb end
+        return byKind(a, b)
+    end,
+    kind = function(a, b)
+        if a.done ~= b.done then return not a.done end
+        return byKind(a, b)
+    end,
+    name = function(a, b)
+        if a.name ~= b.name then return a.name < b.name end
+        return a.id < b.id
+    end,
+}
+function ns.Challenges()
     local out = {}
     for _, ch in ipairs(ns.list or {}) do out[#out + 1] = ch end
-    table.sort(out, function(a, b)
-        if a.done ~= b.done then return not a.done end
-        local oa, ob = ORDER[a.kind] or 9, ORDER[b.kind] or 9
-        if oa ~= ob then return oa < ob end
-        return a.id < b.id
-    end)
+    table.sort(out, SORT[ns.db.sort] or SORT.progress)
     return out
 end
+local challenges = ns.Challenges
+
+-- The detail page ---------------------------------------------------------------------------
+
+local function makePart(r)
+    r.icon = S.IconBox(r, 22)
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.count = S.Text(r, 11, S.MUTED)
+    r.count:SetPoint("TOPRIGHT", -8, -7)
+    r.count:SetJustifyH("RIGHT")
+    r.count:SetWidth(70)
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 3)
+    r.name:SetPoint("RIGHT", r.count, "LEFT", -8, 0)
+    r.name:SetWordWrap(false)
+    r.sub = S.Text(r, 10, S.MUTED)
+    r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
+    r.sub:SetPoint("RIGHT", -8, 0)
+    r.sub:SetWordWrap(false)
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self)
+        local part = self.part
+        if not GameTooltip or not part or #part.left == 0 then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(part.text)
+        for _, t in ipairs(part.left) do GameTooltip:AddLine(t, S.MUTED[1], S.MUTED[2], S.MUTED[3]) end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+local function fillPart(r, part)
+    r.part = part
+    r.icon:SetIcon(part.done and PART_ICON.done or PART_ICON.open)
+    r.name:SetText(part.text)
+    local c = part.done and S.MUTED or S.TEXT
+    r.name:SetTextColor(c[1], c[2], c[3], 1)
+    if part.total then
+        local col = part.done and S.GOOD or S.MUTED
+        r.count:SetText(S.Hex(col) .. L.PARTS_N:format(part.got or 0, part.total) .. "|r")
+    else
+        r.count:SetText(part.done and (S.Hex(S.GOOD) .. L.DONE .. "|r") or "")
+    end
+    r.sub:SetText(#part.left > 0 and L.LEFT_N:format(table.concat(part.left, ", ")) or "")
+end
+
+local function buildDetail(p)
+    local d = {}
+    d.head = S.Card(p)
+    d.head:SetPoint("TOPLEFT")
+    d.head:SetPoint("TOPRIGHT")
+    d.head:SetHeight(72)
+    local hb = d.head.body
+    d.icon = S.IconBox(hb, 40)
+    d.icon:SetPoint("LEFT", 0, 0)
+    d.back = S.FitButton(hb, L.BACK, 30, 80)
+    d.back:SetPoint("RIGHT", 0, 0)
+    d.back:SetScript("OnClick", function() ns.ShowTab(d.from or 1) end)
+    d.game = S.Ghost(S.FitButton(hb, L.IN_GAME, 30, 80))
+    d.game:SetPoint("RIGHT", d.back, "LEFT", -6, 0)
+    d.game:SetScript("OnClick", function() if detailID then ns.OpenInGame(detailID) end end)
+    d.pin = S.FitButton(hb, L.PIN, 30, 70)
+    d.pin:SetPoint("RIGHT", d.game, "LEFT", -6, 0)
+    d.pin:SetScript("OnClick", function() if detailID then ns.Pin(detailID) end end)
+    d.helper = S.Button(hb, 118, 30)
+    d.helper:SetPoint("RIGHT", d.pin, "LEFT", -6, 0)
+    d.helper:SetScript("OnClick", function(self) ns.OpenHelper(self.helperKey or nil) end)
+    d.name = S.Text(hb, 15)
+    d.name:SetPoint("TOPLEFT", d.icon, "TOPRIGHT", 12, -2)
+    d.name:SetPoint("RIGHT", d.helper, "LEFT", -12, 0)
+    d.name:SetWordWrap(false)
+    d.sub = S.Text(hb, 11, S.MUTED)
+    d.sub:SetPoint("TOPLEFT", d.name, "BOTTOMLEFT", 0, -6)
+    d.sub:SetPoint("RIGHT", d.helper, "LEFT", -12, 0)
+    d.sub:SetWordWrap(false)
+
+    -- Left: how to do it, then the Wowhead link to copy.
+    d.how = S.Card(p, L.HOW)
+    d.how:SetPoint("TOPLEFT", d.head, "BOTTOMLEFT", 0, -S.GAP)
+    d.how:SetPoint("BOTTOMRIGHT", p, "BOTTOM", -S.GAP / 2, 0)
+    local body = d.how.body
+    d.desc = S.Text(body, 12, S.TEXT)
+    d.desc:SetPoint("TOPLEFT", 0, 0)
+    d.desc:SetPoint("RIGHT", 0, 0)
+    d.desc:SetJustifyH("LEFT")
+    d.desc:SetWordWrap(true)
+    d.lines = {}
+    local prev = d.desc
+    for i = 1, GUIDE_LINES do
+        local t = S.Text(body, 12, S.MUTED)
+        t:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -8)
+        t:SetPoint("RIGHT", 0, 0)
+        t:SetJustifyH("LEFT")
+        t:SetWordWrap(true)
+        d.lines[i] = t
+        prev = t
+    end
+    d.url = S.Edit(body, 200, 28)
+    d.url:SetPoint("BOTTOMLEFT", 0, 0)
+    d.url:SetPoint("BOTTOMRIGHT", 0, 0)
+    d.url:SetJustifyH("LEFT")
+    S.SetFont(d.url, 11)
+    -- The text stays the link: a key press puts it back, a focus selects it for Ctrl+C.
+    d.url:SetScript("OnTextChanged", function(self, user)
+        if user and self.link and self:GetText() ~= self.link then self:SetText(self.link); self:HighlightText() end
+    end)
+    d.url:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    d.urlHint = S.Text(body, 10, S.FAINT)
+    d.urlHint:SetPoint("BOTTOMLEFT", d.url, "TOPLEFT", 0, 6)
+    d.urlHint:SetPoint("RIGHT", 0, 0)
+    d.urlHint:SetJustifyH("LEFT")
+    d.urlHint:SetWordWrap(true)
+    d.urlHint:SetText(L.WOWHEAD_D)
+    d.urlTitle = S.Text(body, 12, S.TEXT)
+    d.urlTitle:SetPoint("BOTTOMLEFT", d.urlHint, "TOPLEFT", 0, 4)
+    d.urlTitle:SetText(L.WOWHEAD)
+
+    -- Right: what is left, part by part.
+    d.left = S.Card(p, L.WHAT_LEFT, "")
+    d.left:SetPoint("TOPLEFT", d.head, "BOTTOM", S.GAP / 2, -S.GAP)
+    d.left:SetPoint("BOTTOMRIGHT")
+    partList = S.List(d.left.body, 40, makePart, fillPart)
+    partList:SetPoint("TOPLEFT")
+    partList:SetPoint("BOTTOMRIGHT", -10, 0)
+    partEmpty = S.Empty(d.left.body)
+    return d
+end
+
+local function stepOf(id)
+    for _, s in ipairs((ns.Steps())) do if s.ch.id == id then return s end end
+end
+
+local function fillDetail()
+    local ch = detailID and ns.byID and ns.byID[detailID]
+    if not ch then return end
+    local d = detail
+    local step = stepOf(ch.id)
+    d.icon:SetIcon(ch.icon or ACTIVITY_ICON[ch.kind] or DEFAULT_ICON)
+    d.name:SetText(ch.name)
+    local state = ch.done and (S.Hex(S.GOOD) .. L.DONE .. "|r")
+        or L.PARTS_N:format(ch.total - ch.open, ch.total)
+    local tag = L[KIND_TAG[ch.kind] or "TAG_SOLO"]
+    d.sub:SetText(tag .. "  " .. S.Hex(S.FAINT) .. "·|r  " .. state
+        .. (step and step.eta and ("  " .. S.Hex(S.FAINT) .. "·|r  ~" .. ns.Span(step.eta)) or ""))
+    paintPin(d.pin, ns.db.pins[ch.id])
+    d.pin:SetShown(not ch.done)
+    paintHelper(d.helper, step)
+    d.desc:SetText(ch.desc or "")
+    d.desc:SetShown(ch.desc ~= nil)
+    d.lines[1]:ClearAllPoints()
+    if ch.desc then d.lines[1]:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -8)
+    else d.lines[1]:SetPoint("TOPLEFT", d.how.body, "TOPLEFT", 0, 0) end
+    d.lines[1]:SetPoint("RIGHT", d.how.body, "RIGHT", 0, 0)
+    local lines, kind = ns.Guide(ch, step)
+    for i, t in ipairs(d.lines) do
+        local text = lines[i]
+        if text and kind == "valthalak" and i <= 4 and not ch.done then
+            text = S.Hex(S.Accent()) .. i .. ".|r " .. text
+        end
+        t:SetText(text or "")
+        t:SetShown(text ~= nil)
+    end
+    d.url.link = ns.WowheadURL(ch)
+    d.url:SetText(d.url.link)
+    d.url:SetCursorPosition(0)
+    local parts = ns.Parts(ch)
+    local done = 0
+    for _, x in ipairs(parts) do if x.done then done = done + 1 end end
+    d.left:SetTitle(L.WHAT_LEFT, #parts > 0 and L.PARTS_N:format(done, #parts) or "")
+    partList:SetData(parts)
+    partEmpty:SetShown(#parts == 0)
+    partEmpty:Set(L.ALL_DONE_PARTS, "")
+end
+
+-- Shows how to do one challenge (from a step or the Challenges list); Back returns to the tab.
+function ns.ShowDetail(id)
+    ns.Window()
+    if not (ns.byID and ns.byID[id]) then return end
+    detail.from = detailID and detail.from or tabs.selected
+    detailID = id
+    for j, p in ipairs(pages) do p:SetShown(j == #pages) end
+    fillDetail()
+end
+function ns.DetailID() return detailID end
 
 -- The tracker -------------------------------------------------------------------------------
 
@@ -353,7 +574,9 @@ function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local ready = ns.list and #ns.list > 0
     local page = tabs.selected
-    if page == 1 then
+    if detailID then
+        fillDetail()
+    elseif page == 1 then
         fillTrack(p)
         local plan, need, total = ns.GoalPlan(steps, p.earned)
         local goal = tonumber(ns.db.goal) or 0
@@ -377,6 +600,7 @@ function ns.Refresh()
     elseif page == 2 then
         charList:SetData(ns.Chars())
     elseif page == 3 then
+        for i, k in ipairs(ns.SORTS) do if k == (ns.db.sort or "progress") then sortTabs:Select(i, true) end end
         chalList:SetData(challenges())
     else
         for _, x in ipairs(switchRows) do x.row:SetChecked(x.get()) end
@@ -394,6 +618,7 @@ local function page(parent)
 end
 
 local function showTab(i)
+    detailID = nil
     for j, p in ipairs(pages) do p:SetShown(j == i) end
     ns.Refresh()
 end
@@ -450,9 +675,17 @@ local function build()
 
     -- Challenges
     local p3 = page(body)
-    local ac = S.Card(p3, L.ALL, L.ALL_HINT)
+    local ac = S.Card(p3, L.ALL)
     ac:SetPoint("TOPLEFT")
     ac:SetPoint("BOTTOMRIGHT")
+    local sortLabels = {}
+    for i, k in ipairs(ns.SORTS) do sortLabels[i] = L["SORT_" .. k:upper()] end
+    sortTabs = S.Tabs(ac, sortLabels, 92, function(i) ns.SetPref("sort", ns.SORTS[i]) end, 26)
+    sortTabs.frame:ClearAllPoints()
+    sortTabs.frame:SetPoint("TOPRIGHT", -S.INSET, -6)
+    local hint = S.Text(ac, 11, S.MUTED)
+    hint:SetPoint("RIGHT", sortTabs.frame, "LEFT", -10, 0)
+    hint:SetText(L.ALL_HINT)
     chalList = S.List(ac.body, 34, makeChal, fillChal)
     chalList:SetPoint("TOPLEFT")
     chalList:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -488,6 +721,9 @@ local function build()
     for i, row in ipairs(c2.rows) do
         if screen[i][3] then switchRows[#switchRows + 1] = { row = row, get = screen[i][3] } end
     end
+
+    -- The detail page: not a tab, the last page; a step or a challenge opens it.
+    detail = buildDetail(page(body))
 
     tabs.frame:SetPoint("TOPLEFT")
     pages[1]:Show()

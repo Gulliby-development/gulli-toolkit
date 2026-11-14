@@ -654,6 +654,12 @@ end
 S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = { open = lgOpen(3) },
     settings = { open = lgOpen(4) },
     goal = { open = function(ns) lgOpen()(ns); ns.SetGoal(15) end },
-    tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end } }
+    tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end },
+    explore = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70040) end },
+    detail = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70010) end } }
 for _, sc in pairs(S.legacy) do sc.spec = lgSpec() end
+-- The settings pages with the Lock switch of their frame on the screen.
+S.bulletin.setup = { spec = S.bulletin.default.spec, open = function(ns) ns.ShowTab(7) end }
+S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
+S.mobfinder.search = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(1) end }
 return S

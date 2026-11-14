@@ -297,7 +297,7 @@ local function buildSetup(body, width)
           function(v) ns.db.feed.show = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Scroll_03" },
         { L.OPT_THROUGH, nil, function() return ns.db.feed.through end,
           function(v) ns.db.feed.through = v; if ns.Feed then ns.Feed() end end, icon = I .. "Spell_Nature_Invisibilty" },
-        { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.feed.locked ~= false end,
+        { L.OPT_LOCK, nil, function() return ns.db.feed.locked ~= false end,
           function(v) ns.db.feed.locked = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Misc_Key_04" },
         { L.FEED_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
     })
