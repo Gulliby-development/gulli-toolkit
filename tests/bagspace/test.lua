@@ -216,4 +216,43 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     assert(reg.summary())
 end)
 
+-- Random bags: whatever space is asked for, quest items, keys, the hearthstone, protected items
+-- and anything better than white are never offered.
+test("random bags: never offer what must stay", function()
+    math.randomseed(20261114)
+    local offered = 0
+    for round = 1, 300 do
+        local items, list = {}, {}
+        for id = 1, 30 do
+            local it = { name = "Item " .. id, quality = math.random(0, 3), price = math.random(0, 3) * 10,
+                         classID = ({ 0, 2, 4, 7, 12, 13, 15 })[math.random(7)], maxStack = math.random() < 0.5 and 20 or 1 }
+            items[id] = it
+        end
+        items[6948] = { name = "Hearthstone", quality = 1, price = 0, classID = 15 }
+        local slots = { [1] = { id = 6948, count = 1 } }
+        for slot = 2, 16 do
+            if math.random() < 0.8 then slots[slot] = { id = math.random(30), count = 1 } end
+        end
+        local protectedId = math.random(30)
+        Fake({ bags = { [0] = { size = 16, slots = slots } }, items = items })
+        GulliToolkit = { IsProtected = function(id) return id == protectedId end }
+        local ok, err = pcall(function()
+            local ns = Load()
+            local plan = ns.Plan(math.random(1, 16))
+            offered = offered + #plan.items
+            for _, it in ipairs(plan.items) do
+                local id = tonumber(it.name:match("^Item (%d+)$"))
+                assert(id, "offered " .. it.name)
+                local def = items[id]
+                assert(id ~= protectedId, "offered a protected item")
+                assert(def.classID ~= 12 and def.classID ~= 13, "offered a quest item or a key: " .. it.name)
+                assert(def.quality <= 1, "offered " .. it.name .. " of quality " .. def.quality)
+            end
+        end)
+        GulliToolkit = nil
+        if not ok then error("round " .. round .. ": " .. tostring(err), 0) end
+    end
+    assert(offered > 100, "the rounds offered too little to prove anything: " .. offered)
+end)
+
 W.finish()

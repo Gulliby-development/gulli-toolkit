@@ -85,11 +85,9 @@ S.R_SM, S.R_MD, S.R_LG, S.R_XL = 4, 6, 8, 10
 -- The soft blue around round icons.
 S.GLOW = { 0.36, 0.72, 1, 1 }
 
--- The player's class colour, like ElvUI's default accent.
+-- The accent: the blue every window has shown so far. The class colour was meant here, but
+-- `a, b = f and f()` keeps one value, so it never applied; the blue is what the owner saw.
 function S.Accent()
-    local _, class = UnitClass and UnitClass("player")
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    if c then return { c.r, c.g, c.b, 1 } end
     return { 0.60, 0.82, 1, 1 }
 end
 

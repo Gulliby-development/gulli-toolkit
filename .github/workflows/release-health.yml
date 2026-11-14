@@ -1,0 +1,48 @@
+name: Release health
+
+# Every night after the index run: is every version on main released, in the all-in-one zip
+# and in the index? Problems go into one open issue labelled release-health; it closes itself
+# when everything is fine again.
+on:
+  schedule:
+    - cron: "30 6 * * *"   # daily, 06:30 UTC (the index runs at 03:17)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check releases, the all-in-one zip and the index
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 tools/health/releases.py --repo "$GITHUB_REPOSITORY" --out report.md
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update or close the release-health issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RC: ${{ steps.check.outputs.rc }}
+        run: |
+          gh label create release-health --color d93f0b --description "A release did not reach the player" 2>/dev/null || true
+          num=$(gh issue list --label release-health --state open --json number --jq '.[0].number')
+          if [ "$RC" != "0" ]; then
+            { echo "Priority: P1"; echo; cat report.md; } > body.md
+            if [ -n "$num" ]; then gh issue edit "$num" --body-file body.md
+            else gh issue create --title "Release health: a release did not reach the player" --label release-health --body-file body.md
+            fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --reason completed --comment "Everything on main is released, in the all-in-one zip and in the index again."
+          fi

@@ -336,4 +336,37 @@ test("paused from the hub the mailbox panel stays closed", function()
     eq(ns.open, true, "started again")
 end)
 
+-- Random inboxes: take all never touches cash on delivery or GM letters.
+test("random inboxes: never take from cash on delivery or GM letters", function()
+    math.randomseed(20261114)
+    local taken = 0
+    for round = 1, 200 do
+        local inbox, safeMoney = {}, 0
+        for i = 1, math.random(1, 12) do
+            local l = { sender = "P" .. i }
+            local kind = math.random(4)
+            local items = {}
+            for _ = 1, math.random(0, 3) do items[#items + 1] = (kind <= 2 and 1 or 1000) + math.random(50) end
+            if #items > 0 then l.items = items end
+            if math.random() < 0.5 then l.money = math.random(1, 900) end
+            if kind == 3 then l.cod = math.random(1, 500) end
+            if kind == 4 then l.gm = true; l.sender = "GM" end
+            if kind <= 2 then safeMoney = safeMoney + (l.money or 0) end
+            inbox[#inbox + 1] = l
+        end
+        Fake({ inbox = inbox, free = 40 })
+        local ok, err = pcall(function()
+            local ns = Load()
+            W.Fire("MAIL_SHOW")
+            ns.TakeAll()
+            W.Drain()
+            taken = taken + #W.taken
+            for _, id in ipairs(W.taken) do assert(id < 1000, "took item " .. id .. " from a COD or GM letter") end
+            assert(W.money <= safeMoney, "took money from a COD or GM letter")
+        end)
+        if not ok then error("round " .. round .. ": " .. tostring(err), 0) end
+    end
+    assert(taken > 100, "the rounds took too little to prove anything: " .. taken)
+end)
+
 W.finish()

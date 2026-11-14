@@ -487,7 +487,7 @@ local function abandon(q)
         C_QuestLog.SetSelectedQuest(q.questID)
         C_QuestLog.SetAbandonQuest()
         C_QuestLog.AbandonQuest()
-    else
+    elseif AbandonQuest then
         local now = inLog(q.questID)
         if not now then return end
         SelectQuestLogEntry(now.index)

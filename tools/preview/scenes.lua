@@ -58,6 +58,27 @@ S.toolkit.inside = { spec = S.toolkit.default.spec,
     end,
 }
 
+-- The home page with errors saved, and the errors page.
+local function sampleErrors(ns)
+    ns.RecordError("Interface/AddOns/Gulli-Crates/Core.lua:412: attempt to compare nil with number",
+        "[string \"@Interface/AddOns/Gulli-Crates/Core.lua\"]:412: in function 'Plan'\n[string \"@Interface/AddOns/Gulli-Crates/UI.lua\"]:88: in function <...>")
+    ns.RecordError("ADDON_ACTION_BLOCKED: C_AuctionHouse.ConfirmCommoditiesPurchase()", nil, "blocked", "Gulli-Crates")
+    ns.RecordError("Interface/AddOns/Gulli-XP/Core.lua:120: bad argument #1 to 'format'", nil)
+end
+S.toolkit.errors = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        sampleErrors(ns)
+        S.toolkit.default.open(ns, W, R)
+    end,
+}
+S.toolkit.errorspage = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        sampleErrors(ns)
+        S.toolkit.default.open(ns, W, R)
+        ns.OpenErrors()
+    end,
+}
+
 -- The minimap button on a stand-in minimap, after a drag to the lower left.
 S.toolkit.minimap = {
     spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.5.0" } } } },

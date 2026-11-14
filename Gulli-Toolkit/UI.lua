@@ -30,10 +30,10 @@ local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
 local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
 
--- page: "home", "module", "protect" or "transfer"; inside: the key of the docked module.
+-- page: "home", "module", "protect", "transfer" or "errors"; inside: the key of the docked module.
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
-local scaleText, protectBtn, protectFrame, transfer
+local scaleText, protectBtn, protectFrame, transfer, errorsFrame
 local host, hubSwitch, offWin, insideWin, card, home, homeRow
 local rows, heads = {}, {}
 
@@ -133,6 +133,7 @@ end
 local function hidePanels()
     if protectFrame then protectFrame:Hide() end
     if transfer then transfer:Hide() end
+    if errorsFrame then errorsFrame:Hide() end
 end
 
 -- Takes the docked module out, without choosing another page.
@@ -202,7 +203,9 @@ local function showPanel(name)
     hidePanels()
     home:Hide()
     view.page = name
-    if name == "protect" then protectFrame:Show() else transfer:Show() end
+    if name == "protect" then protectFrame:Show()
+    elseif name == "errors" then errorsFrame:Show()
+    else transfer:Show() end
     ns.Refresh()
 end
 
@@ -429,9 +432,11 @@ local function makeLine(parent, list, i, size)
     b.text:SetPoint("LEFT", 4, 0)
     b.text:SetPoint("RIGHT", -4, 0)
     b.text:SetWordWrap(false)
-    b:SetScript("OnClick", function(self) if self.row then enter(self.row) end end)
+    b:SetScript("OnClick", function(self)
+        if self.open then self.open() elseif self.row then enter(self.row) end
+    end)
     b:SetScript("OnEnter", function(self)
-        if self.row then S.Fill(self, HOVER) end
+        if self.row or self.open then S.Fill(self, HOVER) end
         if self.full then tip(self, self.head, { self.full }, "ANCHOR_TOP") end
     end)
     b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR); hideTip() end)
@@ -440,9 +445,18 @@ local function makeLine(parent, list, i, size)
 end
 
 -- The lines of the Modules card from ns.Overview: what waits, what the game refuses, what was
--- updated and what uses the most memory. { { head, color, names, row } }
+-- updated and what uses the most memory. { { head, color, names, row, open } }
 local function overviewLines(o)
     local out = {}
+    if (o.errors or 0) > 0 then
+        local seen, t = {}, {}
+        for _, e in ipairs(ns.Errors()) do
+            local name = ns.ShortName and ns.ShortName(e.addon) or e.addon
+            if not seen[name] then seen[name] = true; t[#t + 1] = name end
+        end
+        out[#out + 1] = { L.OV_ERRORS .. " " .. o.errors, S.BAD, table.concat(t, ", "), nil,
+                          function() ns.OpenErrors() end }
+    end
     local function names(rows, extra)
         local t = {}
         for _, r in ipairs(rows) do t[#t + 1] = r.title .. (extra and extra(r) or "") end
@@ -457,7 +471,8 @@ local function overviewLines(o)
     if #o.new > 0 then
         out[#out + 1] = { L.OV_NEW, S.GOOD, names(o.new, function(r) return " " .. r.version end), o.new[1] }
     end
-    if #out == 0 or (#out == 1 and #o.paused > 0) then table.insert(out, 1, { L.OV_FINE, S.GOOD, "" }) end
+    local quiet = #out - ((o.errors or 0) > 0 and 1 or 0) - (#o.paused > 0 and 1 or 0)
+    if quiet == 0 and (o.errors or 0) == 0 then table.insert(out, 1, { L.OV_FINE, S.GOOD, "" }) end
     if #o.heavy > 0 then
         local t = {}
         for i = 1, math.min(3, #o.heavy) do t[i] = o.heavy[i].row.title .. " " .. ns.Size(o.heavy[i].kb) end
@@ -476,7 +491,7 @@ local function fillOverview(data)
     local lines = overviewLines(o)
     for i, e in ipairs(lines) do
         local b = ovLines[i] or makeLine(home.overview.body, ovLines, i)
-        b.head, b.full, b.row = e[1], e[3] ~= "" and e[3] or nil, e[4]
+        b.head, b.full, b.row, b.open = e[1], e[3] ~= "" and e[3] or nil, e[4], e[5]
         b.text:SetText(S.Hex(e[2]) .. e[1] .. "|r" .. (e[3] ~= "" and ("  " .. e[3]) or ""))
         place(b, 24 + (i - 1) * LINE_H)
         b:Show()
@@ -740,6 +755,49 @@ local function buildTransfer()
         status("")
     end)
     transfer.export, transfer.import, transfer.reload = export, import, reload
+end
+
+-- The errors of the Gulli addons, as text to copy into a bug report.
+local function buildErrors()
+    errorsFrame = centrePage("GulliToolkitErrors", L.ERRORS)
+    errorsFrame.hint:SetText(L.ERRORS_HINT)
+    local memo = S.Memo(errorsFrame, HOST_W - 2 * S.INSET, HOST_H - 84 - 64)
+    memo:SetPoint("TOPLEFT", S.INSET, -84)
+    errorsFrame.memo = memo
+    local copy = S.Primary(S.FitButton(errorsFrame, L.COPY, 32, 120))
+    copy:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    local clear = S.FitButton(errorsFrame, L.CLEAR, 32, 120)
+    clear:SetPoint("RIGHT", copy, "LEFT", -8, 0)
+    errorsFrame.status = S.Note(errorsFrame, 11)
+    errorsFrame.status:SetPoint("BOTTOMLEFT", S.INSET, S.INSET + 8)
+    errorsFrame.status:SetPoint("RIGHT", clear, "LEFT", -12, 0)
+    errorsFrame.status:SetMaxLines(2)
+    local function fill()
+        local n = #ns.Errors()
+        memo.edit:SetText(n > 0 and ns.ErrorsText() or L.NO_ERRORS)
+        copy:SetEnabled(n > 0)
+        clear:SetEnabled(n > 0)
+        errorsFrame.status:SetText(L.ERRORS_COUNT:format(n))
+    end
+    copy:SetScript("OnClick", function()
+        memo.edit:SetText(ns.ErrorsText())
+        memo.edit:SetFocus()
+        memo.edit:HighlightText()
+        errorsFrame.status:SetText(L.COPY_HINT)
+    end)
+    clear:SetScript("OnClick", function()
+        ns.ClearErrors()
+        fill()
+        ns.Refresh()
+    end)
+    errorsFrame:SetScript("OnShow", fill)
+    errorsFrame.copy, errorsFrame.clear = copy, clear
+end
+
+function ns.OpenErrors()
+    if not (frame and frame:IsShown()) then ns.Toggle() end
+    if not errorsFrame then buildErrors() end
+    showPanel("errors")
 end
 
 -- The header: the window's own (icon, title, version), plus the size buttons.
