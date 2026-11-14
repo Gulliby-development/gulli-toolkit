@@ -130,7 +130,7 @@ local function buyText()
     if b.phase == "done" or not line then return L.BUY_DONE end
     if b.phase == "quote" then return L.BUY_WAIT end
     if b.phase == "buying" then return L.BUY_BUYING end
-    if b.phase == "ready" then return L.BUY_CONFIRM:format(S.MoneyText(b.quote.total, true)) end
+    if b.phase == "ready" then return L.BUY_CONFIRM:format(S.MoneyIcons(b.quote.total, true)) end
     return L.BUY_ASK
 end
 

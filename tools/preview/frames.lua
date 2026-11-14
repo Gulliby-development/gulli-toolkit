@@ -434,7 +434,10 @@ local function richText(s)
                 i = i + 2
             elseif n == "T" then
                 local e = s:find("|t", i, true) or #s
-                out[#out + 1] = '<span class="ti"></span>'
+                -- the game's coins as discs in their colours, any other inline picture as a box
+                local coin = ({ Gold = "#e8b923", Silver = "#c7ccd6", Copper = "#c0703a" })[s:sub(i, e):match("UI%-(%a+)Icon") or ""]
+                out[#out + 1] = coin and ('<span class="ti" style="background:' .. coin .. ';border-radius:50%"></span>')
+                    or '<span class="ti"></span>'
                 i = e + 2
             elseif n == "|" then
                 out[#out + 1] = "|"

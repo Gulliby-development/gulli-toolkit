@@ -970,6 +970,24 @@ function S.MoneyText(copper, short)
     return sign .. table.concat(parts, " ")
 end
 
+-- Money with the game's coin pictures after plain numbers, for text on a coloured fill (a Primary
+-- button): the coin colours of S.MoneyText would melt into it, the numbers keep the text's colour.
+local COIN = "Interface\\MoneyFrame\\UI-%sIcon"
+function S.MoneyIcons(copper, short)
+    copper = tonumber(copper) or 0
+    if copper ~= copper or copper == math.huge or copper == -math.huge then return "?" end
+    copper = math.floor(copper + 0.5)
+    local sign = copper < 0 and "-" or ""
+    copper = math.abs(copper)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local function coin(n, kind) return n .. "|T" .. COIN:format(kind) .. ":0:0:2:0|t" end
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = coin(g, "Gold") end
+    if s > 0 then parts[#parts + 1] = coin(s, "Silver") end
+    if (c > 0 and not (short and g > 0)) or #parts == 0 then parts[#parts + 1] = coin(c, "Copper") end
+    return sign .. table.concat(parts, " ")
+end
+
 -- A tile with a game icon, a small label, one value and a line under it, and an optional bar:
 -- tile:Set(value, color, sub[, fraction, barColor]). For a card's key facts side by side.
 function S.InfoTile(parent, label, icon)
