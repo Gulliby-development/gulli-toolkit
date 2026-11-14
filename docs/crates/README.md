@@ -23,7 +23,7 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 - **The cheapest bundle.** **Calculate** prices every bundle of every crate. What you already have costs nothing; the rest is priced from Auctionator's database.
 - **Your bank counts.** Items in your bank are used too, and the list says so in orange: take them out before you fill the crate. A switch turns this off.
 - **Several crates at once.** Your stock is shared fairly: a stack that fills one crate is not split over two.
-- **Buy what is missing.** Press **Buy** to go through the list. The first press asks the auction house for the real price and shows it on the button. The next press buys. After that, each line is one press.
+- **Buy what is missing.** Press **Buy** to go through the list. For each line, the first press asks the auction house for the real price and shows it on the button. The second press buys.
 - **No surprises.** If the real price is much higher than Auctionator's, the line turns orange. Press **Skip** to leave a line out.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 
@@ -47,9 +47,9 @@ Type `/gcr` to open the window anywhere.
 ## FAQ
 
 <details>
-<summary><b>Why one press per purchase?</b></summary>
+<summary><b>Why two presses per line?</b></summary>
 
-The game lets an addon buy at the auction house only when you press a button yourself. So the button does one purchase each time. It never buys without your press.
+The game lets an addon ask for a price and buy at the auction house only when you press a button yourself, for each step. So each line takes two presses: one for the price, one to buy. It never buys without your press.
 </details>
 
 <details>

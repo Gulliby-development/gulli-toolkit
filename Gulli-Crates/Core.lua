@@ -301,9 +301,10 @@ function ns.Calculate()
 end
 
 -- ---------- buying at the auction house ----------
--- The game confirms a purchase only inside a click. One click asks the auction house for the
--- real price of the next line (the button then shows it), the next click buys at that price,
--- and the price of the line after it is asked for at once, so each further line is one click.
+-- The game runs both purchase calls only inside a click (asking the price is protected too).
+-- So each line takes two clicks on the same button: one asks the auction house for the real
+-- price (the button then shows it), the next buys at that price. Never call them from an event
+-- or a timer.
 
 ns.buy = { queue = {}, i = 1, phase = "idle" }
 
@@ -343,7 +344,8 @@ end
 local function nextLine()
     local b = ns.buy
     b.i = b.i + 1
-    if ns.Current() then ask() else
+    -- the next price is asked from the next click: StartCommoditiesPurchase is protected too
+    if ns.Current() then b.phase, b.quote = "idle", nil else
         b.phase = "done"
         say(L.ALL_BOUGHT:format(b.bought, ns.Money(b.spent)))
         notify(L.ALL_BOUGHT:format(b.bought, ns.Money(b.spent)))

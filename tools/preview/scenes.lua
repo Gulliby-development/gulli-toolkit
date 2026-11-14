@@ -723,6 +723,11 @@ local function crOpen(quote)
         ns.Refresh()
     end
 end
-S.crates = { default = { spec = crSpec(), open = crOpen(true) }, plan = { spec = crSpec(), open = crOpen(false) },
+S.crates = { default = { spec = crSpec(), open = crOpen(true) },
+    done = { spec = crSpec(), open = function(ns, W)
+        crOpen(false)(ns, W)
+        ns.buy.phase, ns.buy.spent = "done", 3760
+        ns.Refresh()
+    end }, plan = { spec = crSpec(), open = crOpen(false) },
     ru = { spec = crSpec("ruRU"), open = crOpen(true) } }
 return S

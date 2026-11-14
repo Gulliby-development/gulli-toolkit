@@ -150,7 +150,7 @@ test("buying: one click for the price, one to buy, then one per line", function(
     assert(W.printed[#W.printed]:find("bought 1 lines", 1, true), W.printed[#W.printed])
 end)
 
-test("after a purchase the next price is asked for at once", function()
+test("after a purchase the next price waits for the next click", function()
     Fake({ bags = { [FLOWER] = 1, [248682] = 1 }, order = { FLOWER, 248682 }, names = names(),
            prices = { [WB] = 300, [2447] = 10 } })
     local ns = Load()
@@ -161,6 +161,9 @@ test("after a purchase the next price is asked for at once", function()
     W.Fire("COMMODITY_PRICE_UPDATED", 300, 3000)
     ns.BuyClick()
     W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(#W.calls, 2, "no protected call from the event")
+    eq(ns.buy.phase, "idle")
+    ns.BuyClick()
     eq(W.calls[3], "start 2447 20")
     eq(ns.buy.phase, "quote")
 end)

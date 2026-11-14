@@ -161,7 +161,7 @@ function ns.Refresh()
     if not ns.HasAuctionator() then status, color = L.NO_AUCTIONATOR, S.WARN
     elseif not plan then status = L.HOW
     elseif #queue == 0 then status, color = L.NOTHING_TO_BUY, S.GOOD
-    elseif b.phase == "done" then status, color = L.BUY_DONE .. ": " .. L.ALL_BOUGHT:format(b.bought, S.MoneyText(b.spent)), S.GOOD
+    elseif b.phase == "done" then status, color = L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD
     elseif not ns.atAH and ns.CanBuy() then status, color = L.NOT_AT_AH, S.WARN
     elseif b.err then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L[b.err], S.BAD
     elseif b.phase == "ready" and ns.Dear() then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L.DEAR, S.WARN
