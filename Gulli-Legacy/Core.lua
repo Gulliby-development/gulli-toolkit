@@ -179,8 +179,9 @@ local function childOpen(childID)
 end
 
 local function build(e, dungeonIndex)
-    local id, name, _, completed, _, _, _, _, _, icon = achievement(e.id)
+    local id, name, _, completed, _, _, _, desc, _, icon = achievement(e.id)
     local ch = { id = e.id, name = name or ("#" .. e.id), icon = icon, done = completed == true,
+                 desc = type(desc) == "string" and desc ~= "" and desc or nil,
                  cat = e.cat, activity = ns.ActivityOf(e.cat), points = pointsFor(e.id), parts = {} }
     local cls = ns.CLASS_ACH[e.id]
     if cls then ch.kind, ch.class, ch.need = "level", cls[1], cls[2] end
@@ -200,7 +201,7 @@ local function build(e, dungeonIndex)
         else
             open, total = open + (done and 0 or 1), total + 1
         end
-        ch.parts[#ch.parts + 1] = { text = text, done = done == true, qty = qty, req = req }
+        ch.parts[#ch.parts + 1] = { text = text, done = done == true, qty = qty, req = req, type = ctype, asset = asset }
     end
     if total == 0 then open, total = ch.done and 0 or 1, 1 end
     if ch.done then open = 0 end
@@ -334,7 +335,7 @@ end
 
 -- Settings; a new one gets its default here and a row in the window.
 ns.DEFAULTS = { dungeon = true, raid = false, pvp = false, alts = true, newClass = true,
-                tracker = true, announce = true, alpha = 80, goal = 0 }
+                tracker = true, locked = true, announce = true, alpha = 80, goal = 0, sort = "progress" }
 ns.OPT_ICON = {
     dungeon = "Interface\\Icons\\INV_Misc_Key_14",
     raid = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
@@ -342,6 +343,7 @@ ns.OPT_ICON = {
     alts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     newClass = "Interface\\Icons\\Spell_Holy_Resurrection",
     tracker = "Interface\\Icons\\INV_Misc_Spyglass_02",
+    locked = "Interface\\Icons\\INV_Misc_Key_04",
     announce = "Interface\\Icons\\INV_Misc_Note_02",
     alpha = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
 }
@@ -571,6 +573,119 @@ function ns.Detail(s)
     local left = openParts(ch)
     local line = left ~= "" and L.D_LEFT:format(left) or L.D_OPEN:format(ch.open, ch.total)
     return who .. line
+end
+
+-- The detail page ------------------------------------------------------------------------------
+
+-- Whether an achievement is made only of other achievements (Explore Azeroth, Explore Kalimdor).
+local function isMeta(id)
+    local n = numCriteria(id)
+    if n == 0 then return false end
+    for i = 1, n do
+        local _, ctype, _, _, _, _, _, asset = criterion(id, i)
+        if ctype ~= 8 or not asset then return false end
+    end
+    return true
+end
+
+-- One row per part of a challenge, open ones first. A part that is another achievement shows
+-- its name, how far it is and the names of its open parts (left); one made of achievements
+-- again is opened up, at most three levels deep, so Explore Azeroth lists the zones.
+local function partRows(id, out, depth, seen)
+    for i = 1, numCriteria(id) do
+        local text, ctype, done, qty, req, _, _, asset = criterion(id, i)
+        if ctype == 8 and asset and not seen[asset] and depth < 3 and isMeta(asset) then
+            seen[asset] = true
+            partRows(asset, out, depth + 1, seen)
+        elseif ctype == 8 and asset then
+            local left, total, got = {}, 0, 0
+            for j = 1, numCriteria(asset) do
+                local t2, _, d2 = criterion(asset, j)
+                total = total + 1
+                if d2 then got = got + 1 elseif type(t2) == "string" and t2 ~= "" then left[#left + 1] = t2 end
+            end
+            local _, cname, _, cdone, _, _, _, _, _, icon = achievement(asset)
+            local all = done == true or cdone == true
+            if total == 0 then total, got = 1, all and 1 or 0 end
+            out[#out + 1] = { text = cname or text or "", done = all, got = all and total or got, total = total,
+                              left = all and {} or left, id = asset, icon = icon, type = 8 }
+        else
+            local q, r = tonumber(qty), tonumber(req)
+            local big = r and r > 1
+            out[#out + 1] = { text = text or "", done = done == true, got = big and math.min(q or 0, r) or nil,
+                              total = big and r or nil, left = {}, type = ctype, asset = asset }
+        end
+    end
+    return out
+end
+
+function ns.Parts(ch)
+    local out = partRows(ch.id, {}, 1, {})
+    for i, r in ipairs(out) do r.order = i end
+    table.sort(out, function(a, b)
+        if a.done ~= b.done then return not a.done end
+        return a.order < b.order
+    end)
+    return out
+end
+
+-- Which guide a challenge gets on its detail page.
+local EXPLORE_WORDS = { "xplor", "rkund", "сслед", "探索", "badaj", "xplora" }
+function ns.GuideKind(ch)
+    local lower = (ch.name or ""):lower()
+    if lower:find("valthalak", 1, true) or (ch.name or ""):find("Валтхалак", 1, true) then return "valthalak" end
+    if ch.kind == "level" or ch.kind == "skill" then return ch.kind end
+    if ch.activity == "dungeon" or ch.activity == "raid" or ch.activity == "pvp" then return ch.activity end
+    for _, p in ipairs(ch.parts or {}) do if p.type == 43 then return "explore" end end
+    for _, w in ipairs(EXPLORE_WORDS) do if lower:find(w, 1, true) then return "explore" end end
+    for _, p in ipairs(ch.parts or {}) do if p.type == 27 then return "quest" end end
+    return "solo"
+end
+
+-- The lines of what to do, in order. step is the best way the plan found (may be nil).
+function ns.Guide(ch, step)
+    local k = ns.GuideKind(ch)
+    local out = {}
+    if ch.done then out[1] = L.G_DONE end
+    if k == "level" then
+        out[#out + 1] = L.G_LEVEL:format(ns.ClassName(ch.class), ch.need or 60)
+        out[#out + 1] = L.G_LEVEL_2
+    elseif k == "skill" then
+        out[#out + 1] = L.G_SKILL:format(ns.SkillName(ch.skill), ch.need or 300)
+        out[#out + 1] = L.G_SKILL_2
+    elseif k == "dungeon" then
+        out[#out + 1] = L.G_DUNGEON:format(ch.minLevel or ns.DUNGEON_MIN[1])
+        out[#out + 1] = L.G_DUNGEON_2
+    elseif k == "raid" then
+        out[#out + 1] = L.G_RAID
+    elseif k == "pvp" then
+        out[#out + 1] = L.G_PVP
+    elseif k == "explore" then
+        out[#out + 1] = L.G_EXPLORE
+        out[#out + 1] = L.G_EXPLORE_2
+    elseif k == "valthalak" then
+        for i = 1, 4 do out[#out + 1] = L["G_VAL_" .. i] end
+    elseif k == "quest" then
+        out[#out + 1] = L.G_QUEST
+    else
+        out[#out + 1] = L.G_SOLO
+    end
+    if step and not ch.done then
+        local span = step.eta and ns.Span(step.eta) or L.NO_GUESS
+        -- Levels and skills name the character and the pace; other steps only take time.
+        if step.new or step.from or not step.me then
+            out[#out + 1] = L.G_BEST:format(ns.Detail(step), span)
+        else
+            out[#out + 1] = L.G_TIME:format(span)
+        end
+    end
+    return out, k
+end
+
+-- A Wowhead search for the challenge: the game cannot open a link, so the player copies it.
+function ns.WowheadURL(ch)
+    local q = (ch.name or ""):gsub("[^%w%-%.]", function(c) return string.format("%%%02X", c:byte()) end)
+    return "https://www.wowhead.com/search?q=" .. q
 end
 
 -- The tag of a step: what the player does, and whether it needs a group.

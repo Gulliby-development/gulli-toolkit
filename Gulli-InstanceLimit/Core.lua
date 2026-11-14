@@ -214,7 +214,7 @@ end
 
 -- Every setting back to its default; the counted entries stay.
 function ns.ResetSettings()
-    for _, k in ipairs({ "badgeMode", "badgeScale", "badgeAlpha", "badgePoint", "warnAt", "warnDayAt", "freeAlert",
+    for _, k in ipairs({ "badgeMode", "badgeScale", "badgeAlpha", "badgePoint", "badgeLocked", "warnAt", "warnDayAt", "freeAlert",
                          "sound", "summary", "tellGroup", "sync", "fromExit" }) do ns.db[k] = nil end
     ns.Defaults()
     ns.DefaultLimits()
@@ -349,7 +349,7 @@ function ns.System(msg)
     if msg == refusedText then ns.Refused() end
 end
 
-ns.DEFAULTS = { badgeMode = "ALWAYS", badgeScale = 100, badgeAlpha = 100, warnAt = 1, warnDayAt = 3,
+ns.DEFAULTS = { badgeMode = "ALWAYS", badgeScale = 100, badgeAlpha = 100, badgeLocked = true, warnAt = 1, warnDayAt = 3,
                 freeAlert = true, sound = true, summary = true, tellGroup = true, sync = true, fromExit = false,
                 confirmed = false }
 function ns.Defaults()

@@ -138,7 +138,12 @@ local function build()
             ns.DB().point = nil
             bar:ClearAllPoints()
             bar:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
-        end })
+        end,
+        lock = function()
+            if InCombatLockdown() then return end
+            ns.DB().locked = true
+            ns.Refresh()
+        end, lockTip = L.LOCK })
 
     header = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
     main = CreateFrame("Button", BUTTON, bar, "SecureActionButtonTemplate")

@@ -87,8 +87,10 @@ end
 ---- The badge -------------------------------------------------------------------
 
 -- Whether the counter shows: always, never, or in a group, in a dungeon or when entries are short.
+local function unlocked() return ns.moving or ns.db.badgeLocked == false end
+
 function ns.BadgeShown(s)
-    if ns.moving then return true end
+    if unlocked() then return true end
     local mode = ns.db.badgeMode
     if mode == "HIDDEN" then return false end
     if mode == "GROUP" then
@@ -105,7 +107,7 @@ local function updateBadge(s)
     local color = s.left == 0 and S.BAD or (s.left == 1 and S.WARN or nil)
     badge:Set(TIME_ICON, s.leftHour .. "/" .. ns.LimitText(ns.db.limit), color, s.leftHour, ns.db.limit,
         s.wait > 0 and ns.Clock(s.wait) or nil)
-    badge:SetMoving(ns.moving and not InCombatLockdown())
+    badge:SetMoving(unlocked() and not InCombatLockdown())
 end
 
 -- "A dungeon entry is free again" as a Gulli HUD notice.
@@ -232,6 +234,7 @@ local function buildSettings(body, width)
         { L.BADGE_MODE, nil, control = modeHolder, icon = I .. "INV_Misc_Spyglass_03" },
         { L.BADGE_SIZE, nil, control = scale, icon = I .. "INV_Misc_Spyglass_02" },
         { L.BADGE_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
+        switch("badgeLocked", L.OPT_LOCK, L.OPT_LOCK_D, I .. "INV_Misc_Key_04"),
     })
     st:Add(counter, h4)
     c:SetHeight(st:Height())
@@ -301,7 +304,8 @@ local function buildBadge()
     badge = S.Chip(UIParent, "GulliInstanceLimitBadge")
     badgePlace()
     S.Mover(badge, { label = L.TITLE, save = function(point, rel, x, y) ns.db.badgePoint = { point, rel, x, y } end,
-        reset = function() ns.db.badgePoint = nil; badgePlace() end })
+        reset = function() ns.db.badgePoint = nil; badgePlace() end,
+        lock = function() ns.db.badgeLocked = true; ns.Refresh() end, lockTip = L.OPT_LOCK })
     badge:SetScript("OnClick", function() ns.Toggle() end)
     local elapsed = 0
     badge:SetScript("OnUpdate", function(_, dt)

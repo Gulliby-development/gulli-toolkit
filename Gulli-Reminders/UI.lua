@@ -47,7 +47,8 @@ local function buildPanel()
     panel:SetClampedToScreen(true)
     -- While the panel is unlocked, the mover lies over it: drag to place, right click to reset.
     S.Mover(panel, { label = L.TITLE, hint = L.DRAG, save = function() savePoint() end,
-        reset = function() ns.db.point = nil; ns.Refresh() end })
+        reset = function() ns.db.point = nil; ns.Refresh() end,
+        lock = function() ns.SetPref("locked", true) end, lockTip = L.OPT_LOCK })
     panel.line = S.Text(panel, 12, S.TEXT, "OUTLINE")
     panel.line:SetJustifyH("CENTER")
     panel.line:SetWordWrap(false)

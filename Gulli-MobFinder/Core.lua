@@ -20,6 +20,7 @@ local DEFAULTS = { enabled = false, names = {}, interval = 2, sound = "RAID_WARN
                    again = false, banner = true,
                    cooldown = 60,      -- seconds before the same mob alerts again
                    card = true,        -- the card with the model and the Target button
+                   cardLocked = true,  -- false shows a sample card with the mover, to place it
                    cardSeconds = 30,   -- the card closes itself after this (0: stays)
                    mark = false,       -- a skull on the found mob
                    flash = true,       -- the screen edges flash
@@ -444,7 +445,10 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     elseif event == "ADDON_LOADED" then
         return
     elseif event == "PLAYER_LOGIN" then
-        if ns.db then ns.Start() end
+        if ns.db then
+            ns.Start()
+            if ns.db.cardLocked == false and ns.MoveCard then ns.MoveCard(false) end
+        end
     elseif event == "CHAT_MSG_ADDON" then
         local msg, _, sender = ...
         ns.Receive(a1, msg, sender)
