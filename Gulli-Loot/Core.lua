@@ -8,7 +8,9 @@ local L = ns.L
 
 ns.ROLL = { pass = 0, need = 1, greed = 2 }
 ns.ROLL_NAME = { [0] = "pass", [1] = "need", [2] = "greed" }
-ns.RULES = { "ask", "greed", "pass" } -- for a quality or a type
+-- For a quality or a type. "safe" is Need when the item fits you (you can need it and, for
+-- gear, it beats what you wear), else Greed.
+ns.RULES = { "ask", "need", "safe", "greed", "pass" }
 ns.ITEM_RULES = { "ask", "need", "greed", "pass" }
 ns.QUALITIES = { 0, 1, 2 }
 -- Item types with a rule of their own, by the game's item class id.
@@ -84,8 +86,8 @@ local function whereOK()
 end
 
 -- The rule for a roll and its reason. rule: "need", "greed", "pass", or nil to leave it to the
--- player. reason: "item", "type", "quality", "unusable", "upgrade", "bop", "protected", "where",
--- "ask", "off". extra: { upgrade = item link to compare } (optional).
+-- player. reason: "item", "type", "quality", "unusable", "upgrade", "fits", "nofit", "bop",
+-- "protected", "where", "ask", "off". extra: { upgrade = item link to compare } (optional).
 function ns.Decide(id, quality, bop, canNeed, canGreed, link)
     local db = ns.db
     if not db.on then return nil, "off" end
@@ -106,6 +108,12 @@ function ns.Decide(id, quality, bop, canNeed, canGreed, link)
             end
         end
         if not rule or rule == "ask" then return nil, "ask" end
+        if rule == "safe" then
+            local _, equip = itemClass(id)
+            local gear = equip and SLOTS[equip]
+            if canNeed and (not gear or (link and ns.Upgrade(link, id))) then rule, reason = "need", "fits"
+            else rule, reason = "greed", "nofit" end
+        end
     end
     if rule == "need" and not canNeed then rule = "greed" end
     if rule == "greed" and not canGreed then return nil, reason end
