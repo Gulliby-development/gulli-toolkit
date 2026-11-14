@@ -48,6 +48,7 @@ Wide 2:1 preview banner, flat minimal vector style, for Gulli-`<Name>`, a World 
 | BagSpace | frees bag slots by merging stacks and selling junk | a brown leather bag in front of a small grid of four cream inventory slots, two of them empty and glowing gold |
 | Bulletin | sorts trade and group chat into topics | a small wooden notice board with four cream notes of different shapes pinned by gold pins |
 | Chores | keeps a daily to-do list for each character | a cream clipboard checklist with gold check marks and a small gold hourglass beside it |
+| Crates | finds the cheapest way to fill Waylaid Crates from the bank and the auction house, and buys what is missing | a closed brown wooden supply crate with gold corner fittings and a cream shipping label tag, with three small cream herb leaves and a small gold coin resting on its lid |
 | DungeonPrep | prepares a dungeon run: its quests and a checklist | a stone dungeon archway with a cream scroll and a small brown backpack in front of it |
 | InstanceLimit | counts dungeon entries per hour | a gold hourglass in front of a stone dungeon archway, with five small cream tally marks below |
 | Legacy | plans the fastest next steps to the account's Legacy points | a cream heraldic shield topped by a small gold crown, with a gold path of three stepping dots climbing across it to a small gold star |

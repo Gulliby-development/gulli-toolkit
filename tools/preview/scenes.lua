@@ -656,4 +656,35 @@ S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = 
     goal = { open = function(ns) lgOpen()(ns); ns.SetGoal(15) end },
     tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end } }
 for _, sc in pairs(S.legacy) do sc.spec = lgSpec() end
+-- Crates: two Flowering crates, Apprentice Herbs and Expert Ore at the auction house, with some
+-- herbs in the bags and the bank, after Calculate and the first price asked.
+local function crSpec(locale)
+    return { locale = locale, order = { 248691, 248682, 248692, 3819, 2447 },
+        bags = { [248691] = 2, [248682] = 1, [248692] = 1, [3819] = 6, [2447] = 20 },
+        bank = { [3819] = 4, [3858] = 8 },
+        names = { [248691] = "Waylaid Crate: Flowering Expert Herbs", [248682] = "Waylaid Crate: Apprentice Herbs",
+                  [248692] = "Waylaid Crate: Expert Ore", [3819] = "Wintersbite", [4625] = "Firebloom", [8831] = "Purple Lotus",
+                  [8836] = "Arthas' Tears", [2447] = "Peacebloom", [765] = "Silverleaf", [2449] = "Earthroot", [785] = "Mageroyal",
+                  [2450] = "Briarthorn", [2776] = "Gold Ore", [3858] = "Mithril Ore" },
+        prices = { [3819] = 2450, [4625] = 3100, [8831] = 1890, [8836] = 2900, [2447] = 35, [765] = 40, [2449] = 120,
+                   [785] = 160, [2450] = 210, [2776] = 6900, [3858] = 1350 } }
+end
+local function crIcons(W)
+    local icons = { [248691] = "INV_Crate_01", [248682] = "INV_Crate_01", [248692] = "INV_Crate_01", [3819] = "INV_Misc_Herb_14",
+        [4625] = "INV_Misc_Herb_19", [8831] = "INV_Misc_Herb_17", [8836] = "INV_Misc_Herb_13", [2447] = "INV_Misc_Flower_02",
+        [765] = "INV_Misc_Herb_10", [2776] = "INV_Ore_Copper_01", [3858] = "INV_Ore_Mithril_02" }
+    C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (icons[id] or "INV_Misc_QuestionMark") end
+end
+local function crOpen(quote)
+    return function(ns, W)
+        crIcons(W)
+        AuctionHouseFrame = nil -- the preview has no auction window to stand beside
+        W.Fire("AUCTION_HOUSE_SHOW")
+        ns.Calculate()
+        if quote then ns.BuyClick(); W.Fire("COMMODITY_PRICE_UPDATED", 2450, 24500) end
+        ns.Refresh()
+    end
+end
+S.crates = { default = { spec = crSpec(), open = crOpen(true) }, plan = { spec = crSpec(), open = crOpen(false) },
+    ru = { spec = crSpec("ruRU"), open = crOpen(true) } }
 return S
