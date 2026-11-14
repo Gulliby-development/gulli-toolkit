@@ -13,9 +13,12 @@ local track, goalText, goalSub, goalBtn, stepList, stepsCard, emptySteps
 local charList, chalList, switchRows = nil, nil, {}
 local tracker
 local detail, detailID, partList, partEmpty, sortTabs
+local layoutGuide
 local TRACK_W = 520
-local GUIDE_LINES = 7
-local PART_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", open = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
+local GUIDE_STEPS, GUIDE_NOTES = 5, 2
+local MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+local TIME_ICON = "Interface\\Icons\\INV_Misc_PocketWatch_01"
+local LEVEL_ICON = "Interface\\Icons\\Spell_Holy_SurgeOfLight"
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local ACTIVITY_ICON = {
     level = "Interface\\Icons\\Spell_Holy_SurgeOfLight", skill = "Interface\\Icons\\INV_Misc_Note_01",
@@ -341,9 +344,12 @@ local function makePart(r)
     r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 3)
     r.name:SetPoint("RIGHT", r.count, "LEFT", -8, 0)
     r.name:SetWordWrap(false)
+    r.lvl = S.Text(r, 10, S.MUTED)
+    r.lvl:SetPoint("BOTTOMRIGHT", -8, 7)
+    r.lvl:SetJustifyH("RIGHT")
     r.sub = S.Text(r, 10, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
-    r.sub:SetPoint("RIGHT", -8, 0)
+    r.sub:SetPoint("RIGHT", r.lvl, "LEFT", -8, 0)
     r.sub:SetWordWrap(false)
     r:EnableMouse(true)
     r:SetScript("OnEnter", function(self)
@@ -359,8 +365,20 @@ end
 
 local function fillPart(r, part)
     r.part = part
-    r.icon:SetIcon(part.done and PART_ICON.done or PART_ICON.open)
+    local ch = detailID and ns.byID and ns.byID[detailID]
+    r.icon:SetIcon(part.icon or (part.type == 8 and MAP_ICON) or (ch and ch.icon) or MAP_ICON)
+    if r.icon.tex and r.icon.tex.SetDesaturated then r.icon.tex:SetDesaturated(part.done) end
+    r.icon:SetAlpha(part.done and 0.55 or 1)
     r.name:SetText(part.text)
+    if part.minLevel then
+        local mine = UnitLevel and UnitLevel("player")
+        local range = part.maxLevel and part.maxLevel ~= part.minLevel and (part.minLevel .. "-" .. part.maxLevel)
+            or tostring(part.minLevel)
+        local c = part.done and S.FAINT or S.LevelColor(part.minLevel, mine)
+        r.lvl:SetText(S.Hex(c) .. L.LEVEL_RANGE:format(range) .. "|r")
+    else
+        r.lvl:SetText("")
+    end
     local c = part.done and S.MUTED or S.TEXT
     r.name:SetTextColor(c[1], c[2], c[3], 1)
     if part.total then
@@ -369,7 +387,8 @@ local function fillPart(r, part)
     else
         r.count:SetText(part.done and (S.Hex(S.GOOD) .. L.DONE .. "|r") or "")
     end
-    r.sub:SetText(#part.left > 0 and L.LEFT_N:format(table.concat(part.left, ", ")) or "")
+    r.sub:SetText(#part.left > 0 and L.LEFT_N:format(table.concat(part.left, ", "))
+        or part.whole and L.WHOLE_PART or "")
 end
 
 local function buildDetail(p)
@@ -402,7 +421,7 @@ local function buildDetail(p)
     d.sub:SetPoint("RIGHT", d.helper, "LEFT", -12, 0)
     d.sub:SetWordWrap(false)
 
-    -- Left: how to do it, then the Wowhead link to copy.
+    -- Left: how to do it.
     d.how = S.Card(p, L.HOW)
     d.how:SetPoint("TOPLEFT", d.head, "BOTTOMLEFT", 0, -S.GAP)
     d.how:SetPoint("BOTTOMRIGHT", p, "BOTTOM", -S.GAP / 2, 0)
@@ -412,17 +431,38 @@ local function buildDetail(p)
     d.desc:SetPoint("RIGHT", 0, 0)
     d.desc:SetJustifyH("LEFT")
     d.desc:SetWordWrap(true)
-    d.lines = {}
-    local prev = d.desc
-    for i = 1, GUIDE_LINES do
-        local t = S.Text(body, 12, S.MUTED)
-        t:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -8)
-        t:SetPoint("RIGHT", 0, 0)
-        t:SetJustifyH("LEFT")
-        t:SetWordWrap(true)
-        d.lines[i] = t
-        prev = t
+    -- The steps: a raised block each, with its number on an accent disc.
+    d.steps = {}
+    for i = 1, GUIDE_STEPS do
+        local b = CreateFrame("Frame", nil, body)
+        S.Box(b, S.RAISED, S.EDGE, S.R_MD)
+        b.disc = S.Circle(b, 20, S.Accent(), "ARTWORK")
+        b.disc:SetPoint("TOPLEFT", 8, -7)
+        b.num = S.Text(b, 11, S.BG)
+        b.num:SetPoint("CENTER", b.disc, "CENTER", 0, 0)
+        b.num:SetText(tostring(i))
+        b.text = S.Text(b, 12, S.TEXT)
+        b.text:SetJustifyH("LEFT")
+        b.text:SetWordWrap(true)
+        d.steps[i] = b
     end
+    -- The notes under them: the level needed first and the time, each with its icon.
+    d.notes = {}
+    for i = 1, GUIDE_NOTES do
+        local n = CreateFrame("Frame", nil, body)
+        n.icon = S.IconBox(n, 18)
+        n.icon:SetPoint("TOPLEFT", 0, 0)
+        n.text = S.Text(n, 11, S.MUTED)
+        n.text:SetPoint("TOPLEFT", n.icon, "TOPRIGHT", 8, -2)
+        n.text:SetJustifyH("LEFT")
+        n.text:SetWordWrap(true)
+        d.notes[i] = n
+    end
+    -- Right: what is left, part by part, and under it the Wowhead link to copy.
+    d.left = S.Card(p, L.WHAT_LEFT, "")
+    d.left:SetPoint("TOPLEFT", d.head, "BOTTOM", S.GAP / 2, -S.GAP)
+    d.left:SetPoint("BOTTOMRIGHT")
+    body = d.left.body
     d.url = S.Edit(body, 200, 28)
     d.url:SetPoint("BOTTOMLEFT", 0, 0)
     d.url:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -443,19 +483,70 @@ local function buildDetail(p)
     d.urlTitle:SetPoint("BOTTOMLEFT", d.urlHint, "TOPLEFT", 0, 4)
     d.urlTitle:SetText(L.WOWHEAD)
 
-    -- Right: what is left, part by part.
-    d.left = S.Card(p, L.WHAT_LEFT, "")
-    d.left:SetPoint("TOPLEFT", d.head, "BOTTOM", S.GAP / 2, -S.GAP)
-    d.left:SetPoint("BOTTOMRIGHT")
-    partList = S.List(d.left.body, 40, makePart, fillPart)
+    partList = S.List(body, 40, makePart, fillPart)
     partList:SetPoint("TOPLEFT")
-    partList:SetPoint("BOTTOMRIGHT", -10, 0)
+    partList:SetPoint("RIGHT", -10, 0)
+    partList:SetPoint("BOTTOM", d.urlTitle, "TOP", 0, 10)
     partEmpty = S.Empty(d.left.body)
     return d
 end
 
 local function stepOf(id)
     for _, s in ipairs((ns.Steps())) do if s.ch.id == id then return s end end
+end
+
+local function height(t, fallback)
+    return tonumber((t:GetStringHeight())) or fallback
+end
+
+-- Lays the step blocks and notes out from the top; the text widths are set by hand, so the
+-- heights are known before the frame is drawn.
+layoutGuide = function(d, ch, step)
+    local body = d.how.body
+    local w = tonumber((body:GetWidth())) or 0
+    if w < 100 then w = 380 end
+    local steps, _, notes = ns.Guide(ch, step)
+    if ch.done then steps = {} end
+    local y = ch.desc and -(height(d.desc, 14) + 10) or 0
+    local numbered = #steps > 1
+    for i, b in ipairs(d.steps) do
+        local text = steps[i]
+        b:SetShown(text ~= nil)
+        if text then
+            b.disc:SetShown(numbered)
+            b.num:SetShown(numbered)
+            local left = numbered and 36 or 10
+            b.text:ClearAllPoints()
+            b.text:SetPoint("TOPLEFT", left, -9)
+            b.text:SetWidth(w - left - 10)
+            b.text:SetText(text)
+            local h = math.max(height(b.text, 14) + 18, 34)
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", body, "TOPLEFT", 0, y)
+            b:SetPoint("RIGHT", body, "RIGHT", 0, 0)
+            b:SetHeight(h)
+            y = y - h - 6
+        end
+    end
+    y = y - 4
+    for i, n in ipairs(d.notes) do
+        local text = notes and notes[i]
+        n:SetShown(text ~= nil)
+        if text then
+            local first = step and step.needLevel and i == 1 and #notes > 1
+            n.icon:SetIcon(first and LEVEL_ICON or TIME_ICON)
+            n.text:SetWidth(w - 26)
+            n.text:SetText(text)
+            local c = first and S.WARN or S.TIME
+            n.text:SetTextColor(c[1], c[2], c[3], 1)
+            local h = math.max(height(n.text, 12) + 4, 20)
+            n:ClearAllPoints()
+            n:SetPoint("TOPLEFT", body, "TOPLEFT", 0, y)
+            n:SetPoint("RIGHT", body, "RIGHT", 0, 0)
+            n:SetHeight(h)
+            y = y - h - 4
+        end
+    end
 end
 
 local function fillDetail()
@@ -475,19 +566,7 @@ local function fillDetail()
     paintHelper(d.helper, step)
     d.desc:SetText(ch.desc or "")
     d.desc:SetShown(ch.desc ~= nil)
-    d.lines[1]:ClearAllPoints()
-    if ch.desc then d.lines[1]:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -8)
-    else d.lines[1]:SetPoint("TOPLEFT", d.how.body, "TOPLEFT", 0, 0) end
-    d.lines[1]:SetPoint("RIGHT", d.how.body, "RIGHT", 0, 0)
-    local lines, kind = ns.Guide(ch, step)
-    for i, t in ipairs(d.lines) do
-        local text = lines[i]
-        if text and kind == "valthalak" and i <= 4 and not ch.done then
-            text = S.Hex(S.Accent()) .. i .. ".|r " .. text
-        end
-        t:SetText(text or "")
-        t:SetShown(text ~= nil)
-    end
+    layoutGuide(d, ch, step)
     d.url.link = ns.WowheadURL(ch)
     d.url:SetText(d.url.link)
     d.url:SetCursorPosition(0)

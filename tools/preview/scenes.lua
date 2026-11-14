@@ -658,6 +658,38 @@ S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = 
     explore = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70040) end },
     detail = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70010) end } }
 for _, sc in pairs(S.legacy) do sc.spec = lgSpec() end
+-- Explore Azeroth with zones of every level, and Lord Valthalak for a level 37 character.
+local function lgWorld(spec)
+    spec.cats[7].achs = { 80000, 80010 }
+    spec.ach[80010] = { name = "Lord Valthalak Laid to Rest", points = 1, crit = {}, icon = "Interface\\Icons\\INV_Jewelry_Amulet_07" }
+    spec.ach[80000] = { name = "Explorer", points = 1, crit = { { "Explore Eastern Kingdoms", 8, false, 0, 1, 80001 } } }
+    local zones = { { "Redridge Mountains", 15, 25, 11, 0 }, { "Silverpine Forest", 10, 20, 15, 11 }, { "Stranglethorn Vale", 30, 45, 27, 2 },
+        { "Swamp of Sorrows", 35, 45, 11, 0 }, { "Searing Gorge", 43, 50, 7, 0 }, { "Western Plaguelands", 51, 58, 13, 0 },
+        { "Tirisfal Glades", 1, 10, 16, 16 } }
+    local crit, levels = {}, {}
+    for i, z in ipairs(zones) do
+        local id = 80100 + i
+        local c = {}
+        for j = 1, z[4] do c[j] = { z[1] .. " area " .. j, 0, j <= z[5] } end
+        spec.ach[id] = { name = "Explore " .. z[1], points = 0, done = z[5] == z[4], crit = c }
+        crit[i] = { "Explore " .. z[1], 8, z[5] == z[4], 0, 1, id }
+        levels[i] = { mapID = i, name = z[1], lo = z[2], hi = z[3] }
+    end
+    spec.ach[80001] = { name = "Explore Eastern Kingdoms", points = 0, crit = crit }
+    return levels
+end
+local function lgExplore(id)
+    local spec = lgSpec()
+    local levels = lgWorld(spec)
+    return { spec = spec, open = function(ns)
+        C_Map = { GetMapChildrenInfo = function(root) return root == 947 and levels or {} end,
+                  GetMapLevels = function(m) return levels[m].lo, levels[m].hi end }
+        lgOpen()(ns)
+        ns.ShowDetail(id)
+    end }
+end
+S.legacy.zones = lgExplore(80000)
+S.legacy.valthalak = lgExplore(80010)
 -- The settings pages with the Lock switch of their frame on the screen.
 S.bulletin.setup = { spec = S.bulletin.default.spec, open = function(ns) ns.ShowTab(7) end }
 S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
