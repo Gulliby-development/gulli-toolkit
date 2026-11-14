@@ -12,6 +12,7 @@ local calcBtn, buyBtn, skipBtn, refreshBtn
 local tabs, pages, histStats, histList, histEmpty, periodTabs = nil, {}, nil, nil, nil, nil
 local CRATE_ROW, PLAN_ROW, HIST_ROW, CRATE_ROWS_MAX = 32, 30, 38, 4
 local tab, period = 1, "all"
+local stale
 
 -- "Waylaid Crate: Flowering Expert Herbs" -> "Flowering Expert Herbs"
 function ns.ShortName(name)
@@ -204,6 +205,11 @@ function ns.Refresh()
     calcBtn:SetShown(onFill)
     if not onFill then skipBtn:Hide(); refreshHistory(); return end
     local crates = ns.Crates()
+    local hours = not ns.staleClosed and ns.HasAuctionator() and #crates > 0 and ns.StaleHours()
+    stale:SetShown(hours and true or false)
+    if hours then stale:Set(L.STALE:format(hours)) end
+    crateCard:SetPoint("TOPLEFT", 0, hours and -(S.BANNER_H + S.GAP) or 0)
+    crateCard:SetPoint("TOPRIGHT", 0, hours and -(S.BANNER_H + S.GAP) or 0)
     crateList:SetData(crates)
     crateEmpty:SetShown(#crates == 0)
     local n = math.max(1, math.min(CRATE_ROWS_MAX, #crates))
@@ -318,6 +324,10 @@ local function build()
     histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
 
     local body = pages[1]
+    stale = S.Banner(body, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+    stale:SetPoint("TOPLEFT")
+    stale:SetPoint("TOPRIGHT")
+    stale.onClose = function() ns.staleClosed = true; ns.Refresh() end
     crateCard = S.Card(body, L.CRATES, "", "Interface\\Icons\\INV_Crate_01")
     crateCard:SetPoint("TOPLEFT")
     crateCard:SetPoint("TOPRIGHT")

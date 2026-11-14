@@ -10,7 +10,7 @@
 ## Notes-zhCN: 用背包、银行和拍卖行找出装满每个遗失货箱的最便宜方式，并买下缺少的物品。 /gcr
 ## Notes-zhTW: 用背包、银行和拍卖行找出装满每个遗失货箱的最便宜方式，并买下缺少的物品。 /gcr
 ## Author: Gulliby
-## Version: 1.1.1
+## Version: 1.2.0
 ## IconTexture: Interface\AddOns\Gulli-Crates\icon
 ## OptionalDeps: Gulli-Toolkit, Auctionator
 ## X-Gulli-Module: Crates

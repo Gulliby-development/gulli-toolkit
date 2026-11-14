@@ -751,6 +751,10 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.Refresh()
     end }, plan = { spec = crSpec(), open = crOpen(false) },
     ru = { spec = crSpec("ruRU"), open = crOpen(true) },
+    stale = { spec = (function() local sp = crSpec(); sp.now = 1000000; return sp end)(), open = function(ns, W)
+        Auctionator.SavedState = { TimeOfLastReplicateScan = W.now - 6 * 3600 }
+        crOpen(false)(ns, W)
+    end },
     history = { spec = (function()
         local sp = crSpec()
         sp.db = { history = {

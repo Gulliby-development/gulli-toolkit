@@ -74,6 +74,47 @@ function ns.AuctionPrice(id)
     return price
 end
 
+-- How old Auctionator's prices are, in seconds, or nil when it cannot tell. Its saved state keeps
+-- when the last scans ran (time() seconds); without them, the age in days of the bundle items'
+-- prices (API v1) tells at least a day.
+ns.STALE_HOURS = 4
+local SCAN_FIELDS = { "TimeOfLastReplicateScan", "TimeOfLastGetAllScan", "TimeOfLastBrowseScan" }
+function ns.PriceAge(items)
+    local newest
+    local saved = { Auctionator and Auctionator.SavedState or false, AUCTIONATOR_SAVEDVARS or false }
+    for _, t in ipairs(saved) do
+        if type(t) == "table" then
+            for _, k in ipairs(SCAN_FIELDS) do
+                local v = tonumber(t[k])
+                if v and v > 0 and (not newest or v > newest) then newest = v end
+            end
+        end
+    end
+    if newest then return math.max(0, time() - newest) end
+    local api = auctionator()
+    if not api or not api.GetAuctionAgeByItemID then return nil end
+    local days
+    for _, id in ipairs(items or {}) do
+        local ok, d = pcall(api.GetAuctionAgeByItemID, CALLER, id)
+        if ok and type(d) == "number" and (not days or d < days) then days = d end
+    end
+    if days and days >= 1 then return days * 86400 end
+    return nil
+end
+
+-- Hours the prices are old when that is more than ns.STALE_HOURS, else nil.
+function ns.StaleHours()
+    local items, seen = {}, {}
+    for _, c in ipairs(ns.Crates()) do
+        for _, b in ipairs(ns.Bundles(c.id) or {}) do
+            if not seen[b[1]] then seen[b[1]] = true; items[#items + 1] = b[1] end
+        end
+    end
+    local age = ns.PriceAge(items)
+    if age and age > ns.STALE_HOURS * 3600 then return math.floor(age / 3600) end
+    return nil
+end
+
 -- ---------- the crates and their bundles ----------
 
 -- Every item the table knows as a bundle item, by its name in the client's language, so a
@@ -678,6 +719,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if ns.paused then return end
     if event == "AUCTION_HOUSE_SHOW" then
         ns.atAH = true
+        ns.staleClosed = false -- the price warning shows again on each visit
         ns.ClearCache()
         -- what was bought on an earlier visit is in the bags now: plan anew, so it is not offered again
         if #ns.Picks() > 0 and ns.buy.phase ~= "quote" and ns.buy.phase ~= "buying" then ns.Calculate() end
