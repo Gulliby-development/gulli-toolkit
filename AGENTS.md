@@ -154,6 +154,8 @@ Each one loads `Locales.lua`, `Core.lua`, `Skin.lua`, `UI.lua` (DungeonPrep adds
 
 After each release, the `bundle` job (`.github/workflows/bundle.yml`, `tools/bundle/build_bundle.py`) rebuilds `Gulli-Toolkit-All.zip` from the newest published release of every tag group and puts it on the fixed pre-release `bundle`. It stays a pre-release with a `release.json` that names no Forever build, so the index and the app never take it for the core. A new module needs nothing there: every `<Name>-v` group is picked up, so its first release puts it in the zip. The job warns about a `Gulli-*` folder that has no release yet; after adding a module, run its Release and check that the bundle's notes list it. Run **All-in-one zip** from the Actions tab to rebuild it by hand.
 
+Two scheduled jobs keep this honest. **Release health** (`release-health.yml`, every night after the index run) runs `tools/health/releases.py`: a version bumped on main and not released after a day, a release missing from the all-in-one zip, or one the index does not show after 30 hours opens (or updates) the one issue labelled `release-health`, which closes itself when all is well again. **Game data** (`data.yml`, Mondays) runs every `Data.lua` generator on the newest QuestieDB and Skillet-Classic and the Attune check; when a file changed it opens a pull request (and runs CI on it, since a pull request opened by Actions starts none), else it stays quiet. Such a pull request still needs the version bumps of the changed modules before it is merged. A new generator goes into `data.yml` too.
+
 Never tag the core with a plain `v<version>`: the core is `Core-v…`. A tag prefix such as `release-` or `beta-` is not a module (`NOT_MODULES` in the index and the app).
 
 The owner asks for a release after every merged bug fix and after each batch of features: bump the version and run the workflow once the pull request is merged with green CI. Runeloader shows the new version after the next nightly index run. Installing the core in Runeloader installs every module.
@@ -186,7 +188,10 @@ The tag names, asset names and `release.json` are what Runeloader and its index 
 - `tools/skin/sync.sh`: copies `Gulli-Toolkit/Skin.lua` and `Gulli-Toolkit/Media/` into every module; `tools/skin/media.py` draws the shapes in `Media/`.
 - `tools/junk/sync.sh`: copies `Gulli-Merchant/Junk.lua` into `Gulli-BagSpace`.
 - `tools/preview/`: the window previews without the game (`frames.lua` fake frames, `scenes.lua` sample data, `shoot.lua`, `dock.lua` a module inside the hub, `shoot.js`, `icons.sh`).
-- `.github/workflows/`: CI (`ci.yml`), releases (`release.yml`) and the all-in-one zip (`bundle.yml`).
+- `tools/apicheck/check.py`, `tools/apicheck/allow.txt`: the client API check (see [Verification](#verification)). `tools/lint/luacheck.py`: luacheck with only the warnings that are bugs.
+- `tools/health/releases.py`: is every version on main released, in the all-in-one zip and in the index.
+- `.github/workflows/`: CI (`ci.yml`), releases (`release.yml`), the all-in-one zip (`bundle.yml`), the weekly game data (`data.yml`) and the nightly release health (`release-health.yml`).
+- `.github/ISSUE_TEMPLATE/bug.yml`: the bug form; it asks for the text of `/gulli errors`.
 
 ## Verification
 

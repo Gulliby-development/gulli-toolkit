@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:   # the weekly game data job runs CI on its branch this way
 
 permissions:
   contents: read
