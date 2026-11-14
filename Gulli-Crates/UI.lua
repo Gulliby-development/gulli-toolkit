@@ -1,14 +1,17 @@
--- The window, narrow: the crates in the bags to tick, the cheapest way to fill each one (bags,
--- bank, what to buy), and the two switches. Calculate and Buy are in the footer. At the auction
--- house it opens beside the auction window.
+-- The window, narrow, with two tabs. Fill: the crates in the bags to tick, the cheapest way to
+-- fill each one (bags, bank, what to buy), and the two switches; Calculate and Buy are in the
+-- footer. History: the crates filled, with what the auction house got for them. A round button
+-- in the header looks at the bags again. At the auction house it opens beside the auction window.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
 local frame, crateCard, crateList, crateEmpty, planCard, planList, planEmpty, setCard
-local calcBtn, buyBtn, skipBtn
-local CRATE_ROW, PLAN_ROW, CRATE_ROWS_MAX = 32, 30, 4
+local calcBtn, buyBtn, skipBtn, refreshBtn
+local tabs, pages, histStats, histList, histEmpty, periodTabs = nil, {}, nil, nil, nil, nil
+local CRATE_ROW, PLAN_ROW, HIST_ROW, CRATE_ROWS_MAX = 32, 30, 38, 4
+local tab, period = 1, "all"
 
 -- "Waylaid Crate: Flowering Expert Herbs" -> "Flowering Expert Herbs"
 function ns.ShortName(name)
@@ -122,6 +125,39 @@ function ns.PlanRows(plan)
     return rows
 end
 
+-- ---------- history rows ----------
+
+local function makeHistRow(r)
+    r.icon = S.ItemIcon(r, 26)
+    r.icon:SetPoint("LEFT", 0, 0)
+    r.value = S.Text(r, 12)
+    r.value:SetPoint("TOPRIGHT", -4, -4)
+    r.value:SetJustifyH("RIGHT")
+    r.sub = S.Text(r, 10, S.FAINT)
+    r.sub:SetPoint("BOTTOMRIGHT", -4, 4)
+    r.sub:SetJustifyH("RIGHT")
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 2)
+    r.name:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
+    r.name:SetWordWrap(false)
+    r.note = S.Text(r, 11, S.MUTED)
+    r.note:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -2)
+    r.note:SetPoint("RIGHT", r.sub, "LEFT", -8, 0)
+    r.note:SetWordWrap(false)
+end
+
+local fmtDate = date or (os and os.date)
+local function fillHistRow(r, e)
+    r.icon:Set(ns.ItemIcon(e.crate), nil, 1)
+    r.name:SetText(ns.ShortName(ns.ItemName(e.crate) or ("item:" .. e.crate)))
+    local note = itemLine(e.item, e.n)
+    if e.bought and e.bought > 0 and e.bought < e.n then note = note .. S.DOT .. L.HIST_BOUGHT:format(e.bought) end
+    r.note:SetText(note)
+    if (e.paid or 0) > 0 then r.value:SetText(S.MoneyText(e.paid))
+    else r.value:SetText(S.Hex(S.GOOD) .. L.FROM_STOCK .. "|r") end
+    r.sub:SetText((fmtDate and fmtDate(L.DATE, e.at) or "") .. (e.who and (S.DOT .. e.who) or ""))
+end
+
 -- ---------- refresh ----------
 
 local function buyText()
@@ -134,8 +170,22 @@ local function buyText()
     return L.BUY_ASK
 end
 
+local function refreshHistory()
+    local list, sum = ns.History(period)
+    histList:SetData(list)
+    histEmpty:SetShown(#list == 0)
+    histStats.tiles[1]:Set(tostring(sum.count))
+    histStats.tiles[2]:Set(S.MoneyText(sum.spent, true))
+    histStats.tiles[3]:Set(S.MoneyText(sum.avg, true))
+    frame.footer:SetStatus("")
+end
+
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
+    local onFill = tab == 1
+    buyBtn:SetShown(onFill)
+    calcBtn:SetShown(onFill)
+    if not onFill then skipBtn:Hide(); refreshHistory(); return end
     local crates = ns.Crates()
     crateList:SetData(crates)
     crateEmpty:SetShown(#crates == 0)
@@ -166,7 +216,7 @@ function ns.Refresh()
     elseif b.err then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L[b.err], S.BAD
     elseif b.phase == "ready" and ns.Dear() then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L.DEAR, S.WARN
     elseif b.phase ~= "idle" or b.i > 1 then
-        status = itemLine(ns.Current().id, ns.Current().n) .. S.DOT .. b.i .. "/" .. #queue
+        status = b.i .. " / " .. #queue -- the line being bought is lit in the list
     else
         local total = 0
         for _, line in ipairs(queue) do total = total + line.cost end
@@ -198,7 +248,59 @@ local function build()
     skipBtn:SetText(L.SKIP)
     skipBtn:SetScript("OnClick", function() ns.Skip() end)
 
-    local body = frame.body
+    refreshBtn = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
+    S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
+    refreshBtn.btnIcon:ClearAllPoints()
+    refreshBtn.btnIcon:SetPoint("CENTER")
+    refreshBtn:SetScript("OnClick", function() ns.Recheck() end)
+    refreshBtn:HookScript("OnEnter", function(self)
+        if GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(L.REFRESH)
+            GameTooltip:AddLine(L.REFRESH_TIP, 1, 1, 1, true)
+            GameTooltip:Show()
+        end
+    end)
+    refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
+    tabs = S.Tabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY }, nil, function(i)
+        tab = i
+        for j, p in ipairs(pages) do p:SetShown(j == i) end
+        ns.Refresh()
+    end, nil, { "Interface\\Icons\\INV_Crate_01", S.TAB.recent })
+    for i = 1, 2 do
+        local p = CreateFrame("Frame", nil, frame.body)
+        p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+        p:SetPoint("BOTTOMRIGHT")
+        p:SetShown(i == 1)
+        pages[i] = p
+    end
+
+    -- History
+    local hp = pages[2]
+    local st = S.Stack(hp)
+    periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
+        period = ns.PERIODS[i]
+        ns.Refresh()
+    end, 28)
+    periodTabs:Select(3, true)
+    periodTabs.frame:ClearAllPoints()
+    periodTabs.frame:SetPoint("TOPLEFT")
+    st:Space(28 + S.GAP)
+    histStats = S.StatRow(hp, { L.ST_COUNT, L.ST_SPENT, L.ST_AVG }, 62,
+        { "Interface\\Icons\\INV_Crate_01", "Interface\\Minimap\\Tracking\\Auctioneer", "Interface\\Icons\\INV_Misc_Coin_01" })
+    st:Add(histStats, 62)
+    histStats:Layout(frame.inner[1])
+    local histCard = S.Card(hp, L.HISTORY, "", S.TAB.recent)
+    histCard:SetPoint("TOPLEFT", 0, -st.y)
+    histCard:SetPoint("BOTTOMRIGHT")
+    histList = S.List(histCard.body, HIST_ROW, makeHistRow, fillHistRow)
+    histList:SetPoint("TOPLEFT")
+    histList:SetPoint("BOTTOMRIGHT", -10, 0)
+    histEmpty = S.Empty(histList)
+    histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
+
+    local body = pages[1]
     crateCard = S.Card(body, L.CRATES, "", "Interface\\Icons\\INV_Crate_01")
     crateCard:SetPoint("TOPLEFT")
     crateCard:SetPoint("TOPRIGHT")
@@ -235,6 +337,12 @@ end
 
 function ns.Toggle()
     S.ToggleWindow(ns.Window())
+end
+
+-- Opens a tab: 1 fill, 2 history.
+function ns.ShowTab(i)
+    ns.Window()
+    tabs:Select(i)
 end
 
 -- The window, for the hub (/gulli) to show inside it.

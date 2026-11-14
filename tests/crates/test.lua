@@ -246,6 +246,134 @@ test("a paused module does nothing at the auction house", function()
     assert(not ns.atAH and not ns.Window():IsShown())
 end)
 
+test("a filled crate goes into the history: crate and bundle leave the bags together", function()
+    Fake({ bags = { [FLOWER] = 2, [WB] = 10, [PL] = 20 }, names = names(), prices = { [WB] = 300 } })
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    W.bags[FLOWER], W.bags[WB] = 1, nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 1)
+    local e = ns.db.history[1]
+    eq(e.crate, FLOWER); eq(e.item, WB); eq(e.n, 10)
+    eq(e.paid, 0, "all from the stock")
+    eq(e.worth, 3000)
+    eq(e.who, "Tester")
+end)
+
+test("the crate and its items may leave in separate bag updates, either first", function()
+    Fake({ bags = { [FLOWER] = 2, [WB] = 10, [PL] = 20 }, names = names() })
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    W.bags[FLOWER] = 1
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 0, "the crate alone is not yet a fill")
+    W.bags[WB] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 1, "crate first")
+    W.bags[PL] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.bags[FLOWER] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 2, "items first")
+    eq(ns.db.history[1].item, PL)
+end)
+
+test("a crate that leaves the bags alone is not a fill", function()
+    Fake({ bags = { [FLOWER] = 1, [WB] = 10 }, names = names() })
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    W.bags[FLOWER] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.now = W.now + 10
+    W.bags[WB] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 0)
+    W.bags = { [FLOWER] = 1, [WB] = 10 }
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.bags[WB] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.now = W.now + 10
+    W.bags[FLOWER] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(#ns.db.history, 0, "items that left long before do not make a fill")
+end)
+
+test("the history knows what the auction house got for a crate", function()
+    Fake({ bags = { [FLOWER] = 1, [WB] = 4 }, names = names(), prices = { [WB] = 300, [FB] = 900, [PL] = 900, [AT] = 900 } })
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Calculate()
+    eq(ns.Current().n, 6)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PRICE_UPDATED", 320, 1920)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    W.bags[WB] = 10
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.bags[FLOWER], W.bags[WB] = nil, nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    local e = ns.db.history[1]
+    eq(e.paid, 1920); eq(e.bought, 6)
+    eq(ns.TakeLots(WB, 5), 0, "the lot is used up")
+end)
+
+test("the history filters by period and adds up", function()
+    Fake({ names = names(), db = { history = {
+        { at = 100000 - 3600, crate = FLOWER, item = WB, n = 10, paid = 3000 },
+        { at = 100000 - 3 * 86400, crate = FLOWER, item = WB, n = 10, paid = 1000 },
+        { at = 100000 - 30 * 86400, crate = FLOWER, item = PL, n = 20, paid = 0 } } } })
+    local ns = Load()
+    local list, sum = ns.History("day")
+    eq(#list, 1); eq(sum.spent, 3000)
+    list, sum = ns.History("week")
+    eq(#list, 2); eq(sum.avg, 2000)
+    list, sum = ns.History("all")
+    eq(sum.count, 3); eq(sum.spent, 4000)
+end)
+
+test("an old plan goes when no crate is left, or all is bought and the auction house closed", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names(), prices = { [WB] = 300 } })
+    local ns = Load()
+    ns.Calculate()
+    W.bags[FLOWER] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(ns.plan, nil, "no crate")
+    W.bags[FLOWER] = 1
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Calculate()
+    ns.BuyClick()
+    W.Fire("COMMODITY_PRICE_UPDATED", 300, 3000)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    W.Fire("BAG_UPDATE_DELAYED")
+    assert(ns.plan ~= nil, "kept while at the auction house")
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    eq(ns.plan, nil, "all bought")
+end)
+
+test("the refresh button plans anew, or clears the plan without crates", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names(), prices = { [WB] = 300 } })
+    local ns = Load()
+    ns.Recheck()
+    assert(ns.plan and #ns.plan.crates == 1, "planned")
+    W.bags[248682] = 1
+    ns.Recheck()
+    eq(#ns.plan.crates, 2, "the new crate counts")
+    W.bags = {}
+    ns.Recheck()
+    eq(ns.plan, nil)
+end)
+
+test("the history tab draws without errors", function()
+    Fake({ names = names(), db = { history = { { at = 99000, crate = FLOWER, item = WB, n = 10, paid = 3000, bought = 6, who = "Tester" } } } })
+    local ns = Load()
+    ns.Window():Show()
+    ns.ShowTab(2)
+    ns.Refresh()
+    ns.ShowTab(1)
+end)
+
 test("the window draws a plan without errors", function()
     Fake({ bags = { [FLOWER] = 2, [WB] = 3 }, bank = { [WB] = 4 }, names = names(), prices = { [WB] = 300, [FB] = 1000 } })
     local ns = Load()

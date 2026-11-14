@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
-<p align="center"><img src="window.jpg" alt="The window" width="560"></p>
+<p align="center"><img src="window.jpg" alt="The window" width="380"> <img src="history.jpg" alt="The History tab" width="380"></p>
 
 ---
 
@@ -25,6 +25,8 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 - **Several crates at once.** Your stock is shared fairly: a stack that fills one crate is not split over two.
 - **Buy what is missing.** Press **Buy** to go through the list. For each line, the first press asks the auction house for the real price and shows it on the button. The second press buys.
 - **No surprises.** If the real price is much higher than Auctionator's, the line turns orange. Press **Skip** to leave a line out.
+- **History.** The History tab lists every crate you filled: which bundle, when, and what you paid at the auction house for it. Filter by today, 7 days or all, with the totals on top.
+- **Refresh.** The round arrow at the top looks at your bags again and calculates anew. When no crate is left, or all is bought and you left the auction house, the old plan is cleared by itself.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 
 ## Install

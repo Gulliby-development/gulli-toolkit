@@ -729,5 +729,18 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.buy.phase, ns.buy.spent = "done", 3760
         ns.Refresh()
     end }, plan = { spec = crSpec(), open = crOpen(false) },
-    ru = { spec = crSpec("ruRU"), open = crOpen(true) } }
+    ru = { spec = crSpec("ruRU"), open = crOpen(true) },
+    history = { spec = (function()
+        local sp = crSpec()
+        sp.db = { history = {
+            { at = 99600, crate = 248691, item = 3819, n = 10, paid = 1920, bought = 6, who = "Gulliby" },
+            { at = 99000, crate = 248682, item = 2447, n = 20, paid = 700, bought = 20, who = "Gulliby" },
+            { at = 60000, crate = 248692, item = 2776, n = 10, paid = 0, bought = 0, who = "Tinkerbolt" },
+            { at = 10000, crate = 248691, item = 8831, n = 20, paid = 37800, bought = 20, who = "Gulliby" } } }
+        return sp
+    end)(), open = function(ns, W)
+        crIcons(W)
+        ns.Window():Show()
+        ns.ShowTab(2)
+    end } }
 return S
