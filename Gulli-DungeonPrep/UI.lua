@@ -18,6 +18,23 @@ local CHECK_ICON = { REPAIR = "Trade_BlackSmithing", BAGS = "INV_Misc_Bag_10", F
                      SHARDS = "INV_Misc_Gem_Amethyst_02", REAGENT = "INV_Misc_Dust_02", RESTOCK = "INV_Misc_Bag_08" }
 local MAX_CHECKS, CHECK_ROW = 8, 34
 local REWARD_ICONS = 3
+local OBJ_MAX = 5
+local TI = "Interface\\Icons\\"
+-- One icon per action; every map pin (start, turn-in, entrance) shares the map.
+local ACT_ICON = { map = TI .. "INV_Misc_Map_01", track = TI .. "Ability_Hunter_Pathfinding", share = S.TAB.group,
+                   hide = TI .. "Ability_Stealth", later = TI .. "INV_Misc_PocketWatch_01" }
+local WAIT_ICON = "Interface\\RaidFrame\\ReadyCheck-Waiting"
+
+-- A button with a game icon before its text, as wide as both need.
+local function iconButton(parent, icon, height)
+    local b = S.Button(parent, 110, height or 30)
+    S.SetButtonIcon(b, icon)
+    return b
+end
+local function fitIcon(b, text, min)
+    b:SetText(text)
+    b:SetWidth(math.max(min or 96, math.floor((b.text:GetStringWidth() or 0) + 42)))
+end
 
 local function makeDungeon(r)
     S.NavRow(r)
@@ -406,16 +423,16 @@ local function buildDetail(parent)
     foot:SetPoint("BOTTOMLEFT")
     foot:SetPoint("BOTTOMRIGHT")
     foot:SetHeight(30)
-    d.track = S.Button(foot, 120, 30)
+    d.track = iconButton(foot, ACT_ICON.track)
     d.track:SetPoint("LEFT")
     d.track:SetScript("OnClick", function() if ns.openQuest then ns.Track(ns.openQuest) end end)
-    d.share = S.Button(foot, 120, 30)
-    d.share:SetText(L.SHARE)
+    d.share = iconButton(foot, ACT_ICON.share)
+    fitIcon(d.share, L.SHARE)
     d.share:SetPoint("LEFT", d.track, "RIGHT", 8, 0)
     d.share:SetScript("OnClick", function()
         if ns.openQuest and not ns.Share(ns.openQuest) then print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.NOT_IN_GROUP) end
     end)
-    d.hide = S.Button(foot, 120, 30)
+    d.hide = iconButton(foot, ACT_ICON.hide)
     d.hide:SetPoint("LEFT", d.share, "RIGHT", 8, 0)
     d.hide:SetScript("OnClick", function()
         if ns.openQuest then ns.SetHidden(ns.openQuest, not ns.Hidden(ns.openQuest)) end
@@ -431,40 +448,63 @@ local function buildDetail(parent)
     info:SetPoint("BOTTOMLEFT", foot, "TOPLEFT", 0, S.GAP)
     info:SetPoint("RIGHT", d, "CENTER", 20, 0)
     local b = info.body
+    d.infoBody = b
     d.objLabel = label(b, L.DETAIL_OBJECTIVE)
     d.objLabel:SetPoint("TOPLEFT")
-    d.obj = S.Text(b, 12)
-    d.obj:SetPoint("TOPLEFT", d.objLabel, "BOTTOMLEFT", 0, -4)
-    d.obj:SetPoint("RIGHT", b, "RIGHT")
-    d.obj:SetHeight(62)
-    d.obj:SetJustifyV("TOP")
-    d.obj:SetWordWrap(true)
+    -- One row per objective: its state, the count, then what it asks for.
+    d.objRows = {}
+    for i = 1, OBJ_MAX do
+        local r = {}
+        r.state = b:CreateTexture(nil, "ARTWORK")
+        r.state:SetSize(14, 14)
+        r.state:SetPoint("TOP", i == 1 and d.objLabel or d.objRows[i - 1].text, "BOTTOM", 0, -6)
+        r.state:SetPoint("LEFT", b, "LEFT")
+        r.count = S.Text(b, 12)
+        r.count:SetPoint("LEFT", r.state, "RIGHT", 6, 0)
+        r.count:SetJustifyH("LEFT")
+        r.text = S.Text(b, 12)
+        r.text:SetPoint("TOPLEFT", r.count, "TOPRIGHT", 6, 0)
+        r.text:SetPoint("RIGHT", b, "RIGHT")
+        r.text:SetJustifyH("LEFT")
+        r.text:SetJustifyV("TOP")
+        d.objRows[i] = r
+    end
 
-    local function place(name, title, anchor, gap)
+    -- A place: its label, the giver and zone, then the spot with its map button.
+    local function place(name, title)
         local l = label(b, title)
-        l:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -(gap or 10))
-        local btn = S.FitButton(b, L.SHOW_ON_MAP, 24, 60)
-        btn:SetPoint("TOPRIGHT", b, "TOPRIGHT", 0, 0)
-        btn:SetPoint("TOP", l, "TOP", 0, 4)
         local t = S.Text(b, 12)
-        t:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -4)
+        t:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -5)
         t:SetPoint("RIGHT", b, "RIGHT")
         t:SetWordWrap(false)
-        d[name .. "Label"], d[name], d[name .. "Map"] = l, t, btn
+        local btn = iconButton(b, ACT_ICON.map, 28)
+        fitIcon(btn, L.SHOW_ON_MAP)
+        btn:SetPoint("TOP", t, "BOTTOM", 0, -4)
+        btn:SetPoint("RIGHT", b, "RIGHT")
+        local xy = S.Text(b, 11, S.MUTED)
+        xy:SetPoint("LEFT", t, "LEFT")
+        xy:SetPoint("TOP", btn, "TOP")
+        xy:SetPoint("BOTTOM", btn, "BOTTOM")
+        xy:SetPoint("RIGHT", btn, "LEFT", -8, 0)
+        xy:SetWordWrap(false)
+        d[name .. "Label"], d[name], d[name .. "Map"], d[name .. "XY"] = l, t, btn, xy
         return t
     end
-    place("start", L.DETAIL_START, d.obj, 8)
+    place("start", L.DETAIL_START)
     d.startMap:SetScript("OnClick", function()
         local q = d.q
         if q then ns.PinAt(q.who, q.area, q.x, q.y) end
     end)
-    place("turnin", L.DETAIL_TURNIN, d.start)
+    place("turnin", L.DETAIL_TURNIN)
+    d.turninLabel:SetPoint("TOP", d.startMap, "BOTTOM", 0, -10)
+    d.turninLabel:SetPoint("LEFT", b, "LEFT")
     d.turninMap:SetScript("OnClick", function()
         local t = d.q and d.q.turnin
         if t then ns.PinAt(t.who, t.area, t.x, t.y) end
     end)
     d.need = S.Text(b, 12, S.BAD)
-    d.need:SetPoint("TOPLEFT", d.turnin, "BOTTOMLEFT", 0, -10)
+    d.need:SetPoint("TOP", d.turninMap, "BOTTOM", 0, -10)
+    d.need:SetPoint("LEFT", b, "LEFT")
     d.need:SetPoint("RIGHT", b, "RIGHT")
     d.need:SetWordWrap(false)
     d.rewLabel = label(b, L.DETAIL_REWARDS)
@@ -501,10 +541,11 @@ local function buildDetail(parent)
     return d
 end
 
-local function whereLine(who, area, x, y)
-    local where = ns.Where({ who = who or "", area = area or 0 })
-    if x and x > 0 then where = where .. "  ·  " .. string.format("%.1f, %.1f", x, y) end
-    return where
+local function whereLine(who, area)
+    return ns.Where({ who = who or "", area = area or 0 })
+end
+local function spot(x, y)
+    return (x and x > 0) and string.format("%.1f, %.1f", x, y) or ""
 end
 
 -- Fills the page of ns.openQuest.
@@ -525,22 +566,58 @@ function ns.FillDetail(level)
     d.side:SetShown(SIDE_ICON[q.side] ~= nil)
     if SIDE_ICON[q.side] then d.side:SetIcon(SIDE_ICON[q.side]) end
 
-    local lines = {}
-    for _, o in ipairs(q.objectives) do
-        lines[#lines + 1] = (o.done and (S.Hex(S.GOOD) .. o.text .. "|r")) or o.text
+    local objs, last = q.objectives, nil
+    for i, r in ipairs(d.objRows) do
+        local o = objs[i]
+        local shown = o ~= nil or (i == 1)
+        r.state:SetShown(shown)
+        r.count:SetShown(shown)
+        r.text:SetShown(shown)
+        if shown then
+            o = o or { text = "-" }
+            local have, need, what = o.text:match("^(%d+)%s*/%s*(%d+)%s+(.+)$")
+            if not have then what, have, need = o.text:match("^(.-):%s*(%d+)%s*/%s*(%d+)$") end
+            local done = o.done or (have and tonumber(have) >= tonumber(need))
+            r.state:SetTexture(done and ICON_OK or WAIT_ICON)
+            r.state:SetAlpha((done or have) and 1 or 0.5)
+            r.count:SetWidth(have and 38 or 1)
+            if have then
+                r.count:SetText(have .. "/" .. need)
+                r.count:SetTextColor(unpack(done and S.GOOD or S.WARN))
+                r.text:SetText(what)
+            else
+                r.count:SetText("")
+                r.text:SetText(o.text)
+            end
+            r.text:SetTextColor(unpack(done and S.MUTED or S.TEXT))
+            -- Only the quest's own text (no counts) may run over a few lines.
+            r.text:SetWordWrap(not have)
+            local lines = 1
+            if not have then
+                local w = math.max(100, (d.infoBody:GetWidth() or 0) - 20)
+                lines = math.min(4, math.max(1, math.ceil((r.text:GetStringWidth() or 0) * 1.15 / w)))
+                r.text:SetMaxLines(lines)
+            end
+            r.text:SetHeight(lines * 15)
+            last = r
+        end
     end
-    d.obj:SetText(#lines > 0 and table.concat(lines, "\n") or "-")
+    d.startLabel:ClearAllPoints()
+    d.startLabel:SetPoint("TOP", last.text, "BOTTOM", 0, -10)
+    d.startLabel:SetPoint("LEFT", d.objLabel, "LEFT")
 
     if q.area and q.area > 0 then
-        d.start:SetText(whereLine(q.who, q.area, q.x, q.y))
+        d.start:SetText(whereLine(q.who, q.area))
     elseif q.who ~= "" then
         d.start:SetText(L.FROM_ITEM:format(q.who))
     else
         d.start:SetText(L.INSIDE)
     end
+    d.startXY:SetText(q.area > 0 and spot(q.x, q.y) or "")
     d.startMap:SetEnabled(q.area > 0 and q.x > 0)
     local t = q.turnin
-    d.turnin:SetText(t and whereLine(t.who, t.area, t.x, t.y) or "-")
+    d.turnin:SetText(t and whereLine(t.who, t.area) or "-")
+    d.turninXY:SetText(t and spot(t.x, t.y) or "")
     d.turninMap:SetEnabled(t ~= nil and t.area > 0 and t.x > 0)
 
     local need
@@ -555,7 +632,8 @@ function ns.FillDetail(level)
         d.need:SetText("")
     end
     d.rewLabel:ClearAllPoints()
-    d.rewLabel:SetPoint("TOPLEFT", d.need:GetText() ~= "" and d.need or d.turnin, "BOTTOMLEFT", 0, -12)
+    d.rewLabel:SetPoint("TOP", d.need:GetText() ~= "" and d.need or d.turninMap, "BOTTOM", 0, -12)
+    d.rewLabel:SetPoint("LEFT", d.objLabel, "LEFT")
 
     local rewards = ns.Rewards(q)
     for i, ic in ipairs(d.rewards) do
@@ -578,10 +656,10 @@ function ns.FillDetail(level)
                                                     who = q.who, area = q.area, x = q.x, y = q.y } })
 
     local inLog = q.state == "log"
-    d.track:SetText(inLog and ns.Tracked(q.id) and L.UNTRACK or L.TRACK)
+    fitIcon(d.track, inLog and ns.Tracked(q.id) and L.UNTRACK or L.TRACK)
     d.track:SetEnabled(inLog)
     d.share:SetEnabled(inLog)
-    d.hide:SetText(ns.Hidden(q.id) and L.UNHIDE or L.HIDE)
+    fitIcon(d.hide, ns.Hidden(q.id) and L.UNHIDE or L.HIDE)
     local others = inLog and ns.GroupOn(q.id) or {}
     d.status:SetText(#others > 0 and L.TT_GROUP:format(table.concat(others, ", ")) or "")
 end
@@ -656,7 +734,8 @@ local function build()
     area:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     area:SetPoint("BOTTOMRIGHT")
     tabs = S.Tabs(area, { L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil, { S.TAB.quests, S.TAB.settings })
-    entranceBtn = S.FitButton(area, L.PIN_ENTRANCE, 30, 80)
+    entranceBtn = iconButton(area, ACT_ICON.map)
+    fitIcon(entranceBtn, L.PIN_ENTRANCE, 80)
     entranceBtn:SetPoint("TOPRIGHT")
     entranceBtn:SetScript("OnClick", function()
         for _, d in ipairs(ns.Dungeons(ns.level or 1)) do
@@ -667,13 +746,16 @@ local function build()
         end
     end)
     laterPill = S.Pill(area, 110, 30)
+    S.SetButtonIcon(laterPill, ACT_ICON.later)
     laterPill:SetText(L.HIDE_LATER)
+    laterPill:SetWidth(math.max(96, math.floor((laterPill.text:GetStringWidth() or 0) + 44)))
     laterPill:SetPoint("RIGHT", entranceBtn, "LEFT", -8, 0)
     laterPill:SetScript("OnClick", function() ns.Set("hideLater", not ns.Get("hideLater")) end)
     search = S.Edit(area, 140, 30)
     search:SetJustifyH("LEFT")
     S.Placeholder(search, L.SEARCH)
     search:SetPoint("RIGHT", laterPill, "LEFT", -8, 0)
+    search:SetPoint("LEFT", tabs.frame, "RIGHT", 8, 0)
     search:HookScript("OnTextChanged", function() ns.Refresh() end)
 
     questPage = CreateFrame("Frame", nil, area)

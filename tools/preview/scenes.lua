@@ -471,7 +471,10 @@ local dpItems = setmetatable({ [6893] = { "Workshop Key", 1, 1, "", 13, 0, "Inte
                  "Interface\\Icons\\" .. dpIcons[id % #dpIcons + 1] }
     end })
 local dpSpec = { level = 33, raceID = 6, faction = "Horde", className = "HUNTER", ammo = 320, counts = { [6893] = 1 },
-    items = dpItems, active = { [2841] = true }, party = { { name = "Thorn", quests = { [2841] = true } } },
+    items = dpItems, active = { [2841] = true },
+    objectives = { [2841] = { { text = "0/1 Rig Blueprints", finished = false },
+                              { text = "Thermaplugg's Safe Combination: 1/1", finished = true } } },
+    party = { { name = "Thorn", quests = { [2841] = true } } },
     areas = { [1637] = "Orgrimmar", [33] = "Stranglethorn Vale", [721] = "Gnomeregan", [1497] = "Undercity", [1] = "Dun Morogh" },
     map = { best = 1454, pos = { 0.70, 0.30 },
             maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } },
