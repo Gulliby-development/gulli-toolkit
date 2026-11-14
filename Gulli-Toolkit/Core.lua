@@ -12,7 +12,7 @@ Toolkit.api = 1
 -- Modules we make, shown in the hub even before they are installed.
 ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
              "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
-             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy" }
+             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates" }
 
 -- The hub's categories in sidebar order. A known module has its category here; another module
 -- names one of these keys in Register (category = "Items") or in its TOC (## X-Gulli-Category).
@@ -20,7 +20,7 @@ ns.CATEGORIES = { "Quests", "Group", "Items", "Social", "Info" }
 ns.CATEGORY_OF = {
     QuestCleaner = "Quests", AutoQuest = "Quests", PartyQuests = "Quests",
     GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group",
-    BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items",
+    BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items", Crates = "Items",
     Bulletin = "Social", QuickChat = "Social", Social = "Social",
     XP = "Info", Legacy = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info",
 }
