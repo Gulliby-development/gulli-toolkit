@@ -290,6 +290,22 @@ function ns.Picks(crates)
     return out
 end
 
+-- Ticks or unticks a crate. A plan on screen follows at once, so the player sees the price
+-- change; not while a purchase waits for its answer.
+function ns.SetPicked(id, on)
+    if on then ns.picked[id] = nil else ns.picked[id] = false end
+    local p = ns.buy.phase
+    if ns.plan and p ~= "quote" and p ~= "buying" then
+        if #ns.Picks() > 0 then return ns.Calculate() end
+        ns.plan = nil
+        ns.ResetBuy()
+    end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- The check box of a crate row.
+function ns.TogglePick(id) return ns.SetPicked(id, ns.picked[id] == false) end
+
 function ns.Calculate()
     ns.ClearCache()
     local picks = ns.Picks()
@@ -476,6 +492,42 @@ function ns.TakeLots(id, n)
     return paid, got
 end
 
+-- What the next n units after the first skip ones cost at the auction house, without using them.
+function ns.PeekLots(id, n, skip)
+    local mine = ns.db and ns.db.lots[charKey()]
+    local paid, got, pos = 0, 0, 0
+    for _, lot in ipairs(mine and mine[id] or {}) do
+        local from, to = math.max(pos, skip or 0), math.min(pos + lot[1], (skip or 0) + n)
+        if to > from then
+            paid = paid + math.floor(lot[2] * (to - from) / lot[1] + 0.5)
+            got = got + (to - from)
+        end
+        pos = pos + lot[1]
+    end
+    return paid, got
+end
+
+-- Crates in the bags that the bags (and the bank) already fill, with what the auction house got
+-- for their items: they wait at the top of the History until they are used.
+function ns.Ready()
+    if not ns.db then return {} end
+    local picks = {}
+    for _, c in ipairs(ns.Crates()) do picks[#picks + 1] = { id = c.id, count = c.count } end
+    local plan = ns.Plan(picks, ns.Bundles, ns.Stock, function() return nil end, ns.db.bank)
+    local out, used = {}, {}
+    for _, e in ipairs(plan.crates) do
+        if not e.none then
+            local id, n = e.bundle[1], e.bundle[2]
+            local paid, bought = ns.PeekLots(id, n, used[id])
+            used[id] = (used[id] or 0) + n
+            local bank = 0
+            for _, r in ipairs(e.rows) do bank = bank + r.bank end
+            out[#out + 1] = { ready = true, crate = e.crate, item = id, n = n, paid = paid, bought = bought, bank = bank }
+        end
+    end
+    return out
+end
+
 local snap, pendCrates, pendItems = nil, {}, {}
 
 -- Bag counts of every crate in the bags and of every item their bundles name, and which are crates.
@@ -627,6 +679,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "AUCTION_HOUSE_SHOW" then
         ns.atAH = true
         ns.ClearCache()
+        -- what was bought on an earlier visit is in the bags now: plan anew, so it is not offered again
+        if #ns.Picks() > 0 and ns.buy.phase ~= "quote" and ns.buy.phase ~= "buying" then ns.Calculate() end
         if ns.db.auto and #ns.Crates() > 0 and ns.ShowAtAH then ns.ShowAtAH() end
         if ns.Refresh then ns.Refresh() end
     elseif event == "AUCTION_HOUSE_CLOSED" then
