@@ -297,6 +297,8 @@ local function buildSetup(body, width)
           function(v) ns.db.feed.show = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Scroll_03" },
         { L.OPT_THROUGH, nil, function() return ns.db.feed.through end,
           function(v) ns.db.feed.through = v; if ns.Feed then ns.Feed() end end, icon = I .. "Spell_Nature_Invisibilty" },
+        { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.feed.locked ~= false end,
+          function(v) ns.db.feed.locked = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Misc_Key_04" },
         { L.FEED_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
     })
     st:Add(alerts, h1)
@@ -451,7 +453,9 @@ local function buildFeed()
     feed.title:SetText(L.TITLE)
     feed:SetScript("OnClick", function() ns.Toggle() end)
     S.Mover(feed, { label = L.TITLE, save = function(point, rel, x, y) ns.db.feed.point = { point, rel, x, y } end,
-        reset = function() ns.db.feed.point = nil; placeFeed() end })
+        reset = function() ns.db.feed.point = nil; placeFeed() end,
+        lock = function() ns.db.feed.locked = true; ns.Feed(); if ns.Refresh then ns.Refresh() end end,
+        lockTip = L.OPT_LOCK })
 end
 
 local function feedRow(item)
@@ -471,15 +475,17 @@ end
 function ns.Feed()
     local o = ns.db and ns.db.feed
     if not o then return end
-    if not o.show and not ns.movingFeed then
-        if feed then feed:Hide() end
+    -- Unlocked (its switch or /gulli move), the feed shows even when it is off, to be placed.
+    local moving = ns.movingFeed or o.locked == false
+    if not o.show and not moving then
+        if feed then feed:SetMoving(false); feed:Hide() end
         return
     end
     if not feed then buildFeed() end
     placeFeed()
-    feed:SetAlpha(ns.movingFeed and 1 or (o.alpha or 80) / 100)
-    feed:EnableMouse(ns.movingFeed or not o.through)
-    feed:SetMoving(ns.movingFeed)
+    feed:SetAlpha(moving and 1 or (o.alpha or 80) / 100)
+    feed:EnableMouse(moving or not o.through)
+    feed:SetMoving(moving and not (InCombatLockdown and InCombatLockdown()))
     local items = ns.FeedItems()
     local rows = {}
     for i, item in ipairs(items) do rows[i] = feedRow(item) end

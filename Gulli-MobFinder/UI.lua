@@ -84,7 +84,9 @@ local function buildCard()
     card:SetFrameStrata("HIGH")
     placeCard()
     S.Mover(card, { label = L.TITLE, save = function(p, _, x, y) ns.db.cardPoint = { p, x, y } end,
-        reset = function() ns.db.cardPoint = nil; placeCard() end })
+        reset = function() ns.db.cardPoint = nil; placeCard() end,
+        lock = function() ns.db.cardLocked = true; ns.MoveCard(false); if ns.Refresh then ns.Refresh() end end,
+        lockTip = L.OPT_LOCK })
     card:HookScript("OnHide", function() stopRepeat(); showTarget(false) end)
 
     -- The secure Target button, drawn like S.Primary, with the key on it.
@@ -104,11 +106,13 @@ local function buildCard()
     card.target = t
 end
 
--- The card while /gulli move places it.
+-- The card while /gulli move places it, or while its Lock switch is off.
 function ns.MoveCard(on)
     if not ns.db then return end
+    ns.movingCard = on and true or nil
+    on = on or ns.db.cardLocked == false
     if not card then buildCard() end
-    card:SetMoving(on)
+    card:SetMoving(on and not (InCombatLockdown and InCombatLockdown()))
     if on then
         card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", title = L.TITLE, text = L.CARD_D,
                    kind = "bad" })
@@ -369,6 +373,8 @@ local function buildSearch(page, width)
 
     local found, fh = S.SettingsCard(page, L.SEC_FIND, {
         switch("card", L.CARD, L.CARD_D, "Interface\\Icons\\INV_Misc_Note_01"),
+        switch("cardLocked", L.OPT_LOCK, L.OPT_LOCK_D, "Interface\\Icons\\INV_Misc_Key_04",
+            function() ns.MoveCard(ns.movingCard) end),
         { L.CARD_FOR, nil, control = cardFor, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
         { L.KEY, L.KEY_D, control = keyButton, icon = "Interface\\Icons\\INV_Gizmo_01" },
         switch("mark", L.MARK, nil, "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"),

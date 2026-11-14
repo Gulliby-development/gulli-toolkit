@@ -1996,10 +1996,11 @@ end
 
 -- Moving ------------------------------------------------------------------------------------
 
--- Makes a frame placeable for /gulli move: f:SetMoving(true) puts an accent frame with the
--- name over it, and dragging it moves f; a right click puts it back (opts.reset).
--- opts: { label, save = function(point, relPoint, x, y), reset = function() }.
--- Nothing moves in combat.
+-- Makes a frame placeable for /gulli move and for its module's Lock switch: f:SetMoving(true)
+-- puts an accent frame with the name over it, and dragging it moves f; a right click puts it
+-- back (opts.reset). With opts.lock the name tab gets a key button that locks the frame again.
+-- opts: { label, hint, save = function(point, relPoint, x, y), reset = function(),
+--         lock = function(), lockTip }. Nothing moves in combat.
 function S.Mover(f, opts)
     opts = opts or {}
     f:SetMovable(true)
@@ -2018,7 +2019,27 @@ function S.Mover(f, opts)
     m.name.text:SetShadowColor(0, 0, 0, 0)
     m.name.text:SetPoint("LEFT", 5, 0)
     m.name.text:SetText(shortTitle(opts.label))
-    m.name:SetWidth(math.floor(strw(m.name.text) + 10))
+    local tabW = math.floor(strw(m.name.text) + 10)
+    if opts.lock then
+        local k = CreateFrame("Button", nil, m.name)
+        k:SetSize(16, 16)
+        k:SetPoint("LEFT", m.name.text, "RIGHT", 4, 0)
+        k.tex = k:CreateTexture(nil, "ARTWORK")
+        k.tex:SetAllPoints()
+        k.tex:SetTexture("Interface\\Icons\\INV_Misc_Key_04")
+        k.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        k:SetScript("OnClick", function() opts.lock() end)
+        k:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(opts.lockTip or opts.label or "")
+            GameTooltip:Show()
+        end)
+        k:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        m.lock = k
+        tabW = tabW + 20
+    end
+    m.name:SetWidth(tabW)
     m:RegisterForDrag("LeftButton")
     m:RegisterForClicks("RightButtonUp")
     m:SetScript("OnDragStart", function()

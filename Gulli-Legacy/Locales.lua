@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_LOCK = "Lock in place",
+    OPT_LOCK_D = "Off: drag it on the screen. A right click puts it back.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Characters",
@@ -126,6 +128,8 @@ T.en = {
 }
 
 T.de = {
+    OPT_LOCK = "Position sperren",
+    OPT_LOCK_D = "Aus: auf dem Bildschirm ziehen. Ein Rechtsklick setzt es zurück.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Charaktere",
@@ -242,6 +246,8 @@ T.de = {
 }
 
 T.es = {
+    OPT_LOCK = "Fijar la posición",
+    OPT_LOCK_D = "Desactivado: arrástralo por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Personajes",
@@ -358,6 +364,8 @@ T.es = {
 }
 
 T.fr = {
+    OPT_LOCK = "Verrouiller la position",
+    OPT_LOCK_D = "Désactivé : faites-le glisser à l'écran. Un clic droit le remet en place.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Personnages",
@@ -474,6 +482,8 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_LOCK = "Zablokuj położenie",
+    OPT_LOCK_D = "Wyłączone: przeciągnij na ekranie. Prawy klik przywraca miejsce.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Postacie",
@@ -590,6 +600,8 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_LOCK = "Travar a posição",
+    OPT_LOCK_D = "Desligado: arraste pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Legacy",
     TAB_PLAN = "Plano",
     TAB_CHARS = "Personagens",
@@ -706,6 +718,8 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_LOCK = "Закрепить на месте",
+    OPT_LOCK_D = "Выкл.: перетащите по экрану. Правый клик вернёт на место.",
     TITLE = "Legacy",
     TAB_PLAN = "План",
     TAB_CHARS = "Персонажи",
@@ -822,6 +836,8 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_LOCK = "锁定位置",
+    OPT_LOCK_D = "关闭时可在屏幕上拖动，右键恢复原位。",
     TITLE = "Legacy",
     TAB_PLAN = "计划",
     TAB_CHARS = "角色",

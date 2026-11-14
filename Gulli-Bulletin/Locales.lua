@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_LOCK = "Lock in place",
+    OPT_LOCK_D = "Off: drag it on the screen. A right click puts it back.",
     TITLE = "Bulletin Board",
     TAB_GROUPS = "Groups", TAB_WTS = "Selling", TAB_WTB = "Buying", TAB_CRAFT = "Crafting",
     TAB_GUILD = "Guilds", TAB_OTHER = "Other",
@@ -74,6 +76,8 @@ T.en = {
 }
 
 T.de = {
+    OPT_LOCK = "Position sperren",
+    OPT_LOCK_D = "Aus: auf dem Bildschirm ziehen. Ein Rechtsklick setzt es zurück.",
     TITLE = "Schwarzes Brett",
     TAB_GROUPS = "Gruppen", TAB_WTS = "Verkauf", TAB_WTB = "Ankauf", TAB_CRAFT = "Handwerk",
     TAB_GUILD = "Gilden", TAB_OTHER = "Sonstiges",
@@ -138,6 +142,8 @@ T.de = {
 }
 
 T.es = {
+    OPT_LOCK = "Fijar la posición",
+    OPT_LOCK_D = "Desactivado: arrástralo por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Tablón de anuncios",
     TAB_GROUPS = "Grupos", TAB_WTS = "Venta", TAB_WTB = "Compra", TAB_CRAFT = "Oficios",
     TAB_GUILD = "Hermandades", TAB_OTHER = "Otros",
@@ -202,6 +208,8 @@ T.es = {
 }
 
 T.fr = {
+    OPT_LOCK = "Verrouiller la position",
+    OPT_LOCK_D = "Désactivé : faites-le glisser à l'écran. Un clic droit le remet en place.",
     TITLE = "Tableau d'annonces",
     TAB_GROUPS = "Groupes", TAB_WTS = "Ventes", TAB_WTB = "Achats", TAB_CRAFT = "Artisanat",
     TAB_GUILD = "Guildes", TAB_OTHER = "Autres",
@@ -266,6 +274,8 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_LOCK = "Zablokuj położenie",
+    OPT_LOCK_D = "Wyłączone: przeciągnij na ekranie. Prawy klik przywraca miejsce.",
     TITLE = "Tablica ogłoszeń",
     TAB_GROUPS = "Grupy", TAB_WTS = "Sprzedaż", TAB_WTB = "Kupno", TAB_CRAFT = "Rzemiosło",
     TAB_GUILD = "Gildie", TAB_OTHER = "Inne",
@@ -330,6 +340,8 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_LOCK = "Travar a posição",
+    OPT_LOCK_D = "Desligado: arraste pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Mural de anúncios",
     TAB_GROUPS = "Grupos", TAB_WTS = "Venda", TAB_WTB = "Compra", TAB_CRAFT = "Profissões",
     TAB_GUILD = "Guildas", TAB_OTHER = "Outros",
@@ -394,6 +406,8 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_LOCK = "Закрепить на месте",
+    OPT_LOCK_D = "Выкл.: перетащите по экрану. Правый клик вернёт на место.",
     TITLE = "Доска объявлений",
     TAB_GROUPS = "Группы", TAB_WTS = "Продажа", TAB_WTB = "Покупка", TAB_CRAFT = "Ремесло",
     TAB_GUILD = "Гильдии", TAB_OTHER = "Прочее",
@@ -458,6 +472,8 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_LOCK = "锁定位置",
+    OPT_LOCK_D = "关闭时可在屏幕上拖动，右键恢复原位。",
     TITLE = "公告板",
     TAB_GROUPS = "组队", TAB_WTS = "出售", TAB_WTB = "收购", TAB_CRAFT = "制造",
     TAB_GUILD = "公会", TAB_OTHER = "其他",

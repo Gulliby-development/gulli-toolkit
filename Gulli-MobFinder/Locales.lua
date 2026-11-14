@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_LOCK = "Lock in place",
+    OPT_LOCK_D = "Off: drag it on the screen. A right click puts it back.",
     TITLE = "Mob Finder",
     DESC = "Plays a sound when a mob from your list shows its nameplate.",
     ENABLE = "Search",
@@ -101,6 +103,8 @@ T.en = {
 }
 
 T.de = {
+    OPT_LOCK = "Position sperren",
+    OPT_LOCK_D = "Aus: auf dem Bildschirm ziehen. Ein Rechtsklick setzt es zurück.",
     TITLE = "Mob-Finder",
     DESC = "Spielt einen Ton, wenn ein Mob aus deiner Liste seine Namensplakette zeigt.",
     ENABLE = "Suchen",
@@ -192,6 +196,8 @@ T.de = {
 }
 
 T.es = {
+    OPT_LOCK = "Fijar la posición",
+    OPT_LOCK_D = "Desactivado: arrástralo por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Buscador de bichos",
     DESC = "Suena cuando un bicho de tu lista muestra su placa de nombre.",
     ENABLE = "Buscar",
@@ -283,6 +289,8 @@ T.es = {
 }
 
 T.fr = {
+    OPT_LOCK = "Verrouiller la position",
+    OPT_LOCK_D = "Désactivé : faites-le glisser à l'écran. Un clic droit le remet en place.",
     TITLE = "Chercheur de monstres",
     DESC = "Joue un son quand un monstre de ta liste affiche sa barre de nom.",
     ENABLE = "Chercher",
@@ -374,6 +382,8 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_LOCK = "Zablokuj położenie",
+    OPT_LOCK_D = "Wyłączone: przeciągnij na ekranie. Prawy klik przywraca miejsce.",
     TITLE = "Szukacz mobów",
     DESC = "Gra dźwięk, gdy mob z twojej listy pokaże tabliczkę z nazwą.",
     ENABLE = "Szukaj",
@@ -465,6 +475,8 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_LOCK = "Travar a posição",
+    OPT_LOCK_D = "Desligado: arraste pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Buscador de monstros",
     DESC = "Toca um som quando um monstro da sua lista mostra a placa de nome.",
     ENABLE = "Buscar",
@@ -556,6 +568,8 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_LOCK = "Закрепить на месте",
+    OPT_LOCK_D = "Выкл.: перетащите по экрану. Правый клик вернёт на место.",
     TITLE = "Поиск мобов",
     DESC = "Играет звук, когда моб из вашего списка показывает неймплейт.",
     ENABLE = "Искать",
@@ -647,6 +661,8 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_LOCK = "锁定位置",
+    OPT_LOCK_D = "关闭时可在屏幕上拖动，右键恢复原位。",
     TITLE = "怪物搜索",
     DESC = "列表中的怪物显示姓名板时播放声音。",
     ENABLE = "搜索",

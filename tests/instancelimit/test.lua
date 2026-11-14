@@ -221,6 +221,11 @@ test("counter modes", function()
     eq(ns.BadgeShown(s), false)
     W.group = true
     eq(ns.BadgeShown(s), true)
+    W.group = false
+    eq(ns.BadgeShown(s), false)
+    eq(ns.db.badgeLocked, true, "locked by default")
+    ns.db.badgeLocked = false
+    eq(ns.BadgeShown(s), true, "unlocked in Settings, it shows to be placed")
 end)
 
 test("the old counter switch becomes a mode", function()

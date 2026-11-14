@@ -334,7 +334,7 @@ end
 
 -- Settings; a new one gets its default here and a row in the window.
 ns.DEFAULTS = { dungeon = true, raid = false, pvp = false, alts = true, newClass = true,
-                tracker = true, announce = true, alpha = 80, goal = 0 }
+                tracker = true, locked = true, announce = true, alpha = 80, goal = 0 }
 ns.OPT_ICON = {
     dungeon = "Interface\\Icons\\INV_Misc_Key_14",
     raid = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
@@ -342,6 +342,7 @@ ns.OPT_ICON = {
     alts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     newClass = "Interface\\Icons\\Spell_Holy_Resurrection",
     tracker = "Interface\\Icons\\INV_Misc_Spyglass_02",
+    locked = "Interface\\Icons\\INV_Misc_Key_04",
     announce = "Interface\\Icons\\INV_Misc_Note_02",
     alpha = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
 }

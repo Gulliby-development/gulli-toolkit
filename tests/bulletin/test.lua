@@ -383,6 +383,11 @@ test("the small feed shows the newest alerted groups and follows its settings", 
     assert(GulliBulletinFeed == nil or true)
     ns.db.feed.show = false
     ns.Feed()
+    -- Unlocked in Settings, the feed shows with its mover even when it is off.
+    ns.db.feed.locked = false
+    ns.Feed()
+    ns.db.feed.locked = true
+    ns.Feed()
 end)
 
 test("it registers with the toolkit", function()

@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_LOCK = "Lock in place",
+    OPT_LOCK_D = "Off: drag it on the screen. A right click puts it back.",
     TITLE = "Instance Limit",
     LEFT_HOUR = "%d of %d entries left this hour",
     NEXT_FREE = "Next entry free in %s.",
@@ -74,6 +76,8 @@ T.en = {
 }
 
 T.de = {
+    OPT_LOCK = "Position sperren",
+    OPT_LOCK_D = "Aus: auf dem Bildschirm ziehen. Ein Rechtsklick setzt es zurück.",
     TITLE = "Instanzlimit",
     LEFT_HOUR = "Noch %d von %d Betretungen diese Stunde",
     NEXT_FREE = "Nächste Betretung frei in %s.",
@@ -138,6 +142,8 @@ T.de = {
 }
 
 T.es = {
+    OPT_LOCK = "Fijar la posición",
+    OPT_LOCK_D = "Desactivado: arrástralo por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Límite de mazmorras",
     LEFT_HOUR = "Quedan %d de %d entradas esta hora",
     NEXT_FREE = "Siguiente entrada libre en %s.",
@@ -202,6 +208,8 @@ T.es = {
 }
 
 T.fr = {
+    OPT_LOCK = "Verrouiller la position",
+    OPT_LOCK_D = "Désactivé : faites-le glisser à l'écran. Un clic droit le remet en place.",
     TITLE = "Limite d'instances",
     LEFT_HOUR = "%d entrées sur %d restantes cette heure",
     NEXT_FREE = "Prochaine entrée libre dans %s.",
@@ -266,6 +274,8 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_LOCK = "Zablokuj położenie",
+    OPT_LOCK_D = "Wyłączone: przeciągnij na ekranie. Prawy klik przywraca miejsce.",
     TITLE = "Limit lochów",
     LEFT_HOUR = "Zostało %d z %d wejść w tej godzinie",
     NEXT_FREE = "Następne wejście za %s.",
@@ -330,6 +340,8 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_LOCK = "Travar a posição",
+    OPT_LOCK_D = "Desligado: arraste pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Limite de masmorras",
     LEFT_HOUR = "Restam %d de %d entradas nesta hora",
     NEXT_FREE = "Próxima entrada livre em %s.",
@@ -394,6 +406,8 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_LOCK = "Закрепить на месте",
+    OPT_LOCK_D = "Выкл.: перетащите по экрану. Правый клик вернёт на место.",
     TITLE = "Лимит подземелий",
     LEFT_HOUR = "Осталось %d из %d входов за час",
     NEXT_FREE = "Следующий вход через %s.",
@@ -458,6 +472,8 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_LOCK = "锁定位置",
+    OPT_LOCK_D = "关闭时可在屏幕上拖动，右键恢复原位。",
     TITLE = "副本次数",
     LEFT_HOUR = "本小时还剩 %d / %d 次",
     NEXT_FREE = "下一次可用还需 %s。",
