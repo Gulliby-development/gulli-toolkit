@@ -112,7 +112,7 @@ S.Tex = tex
 -- a soft halo, Ring<R> the 1 pixel border of a corner of radius R (tools/skin/media.py draws
 -- them; RADII lists the ones there are).
 local MEDIA = "Interface\\AddOns\\" .. tostring(addon) .. "\\Media\\"
-S.ROUND, S.GLOW_TEX = MEDIA .. "Round", MEDIA .. "Glow"
+S.ROUND, S.ROUND_SQ, S.GLOW_TEX = MEDIA .. "Round", MEDIA .. "RoundSq", MEDIA .. "Glow"
 local RADII = { 2, 3, 4, 6, 8, 9, 10, 11, 14 }
 local QUAD = { TOPLEFT = { 0, 0.5, 0, 0.5 }, TOPRIGHT = { 0.5, 1, 0, 0.5 },
                BOTTOMLEFT = { 0, 0.5, 0.5, 1 }, BOTTOMRIGHT = { 0.5, 1, 0.5, 1 } }
@@ -339,6 +339,7 @@ function S.SetButtonIcon(b, path, size)
     if not rawget(b, "btnIcon") then
         b.btnIcon = b:CreateTexture(nil, "ARTWORK")
         b.btnIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        S.RoundMask(b, b.btnIcon)
     end
     b.btnIcon:SetSize(size, size)
     b.btnIcon:ClearAllPoints()
@@ -1282,6 +1283,7 @@ function S.Icon(parent, size)
     t:SetSize(size or 20, size or 20)
     t:SetTexture("Interface\\AddOns\\" .. tostring(addon) .. "\\icon")
     t:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+    S.RoundMask(parent, t)
     return t
 end
 
@@ -1648,7 +1650,7 @@ function S.HudIcon(b, size)
     b.icon:SetPoint("TOPLEFT", 1, -1)
     b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
     b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    S.RoundMask(b, b.icon, MEDIA .. "RoundSq")
+    S.RoundMask(b, b.icon, S.ROUND_SQ)
     -- The state ring: one or two rounded 1 pixel rings on a frame above the icon.
     b.ring = {}
     for k = 1, size >= 32 and 2 or 1 do

@@ -60,10 +60,20 @@ end
 
 local refresh
 
-local function hover(r)
-    local h = r:CreateTexture(nil, "HIGHLIGHT")
+-- A rounded shade behind a row's parts, shown while the pointer is on it or (`focus`) a gamepad.
+local function shade(r, alpha)
+    local h = CreateFrame("Frame", nil, r)
     h:SetAllPoints()
-    h:SetColorTexture(1, 1, 1, 0.05)
+    h:SetFrameLevel(r:GetFrameLevel())
+    S.Box(h, { 1, 1, 1, alpha }, S.CLEAR, S.R_MD)
+    h:Hide()
+    return h
+end
+
+local function hover(r)
+    local h = shade(r, 0.05)
+    r:HookScript("OnEnter", function() h:Show() end)
+    r:HookScript("OnLeave", function() h:Hide() end)
 end
 
 -- A clickable row with a check box on the left; a click anywhere on it toggles.
@@ -80,10 +90,7 @@ local function checkRow(width, height, onToggle)
     end
     r:SetScript("OnClick", toggle)
     r.check:SetScript("OnClick", toggle)
-    r.focus = r:CreateTexture(nil, "BACKGROUND")
-    r.focus:SetAllPoints()
-    r.focus:SetColorTexture(1, 1, 1, 0.10)
-    r.focus:Hide()
+    r.focus = shade(r, 0.10)
     r.toggle = toggle
     return r
 end
@@ -159,10 +166,12 @@ local function makeLine()
     return l
 end
 
+-- A rounded band behind a zone row, on the content's own level so the rows stay above it.
 local function makeBand()
-    local t = content:CreateTexture(nil, "BACKGROUND", nil, -1)
-    t:SetTexture("Interface\\Buttons\\WHITE8X8")
-    return t
+    local f = CreateFrame("Frame", nil, content)
+    f:SetFrameLevel(content:GetFrameLevel())
+    S.Box(f, S.CLEAR, S.CLEAR, S.R_MD)
+    return f
 end
 
 ---- Drawing -------------------------------------------------------------------
@@ -186,7 +195,7 @@ local function band(y, h, color)
     b:ClearAllPoints()
     b:SetPoint("TOPLEFT", 0, -y)
     b:SetSize(content:GetWidth(), h)
-    b:SetVertexColor(color[1], color[2], color[3], color[4])
+    S.Fill(b, color)
 end
 
 local function placeItem(it, y, x, width)

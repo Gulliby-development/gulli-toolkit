@@ -295,6 +295,7 @@ test("presets switch their modules on and the others off; a group switches toget
     local ns = Load()
     for _, p in ipairs(ns.PRESETS) do
         assert(ns.T.en["PRESET_" .. p.key], "no text for preset " .. p.key)
+        assert(type(p.icon) == "string" and p.icon:find("^Interface\\Icons\\"), "no icon for preset " .. p.key)
         for _, k in ipairs(p.modules) do assert(ns.CATEGORY_OF[k], p.key .. ": unknown module " .. k) end
     end
     eq(ns.ApplyPreset("Minimum"), 3, "QuestCleaner and Loot off, Merchant on")

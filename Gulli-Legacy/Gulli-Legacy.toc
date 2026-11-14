@@ -10,7 +10,7 @@
 ## Notes-zhCN: 获取传承点数和下一个进度奖励的最快步骤。 /glg
 ## Notes-zhTW: 获取传承点数和下一个进度奖励的最快步骤。 /glg
 ## Author: Gulliby
-## Version: 1.1.0
+## Version: 1.1.1
 ## IconTexture: Interface\AddOns\Gulli-Legacy\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Legacy

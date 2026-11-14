@@ -19,6 +19,12 @@ local LIST_W = SIDE - 2 * S.INSET - 10
 local ROW_H, HEAD_H = 30, 30
 local TILE_COLS, TILE_MAX, TILE_H = 3, 12, 58
 local QUICK_W, LINE_H = 320, 24
+-- The Quick setup buttons that are not presets (a preset names its own icon in ns.PRESETS).
+local QUICK_ICON = {
+    move = "Interface\\Icons\\Ability_Hunter_Pathfinding",
+    transfer = "Interface\\Icons\\INV_Misc_Note_01",
+    protect = "Interface\\Icons\\Spell_Holy_SealOfProtection",
+}
 
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
@@ -239,9 +245,7 @@ local function makeRow(i)
     r.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
     S.RoundMask(r, r.icon)
     -- A dot on the icon: updated since the player last opened it.
-    r.dot = line(r, S.Accent())
-    r.dot:SetDrawLayer("OVERLAY")
-    r.dot:SetSize(6, 6)
+    r.dot = S.Circle(r, 7, S.Accent(), "OVERLAY")
     r.dot:SetPoint("CENTER", r.icon, "TOPRIGHT", 0, 0)
     r.title = S.Text(r, 12)
     r.title:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
@@ -958,6 +962,7 @@ local function buildHome()
         local b = S.Button(q, bw, 30)
         b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 8), -math.floor((i - 1) / 2) * 38)
         b:SetText(L["PRESET_" .. p.key])
+        S.SetButtonIcon(b, p.icon)
         b:SetScript("OnClick", function()
             local n = ns.ApplyPreset(p.key)
             ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
@@ -972,6 +977,7 @@ local function buildHome()
     local y = math.ceil(#ns.PRESETS / 2) * 38 + 8
     home.move = S.Button(q, bw, 30)
     home.move:SetPoint("TOPLEFT", 0, -y)
+    S.SetButtonIcon(home.move, QUICK_ICON.move)
     home.move:SetScript("OnClick", function()
         local n = ns.SetMoving(not ns.moving)
         ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
@@ -979,12 +985,14 @@ local function buildHome()
     local tr = S.Button(q, bw, 30)
     tr:SetPoint("TOPLEFT", bw + 8, -y)
     tr:SetText(L.TRANSFER)
+    S.SetButtonIcon(tr, QUICK_ICON.transfer)
     tr:SetScript("OnClick", function()
         if not transfer then buildTransfer() end
         showPanel("transfer")
     end)
     protectBtn = S.Button(q, QUICK_W - 2 * S.INSET, 30)
     protectBtn:SetPoint("TOPLEFT", 0, -(y + 38))
+    S.SetButtonIcon(protectBtn, QUICK_ICON.protect)
     protectBtn:SetScript("OnClick", function()
         if not protectFrame then buildProtected() end
         if protectFrame:IsShown() then showHome() else showPanel("protect") end
