@@ -836,5 +836,15 @@ test("money shows each coin in its colour, short drops copper from 1 gold, a los
     assert(S.MoneyText(26664):find(S.Hex(S.COPPER) .. "64c", 1, true), "copper in the copper colour")
 end)
 
+test("money on a coloured button: plain numbers with the game's coin pictures, no colour codes", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local t = S.MoneyIcons(26664, true)
+    assert(not t:find("|c", 1, true), "no colour codes")
+    eq((t:gsub("|T.-UI%-(%a+)Icon.-|t", "%1")), "2Gold 66Silver")
+    eq((S.MoneyIcons(0):gsub("|T.-UI%-(%a+)Icon.-|t", "%1")), "0Copper")
+    eq((S.MoneyIcons(-150):gsub("|T.-UI%-(%a+)Icon.-|t", "%1")), "-1Silver 50Copper")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)
