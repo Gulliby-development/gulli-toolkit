@@ -15,6 +15,7 @@ local SEG_W = 40
 local ROLL_ICON = {
     ask = "Interface\\Icons\\INV_Misc_QuestionMark",
     need = "Interface\\Buttons\\UI-GroupLoot-Dice-Up",
+    safe = "Interface\\Icons\\Ability_Defend",
     greed = "Interface\\Buttons\\UI-GroupLoot-Coin-Up",
     pass = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
 }

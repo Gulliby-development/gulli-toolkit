@@ -133,6 +133,31 @@ test("type rules, where the rules apply, green you cannot use, upgrades", functi
     eq(W.rolled[3], nil, "not an upgrade: left to the player")
 end)
 
+test("quality and type rules can roll Need, or Need only when the item fits you", function()
+    -- 30 a green chest piece, 31 a green chest piece the class cannot need, 32 a recipe.
+    Fake({ rolls = { { 30, 2 }, { 31, 2, false, false }, { 32, 2 }, { 30, 2 } },
+           items = { [30] = { 4, "INVTYPE_CHEST", 30 }, [31] = { 4, "INVTYPE_CHEST", 30 }, [32] = { 9 } },
+           worn = { [5] = 25 } })
+    local ns = Load()
+    eq(table.concat(ns.RULES, ","), "ask,need,safe,greed,pass")
+    ns.db.quality[2] = "need"
+    W.Fire("START_LOOT_ROLL", 1); W.Fire("START_LOOT_ROLL", 2)
+    eq(W.rolled[1], 1, "plain need"); eq(W.rolled[2], 2, "need not allowed: greed")
+    ns.db.quality[2] = "safe"
+    W.rolled = {}
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(W.rolled[1], 1, "an upgrade you can use: need"); eq(ns.db.log[1].reason, "fits")
+    W.Fire("START_LOOT_ROLL", 2)
+    eq(W.rolled[2], 2, "cannot need: greed"); eq(ns.db.log[1].reason, "nofit")
+    W.worn[5] = 40
+    W.Fire("START_LOOT_ROLL", 4)
+    eq(W.rolled[4], 2, "not better than what you wear: greed")
+    ns.SetType(9, "safe")
+    W.Fire("START_LOOT_ROLL", 3)
+    eq(W.rolled[3], 1, "not gear and you can need it: need"); eq(ns.db.log[1].reason, "fits")
+    assert(ns.Test("32"):find("fits you", 1, true), ns.Test("32"))
+end)
+
 test("/glt test tells what would happen, and chat lines come as one", function()
     Fake({ rolls = { { 20, 0 }, { 21, 0 } }, items = { [20] = { 15, nil, 5, 0 } } })
     local ns = Load()
