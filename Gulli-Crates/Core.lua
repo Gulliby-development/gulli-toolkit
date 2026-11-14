@@ -394,6 +394,7 @@ function ns.OnAuction(event, a1, a2)
         if b.phase == "buying" then
             local line = ns.Current()
             b.spent = b.spent + (b.quote and b.quote.total or line.cost)
+            ns.AddLot(line.id, line.n, b.quote and b.quote.total or line.cost)
             b.bought = b.bought + 1
             line.done = true
             nextLine()
@@ -435,6 +436,165 @@ function ns.Money(copper)
     return table.concat(parts, " ")
 end
 
+-- ---------- history ----------
+-- A crate is filled when it leaves the bags together with the items of one of its bundles (the
+-- game may report the two in separate bag updates, so drops wait a few seconds for each other).
+-- A crate that leaves alone (sold, mailed, banked) is not logged. What the auction house sold
+-- for it comes from the lots bought here, oldest first; the rest came from the player's stock.
+
+ns.HISTORY_MAX = 300
+local MATCH_WAIT = 5 -- seconds a crate drop and an item drop may lie apart
+
+local function charKey()
+    return (UnitName and UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "?")
+end
+
+-- Units bought at the auction house and not used yet: db.lots[char][item] = { { n, total } }.
+function ns.AddLot(id, n, total)
+    if not ns.db or not n or n <= 0 then return end
+    local key = charKey()
+    ns.db.lots[key] = ns.db.lots[key] or {}
+    local list = ns.db.lots[key][id] or {}
+    ns.db.lots[key][id] = list
+    list[#list + 1] = { n, total or 0 }
+end
+
+-- Takes n units from the lots: the copper they cost and how many there were.
+function ns.TakeLots(id, n)
+    local mine = ns.db and ns.db.lots[charKey()]
+    local list = mine and mine[id]
+    local paid, got = 0, 0
+    while list and list[1] and got < n do
+        local lot = list[1]
+        local take = math.min(n - got, lot[1])
+        local part = math.floor(lot[2] * take / lot[1] + 0.5)
+        paid, got = paid + part, got + take
+        lot[1], lot[2] = lot[1] - take, lot[2] - part
+        if lot[1] <= 0 then table.remove(list, 1) end
+    end
+    if list and not list[1] then mine[id] = nil end
+    return paid, got
+end
+
+local snap, pendCrates, pendItems = nil, {}, {}
+
+-- Bag counts of every crate in the bags and of every item their bundles name, and which are crates.
+local function snapshot()
+    local counts, crates = {}, {}
+    for _, c in ipairs(ns.Crates()) do
+        counts[c.id], crates[c.id] = c.count, true
+        for _, b in ipairs(ns.Bundles(c.id) or {}) do counts[b[1]] = counts[b[1]] or itemCount(b[1], false) end
+    end
+    return { counts = counts, crates = crates }
+end
+
+local function logFill(crate, bundle)
+    local paid, bought = ns.TakeLots(bundle[1], bundle[2])
+    local unit = ns.AuctionPrice(bundle[1])
+    local e = { at = time(), crate = crate, item = bundle[1], n = bundle[2], paid = paid, bought = bought,
+                worth = unit and unit * bundle[2] or nil, who = UnitName and UnitName("player") or nil }
+    local h = ns.db.history
+    table.insert(h, 1, e)
+    while #h > ns.HISTORY_MAX do table.remove(h) end
+    if ns.Refresh then ns.Refresh() end
+    return e
+end
+
+-- Pairs each crate that left the bags with a bundle whose items left too.
+local function match(now)
+    for i = #pendCrates, 1, -1 do if now - pendCrates[i].t > MATCH_WAIT then table.remove(pendCrates, i) end end
+    for id, d in pairs(pendItems) do if now - d.t > MATCH_WAIT then pendItems[id] = nil end end
+    for i = #pendCrates, 1, -1 do
+        local c = pendCrates[i]
+        for _, b in ipairs(ns.Bundles(c.id) or {}) do
+            local d = pendItems[b[1]]
+            if d and d.n >= b[2] then
+                d.n = d.n - b[2]
+                table.remove(pendCrates, i)
+                logFill(c.id, b)
+                break
+            end
+        end
+    end
+    for id, d in pairs(pendItems) do if d.n <= 0 then pendItems[id] = nil end end
+end
+
+-- Called on every bag update: notes what left the bags since the last look.
+function ns.Track()
+    if not ns.db then return end
+    local now = time()
+    local cur = snapshot()
+    if snap then
+        for id, was in pairs(snap.counts) do
+            local now_n = cur.counts[id]
+            if now_n == nil then now_n = snap.crates[id] and 0 or itemCount(id, false); cur.counts[id] = now_n end
+            local left = was - now_n
+            if left > 0 and snap.crates[id] then
+                for _ = 1, left do pendCrates[#pendCrates + 1] = { id = id, t = now } end
+            elseif left > 0 then
+                local d = pendItems[id] or { n = 0 }
+                d.n, d.t = d.n + left, now
+                pendItems[id] = d
+            end
+        end
+        match(now)
+    end
+    -- the items of a crate that left and waits for its match stay watched
+    for _, c in ipairs(pendCrates) do
+        for _, b in ipairs(ns.Bundles(c.id) or {}) do
+            cur.counts[b[1]] = cur.counts[b[1]] or itemCount(b[1], false)
+        end
+    end
+    for id in pairs(snap and snap.crates or {}) do if not cur.crates[id] and cur.counts[id] == 0 then cur.counts[id] = nil end end
+    snap = cur
+end
+
+-- The history, newest first, filtered: period "day", "week" or "all"; and the totals.
+ns.PERIODS = { "day", "week", "all" }
+local PERIOD_SECONDS = { day = 86400, week = 7 * 86400 }
+function ns.History(period)
+    local out, spent, worth = {}, 0, 0
+    local since = PERIOD_SECONDS[period] and (time() - PERIOD_SECONDS[period]) or nil
+    for _, e in ipairs(ns.db and ns.db.history or {}) do
+        if not since or e.at >= since then
+            out[#out + 1] = e
+            spent = spent + (e.paid or 0)
+            worth = worth + (e.worth or 0)
+        end
+    end
+    return out, { count = #out, spent = spent, avg = #out > 0 and math.floor(spent / #out + 0.5) or 0 }
+end
+
+-- ---------- keeping the window current ----------
+
+local function busy()
+    local p = ns.buy.phase
+    return p == "quote" or p == "ready" or p == "buying"
+end
+
+-- Drops a plan that has nothing left to do: no crate in the bags, or all bought and the auction
+-- house closed.
+function ns.Tidy()
+    if not ns.plan or busy() then return end
+    if #ns.Crates() == 0 or (ns.buy.phase == "done" and not ns.atAH) then
+        ns.plan = nil
+        ns.ResetBuy()
+    end
+end
+
+-- The refresh button: looks at the bags again and plans anew, or clears the plan.
+function ns.Recheck()
+    if ns.buy.phase == "buying" then return end
+    ns.notCrate = {}
+    ns.ClearCache()
+    if #ns.Picks() > 0 then ns.Calculate()
+    else
+        ns.plan = nil
+        ns.ResetBuy()
+        if ns.Refresh then ns.Refresh() end
+    end
+end
+
 -- ---------- events ----------
 
 local function listen(frame, events)
@@ -454,7 +614,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.picked = ns.db.picked or {}
         ns.picked = ns.db.picked
+        ns.db.history = ns.db.history or {}
+        ns.db.lots = ns.db.lots or {}
         listen(self, { "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
+                       "PLAYER_ENTERING_WORLD",
                        "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
                        "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED" })
         nameIndex() -- asks the client for the bundle names early
@@ -469,10 +632,15 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     elseif event == "AUCTION_HOUSE_CLOSED" then
         ns.atAH = false
         if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
+        ns.Tidy()
         if ns.HideAtAH then ns.HideAtAH() end
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         ns.notCrate = {}
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        ns.Track()
     elseif event == "BAG_UPDATE_DELAYED" then
+        ns.Track()
+        ns.Tidy()
         if ns.Refresh then ns.Refresh() end
     else
         ns.OnAuction(event, a1, a2)
