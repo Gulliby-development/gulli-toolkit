@@ -18,13 +18,14 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 
 ## Features
 
-- **Next steps, fastest first.** Every open challenge with the time it should take: the levels to go at your pace, the skill points to go, the dungeons you still miss. The fastest is on top.
+- **Next steps, fastest first.** Every open challenge with the time it should take: the levels to go at your pace, the skill points to go, the dungeons you still miss, the areas still dark on the map. The fastest is on top.
+- **Your level counts.** A step you are too low for (Lord Valthalak needs level 60, Artisan skill level 35, a raid level 60) adds the levelling to its time and says so, so it moves down the list.
 - **Your real pace.** With Gulli XP the level steps use your own XP per hour. Without it, a usual pace for each level.
 - **The Progress Track.** Your points out of 65, the rewards at 15, 25, 40 and 55 points, and how many points are still free to spend on this character (16 at most).
 - **A goal.** Pick a reward of the track. Gulli Legacy lists the fastest steps that reach it and the time they take together.
 - **All your characters.** Each character you log in is saved. A step can be faster on another character (three levels on your warlock), and a class you have no character of is a new point too.
 - **Help from other modules.** A button on a step opens the module that helps: Craft Profit for a profession, Bulletin Board to find a group for a dungeon, XP for your pace.
-- **How to do it.** Click a step or a challenge. Its page tells you what to do and where to go, lists what is left (the dungeons, the zones and areas still to explore), and gives a Wowhead link to copy.
+- **How to do it.** Click a step or a challenge. Its page tells you what to do and where to go, lists what is left (the dungeons, the zones and areas still to explore, each zone with its levels, the ones for your level first), and gives a Wowhead link to copy.
 - **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. Turn off **Lock in place** in Settings (or use `/gulli move`) to drag it; the key on its name tab locks it again.
 - **A notice for each new point**, also in the Recent list of the toolkit.
 - **In game:** a step opens the game's own Legacy window at its challenge.

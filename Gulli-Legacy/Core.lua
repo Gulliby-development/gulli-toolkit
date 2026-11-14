@@ -50,8 +50,21 @@ ns.TIME = {
     train = 600,   -- finding the trainer for a new profession
     dungeon = 3600, -- one dungeon with finding the group
     boss = 1200,   -- one raid boss with the trash before it
-    task = 900,    -- one other open part of a challenge (a quest, an area to explore)
+    task = 900,    -- one other open part of a challenge (a quest)
+    zone = 300,    -- getting to a zone to explore and across it
+    area = 60,     -- one more area of that zone
 }
+-- Challenges the achievement data says too little about, by guide kind: the level they need,
+-- whether they need a group, and the time they take from the start.
+ns.SPECIAL = {
+    valthalak = { minLevel = 60, group = true, eta = 7 * 3600 }, -- five dungeons, some twice, and the summon
+}
+-- The level a profession's skill needs: Journeyman from 10, Expert from 20, Artisan from 35.
+function ns.SkillLevel(need)
+    need = need or 0
+    if need > 225 then return 35 elseif need > 150 then return 20 elseif need > 75 then return 10 end
+    return 0
+end
 ns.SAMPLE = 900 -- XP's session counts as your pace after this many seconds of play
 
 local function secret(v) return issecretvalue and issecretvalue(v) end
@@ -223,7 +236,7 @@ function ns.Scan()
     end
     ns.list = list
     ns.byID = {}
-    for _, ch in ipairs(list) do ns.byID[ch.id] = ch end
+    for _, ch in ipairs(list) do ns.byID[ch.id] = ch; ns.Refine(ch) end
     return list
 end
 
@@ -362,6 +375,18 @@ local function rateOf(c, me)
     return c.rate
 end
 
+-- A way for a character below the level the step needs: the levelling comes first and counts.
+local function levelFirst(w, need)
+    local c = w.char or {}
+    local lvl = c.level or 1
+    if need and need > lvl and w.eta then
+        w.needLevel = need
+        w.levelEta = ns.LevelSeconds(lvl, c.xp, need, rateOf(c, w.me))
+        w.eta = w.eta + w.levelEta
+    end
+    return w
+end
+
 -- The ways to finish one challenge: one per character that can do it (and a new character for
 -- a class the account does not have). Each way: { ch, char, key, me, eta, from, to, learn, new }.
 function ns.Ways(ch)
@@ -398,8 +423,8 @@ function ns.Ways(ch)
         for _, e in ipairs(chars) do
             local rank = e.char.skills and e.char.skills[ch.skill]
             if rank and rank < ch.need then
-                add({ char = e.char, key = e.key, me = e.me, from = rank, to = ch.need,
-                      eta = (ch.need - rank) * ns.TIME.skill + ns.TIME.shop })
+                add(levelFirst({ char = e.char, key = e.key, me = e.me, from = rank, to = ch.need,
+                      eta = (ch.need - rank) * ns.TIME.skill + ns.TIME.shop }, ns.SkillLevel(ch.need)))
             end
             if e.me then me = e end
         end
@@ -407,17 +432,21 @@ function ns.Ways(ch)
             local n = 0
             for line in pairs(me.char.skills or {}) do if ns.PRIMARY[line] then n = n + 1 end end
             if n < 2 then
-                add({ char = me.char, key = me.key, me = true, learn = true, from = 1, to = ch.need,
-                      eta = (ch.need - 1) * ns.TIME.skill + ns.TIME.shop + ns.TIME.train })
+                add(levelFirst({ char = me.char, key = me.key, me = true, learn = true, from = 1, to = ch.need,
+                      eta = (ch.need - 1) * ns.TIME.skill + ns.TIME.shop + ns.TIME.train }, ns.SkillLevel(ch.need)))
             end
         end
     else
         local per = ch.activity == "dungeon" and ns.TIME.dungeon or ch.activity == "raid" and ns.TIME.boss
             or ch.activity ~= "pvp" and ns.TIME.task or nil
-        local eta = per and ch.open * per or nil
+        local eta = ch.eta or (per and ch.open * per) or nil
         for _, e in ipairs(chars) do
-            if (e.me or ch.minLevel) and (e.char.level or 0) >= (ch.minLevel or 0) then
+            local lvl = e.char.level or 0
+            if (e.me or ch.minLevel) and lvl >= (ch.minLevel or 0) then
                 add({ char = e.char, key = e.key, me = e.me, eta = eta })
+            elseif e.me and eta then
+                -- Too low for it now: the way counts the levelling first.
+                add(levelFirst({ char = e.char, key = e.key, me = true, eta = eta }, ch.minLevel))
             end
         end
     end
@@ -567,15 +596,27 @@ function ns.Detail(s)
         return who .. L.D_LEVELS:format(s.to - s.from, s.from, s.to) .. " · " .. pace
     end
     if ch.kind == "skill" and s.from then
-        if s.learn then return L.D_LEARN:format(s.to - 1) end
-        return who .. L.D_SKILL:format(s.to - s.from, s.from, s.to)
+        local first = s.needLevel and L.D_FROM_LEVEL:format(s.needLevel, ns.Span(s.levelEta or 0)) or ""
+        if s.learn then return first .. L.D_LEARN:format(s.to - 1) end
+        return who .. first .. L.D_SKILL:format(s.to - s.from, s.from, s.to)
+    end
+    local first = s.needLevel and L.D_FROM_LEVEL:format(s.needLevel, ns.Span(s.levelEta or 0)) or ""
+    if ch.zones then
+        return who .. first .. L.D_ZONES:format(ch.open, ch.zonesAbove or 0)
     end
     local left = openParts(ch)
     local line = left ~= "" and L.D_LEFT:format(left) or L.D_OPEN:format(ch.open, ch.total)
-    return who .. line
+    return who .. first .. line
 end
 
 -- The detail page ------------------------------------------------------------------------------
+
+-- An icon worth showing: the game's question mark (no icon set) is none.
+local function realIcon(icon)
+    if icon == nil or icon == 134400 or icon == 0 then return nil end
+    if type(icon) == "string" and icon:lower():find("questionmark", 1, true) then return nil end
+    return icon
+end
 
 -- Whether an achievement is made only of other achievements (Explore Azeroth, Explore Kalimdor).
 local function isMeta(id)
@@ -607,8 +648,10 @@ local function partRows(id, out, depth, seen)
             local _, cname, _, cdone, _, _, _, _, _, icon = achievement(asset)
             local all = done == true or cdone == true
             if total == 0 then total, got = 1, all and 1 or 0 end
+            local lo, hi = ns.ZoneLevels(cname or text)
             out[#out + 1] = { text = cname or text or "", done = all, got = all and total or got, total = total,
-                              left = all and {} or left, id = asset, icon = icon, type = 8 }
+                              left = all and {} or left, id = asset, icon = realIcon(icon), type = 8,
+                              minLevel = lo, maxLevel = hi }
         else
             local q, r = tonumber(qty), tonumber(req)
             local big = r and r > 1
@@ -619,14 +662,91 @@ local function partRows(id, out, depth, seen)
     return out
 end
 
+-- Open parts first; zones by their lowest level, so the ones the player can do now lead.
 function ns.Parts(ch)
     local out = partRows(ch.id, {}, 1, {})
+    if #out == 0 and not ch.done then
+        -- The game lists no part (a quest chain): the challenge itself is what is left.
+        out[1] = { text = ch.name, done = false, left = {}, icon = realIcon(ch.icon), whole = true }
+    end
     for i, r in ipairs(out) do r.order = i end
     table.sort(out, function(a, b)
         if a.done ~= b.done then return not a.done end
+        if not a.done and (a.minLevel or 0) ~= (b.minLevel or 0) and a.minLevel and b.minLevel then
+            return a.minLevel < b.minLevel
+        end
         return a.order < b.order
     end)
     return out
+end
+
+-- Zone levels by map name, read once from the world map; nil when the client does not say.
+local zoneLevels
+local ROOT_MAPS = { 947, 12, 13, 1414, 1415 }
+local function readZones()
+    local found, any = {}, false
+    if not (C_Map and C_Map.GetMapChildrenInfo and C_Map.GetMapLevels) then return found, false end
+    local zoneType = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
+    for _, root in ipairs(ROOT_MAPS) do
+        local kids = call(C_Map.GetMapChildrenInfo, root, zoneType, true)
+        for _, m in ipairs(type(kids) == "table" and kids or {}) do
+            if type(m.name) == "string" and m.name ~= "" and not found[m.name] then
+                local lo, hi = call(C_Map.GetMapLevels, m.mapID)
+                lo, hi = tonumber(lo), tonumber(hi)
+                if lo and lo > 0 then found[m.name] = { lo, hi or lo }; any = true end
+            end
+        end
+    end
+    return found, any
+end
+
+-- The levels of the zone named inside a text ("Explore Redridge Mountains"): the longest
+-- map name it holds wins, so "Western Plaguelands" is not read as a shorter name.
+function ns.ZoneLevels(text)
+    if type(text) ~= "string" then return nil end
+    if not zoneLevels then
+        local found, any = readZones()
+        if not any then return nil end
+        zoneLevels = found
+    end
+    local best, len = nil, 0
+    for name, lv in pairs(zoneLevels) do
+        if #name > len and text:find(name, 1, true) then best, len = lv, #name end
+    end
+    if best then return best[1], best[2] end
+end
+
+-- What the achievement data alone gets wrong: the level and group a challenge needs, and the
+-- time of exploring from the areas still dark. Runs after every scan.
+function ns.Refine(ch)
+    local kind = ns.GuideKind(ch)
+    ch.guide = kind
+    local sp = ns.SPECIAL[kind]
+    if sp then
+        if sp.minLevel then ch.minLevel = math.max(ch.minLevel or 0, sp.minLevel) end
+        if sp.group and ch.activity == "solo" then
+            ch.activity = "dungeon"
+            if ch.kind == "solo" then ch.kind = "dungeon" end
+        end
+        ch.eta = sp.eta
+    end
+    if kind == "explore" and not ch.done then
+        local parts = ns.Parts(ch)
+        local lvl = UnitLevel and tonumber((UnitLevel("player"))) or 0
+        local open, sec, above = 0, 0, 0
+        for _, p in ipairs(parts) do
+            if not p.done then
+                open = open + 1
+                local areas = p.total and (p.total - (p.got or 0)) or 1
+                sec = sec + ns.TIME.zone + areas * ns.TIME.area
+                if p.minLevel and p.minLevel > lvl then above = above + 1 end
+            end
+        end
+        if #parts > 1 then
+            ch.open, ch.total, ch.zones, ch.zonesAbove = open, #parts, true, above
+        end
+        ch.eta = sec
+    end
 end
 
 -- Which guide a challenge gets on its detail page.
@@ -646,7 +766,6 @@ end
 function ns.Guide(ch, step)
     local k = ns.GuideKind(ch)
     local out = {}
-    if ch.done then out[1] = L.G_DONE end
     if k == "level" then
         out[#out + 1] = L.G_LEVEL:format(ns.ClassName(ch.class), ch.need or 60)
         out[#out + 1] = L.G_LEVEL_2
@@ -663,6 +782,7 @@ function ns.Guide(ch, step)
     elseif k == "explore" then
         out[#out + 1] = L.G_EXPLORE
         out[#out + 1] = L.G_EXPLORE_2
+        out[#out + 1] = L.G_EXPLORE_3
     elseif k == "valthalak" then
         for i = 1, 4 do out[#out + 1] = L["G_VAL_" .. i] end
     elseif k == "quest" then
@@ -670,16 +790,23 @@ function ns.Guide(ch, step)
     else
         out[#out + 1] = L.G_SOLO
     end
-    if step and not ch.done then
+    -- The notes under the steps: the level it needs first, and the time.
+    local notes = {}
+    if ch.done then
+        notes[1] = L.G_DONE
+    elseif step then
         local span = step.eta and ns.Span(step.eta) or L.NO_GUESS
         -- Levels and skills name the character and the pace; other steps only take time.
         if step.new or step.from or not step.me then
-            out[#out + 1] = L.G_BEST:format(ns.Detail(step), span)
+            notes[#notes + 1] = L.G_BEST:format(ns.Detail(step), span)
         else
-            out[#out + 1] = L.G_TIME:format(span)
+            if step.needLevel then
+                notes[#notes + 1] = L.G_LEVEL_FIRST:format(step.needLevel, ns.Span(step.levelEta or 0))
+            end
+            notes[#notes + 1] = L.G_TIME:format(span)
         end
     end
-    return out, k
+    return out, k, notes
 end
 
 -- A Wowhead search for the challenge: the game cannot open a link, so the player copies it.
