@@ -22,7 +22,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 
 - **One button, one key.** The big button shows the next buff and who gets it. Click it or press your Quick Buff key. You first, then the group.
 - **See who is missing what.** Small buttons next to it show the buffs after that. Click one to cast that buff on that player.
-- **In combat too.** The game does not let an addon change a button in combat. So when the fight starts, the addon gives the button the list of missing buffs. Each press in combat casts the next buff from that list and skips the dead. Buffs that landed in combat are greyed out on the bar.
+- **In combat too.** The game does not let an addon change a button in combat. So when the fight starts, the addon gives the button the list of missing buffs. Each press in combat casts the next buff from that list and skips the dead. Buffs that landed in combat are greyed out on the bar. If one of your own buffs falls off during the fight (say Touch of Weakness), a notice tells you right away, so you can cast it by hand. The button casts it after the fight. You can turn this notice off in the settings.
 - **Group spells when they pay off.** When three or more players in a party need the same buff, it casts Prayer of Fortitude, Arcane Brilliance or Gift of the Wild instead, if you have the reagent. A paladin gets a Greater Blessing when three or more players of one class need the same blessing (it covers that whole class), unless one of them gets another blessing by role, such as Kings on the tank.
 - **Buff again in time.** A buff with less than one minute left counts as missing. You choose: when it is gone, or 1, 3 or 5 minutes before.
 - **Every class.**
@@ -75,6 +75,8 @@ The camp gives stats such as Stamina. When the camp gives as much as your buff o
 <summary><b>Why does it skip a buff in combat?</b></summary>
 
 In combat the game does not tell the button who still needs a buff. The button walks through the list made when the fight started. Presses during the global cooldown stay on the same player, so pressing fast does not skip anyone. A press after that moves on, even when the cast did not happen (you were moving, or out of sight). After the last one it starts the list again, so just keep pressing. Out of combat it always aims at the right player.
+
+A buff that falls off during the fight is not on that list, and the game does not let the addon add it until the fight ends. So the addon shows a notice and a red line under the button instead. Cast that buff by hand, or wait for the fight to end.
 </details>
 
 <details>

@@ -21,6 +21,7 @@ ns.DEFAULTS = {
     focus = true,        -- the unit under the mouse, then the target, come first
     raidGroups = "all",  -- the raid groups you buff, see ns.RAID_GROUPS
     perSize = false,     -- "Buff again when" and "Group spells" kept per group size
+    fadeAlert = true,    -- in a fight: a notice when one of your own buffs falls off
 }
 for k, v in pairs(B.CHOICE_DEFAULT) do ns.DEFAULTS[k] = v end
 ns.WHO = { "group", "target", "off" }
@@ -753,6 +754,30 @@ function ns.PlaceOK()
         return inside and (kind == "party" or kind == "raid") or false
     end
     return true
+end
+
+-- In a fight: your own buffs that are gone now and that the combat list does not cover
+-- (the key cannot be aimed anew until the fight ends). Only what the game shows for you:
+-- a hidden aura is never reported, and a buff that only runs low is not gone.
+function ns.SelfFaded(list)
+    local saved = ns.info
+    local ok, plan, far = pcall(ns.Plan)
+    ns.info = saved
+    if not ok then return {} end
+    local covered = {}
+    for _, e in ipairs(list or {}) do
+        if e.unit == "player" then covered[e.spell] = true end
+    end
+    local out = {}
+    for _, t in ipairs({ plan or {}, far or {} }) do
+        for _, e in ipairs(t) do
+            if e.unit == "player" and not e.group and not covered[e.spell] and e.names then
+                local auras = ns.Auras("player", e.names)
+                if auras and not present(e.names, auras, 0) then out[#out + 1] = e end
+            end
+        end
+    end
+    return out
 end
 
 -- The list the key walks through in combat: what is in range first, then the rest.
