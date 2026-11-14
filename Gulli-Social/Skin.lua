@@ -276,7 +276,12 @@ end
 
 local function paint(b)
     local hover = b.hover and b:IsEnabled()
-    if b.kind == "primary" or b.kind == "danger" then
+    if (b.kind == "primary" or b.kind == "danger") and not b:IsEnabled() then
+        -- a main action that cannot run now looks like a plain dim button, not a lit one
+        S.Fill(b, S.RAISED)
+        S.SetBorder(b, S.EDGE)
+        b.text:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+    elseif b.kind == "primary" or b.kind == "danger" then
         local c = b.kind == "danger" and S.BAD or S.Accent()
         local k = hover and 1 or 0.86
         S.Fill(b, { c[1] * k, c[2] * k, c[3] * k, 1 })
