@@ -123,7 +123,9 @@ local function layout(list, missingKeys)
         b:SetDone(dim)
         b:SetAlpha(dim and 0.6 or 1)
         -- Red and pulsing: missing; yellow with the time on it: runs out soon.
-        b:SetState((dim or m.sample) and nil or (m.left and "soon" or "need"))
+        local state = nil
+        if not (dim or m.sample) then state = m.left and "soon" or "need" end
+        b:SetState(state)
         b:SetMid(m.left and ns.Short(m.left) or "")
         b:SetCount(m.count and tostring(m.count) or "")
         b.label:SetText(m.text or "")

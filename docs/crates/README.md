@@ -19,13 +19,14 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 ## Features
 
 - **Opens at the auction house.** Carry a crate and open the auction house: the window opens beside it. A switch turns this off.
-- **Pick the crates.** Every crate in your bags is listed. Untick the ones you want to keep for later.
+- **Pick the crates.** Every crate in your bags is listed. Untick the ones you want to keep for later, and tick them again at any time: the price follows at once.
 - **The cheapest bundle.** **Calculate** prices every bundle of every crate. What you already have costs nothing; the rest is priced from Auctionator's database.
 - **Your bank counts.** Items in your bank are used too, and the list says so in orange: take them out before you fill the crate. A switch turns this off.
 - **Several crates at once.** Your stock is shared fairly: a stack that fills one crate is not split over two.
 - **Buy what is missing.** Press **Buy** to go through the list. For each line, the first press asks the auction house for the real price and shows it on the button. The second press buys.
 - **No surprises.** If the real price is much higher than Auctionator's, the line turns orange. Press **Skip** to leave a line out.
 - **History.** The History tab lists every crate you filled: which bundle, when, and what you paid at the auction house for it. Filter by today, 7 days or all, with the totals on top.
+- **Bought is bought.** A crate whose items are already in your bags leaves the plan and waits at the top of the History as ready to fill, with what you paid. When you come back to the auction house, the plan is made again, so nothing is offered twice.
 - **Refresh.** The round arrow at the top looks at your bags again and calculates anew. When no crate is left, or all is bought and you left the auction house, the old plan is cleared by itself.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 

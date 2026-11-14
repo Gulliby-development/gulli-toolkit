@@ -30,8 +30,7 @@ local function makeCrateRow(r)
     r.check:SetPoint("LEFT", -4, 0)
     r.check:SetScript("OnClick", function(self)
         local c = self:GetParent().crate
-        ns.picked[c.id] = (ns.picked[c.id] == false) and nil or false
-        ns.Refresh()
+        ns.TogglePick(c.id)
     end)
     r.icon = S.ItemIcon(r, 24)
     r.icon:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
@@ -98,6 +97,11 @@ local function fillPlanRow(r, row)
         r.note:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
         r.note:SetText(table.concat(parts, S.DOT))
         r.value:SetText(x.buy > 0 and S.MoneyText(x.cost) or "")
+    elseif row.kind == "ready" then
+        r.icon:Hide()
+        r.name:SetPoint("LEFT", 0, 0)
+        r.name:SetText(S.Hex(S.GOOD) .. L.READY_N:format(row.n) .. "|r")
+        r.value:SetText("")
     else -- the next best bundle, or a crate no bundle can fill
         r.icon:Hide()
         r.name:SetPoint("LEFT", 30, 0)
@@ -110,18 +114,23 @@ local function fillPlanRow(r, row)
 end
 
 -- The plan as list rows: each crate, its bundle's item, then the next best bundle.
+-- A crate the bags already fill is left out: it waits in the History until it is used.
 function ns.PlanRows(plan)
-    local rows, lines = {}, {}
+    local rows, lines, ready = {}, {}, 0
     for _, line in ipairs(ns.buy.queue) do lines[line.id] = line end
     for _, e in ipairs(plan and plan.crates or {}) do
-        rows[#rows + 1] = { kind = "crate", e = e }
-        if e.none then
+        local owned = not e.none and e.cost == 0
+        if owned then ready = ready + 1 else rows[#rows + 1] = { kind = "crate", e = e } end
+        if owned then -- nothing to show
+        elseif
+ e.none then
             for _, o in ipairs(e.others) do rows[#rows + 1] = { kind = "other", o = o, none = true } end
         else
             for _, x in ipairs(e.rows) do rows[#rows + 1] = { kind = "item", r = x, line = x.buy > 0 and lines[x.id] or nil } end
             if e.others[1] then rows[#rows + 1] = { kind = "other", o = e.others[1] } end
         end
     end
+    if ready > 0 then rows[#rows + 1] = { kind = "ready", n = ready } end
     return rows
 end
 
@@ -152,10 +161,16 @@ local function fillHistRow(r, e)
     r.name:SetText(ns.ShortName(ns.ItemName(e.crate) or ("item:" .. e.crate)))
     local note = itemLine(e.item, e.n)
     if e.bought and e.bought > 0 and e.bought < e.n then note = note .. S.DOT .. L.HIST_BOUGHT:format(e.bought) end
+    if e.ready and e.bank > 0 then note = note .. S.DOT .. S.Hex(S.WARN) .. L.FROM_BANK:format(e.bank) .. "|r" end
     r.note:SetText(note)
-    if (e.paid or 0) > 0 then r.value:SetText(S.MoneyText(e.paid))
-    else r.value:SetText(S.Hex(S.GOOD) .. L.FROM_STOCK .. "|r") end
-    r.sub:SetText((fmtDate and fmtDate(L.DATE, e.at) or "") .. (e.who and (S.DOT .. e.who) or ""))
+    local paid = (e.paid or 0) > 0 and S.MoneyText(e.paid) or (S.Hex(S.GOOD) .. L.FROM_STOCK .. "|r")
+    if e.ready then
+        r.value:SetText(S.Hex(S.GOOD) .. L.FILLED .. "|r")
+        r.sub:SetText(paid)
+    else
+        r.value:SetText(paid)
+        r.sub:SetText((fmtDate and fmtDate(L.DATE, e.at) or "") .. (e.who and (S.DOT .. e.who) or ""))
+    end
 end
 
 -- ---------- refresh ----------
@@ -171,7 +186,9 @@ local function buyText()
 end
 
 local function refreshHistory()
-    local list, sum = ns.History(period)
+    local done, sum = ns.History(period)
+    local list = ns.Ready()
+    for _, e in ipairs(done) do list[#list + 1] = e end
     histList:SetData(list)
     histEmpty:SetShown(#list == 0)
     histStats.tiles[1]:Set(tostring(sum.count))
