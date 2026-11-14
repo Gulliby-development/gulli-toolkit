@@ -571,11 +571,11 @@ end
 
 -- Sets of modules for a kind of play, switched on together; the other modules go off.
 ns.PRESETS = {
-    { key = "Quests", modules = { "QuestCleaner", "AutoQuest", "PartyQuests", "DungeonPrep", "Tooltip", "XP", "Merchant" } },
-    { key = "Trade", modules = { "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Tooltip", "Chores" } },
-    { key = "Dungeons", modules = { "GroupBuffs", "DungeonPrep", "InstanceLimit", "Attune", "Loot", "Bulletin",
+    { key = "Quests", icon = "Interface\\Icons\\INV_Scroll_03", modules = { "QuestCleaner", "AutoQuest", "PartyQuests", "DungeonPrep", "Tooltip", "XP", "Merchant" } },
+    { key = "Trade", icon = "Interface\\Icons\\INV_Misc_Coin_01", modules = { "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Tooltip", "Chores" } },
+    { key = "Dungeons", icon = "Interface\\Icons\\INV_Misc_Key_14", modules = { "GroupBuffs", "DungeonPrep", "InstanceLimit", "Attune", "Loot", "Bulletin",
                                     "PartyQuests", "Reminders", "Merchant" } },
-    { key = "Minimum", modules = { "Merchant", "Tooltip", "XP" } },
+    { key = "Minimum", icon = "Interface\\Icons\\INV_Misc_Gear_01", modules = { "Merchant", "Tooltip", "XP" } },
 }
 
 local function presetOf(key)

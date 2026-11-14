@@ -10,7 +10,7 @@
 ## Notes-zhCN: 在商人处出售灰色物品并修理，允许时使用公会资金。 /gmc
 ## Notes-zhTW: 在商人处出售灰色物品并修理，允许时使用公会资金。 /gmc
 ## Author: Gulliby
-## Version: 1.7.1
+## Version: 1.7.2
 ## IconTexture: Interface\AddOns\Gulli-Merchant\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Merchant

@@ -100,6 +100,7 @@ local function iconOn(b, size)
     local h = b:CreateTexture(nil, "HIGHLIGHT")
     h:SetAllPoints()
     h:SetColorTexture(1, 1, 1, 0.15)
+    S.RoundMask(b, h, S.ROUND_SQ)
 end
 
 local function tooltip(b, text)
@@ -270,6 +271,7 @@ local function paintMarks()
             t:SetSize(14, 14)
             t:SetPoint(corner, -2, corner == "TOPRIGHT" and -2 or 2)
             t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            S.RoundMask(f, t)
             marks[f] = t
         end
         if t then
