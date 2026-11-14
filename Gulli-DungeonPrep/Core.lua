@@ -265,7 +265,7 @@ end
 -- quest givers or the mobs.
 function ns.Quests(key, level, filter)
     local D = data()
-    local out = { log = {}, take = {}, later = {}, hidden = {}, done = 0 }
+    local out = { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0 }
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
         if q and forMe(q) then
@@ -273,6 +273,7 @@ function ns.Quests(key, level, filter)
             local state = stateOf(entry, q, level)
             if state == "done" then
                 out.done = out.done + 1
+                if matches(entry, filter) then out.finished[#out.finished + 1] = entry end
             elseif state ~= "closed" and matches(entry, filter) then
                 local list = out[state]
                 list[#list + 1] = entry
@@ -281,8 +282,15 @@ function ns.Quests(key, level, filter)
     end
     local byLevel = function(a, b) if a.level ~= b.level then return a.level < b.level end return a.name < b.name end
     table.sort(out.log, byLevel); table.sort(out.take, byLevel); table.sort(out.later, byLevel)
-    table.sort(out.hidden, byLevel)
+    table.sort(out.hidden, byLevel); table.sort(out.finished, byLevel)
     return out
+end
+
+-- How many quests of a dungeon are in the log, to take, for later and done (for the list
+-- of dungeons and the dungeon's header).
+function ns.Counts(key, level)
+    local q = ns.Quests(key, level)
+    return { log = #q.log, take = #q.take, later = #q.later, done = q.done }
 end
 
 -- One dungeon quest with everything its page shows, or nil: the list entry plus `state`

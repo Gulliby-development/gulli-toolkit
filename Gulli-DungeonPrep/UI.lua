@@ -7,8 +7,10 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, dungeons, checks, list, tabs, search, laterPill, entranceBtn, settings, questPage, listCard
-local detail
+local frame, dungeons, checks, list, tabs, search, entranceBtn, settings, questPage, listCard
+local detail, head, readyBtn, filterRow
+local filters = {}
+local counts = {}
 local checkLines = {}
 local showHidden = false
 local ICON_OK, ICON_NO = "Interface\\RaidFrame\\ReadyCheck-Ready", "Interface\\RaidFrame\\ReadyCheck-NotReady"
@@ -22,7 +24,11 @@ local OBJ_MAX = 5
 local TI = "Interface\\Icons\\"
 -- One icon per action; every map pin (start, turn-in, entrance) shares the map.
 local ACT_ICON = { map = TI .. "INV_Misc_Map_01", track = TI .. "Ability_Hunter_Pathfinding", share = S.TAB.group,
-                   hide = TI .. "Ability_Stealth", later = TI .. "INV_Misc_PocketWatch_01" }
+                   hide = TI .. "Ability_Stealth", later = TI .. "INV_Misc_PocketWatch_01",
+                   ready = TI .. "INV_Misc_Bag_08" }
+-- The list filters, each with its icon: every quest, the ones to take, the log, the done ones.
+local FILTERS = { { "all", "F_ALL", S.TAB.list }, { "take", "F_TAKE", TI .. "INV_Misc_Note_01" },
+                  { "log", "F_LOG", S.TAB.quests }, { "done", "F_DONE", TI .. "INV_Misc_Ribbon_01" } }
 local WAIT_ICON = "Interface\\RaidFrame\\ReadyCheck-Waiting"
 
 -- A button with a game icon before its text, as wide as both need.
@@ -44,9 +50,12 @@ local function makeDungeon(r)
     r.range = S.Text(r, 11, S.FAINT)
     r.range:SetPoint("RIGHT", -8, 0)
     r.range:SetJustifyH("RIGHT")
+    r.count = S.Text(r, 10)
+    r.count:SetPoint("RIGHT", r.range, "LEFT", -6, 0)
+    r.count:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
     r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
-    r.name:SetPoint("RIGHT", r.range, "LEFT", -12, 0)
+    r.name:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
     r.name:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
@@ -55,6 +64,17 @@ local function makeDungeon(r)
         ns.openQuest = nil
         ns.Refresh()
     end)
+    -- The full name (the row may cut it) and what waits there.
+    r.click:SetScript("OnEnter", function(self)
+        local d = self:GetParent().d
+        if not (GameTooltip and d) then return end
+        local c = counts[d.key] or { log = 0, take = 0, done = 0 }
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(ns.DungeonName(d) .. "  " .. d.min .. "-" .. d.max, 1, 0.82, 0)
+        GameTooltip:AddLine(L.TT_DUNGEON:format(c.log, c.take, c.done), 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 end
 
 local function fillDungeon(r, d)
@@ -64,6 +84,11 @@ local function fillDungeon(r, d)
     r.icon:SetIcon(ns.Icon(d.key))
     r.range:SetText(d.min .. "-" .. d.max)
     r.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
+    -- Quests in the log (accent) or to take (green) here.
+    local c = counts[d.key]
+    local n = c and (c.log + c.take) or 0
+    r.count:SetText(n > 0 and tostring(n) or "")
+    r.count:SetTextColor(unpack((c and c.log > 0) and S.Accent() or S.GOOD))
     r:SetSelected(d.key == ns.selected)
 end
 
@@ -263,6 +288,74 @@ local function refreshChecks()
     checks:Fit(rows * CHECK_ROW - 8)
 end
 
+-- The dungeon's header: name, levels, where its entrance is, the quest counts, and the
+-- checklist folded into one button.
+local function fillHead(current, level)
+    local c = counts[ns.selected] or { log = 0, take = 0, later = 0, done = 0 }
+    head.icon:SetIcon(ns.Icon(ns.selected or ""))
+    head.name:SetText(current and ns.DungeonName(current) or "")
+    head.range:SetText(current and (current.min .. "-" .. current.max) or "")
+    if current then head.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(current, level)))) end
+    head.sub:SetText(L.HEAD_COUNTS:format(c.log, c.take, c.later, c.done))
+    entranceBtn:SetEnabled(current ~= nil and current.entrance ~= nil)
+    local lines = ns.Checklist(ns.selected)
+    local ok = 0
+    for _, x in ipairs(lines) do if x.ok then ok = ok + 1 end end
+    fitIcon(readyBtn, L.READY:format(ok, #lines), 96)
+    readyBtn.text:SetTextColor(unpack(ok == #lines and S.GOOD or S.WARN))
+    -- Open while something is missing, until the player folds or opens it.
+    local open = ns.checksOpen
+    if open == nil then open = ok < #lines end
+    return open
+end
+
+-- The quests of the list for a filter, in the order the list shows them; ns.listIds keeps
+-- that order for the arrows on a quest's page.
+local function listItems(current, level)
+    local items, ids = {}, {}
+    local q = ns.Quests(ns.selected, level, search:GetText())
+    local filter = ns.filter or "all"
+    local function add(item)
+        items[#items + 1] = item
+        if item.quest then ids[#ids + 1] = item.quest.id end
+    end
+    local function section(key, group, quests)
+        if #quests == 0 then return end
+        add({ header = true, text = L[key]:format(#quests) })
+        for _, x in ipairs(quests) do add({ quest = x, group = group }) end
+    end
+    if filter == "all" or filter == "log" then section("IN_LOG_N", "log", q.log) end
+    if (filter == "all" or filter == "take") and (#q.take > 0 or current) then
+        local route = ns.Route(q.take, ns.Here(), current)
+        if #q.take > 0 then add({ header = true, text = L.TAKE_N:format(#q.take) }) end
+        for n, stop in ipairs(route) do
+            add({ stop = stop, n = n })
+            for _, x in ipairs(stop.quests) do add({ quest = x, group = "take", indent = true }) end
+        end
+    end
+    if filter == "all" then
+        if ns.Get("hideLater") then
+            if #q.later > 0 then add({ header = true, text = L.LATER_HIDDEN:format(#q.later) }) end
+        else
+            section("LATER_N", "later", q.later)
+        end
+        if #q.hidden > 0 then
+            add({ header = true, toggleHidden = true, text = (showHidden and L.HIDDEN_OPEN or L.HIDDEN_N):format(#q.hidden) })
+            if showHidden then
+                for _, x in ipairs(q.hidden) do add({ quest = x, group = "hidden", hidden = true }) end
+            end
+        end
+    end
+    if filter == "done" then
+        for _, x in ipairs(q.finished) do add({ quest = x, group = "done" }) end
+        if #q.finished == 0 then add({ header = true, text = L.NO_DONE }) end
+    end
+    if #items == 0 then add({ header = true, text = L.NO_QUESTS }) end
+    if filter == "take" and #q.take == 0 then items = { { header = true, text = L.NO_QUESTS } } end
+    ns.listIds = ids
+    return items
+end
+
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local level = UnitLevel("player") or 1
@@ -272,11 +365,10 @@ function ns.Refresh()
         ns.selected = s and s.key
     end
     local all = ns.Dungeons(level)
+    for _, d in ipairs(all) do counts[d.key] = ns.Counts(d.key, level) end
     dungeons:SetData(all)
-    laterPill:SetSelected(ns.Get("hideLater"))
     local current
     for _, d in ipairs(all) do if d.key == ns.selected then current = d end end
-    entranceBtn:SetEnabled(current ~= nil and current.entrance ~= nil)
     if settings then
         for _, x in ipairs(settings) do
             if x.stepper then x.stepper:Refresh() else x.row:SetChecked(x.get()) end
@@ -284,45 +376,34 @@ function ns.Refresh()
     end
     if tabs.selected ~= 1 then return end
     local open = ns.openQuest ~= nil
-    checks:SetShown(not open)
+    local checksOpen = fillHead(current, level)
+    head:SetShown(not open)
+    filterRow:SetShown(not open)
+    checks:SetShown(not open and checksOpen)
     listCard:SetShown(not open)
     detail:SetShown(open)
+    -- The list fills what the header, the checklist and the filters leave.
+    filterRow:ClearAllPoints()
+    filterRow:SetPoint("TOPLEFT", checksOpen and checks or head, "BOTTOMLEFT", 0, -S.GAP)
+    filterRow:SetPoint("RIGHT", questPage, "RIGHT")
+    local c = counts[ns.selected] or { log = 0, take = 0, later = 0, done = 0 }
+    local n = { all = c.log + c.take + c.later, take = c.take, log = c.log, done = c.done }
+    local x = 0
+    for _, f in ipairs(FILTERS) do
+        local b = filters[f[1]]
+        b:SetText(L[f[2]]:format(n[f[1]]))
+        b:SetWidth(math.floor((b.text:GetStringWidth() or 0) + 44))
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", filterRow, "LEFT", x, 0)
+        x = x + b:GetWidth() + 6
+        b:SetSelected((ns.filter or "all") == f[1])
+    end
+    -- The list is computed even on a quest's page, so its arrows follow the list.
+    if not open then refreshChecks() end
+    local items = ns.selected and listItems(current, level) or {}
     if open then
         ns.FillDetail(level)
         return
-    end
-    refreshChecks()
-    local items = {}
-    if ns.selected then
-        local q = ns.Quests(ns.selected, level, search:GetText())
-        local function section(key, group, list)
-            if #list == 0 then return end
-            items[#items + 1] = { header = true, text = L[key]:format(#list) }
-            for _, x in ipairs(list) do items[#items + 1] = { quest = x, group = group } end
-        end
-        section("IN_LOG_N", "log", q.log)
-        if #q.take > 0 or current then
-            local route = ns.Route(q.take, ns.Here(), current)
-            if #q.take > 0 then items[#items + 1] = { header = true, text = L.TAKE_N:format(#q.take) } end
-            for n, stop in ipairs(route) do
-                items[#items + 1] = { stop = stop, n = n }
-                for _, x in ipairs(stop.quests) do items[#items + 1] = { quest = x, group = "take", indent = true } end
-            end
-        end
-        if ns.Get("hideLater") then
-            if #q.later > 0 then items[#items + 1] = { header = true, text = L.LATER_HIDDEN:format(#q.later) } end
-        else
-            section("LATER_N", "later", q.later)
-        end
-        if #q.hidden > 0 then
-            items[#items + 1] = { header = true, toggleHidden = true,
-                                  text = (showHidden and L.HIDDEN_OPEN or L.HIDDEN_N):format(#q.hidden) }
-            if showHidden then
-                for _, x in ipairs(q.hidden) do items[#items + 1] = { quest = x, group = "hidden", hidden = true } end
-            end
-        end
-        if q.done > 0 then items[#items + 1] = { header = true, text = L.DONE_N:format(q.done) } end
-        if #items == 0 then items[1] = { header = true, text = L.NO_QUESTS } end
     end
     list:SetData(items)
 end
@@ -330,7 +411,7 @@ end
 -- The page of one quest (like a dungeon journal): what to do, where it starts and ends with a
 -- map pin for each, the whole chain as numbered steps, the rewards and the mobs, and Track,
 -- Share and Hide. ns.openQuest is the quest shown; nil shows the list.
-local REWARD_MAX, CHAIN_ROW = 6, 28
+local REWARD_MAX, CHAIN_ROW = 4, 40
 local SIDE_TEXT = { A = "FACTION_A", H = "FACTION_H" }
 local SIDE_ICON = { A = "Interface\\Icons\\INV_BannerPVP_02", H = "Interface\\Icons\\INV_BannerPVP_01" }
 local STATE_COLOR = { log = S.Accent and S.Accent() or S.TEXT, take = S.GOOD, done = S.MUTED, later = S.WARN,
@@ -353,9 +434,13 @@ local function makeStep(r)
     r.state:SetSize(14, 14)
     r.state:SetPoint("LEFT", 6, 0)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("LEFT", 26, 0)
+    r.text:SetPoint("TOPLEFT", 26, -6)
     r.text:SetPoint("RIGHT", -6, 0)
     r.text:SetWordWrap(false)
+    r.sub = S.Text(r, 11, S.MUTED)
+    r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
+    r.sub:SetPoint("RIGHT", -6, 0)
+    r.sub:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
     r.click:SetScript("OnClick", function(self)
@@ -380,6 +465,8 @@ end
 local function fillStep(r, st)
     r.step = st
     r.text:SetText(st.n .. ".  " .. st.name)
+    -- Who gives the step and where.
+    r.sub:SetText((st.who and st.who ~= "") and ns.Where({ who = st.who, area = st.area or 0 }) or "")
     local c = S.TEXT
     if st.this then c = S.Accent() elseif st.missing then c = S.BAD elseif st.done then c = S.MUTED end
     r.text:SetTextColor(unpack(c))
@@ -393,29 +480,53 @@ end
 local function buildDetail(parent)
     local d = CreateFrame("Frame", nil, parent)
     -- Header: back, title, faction and state.
-    local head = S.Card(d)
-    head:SetPoint("TOPLEFT")
-    head:SetPoint("TOPRIGHT")
-    head:Fit(44)
-    d.back = S.Button(head.body, 30, 30)
-    d.back:SetText("<")
+    local top = S.Card(d)
+    top:SetPoint("TOPLEFT")
+    top:SetPoint("TOPRIGHT")
+    top:Fit(44)
+    -- Back to the list: the list icon, so it is not taken for the arrows on the right.
+    d.back = S.Button(top.body, 30, 30)
+    d.back:SetText("")
+    S.SetButtonIcon(d.back, S.TAB.list, 18)
+    d.back.btnIcon:ClearAllPoints()
+    d.back.btnIcon:SetPoint("CENTER")
     d.back:SetPoint("LEFT")
     d.back:SetScript("OnClick", function() ns.openQuest = nil; ns.Refresh() end)
     d.back:HookScript("OnEnter", function(self)
         if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L.BACK); GameTooltip:Show() end
     end)
     d.back:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    d.side = S.IconBox(head.body, 22)
+    -- The quest before and after this one in the list.
+    local function arrow(text, tip, step)
+        local a = S.Button(top.body, 30, 30)
+        a:SetText(text)
+        a:SetScript("OnClick", function()
+            local ids, at = ns.listIds or {}, nil
+            for i, id in ipairs(ids) do if id == ns.openQuest then at = i end end
+            if at and ids[at + step] then ns.OpenQuest(ids[at + step]) end
+        end)
+        a:HookScript("OnEnter", function(self)
+            if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(tip); GameTooltip:Show() end
+        end)
+        a:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        return a
+    end
+    d.prev = arrow("<", L.PREV, -1)
+    d.next = arrow(">", L.NEXT, 1)
+    d.side = S.IconBox(top.body, 22)
     d.side:SetPoint("TOPRIGHT", 0, 0)
-    d.state = S.Badge(head.body, "")
-    d.state:SetPoint("RIGHT", d.side, "LEFT", -8, 0)
-    d.title = S.Text(head.body, 14)
+    d.next:SetPoint("RIGHT", d.side, "LEFT", -10, 0)
+    d.prev:SetPoint("RIGHT", d.next, "LEFT", -4, 0)
+    d.state = S.Badge(top.body, "")
+    d.state.text:SetWordWrap(false)
+    d.state:SetPoint("RIGHT", d.prev, "LEFT", -10, 0)
+    d.title = S.Text(top.body, 14)
     d.title:SetPoint("TOPLEFT", d.back, "TOPRIGHT", 10, 0)
     d.title:SetPoint("RIGHT", d.state, "LEFT", -8, 0)
     d.title:SetWordWrap(false)
-    d.sub = S.Text(head.body, 11, S.MUTED)
+    d.sub = S.Text(top.body, 11, S.MUTED)
     d.sub:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -4)
-    d.sub:SetPoint("RIGHT", head.body, "RIGHT")
+    d.sub:SetPoint("RIGHT", top.body, "RIGHT")
     d.sub:SetWordWrap(false)
 
     -- Footer: the actions.
@@ -444,7 +555,7 @@ local function buildDetail(parent)
 
     -- Left: objective, start, turn-in, what it needs, rewards, mobs.
     local info = S.Card(d)
-    info:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -S.GAP)
+    info:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
     info:SetPoint("BOTTOMLEFT", foot, "TOPLEFT", 0, S.GAP)
     info:SetPoint("RIGHT", d, "CENTER", 20, 0)
     local b = info.body
@@ -508,23 +619,32 @@ local function buildDetail(parent)
     d.need:SetPoint("RIGHT", b, "RIGHT")
     d.need:SetWordWrap(false)
     d.rewLabel = label(b, L.DETAIL_REWARDS)
+    -- One row per reward: its icon, its name in its quality colour, and whether it is for you.
     d.rewards = {}
     for i = 1, REWARD_MAX do
-        local ic = S.IconBox(b, 28)
-        ic:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 2 + (i - 1) * 36, -6)
-        ic:EnableMouse(true)
-        ic:SetScript("OnEnter", function(self)
+        local row = CreateFrame("Frame", nil, b)
+        row:SetHeight(24)
+        row:SetPoint("TOP", i == 1 and d.rewLabel or d.rewards[i - 1], "BOTTOM", 0, i == 1 and -6 or -2)
+        row:SetPoint("LEFT", b, "LEFT")
+        row:SetPoint("RIGHT", b, "RIGHT")
+        row.icon = S.IconBox(row, 22)
+        row.icon:SetPoint("LEFT", 2, 0)
+        row.name = S.Text(row, 12)
+        row.name:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+        row.name:SetPoint("RIGHT")
+        row.name:SetWordWrap(false)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
             if not (GameTooltip and self.id) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.id) end
-            if self.note then GameTooltip:AddLine(self.note, 0.6, 0.9, 0.6) end
             GameTooltip:Show()
         end)
-        ic:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        d.rewards[i] = ic
+        row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        d.rewards[i] = row
     end
     d.mobLabel = label(b, L.DETAIL_MOBS)
-    d.mobLabel:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 0, -44)
+    d.mobLabel:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 0, -12)
     d.mobs = S.Text(b, 12)
     d.mobs:SetPoint("TOPLEFT", d.mobLabel, "BOTTOMLEFT", 0, -4)
     d.mobs:SetPoint("RIGHT", b, "RIGHT")
@@ -636,17 +756,25 @@ function ns.FillDetail(level)
     d.rewLabel:SetPoint("LEFT", d.objLabel, "LEFT")
 
     local rewards = ns.Rewards(q)
-    for i, ic in ipairs(d.rewards) do
+    local lastRew
+    for i, row in ipairs(d.rewards) do
         local r = rewards[i]
-        ic:SetShown(r ~= nil)
+        row:SetShown(r ~= nil)
         if r then
-            ic.id = r.id
-            ic.note = r.better and L.BETTER or (r.name and not r.fits and L.NOT_FOR_YOU) or nil
-            ic:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            ic:SetAlpha((r.name and not r.fits) and 0.35 or 1)
-            S.SetBorder(ic, r.better and S.GOOD or S.BORDER)
+            lastRew = row
+            row.id = r.id
+            row.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.icon:SetAlpha((r.name and not r.fits) and 0.35 or 1)
+            S.SetBorder(row.icon, r.better and S.GOOD or S.BORDER)
+            local name = r.name and (S.QualityHex(r.quality) .. r.name .. "|r") or ("#" .. r.id)
+            local mark = r.better and ("  " .. S.Hex(S.GOOD) .. L.BETTER .. "|r")
+                or (r.name and not r.fits and ("  " .. S.Hex(S.MUTED) .. L.NOT_FOR_YOU .. "|r")) or ""
+            row.name:SetText(name .. mark)
         end
     end
+    d.mobLabel:ClearAllPoints()
+    d.mobLabel:SetPoint("TOP", lastRew or d.rewLabel, "BOTTOM", 0, -12)
+    d.mobLabel:SetPoint("LEFT", d.objLabel, "LEFT")
     d.rewLabel:SetText(#rewards > 0 and L.DETAIL_REWARDS or "")
     d.mobLabel:SetText(q.targets and #q.targets > 0 and L.DETAIL_MOBS or "")
     d.mobs:SetText(q.targets and table.concat(q.targets, ", ") or "")
@@ -655,6 +783,10 @@ function ns.FillDetail(level)
     d.chain:SetData(#q.chain > 0 and q.chain or { { n = 1, name = q.name, this = true, id = q.id, level = q.level,
                                                     who = q.who, area = q.area, x = q.x, y = q.y } })
 
+    local at
+    for i, id in ipairs(ns.listIds or {}) do if id == q.id then at = i end end
+    d.prev:SetEnabled(at ~= nil and at > 1)
+    d.next:SetEnabled(at ~= nil and at < #(ns.listIds or {}))
     local inLog = q.state == "log"
     fitIcon(d.track, inLog and ns.Tracked(q.id) and L.UNTRACK or L.TRACK)
     d.track:SetEnabled(inLog)
@@ -691,7 +823,8 @@ local function buildSettings(parent)
     left:SetHeight(lh)
     local sw = {}
     for _, o in ipairs({ { "remind", L.OPT_REMIND, L.OPT_REMIND_D }, { "keys", L.OPT_KEYS, L.OPT_KEYS_D },
-                         { "classCheck", L.OPT_CLASS, L.OPT_CLASS_D }, { "tomtom", L.OPT_TOMTOM, L.OPT_TOMTOM_D } }) do
+                         { "classCheck", L.OPT_CLASS, L.OPT_CLASS_D }, { "tomtom", L.OPT_TOMTOM, L.OPT_TOMTOM_D },
+                         { "hideLater", L.OPT_LATER, L.OPT_LATER_D } }) do
         local key = o[1]
         sw[#sw + 1] = { o[2], o[3], function() return ns.Get(key) end, function(v) ns.Set(key, v) end,
                         icon = ns.OPT_ICON[key] }
@@ -708,8 +841,6 @@ local function showTab(i)
     questPage:SetShown(i == 1)
     ns.settingsPage:SetShown(i == 2)
     search:SetShown(i == 1)
-    laterPill:SetShown(i == 1)
-    entranceBtn:SetShown(i == 1)
     ns.Refresh()
 end
 
@@ -734,9 +865,27 @@ local function build()
     area:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     area:SetPoint("BOTTOMRIGHT")
     tabs = S.Tabs(area, { L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil, { S.TAB.quests, S.TAB.settings })
-    entranceBtn = iconButton(area, ACT_ICON.map)
+    search = S.Edit(area, 140, 30)
+    search:SetJustifyH("LEFT")
+    S.Placeholder(search, L.SEARCH)
+    search:SetPoint("TOPRIGHT")
+    search:SetPoint("LEFT", tabs.frame, "RIGHT", 8, 0)
+    search:HookScript("OnTextChanged", function() ns.Refresh() end)
+
+    questPage = CreateFrame("Frame", nil, area)
+    questPage:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+    questPage:SetPoint("BOTTOMRIGHT")
+
+    -- The dungeon's header, like the top of a dungeon journal page.
+    head = S.Card(questPage)
+    head:SetPoint("TOPLEFT")
+    head:SetPoint("TOPRIGHT")
+    head:Fit(40)
+    head.icon = S.IconBox(head.body, 36)
+    head.icon:SetPoint("LEFT")
+    entranceBtn = iconButton(head.body, ACT_ICON.map)
     fitIcon(entranceBtn, L.PIN_ENTRANCE, 80)
-    entranceBtn:SetPoint("TOPRIGHT")
+    entranceBtn:SetPoint("RIGHT")
     entranceBtn:SetScript("OnClick", function()
         for _, d in ipairs(ns.Dungeons(ns.level or 1)) do
             if d.key == ns.selected and d.entrance then
@@ -745,25 +894,32 @@ local function build()
             end
         end
     end)
-    laterPill = S.Pill(area, 110, 30)
-    S.SetButtonIcon(laterPill, ACT_ICON.later)
-    laterPill:SetText(L.HIDE_LATER)
-    laterPill:SetWidth(math.max(96, math.floor((laterPill.text:GetStringWidth() or 0) + 44)))
-    laterPill:SetPoint("RIGHT", entranceBtn, "LEFT", -8, 0)
-    laterPill:SetScript("OnClick", function() ns.Set("hideLater", not ns.Get("hideLater")) end)
-    search = S.Edit(area, 140, 30)
-    search:SetJustifyH("LEFT")
-    S.Placeholder(search, L.SEARCH)
-    search:SetPoint("RIGHT", laterPill, "LEFT", -8, 0)
-    search:SetPoint("LEFT", tabs.frame, "RIGHT", 8, 0)
-    search:HookScript("OnTextChanged", function() ns.Refresh() end)
+    readyBtn = iconButton(head.body, ACT_ICON.ready)
+    readyBtn:SetPoint("RIGHT", entranceBtn, "LEFT", -8, 0)
+    readyBtn:SetScript("OnClick", function()
+        ns.checksOpen = not checks:IsShown()
+        ns.Refresh()
+    end)
+    readyBtn:HookScript("OnEnter", function(self)
+        if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L.TT_READY); GameTooltip:Show() end
+    end)
+    readyBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    head.range = S.Text(head.body, 12)
+    head.name = S.Text(head.body, 14)
+    head.name:SetPoint("TOPLEFT", head.icon, "TOPRIGHT", 10, -2)
+    head.name:SetWordWrap(false)
+    head.range:SetPoint("LEFT", head.name, "RIGHT", 8, 0)
+    head.range:SetPoint("RIGHT", readyBtn, "LEFT", -8, 0)
+    head.range:SetJustifyH("LEFT")
+    head.range:SetWordWrap(false)
+    head.sub = S.Text(head.body, 11, S.MUTED)
+    head.sub:SetPoint("TOPLEFT", head.name, "BOTTOMLEFT", 0, -5)
+    head.sub:SetPoint("RIGHT", readyBtn, "LEFT", -8, 0)
+    head.sub:SetWordWrap(false)
 
-    questPage = CreateFrame("Frame", nil, area)
-    questPage:SetPoint("TOPLEFT", 0, -30 - S.GAP)
-    questPage:SetPoint("BOTTOMRIGHT")
     checks = S.Card(questPage)
-    checks:SetPoint("TOPLEFT")
-    checks:SetPoint("TOPRIGHT")
+    checks:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -S.GAP)
+    checks:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, -S.GAP)
     checks:Fit(CHECK_ROW * 2 - 8)
     for i = 1, MAX_CHECKS do
         local line = {}
@@ -780,9 +936,19 @@ local function build()
         checkLines[i] = line
     end
 
+    -- The filters: every quest, to take, in the log, done.
+    filterRow = CreateFrame("Frame", nil, questPage)
+    filterRow:SetHeight(28)
+    for _, f in ipairs(FILTERS) do
+        local b = S.Pill(filterRow, 96, 28)
+        S.SetButtonIcon(b, f[3], 14)
+        b:SetScript("OnClick", function() ns.filter = f[1]; ns.Refresh() end)
+        filters[f[1]] = b
+    end
+
     local right = S.Card(questPage)
     listCard = right
-    right:SetPoint("TOPLEFT", checks, "BOTTOMLEFT", 0, -S.GAP)
+    right:SetPoint("TOPLEFT", filterRow, "BOTTOMLEFT", 0, -S.GAP)
     right:SetPoint("BOTTOMRIGHT")
     list = S.List(right.body, 40, makeRow, fillRow)
     list:SetPoint("TOPLEFT")

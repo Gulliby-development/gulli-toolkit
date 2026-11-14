@@ -45,6 +45,10 @@ test("done quests are counted; an earlier quest in the log is enough for one-of 
     local ns = Load()
     local q = ns.Quests("DM", 14)
     eq(q.done, 1)
+    eq(ids(q.finished), "167", "the done quest is listed for the Done filter")
+    local c = ns.Counts("DM", 14)
+    eq(c.done, 1)
+    eq(c.log + c.take + c.later, #q.log + #q.take + #q.later, "counts match the lists")
     local take, later = {}, {}
     for _, x in ipairs(q.take) do take[x.id] = true end
     for _, x in ipairs(q.later) do later[x.id] = x.why end
