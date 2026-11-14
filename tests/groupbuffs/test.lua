@@ -576,6 +576,56 @@ test("a buff that lands or falls off shows on the next frame, not the next tick"
     W.combat = false
 end)
 
+test("in combat a buff of yours that falls off is told once, not cast; hidden auras never", function()
+    local units = party()
+    units.player.auras["Inner Fire"] = 600
+    Fake { known = { [1243] = true, [588] = true }, units = units, db = { groupMin = 0 } }
+    local ns = Load()
+    local told = {}
+    local ok, err = pcall(ns.ShowFaded, { spell = "Inner Fire", icon = "icon588" })
+    assert(ok, err)
+    ns.ShowFaded = function(e) told[#told + 1] = e.spell end
+    Fire("PLAYER_LOGIN")
+    local function frame(dt)
+        for _, f in ipairs(W.frames) do
+            if f.scripts.OnUpdate then f.scripts.OnUpdate(f, dt) end
+        end
+    end
+    Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    local count = GulliGroupBuffsButton.attrs["gb-count"]
+    units.player.auras["Inner Fire"] = nil
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(table.concat(told, ","), "Inner Fire", "told at once")
+    eq(GulliGroupBuffsButton.attrs["gb-count"], count, "the key's list stays")
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(#told, 1, "told once per fight")
+    -- Fortitude was on the list from before the fight: the key covers it, no notice.
+    eq(#ns.SelfFaded({ { unit = "player", spell = "Inner Fire" },
+        { unit = "player", spell = "Power Word: Fortitude" } }), 0)
+    -- The game hides your auras: nothing is said.
+    W.combat = false
+    Fire("PLAYER_REGEN_ENABLED")
+    units.player.auras["Inner Fire"] = 600
+    ns.Refresh()
+    Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    units.player.hidden = true
+    units.player.auras["Inner Fire"] = nil
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(#told, 1, "a hidden aura is never reported")
+    units.player.hidden = nil
+    -- The switch is off: nothing either.
+    ns.DB().fadeAlert = false
+    Fire("UNIT_AURA", "player")
+    frame(0.016)
+    eq(#told, 1, "the switch stops it")
+    W.combat = false
+end)
+
 test("marks also go on other addons' party frames, found by their unit attribute", function()
     local units = party()
     units.party2.auras = { ["Power Word: Fortitude"] = 0 }

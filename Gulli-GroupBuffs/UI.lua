@@ -23,6 +23,9 @@ local layout
 local lastCast = {}       -- the unit the last press aimed at, and when
 local landed = {}         -- in combat: unit GUID .. spell -> true for our casts that went through
 local readyUntil = 0      -- a ready check shows the bar until then
+local faded = {}          -- in combat: your own buffs that fell off (spell -> true, told once)
+local fadedLine           -- in combat: the caption line naming them
+local selfCheck = false   -- in combat: your auras changed, look for a buff that fell off
 
 -- Runs in the game's restricted environment on every click of the big button, before
 -- the cast. Outside combat it does nothing (the button is already aimed). In combat it
@@ -334,6 +337,7 @@ end
 -- The caption beside the big button: the spell, then on whom (in the class colour) and the
 -- extra line (out of range, the combat list).
 local function caption(e, extra)
+    if fadedLine then extra = extra and (extra .. "  " .. fadedLine) or fadedLine end
     local sub
     if e then
         local name = e.name or nameOf(e.unit)
@@ -359,6 +363,10 @@ function ns.Refresh()
         if held and at and now() - at < ns.HOLD then i = held end
         if i > n then i = 1 end
         local e = list[i]
+        if selfCheck then
+            selfCheck = false
+            ns.CheckFaded()
+        end
         paint(main, e, "Interface\\Icons\\INV_Misc_QuestionMark")
         for _, m in ipairs(minis) do
             if m.entry then paint(m, m.entry) end
@@ -388,6 +396,27 @@ function ns.Refresh()
     paintMarks()
 end
 
+-- In a fight the key keeps the list from before it, so a buff of yours that falls off
+-- cannot be cast by it: say so once (a notice and the caption), to cast it by hand.
+function ns.CheckFaded()
+    if not ns.DB().fadeAlert then fadedLine = nil; return end
+    local names = {}
+    for _, e in ipairs(ns.SelfFaded(list)) do
+        names[#names + 1] = e.spell
+        if not faded[e.spell] then
+            faded[e.spell] = true
+            ns.ShowFaded(e)
+        end
+    end
+    fadedLine = #names > 0 and (S.Hex(S.BAD) .. L.FADED:format(table.concat(names, ", ")) .. "|r") or nil
+end
+
+function ns.ShowFaded(e)
+    if not S.Toast then return end
+    S.Toast({ key = "faded", icon = e.icon, kind = "warn", title = L.FADED_TITLE:format(e.spell),
+        text = L.FADED_TEXT, seconds = 8 })
+end
+
 -- The last moment before the lockdown: hand the list to the big button.
 local function enterCombat()
     if not built then return end
@@ -405,6 +434,8 @@ local function enterCombat()
     main:SetAttribute("gb-index", 1)
     main:SetAttribute("gb-held", nil)
     main:SetAttribute("gb-at", nil)
+    for k in pairs(faded) do faded[k] = nil end
+    fadedLine, selfCheck = nil, false
 end
 ns.EnterCombat = enterCombat
 
@@ -443,6 +474,8 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
         enterCombat()
     elseif event == "PLAYER_REGEN_ENABLED" then
         for k in pairs(landed) do landed[k] = nil end   -- out of combat the auras tell
+        for k in pairs(faded) do faded[k] = nil end
+        fadedLine, selfCheck = nil, false
         if not built then build(); pendingKey = true end
         if pendingKey then ns.ApplyKey() end
         ns.Refresh()
@@ -484,7 +517,8 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
         if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then
             dirty = true
             -- Out of combat a new or lost buff shows at once; in combat the plan is fixed anyway.
-            if not InCombatLockdown() then urgent = true end
+            if not InCombatLockdown() then urgent = true
+            elseif unit == "player" then selfCheck, urgent = true, true end
         end
     else
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then ns.RescanFrames() end
@@ -599,6 +633,7 @@ local function rowList()
         option(L.SHOW, dbValue("show"), ns.SHOW, function(v) return L["SHOW_" .. v] end,
             I .. "INV_Misc_Spyglass_02"),
         toggle(L.COMBAT, dbValue("combat"), I .. "Ability_Warrior_OffensiveStance"),
+        toggle(L.FADE_ALERT, dbValue("fadeAlert"), I .. "Spell_Shadow_DeadofNight"),
         { kind = "key", label = L.KEY, icon = I .. "INV_Gizmo_01" },
         toggle(L.LOCK, dbValue("locked"), I .. "INV_Misc_Key_04"),
         option(L.WHERE, dbValue("where"), ns.WHERE, function(v) return L["WHERE_" .. v] end,
