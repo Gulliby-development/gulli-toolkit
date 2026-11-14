@@ -492,6 +492,47 @@ test("the history tab draws without errors", function()
     ns.ShowTab(1)
 end)
 
+test("Auctionator's prices older than four hours are told, newer ones not", function()
+    Fake({ now = 1000000, bags = { [FLOWER] = 1 }, names = names() })
+    local ns = Load()
+    eq(ns.StaleHours(), nil, "Auctionator cannot tell")
+    Auctionator.SavedState = { TimeOfLastReplicateScan = W.now - 5 * 3600, TimeOfLastBrowseScan = W.now - 9 * 3600 }
+    eq(ns.StaleHours(), 5, "the newest scan counts")
+    Auctionator.SavedState.TimeOfLastBrowseScan = W.now - 3600
+    eq(ns.StaleHours(), nil, "an hour old is fine")
+    Auctionator.SavedState = nil
+    AUCTIONATOR_SAVEDVARS = { TimeOfLastGetAllScan = W.now - 30 * 3600 }
+    eq(ns.StaleHours(), 30, "the saved variable when the table is not reachable")
+    AUCTIONATOR_SAVEDVARS = nil
+    local ages = { [WB] = 2, [FB] = 3, [PL] = 5, [AT] = 2 }
+    Auctionator.API.v1.GetAuctionAgeByItemID = function(_, id) return ages[id] end
+    eq(ns.StaleHours(), 48, "without scan times: the freshest bundle item, in days")
+    ages[FB] = 0
+    eq(ns.StaleHours(), nil, "seen today: maybe fresh, so nothing is said")
+end)
+
+test("the price warning shows in the window, closes with its cross, and comes back on the next visit", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names() })
+    local ns = Load()
+    Auctionator.SavedState = { TimeOfLastReplicateScan = W.now - 6 * 3600 }
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local w = ns.Window()
+    assert(w:IsShown(), "open at the auction house")
+    local banner
+    for _, f in ipairs(W.frames) do if rawget(f, "onClose") then banner = f end end
+    assert(banner and banner:IsShown(), "the warning shows")
+    banner.close:GetScript("OnClick")(banner.close)
+    assert(not banner:IsShown(), "closed")
+    ns.Refresh()
+    assert(not banner:IsShown(), "stays closed on this visit")
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    assert(banner:IsShown(), "back on the next visit")
+    Auctionator.SavedState.TimeOfLastReplicateScan = W.now
+    ns.Refresh()
+    assert(not banner:IsShown(), "gone after a scan")
+end)
+
 test("the window draws a plan without errors", function()
     Fake({ bags = { [FLOWER] = 2, [WB] = 3 }, bank = { [WB] = 4 }, names = names(), prices = { [WB] = 300, [FB] = 1000 } })
     local ns = Load()

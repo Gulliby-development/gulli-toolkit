@@ -933,6 +933,28 @@ end
 -- Showing state ------------------------------------------------------------------------------
 
 -- A message in the middle of an empty area: a title and a grey line under it.
+-- A one-line notice across the top of a body: a tinted rounded bar in a state colour (S.WARN
+-- by default) with an icon, the text and a small close button. b:Set(text); b.onClose runs
+-- after the bar hides itself.
+S.BANNER_H = 40
+function S.Banner(parent, icon, color)
+    color = color or S.WARN
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetHeight(S.BANNER_H)
+    S.Box(b, { color[1] * 0.22, color[2] * 0.22, color[3] * 0.22, 1 }, { color[1] * 0.6, color[2] * 0.6, color[3] * 0.6, 1 }, S.R_LG)
+    b.icon = S.IconBox(b, 24, icon)
+    b.icon:SetPoint("LEFT", S.INSET, 0)
+    b.close = S.Close(b, function() b:Hide(); if b.onClose then b.onClose() end end)
+    b.close:SetPoint("RIGHT", -6, 0)
+    b.text = S.Text(b, 11, color)
+    b.text:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
+    b.text:SetPoint("RIGHT", b.close, "LEFT", -6, 0)
+    b.text:SetJustifyH("LEFT")
+    function b:Set(text) self.text:SetText(text or "") end
+    b:Hide()
+    return b
+end
+
 function S.Empty(parent)
     local e = CreateFrame("Frame", nil, parent)
     e:SetAllPoints()
