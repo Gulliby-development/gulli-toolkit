@@ -124,7 +124,10 @@ local function leaderName()
     local raid = IsInRaid and IsInRaid()
     for i = 1, (GetNumGroupMembers and GetNumGroupMembers() or 0) do
         local unit = (raid and "raid" or "party") .. i
-        if UnitIsGroupLeader and UnitIsGroupLeader(unit) then return UnitName(unit) end
+        if UnitIsGroupLeader and UnitIsGroupLeader(unit) then
+            local name = UnitName(unit)
+            if not (issecretvalue and issecretvalue(name)) then return name end
+        end
     end
 end
 

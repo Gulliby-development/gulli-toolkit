@@ -33,6 +33,7 @@ local function itemClass(link)
 end
 local function npcID()
     local guid = UnitGUID and UnitGUID("npc")
+    if issecretvalue and issecretvalue(guid) then return nil end
     return guid and tonumber(guid:match("^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)%-"))
 end
 local function questTag(id)
@@ -256,7 +257,9 @@ end
 function ns.OnEvent(event, ...)
     local db = ns.db
     if event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
-        ns.last.npc, ns.last.npcName = npcID(), UnitName and UnitName("npc")
+        local npcName = UnitName and UnitName("npc")
+        if issecretvalue and issecretvalue(npcName) then npcName = nil end
+        ns.last.npc, ns.last.npcName = npcID(), npcName
         if ns.Refresh then ns.Refresh() end
     elseif event == "QUEST_DETAIL" or event == "QUEST_PROGRESS" or event == "QUEST_COMPLETE" then
         ns.last.quest, ns.last.questTitle = detailID(), detailTitle()

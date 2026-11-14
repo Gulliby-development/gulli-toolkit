@@ -79,8 +79,7 @@ local function who(e)
 end
 
 local function guidOf(unit)
-    local g = unit and UnitGUID and UnitGUID(unit)
-    if g and not (issecretvalue and issecretvalue(g)) then return g end
+    return unit and ns.Ask(UnitGUID, unit) or nil
 end
 
 local function done(e)
