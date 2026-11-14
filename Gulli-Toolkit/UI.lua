@@ -485,9 +485,16 @@ local function fillOverview(data)
     return home.overview:Fit(24 + #lines * LINE_H)
 end
 
+-- The height the command lines may fill in a Quick setup card of height h whose commands title
+-- sits cmdTop into the body: the body is the card less its 36 title and its inset.
+function ns.CommandsRoom(h, cmdTop)
+    return math.max(0, h - 36 - S.INSET - cmdTop - 24)
+end
+
 -- The slash commands of the modules that run, as many as the Quick setup card has room for.
 local function fillCommands(data)
-    local room = math.floor((home.quick:GetHeight() - home.cmdTop - 36 - S.INSET) / LINE_H)
+    -- The lines start 24 below the title, inside the body (the card less its title and inset).
+    local room = math.floor((ns.CommandsRoom(home.quick:GetHeight(), home.cmdTop)) / LINE_H)
     local list = {}
     for _, r in ipairs(data) do if r.running and r.slash then list[#list + 1] = r end end
     home.cmdTitle:SetShown(room > 0 and #list > 0)

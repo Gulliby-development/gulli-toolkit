@@ -10,7 +10,7 @@
 ## Notes-zhCN: 自动接受和交付任务。有多个奖励时仍由你选择。 /gaq
 ## Notes-zhTW: 自动接受和交付任务。有多个奖励时仍由你选择。 /gaq
 ## Author: Gulliby
-## Version: 1.7.1
+## Version: 1.7.2
 ## IconTexture: Interface\AddOns\Gulli-AutoQuest\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: AutoQuest
