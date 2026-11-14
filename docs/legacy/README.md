@@ -24,10 +24,13 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 - **A goal.** Pick a reward of the track. Gulli Legacy lists the fastest steps that reach it and the time they take together.
 - **All your characters.** Each character you log in is saved. A step can be faster on another character (three levels on your warlock), and a class you have no character of is a new point too.
 - **Help from other modules.** A button on a step opens the module that helps: Craft Profit for a profession, Bulletin Board to find a group for a dungeon, XP for your pace.
-- **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. Move it with `/gulli move`.
+- **How to do it.** Click a step or a challenge. Its page tells you what to do and where to go, lists what is left (the dungeons, the zones and areas still to explore), and gives a Wowhead link to copy.
+- **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. Turn off **Lock in place** in Settings (or use `/gulli move`) to drag it; the key on its name tab locks it again.
 - **A notice for each new point**, also in the Recent list of the toolkit.
 - **In game:** a step opens the game's own Legacy window at its challenge.
 - **You choose** what it suggests: dungeons, raids, PvP, other characters, a new class.
+
+<p align="center"><img src="detail.png" alt="How to do a challenge" width="560"></p>
 
 <p align="center"><img src="tracker.png" alt="The tracker" width="380"></p>
 
@@ -41,8 +44,9 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 
 1. Type `/glg`, or open **Legacy** in `/gulli`. **Plan** shows the track and your next steps.
 2. **Change goal** walks through the rewards of the track. **Pin** puts a step on the tracker. **In game** opens it in the game's Legacy window.
-3. **Characters** shows the fastest step of each character. **Challenges** lists all of them. **Settings** has the switches.
-4. `/glg game` opens the game's Legacy window.
+3. Click a step for its page: how to do it, what is left and a Wowhead link. **Back** returns.
+4. **Characters** shows the fastest step of each character. **Challenges** lists all of them, the most finished on top; sort them by **Progress**, **Type** or **Name**. **Settings** has the switches.
+5. `/glg game` opens the game's Legacy window.
 
 ## FAQ
 

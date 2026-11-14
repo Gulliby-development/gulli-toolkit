@@ -39,7 +39,7 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 
 1. The counter works on its own after you install it.
 2. Type `/gil` to see the list. **Settings** has the limits, alerts, group and counter options. `/gil status` prints one line in chat.
-3. The counter shows the entries left with one mark per entry. Click it to open the window; `/gulli move` places it. When an entry is free again, a card at the top of the screen tells you.
+3. The counter shows the entries left with one mark per entry. Click it to open the window. To place it, turn off **Lock in place** in Settings (or use `/gulli move`) and drag it. When an entry is free again, a card at the top of the screen tells you.
 
 ## FAQ
 

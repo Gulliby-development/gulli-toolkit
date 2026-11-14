@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Crates
+## Notes: Finds the cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, and buys what is missing. /gcr
+## Notes-ruRU: Находит самый дешёвый способ заполнить каждый потерянный ящик из сумок, банка и аукциона и докупает недостающее. /gcr
+## Notes-deDE: Findet den günstigsten Weg, jede Waylaid-Kiste aus Taschen, Bank und Auktionshaus zu füllen, und kauft, was fehlt. /gcr
+## Notes-esES: Encuentra la forma más barata de llenar cada caja extraviada con tus bolsas, el banco y la casa de subastas, y compra lo que falta. /gcr
+## Notes-esMX: Encuentra la forma más barata de llenar cada caja extraviada con tus bolsas, el banco y la casa de subastas, y compra lo que falta. /gcr
+## Notes-frFR: Trouve le moyen le moins cher de remplir chaque caisse égarée avec vos sacs, la banque et l'hôtel des ventes, et achète ce qui manque. /gcr
+## Notes-ptBR: Encontra o jeito mais barato de encher cada caixa extraviada com as bolsas, o banco e a casa de leilões, e compra o que falta. /gcr
+## Notes-zhCN: 用背包、银行和拍卖行找出装满每个遗失货箱的最便宜方式，并买下缺少的物品。 /gcr
+## Notes-zhTW: 用背包、银行和拍卖行找出装满每个遗失货箱的最便宜方式，并买下缺少的物品。 /gcr
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Crates\icon
+## OptionalDeps: Gulli-Toolkit, Auctionator
+## X-Gulli-Module: Crates
+## SavedVariables: GulliCratesDB
+## AddonCompartmentFunc: GulliCrates_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Data.lua
+Core.lua
+Skin.lua
+UI.lua
