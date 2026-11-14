@@ -2,7 +2,8 @@ name: Game data
 
 # Every week: rebuild the Data.lua files from the newest QuestieDB and Skillet-Classic. When one
 # changed, push a branch, open a pull request and run CI on it (a pull request opened by the
-# Actions token starts no workflow by itself). The Attune chains are checked too.
+# Actions token starts no workflow by itself). The Attune chains are checked too, and every
+# module against the Forever dungeons and areas (the forever-content issue).
 on:
   schedule:
     - cron: "30 4 * * 1"   # Mondays, 04:30 UTC
@@ -40,6 +41,11 @@ jobs:
           python3 tools/attune/check_data.py /tmp/questiedb | tee attune.txt
           echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
+      - name: Modules against the Forever data
+        run: |
+          python3 tools/health/forever_content.py /tmp/questiedb --out /tmp/forever.md
+          cat /tmp/forever.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Tests on the new data
         run: |
           sudo apt-get install -y lua5.1 > /dev/null
@@ -74,3 +80,20 @@ jobs:
         run: |
           { echo "Priority: P1"; echo; echo "\`tools/attune/check_data.py\` against QuestieDB $QUESTIEDB:"; echo; echo '```'; cat attune.txt; echo '```'; } > body.md
           gh issue create --title "Attune: a step no longer matches QuestieDB" --body-file body.md
+
+      - name: Open, update or close the forever-content issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f /tmp/forever.md ] || exit 0
+          gh label create forever-content --color 1d76db --description "A module lags the WoW Forever data" 2>/dev/null || true
+          num=$(gh issue list --label forever-content --state open --json number --jq '.[0].number')
+          if [ -s /tmp/forever.md ]; then
+            { echo "Priority: P1"; echo; echo "\`tools/health/forever_content.py\` against QuestieDB $QUESTIEDB:"; echo; cat /tmp/forever.md; } > body.md
+            if [ -n "$num" ]; then gh issue edit "$num" --body-file body.md
+            else gh issue create --title "Forever content: a module lags the game data" --label forever-content --body-file body.md
+            fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --reason completed --comment "Every module keeps up with the Forever data again."
+          fi
