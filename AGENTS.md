@@ -192,6 +192,7 @@ The tag names, asset names and `release.json` are what Runeloader and its index 
 - `tools/health/releases.py`: is every version on main released, in the all-in-one zip and in the index.
 - `.github/workflows/`: CI (`ci.yml`), releases (`release.yml`), the all-in-one zip (`bundle.yml`), the weekly game data (`data.yml`) and the nightly release health (`release-health.yml`).
 - `.github/ISSUE_TEMPLATE/bug.yml`: the bug form; it asks for the text of `/gulli errors`.
+- `tools/watch/competitors.md`: the addons the weekly market review watches, per module. A new module gets its row.
 
 ## Verification
 
