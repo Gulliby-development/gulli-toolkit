@@ -526,9 +526,10 @@ function ns.GroupMember(class)
     for i = 1, n do
         local unit = (raid and "raid" or "party") .. i
         local _, c = UnitClass(unit)
-        if c == class and not UnitIsUnit(unit, "player") and UnitIsConnected(unit)
-            and not UnitIsDeadOrGhost(unit) then
-            return UnitName(unit)
+        local name = UnitName(unit)
+        if not (issecretvalue and (issecretvalue(c) or issecretvalue(name))) and c == class
+            and not UnitIsUnit(unit, "player") and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
+            return name
         end
     end
 end

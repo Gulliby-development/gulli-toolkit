@@ -393,6 +393,7 @@ function ns.Group()
         local unit = prefix .. i
         if UnitExists and UnitExists(unit) then
             local name = UnitName(unit)
+            if issecretvalue and issecretvalue(name) then name = nil end
             if name and name ~= UnitName("player") then
                 out[#out + 1] = { name = name, raids = ns.others[name] and ns.others[name].raids }
             end

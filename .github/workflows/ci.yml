@@ -24,6 +24,9 @@ jobs:
       - name: Lua syntax
         run: for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
 
+      - name: Names and GUIDs of other units are checked for secret values
+        run: lua5.1 tools/ci/secret_units.lua Gulli-*/*.lua
+
       - name: Tests on a fake WoW client
         run: |
           rc=0

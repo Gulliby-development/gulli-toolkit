@@ -465,8 +465,8 @@ end
 -- alone while the camp aura lasts, or BLOCK_SECONDS when it is something else.
 local bounced = {}
 local function bounceKey(unit, spell)
-    local g = UnitGUID and UnitGUID(unit)
-    if not g or secret(g) then g = UnitName and UnitName(unit) end
+    -- A secret GUID or name cannot key a table: then the unit has no key.
+    local g = ask(UnitGUID, unit) or ask(UnitName, unit)
     return g and spell and (tostring(g) .. "|" .. spell)
 end
 
@@ -490,9 +490,7 @@ end
 local skipped = {}
 
 local function unitKey(unit)
-    local g = UnitGUID and UnitGUID(unit)
-    if g and not secret(g) then return g end
-    return UnitName(unit)
+    return ask(UnitGUID, unit) or ask(UnitName, unit)
 end
 
 -- Leaves a unit out of the plan for a while after a cast on it failed (line of sight, a
@@ -572,18 +570,20 @@ function ns.Plan()
         end
         return found
     end
+    -- "skipped", "hidden", the unit's missing buffs, or nil (dead, offline, out of sight).
+    local function look(u)
+        if not alive(u.unit) then return nil end
+        if ns.Skipped(u.unit) then return "skipped" end
+        local auras = ns.Auras(u.unit, watched)
+        if not auras then return "hidden" end
+        return check(u, auras)
+    end
     for _, u in ipairs(units) do
-        if alive(u.unit) and ns.Skipped(u.unit) then
-            info.skipped = info.skipped + 1
-        elseif alive(u.unit) then
-            local auras = ns.Auras(u.unit, watched)
-            local ok, found = false, nil
-            if auras then ok, found = pcall(check, u, auras) end
-            if ok then
-                for _, e in ipairs(found) do need[#need + 1] = e end
-            else
-                info.hidden = info.hidden + 1
-            end
+        local ok, r = pcall(look, u)
+        if not ok or r == "hidden" then info.hidden = info.hidden + 1
+        elseif r == "skipped" then info.skipped = info.skipped + 1
+        elseif r then
+            for _, e in ipairs(r) do need[#need + 1] = e end
         end
     end
 

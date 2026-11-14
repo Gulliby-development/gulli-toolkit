@@ -89,6 +89,7 @@ local function members()
     for i = 1, math.min(n, 4) do
         local unit = "party" .. i
         local name = UnitName(unit)
+        if issecretvalue and issecretvalue(name) then name = nil end
         if name then
             local _, class = UnitClass(unit)
             out[#out + 1] = { unit = unit, name = name, class = class, level = UnitLevel(unit),

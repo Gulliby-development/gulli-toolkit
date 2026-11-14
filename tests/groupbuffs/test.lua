@@ -369,6 +369,20 @@ test("a game check that fails or hides its answer on one member leaves the other
     eq(GulliGroupBuffsButton.attrs["gb-unit1"], "party2")
 end)
 
+test("a target whose GUID and name are secret is never used as a table key", function()
+    local units = party()
+    units.target = { name = "Stranger", class = "WARRIOR", auras = {} }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, time = 100 }
+    local ns = Load()
+    local guid, name = UnitGUID, UnitName
+    UnitGUID = function(unit) if unit == "target" then return W.SECRET end return guid(unit) end
+    UnitName = function(unit) if unit == "target" then return W.SECRET end return name(unit) end
+    ns.Skip("target"); ns.Bounced("target", "Power Word: Fortitude")
+    eq(ns.Skipped("target"), false, "no key, so nothing is kept for it")
+    eq(ns.IsBounced("target", "Power Word: Fortitude"), false)
+    assert(show(ns.Plan()):find("Power Word: Fortitude@party1", 1, true))
+end)
+
 test("a bounce on you does not stop the buff on anyone else", function()
     local units = party()
     units.player.auras = { ["Camp Benefits"] = 7200 }

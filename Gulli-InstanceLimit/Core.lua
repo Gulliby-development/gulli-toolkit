@@ -255,7 +255,8 @@ function ns.StillInside()
     for i = 1, raid and n or n - 1 do
         local unit = (raid and "raid" or "party") .. i
         if UnitExists(unit) and not UnitIsUnit(unit, "player") and UnitIsConnected(unit) then
-            if UnitPosition(unit) == nil then out[#out + 1] = UnitName(unit) end
+            local name = UnitName(unit)
+            if UnitPosition(unit) == nil and not (issecretvalue and issecretvalue(name)) then out[#out + 1] = name end
         end
     end
     return out

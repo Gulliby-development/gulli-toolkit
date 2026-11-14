@@ -363,7 +363,10 @@ function ns.GroupOn(id)
     if not (Q.IsUnitOnQuest and IsInGroup and IsInGroup()) then return out end
     for i = 1, 4 do
         local unit = "party" .. i
-        if UnitExists and UnitExists(unit) and Q.IsUnitOnQuest(unit, id) then out[#out + 1] = UnitName(unit) end
+        if UnitExists and UnitExists(unit) and Q.IsUnitOnQuest(unit, id) then
+            local name = UnitName(unit)
+            if not (issecretvalue and issecretvalue(name)) then out[#out + 1] = name end
+        end
     end
     return out
 end

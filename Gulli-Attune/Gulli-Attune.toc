@@ -10,7 +10,7 @@
 ## Notes-zhCN: 所有角色的团队副本资格：已完成的部分和下一步。 /gat
 ## Notes-zhTW: 所有角色的团队副本资格：已完成的部分和下一步。 /gat
 ## Author: Gulliby
-## Version: 1.8.2
+## Version: 1.8.3
 ## IconTexture: Interface\AddOns\Gulli-Attune\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Attune
