@@ -287,7 +287,10 @@ function ns.Families()
                     if known(b.id) then
                         local names = { spellName(b.id) }
                         for _, a in ipairs(b.also) do names[#names + 1] = spellName(a) end
-                        fam.options[b.key] = { name = spellName(b.id), id = b.id, names = names }
+                        local o = { name = spellName(b.id), id = b.id, names = names }
+                        local g = b.also[1]
+                        if g and known(g) and spellName(g) then o.group, o.groupId = spellName(g), g end
+                        fam.options[b.key] = o
                     end
                 end
                 if next(fam.options) then out[#out + 1] = fam end
@@ -540,16 +543,25 @@ function ns.Plan()
         end
     end
     local need = {}
+    -- Class -> the blessing key every member of it gets, or false when they differ.
+    local classBless = {}
     -- One unit's needs; an error from the game (a hidden value in an instance) leaves only
     -- that unit out.
     local function check(u, auras)
         local found = {}
         for _, fam in ipairs(fams) do
             if fam.who == "blessing" then
-                local opt = not u.pet and fam.options[ns.BlessingFor(u.unit) or ""]
+                local bkey = not u.pet and ns.BlessingFor(u.unit)
+                local opt = bkey and fam.options[bkey]
+                local _, cls = ask(UnitClass, u.unit)
+                if cls and not u.pet then
+                    if classBless[cls] == nil then classBless[cls] = bkey or "off"
+                    elseif classBless[cls] ~= (bkey or "off") then classBless[cls] = false end
+                end
                 if opt and not present(opt.names, auras, low) and not ns.IsBounced(u.unit, opt.name) then
                     found[#found + 1] = { unit = u.unit, sub = u.group, key = fam.key,
-                                          spell = opt.name, id = opt.id, names = opt.names }
+                                          spell = opt.name, id = opt.id, names = opt.names,
+                                          bless = opt, bclass = cls }
                 end
             elseif applies(fam, u.unit, ctx, u.pet) then
                 local missing
@@ -634,6 +646,44 @@ function ns.Plan()
         end
     end
 
+    -- A Greater Blessing covers every member of one class: it replaces the single blessings
+    -- of a class when groupMin of it need the same one, no member of that class gets another
+    -- blessing (a role rule), and the spell is usable (has its reagent).
+    if groupMin and groupMin > 0 then
+        local count, order = {}, {}
+        for _, e in ipairs(need) do
+            local o = e.bless
+            if o and o.group and e.bclass and classBless[e.bclass] and classBless[e.bclass] ~= "off" then
+                local k = e.bclass .. "|" .. o.group
+                if not count[k] then count[k] = 0; order[#order + 1] = k end
+                count[k] = count[k] + 1
+            end
+        end
+        for _, k in ipairs(order) do
+            if count[k] >= groupMin then
+                local at, target, kept, first = nil, nil, {}, nil
+                for _, e in ipairs(need) do
+                    local o = e.bless
+                    if o and o.group and e.bclass and (e.bclass .. "|" .. o.group) == k then
+                        first = first or e
+                        at = at or #kept + 1
+                        if not target and inRange(o.group, e.unit) then target = e.unit end
+                    else
+                        kept[#kept + 1] = e
+                    end
+                end
+                if usable(first.bless.group) then
+                    table.insert(kept, at, { unit = target or first.unit, key = first.key,
+                        spell = first.bless.group, id = first.bless.groupId, group = true,
+                        covers = count[k], names = first.names })
+                    need = kept
+                else
+                    info.reagent = first.bless.group
+                end
+            end
+        end
+    end
+
     -- Low on mana: only what goes on you.
     local share = d.mana and d.mana > 0 and manaShare()
     if share and share < d.mana then
@@ -665,7 +715,7 @@ function ns.Plan()
 
     local plan, far = {}, {}
     for _, e in ipairs(need) do
-        e.fam, e.removedAt = nil, nil
+        e.fam, e.removedAt, e.bless, e.bclass = nil, nil, nil, nil
         e.icon = spellIcon(e.id)
         if inRange(e.spell, e.unit) then plan[#plan + 1] = e else far[#far + 1] = e end
     end

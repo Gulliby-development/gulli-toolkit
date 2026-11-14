@@ -179,6 +179,36 @@ test("blessings follow role, then class; a Greater Blessing counts", function()
     eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Might@party1")
 end)
 
+test("a Greater Blessing covers a class when enough of it need the same blessing", function()
+    local units = { player = { name = "Me", class = "PALADIN", auras = { ["Blessing of Might"] = 600 } } }
+    local raid = {}
+    for i = 1, 6 do
+        local unit = "raid" .. i
+        if i == 1 then units[unit] = units.player
+        else units[unit] = { name = "W" .. i, class = i <= 4 and "WARRIOR" or "MAGE", auras = {}, inGroup = true } end
+        raid[i] = { name = i == 1 and "Me" or ("W" .. i), group = i <= 3 and 1 or 2 }
+    end
+    Fake { known = { [19740] = true, [25782] = true, [19742] = true, [25894] = true }, units = units, raid = raid,
+           db = { groupMin = 3 } }
+    local ns = Load()
+    -- Three warriors over two parties need Might: one Greater cast; two mages stay single.
+    eq(show(ns.Plan()), "Greater Blessing of Might@raid2,Blessing of Wisdom@raid5,Blessing of Wisdom@raid6")
+    eq(ns.Plan()[1].covers, 3)
+    -- A warrior tank gets Kings by role: a Greater Might would replace it, so single casts.
+    units.raid2.role = "TANK"
+    ns.DB().bless.TANK = "wisdom"
+    eq(show(ns.Plan()), "Blessing of Wisdom@raid2,Blessing of Might@raid3,Blessing of Might@raid4,"
+        .. "Blessing of Wisdom@raid5,Blessing of Wisdom@raid6")
+    -- Without the reagent the single casts stay and the bar says why.
+    units.raid2.role = nil
+    W.spec.unusable = { ["Greater Blessing of Might"] = true }
+    local plan, far = ns.Plan()
+    eq(plan[1].spell, "Blessing of Might")
+    local keys = {}
+    for _, st in ipairs(ns.Status(plan, far)) do keys[st[1]] = st[2] end
+    eq(keys.ST_REAGENT, "Greater Blessing of Might")
+end)
+
 test("a blessing you do not know is not asked for", function()
     local units = party()
     units.player.class = "PALADIN"

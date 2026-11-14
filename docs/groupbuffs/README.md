@@ -23,7 +23,7 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
 - **One button, one key.** The big button shows the next buff and who gets it. Click it or press your Quick Buff key. You first, then the group.
 - **See who is missing what.** Small buttons next to it show the buffs after that. Click one to cast that buff on that player.
 - **In combat too.** The game does not let an addon change a button in combat. So when the fight starts, the addon gives the button the list of missing buffs. Each press in combat casts the next buff from that list and skips the dead. Buffs that landed in combat are greyed out on the bar.
-- **Group spells when they pay off.** When three or more players in a party need the same buff, it casts Prayer of Fortitude, Arcane Brilliance or Gift of the Wild instead, if you have the reagent.
+- **Group spells when they pay off.** When three or more players in a party need the same buff, it casts Prayer of Fortitude, Arcane Brilliance or Gift of the Wild instead, if you have the reagent. A paladin gets a Greater Blessing when three or more players of one class need the same blessing (it covers that whole class), unless one of them gets another blessing by role, such as Kings on the tank.
 - **Buff again in time.** A buff with less than one minute left counts as missing. You choose: when it is gone, or 1, 3 or 5 minutes before.
 - **Every class.**
   - Priest: Power Word: Fortitude, Divine Spirit, Shadow Protection (off by default), Inner Fire, and the racial Touch of Weakness (Undead) and Shadowguard (Troll), only on yourself.
