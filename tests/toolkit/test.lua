@@ -265,6 +265,18 @@ test("the home page shows the modules' summaries and the feed; a click opens the
     eq(#ns.Feed(), 0, "Clear empties the feed")
 end)
 
+test("the command lines on Quick setup end inside the card, the 'more' line too", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local S = ns.Skin
+    local top = 200
+    -- Room for exactly two lines of 24 under the title, and not a pixel more.
+    local h = 36 + S.INSET + top + 24 + 2 * 24
+    eq(math.floor(ns.CommandsRoom(h, top) / 24), 2)
+    eq(math.floor(ns.CommandsRoom(h - 1, top) / 24), 1, "one pixel short: one line less")
+    eq(ns.CommandsRoom(10, top), 0, "a short card: no lines")
+end)
+
 test("the hub opens the module that was open last, back goes home and stays there", function()
     Fake({ addons = { QC } })
     local ns = Load()
