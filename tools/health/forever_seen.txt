@@ -104,3 +104,4 @@
 17732 EXCAVATION_SITE_WETLANDS_EXTERIOR (other outdoor areas)
 17738 THE_DRUNKEN_DWARF (other outdoor areas)
 17824 THE_EVENTIDE_FOREVER (other outdoor areas)
+17191 MANOR_MISTMANTLE (Instance) # no quests or NPCs in QuestieDB and not open in the game; DungeonPrep adds it when it gets content
