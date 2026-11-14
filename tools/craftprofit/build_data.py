@@ -25,7 +25,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "questcleaner"))
-import luadata  # noqa: E402
+import questie  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "..", "Gulli-CraftProfit", "Data.lua")
 
@@ -77,9 +77,8 @@ def names(text):
 
 
 def sources(root, by_name, spell):
-    d = os.path.join(root, "data", "Forever")
-    items = luadata.load(os.path.join(d, "foreverItemDB.lua"), "itemData")
-    npcs = luadata.load(os.path.join(d, "foreverNpcDB.lua"), "npcData")
+    # With the Forever corrections (vendors and drops Forever added).
+    _, npcs, _, items = questie.load_forever(root)
 
     def field(row, k):
         return row.get(k) if isinstance(row, dict) else (row[k - 1] if len(row) >= k else None)

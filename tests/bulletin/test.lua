@@ -203,6 +203,39 @@ test("only Forever dungeons: no MC, BWL, Naxx, AQ or ZG; Hyjal and Barrow Deeps 
     eq(d, nil, "Molten Core is not in Forever")
 end)
 
+test("Forever's own dungeons by name, and their weak words", function()
+    Fake({})
+    local ns = Load()
+    local cases = { { "LFM Krol'dok need tank", "KROLDOK" }, { "LF2M Hall of Thanes", "THANES" },
+                    { "LFG Drowned City", "DROWNED" }, { "LFM ruins of lordaeron 3/5", "LORDAERON" },
+                    { "LF1M Excavation heal", "EXCAVATION" }, { "LFM City of Dalaran", "DALARAN" },
+                    { "LFM Alcaz Prison", "ALCAZ" }, { "LF3M blackmaw", "BLACKMAW" }, { "LFM Shaper's Terrace", "SHAPERS" },
+                    { "ищу группу в Даларан", "DALARAN" } }
+    for _, c in ipairs(cases) do
+        local _, d = kind(c[1])
+        eq(d, c[2], c[1])
+    end
+    eq(ns.DungeonName("DROWNED"), "The Drowned City", "no client area: the Locales name")
+    local k, d = kind("WTS portal to Dalaran, 1g")
+    eq(d, nil, "a weak Dalaran in a sale is no dungeon")
+    k, d = kind("this tea is hot")
+    eq(d, nil, "hot alone is not the Hall of Thanes")
+    k, d = kind("for Lordaeron!")
+    eq(d, nil, "a weak Lordaeron alone is no group")
+    k, d = kind("anyone drowned in that lake?")
+    eq(d, nil)
+    k, d = kind("nice terrace view")
+    eq(d, nil)
+    k, d = kind("selling shapers gloves")
+    eq(d, nil)
+    k, d = kind("rol dice")
+    eq(d, nil)
+    k, d = kind("excav tools wts")
+    eq(d, nil)
+    k, d = kind("dala portal")
+    eq(d, nil)
+end)
+
 test("short words do not make false matches", function()
     local k, d = kind("WTS Copper ore, dm me")
     eq(k, "WTS"); eq(d, nil, "dm me is a private message")

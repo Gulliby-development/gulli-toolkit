@@ -9,7 +9,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import luadata  # noqa: E402
+import questie  # noqa: E402
 
 ITEM_CLASS_QUEST = 12
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Gulli-QuestCleaner", "Data.lua")
@@ -32,10 +32,8 @@ def lua_list(values):
 
 
 def main(root):
-    quests = luadata.load(os.path.join(root, "data/Forever/foreverQuestDB.lua"), "questData")
-    items = luadata.load(os.path.join(root, "data/Forever/foreverItemDB.lua"), "itemData")
-    npcs = luadata.load(os.path.join(root, "data/Forever/foreverNpcDB.lua"), "npcData")
-    objects = luadata.load(os.path.join(root, "data/Forever/foreverObjectDB.lua"), "objectData")
+    # The data files and the Forever corrections, where every quest Forever added lives.
+    quests, npcs, objects, items = questie.load_forever(root)
 
     def is_quest_item(i):
         return items.get(i, {}).get(I_CLASS) == ITEM_CLASS_QUEST

@@ -97,6 +97,24 @@ test("dungeon keys: the chain or the key in the bags; Scholomance has a chain pe
     eq(sch.ready, true, "the Skeleton Key in the bags")
 end)
 
+test("City of Dalaran (Forever): the sewer key chain per faction, or the key in the bags", function()
+    Fake({ faction = "Horde", done = { [544] = true, [93680] = true } })
+    local ns = Load()
+    ns.Scan()
+    local c = ns.db.chars["Tester-Realm"]
+    local d = raid(ns, c, "DALARAN")
+    eq(d.total, 5)
+    eq(d.steps[1].step[1], 544, "Prison Break In for the Horde")
+    eq(d.ready, false)
+    Fake({ faction = "Alliance", items = { [277507] = 1 } })
+    ns = Load()
+    ns.Scan()
+    c = ns.db.chars["Tester-Realm"]
+    d = raid(ns, c, "DALARAN")
+    eq(d.steps[1].step[1], 92432, "An Alarming Request for the Alliance")
+    eq(d.ready, true, "the Dalaran Sewer Key in the bags")
+end)
+
 test("only what WoW Forever has: Onyxia first, no Molten Core, Blackwing Lair or Naxxramas", function()
     Fake({})
     local ns = Load()
@@ -166,7 +184,7 @@ test("group: state goes out on the prefix, comes back in, fills tooltips and who
     ns.Scan()
     eq(ns.SendState("PARTY"), true)
     eq(W.addon[1].prefix, "GulliAT")
-    eq(W.addon[1].msg, "S\tONY=0/16,UBRS=R,BRD=0/2,SCHOLO=0/8,MARA=0/2")
+    eq(W.addon[1].msg, "S\tONY=0/16,UBRS=R,BRD=0/2,SCHOLO=0/8,DALARAN=0/2,MARA=0/2")
     ns.Receive("GulliAT", "S\tONY=9/16,UBRS=R", "PARTY", "Bob-Realm")
     eq(ns.others.Bob.raids.ONY.done, 9)
     eq(ns.others.Bob.raids.UBRS.ready, true)
@@ -228,7 +246,7 @@ test("export and the hub: one text for every character, a summary line, reset", 
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     ns.Scan()
-    eq(ns.Export(), "GAT1;Tester-Realm:PRIEST:60:ONY=2/16,UBRS=0/2,BRD=0/2,SCHOLO=0/8,MARA=0/2")
+    eq(ns.Export(), "GAT1;Tester-Realm:PRIEST:60:ONY=2/16,UBRS=0/2,BRD=0/2,SCHOLO=0/8,DALARAN=0/2,MARA=0/2")
     eq(reg.summary(), "Onyxia's Lair: 2 of 16")
     eq(#reg.options, 4)
     reg.options[3].set(true)

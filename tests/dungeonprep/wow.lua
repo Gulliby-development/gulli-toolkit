@@ -133,11 +133,18 @@ function Fake(spec)
     UnitClass = function() return "Warrior", spec.className or "WARRIOR", spec.classID or 1 end
     W.complete, W.instance, W.shared = spec.complete or {}, spec.instance or "none", {}
     local party = spec.party or {}
+    W.watched = {}
     C_QuestLog = {
         IsQuestFlaggedCompleted = function(id) return W.done[id] == true end,
         IsOnQuest = function(id) return W.active[id] == true end,
         IsComplete = function(id) return W.complete[id] == true end,
         GetTitleForQuestID = function() return nil end,
+        GetQuestObjectives = function(id)
+            return (spec.objectives or {})[id] or {}
+        end,
+        GetQuestWatchType = function(id) return W.watched[id] end,
+        AddQuestWatch = function(id) W.watched[id] = 0 end,
+        RemoveQuestWatch = function(id) W.watched[id] = nil end,
         IsUnitOnQuest = function(unit, id)
             local m = party[tonumber(unit:match("party(%d)") or 0)]
             return m ~= nil and m.quests[id] == true

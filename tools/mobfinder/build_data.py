@@ -11,7 +11,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "questcleaner"))
-import luadata  # noqa: E402
+import questie  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "..", "Gulli-MobFinder", "Data.lua")
 
@@ -25,7 +25,8 @@ def lua_str(s):
 
 
 def main(root):
-    npcs = luadata.load(os.path.join(root, "data", "Forever", "foreverNpcDB.lua"), "npcData")
+    # With the Forever corrections: the rares of Forever's own zones live there.
+    _, npcs, _, _ = questie.load_forever(root)
     by_area = {}
     for nid, n in npcs.items():
         if not isinstance(n, dict) or n.get(N_RANK) not in (RARE, RARE_ELITE):

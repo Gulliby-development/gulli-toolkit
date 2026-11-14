@@ -157,6 +157,9 @@ ns.ICONS = {
     ULDA = "INV_Misc_StoneTablet_05", ZF = "INV_Misc_Head_Troll_01", MARA = "Spell_Nature_ResistNature",
     ST = "INV_Misc_Head_Dragon_Green", BRD = "Spell_Fire_Volcano", BRS = "INV_Misc_Head_Dragon_Black",
     DIREMAUL = "INV_Crown_01", SCHOLO = "INV_Misc_Bone_HumanSkull_01", STRAT = "Spell_Shadow_RaiseDead",
+    THANES = "INV_Misc_Head_Dwarf_01", LORDAERON = "Ability_Creature_Disease_02", EXCAVATION = "INV_Misc_Shovel_01",
+    DALARAN = "Spell_Holy_MagicalSentry", DROWNED = "INV_Misc_Idol_03", KROLDOK = "INV_Misc_Head_Orc_01",
+    ALCAZ = "INV_Misc_Bandana_03", BLACKMAW = "Ability_Druid_Maul", SHAPERS = "INV_Misc_Gem_Crystal_02",
 }
 
 function ns.Icon(key)
@@ -174,8 +177,9 @@ function ns.Dungeons(level)
     return out
 end
 
+-- The game's name of the dungeon; a Forever dungeon the client has no area for has a DG_ text.
 function ns.DungeonName(d)
-    return areaName(d.areas[1]) or d.en
+    return areaName(d.areas[1]) or rawget(L, "DG_" .. d.key) and L["DG_" .. d.key] or d.en
 end
 
 -- The dungeon for this level: of those whose range holds it, the one that starts highest.
@@ -215,6 +219,46 @@ local function matches(entry, text)
     return false
 end
 
+-- One dungeon quest as the window shows it.
+local function entryOf(id, q)
+    local D = data()
+    local entry = { id = id, name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or q[1],
+                    level = q[2], minLevel = q[3], who = q[6], area = q[7], side = q[11] or "",
+                    x = q[12] or 0, y = q[13] or 0, step = q[18] or 0, steps = q[19] or 0,
+                    reward = D.reward and D.reward[id], targets = D.target and D.target[id],
+                    text = D.text and D.text[id] }
+    if q[14] and q[14] ~= "" then
+        entry.turnin = { who = q[14], area = q[15] or 0, zone = areaName(q[15]), x = q[16] or 0, y = q[17] or 0 }
+    end
+    return entry
+end
+
+-- Where a quest stands for this character: "done", "hidden", "log", "closed" (another quest
+-- of its group was taken), "later" (with entry.why and entry.need) or "take".
+local function stateOf(entry, q, level)
+    local id = entry.id
+    if questDone(id) then return "done" end
+    if ns.Hidden(id) then return "hidden" end
+    if onQuest(id) then return "log" end
+    for _, other in ipairs(q[10] or {}) do if questDone(other) then return "closed" end end
+    local pre = true
+    for _, p in ipairs(q[8] or {}) do if not questDone(p) then pre = false end end
+    if #(q[9] or {}) > 0 then
+        local one = false
+        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        pre = pre and one
+    end
+    if not pre then
+        entry.why = "WHY_EARLIER"
+        entry.need = missing(q)
+        return "later"
+    elseif level < entry.minLevel then
+        entry.why = "WHY_LEVEL"
+        return "later"
+    end
+    return "take"
+end
+
 -- The quests of a dungeon for this character, split in three lists and a done count:
 -- log (in the quest log), take (can take now), later (level too low or an earlier quest missing).
 -- Quests the player hid go to `hidden` instead; `filter` is a text to find in the name, the
@@ -225,41 +269,13 @@ function ns.Quests(key, level, filter)
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
         if q and forMe(q) then
-            local closed = false
-            for _, other in ipairs(q[10] or {}) do if questDone(other) then closed = true end end
-            local entry = { id = id, name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or q[1],
-                            level = q[2], minLevel = q[3], who = q[6], area = q[7],
-                            x = q[12] or 0, y = q[13] or 0, step = q[18] or 0, steps = q[19] or 0,
-                            reward = D.reward and D.reward[id], targets = D.target and D.target[id] }
-            if q[14] and q[14] ~= "" then
-                entry.turnin = { who = q[14], area = q[15] or 0, zone = areaName(q[15]), x = q[16] or 0, y = q[17] or 0 }
-            end
-            if questDone(id) then
+            local entry = entryOf(id, q)
+            local state = stateOf(entry, q, level)
+            if state == "done" then
                 out.done = out.done + 1
-            elseif not matches(entry, filter) then
-                -- left out by the search
-            elseif ns.Hidden(id) then
-                out.hidden[#out.hidden + 1] = entry
-            elseif onQuest(id) then
-                out.log[#out.log + 1] = entry
-            elseif not closed then
-                local pre = true
-                for _, p in ipairs(q[8] or {}) do if not questDone(p) then pre = false end end
-                if #(q[9] or {}) > 0 then
-                    local one = false
-                    for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
-                    pre = pre and one
-                end
-                if not pre then
-                    entry.why = "WHY_EARLIER"
-                    entry.need = missing(q)
-                    out.later[#out.later + 1] = entry
-                elseif level < entry.minLevel then
-                    entry.why = "WHY_LEVEL"
-                    out.later[#out.later + 1] = entry
-                else
-                    out.take[#out.take + 1] = entry
-                end
+            elseif state ~= "closed" and matches(entry, filter) then
+                local list = out[state]
+                list[#list + 1] = entry
             end
         end
     end
@@ -267,6 +283,73 @@ function ns.Quests(key, level, filter)
     table.sort(out.log, byLevel); table.sort(out.take, byLevel); table.sort(out.later, byLevel)
     table.sort(out.hidden, byLevel)
     return out
+end
+
+-- One dungeon quest with everything its page shows, or nil: the list entry plus `state`
+-- (see stateOf), `chain` (ns.Chain) and `objectives` (ns.Objectives).
+function ns.Quest(id, level)
+    local q = data().quest[id]
+    if not q then return nil end
+    local entry = entryOf(id, q)
+    entry.state = stateOf(entry, q, level or UnitLevel("player") or 1)
+    entry.chain = ns.Chain(id)
+    entry.objectives = ns.Objectives(entry)
+    return entry
+end
+
+-- The whole chain a quest is in, first step first: { id, n, name, level, who, area, x, y,
+-- done, active, this, missing, dungeon }. `missing` marks the first step before this quest
+-- that is neither done nor in the log.
+function ns.Chain(id)
+    local D = data()
+    local out = {}
+    for i, c in ipairs((D.chain and D.chain[id]) or {}) do
+        local s = { id = c, n = i, this = c == id, x = 0, y = 0, area = 0, who = "" }
+        local q, p = D.quest[c], D.pre and D.pre[c]
+        if q then
+            s.name, s.level, s.who, s.area, s.x, s.y, s.dungeon = q[1], q[2], q[6], q[7], q[12] or 0, q[13] or 0, true
+        elseif p then
+            s.name, s.level, s.who, s.area, s.x, s.y = p[1], p[2], p[3], p[4], p[5] or 0, p[6] or 0
+        end
+        s.name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(c)) or s.name or ("#" .. c)
+        s.done, s.active = questDone(c), onQuest(c)
+        out[#out + 1] = s
+    end
+    for _, s in ipairs(out) do
+        if s.this then break end
+        if not s.done and not s.active then s.missing = true break end
+    end
+    return out
+end
+
+-- The objective lines: the game's own (with progress) while the quest is in the log, else
+-- the English text of the data. { text, done }.
+function ns.Objectives(entry)
+    local out = {}
+    if onQuest(entry.id) and Q.GetQuestObjectives then
+        for _, o in ipairs(Q.GetQuestObjectives(entry.id) or {}) do
+            if type(o.text) == "string" and o.text ~= "" then out[#out + 1] = { text = o.text, done = o.finished == true } end
+        end
+    end
+    if #out == 0 and entry.text and entry.text ~= "" then out[1] = { text = entry.text } end
+    return out
+end
+
+-- Whether a quest of the log is on the objective tracker, and a switch for it.
+function ns.Tracked(id)
+    if Q.GetQuestWatchType then return Q.GetQuestWatchType(id) ~= nil end
+    return false
+end
+
+function ns.Track(id)
+    if not onQuest(id) then return false end
+    if ns.Tracked(id) then
+        if Q.RemoveQuestWatch then Q.RemoveQuestWatch(id) end
+    elseif Q.AddQuestWatch then
+        Q.AddQuestWatch(id)
+    end
+    if ns.Refresh then ns.Refresh() end
+    return ns.Tracked(id)
 end
 
 -- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.
@@ -693,7 +776,7 @@ SLASH_GULLIDUNGEONPREP2 = "/gullidungeonprep"
 SlashCmdList.GULLIDUNGEONPREP = function(msg)
     msg = strtrim(msg or ""):upper()
     for _, d in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do
-        if d.key == msg then ns.selected = d.key end
+        if d.key == msg then ns.selected, ns.openQuest = d.key, nil end
     end
     ns.Toggle()
 end
@@ -727,4 +810,11 @@ if GulliToolkit and GulliToolkit.Register then
               get = function() return ns.Get("tomtom") end, set = function(v) ns.Set("tomtom", v) end },
         },
     })
+end
+
+-- A map pin on someone the data places on a zone map (a quest giver, a turn-in, a chain step).
+-- Returns false when the spot is not on an outdoor map (inside a dungeon, an item).
+function ns.PinAt(who, area, x, y)
+    if not area or area == 0 or not x or (x == 0 and y == 0) then return false end
+    return ns.SetPin({ who = who ~= "" and who or "?", zone = areaName(area), x = x, y = y })
 end

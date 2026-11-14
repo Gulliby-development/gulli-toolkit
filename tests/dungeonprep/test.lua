@@ -14,7 +14,7 @@ test("the data lists the dungeons in level order, each with its quests", functio
     local ns = Load()
     local d = ns.Dungeons(20)
     eq(d[1].key, "RFC")
-    eq(#d, 19)
+    eq(#d, 28, "19 classic and 9 Forever dungeons")
     for _, x in ipairs(d) do assert(ns.Data.byDungeon[x.key], "no quests for " .. x.key) end
     for i = 2, #d do assert(d[i].min >= d[i - 1].min, "level order") end
 end)
@@ -23,7 +23,7 @@ test("the suggestion is the highest dungeon that fits the level", function()
     Fake({})
     local ns = Load()
     eq(ns.Suggest(20).key, "DM")
-    eq(ns.Suggest(60).key, "STRAT")
+    eq(ns.Suggest(60).key, "SHAPERS")
     eq(ns.Suggest(5).key, "RFC", "too low for any: the first one")
 end)
 
@@ -32,7 +32,7 @@ test("Deadmines for a level 18 human: in the log, can take, needs an earlier que
     local ns = Load()
     local q = ns.Quests("DM", 18)
     eq(ids(q.log), "168")
-    eq(ids(q.take), "167,2040", "Oh Brother and Underground Assault")
+    eq(ids(q.take), "167,373,2040", "Oh Brother, The Unsent Letter and Underground Assault")
     local later = {}
     for _, x in ipairs(q.later) do later[x.id] = x.why end
     eq(later[214], "WHY_EARLIER", "Red Silk Bandanas needs Westfall Stew first")
@@ -307,7 +307,7 @@ test("hub: a summary line, reset and the switches", function()
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     local line = reg.summary()
-    eq(line, "The Deadmines: 1 in log, 2 to pick up")
+    eq(line, "The Deadmines: 1 in log, 3 to pick up")
     eq(#reg.options, 4)
     for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
     reg.options[1].set(false)
@@ -327,6 +327,57 @@ test("the window and /gdp <dungeon>", function()
     ns.Refresh()
     ns.ShowTab(2)
     ns.ShowTab(1)
+end)
+
+test("the Forever dungeons: their quests, names without a client area, entrances", function()
+    Fake({ raceID = 2, faction = "Horde", level = 42 })
+    local ns = Load()
+    local byKey = {}
+    for _, d in ipairs(ns.Dungeons(42)) do byKey[d.key] = d end
+    for _, key in ipairs({ "THANES", "LORDAERON", "EXCAVATION", "DALARAN", "DROWNED", "KROLDOK", "ALCAZ",
+                           "BLACKMAW", "SHAPERS" }) do
+        local d = byKey[key]
+        assert(d, "listed: " .. key)
+        assert(#ns.Data.byDungeon[key] > 0, "quests for " .. key)
+        assert(d.entrance and d.entrance.area > 0, "an entrance for " .. key)
+        assert(ns.ICONS[key], "an icon for " .. key)
+    end
+    eq(ns.DungeonName(byKey.ALCAZ), "Alcaz Prison", "no client area: the DG_ text")
+    local q = ns.Quests("KROLDOK", 42)
+    local seen = {}
+    for _, list in ipairs({ q.take, q.later, q.log }) do for _, x in ipairs(list) do seen[x.id] = true end end
+    assert(seen[94968] and seen[94972] and seen[94975], "the Horde quests: Eye of Mugg, Tome of Twilight, Token of Vengeance")
+    assert(not seen[94982], "the Alliance Eye of Mugg is left out")
+end)
+
+test("a quest's page: chain with the missing step, objectives from the log, track, pins", function()
+    local W = Fake({ raceID = 2, faction = "Horde", level = 38, done = { [629] = true, [95748] = true },
+                     areas = AREAS, map = { maps = MAPS },
+                     objectives = { [95775] = { { text = "Tablet rubbing: 0/1", finished = false } } } })
+    local ns = Load()
+    local q = ns.Quest(95775, 38)
+    eq(q.state, "later")
+    local names, missing = {}, nil
+    for _, st in ipairs(q.chain) do
+        names[#names + 1] = st.id
+        if st.missing then missing = st.id end
+    end
+    eq(names[#names - 1], 95775, "the quest itself in its chain")
+    eq(missing, 95770, "Locating the Lost City is the step still missing")
+    eq(q.objectives[1].text:sub(1, 12), "Use the hide", "the data's objective before it is taken")
+    W.active[95775] = true
+    W.done[95770] = true
+    q = ns.Quest(95775, 38)
+    eq(q.state, "log")
+    eq(q.objectives[1].text, "Tablet rubbing: 0/1", "the game's own objective while in the log")
+    eq(ns.Track(95775), true); eq(ns.Tracked(95775), true)
+    eq(ns.Track(95775), false, "a second click stops tracking")
+    eq(ns.PinAt(q.who, q.area, q.x, q.y), true, "Kin'weelay in Stranglethorn Vale")
+    eq(ns.PinAt("Inside", 0, 0, 0), false, "no pin inside a dungeon")
+    ns.selected = "DROWNED"
+    ns.Toggle()
+    ns.OpenQuest(95775)
+    ns.OpenQuest(nil)
 end)
 
 test("every language has every key, with the same placeholders", function()
