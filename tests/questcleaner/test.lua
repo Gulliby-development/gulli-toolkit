@@ -91,8 +91,12 @@ test("OK abandons ticked quests and deletes ticked items only", function()
     for _, it in ipairs(items) do if it.name == "Old Note" then it.checked = false end end
     local a, d = ns.Run(quests, items)
     eq(a, 2, "abandoned")
-    eq(d, 2, "delete tries")
+    eq(d, 1, "one delete per click")
     eq(w.abandoned[101] and w.abandoned[102] and not w.abandoned[103], true, "abandoned the right quests")
+    eq(ns.ToDelete(select(2, ns.Leftover(quests, items))), 1, "one left to delete")
+    w.Click()
+    a, d = ns.Run(quests, items)
+    eq(d, 1, "the second click deletes the next one")
     for _, it in ipairs(w.bag) do
         local gone = it.name == "Wolf Pelt" or it.name == "Sealed Letter"
         eq(it.gone == true, gone, it.name .. " deleted")
@@ -111,16 +115,25 @@ test("a refused delete leaves the item to be offered again", function()
     eq(#left, #items, "items left")
 end)
 
-test("one OK deletes every ticked item even when the cursor clears late", function()
+test("each OK deletes one item, never a second (blocked) one, even when the cursor clears late", function()
     local w = Fake { quests = QUESTS, bag = bag(), done = { [55] = true } }
     local ns = Load()
     local quests = ns.PlanQuests(10)
     local items = ns.PlanItems(quests)
     w.slowCursor = true
-    ns.Run(quests, items)
     local _, left = ns.Leftover(quests, items)
-    eq(#left, 0, "items left after one OK")
-    eq(w.cursor, nil, "cursor cleared")
+    local n = #left
+    assert(n > 1, "the test needs several items")
+    for i = 1, n do
+        w.Click()
+        local _, d = ns.Run(quests, items)
+        eq(d, 1, "click " .. i)
+        eq(w.cursor, nil, "cursor cleared")
+    end
+    _, left = ns.Leftover(quests, items)
+    eq(#left, 0, "items left after one OK per item")
+    w.Click()
+    eq(select(2, ns.Run(quests, items)), 0, "nothing more to delete")
 end)
 
 test("nothing happens in combat", function()
@@ -138,9 +151,16 @@ test("the window: Clear, then OK, cleans and reports", function()
     ns.Toggle()
     Find(function(f) return rawget(f, "_OnShow") end)._OnShow()
     Find(function(f) return TextOf(f) == ns.L.CLEAR and rawget(f, "_OnClick") end)._OnClick()
-    Find(function(f) return TextOf(f) == ns.L.OK and rawget(f, "_OnClick") end)._OnClick()
+    local ok = Find(function(f) return TextOf(f) == ns.L.OK and rawget(f, "_OnClick") end)
+    ok._OnClick()
     eq(w.abandoned[101] and w.abandoned[102], true, "abandoned")
-    eq(w.printed[#w.printed]:find("2 quests abandoned", 1, true) ~= nil, true, "done message: " .. tostring(w.printed[#w.printed]))
+    eq(#w.printed, 0, "not done after the first click: one delete per click")
+    for _ = 1, 5 do
+        if #w.printed > 0 then break end
+        w.Click()
+        ok._OnClick()
+    end
+    eq(w.printed[#w.printed]:find("2 quests abandoned, 3 item stacks", 1, true) ~= nil, true, "done message: " .. tostring(w.printed[#w.printed]))
 end)
 
 test("the addon speaks the client's language and falls back to English", function()
@@ -435,10 +455,11 @@ test("at a merchant, items with a price are sold instead of deleted", function()
     fakeData(ns, {})
     Fire("MERCHANT_SHOW")
     local quests, items = planned(ns, 10)
+    eq(ns.ToDelete(items), 2, "to delete at the merchant")
     local _, deleted, sold = ns.Run(quests, items)
     eq(sold, 1, "sold")
     eq(w.sold["Old Note"], true, "Old Note sold")
-    eq(deleted, 2, "deleted")
+    eq(deleted, 1, "deleted, one per click")
     Fire("MERCHANT_CLOSED")
     eq(ns.atMerchant, false, "merchant closed")
 end)
@@ -449,6 +470,7 @@ test("the last cleaning is saved per character and /gqc last prints it", functio
     fakeData(ns, {})
     local quests, items = planned(ns, 10)
     ns.Run(quests, items)
+    for _ = 1, 2 do w.Click(); ns.Run(quests, items) end
     local last = GulliQuestCleanerCharDB.last
     eq(#last.quests, 2, "quests saved")
     eq(#last.items, 3, "items saved")

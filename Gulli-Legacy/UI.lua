@@ -783,7 +783,7 @@ local function build()
     local suggest = rows({ { "dungeon", L.OPT_DUNGEON, L.OPT_DUNGEON_D }, { "raid", L.OPT_RAID, L.OPT_RAID_D },
                            { "pvp", L.OPT_PVP, L.OPT_PVP_D }, { "alts", L.OPT_ALTS, L.OPT_ALTS_D },
                            { "newClass", L.OPT_NEW, L.OPT_NEW_D } })
-    local screen = rows({ { "tracker", L.OPT_TRACKER, L.OPT_TRACKER_D }, { "locked", L.OPT_LOCK, L.OPT_LOCK_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
+    local screen = rows({ { "beside", L.OPT_BESIDE, L.OPT_BESIDE_D }, { "tracker", L.OPT_TRACKER, L.OPT_TRACKER_D }, { "locked", L.OPT_LOCK, L.OPT_LOCK_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
     local alpha = S.Stepper(p4, function() return ns.db.alpha end, function(v) ns.SetPref("alpha", v) end,
         10, 20, 100, function(v) return v .. "%" end)
     screen[#screen + 1] = { L.OPT_ALPHA, L.OPT_ALPHA_D, control = alpha, icon = ns.OPT_ICON.alpha }
@@ -822,4 +822,47 @@ end
 function ns.Window()
     if not frame then build() end
     return frame
+end
+
+-- Beside the game's Legacy window: while it is open, the navigator stands to its right
+-- (`beside`), and goes back where it was when the game's window closes. A window in the hub
+-- stays there.
+local beside
+local function standBeside(game)
+    if ns.paused or not ns.db or not ns.db.beside then return end
+    local w = ns.Window()
+    if w.docked then return end
+    if not beside then
+        local point, rel, relPoint, x, y = w:GetPoint(1)
+        beside = { opened = not w:IsShown(), point = point, rel = rel, relPoint = relPoint, x = x, y = y }
+    end
+    w:ClearAllPoints()
+    w:SetPoint("TOPLEFT", game, "TOPRIGHT", S.GAP, 0)
+    w:Show()
+end
+
+local function leaveBeside()
+    local w, was = frame, beside
+    beside = nil
+    if not w or not was or w.docked then return end
+    if was.opened then w:Hide() end
+    w:ClearAllPoints()
+    if was.point then
+        w:SetPoint(was.point, was.rel or UIParent, was.relPoint or was.point, was.x or 0, was.y or 0)
+    else
+        w:SetPoint("CENTER")
+    end
+end
+
+-- The game's window loads on demand: Core calls this when Blizzard_LegacySystem loads and
+-- at login, and it hooks the frame once.
+local hooked
+function ns.HookGameWindow()
+    local game = LegacySystemFrame
+    if hooked or type(game) ~= "table" or not game.HookScript then return false end
+    hooked = true
+    game:HookScript("OnShow", standBeside)
+    game:HookScript("OnHide", leaveBeside)
+    if game:IsShown() then standBeside(game) end
+    return true
 end

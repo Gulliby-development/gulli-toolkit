@@ -107,7 +107,13 @@ function Fake(spec)
     local function held() return (W.cursorBag == -1 and W.bank or W.bag)[W.cursor] end
     GetCursorInfo = function() if W.cursor then return "item", held().id end end
     ClearCursor = function() W.cursor = nil end
+    -- The real client allows one DeleteCursorItem per hardware event and blocks the
+    -- next one; W.Click() is a new click.
+    W.hw = true
+    W.Click = function() W.hw = true end
     DeleteCursorItem = function()
+        if not W.hw then error("ADDON_ACTION_BLOCKED: DeleteCursorItem()") end
+        W.hw = false
         if W.refuseDelete then return end
         held().gone = true
         -- The real client confirms a delete later; until then the cursor may still show it.

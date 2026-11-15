@@ -347,7 +347,7 @@ end
 -- The plan -------------------------------------------------------------------------------------
 
 -- Settings; a new one gets its default here and a row in the window.
-ns.DEFAULTS = { dungeon = true, raid = false, pvp = false, alts = true, newClass = true,
+ns.DEFAULTS = { dungeon = true, raid = false, pvp = false, alts = true, newClass = true, beside = true,
                 tracker = true, locked = true, announce = true, alpha = 80, goal = 0, sort = "progress" }
 ns.OPT_ICON = {
     dungeon = "Interface\\Icons\\INV_Misc_Key_14",
@@ -356,6 +356,7 @@ ns.OPT_ICON = {
     alts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     newClass = "Interface\\Icons\\Spell_Holy_Resurrection",
     tracker = "Interface\\Icons\\INV_Misc_Spyglass_02",
+    beside = "Interface\\Icons\\INV_Misc_Book_09",
     locked = "Interface\\Icons\\INV_Misc_Key_04",
     announce = "Interface\\Icons\\INV_Misc_Note_02",
     alpha = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
@@ -946,6 +947,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1)
     if event == "ADDON_LOADED" then
+        if a1 == "Blizzard_LegacySystem" and ns.HookGameWindow then ns.HookGameWindow() end
         if a1 ~= ADDON then return end
         GulliLegacyDB = GulliLegacyDB or {}
         ns.db = GulliLegacyDB
@@ -968,6 +970,7 @@ f:SetScript("OnEvent", function(self, event, a1)
     elseif event == "PLAYER_LOGOUT" then
         ns.Snapshot()
     else
+        if event == "PLAYER_ENTERING_WORLD" and ns.HookGameWindow then ns.HookGameWindow() end
         ns.Later()
     end
 end)

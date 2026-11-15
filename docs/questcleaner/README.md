@@ -77,6 +77,12 @@ After a few zones, your quest log is full of grey quests, and your bags are full
 ## FAQ
 
 <details>
+<summary><b>Why do I press OK once for each item?</b></summary>
+
+The game lets an addon delete only one item per click; a second delete in the same click is blocked. So one **OK** abandons every ticked quest (and sells at a vendor), then deletes one item. Press **OK** again for each next item; the window says how many are left.
+</details>
+
+<details>
 <summary><b>It says "Press OK again"</b></summary>
 
 The game refused to remove something, for example because the item was busy. The list shows what is left; press **OK** again.

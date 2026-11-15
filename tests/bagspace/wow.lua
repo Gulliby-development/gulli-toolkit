@@ -180,7 +180,13 @@ function Fake(spec)
         if W.cursor and W.cursor.from then bag(W.cursor.from[1]).slots[W.cursor.from[2]] = W.cursor end
         W.cursor = nil
     end
+    -- The real client allows one DeleteCursorItem per hardware event and blocks the
+    -- next one; W.Click() is a new click.
+    W.hw = true
+    W.Click = function() W.hw = true end
     DeleteCursorItem = function()
+        if not W.hw then error("ADDON_ACTION_BLOCKED: DeleteCursorItem()") end
+        W.hw = false
         -- A refused delete leaves the item where it was.
         if W.refuse[W.cursor.id] then ClearCursor() return end
         W.deleted[#W.deleted + 1] = W.cursor.id; W.cursor = nil
