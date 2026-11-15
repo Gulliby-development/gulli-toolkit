@@ -536,7 +536,7 @@ local function build()
     holder:SetPoint("TOPLEFT")
     holder:SetSize(width, 30)
     pages = {}
-    pageTabs = S.Tabs(holder, { L.PAGE_SEARCH, L.PAGE_MOBS, L.PAGE_HISTORY }, nil, function(i)
+    pageTabs = S.PageTabs(holder, { L.PAGE_SEARCH, L.PAGE_MOBS, L.PAGE_HISTORY }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
     end, nil, { S.TAB.search, "Interface\\Icons\\Ability_Hunter_SniperShot", S.TAB.recent })

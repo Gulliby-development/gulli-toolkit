@@ -178,7 +178,7 @@ end
 local function buildPanel()
     panel = S.Window("GulliMailPanel", L.TITLE, PANEL_W, PANEL_H)
     local body = panel.body
-    tabs = S.Tabs(body, { L.TAB_LETTERS, L.TAB_WRITE }, math.floor((PANEL_W - 2 * S.PAD - 4) / 2), showPage, nil,
+    tabs = S.PageTabs(body, { L.TAB_LETTERS, L.TAB_WRITE }, math.floor((PANEL_W - 2 * S.PAD - 4) / 2), showPage, nil,
         { S.TAB.mail, S.TAB.write })
     for i = 1, 2 do
         local p = CreateFrame("Frame", nil, body)
@@ -368,7 +368,7 @@ local function buildSettings()
     settings = S.Window("GulliMailFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local body, width = settings.body, settings.inner[1]
     local spages = {}
-    local stabs = S.Tabs(body, { L.TAB_SETTINGS, L.TAB_RULES, L.TAB_LOG }, math.floor((width - 4) / 3), function(i)
+    local stabs = S.PageTabs(body, { L.TAB_SETTINGS, L.TAB_RULES, L.TAB_LOG }, math.floor((width - 4) / 3), function(i)
         for j, sp in ipairs(spages) do sp:SetShown(i == j) end
         ns.RefreshSettings()
     end, nil, { S.TAB.settings, S.TAB.rules, S.TAB.recent })

@@ -610,7 +610,7 @@ end
 local function build()
     frame = S.Window("GulliQuickChatFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
-    tabs = S.Tabs(body, { L.TAB_PHRASES, L.TAB_GROUP, L.TAB_MISSED, L.TAB_MORE, L.TAB_SETUP }, 150,
+    tabs = S.PageTabs(body, { L.TAB_PHRASES, L.TAB_GROUP, L.TAB_MISSED, L.TAB_MORE, L.TAB_SETUP }, 150,
         function(i) current = i; ns.Refresh() end, nil, { S.TAB.chat, S.TAB.group, S.TAB.recent, S.TAB.more, S.TAB.settings })
     for i, b in ipairs({ buildPhrases, buildGroup, buildWhispers, buildMore, buildSetup }) do
         local page = CreateFrame("Frame", nil, body)
@@ -819,6 +819,10 @@ function ns.ToggleWheel()
     end
     wheel:EnableKeyboard(not (InCombatLockdown and InCombatLockdown()))
     wheel:Show()
+    -- The slots open one after another around the ring (never in combat or with Reduce motion).
+    for i, slot in ipairs(wheel.slots) do
+        if slot:IsShown() then S.MotionIn(slot, 0, S.FAST, 0.7, (i - 1) * 0.02) end
+    end
     return true
 end
 

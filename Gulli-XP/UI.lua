@@ -484,7 +484,7 @@ local function build()
     ready:SetWordWrap(false)
     st:Add(lv, 50)
 
-    tabs = S.Tabs(body, { L.TAB_SESSION, L.TAB_LEVELS, L.TAB_BAR }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_SESSION, L.TAB_LEVELS, L.TAB_BAR }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if i == 3 then for _, x in ipairs(frame.steppers) do x:Refresh() end end
         ns.Refresh()
@@ -528,3 +528,8 @@ end
 
 -- The tabs, for the tests.
 function ns.Tabs() return tabs, pages end
+
+-- A level up: one pass of light runs along the bar (not in combat or with Reduce motion).
+function ns.FlashBar()
+    if bar and bar:IsShown() and S.Sweep then S.Sweep(bar) end
+end

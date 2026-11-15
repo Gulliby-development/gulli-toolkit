@@ -714,7 +714,7 @@ local function build()
     gameBtn = footer:Add(S.FitButton(frame, L.OPEN_GAME, 30, 120))
     gameBtn:SetScript("OnClick", function() ns.OpenInGame() end)
     local body = frame.body
-    tabs = S.Tabs(body, { L.TAB_PLAN, L.TAB_CHARS, L.TAB_ALL, L.TAB_SETTINGS }, nil, showTab, nil,
+    tabs = S.PageTabs(body, { L.TAB_PLAN, L.TAB_CHARS, L.TAB_ALL, L.TAB_SETTINGS }, nil, showTab, nil,
         { S.TAB.overview, S.TAB.char, S.TAB.list, S.TAB.settings })
 
     -- Plan

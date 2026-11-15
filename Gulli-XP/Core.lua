@@ -359,6 +359,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     elseif event == "PLAYER_LEVEL_UP" then
         ns.Update()
         ns.LevelUp(a1)
+        if ns.FlashBar then ns.FlashBar() end
     elseif event == "QUEST_LOG_UPDATE" then
         ns.ready = nil
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
