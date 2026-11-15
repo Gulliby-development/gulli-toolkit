@@ -53,10 +53,9 @@ end
 local function stateText(row)
     if row.paused then return L.STATE_PAUSED, S.MUTED end
     if row.state == "ready" then return L.STATE_ON, GOOD end
-    if row.state == "off" then return L.OFF, S.MUTED end
     if row.state == "reload" then return L.STATE_RELOAD, WAIT end
     if row.state == "blocked" then return L.STATE_BLOCKED:format(ns.ReasonText(row.reason)), BAD end
-    return L.NOT_INSTALLED, BAD
+    return L.OFF, S.MUTED
 end
 
 local function moduleName(key)
@@ -105,7 +104,7 @@ local function moduleWindow(row)
     return win
 end
 
--- The page for a module that is not loaded (off, waiting for a reload, refused, not installed).
+-- The page for a module that is not loaded (off, waiting for a reload, refused).
 local function offWindow(row)
     if not offWin then
         offWin = S.Window(nil, "", MID, HOST_H)
@@ -121,8 +120,6 @@ local function offWindow(row)
     if row.state == "blocked" then
         offWin.empty:Set(row.reason == "INTERFACE_VERSION" and L.INSIDE_OUTDATED
             or L.INSIDE_BLOCKED:format(ns.ReasonText(row.reason)))
-    elseif row.state == "missing" then
-        offWin.empty:Set(L.MISSING_HINT)
     else
         offWin.empty:Set(row.state == "reload" and L.INSIDE_RELOAD or L.INSIDE_OFF)
     end
@@ -188,13 +185,11 @@ local function enter(row)
     if row.state == "ready" then ns.SetLast(row.key) end
     ns.MarkSeen(row)
     card:SetShown(narrow)
-    local switchable = row.state ~= "missing"
     hubSwitch:SetChecked(row.on)
     win:Dock(host, {
-        width = narrow and MID or HOST_W, height = HOST_H, right = switchable and { hubSwitch } or {},
+        width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch },
         back = goHome, popOut = popOut, onHide = windowHidden,
     })
-    if not switchable then hubSwitch:Hide() end
     ns.Refresh()
 end
 

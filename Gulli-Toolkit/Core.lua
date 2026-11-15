@@ -250,9 +250,10 @@ local function known(key)
     for _, k in ipairs(ns.KNOWN) do if k == key then return true end end
 end
 
--- One row per module for the hub, the known ones first:
+-- One row per installed module for the hub, the known ones first:
 -- { key, addon, title, desc, icon, slash, category, options,
---   state = "ready" | "off" | "reload" | "blocked" | "missing", on, info, reason }.
+--   state = "ready" | "off" | "reload" | "blocked", on, info, reason }.
+-- A module that is not installed has no row: it shows up once it is installed.
 function ns.List()
     local disk = installed()
     local keys, seen = {}, {}
@@ -267,53 +268,53 @@ function ns.List()
     local rows = {}
     for _, k in ipairs(keys) do
         local info, addon = Toolkit.modules[k], disk[k]
-        local row = { key = k, addon = addon, info = info }
-        -- The hub's own name comes first, so every known module reads the same way.
-        local title = ns.T.en["M_" .. k] and L["M_" .. k]
-        if not title then title = info and info.title end
-        if not title and addon then title = stripColors(metadata(addon, "Title")) end
-        row.title = ns.ShortName(title) or k
-        row.desc = (info and info.desc) or (ns.T.en["D_" .. k] and L["D_" .. k]) or (addon and metadata(addon, "Notes")) or ""
-        row.icon = (info and info.icon) or (addon and metadata(addon, "IconTexture"))
-        row.slash = info and info.slash
-        row.category = categoryOf(k, info, addon)
-        row.options = optionsOf(info)
-        row.version = addon and metadata(addon, "Version") or nil
-        -- New after an update: the version differs from the one the player last opened. The
-        -- first version seen is only noted, so a fresh install does not mark everything.
-        local seenDB = GulliToolkitDB and GulliToolkitDB.seen
-        if row.version and seenDB then
-            if seenDB[k] == nil then seenDB[k] = row.version
-            elseif seenDB[k] ~= row.version then row.new = true end
-        end
-        if addon then
-            -- The switch is the game's enable state, never a copy of our own. A module that
-            -- runs but is switched off, or is switched on but not running, waits for a reload.
-            local ok, reason = loadable(addon)
-            local loaded = info ~= nil or isLoaded(addon)
-            row.on, row.running = isOn(addon), loaded
-            row.loadOn = row.on
-            row.canPause = info ~= nil and type(info.pause) == "function"
-            if loaded then
-                row.state = row.on and "ready" or "reload"
-                -- A paused module runs but does nothing: its switch is off, no reload needed.
-                if row.state == "ready" and row.canPause and Toolkit.IsPaused(k) then
-                    row.on, row.paused = false, true
-                end
-            elseif not row.on then
-                row.state = "off"
-            elseif ok ~= false then
-                row.state = "reload"
-            else
-                -- Switched on but the game will not load it (out of date, a missing dependency).
-                row.state, row.reason = "blocked", reason
+        if info or addon then
+            local row = { key = k, addon = addon, info = info }
+            -- The hub's own name comes first, so every known module reads the same way.
+            local title = ns.T.en["M_" .. k] and L["M_" .. k]
+            if not title then title = info and info.title end
+            if not title and addon then title = stripColors(metadata(addon, "Title")) end
+            row.title = ns.ShortName(title) or k
+            row.desc = (info and info.desc) or (ns.T.en["D_" .. k] and L["D_" .. k]) or (addon and metadata(addon, "Notes")) or ""
+            row.icon = (info and info.icon) or (addon and metadata(addon, "IconTexture"))
+            row.slash = info and info.slash
+            row.category = categoryOf(k, info, addon)
+            row.options = optionsOf(info)
+            row.version = addon and metadata(addon, "Version") or nil
+            -- New after an update: the version differs from the one the player last opened. The
+            -- first version seen is only noted, so a fresh install does not mark everything.
+            local seenDB = GulliToolkitDB and GulliToolkitDB.seen
+            if row.version and seenDB then
+                if seenDB[k] == nil then seenDB[k] = row.version
+                elseif seenDB[k] ~= row.version then row.new = true end
             end
-        elseif info then
-            row.state, row.on, row.running = "ready", true, true
-        else
-            row.state = "missing"
+            if addon then
+                -- The switch is the game's enable state, never a copy of our own. A module that
+                -- runs but is switched off, or is switched on but not running, waits for a reload.
+                local ok, reason = loadable(addon)
+                local loaded = info ~= nil or isLoaded(addon)
+                row.on, row.running = isOn(addon), loaded
+                row.loadOn = row.on
+                row.canPause = info ~= nil and type(info.pause) == "function"
+                if loaded then
+                    row.state = row.on and "ready" or "reload"
+                    -- A paused module runs but does nothing: its switch is off, no reload needed.
+                    if row.state == "ready" and row.canPause and Toolkit.IsPaused(k) then
+                        row.on, row.paused = false, true
+                    end
+                elseif not row.on then
+                    row.state = "off"
+                elseif ok ~= false then
+                    row.state = "reload"
+                else
+                    -- Switched on but the game will not load it (out of date, a missing dependency).
+                    row.state, row.reason = "blocked", reason
+                end
+            else
+                row.state, row.on, row.running = "ready", true, true
+            end
+            rows[#rows + 1] = row
         end
-        rows[#rows + 1] = row
     end
     return rows
 end
@@ -523,11 +524,9 @@ function ns.Overview(rows)
     local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
     if update and get then pcall(update) end
     for _, r in ipairs(rows) do
-        if r.state ~= "missing" or r.info then
-            o.total = o.total + 1
-            if r.on then o.on = o.on + 1 end
-            if r.running and not r.paused then o.running = o.running + 1 end
-        end
+        o.total = o.total + 1
+        if r.on then o.on = o.on + 1 end
+        if r.running and not r.paused then o.running = o.running + 1 end
         if r.state == "reload" then o.reload[#o.reload + 1] = r end
         if r.state == "blocked" then o.blocked[#o.blocked + 1] = r end
         if r.paused then o.paused[#o.paused + 1] = r end
