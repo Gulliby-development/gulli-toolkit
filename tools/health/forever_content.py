@@ -12,6 +12,11 @@
    of); `--update-seen` marks only the other areas, so add a non-dungeon instance area to
    forever_seen.txt by hand.
 
+3. Forever recipes: every pattern of WoW Forever's own (an item id above the Season of Discovery
+   items, with a vendor, quest or drop in the data) must teach a recipe that CraftProfit's
+   Data.lua knows, so the planner has its skill levels and source. A pattern it lacks that is not
+   in tools/health/recipes_seen.txt is news; `--update-seen` marks them all as looked at.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
@@ -22,6 +27,11 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 SEEN = os.path.join(HERE, "forever_seen.txt")
+RECIPES_SEEN = os.path.join(HERE, "recipes_seen.txt")
+CRAFT_DATA = os.path.join(ROOT, "Gulli-CraftProfit", "Data.lua")
+PATTERN = re.compile(r"^(Pattern|Plans|Recipe|Formula|Schematic|Manual): ")
+FOREVER_ITEMS = 245000  # SOD_ITEMS in tools/craftprofit/build_data.py ends here
+I_NAME, I_SOURCES = 1, (2, 3, 4, 6, 14)
 sys.path.insert(0, os.path.join(ROOT, "tools", "questcleaner"))
 
 Q_ZONE = 17
@@ -120,10 +130,10 @@ def check_dungeons():
     return lines, {a for _, ids, _, _, _ in dungeons for a in ids}
 
 
-def read_seen():
+def read_seen(path=SEEN):
     seen = set()
-    if os.path.exists(SEEN):
-        for line in open(SEEN, encoding="utf-8"):
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
             m = re.match(r"\s*(\d+)", line)
             if m:
                 seen.add(int(m.group(1)))
@@ -163,6 +173,28 @@ def check_areas(qdb, prep_areas):
     return lines, areas
 
 
+def forever_patterns(qdb):
+    """(item id, name) of every Forever pattern that the data says someone can get."""
+    import questie
+    _, _, _, items = questie.load_forever(qdb)
+    out = []
+    for iid in sorted(items):
+        row = items[iid]
+        name = row.get(I_NAME) or ""
+        if iid >= FOREVER_ITEMS and PATTERN.match(name) and any(row.get(k) for k in I_SOURCES):
+            out.append((iid, name))
+    return out
+
+
+def check_recipes(qdb):
+    text = open(CRAFT_DATA, encoding="utf-8").read()
+    known = {int(m) for m in re.findall(r'^\[\d+\]=\{"[vqd]",(\d+)', text, re.M)}
+    seen = read_seen(RECIPES_SEEN)
+    missing = [(iid, name) for iid, name in forever_patterns(qdb) if iid not in known]
+    lines = ["- **%s** (item %d)" % (name, iid) for iid, name in missing if iid not in seen]
+    return lines, missing
+
+
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
@@ -172,7 +204,14 @@ def main(argv):
         out = argv[argv.index("--out") + 1]
     dungeon_lines, prep_areas = check_dungeons()
     area_lines, areas = check_areas(qdb, prep_areas)
+    recipe_lines, recipes = check_recipes(qdb)
     if "--update-seen" in argv:
+        seen = read_seen(RECIPES_SEEN)
+        with open(RECIPES_SEEN, "a", encoding="utf-8") as f:
+            for iid, name in recipes:
+                if iid not in seen:
+                    f.write("%d %s\n" % (iid, name))
+        recipe_lines = []
         seen = read_seen()
         with open(SEEN, "a", encoding="utf-8") as f:
             for sym, aid, section in areas:
@@ -187,6 +226,11 @@ def main(argv):
                    "Add what a module needs (a dungeon to DungeonPrep, Bulletin and QuickChat; rares to "
                    "MobFinder; an attunement to Attune), then run "
                    "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + area_lines + [""]
+    if recipe_lines:
+        report += ["### Forever recipes CraftProfit does not know", "",
+                   "A new or changed Forever profession recipe. Give CraftProfit its skill levels and "
+                   "source (tools/craftprofit/build_data.py), or note why not, then run "
+                   "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + recipe_lines + [""]
     text = "\n".join(report)
     print(text or "Every module keeps up with the Forever data.")
     if out:

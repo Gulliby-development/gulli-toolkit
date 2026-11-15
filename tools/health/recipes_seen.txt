@@ -1,0 +1,687 @@
+# Forever patterns (QuestieDB) looked at that CraftProfit does not know yet: "<item id> <name>".
+# tools/health/forever_content.py --update-seen adds the rest after a look. Most are WoW Forever's own
+# recipes, which have no skill levels in Skillet-Classic yet (issue #221).
+249474 Formula: Enchant Bracer - Minor Intellect
+249475 Formula: Enchant Bracer - Minor Healing Power
+249476 Formula: Mystic Mushroom
+249477 Formula: Tenets of the Silver Hand
+249478 Formula: Polished Driftwood Icon
+249479 Formula: Enchant Weapon - Insight
+249480 Formula: Enchant Weapon - Recovery
+249481 Formula: Enchant Weapon - Revelation
+249482 Formula: Glimmering Staff
+249483 Formula: Soulstaff
+249484 Formula: Orb of Mystic Insight
+249485 Formula: Orb of Souls
+249486 Formula: Enchant Bracer - Lesser Agility
+249487 Formula: Twisted Nether Wand
+249489 Formula: Enchant Bracer - Lesser Healing Power
+249493 Formula: Talons of Wrath
+249494 Formula: Libram of Invocation
+249495 Formula: Totem of Ancestral Protection
+249496 Formula: Enchant Necklace - Strength
+249502 Formula: Enchant Necklace - Spell Power
+249503 Formula: Enchant Necklace - Healing Power
+249504 Formula: Enchant Necklace - Agility
+249505 Formula: Enchant Necklace - Deflection
+249506 Formula: Radiant Staff
+249507 Formula: Dreamstaff
+249508 Formula: Truesilver Conduit
+249509 Formula: Twisting Essence Jar
+249510 Formula: Enchant Chest - Absorption
+249511 Formula: Enchant 2H Weapon - Lesser Agility
+249512 Formula: Dreambough Wand
+249513 Formula: Enchant 2H Weapon - Lesser Strength
+249514 Formula: Enchant Bracer - Greater Agility
+249515 Formula: Lesser Eternal Wand
+249516 Formula: Enchant Gloves - Advanced Skinning
+249520 Formula: Molten Heart of the Mountain
+249524 Formula: Enchant Bracer - Superior Agility
+249525 Formula: Enchant 2H Weapon - Mighty Spell Power
+249526 Formula: Enchant 2H Weapon - Mighty Healing Power
+249529 Formula: Idol of the Dream
+249530 Formula: Libram of Holy Alacrity
+249532 Formula: Totem of Thunder
+249535 Formula: Enchant Gloves - Natural Power
+249537 Formula: Brilliant Wand
+249538 Formula: Enchant Bracer - Superior Intellect
+249539 Formula: Enchant Bracer - Superior Deflection
+249879 Recipe: Peace Tea
+249880 Recipe: Royal Tea
+249881 Recipe: Root Tea
+249882 Recipe: Triage Tea
+249883 Recipe: Sunny Tea
+249885 Recipe: Venomous Smoothie
+249886 Recipe: Slimy Smoothie
+249887 Recipe: Mrrggl Smrrthle
+249888 Recipe: Calcified Smoothie
+249889 Recipe: Spicy Smoothie
+249890 Recipe: Wicked Smoothie
+250175 Recipe: Bat Hachee
+250178 Recipe: Bear Bruscitti
+250181 Recipe: Raging Raptor Ribs
+250182 Recipe: Bear Brisket
+250184 Recipe: Raptor Rouladen
+250185 Recipe: Twice-Spiced Raptor Slice
+250186 Recipe: Giant Scrambled Eggs
+250187 Recipe: Tasty Raptor Bites
+250188 Recipe: Breakfast Omelette
+250189 Recipe: Clam Linguine
+250363 Recipe: Potion of Predatory Senses
+250364 Recipe: Elixir of Cunning
+250365 Recipe: Elixir of the Phalanx
+250366 Recipe: Minor Cleric's Elixir
+250367 Recipe: Lesser Cleric's Elixir
+250368 Recipe: Cleric's Elixir
+250369 Recipe: Greater Cleric's Elixir
+250370 Recipe: Elixir of Fortitude
+250371 Recipe: Elixir of Greater Fortitude
+250372 Recipe: Elixir of Wicked Regeneration
+250373 Recipe: Elixir of the Owl
+250374 Recipe: Elixir of Sages
+250375 Recipe: Minor Mageblood Elixir
+250376 Recipe: Lesser Mageblood Elixir
+250377 Recipe: Greater Mageblood Elixir
+250379 Recipe: Elixir of Nature Power
+250380 Recipe: Elixir of Minor Spirit
+250381 Recipe: Elixir of Lesser Spirit
+250382 Recipe: Elixir of Spirit
+250383 Recipe: Elixir of Greater Spirit
+250384 Recipe: Elixir of the Whale
+250385 Recipe: Elixir of Strength
+250386 Recipe: Elixir of Ferocity
+250387 Recipe: Elixir of the Grizzly
+250388 Recipe: Elixir of Lesser Intellect
+250389 Recipe: Elixir of Intellect
+250976 Recipe: Minor Spellblasting Potion
+250977 Recipe: Lesser Spellblasting Potion
+250978 Recipe: Spellblasting Potion
+250979 Recipe: Greater Spellblasting Potion
+250980 Recipe: Superior Spellblasting Potion
+250981 Recipe: Major Spellblasting Potion
+250982 Recipe: Minor Frenzy Potion
+250983 Recipe: Lesser Frenzy Potion
+250984 Recipe: Frenzy Potion
+250985 Recipe: Greater Frenzy Potion
+250986 Recipe: Superior Frenzy Potion
+250987 Recipe: Major Frenzy Potion
+250988 Recipe: Minor Mender's Potion
+250989 Recipe: Lesser Mender's Potion
+250990 Recipe: Mender's Potion
+250992 Recipe: Superior Mender's Potion
+250993 Recipe: Major Mender's Potion
+250994 Recipe: Potion of Venomous Blood
+250995 Recipe: Caustic Smog Potion
+250996 Recipe: Disorienting Smog Potion
+250997 Recipe: Dragonfire Potion
+250998 Recipe: Potion of Elemental Purging
+251335 Plans: Sterling Silver Boots
+251336 Plans: Sterling Silver Leggings
+251337 Plans: Sterling Silver Gauntlet
+251338 Plans: Sterling Silver Shoulders
+251339 Plans: Sterling Silver Breastplate
+251340 Plans: Veteran's Chain Shirt
+251341 Plans: Guard's Chain Shirt
+251342 Plans: Protector's Chain Shirt
+251343 Plans: Acolyte's Chain Shirt
+251344 Plans: Crusader's Chain Shirt
+251345 Plans: Veteran's Chain Leggings
+251346 Plans: Guard's Chain Leggings
+251347 Plans: Protector's Chain Leggings
+251348 Plans: Acolyte's Chain Leggings
+251349 Plans: Crusader's Chain Leggings
+251350 Plans: Veteran's Chain Helm
+251351 Plans: Guard's Chain Helm
+251352 Plans: Protector's Chain Helm
+251353 Plans: Acolyte's Chain Helm
+251354 Plans: Crusader's Chain Helm
+251355 Plans: Veteran's Boots
+251356 Plans: Guard's Boots
+251357 Plans: Protector's Boots
+251358 Plans: Acolyte's Boots
+251359 Plans: Crusader's Boots
+251360 Plans: Veteran's Gloves
+251361 Plans: Guard's Gloves
+251362 Plans: Protector's Gloves
+251363 Plans: Acolyte's Gloves
+251364 Plans: Crusader's Gloves
+251365 Plans: Veteran's Chain Belt
+251366 Plans: Guard's Chain Belt
+251367 Plans: Protector's Chain Belt
+251368 Plans: Acolyte's Chain Belt
+251369 Plans: Crusader's Chain Belt
+251370 Plans: Veteran's Silvered Chain Shirt
+251371 Plans: Guard's Silvered Chain Shirt
+251372 Plans: Protector's Silvered Chain Shirt
+251373 Plans: Acolyte's Silvered Chain Shirt
+251374 Plans: Crusader's Silvered Chain Shirt
+251375 Plans: Veteran's Silvered Chain Leggings
+251376 Plans: Guard's Silvered Chain Leggings
+251377 Plans: Protector's Silvered Chain Leggings
+251378 Plans: Acolyte's Silvered Chain Leggings
+251379 Plans: Crusader's Silvered Chain Leggings
+251380 Plans: Veteran's Silvered Chain Helm
+251381 Plans: Guard's Silvered Chain Helm
+251382 Plans: Protector's Silvered Chain Helm
+251383 Plans: Acolyte's Silvered Chain Helm
+251384 Plans: Crusader's Silvered Chain Helm
+251385 Plans: Hard Gold Cuirass
+251386 Plans: Hard Gold Boots
+251387 Plans: Hard Gold Bracers
+251388 Plans: Hard Gold Leggings
+251389 Plans: Hard Gold Coif
+251390 Plans: Hard Gold Gauntlet
+251391 Plans: Hard Gold Pauldrons
+251392 Plans: Shining Mithril Breastplate
+251393 Plans: Shining Mithril Pauldrons
+251394 Plans: Shining Mithril Boots
+251395 Plans: Shining Mithril Helm
+251396 Plans: Shining Mithril Pants
+251397 Plans: Shining Mithril Gauntlet
+251398 Plans: Officer's Boots
+251399 Plans: Sentinel's Boots
+251400 Plans: Warder's Boots
+251401 Plans: Prefect's Boots
+251402 Plans: Justicar's Boots
+251403 Plans: Officer's Gloves
+251404 Plans: Sentinel's Gloves
+251405 Plans: Warder's Gloves
+251406 Plans: Prefect's Gloves
+251407 Plans: Justicar's Gloves
+251413 Plans: Officer's Sabatons
+251414 Plans: Sentinel's Sabatons
+251415 Plans: Warder's Sabatons
+251416 Plans: Prefect's Sabatons
+251417 Plans: Justicar's Sabatons
+251418 Plans: Officer's Gauntlet
+251419 Plans: Sentinel's Gauntlet
+251420 Plans: Warder's Gauntlet
+251421 Plans: Prefect's Gauntlet
+251422 Plans: Justicar's Gauntlet
+251423 Plans: Officer's Waistguard
+251424 Plans: Sentinel's Waistguard
+251425 Plans: Warder's Waistguard
+251426 Plans: Prefect's Waistguard
+251427 Plans: Justicar's Waistguard
+251428 Plans: Officer's Pauldrons
+251429 Plans: Sentinel's Pauldrons
+251430 Plans: Warder's Pauldrons
+251431 Plans: Prefect's Pauldrons
+251432 Plans: Justicar's Pauldrons
+251433 Plans: Officer's Wristguard
+251434 Plans: Sentinel's Wristguard
+251435 Plans: Warder's Wristguard
+251436 Plans: Prefect's Wristguard
+251437 Plans: Justicar's Wristguards
+251438 Plans: Blessed Plate Pauldrons
+251439 Plans: Blessed Plate Boots
+251440 Plans: Blessed Plate Gauntlet
+251441 Plans: Imperial Plate Gauntlets
+251442 Plans: Blessed Plate Bracers
+251443 Plans: Blessed Plate Leggings
+251444 Plans: Blessed Plate Belt
+251446 Plans: Blessed Plate Chest
+251447 Plans: Enriched Thorium Breastplate
+251448 Plans: Enriched Thorium Leggings
+251449 Plans: Enriched Thorium Helm
+251451 Plans: Stalwart Helm
+251453 Plans: Breastplate of Salvation
+251454 Plans: Brass Knuckles
+251455 Plans: Bronze Dory
+251456 Plans: Iron Fists
+251457 Plans: Steel Spear
+251458 Plans: Iron Morningstar
+251459 Plans: Mithril Shortsword
+251460 Plans: Mithril Warhammer
+251461 Plans: Mithril Claws
+251462 Plans: Mithril Claymore
+251463 Plans: Mithril Stiletto
+251464 Plans: Charged Mithril Battleaxe
+251465 Plans: Thorium Greatmace
+251466 Plans: Thorium Cestus
+251467 Plans: Thorium Poleaxe
+251468 Plans: Bold Dirk
+251471 Plans: Legionite Glaive
+251526 Recipe: Savory Whimsyfin Delight
+252761 Pattern: Black Whelp Slippers
+252763 Pattern: Murloc Scale Shoes
+252764 Pattern: Moonglow Boots
+252765 Pattern: Brawler's Leather Belt
+252766 Pattern: Trapper's Leather Belt
+252767 Pattern: Defender's Leather Belt
+252768 Pattern: Totemic Leather Belt
+252769 Pattern: Stormrider's Leather Belt
+252770 Pattern: Wisdom's Leather Belt
+252771 Pattern: Brawler's Leather Armor
+252772 Pattern: Trapper's Leather Armor
+252773 Pattern: Defender's Leather Armor
+252774 Pattern: Totemic Leather Armor
+252775 Pattern: Stormrider's Leather Armor
+252776 Pattern: Wisdom's Leather Armor
+252777 Pattern: Brawler's Leather Gloves
+252778 Pattern: Trapper's Leather Gloves
+252779 Pattern: Defender's Leather Gloves
+252780 Pattern: Totemic Leather Gloves
+252781 Pattern: Stormrider's Leather Gloves
+252782 Pattern: Wisdom's Leather Gloves
+252783 Pattern: Mystic Medium Armor Kit
+252784 Pattern: Forceful Medium Armor Kit
+252786 Pattern: Brawler's Leather Boots
+252787 Pattern: Trapper's Leather Boots
+252788 Pattern: Defender's Leather Boots
+252789 Pattern: Totemic Leather Boots
+252790 Pattern: Stormrider's Leather Boots
+252791 Pattern: Wisdom's Leather Boots
+252792 Pattern: Brawler's Leather Pants
+252793 Pattern: Trapper's Leather Pants
+252794 Pattern: Defender's Leather Pants
+252795 Pattern: Totemic Leather Pants
+252796 Pattern: Stormrider's Leather Pants
+252797 Pattern: Wisdom's Leather Pants
+252798 Pattern: Brawler's Leather Hood
+252799 Pattern: Trapper's Leather Hood
+252800 Pattern: Defender's Leather Hood
+252801 Pattern: Totemic Leather Hood
+252802 Pattern: Stormrider's Leather Hood
+252803 Pattern: Wisdom's Leather Hood
+252804 Pattern: Hillman's Leather Boots
+252805 Pattern: Brawler's Leather Tunic
+252806 Pattern: Trapper's Leather Tunic
+252807 Pattern: Defender's Leather Tunic
+252808 Pattern: Totemic Leather Tunic
+252809 Pattern: Stormrider's Leather Tunic
+252810 Pattern: Wisdom's Leather Tunic
+252811 Pattern: Mystic Heavy Armor Kit
+252812 Pattern: Forceful Heavy Armor Kit
+252814 Pattern: Brawler's Leather Helm
+252815 Pattern: Trapper's Leather Helm
+252816 Pattern: Defender's Leather Helm
+252817 Pattern: Totemic Leather Helm
+252818 Pattern: Stormrider's Leather Helm
+252819 Pattern: Wisdom's Leather Helm
+252820 Pattern: Brawler's Leather Legguards
+252821 Pattern: Trapper's Leather Legguards
+252822 Pattern: Defender's Leather Kilt
+252823 Pattern: Totemic Leather Leggings
+252824 Pattern: Stormrider's Leather Kilt
+252825 Pattern: Wisdom's Leather Leggings
+252826 Pattern: Prowler's Leather Belt
+252827 Pattern: Skulker's Leather Belt
+252828 Pattern: Stalker's Leather Belt
+252829 Pattern: Warden's Leather Belt
+252830 Pattern: Skirmisher's Leather Belt
+252831 Pattern: Skycaller's Leather Belt
+252832 Pattern: Mender's Leather Belt
+252833 Pattern: Mystic Thick Armor Kit
+252834 Pattern: Forceful Thick Armor Kit
+252836 Pattern: Prowler's Leather Gloves
+252837 Pattern: Skulker's Leather Gloves
+252838 Pattern: Stalker's Leather Gloves
+252839 Pattern: Warden's Leather Gloves
+252840 Pattern: Skirmisher's Leather Gloves
+252841 Pattern: Skycaller's Leather Gloves
+252842 Pattern: Mender's Leather Gloves
+252843 Pattern: Prowler's Leather Shoes
+252844 Pattern: Skulker's Leather Shoes
+252845 Pattern: Warden's Leather Shoes
+252846 Pattern: Skycaller's Leather Shoes
+252847 Pattern: Mender's Leather Shoes
+252848 Pattern: Prowler's Leather Shoulders
+252849 Pattern: Skulker's Leather Shoulder
+252850 Pattern: Warden's Leather Shoulders
+252851 Pattern: Skycaller's Leather Shoulders
+252852 Pattern: Mender's Leather Shoulders
+252853 Pattern: Prowler's Leather Bracers
+252854 Pattern: Skulker's Leather Bracers
+252855 Pattern: Warden's Leather Bracers
+252856 Pattern: Skycaller's Leather Bracers
+252857 Pattern: Mender's Leather Bracers
+252858 Pattern: Tooled Leather Belt
+252859 Pattern: Blue Suede Shoes
+252860 Pattern: Prowler's Leather Boots
+252861 Pattern: Skulker's Leather Boots
+252862 Pattern: Warden's Leather Boots
+252863 Pattern: Skycaller's Leather Boots
+252864 Pattern: Mender's Leather Boots
+252865 Pattern: Tooled Leather Boots
+252866 Pattern: Blue Suede Gloves
+252867 Pattern: Prowler's Leather Gauntlets
+252868 Pattern: Skulker's Leather Gauntlets
+252869 Pattern: Warden's Leather Gauntlets
+252870 Pattern: Skycaller's Leather Gauntlets
+252871 Pattern: Mender's Leather Gauntlets
+252872 Pattern: Prowler's Leather Waistguard
+252873 Pattern: Skulker's Leather Waistguard
+252874 Pattern: Warden's Leather Waistguard
+252875 Pattern: Skycaller's Leather Waistguard
+252876 Pattern: Mender's Leather Waistguard
+252877 Pattern: Tooled Leather Armor
+252878 Pattern: Blue Suede Pants
+252879 Pattern: Wicked Leather Boots
+252881 Pattern: Blue Suede Shoulders
+252882 Pattern: Tooled Leather Crown
+252883 Pattern: Blue Suede Armor
+252884 Pattern: Wicked Leather Shoulders
+252885 Pattern: Tooled Leather Bracers
+252886 Pattern: Blue Suede Belt
+252888 Pattern: Blue Suede Bracers
+252890 Pattern: Blue Suede Hat
+252891 Pattern: Living Crown
+252895 Pattern: Ironfeather Leggings
+252896 Pattern: Stalker's Mail Boots
+252897 Pattern: Skycaller's Mail Boots
+252898 Pattern: Skirmisher's Mail Boots
+252899 Pattern: Mender's Mail Boots
+252900 Pattern: Stalker's Mail Shoulders
+252901 Pattern: Skycaller's Mail Shoulders
+252902 Pattern: Skirmisher's Mail Shoulders
+252903 Pattern: Mender's Mail Shoulders
+252904 Pattern: Stalker's Mail Bracers
+252905 Pattern: Skycaller's Mail Bracers
+252906 Pattern: Skirmisher's Mail Bracers
+252907 Pattern: Mender's Mail Bracers
+252908 Pattern: Supple Scorpid Boots
+252909 Pattern: Charged Scorpid Belt
+252910 Pattern: Stalker's Mail Sabatons
+252911 Pattern: Skycaller's Mail Sabatons
+252912 Pattern: Skirmisher's Mail Sabatons
+252913 Pattern: Mender's Mail Sabatons
+252914 Pattern: Supple Scorpid Leggings
+252915 Pattern: Charged Scorpid Helm
+252916 Pattern: Supple Scorpid Bracers
+252918 Pattern: Stalker's Mail Gauntlets
+252919 Pattern: Skycaller's Mail Gauntlets
+252920 Pattern: Skirmisher's Mail Gauntlets
+252921 Pattern: Mender's Mail Gauntlets
+252922 Pattern: Stalker's Mail Belt
+252923 Pattern: Skycaller's Mail Belt
+252924 Pattern: Skirmisher's Mail Belt
+252925 Pattern: Mender's Mail Belt
+252926 Pattern: Supple Scorpid Shoulders
+252927 Pattern: Charged Scorpid Bracers
+252928 Pattern: Heavy Scorpid Boots
+252929 Pattern: Supple Scorpid Belt
+252930 Pattern: Charged Scorpid Gauntlets
+252931 Pattern: Supple Scorpid Helm
+252932 Pattern: Charged Scorpid Vest
+252933 Pattern: Supple Scorpid Vest
+252934 Pattern: Charged Scorpid Leggings
+252941 Pattern: Mystic Rugged Armor Kit
+252942 Pattern: Forceful Rugged Armor Kit
+253665 Pattern: Linen Reagent Bag
+253668 Pattern: Woolen Reagent Bag
+253890 Pattern: Pristine Boots
+253892 Pattern: Silky Boots
+253894 Pattern: Flame Boots
+253896 Pattern: Shadow Boots
+253898 Pattern: Pearly Boots
+253900 Pattern: Shining Boots
+253902 Pattern: Filigreed Pristine Gown
+253904 Pattern: Filigreed Silky Gown
+253906 Pattern: Filigreed Flame Gown
+253908 Pattern: Filigreed Shadow Gown
+253910 Pattern: Filigreed Pearly Gown
+253912 Pattern: Filigreed Shining Gown
+253914 Pattern: Pristine Gloves
+253916 Pattern: Silky Gloves
+253918 Pattern: Flame Gloves
+253920 Pattern: Shadow Gloves
+253922 Pattern: Pearly Gloves
+253924 Pattern: Shining Gloves
+253926 Pattern: Pristine Sash
+253928 Pattern: Silky Sash
+253930 Pattern: Flame Sash
+253932 Pattern: Shadow Sash
+253934 Pattern: Pearly Sash
+253936 Pattern: Shining Sash
+253938 Pattern: Filigreed Pristine Leggings
+253940 Pattern: Filigreed Silky Leggings
+253942 Pattern: Filigreed Flame Leggings
+253944 Pattern: Filigreed Shadow Leggings
+253946 Pattern: Filigreed Pearly Leggings
+253948 Pattern: Filigreed Shining Leggings
+253950 Pattern: Pristine Circlet
+253952 Pattern: Silky Circlet
+253954 Pattern: Flame Circlet
+253956 Pattern: Shadow Circlet
+253958 Pattern: Pearly Circlet
+253960 Pattern: Shining Circlet
+253962 Pattern: Pristine Gown
+253964 Pattern: Silky Gown
+253966 Pattern: Flame Gown
+253968 Pattern: Shadow Gown
+253970 Pattern: Pearly Gown
+253972 Pattern: Shining Gown
+253974 Pattern: Silk Reagent Bag
+253976 Pattern: Filigreed Pristine Circlet
+253978 Pattern: Filigreed Silky Circlet
+253980 Pattern: Filigreed Flame Circlet
+253982 Pattern: Filigreed Shadow Circlet
+253984 Pattern: Filigreed Pearly Circlet
+253986 Pattern: Filigreed Shining Circlet
+253988 Pattern: Pristine Leggings
+253990 Pattern: Silky Leggings
+253992 Pattern: Flame Leggings
+253994 Pattern: Shadow Leggings
+253996 Pattern: Pearly Leggings
+253998 Pattern: Shining Leggings
+254000 Pattern: Earthen Leggings
+254014 Pattern: Earthen Silk Slippers
+254016 Pattern: Earthen Silk Hood
+254018 Pattern: Earthen Silk Gloves
+254020 Pattern: Earthen Silk Cuffs
+254022 Pattern: Gilded Handwraps
+254024 Pattern: Frothing Handwraps
+254026 Pattern: Fiery Handwraps
+254028 Pattern: Black Handwraps
+254030 Pattern: Golden Handwraps
+254032 Pattern: Radiant Handwraps
+254034 Pattern: Earthen Silk Shoulders
+254036 Pattern: Mageweave Reagent Bag
+254038 Pattern: Gilded Cord
+254040 Pattern: Frothing Cord
+254042 Pattern: Fiery Cord
+254044 Pattern: Black Cord
+254046 Pattern: Golden Cord
+254048 Pattern: Radiant Cord
+254050 Pattern: Nethergeld Shoulders
+254052 Pattern: Netherfroth Shoulders
+254054 Pattern: Netherflame Shoulders
+254056 Pattern: Netherpearl Shoulders
+254058 Pattern: Nethershine Shoulders
+254060 Pattern: Netherlight Shoulders
+254062 Pattern: Nethergeld Cuffs
+254064 Pattern: Netherfroth Cuffs
+254066 Pattern: Netherflame Cuffs
+254068 Pattern: Netherpearl Cuffs
+254070 Pattern: Nethershine Cuffs
+254072 Pattern: Netherlight Cuffs
+254074 Pattern: Ghostweave Cord
+254076 Pattern: Earthenweave Gloves
+254078 Pattern: Earthenweave Cord
+254080 Pattern: Runecloth Reagent Bag
+254082 Pattern: Gilded Waistcord
+254084 Pattern: Frothing Waistcord
+254086 Pattern: Fiery Waistcord
+254088 Pattern: Black Waistcord
+254090 Pattern: Golden Waistcord
+254092 Pattern: Radiant Waistcord
+254094 Pattern: Earthenweave Boots
+254096 Pattern: Gilded Gloves
+254098 Pattern: Frothing Gloves
+254100 Pattern: Fiery Gloves
+254102 Pattern: Black Gloves
+254104 Pattern: Golden Gloves
+254106 Pattern: Radiant Gloves
+254108 Pattern: Gilded Sandals
+254110 Pattern: Frothing Sandals
+254112 Pattern: Fiery Sandals
+254114 Pattern: Black Sandals
+254116 Pattern: Golden Sandals
+254118 Pattern: Radiant Sandals
+254120 Pattern: Earthenweave Mantle
+254122 Pattern: Earthenweave Vest
+254124 Pattern: Runecloth Cuffs
+254126 Pattern: Earthenweave Leggings
+254138 Pattern: Earthenweave Crown
+255724 Manual: Clever Poultice
+255726 Manual: Leather Tourniquet
+255727 Manual: Superior Poultice
+255728 Manual: Potent Anti-Venom
+255729 Manual: Major Healing Potion
+255730 Manual: Surgical Tourniquet
+263511 Recipe: Skywall Souffle
+263513 Recipe: Pincer Bites
+264201 Schematic: SAF-T Tabs
+264202 Schematic: SAF-T Dynamite
+264203 Schematic: SAF-T Copper Bomb
+264204 Schematic: EZ-Thro Wrap
+264205 Schematic: EZ-Thro Copper Bomb XL
+264206 Schematic: No Slip SAF-T Padding
+264207 Schematic: SAF-T Bronze Bomb
+264208 Schematic: SAF-T Jumbo Dynamite
+264209 Schematic: SAF-T Bell
+264210 Schematic: Shafety Sheep
+264211 Schematic: EZ-Thro Fireproof Fuse
+264212 Schematic: EZ-Thro Bronze Mortar
+264213 Schematic: EZ-Thro Grenade
+264214 Schematic: SAF-T Casing
+264215 Schematic: SAF-T Bomb
+264216 Schematic: Emergency Field Cloak
+264217 Schematic: Compact Critter Carrier
+264218 Schematic: EZ-Thro Tru-Trigger
+264219 Schematic: Tru-Trigger Frag Bomb
+264220 Schematic: SAF-T Disposable Parachute
+264221 Schematic: Gnomish Army Knife
+264222 Schematic: Loot-A-Rang
+264224 Schematic: SAF-T Clever Dynamite
+264228 Schematic: EZ-Thro Mana Bomb
+264231 Schematic: EZ and SAF Field Transporter: Mt. Hyjal
+264232 Schematic: Ultrasafe Rechargeable Battery
+264233 Schematic: Dimensional Transporter: Mt. Hyjal
+264234 Schematic: Gnomish Poultryizer
+264235 Schematic: Ultralight Goblin Glider
+264237 Schematic: Stealthman 52
+269901 Schematic: Centaur Banner Deployment Device
+269903 Schematic: Hoof-Shaped Foot Pedal
+273952 Pattern: Grovekeeper Trousers
+273953 Pattern: Grovekeeper Grips
+273954 Pattern: Grovekeeper Shoulderpads
+273955 Pattern: Grovekeeper Stompers
+273956 Pattern: Grovekeeper Kilt
+273957 Pattern: Grovekeeper Mitts
+273958 Pattern: Grovekeeper Mantle
+273959 Pattern: Grovekeeper Sandals
+273960 Pattern: Grovekeeper Legguards
+273961 Pattern: Grovekeeper Handguards
+273962 Pattern: Grovekeeper Pauldrons
+273963 Pattern: Grovekeeper Boots
+273964 Pattern: Grovekeeper Leggings
+273965 Pattern: Grovekeeper Gauntlets
+273966 Pattern: Grovekeeper Spaulders
+273967 Pattern: Grovekeeper Treads
+273968 Pattern: Wildstalker's Legguards
+273969 Pattern: Wildstalker's Gauntlets
+273970 Pattern: Wildstalker's Spaulders
+273971 Pattern: Wildstalker's Greaves
+273972 Pattern: Manaflare Pants
+273973 Pattern: Manaflare Gloves
+273974 Pattern: Manaflare Mantle
+273975 Pattern: Manaflare Boots
+273976 Plans: Justice Leggings
+273977 Plans: Justice Gauntlets
+273978 Plans: Justice Spaulders
+273979 Plans: Justice Greaves
+273980 Plans: Justice Legplates
+273981 Plans: Justice Gloves
+273982 Plans: Justice Epaulets
+273983 Plans: Justice Treads
+273984 Plans: Justice Legguards
+273985 Plans: Justice Handguards
+273986 Plans: Justice Pauldrons
+273987 Plans: Justice Sabatons
+273988 Pattern: Pants of Conviction
+273989 Pattern: Gloves of Conviction
+273990 Pattern: Mantle of Conviction
+273991 Pattern: Treads of Conviction
+273992 Pattern: Leggings of Conviction
+273993 Pattern: Handguards of Conviction
+273994 Pattern: Pauldrons of Conviction
+273995 Pattern: Boots of Conviction
+273996 Pattern: Grimstitch Pants
+273997 Pattern: Grimstitch Gloves
+273998 Pattern: Grimstitch Spaulders
+273999 Pattern: Grimstitch Boots
+274000 Pattern: Spiritcaller Leggings
+274001 Pattern: Spiritcaller Grips
+274002 Pattern: Spiritcaller Spaulders
+274003 Pattern: Spiritcaller Treads
+274004 Pattern: Spiritcaller Pants
+274005 Pattern: Spiritcaller Gauntlets
+274006 Pattern: Spiritcaller Epaulets
+274007 Pattern: Spiritcaller Greaves
+274008 Pattern: Demonheart Leggings
+274009 Pattern: Demonheart Gloves
+274010 Pattern: Demonheart Spaulders
+274011 Pattern: Demonheart Boots
+274012 Plans: Legplates of Glory
+274013 Plans: Gauntlets of Glory
+274014 Plans: Shoulders of Glory
+274015 Plans: Greaves of Glory
+274016 Plans: Legguards of Glory
+274017 Plans: Handguards of Glory
+274018 Plans: Pauldrons of Glory
+274019 Plans: Sabatons of Glory
+274049 Schematic: 9-60 Battery Pack
+274491 Pattern: Centaur Hoofwarmers
+274977 Recipe: Plain Ol' Paletusk
+275580 Pattern: Venomspew Gloves
+275581 Pattern: Venomspew Cord
+275582 Pattern: Venomspew Footpads
+275583 Pattern: Swarmtender's Gloves
+275584 Pattern: Swarmtender's Cord
+275585 Pattern: Swarmtender's Footpads
+275598 Plans: Goregasher Grips
+275599 Plans: Goregasher Support
+275600 Plans: Goregasher Stompers
+275601 Plans: Clutchlord's Grips
+275602 Plans: Clutchlord's Support
+275603 Plans: Clutchlord's Stompers
+276542 Pattern: Spiritcaller Kilt
+276543 Pattern: Spiritcaller Gloves
+276544 Pattern: Spiritcaller Mantle
+276545 Pattern: Spiritcaller Boots
+276976 Plans: Cloudy Skyforged Helm
+276977 Plans: Cloudy Skyforged Pauldrons
+276978 Pattern: Cloudy Gustwoven Hood
+276979 Pattern: Cloudy Gustwoven Spaulders
+276980 Pattern: Cloudy Windraveled Cover
+276981 Pattern: Cloudy Windraveled Drapes
+276982 Pattern: Cloudy Stormsewn Cowl
+276983 Pattern: Cloudy Stormsewn Epaulets
+276984 Plans: Azure Skyforged Helm
+276985 Plans: Azure Skyforged Pauldrons
+276986 Pattern: Azure Gustwoven Hood
+276987 Pattern: Azure Gustwoven Spaulders
+276988 Pattern: Azure Windraveled Cover
+276989 Pattern: Azure Windraveled Drapes
+276990 Pattern: Azure Stormsewn Cowl
+276991 Pattern: Azure Stormsewn Epaulets
+277470 Schematic: Harvester Override Signalcaster
+277673 Plans: Rough Copper Chain Boots
+277716 Pattern: Light Leather Reagent Bag
+280321 Schematic: Whimsical Waistwrap
+280322 Schematic: Gizmo Girdle
+280323 Schematic: Clanking Cord
+280325 Schematic: Floppy Goggles
+280326 Schematic: Bent Goggles
+280327 Schematic: Stuckbutton Goggles
+280328 Schematic: Dented Goggles
+284870 Schematic: Unsanctified Grenade
+284871 Recipe: Transmute Legionite
+285285 Schematic: Satchel of Copper Bombs
+285286 Schematic: Satchel of Bronze Bombs
+285287 Schematic: Satchel of Iron Bombs
+285288 Schematic: Satchel of Dark Iron Bombs
+286153 Recipe: Plated Armorfish
+289560 Formula: Enchant Boots - Speed
