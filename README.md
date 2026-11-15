@@ -47,7 +47,7 @@
 
 ## Features
 
-- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of every module, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts). A grey name means the module is off or paused.
+- **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of the modules you have installed, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts). A grey name means the module is off or paused. A module you have not installed is not in the list; it shows up once you install it.
 - **Click a module, see it.** The module's own window opens in the middle of `/gulli` at once. Next to a small window you see what the module does, its command, its version and **Reset to defaults**. **<** goes back to **Home**, **Open in its own window** takes it out. The toolkit opens again where you left it.
 - **Home: everything at a glance.** Short news from every module that runs (XP to the next level, dungeon entries left, groups on the board, what waits on your other characters), a **Modules** card (how many are on, which wait for a reload, which the game does not load, which were updated, and which use the most memory), the **Recent** messages with how long ago they came (click one to open its module), **Quick setup** and the commands of your modules.
 - **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off.
@@ -100,9 +100,9 @@ No. Each module is a normal addon and works alone. The toolkit only puts them in
 </details>
 
 <details>
-<summary><b>A module says "Not installed"</b></summary>
+<summary><b>A module is not in the list</b></summary>
 
-The toolkit knows about it, but it is not in your AddOns folder. Install it with Runeloader or from the releases.
+The list shows only the modules in your AddOns folder. Install the module with Runeloader or from the releases, then `/reload`, and it shows up.
 </details>
 
 <details>
