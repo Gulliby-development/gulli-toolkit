@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Draws the round shapes of the Gulli look into Gulli-Toolkit/Media as white TGA files with
 an alpha channel (the game tints them): Round (a disc), RoundSq (a
-rounded square, the mask of HUD icons), Glow (a soft halo) and Ring<R> (a
-1 pixel ring for a corner of radius R, as S.Box draws it). Standard library only.
+rounded square, the mask of HUD icons), Glow (a soft halo), Ring<R> (a
+1 pixel ring for a corner of radius R, as S.Box draws it), and the two glass lights of
+S.Glass: Sheen (white at the top fading to nothing at the bottom) and Radial (white in the top
+left corner fading out in a quarter circle). Standard library only.
 Run from the repository root, then tools/skin/sync.sh copies them into every module."""
 import math
 import os
@@ -16,6 +18,15 @@ SS = 4  # supersampling per axis
 
 def write_tga(path, size, alpha):
     head = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0, size, size, 32, 0x28)
+    px = bytearray()
+    for a in alpha:
+        px += bytes((255, 255, 255, max(0, min(255, int(round(a * 255))))))
+    with open(path, "wb") as f:
+        f.write(head + px)
+
+
+def write_rect(path, w, h, alpha):
+    head = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0, w, h, 32, 0x28)
     px = bytearray()
     for a in alpha:
         px += bytes((255, 255, 255, max(0, min(255, int(round(a * 255))))))
@@ -50,6 +61,18 @@ def main():
             d = dist((x + 0.5) / 64, (y + 0.5) / 64)
             glow.append(0 if d >= 1 else (1 if d < 0.55 else ((1 - d) / 0.45) ** 1.6))
     write_tga(f"{OUT}/Glow.tga", 64, glow)
+    # Glass lights: eased, so the fade has no visible edge when stretched over a window.
+    sheen = []
+    for y in range(64):
+        a = 1 - (y + 0.5) / 64
+        sheen += [a * a] * 8
+    write_rect(f"{OUT}/Sheen.tga", 8, 64, sheen)
+    radial = []
+    for y in range(64):
+        for x in range(64):
+            d = math.hypot((x + 0.5) / 64, (y + 0.5) / 64)
+            radial.append(0 if d >= 1 else (1 - d) ** 2)
+    write_tga(f"{OUT}/Radial.tga", 64, radial)
     for r in RADII:
         size = 64 if r >= 6 else 32
         inner = (r - 1.15) / r

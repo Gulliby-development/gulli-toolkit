@@ -335,7 +335,7 @@ local function build()
     local body, width = frame.body, frame.inner[1]
     local labels = {}
     for i, k in ipairs(TAB_KEYS) do labels[i] = L[k] end
-    tabs = S.Tabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end, nil, TAB_ICONS)
+    tabs = S.PageTabs(body, labels, math.floor((width - 4) / #labels), function(i) current = i; ns.Refresh() end, nil, TAB_ICONS)
 
     card = S.Card(body)
     card:SetPoint("TOPLEFT", 0, -30 - S.GAP)

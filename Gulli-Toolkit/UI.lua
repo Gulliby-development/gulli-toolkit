@@ -15,7 +15,9 @@ local HOST_W = MID + GAP + CARD
 local HOST_H = S.DOCK_H
 local W = 2 * S.PAD + SIDE + GAP + HOST_W
 local H = S.HEADER_H + 2 * S.PAD + HOST_H
-local LIST_W = SIDE - 2 * S.INSET - 10
+-- The side column runs from the window's edge to a hairline, SIDE_IN pixels of room inside.
+local SIDE_IN = 10
+local LIST_W = SIDE + S.PAD - 1 - 2 * SIDE_IN - 10
 local ROW_H, HEAD_H = 30, 30
 local TILE_COLS, TILE_MAX, TILE_H = 3, 12, 58
 local QUICK_W, LINE_H = 320, 24
@@ -144,8 +146,10 @@ end
 local function showHome()
     leave()
     hidePanels()
+    local was = home:IsShown()
     view.page = "home"
     home:Show()
+    if not was then S.MotionIn(home, 6, S.BASE) end
     ns.Refresh()
 end
 
@@ -190,6 +194,7 @@ local function enter(row)
         width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch },
         back = goHome, popOut = popOut, onHide = windowHidden,
     })
+    S.MotionIn(win, 6, S.BASE)
     ns.Refresh()
 end
 
@@ -216,38 +221,77 @@ local function rowTip(self)
     tip(self, row.title, lines)
 end
 
+-- A row of the side list. The selection is one plate (selPlate) that slides to the chosen row;
+-- the row itself only lights up under the cursor.
+local selPlate
+
 local function selectable(r)
     S.Box(r, S.CLEAR, S.CLEAR, S.R_MD)
-    r.bar = line(r, S.Accent())
-    r.bar:SetPoint("TOPLEFT", 1, -8)
-    r.bar:SetPoint("BOTTOMLEFT", 1, 8)
-    r.bar:SetWidth(3)
     function r:SetSelected(on)
         self.selected = on
-        S.Fill(self, on and S.RAISED or S.CLEAR)
-        self.bar:SetShown(on)
+        S.Fill(self, S.CLEAR)
     end
     r:SetScript("OnLeave", function(self)
-        if not self.selected then S.Fill(self, S.CLEAR) end
+        S.Fill(self, S.CLEAR)
         hideTip()
     end)
+end
+
+local function makeSelPlate()
+    local p = CreateFrame("Frame", nil, list)
+    p:SetHeight(ROW_H)
+    local a = S.Accent()
+    S.Box(p, { a[1], a[2], a[3], 0.11 }, { a[1], a[2], a[3], 0.25 }, S.R_MD)
+    local glow = p:CreateTexture(nil, "BACKGROUND", nil, -6)
+    glow:SetTexture(S.RADIAL)
+    if glow.SetBlendMode then glow:SetBlendMode("ADD") end
+    glow:SetVertexColor(a[1], a[2], a[3], 0.16)
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("BOTTOMRIGHT", p, "BOTTOM", 0, 1)
+    p.bar = S.Tex(p, "ARTWORK", 2, a)
+    p.bar:SetWidth(3)
+    p.bar:SetPoint("TOPLEFT", 1, -8)
+    p.bar:SetPoint("BOTTOMLEFT", 1, 8)
+    local halo = p:CreateTexture(nil, "ARTWORK", nil, 1)
+    halo:SetTexture(S.GLOW_TEX)
+    if halo.SetBlendMode then halo:SetBlendMode("ADD") end
+    halo:SetVertexColor(a[1], a[2], a[3], 0.55)
+    halo:SetSize(14, ROW_H)
+    halo:SetPoint("CENTER", p.bar, "CENTER")
+    selPlate = p
+    return p
+end
+
+-- Puts the plate on the row at y; it slides there from where it was.
+local function moveSel(y)
+    local p = selPlate or makeSelPlate()
+    if not y then p:Hide(); rawset(p, "y", nil) return end
+    local from = rawget(p, "y")
+    rawset(p, "y", y)
+    p:Show()
+    S.Tween(p, "y", from, y, S.BASE, function(v) place(p, math.floor(v + 0.5)) end)
 end
 
 local function makeRow(i)
     local r = CreateFrame("Button", nil, list)
     r:SetHeight(ROW_H)
     selectable(r)
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(18, 18)
-    r.icon:SetPoint("LEFT", 8, 0)
-    r.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-    S.RoundMask(r, r.icon)
-    -- A dot on the icon: updated since the player last opened it.
-    r.dot = S.Circle(r, 7, S.Accent(), "OVERLAY")
-    r.dot:SetPoint("CENTER", r.icon, "TOPRIGHT", 0, 0)
+    r.box = S.IconBox(r, 20)
+    r.box:SetPoint("LEFT", 9, 0)
+    r.icon = r.box.tex
+    -- A dot at the end of the row: updated since the player last opened it.
+    r.dot = S.Circle(r, 6, S.Accent(), "OVERLAY")
+    r.dot:SetPoint("RIGHT", -10, 0)
+    local dg = r:CreateTexture(nil, "ARTWORK")
+    dg:SetTexture(S.GLOW_TEX)
+    dg:SetSize(16, 16)
+    dg:SetPoint("CENTER", r.dot, "CENTER")
+    local a = S.Accent()
+    dg:SetVertexColor(a[1], a[2], a[3], 0.7)
+    r.dotGlow = dg
     r.title = S.Text(r, 12)
-    r.title:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
-    r.title:SetPoint("RIGHT", -4, 0)
+    r.title:SetPoint("LEFT", r.box, "RIGHT", 9, 0)
+    r.title:SetPoint("RIGHT", -20, 0)
     r.title:SetWordWrap(false)
     r:SetScript("OnClick", function(self) enter(self.row) end)
     r:SetScript("OnEnter", function(self)
@@ -263,7 +307,7 @@ local function fillRow(r, row)
     r.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     local live = row.state == "ready" and not row.paused
     r.icon:SetDesaturated(not live)
-    r.icon:SetAlpha(live and 1 or 0.55)
+    r.box:SetAlpha(live and 1 or 0.5)
     r.title:SetText(row.title)
     -- The state shows in the colour of the name; the tooltip and the page say why. The switch
     -- itself is in the header of the module's page.
@@ -273,6 +317,7 @@ local function fillRow(r, row)
     elseif not live then tc = S.FAINT end
     r.title:SetTextColor(tc[1], tc[2], tc[3], 1)
     r.dot:SetShown(row.new == true)
+    r.dotGlow:SetShown(row.new == true)
     r:SetSelected(view.page == "module" and view.inside == row.key)
     r:Show()
 end
@@ -280,14 +325,14 @@ end
 local function makeHead(i)
     local h = CreateFrame("Frame", nil, list)
     h:SetHeight(HEAD_H)
-    h.text = S.Text(h, 11, S.FAINT)
-    h.text:SetPoint("BOTTOMLEFT", 2, 8)
-    h.text:SetPoint("RIGHT", -4, 0)
+    -- A small label in capitals with the count at the right, like the cards' titles.
+    h.count = S.Text(h, 10, S.FAINT)
+    h.count:SetPoint("BOTTOMRIGHT", -8, 7)
+    h.count:SetJustifyH("RIGHT")
+    h.text = S.Text(h, 10, S.FAINT)
+    h.text:SetPoint("BOTTOMLEFT", 8, 7)
+    h.text:SetPoint("RIGHT", h.count, "LEFT", -6, 0)
     h.text:SetWordWrap(false)
-    h.rule = line(h, S.EDGE)
-    h.rule:SetHeight(1)
-    h.rule:SetPoint("BOTTOMLEFT", 0, 0)
-    h.rule:SetPoint("BOTTOMRIGHT", 0, 0)
     heads[i] = h
     return h
 end
@@ -297,10 +342,12 @@ local function fillSide(data)
     local shown = ns.Filter(data, "All", "all", view.query)
     local counts = ns.Counts(data)
     local y, ri, hi = 0, 0, 0
+    local selY
     homeRow:SetShown(not searching)
     if not searching then
         place(homeRow, y)
         homeRow:SetSelected(view.page == "home")
+        if view.page == "home" then selY = y end
         y = y + ROW_H
     end
     for _, g in ipairs(ns.Groups(shown)) do
@@ -308,7 +355,8 @@ local function fillSide(data)
         local h = heads[hi] or makeHead(hi)
         local c = counts[g.key] or { on = 0, total = 0 }
         h.cat = g.key
-        h.text:SetText(catName(g.key) .. "  " .. c.on .. "/" .. c.total)
+        h.text:SetText(S.Upper(catName(g.key)))
+        h.count:SetText(c.on .. "/" .. c.total)
         place(h, y)
         h:Show()
         y = y + HEAD_H
@@ -317,11 +365,13 @@ local function fillSide(data)
             local r = rows[ri] or makeRow(ri)
             fillRow(r, row)
             place(r, y)
+            if r.selected then selY = y end
             y = y + ROW_H
         end
     end
     for i = ri + 1, #rows do rows[i]:Hide() end
     for i = hi + 1, #heads do heads[i]:Hide() end
+    moveSel(selY)
     empty:SetShown(#shown == 0)
     list:SetHeight(math.max(1, y))
     scroll:Update(y)
@@ -336,10 +386,9 @@ local function fillCard(row)
     d.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     d.icon:SetDesaturated(row.state ~= "ready")
     d.title:SetText(row.title)
-    d.cat:SetText(catName(row.category))
+    d.cat:Set(catName(row.category))
     local st, color = stateText(row)
-    d.state:SetText(st)
-    d.state:SetTextColor(color[1], color[2], color[3], 1)
+    d.state:Set(st, color)
     d.desc:SetText(row.desc)
     d.slash:SetText(row.slash and L.COMMAND:format(row.slash) or "")
     local facts = {}
@@ -376,10 +425,11 @@ local tiles, feedLines, ovLines, cmdLines = {}, {}, {}, {}
 local function makeTile(i)
     local t = CreateFrame("Button", nil, home.summary)
     t:SetSize(10, TILE_H)
-    S.Box(t, S.SURFACE, S.EDGE, S.R_LG)
+    S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Glass(t, S.R_LG, 0.35)
     t.icon = S.IconBox(t, 28)
     t.icon:SetPoint("LEFT", 10, 0)
-    t.name = S.Text(t, 11, S.MUTED)
+    t.name = S.Text(t, 10, S.FAINT)
     t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 2)
     t.name:SetPoint("RIGHT", -10, 0)
     t.name:SetWordWrap(false)
@@ -390,7 +440,7 @@ local function makeTile(i)
     t.text:SetMaxLines(2)
     t:SetScript("OnClick", function(self) enter(self.row) end)
     t:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
-    t:SetScript("OnLeave", function(self) S.SetBorder(self, S.EDGE) end)
+    t:SetScript("OnLeave", function(self) S.SetBorder(self, S.CARD_EDGE) end)
     tiles[i] = t
     return t
 end
@@ -482,17 +532,18 @@ local function fillOverview(data)
     local parts = { hex .. L.OV_ON:format(o.on, o.total) .. "|r", L.OV_RUNNING:format(o.running) }
     if o.kb > 0 then parts[#parts + 1] = L.OV_MEMORY:format(ns.Size(o.kb)) end
     home.ovHead:SetText(table.concat(parts, S.Hex(S.FAINT) .. "   ·   |r"))
+    home.ovCount:SetText(o.on)
     home.ovReload:SetShown(#o.reload > 0)
     local lines = overviewLines(o)
     for i, e in ipairs(lines) do
-        local b = ovLines[i] or makeLine(home.overview.body, ovLines, i)
+        local b = ovLines[i] or makeLine(home.ovBox, ovLines, i)
         b.head, b.full, b.row, b.open = e[1], e[3] ~= "" and e[3] or nil, e[4], e[5]
         b.text:SetText(S.Hex(e[2]) .. e[1] .. "|r" .. (e[3] ~= "" and ("  " .. e[3]) or ""))
         place(b, 24 + (i - 1) * LINE_H)
         b:Show()
     end
     for i = #lines + 1, #ovLines do ovLines[i]:Hide() end
-    return home.overview:Fit(24 + #lines * LINE_H)
+    return home.overview:Fit(math.max(64, 24 + #lines * LINE_H))
 end
 
 -- The height the command lines may fill in a Quick setup card of height h whose commands title
@@ -539,7 +590,7 @@ local function fillHome(data)
         local s = list2[i]
         t.row = s.row
         t.icon:SetIcon(s.icon or s.row.icon)
-        t.name:SetText(s.row.title)
+        t.name:SetText(S.Upper(s.row.title))
         t.text:SetText(s.text)
         t:ClearAllPoints()
         t:SetPoint("TOPLEFT", ((i - 1) % TILE_COLS) * (w + 8), -math.floor((i - 1) / TILE_COLS) * (TILE_H + 8))
@@ -812,33 +863,60 @@ end
 
 -- A switch row for the minimap button: on the home page and on the Options page.
 local mapSwitches = {}
-local function minimapRow(parent)
+-- A label with a switch at the right, as the Quick setup card and the Options page show it.
+local function switchRow(parent, label, get, set, tipText, all)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(30)
     local sw = S.Switch(row)
     sw:SetPoint("RIGHT", 0, 0)
-    sw:SetChecked(ns.MinimapShown())
-    sw:SetScript("OnClick", function()
-        ns.SetMinimap("hide", ns.MinimapShown() or nil)
-    end)
-    local label = S.Text(row, 12)
-    label:SetPoint("LEFT", 0, 0)
-    label:SetPoint("RIGHT", sw, "LEFT", -6, 0)
-    label:SetWordWrap(false)
-    label:SetText(L.MINIMAP)
+    sw:SetChecked(get())
+    sw:SetScript("OnClick", function() set(not get()) end)
+    local text = S.Text(row, 12)
+    text:SetPoint("LEFT", 0, 0)
+    text:SetPoint("RIGHT", sw, "LEFT", -6, 0)
+    text:SetWordWrap(false)
+    text:SetText(label)
+    if tipText then
+        sw:HookScript("OnEnter", function(self) tip(self, label, { tipText }) end)
+        sw:HookScript("OnLeave", hideTip)
+    end
     row.switch = sw
-    mapSwitches[#mapSwitches + 1] = sw
+    all[#all + 1] = sw
     return row
 end
 
-local function buildSide()
-    side = S.Card(frame.body)
-    side:SetWidth(SIDE)
-    side:SetPoint("TOPLEFT")
-    side:SetPoint("BOTTOMLEFT")
-    local body = side.body
+local function minimapRow(parent)
+    return switchRow(parent, L.MINIMAP, ns.MinimapShown,
+        function(on) ns.SetMinimap("hide", (not on) or nil) end, nil, mapSwitches)
+end
 
-    search = S.Edit(body, SIDE - 2 * S.INSET, 30)
+local calmSwitches = {}
+
+local function calmRow(parent)
+    return switchRow(parent, L.CALM, ns.Calm, ns.SetCalm, L.CALM_TIP, calmSwitches)
+end
+
+function ns.SyncCalm()
+    for _, sw in ipairs(calmSwitches) do sw:SetChecked(ns.Calm()) end
+end
+
+local function buildSide()
+    -- No card: a darker strip from the header to the window's bottom edge, a hairline at its right.
+    side = CreateFrame("Frame", nil, frame.body)
+    side:SetWidth(SIDE + S.PAD - 1)
+    side:SetPoint("TOPLEFT", -(S.PAD - 1), S.PAD)
+    side:SetPoint("BOTTOMLEFT", -(S.PAD - 1), -(S.PAD - 1))
+    S.Box(side, { 0, 0, 0, 0.14 }, S.CLEAR, S.R_XL - 1, "bottomleft")
+    local edge = line(side, LINE)
+    edge:SetWidth(1)
+    edge:SetPoint("TOPRIGHT")
+    edge:SetPoint("BOTTOMRIGHT")
+    local body = CreateFrame("Frame", nil, side)
+    body:SetPoint("TOPLEFT", SIDE_IN, -12)
+    body:SetPoint("BOTTOMRIGHT", -SIDE_IN, SIDE_IN)
+    side.body = body
+
+    search = S.Edit(body, SIDE + S.PAD - 1 - 2 * SIDE_IN, 30)
     search:SetPoint("TOPLEFT")
     search:SetPoint("TOPRIGHT")
     search:SetJustifyH("LEFT")
@@ -884,14 +962,10 @@ local function buildSide()
     homeRow = CreateFrame("Button", nil, list)
     homeRow:SetHeight(ROW_H)
     selectable(homeRow)
-    local hi = homeRow:CreateTexture(nil, "ARTWORK")
-    hi:SetSize(18, 18)
-    hi:SetPoint("LEFT", 8, 0)
-    hi:SetTexture(TOOLKIT_ICON)
-    hi:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-    S.RoundMask(homeRow, hi)
+    local hi = S.IconBox(homeRow, 20, TOOLKIT_ICON)
+    hi:SetPoint("LEFT", 9, 0)
     local ht = S.Text(homeRow, 12)
-    ht:SetPoint("LEFT", hi, "RIGHT", 8, 0)
+    ht:SetPoint("LEFT", hi, "RIGHT", 9, 0)
     ht:SetText(L.HOME)
     homeRow:SetScript("OnClick", goHome)
     homeRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
@@ -900,54 +974,67 @@ local function buildSide()
     empty:Set(L.NO_MATCH)
 end
 
+-- A small rounded label (the module's group, its state).
+local function pill(parent)
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetHeight(20)
+    S.Box(p, { 1, 1, 1, 0.06 }, S.CLEAR, S.R_MD)
+    p.text = S.Text(p, 11, S.MUTED)
+    p.text:SetPoint("CENTER")
+    function p:Set(text, c)
+        self.text:SetText(text or "")
+        c = c or S.MUTED
+        self.text:SetTextColor(c[1], c[2], c[3], 1)
+        S.Fill(self, c == S.MUTED and { 1, 1, 1, 0.06 } or { c[1], c[2], c[3], 0.14 })
+        self:SetWidth(math.floor((tonumber((self.text:GetStringWidth())) or 0) + 18))
+    end
+    return p
+end
+
 local function buildCard()
-    card = S.Card(host)
+    -- No box: a column beside the module with a hairline at its left, like the side list.
+    card = CreateFrame("Frame", nil, host)
     card:SetWidth(CARD)
     card:SetPoint("TOPRIGHT")
     card:SetPoint("BOTTOMRIGHT")
+    local edge = line(card, LINE)
+    edge:SetWidth(1)
+    edge:SetPoint("TOPLEFT", 0, S.PAD)
+    edge:SetPoint("BOTTOMLEFT", 0, -(S.PAD - 1))
     local d = card
-    d.body:ClearAllPoints()
-    d.body:SetAllPoints()
+    d.body = CreateFrame("Frame", nil, card)
+    d.body:SetPoint("TOPLEFT", S.INSET, 0)
+    d.body:SetPoint("BOTTOMRIGHT", 0, 0)
 
     local banner = CreateFrame("Frame", nil, d.body)
-    banner:SetHeight(92)
-    banner:SetPoint("TOPLEFT", 1, -1)
-    banner:SetPoint("TOPRIGHT", -1, -1)
-    S.Box(banner, S.HEAD, S.CLEAR, S.R_LG - 1, "top")
-    local a = S.Accent()
-    local glow = line(banner, { a[1], a[2], a[3], 0.08 })
-    glow:SetDrawLayer("BACKGROUND", 1)
-    glow:SetPoint("TOPLEFT")
-    glow:SetPoint("BOTTOMRIGHT", banner, "RIGHT", 0, 0)
-    local rule = line(banner, S.EDGE)
-    rule:SetHeight(1)
-    rule:SetPoint("BOTTOMLEFT")
-    rule:SetPoint("BOTTOMRIGHT")
+    banner:SetHeight(110)
+    banner:SetPoint("TOPLEFT")
+    banner:SetPoint("TOPRIGHT")
     local ring = CreateFrame("Frame", nil, banner)
-    ring:SetSize(62, 62)
-    ring:SetPoint("CENTER")
+    ring:SetSize(70, 70)
+    ring:SetPoint("CENTER", 0, -4)
     local halo = ring:CreateTexture(nil, "BACKGROUND", nil, -8)
     halo:SetTexture(S.GLOW_TEX)
-    halo:SetSize(84, 84)
+    halo:SetSize(104, 104)
     halo:SetPoint("CENTER")
-    halo:SetVertexColor(S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.4)
-    S.Circle(ring, 62, { S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.9 }, "BACKGROUND", -7):SetPoint("CENTER")
-    S.Circle(ring, 60, S.INPUT, "BACKGROUND", -6):SetPoint("CENTER")
+    halo:SetVertexColor(S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.45)
+    S.Circle(ring, 70, { S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.9 }, "BACKGROUND", -7):SetPoint("CENTER")
+    S.Circle(ring, 68, S.INPUT, "BACKGROUND", -6):SetPoint("CENTER")
     d.icon = ring:CreateTexture(nil, "ARTWORK")
-    d.icon:SetSize(58, 58)
+    d.icon:SetSize(66, 66)
     d.icon:SetPoint("CENTER")
     d.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
     S.RoundMask(ring, d.icon)
 
     d.title = S.Text(d.body, 16)
-    d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", S.INSET - 1, -14)
+    d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", 4, -6)
     d.title:SetPoint("RIGHT", -S.INSET, 0)
     d.title:SetWordWrap(false)
-    d.cat = S.Text(d.body, 11, S.MUTED)
-    d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -6)
-    d.state = S.Text(d.body, 11)
-    d.state:SetPoint("LEFT", d.cat, "RIGHT", 10, 0)
-    d.desc = S.Text(d.body, 12)
+    d.cat = pill(d.body)
+    d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -8)
+    d.state = pill(d.body)
+    d.state:SetPoint("LEFT", d.cat, "RIGHT", 6, 0)
+    d.desc = S.Text(d.body, 12, S.MUTED)
     d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -12)
     d.desc:SetPoint("RIGHT", -S.INSET, 0)
     d.desc:SetJustifyV("TOP")
@@ -962,8 +1049,8 @@ local function buildCard()
     d.facts:SetWordWrap(false)
 
     d.pop = S.Button(d.body, CARD - 2 * S.INSET, 34)
-    d.pop:SetPoint("BOTTOMLEFT", S.INSET, S.INSET)
-    d.pop:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    d.pop:SetPoint("BOTTOMLEFT", 0, 0)
+    d.pop:SetPoint("BOTTOMRIGHT", 0, 0)
     d.pop:SetText(L.POP_OUT)
     d.pop:SetScript("OnClick", function() popOut() end)
     -- Load or not load the module at all: the switch only pauses it.
@@ -1060,7 +1147,11 @@ local function buildHome()
     local map = minimapRow(q)
     map:SetPoint("TOPLEFT", 0, -(y + 84))
     map:SetPoint("TOPRIGHT", 0, -(y + 84))
-    home.cmdTop = y + 84 + 40
+    local calm = calmRow(q)
+    calm:SetPoint("TOPLEFT", 0, -(y + 118))
+    calm:SetPoint("TOPRIGHT", 0, -(y + 118))
+    home.calm = calm
+    home.cmdTop = y + 118 + 40
     home.cmdTitle = S.Text(q, 13)
     home.cmdTitle:SetPoint("TOPLEFT", 0, -home.cmdTop)
     home.cmdTitle:SetText(L.COMMANDS)
@@ -1076,7 +1167,27 @@ local function buildHome()
     home.ovReload = S.Primary(S.FitButton(ov, L.RELOAD, 24, 90))
     home.ovReload:SetPoint("TOPRIGHT", -8, -6)
     home.ovReload:SetScript("OnClick", function() ReloadUI() end)
-    home.ovHead = S.Text(ov.body, 13, S.MUTED)
+    -- A ring with the number of modules on, the lines beside it.
+    local ring = CreateFrame("Frame", nil, ov.body)
+    ring:SetSize(60, 60)
+    ring:SetPoint("TOPLEFT", 2, -2)
+    local g = S.GLOW
+    local halo = ring:CreateTexture(nil, "BACKGROUND", nil, -8)
+    halo:SetTexture(S.GLOW_TEX)
+    halo:SetSize(84, 84)
+    halo:SetPoint("CENTER")
+    halo:SetVertexColor(g[1], g[2], g[3], 0.35)
+    S.Circle(ring, 60, { g[1], g[2], g[3], 0.9 }, "BACKGROUND", -7):SetPoint("CENTER")
+    S.Circle(ring, 52, S.GLASS, "BACKGROUND", -6):SetPoint("CENTER")
+    home.ovCount = S.Text(ring, 18)
+    home.ovCount:SetPoint("CENTER", 0, 0)
+    home.ovCount:SetJustifyH("CENTER")
+    home.ovRing = ring
+    local box = CreateFrame("Frame", nil, ov.body)
+    box:SetPoint("TOPLEFT", 76, 0)
+    box:SetPoint("BOTTOMRIGHT")
+    home.ovBox = box
+    home.ovHead = S.Text(box, 13, S.MUTED)
     home.ovHead:SetPoint("TOPLEFT", 4, 0)
     home.ovHead:SetPoint("TOPRIGHT", -4, 0)
     home.ovHead:SetWordWrap(false)
@@ -1104,12 +1215,12 @@ local function onOpen()
 end
 
 local function build()
-    frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true })
+    frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true, pill = true })
 
     buildHeader()
     buildSide()
     host = CreateFrame("Frame", nil, frame.body)
-    host:SetPoint("TOPLEFT", side, "TOPRIGHT", GAP, 0)
+    host:SetPoint("TOPLEFT", frame.body, "TOPLEFT", SIDE + GAP, 0)
     host:SetPoint("BOTTOMRIGHT")
     buildHome()
     buildCard()
@@ -1179,6 +1290,9 @@ function ns.RegisterSettings()
     local map = minimapRow(panel)
     map:SetWidth(240)
     map:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -12)
+    local calm = calmRow(panel)
+    calm:SetWidth(240)
+    calm:SetPoint("TOPLEFT", map, "BOTTOMLEFT", 0, -4)
     if Settings and Settings.RegisterCanvasLayoutCategory then
         local category = Settings.RegisterCanvasLayoutCategory(panel, L.TITLE)
         Settings.RegisterAddOnCategory(category)

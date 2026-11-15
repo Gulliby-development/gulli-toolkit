@@ -237,7 +237,7 @@ local function build()
     holder:SetPoint("TOPLEFT")
     holder:SetSize(width, 30)
     pages = {}
-    pageTabs = S.Tabs(holder, { L.PAGE_RULES, L.PAGE_ITEMS, L.PAGE_RECENT }, nil, function(i)
+    pageTabs = S.PageTabs(holder, { L.PAGE_RULES, L.PAGE_ITEMS, L.PAGE_RECENT }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
     end, nil, { S.TAB.rules, S.TAB.items, S.TAB.recent })

@@ -286,7 +286,7 @@ local function build()
     end)
     refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
-    tabs = S.Tabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY }, nil, function(i)
+    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()

@@ -404,6 +404,17 @@ function ns.SetMinimap(field, value)
     if ns.PlaceMinimap then ns.PlaceMinimap() end
 end
 
+-- Reduce motion: every Gulli window, toast and HUD icon stops animating (S.Calm reads it).
+function ns.Calm()
+    return GulliToolkitDB ~= nil and GulliToolkitDB.calm == true
+end
+
+function ns.SetCalm(on)
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.calm = on and true or nil
+    if ns.SyncCalm then ns.SyncCalm() end
+end
+
 -- Where the button goes: its offset from the minimap's centre. A square minimap puts it on
 -- the edge of the square, a round one on the circle.
 function ns.MinimapOffset(angle, radius, square)

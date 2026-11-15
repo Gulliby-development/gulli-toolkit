@@ -309,6 +309,7 @@ function Region:SetTexCoord(a, b, c, d)
     self.__tc = { a, b, c, d }
 end
 function Region:SetGradient() end
+function Region:SetBlendMode(m) self.__blend = m end
 function Region:SetStartPoint(point, rel, x, y) self.__start = { point, rel or self.__parent, x or 0, y or 0 } end
 function Region:SetEndPoint(point, rel, x, y) self.__end = { point, rel or self.__parent, x or 0, y or 0 } end
 function Region:SetThickness(t) self.__thick = t end
@@ -523,7 +524,14 @@ local function texHtml(t, rect, prect)
         elseif tc[2] <= 0.5 and tc[3] >= 0.5 then side = "bottom-left"
         elseif tc[1] >= 0.5 and tc[3] >= 0.5 then side = "bottom-right" end
         local rad = side and ("border-" .. side .. "-radius:100%;") or "border-radius:50%;"
-        if media == "Glow" then
+        local blend = t.__blend == "ADD" and "mix-blend-mode:screen;" or ""
+        if media == "Sheen" then
+            return string.format('<div class="tx" style="%s%sbackground:linear-gradient(180deg,%s,transparent)"></div>',
+                box(rect, prect), blend, css(c))
+        elseif media == "Radial" then
+            return string.format('<div class="tx" style="%s%sbackground:radial-gradient(100%% 100%% at 0 0,%s,transparent)"></div>',
+                box(rect, prect), blend, css(c))
+        elseif media == "Glow" then
             return string.format('<div class="tx" style="%sbackground:radial-gradient(circle closest-side,%s 0,%s 55%%,transparent 100%%)"></div>',
                 box(rect, prect), css(c), css(c))
         elseif media:match("^Ring") then
@@ -638,7 +646,18 @@ body{margin:0;background:#1d2229;background-image:radial-gradient(circle at 30%%
 
 -- Writes every shown top-level frame of UIParent into one page. crop = a frame to frame the
 -- picture around (its rect plus a margin) or nil for the whole screen.
+-- A picture is a still: every S.Tween (its driver frame is marked gulliTween) jumps to its end.
+local function settle()
+    for _ = 1, 3 do
+        for _, r in ipairs(all) do
+            local fn = rawget(r, "gulliTween") and rawget(r, "_OnUpdate")
+            if fn then fn(r, 1000) end
+        end
+    end
+end
+
 function R.Html(crop, margin)
+    settle()
     local out = {}
     local root = { l = 0, r = UI_W, t = UI_H, b = 0 }
     for _, f in ipairs(R.UIParent.__children) do

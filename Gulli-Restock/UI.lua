@@ -123,7 +123,7 @@ local function build()
     ft:SetStatus(L.FOOT_HINT)
 
     local body, width = frame.body, frame.inner[1]
-    tabs = S.Tabs(body, { L.TAB_LIST, L.TAB_VENDOR, L.TAB_SETTINGS }, math.floor((width - 4) / 3), showTab, nil, { S.TAB.list, S.TAB.vendor, S.TAB.settings })
+    tabs = S.PageTabs(body, { L.TAB_LIST, L.TAB_VENDOR, L.TAB_SETTINGS }, math.floor((width - 4) / 3), showTab, nil, { S.TAB.list, S.TAB.vendor, S.TAB.settings })
     for i = 1, 3 do
         local p = CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)

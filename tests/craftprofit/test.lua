@@ -770,7 +770,7 @@ test("the levelling switch and the route tiles", function()
     W.Click(n.ui.modes.l1)
     eq(n.db.prefs.level, true, "a levelling tile turns levelling on")
     eq(n.view.mode, "l1")
-    eq(n.ui.graphCard.title:GetText(), n.L.VAR_cheap)
+    eq(n.ui.graphCard.title:GetText(), n.Skin.Upper(n.L.VAR_cheap), "card titles are capitals")
     assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
 end)
 

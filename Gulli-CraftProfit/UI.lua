@@ -693,7 +693,7 @@ local function build()
     main:SetWidth(MAIN)
     ui.main = main
     local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES }
-    ui.tabs = S.Tabs(main, labels, nil, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
+    ui.tabs = S.PageTabs(main, labels, nil, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
     local top = 30 + S.GAP
 
     -- route tab: numbers, the graph with the skill bar, the chosen stop
