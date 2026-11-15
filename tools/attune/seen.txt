@@ -56,3 +56,12 @@
 9121 The Dread Citadel - Naxxramas
 9122 The Dread Citadel - Naxxramas
 9123 The Dread Citadel - Naxxramas
+78150 Friend of the Library
+94223 Craftsman's Writ: Silver Skeleton Key
+94332 Craftsman's Writ: Arcanite Skeleton Key
+94974 Key Ingredients
+94981 Key Ingredients
+95599 The Old Key
+97329 Where's the Key?
+98297 Stopping the Cycle
+98427 Ceasing Operations
