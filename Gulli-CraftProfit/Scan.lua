@@ -344,13 +344,17 @@ function ns.State()
     end
     local state = { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
                     icon = prof.icon, items = {}, recipes = {} }
+    local gone = ns.Data and ns.Data.gone or {}
     for rid, rec in pairs(prof.recipes) do
-        local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
-        local src = not rec.learned and recipeSource(state, rid, rec) or nil
-        state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
-                               out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
-        for id in pairs(rec.r or {}) do itemFor(state, id) end
-        if rec.out then itemFor(state, rec.out) end
+        -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
+        if rec.learned or not gone[rid] then
+            local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
+            local src = not rec.learned and recipeSource(state, rid, rec) or nil
+            state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
+                                   out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
+            for id in pairs(rec.r or {}) do itemFor(state, id) end
+            if rec.out then itemFor(state, rec.out) end
+        end
     end
     return state
 end

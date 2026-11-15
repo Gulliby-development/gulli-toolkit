@@ -37,7 +37,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **In the item tooltip:** how many of it the chosen run needs.
 - **Crafts now.** Your recipes in their game colour, sorted by profit per craft, and how many you can make from what you have. Tap a column head to sort by it; point at a row to see its reagents.
 - **My items.** For each material in your bags and bank: sell at the auction, sell to a vendor, or craft it.
-- **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first.
+- **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first. Recipes that WoW Forever does not give (the Season of Discovery ones the game still lists, such as Invoker's Cord) are left out.
 
 ## Install
 
@@ -82,7 +82,7 @@ Green and yellow recipes do not raise your skill every time, so one skill point 
 <details>
 <summary><b>Where do the recipe levels come from?</b></summary>
 
-The skill levels come from the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3), made from the game's own data. Where a pattern comes from (vendor, quest, drop) comes from the WoW Forever data of [QuestieDB](https://github.com/Questie/QuestieDB) (GPLv3). A vendor's price is four times what a vendor pays for the pattern until you see the vendor; a trainer's price shows after one visit. `tools/craftprofit/build_data.py` turns both into `Data.lua`.
+The skill levels come from the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3), made from the game's own data. Where a pattern comes from (vendor, quest, drop) comes from the WoW Forever data of [QuestieDB](https://github.com/Questie/QuestieDB) (GPLv3). A vendor's price is four times what a vendor pays for the pattern until you see the vendor; a trainer's price shows after one visit. `tools/craftprofit/build_data.py` turns both into `Data.lua`. It also lists the recipes WoW Forever does not give: the Season of Discovery recipes (unless a Forever pattern teaches one) and patterns with no vendor, quest or drop in Forever. CraftProfit never plans those.
 </details>
 
 <details>

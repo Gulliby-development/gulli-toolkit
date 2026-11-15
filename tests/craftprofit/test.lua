@@ -181,6 +181,14 @@ test("Data.lua knows the Classic recipes by spell and by item", function()
     local n = 0
     for _ in pairs(c.Data.spell) do n = n + 1 end
     assert(n > 1000)
+    -- Season of Discovery recipes are not in WoW Forever: no thresholds, no source, marked gone
+    eq(c.Data.gone[435841], true, "Invoker's Cord")
+    eq(c.Data.spell[435841], nil); eq(c.Data.src[435841], nil)
+    -- one stays only when a Forever pattern teaches it
+    for sid in pairs(c.Data.spell) do assert(sid < 400000 or c.Data.src[sid], "SoD recipe " .. sid .. " has no Forever pattern") end
+    assert(c.Data.src[1213622][2] > 245000, "Enchant Gloves - Holy Power from the Forever formula")
+    for sid in pairs(c.Data.src) do assert(not c.Data.gone[sid], "gone recipe " .. sid .. " has a source") end
+    eq(c.Data.gone[8764], nil, "Earthen Vest stays")
 end)
 
 -- ---------- the plan and the route ----------
@@ -612,6 +620,12 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     eq(src.t, "trainer"); eq(src.cost, nil)
     n.Data.spell[104] = nil
     eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
+    -- a recipe WoW Forever does not give is left out until the character knows it
+    n.Data.gone[104] = true
+    eq(n.State().recipes[104], nil, "not offered")
+    n.char.profs.Tailoring.recipes[104].learned = true
+    assert(n.State().recipes[104], "a learned one stays")
+    n.Data.gone[104] = nil
 end)
 
 test("each leg chip shows what the run gains or loses; craft reagents get their own rows", function()
