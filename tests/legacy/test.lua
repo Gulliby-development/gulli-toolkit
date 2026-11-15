@@ -275,6 +275,36 @@ test("the game's Legacy window opens at a challenge", function()
     eq(#W.events, 0, "never in combat")
 end)
 
+test("the navigator stands to the right of the game's Legacy window and goes back after", function()
+    Fake(world())
+    local ns = Load()
+    local game = W.stub()
+    LegacySystemFrame = game
+    W.Fire("ADDON_LOADED", "Blizzard_LegacySystem")
+    local w = ns.Window()
+    local placed
+    rawset(w, "SetPoint", function(_, p, rel, rp) placed = { p, rel, rp } end)
+    rawset(w, "GetPoint", function() return "CENTER", nil, "CENTER", 0, 0 end)
+    assert(rawget(game, "_OnShow"), "the game's window is hooked")
+    game:Show(); rawget(game, "_OnShow")(game)
+    eq(w:IsShown(), true, "opens with the game's window")
+    eq(placed[1], "TOPLEFT"); eq(placed[2], game); eq(placed[3], "TOPRIGHT")
+    game:Hide(); rawget(game, "_OnHide")(game)
+    eq(w:IsShown(), false, "closes with it, since it opened with it")
+    eq(placed[1], "CENTER", "back where it was")
+
+    ns.SetPref("beside", false)
+    rawget(game, "_OnShow")(game)
+    eq(w:IsShown(), false, "the switch keeps it closed")
+
+    ns.SetPref("beside", true)
+    w:Show()
+    rawget(game, "_OnShow")(game)
+    rawget(game, "_OnHide")(game)
+    eq(w:IsShown(), true, "a window the player opened stays open")
+    LegacySystemFrame = nil
+end)
+
 test("the tracker unlocks from Settings and locks again from its key", function()
     Fake(world())
     local ns = Load()

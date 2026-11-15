@@ -517,12 +517,15 @@ local function pickup(bag, slot)
     end
 end
 
--- Runs from the OK click: the game lets an addon delete a picked-up item only
--- inside a hardware event. The game confirms a delete later, so the cursor can still
--- show the item right after DeleteCursorItem: never stop the run on that, clear the
--- cursor and go on to the next item. ns.Leftover tells afterwards what really went.
+-- Runs from the OK click. DeleteCursorItem is restricted: the game allows one call per
+-- hardware event and blocks the next (ADDON_ACTION_BLOCKED), so each OK deletes at most
+-- one item; abandons and sales are not restricted and all go at once. The game confirms
+-- a delete later, so the cursor can still show the item right after DeleteCursorItem:
+-- clear it and go on. ns.Leftover tells afterwards what is still there for the next OK.
 -- With a merchant open, an item that has a price is sold instead.
 -- Returns the quests, the item stacks it tried to delete and the stacks it sold.
+local SAME_RUN = 120
+
 function ns.Run(quests, items)
     if InCombatLockdown() then
         ns.Print(L.IN_COMBAT)
@@ -530,7 +533,13 @@ function ns.Run(quests, items)
     end
     ClearCursor()
     local abandoned, deleted, sold = 0, 0, 0
-    local last = { time = time and time() or 0, quests = {}, items = {} }
+    local now = time and time() or 0
+    -- The clicks of one cleaning add up to one /gqc last.
+    local prev = charDB().last
+    local last = (prev and prev.time and now - prev.time <= SAME_RUN and prev.items) and prev
+        or { quests = {}, items = {} }
+    last.time = now
+    local before = #last.quests + #last.items
     for _, q in ipairs(quests or {}) do
         if q.checked and inLog(q.questID) then
             abandon(q)
@@ -540,27 +549,46 @@ function ns.Run(quests, items)
             last.where[#last.quests] = ns.WhereToTake(q.questID)
         end
     end
+    local first, fresh
     for _, it in ipairs(items or {}) do
         if ns.ItemGoes(it) then
             local id, _, _, locked = slotInfo(it.bag, it.slot)
-            if id == it.itemID and not locked then
-                last.items[#last.items + 1] = it.name
-            end
-            if id == it.itemID and not locked and ns.atMerchant and not it.bank and sellPrice(it.itemID) > 0 then
+            local here = id == it.itemID and not locked
+            if here and ns.atMerchant and not it.bank and sellPrice(it.itemID) > 0 then
                 useItem(it.bag, it.slot)
                 sold = sold + 1
-            elseif id == it.itemID and not locked then
-                pickup(it.bag, it.slot)
-                if cursorItemID() == it.itemID then
-                    DeleteCursorItem()
-                    deleted = deleted + 1
-                end
-                if GetCursorInfo() then ClearCursor() end
+                last.items[#last.items + 1] = it.name
+            elseif here then
+                first = first or it
+                if not it.tried then fresh = fresh or it end
             end
         end
     end
-    if #last.quests + #last.items > 0 then charDB().last = last end
+    -- An item the game refused once goes to the back, so it never holds up the rest.
+    local it = fresh or first
+    if it then
+        it.tried = true
+        pickup(it.bag, it.slot)
+        if cursorItemID() == it.itemID then
+            DeleteCursorItem()
+            deleted = 1
+            last.items[#last.items + 1] = it.name
+        end
+        if GetCursorInfo() then ClearCursor() end
+    end
+    if #last.quests + #last.items > before then charDB().last = last end
     return abandoned, deleted, sold
+end
+
+-- How many ticked items a run would still delete (not sell): one OK each.
+function ns.ToDelete(items)
+    local n = 0
+    for _, it in ipairs(items or {}) do
+        if ns.ItemGoes(it) and not (ns.atMerchant and not it.bank and sellPrice(it.itemID) > 0) then
+            n = n + 1
+        end
+    end
+    return n
 end
 
 -- What is still there of a plan after a run: ticked quests still in the log and

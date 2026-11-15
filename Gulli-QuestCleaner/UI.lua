@@ -364,7 +364,8 @@ local function onClear()
         return
     end
     showPreview()
-    setStatus(kept)
+    local n = ns.ToDelete(plan.items)
+    setStatus(n > 1 and (L.DELETE_ONE:format(n) .. (kept ~= "" and ("  " .. kept) or "")) or kept)
 end
 
 local function onOK()
@@ -377,12 +378,12 @@ local function onOK()
         if not q.checked then keepQuests[q.questID] = q.title end
     end
     local beforeQ, beforeI = ns.Leftover(plan.quests, plan.items)
-    ns.Run(plan.quests, plan.items)
+    local a, _, sold = ns.Run(plan.quests, plan.items)
     okButton:Disable()
     backButton:Disable()
     -- Abandons and deletes land a moment later; then count what really went and show
     -- what the game refused.
-    C_Timer.After(1, function()
+    C_Timer.After(a + sold > 0 and 1 or 0.5, function()
         backButton:Enable()
         local q, i = ns.Leftover(plan.quests, plan.items)
         totals.quests = totals.quests + #beforeQ - #q
@@ -397,7 +398,8 @@ local function onOK()
         else
             plan.quests, plan.items = q, i
             showPreview()
-            setStatus(L.LEFT:format(#q + #i))
+            local n = ns.ToDelete(i)
+            setStatus(#q == 0 and n > 0 and L.DELETE_NEXT:format(n) or L.LEFT:format(#q + #i))
             if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("QuestCleaner", L.LEFT:format(#q + #i)) end
         end
     end)

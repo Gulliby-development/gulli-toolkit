@@ -164,12 +164,15 @@ local function sellStep()
 end
 
 -- Runs inside the OK click: sells at a vendor (in steps), deletes elsewhere, then merges
--- stacks. Returns how many items it sells and deletes.
+-- stacks. DeleteCursorItem is allowed once per hardware event (a second call is blocked),
+-- so one OK deletes one item; ns.Leftover offers the rest for the next OK.
+-- Returns how many items it sells and deletes.
 function ns.Run(plan)
     if InCombatLockdown() then return 0, 0 end
     ClearCursor()
     local sold, deleted = 0, 0
     local idle = #selling == 0
+    local first, fresh
     for _, it in ipairs(plan.items) do
         if it.checked then
             local id, _, locked = slotInfo(it.bag, it.slot)
@@ -178,15 +181,22 @@ function ns.Run(plan)
                     selling[#selling + 1] = it
                     sold = sold + 1
                 else
-                    pickup(it.bag, it.slot)
-                    if cursorItem() == it.id then
-                        DeleteCursorItem()
-                        deleted = deleted + 1
-                    end
-                    if GetCursorInfo() then ClearCursor() end
+                    first = first or it
+                    if not it.tried then fresh = fresh or it end
                 end
             end
         end
+    end
+    -- An item the game refused once goes to the back, so it never holds up the rest.
+    local it = fresh or first
+    if it then
+        it.tried = true
+        pickup(it.bag, it.slot)
+        if cursorItem() == it.id then
+            DeleteCursorItem()
+            deleted = 1
+        end
+        if GetCursorInfo() then ClearCursor() end
     end
     if idle and #selling > 0 then sellStep() end
     ns.StartMerges(plan.merges)
