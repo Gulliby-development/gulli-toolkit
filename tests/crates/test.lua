@@ -547,52 +547,68 @@ end)
 
 -- ---------- the Merchant's Favor goal ----------
 
-test("a Favor goal takes whole crates", function()
+test("every crate pays its Favor: gathering 5 a tier, crafted twice that", function()
     Fake({})
     local ns = Load()
-    eq(ns.CratesFor(30, 5), 6)
-    eq(ns.CratesFor(31, 5), 7)
-    eq(ns.CratesFor(180, 5), 36)
-    eq(ns.CratesFor(0, 5), 0)
+    for id in pairs(ns.CRATES) do assert(ns.FAVOR[id] and ns.FAVOR[id] % 5 == 0, "Favor of " .. id) end
+    eq(ns.FAVOR[248682], 5, "Apprentice Herbs")
+    eq(ns.FAVOR[248691], 15, "Flowering Expert Herbs")
+    eq(ns.FAVOR[248703], 10, "Apprentice Ingots")
+    eq(ns.FAVOR[248709], 30, "Expert Ingots")
 end)
 
-test("the Favor plan takes the crates in the bags first, then the cheapest crate and bundle", function()
+-- A pays 5, B pays 10, C pays 30. Each bundle item has a price.
+local A, B, C, X, Y, Z = 1, 2, 3, 10, 20, 30
+local FAV = { [A] = 5, [B] = 10, [C] = 30 }
+local function tplan(ns, goal, prices, stock, crates)
+    local bundles = { [A] = { { X, 10 } }, [B] = { { Y, 10 } }, [C] = { { Z, 10 } } }
+    return ns.TokenPlan(goal, { A, B, C }, function(id) return FAV[id] end, function(id) return bundles[id] end,
+        function(id) return (stock or {})[id] or 0, 0 end, function(id) return prices[id] end, true,
+        function(id) return (crates or {})[id] or 0 end)
+end
+
+test("the Favor goal takes the mix of crates that costs least", function()
     Fake({})
     local ns = Load()
-    local A, B, X, Y = 1, 2, 10, 20
-    local bundles = { [A] = { { X, 10 } }, [B] = { { Y, 10 } } }
-    local prices = { [A] = 100, [B] = 50, [X] = 5, [Y] = 20 }
-    local stock = { [X] = 10 }
-    local plan = ns.TokenPlan(15, 5, { A, B }, function(id) return bundles[id] end,
-        function(id) return stock[id] or 0, 0 end, function(id) return prices[id] end, true,
-        function(id) return id == A and 1 or 0 end)
-    eq(plan.need, 3)
+    -- A: 100 + 50 = 150 for 5; B: 100 + 100 = 200 for 10; C: 900 + 100 = 1000 for 30
+    local prices = { [A] = 100, [B] = 100, [C] = 900, [X] = 5, [Y] = 10, [Z] = 10 }
+    local plan = tplan(ns, 30, prices)
+    eq(plan.favor, 30)
+    eq(plan.total, 600, "three B, not six A (900) nor one C (1000)")
     eq(#plan.crates, 3)
+    for _, e in ipairs(plan.crates) do eq(e.crate, B) end
     eq(plan.short, 0)
-    eq(plan.favor, 15)
-    assert(plan.crates[1].own, "the crate in the bags comes first")
-    eq(plan.crates[1].cost, 0, "with the Peacebloom from the bags")
-    eq(plan.crates[2].crate, A, "100 + 10 x 5 beats 50 + 10 x 20")
-    eq(plan.crates[2].cost, 150)
-    eq(plan.total, 300)
-    local list = ns.ShoppingList(plan)
-    eq(#list, 2)
-    eq(list[1].id, A); eq(list[1].n, 2)
-    eq(list[2].id, X); eq(list[2].n, 20)
-    local groups = ns.TokenGroups(plan)
-    eq(#groups, 1, "one crate and bundle")
-    eq(groups[1].n, 3); eq(groups[1].own, 1); eq(groups[1].buy, 2)
-    eq(groups[1].item.bags, 10); eq(groups[1].item.buy, 20)
+    -- 35: three B and one A beat four B
+    plan = tplan(ns, 35, prices)
+    eq(plan.favor, 35); eq(plan.total, 750)
 end)
 
-test("a crate with no price is left out, and a goal nothing reaches says how many are short", function()
+test("crates and bundle items in the bags are used first", function()
     Fake({})
     local ns = Load()
-    local plan = ns.TokenPlan(10, 5, { 1 }, function() return { { 10, 5 } } end,
-        function() return 0, 0 end, function(id) return id == 10 and 3 or nil end, true, function() return 0 end)
-    eq(#plan.crates, 0)
-    eq(plan.short, 2)
+    local prices = { [A] = 100, [B] = 100, [C] = 900, [X] = 5, [Y] = 10, [Z] = 10 }
+    local plan = tplan(ns, 30, prices, { [Z] = 10 }, { [C] = 1 })
+    eq(#plan.crates, 1, "the Expert crate in the bags with its herbs is free")
+    eq(plan.crates[1].crate, C)
+    assert(plan.crates[1].own)
     eq(plan.total, 0)
+    eq(#ns.ShoppingList(plan), 0)
+    plan = tplan(ns, 10, prices, nil, { [A] = 2 })
+    eq(plan.total, 100, "two A from the bags (two bundles, 100) beat one B bought (200)")
+    local list = ns.ShoppingList(plan)
+    eq(#list, 1); eq(list[1].id, X); eq(list[1].n, 20)
+    local groups = ns.TokenGroups(plan)
+    eq(#groups, 1); eq(groups[1].own, 2); eq(groups[1].favor, 5)
+end)
+
+test("a crate with no price is left out, and the Favor out of reach is told", function()
+    Fake({})
+    local ns = Load()
+    local plan = tplan(ns, 50, { [A] = 100, [X] = 5 }, nil, { [B] = 1 })
+    eq(plan.short, 0, "A has a price, so the goal is reached")
+    plan = tplan(ns, 50, { [Y] = 1 }, nil, { [B] = 2 })
+    eq(plan.favor, 20, "only the two B in the bags")
+    eq(plan.short, 30)
 end)
 
 test("the Favor tab plans for the player's level and buys through the same button", function()
@@ -605,7 +621,7 @@ test("the Favor tab plans for the player's level and buys through the same butto
     W.Fire("AUCTION_HOUSE_SHOW")
     local plan = ns.TokenCalculate()
     eq(ns.source, "tokens")
-    eq(#plan.crates, 2)
+    eq(#plan.crates, 2, "Apprentice Herbs pay 5 each")
     eq(plan.crates[1].crate, 248682)
     eq(plan.total, 2 * (500 + 20 * 10))
     eq(ns.Current().id, 248682, "the crates are bought first")
@@ -616,9 +632,10 @@ test("the Favor tab plans for the player's level and buys through the same butto
     ns.BuyClick()
     W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
     eq(ns.Current().id, 2447)
-    -- the stepper and the presets plan again at once while a plan is shown
-    ns.SetFavor(10)
+    -- a preset plans again at once while a plan is shown
+    ns.SetGoal(5)
     eq(#ns.tokenPlan.crates, 1)
+    ns.SetGoal(10)
     W.bags[248682] = 2
     W.Fire("AUCTION_HOUSE_CLOSED")
     W.Fire("AUCTION_HOUSE_SHOW")
@@ -629,6 +646,12 @@ test("the Favor tab plans for the player's level and buys through the same butto
     ns.Calculate()
     eq(ns.source, "fill")
     assert(ns.tokenPlan ~= nil, "the Favor plan stays")
+end)
+
+test("the setting from 1.4.0 is dropped", function()
+    Fake({ db = { favor = 7 } })
+    local ns = Load()
+    eq(ns.db.favor, nil)
 end)
 
 test("the Favor tab draws without errors", function()

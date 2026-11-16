@@ -43,3 +43,22 @@ ns.CRATES = {
     [248712] = { 35, { { 11371, 2 }, { 6037, 10 }, { 12359, 20 } } },                                -- Ingots
     [248713] = { 35, { { 15994, 5 }, { 18631, 5 }, { 16000, 2 } } },                                 -- Parts
 }
+
+-- Merchant's Favor a filled crate pays when its Sealed Crate is handed in ("A Sealed Crate",
+-- quests 91899-91906, from AllTheThings' Forever data, 2026-11-16). Gathering crates (herbs, ore,
+-- textiles, curiosities) pay 5, 10, 15 by tier, crafted ones (fabrics, ingots, parts) 10, 20, 30.
+-- Artisan is not in the data yet: 20 and 40 follow the same steps. A Performance Bonus may
+-- double a hand-in; the plan never counts on it.
+ns.FAVOR = {
+    [248682] = 5, [248683] = 5, [248684] = 5, [248685] = 5,         -- Apprentice gathering
+    [248686] = 10, [248687] = 10, [248688] = 10, [248689] = 10,     -- Journeyman gathering
+    [248690] = 15, [248691] = 15, [248692] = 15, [248693] = 15, [248694] = 15, -- Expert gathering
+    [248695] = 20, [248696] = 20, [248697] = 20, [248698] = 20, [248699] = 20, -- Artisan gathering (guess)
+    [248702] = 10, [248703] = 10, [248704] = 10,                    -- Apprentice crafted
+    [248705] = 20, [248706] = 20, [248707] = 20,                    -- Journeyman crafted
+    [248708] = 30, [248709] = 30, [248710] = 30,                    -- Expert crafted
+    [248711] = 40, [248712] = 40, [248713] = 40,                    -- Artisan crafted (guess)
+}
+ns.FAVOR_GUESS = { [248695] = true, [248696] = true, [248697] = true, [248698] = true, [248699] = true,
+                   [248711] = true, [248712] = true, [248713] = true }
+ns.CURRENCY = 3402 -- Merchant's Favor

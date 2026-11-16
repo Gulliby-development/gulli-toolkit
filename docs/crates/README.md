@@ -29,7 +29,7 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 - **Bought is bought.** A crate whose items are already in your bags leaves the plan and waits at the top of the History as ready to fill, with what you paid. When you come back to the auction house, the plan is made again, so nothing is offered twice.
 - **Old prices.** When Auctionator's prices are more than 4 hours old, a yellow note at the top of the window asks you to run a full scan first. Its cross closes it until your next visit to the auction house.
 - **Refresh.** The round arrow at the top looks at your bags again and calculates anew. When no crate is left, or all is bought and you left the auction house, the old plan is cleared by itself.
-- **A Favor goal.** The Favor tab asks how much Merchant's Favor you want: pick 5, 15, 20, 30, 45, 50 or 180, or set any number with **-** and **+**. **Calculate** finds the cheapest crates to reach it: the crates in your bags first, then crates from the auction house, each with its cheapest bundle. It shows how many crates, the total and the price of one Favor. **Buy** buys the crates and their bundles, two presses a line as always.
+- **A Favor goal.** The Favor tab asks how much Merchant's Favor you want: pick 5, 15, 20, 30, 45, 50 or 180, or set any number with **-** and **+**. Each crate pays its own Favor: Apprentice 5, Journeyman 10, Expert 15, Artisan 20, and crafted crates (fabrics, ingots, parts) twice as much. **Calculate** looks at every crate up to your level, in your bags and on the auction house, and finds the mix that reaches your goal for the least gold, each crate with its cheapest bundle. It shows how many crates, the total and the price of one Favor. **Buy** buys the crates and their bundles, two presses a line as always.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 
 ## Install
@@ -66,7 +66,7 @@ Auctionator remembers the lowest price of one item. Buying 20 may take some dear
 <details>
 <summary><b>How much Favor does a crate give?</b></summary>
 
-Players report 5 Merchant's Favor for each crate they hand in, and sometimes double. The game does not tell an addon, so the Favor tab starts at 5. If you get another amount, set it under **Favor per crate**. The tab only uses crates up to your level, and only crates the auction house has a price for in Auctionator.
+Apprentice 5, Journeyman 10, Expert 15, Artisan 20; crafted crates (fabrics, ingots, parts) 10, 20, 30 and 40. These come from the game's quest data for "A Sealed Crate". The Artisan numbers are not in that data yet and follow the same steps. Sometimes a crate pays double (a Performance Bonus); the plan never counts on it. The tab only uses crates up to your level, and only crates the auction house has a price for in Auctionator.
 </details>
 
 <details>
