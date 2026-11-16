@@ -58,6 +58,7 @@ end
 -- the left and the quests waiting there on the right. A click opens the dungeon's pages.
 local GRID_COLS, TILE_H, TILE_NAME, TILE_FOOT = 3, 150, 30, 26
 local TILE_TC = { 0, 0.68359375, 0.08, 0.62 }
+local OWN_TC = { 0, 1, 0.1, 0.9 }
 
 local function makeTile(parent)
     local t = CreateFrame("Frame", nil, parent)
@@ -118,10 +119,11 @@ local function fillTile(t, d)
     t.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
     t.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
     t.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
-    local art = setFile(t.art, ns.Banner(d.key))
+    local path, own = ns.Banner(d.key)
+    local art = setFile(t.art, path)
     t.art:SetShown(art)
     t.icon:SetShown(not art)
-    if art then t.art:SetTexCoord(unpack(TILE_TC)) else setPortrait(t.icon, d.key) end
+    if art then t.art:SetTexCoord(unpack(own and OWN_TC or TILE_TC)) else setPortrait(t.icon, d.key) end
     local c = counts[d.key]
     local n = c and (c.log + c.take) or 0
     t.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 14) .. " " .. n) or "")
@@ -1233,7 +1235,8 @@ local function buildSettings(parent)
     for _, o in ipairs({ { "warnEnter", L.OPT_ENTER, L.OPT_ENTER_D }, { "remind", L.OPT_REMIND, L.OPT_REMIND_D },
                          { "wishAlert", L.OPT_WISH, L.OPT_WISH_D }, { "learn", L.OPT_LEARN, L.OPT_LEARN_D },
                          { "keys", L.OPT_KEYS, L.OPT_KEYS_D }, { "tomtom", L.OPT_TOMTOM, L.OPT_TOMTOM_D },
-                         { "hideLater", L.OPT_LATER, L.OPT_LATER_D } }) do
+                         { "hideLater", L.OPT_LATER, L.OPT_LATER_D },
+                         { "trackerLocked", L.OPT_TRACK_LOCK, L.OPT_TRACK_LOCK_D } }) do
         local key = o[1]
         sw[#sw + 1] = { o[2], o[3], function() return ns.Get(key) end, function(v) ns.Set(key, v) end,
                         icon = ns.OPT_ICON[key] }
