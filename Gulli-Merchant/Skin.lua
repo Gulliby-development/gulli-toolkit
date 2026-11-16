@@ -46,7 +46,10 @@ end
 -- Colours. A window is the darkest layer, a card sits on it, a button sits on a card.
 S.BG = { 0.067, 0.071, 0.082, 0.97 }
 S.HEAD = { 1, 1, 1, 0.025 }
-S.SURFACE = { 1, 1, 1, 0.03 }
+-- Cards, tiles and list panels hold the text: a dense dark layer (S.SCRIM) with a faint white
+-- sheet on it, so text reads on any background while the window around them stays glass.
+S.SURFACE = { 0.080, 0.084, 0.099, 0.59 }
+S.SCRIM = { 0.031, 0.035, 0.051, 0.55 }
 S.RAISED = { 1, 1, 1, 0.065 }
 S.INPUT = { 0.016, 0.020, 0.031, 0.55 }
 S.EDGE = { 1, 1, 1, 0.10 }
@@ -54,8 +57,8 @@ S.LINE = { 1, 1, 1, 0.07 }
 S.HOVER = { 1, 1, 1, 0.05 }
 S.BORDER = { 0, 0, 0, 1 }
 S.TEXT = { 0.93, 0.93, 0.94, 1 }
-S.MUTED = { 0.60, 0.61, 0.66, 1 }
-S.FAINT = { 0.42, 0.43, 0.48, 1 }
+S.MUTED = { 0.69, 0.70, 0.75, 1 }
+S.FAINT = { 0.53, 0.54, 0.59, 1 }
 S.GOOD = { 0.42, 0.84, 0.50, 1 }
 S.WARN = { 1.00, 0.72, 0.30, 1 }
 S.BAD = { 0.93, 0.42, 0.40, 1 }
@@ -70,11 +73,13 @@ S.COPPER = { 0.93, 0.65, 0.37, 1 }
 S.TIME = { 0.45, 0.85, 0.80, 1 }
 S.XP = { 0.79, 0.63, 1.00, 1 }
 S.KILLS = { 0.95, 0.55, 0.50, 1 }
-S.DOT = "  |cff6b6e7a·|r  "
+S.DOT = "  |cff878a96·|r  "
 -- Glass: the see-through dark of a window or HUD panel, its light edge and the brighter line
 -- along its top. Cards and tiles are thin white layers on it with a fainter edge (CARD_EDGE).
 -- A frame that must hide what is behind it (a menu over a list) uses S.SOLID.
 S.GLASS = { 0.051, 0.059, 0.082, 0.74 }
+-- HUD panels and notices sit on the game world with nothing under their text: denser glass.
+S.HUD_GLASS = { 0.051, 0.059, 0.082, 0.86 }
 S.GLASS_EDGE = { 1, 1, 1, 0.10 }
 S.GLASS_HI = { 1, 1, 1, 0.16 }
 S.CARD_EDGE = { 1, 1, 1, 0.06 }
@@ -492,7 +497,7 @@ function S.Text(parent, size, color, flags)
     local t = parent:CreateFontString(nil, "OVERLAY")
     S.SetFont(t, size or 12, flags)
     t:SetShadowOffset(1, -1)
-    t:SetShadowColor(0, 0, 0, 0.8)
+    t:SetShadowColor(0, 0, 0, 1)
     local c = color or S.TEXT
     t:SetTextColor(c[1], c[2], c[3], c[4])
     t:SetJustifyH("LEFT")
@@ -2068,7 +2073,7 @@ end
 
 -- A translucent HUD panel with rounded corners: a faint edge and a soft shadow.
 function S.HudPanel(f)
-    S.Box(f, S.GLASS, S.GLASS_EDGE, S.R_LG)
+    S.Box(f, S.HUD_GLASS, S.GLASS_EDGE, S.R_LG)
     S.Glass(f, S.R_LG, 0.8)
     f.inner = {}
     f.shadow = S.Shadow(f, S.R_LG, 5, 0.28)
