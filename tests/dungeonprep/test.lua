@@ -556,15 +556,15 @@ test("dungeon pictures: the journal banner by instance, else a file; Forever dun
     eq(ns.Banner("SFK"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
     _G.EJ_GetInstanceInfo = nil
     local own, isOwn = ns.Banner("THANES")
-    eq(own, "Interface\\AddOns\\Gulli-DungeonPrep\\Media\\Banner-THANES")
+    eq(own, "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\THANES")
     eq(isOwn, true)
     -- Every dungeon has a picture: the journal's or ours, and ours ships with the addon.
     for _, d in ipairs(ns.Data.dungeons) do
         local key = d[1]
         assert(ns.ART[key] or ns.OWN_BANNERS[key], "a picture for " .. key)
         if ns.OWN_BANNERS[key] then
-            local f = io.open("Gulli-DungeonPrep/Media/Banner-" .. key .. ".tga", "rb")
-            assert(f, "Media/Banner-" .. key .. ".tga is there")
+            local f = io.open("Gulli-DungeonPrep/Banners/" .. key .. ".tga", "rb")
+            assert(f, "Banners/" .. key .. ".tga is there")
             local head = f:read(18)
             f:close()
             eq(head:byte(3), 2, "an uncompressed TGA")

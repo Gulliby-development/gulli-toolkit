@@ -158,13 +158,13 @@ ns.ART = {
 -- The dungeon's banner picture: the journal's own (a file id) when the client has the journal,
 -- else its file path, else ours; nil for a dungeon without one. The caller checks that the file loads.
 -- WoW Forever's own dungeons have no journal picture: ours, drawn for the addon
--- (tools/dungeonprep/banners/, made into Media/Banner-<KEY>.tga by tools/dungeonprep/banners.py).
+-- (tools/dungeonprep/banners/, made into Banners/<KEY>.tga by tools/dungeonprep/banners.py).
 ns.OWN_BANNERS = { THANES = true, LORDAERON = true, EXCAVATION = true, DALARAN = true, DROWNED = true,
                    KROLDOK = true, ALCAZ = true, BLACKMAW = true, SHAPERS = true }
 
 -- The second value is true for our own picture (a whole 2:1 picture, not a journal button).
 function ns.Banner(key)
-    if ns.OWN_BANNERS[key] then return "Interface\\AddOns\\Gulli-DungeonPrep\\Media\\Banner-" .. key, true end
+    if ns.OWN_BANNERS[key] then return "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\" .. key, true end
     local a = ns.ART[key]
     if not a then return nil end
     if EJ_GetInstanceInfo then

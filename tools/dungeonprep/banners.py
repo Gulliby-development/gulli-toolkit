@@ -1,5 +1,5 @@
 """Turns the drawn dungeon pictures in tools/dungeonprep/banners/<KEY>.jpg into the
-addon's Gulli-DungeonPrep/Media/Banner-<KEY>.tga: the middle 2:1 band, 512 x 256,
+addon's Gulli-DungeonPrep/Banners/<KEY>.tga: the middle 2:1 band, 512 x 256,
 24-bit uncompressed (the game reads TGA, not PNG, and wants powers of two).
 
 Needs Pillow. Run from the repository root: python3 tools/dungeonprep/banners.py
@@ -11,7 +11,7 @@ from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SRC = ROOT / "tools" / "dungeonprep" / "banners"
-OUT = ROOT / "Gulli-DungeonPrep" / "Media"
+OUT = ROOT / "Gulli-DungeonPrep" / "Banners"
 W, H = 512, 256
 
 
@@ -32,7 +32,7 @@ def main():
     if not pictures:
         sys.exit("no pictures in " + str(SRC))
     for src in pictures:
-        out = OUT / ("Banner-" + src.stem + ".tga")
+        out = OUT / (src.stem + ".tga")
         convert(src, out)
         print(out.relative_to(ROOT))
 
