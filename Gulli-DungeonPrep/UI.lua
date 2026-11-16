@@ -8,9 +8,9 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, dungeons, list, tabs, search, entranceBtn, settings, questPage, listCard
+local frame, list, tabs, search, entranceBtn, settings, questPage, listCard
 local detail, head, filterRow, guideBtn, bossPage, lootPage
-local grid, leftCard, areaFrame, homeBtn
+local grid, areaFrame, homeBtn
 local filters, lootFilters = {}, {}
 local counts = {}
 local bossCache = {}
@@ -53,102 +53,35 @@ local function setPortrait(box, key)
 end
 
 -- The journal banner, faded in from the left so the text keeps a dark ground.
-local ART_TC = { 0, 0.68359375, 0.2, 0.54 }
-local function makeDungeon(r)
-    S.NavRow(r)
-    r.line:Hide()
-    r.art = r:CreateTexture(nil, "ARTWORK", nil, -2)
-    r.art:SetPoint("TOPLEFT", 1, -1)
-    r.art:SetPoint("BOTTOMRIGHT", -1, 1)
-    r.art:SetTexCoord(unpack(ART_TC))
-    S.RoundMask(r, r.art, S.ROUND_SQ)
-    if r.art.SetGradient and CreateColor then
-        r.art:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0.05), CreateColor(1, 1, 1, 0.6))
-    end
-    r.icon = S.IconBox(r, 30)
-    r.icon:SetPoint("LEFT", 8, 0)
-    r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
-    r.name:SetPoint("RIGHT", -8, 0)
-    r.name:SetJustifyH("LEFT")
-    r.name:SetWordWrap(false)
-    r.count = S.Text(r, 11)
-    r.count:SetPoint("BOTTOMRIGHT", -8, 7)
-    r.count:SetJustifyH("RIGHT")
-    r.range = S.Text(r, 11, S.FAINT)
-    r.range:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -1)
-    r.range:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
-    r.range:SetJustifyH("LEFT")
-    r.click = CreateFrame("Button", nil, r)
-    r.click:SetAllPoints()
-    r.click:SetScript("OnClick", function(self)
-        ns.selected = self:GetParent().d.key
-        ns.openQuest, ns.home = nil, false
-        ns.Refresh()
-    end)
-    -- What waits there.
-    r.click:SetScript("OnEnter", function(self)
-        local d = self:GetParent().d
-        if not (GameTooltip and d) then return end
-        local c = counts[d.key] or { log = 0, take = 0, done = 0 }
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(ns.DungeonName(d) .. "  " .. d.min .. "-" .. d.max, 1, 0.82, 0)
-        GameTooltip:AddLine(L.TT_DUNGEON:format(c.log, c.take, c.done), 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-end
-
-local function fillDungeon(r, d)
-    r.d = d
-    r.name:SetText(ns.DungeonName(d))
-    r.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
-    setPortrait(r.icon, d.key)
-    -- The journal banner, else the icon itself stretched and faint.
-    if setFile(r.art, ns.Banner(d.key)) then
-        r.art:SetTexCoord(unpack(ART_TC))
-        r.art:SetAlpha(d.fits and 1 or 0.6)
-    else
-        r.art:SetTexture(ns.Icon(d.key))
-        r.art:SetTexCoord(0.1, 0.9, 0.35, 0.65)
-        r.art:SetAlpha(d.fits and 0.3 or 0.18)
-    end
-    r.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
-    r.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
-    -- Quests in the log (accent) or to take (green) here.
-    local c = counts[d.key]
-    local n = c and (c.log + c.take) or 0
-    r.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 12) .. " " .. n) or "")
-    r.count:SetTextColor(unpack((c and c.log > 0) and S.Accent() or S.GOOD))
-    r:SetSelected(d.key == ns.selected)
-end
-
--- The start page: every dungeon as a big banner tile, three to a row, the ones for the
--- player's level first. A click opens the dungeon's pages with the short list on the left.
-local GRID_COLS, TILE_H = 3, 92
-local TILE_TC = { 0, 0.68359375, 0.12, 0.6 }
+-- The start page: every dungeon as a tile, three to a row, the ones for the player's level
+-- first. A tile is the name in capitals, the journal picture at full light, then the levels on
+-- the left and the quests waiting there on the right. A click opens the dungeon's pages.
+local GRID_COLS, TILE_H, TILE_NAME, TILE_FOOT = 3, 150, 30, 26
+local TILE_TC = { 0, 0.68359375, 0.08, 0.62 }
 
 local function makeTile(parent)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    t.art = t:CreateTexture(nil, "ARTWORK", nil, -2)
-    t.art:SetPoint("TOPLEFT", 1, -1)
-    t.art:SetPoint("BOTTOMRIGHT", -1, 1)
-    S.RoundMask(t, t.art, S.ROUND_SQ)
-    if t.art.SetGradient and CreateColor then
-        t.art:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0.15), CreateColor(1, 1, 1, 0.85))
-    end
-    t.icon = S.IconBox(t, 40)
-    t.icon:SetPoint("LEFT", 12, 0)
     t.name = S.Text(t, 14)
-    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 0)
-    t.name:SetPoint("RIGHT", -10, 0)
+    t.name:SetPoint("TOPLEFT", 12, -9)
+    t.name:SetPoint("RIGHT", -12, 0)
     t.name:SetJustifyH("LEFT")
     t.name:SetWordWrap(false)
+    t.pic = CreateFrame("Frame", nil, t)
+    t.pic:SetPoint("TOPLEFT", 6, -TILE_NAME)
+    t.pic:SetPoint("BOTTOMRIGHT", -6, TILE_FOOT)
+    S.Box(t.pic, S.SOLID, S.CARD_EDGE, S.R_MD)
+    t.art = t.pic:CreateTexture(nil, "ARTWORK")
+    t.art:SetPoint("TOPLEFT", 1, -1)
+    t.art:SetPoint("BOTTOMRIGHT", -1, 1)
+    S.RoundMask(t.pic, t.art, S.ROUND_SQ)
+    -- A dungeon without a journal picture shows its portrait in the middle.
+    t.icon = S.IconBox(t.pic, 52)
+    t.icon:SetPoint("CENTER")
     t.range = S.Text(t, 12)
-    t.range:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -6)
+    t.range:SetPoint("BOTTOMLEFT", 12, 8)
     t.count = S.Text(t, 12)
-    t.count:SetPoint("BOTTOMRIGHT", -12, 10)
+    t.count:SetPoint("BOTTOMRIGHT", -12, 8)
     t.count:SetJustifyH("RIGHT")
     t.click = CreateFrame("Button", nil, t)
     t.click:SetAllPoints()
@@ -158,8 +91,22 @@ local function makeTile(parent)
         ns.selected, ns.openQuest, ns.home = d.key, nil, false
         ns.Refresh()
     end)
-    t.click:SetScript("OnEnter", function(self) S.SetBorder(self:GetParent(), S.Accent()) end)
-    t.click:SetScript("OnLeave", function(self) S.SetBorder(self:GetParent(), S.CARD_EDGE) end)
+    -- What waits there.
+    t.click:SetScript("OnEnter", function(self)
+        local tile = self:GetParent()
+        S.SetBorder(tile, S.Accent())
+        local d = tile.d
+        if not (GameTooltip and d) then return end
+        local c = counts[d.key] or { log = 0, take = 0, done = 0 }
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(ns.DungeonName(d) .. "  " .. d.min .. "-" .. d.max, 1, 0.82, 0)
+        GameTooltip:AddLine(L.TT_DUNGEON:format(c.log, c.take, c.done), 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    t.click:SetScript("OnLeave", function(self)
+        S.SetBorder(self:GetParent(), S.CARD_EDGE)
+        if GameTooltip then GameTooltip:Hide() end
+    end)
     return t
 end
 
@@ -167,19 +114,14 @@ local function fillTile(t, d)
     t.d = d
     if not d then t:Hide() return end
     t:Show()
-    setPortrait(t.icon, d.key)
-    t.name:SetText(ns.DungeonName(d))
+    t.name:SetText(S.Upper(ns.DungeonName(d)))
     t.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
     t.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
     t.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
-    if setFile(t.art, ns.Banner(d.key)) then
-        t.art:SetTexCoord(unpack(TILE_TC))
-        t.art:SetAlpha(d.fits and 1 or 0.55)
-    else
-        t.art:SetTexture(ns.Icon(d.key))
-        t.art:SetTexCoord(0.1, 0.9, 0.3, 0.7)
-        t.art:SetAlpha(d.fits and 0.3 or 0.18)
-    end
+    local art = setFile(t.art, ns.Banner(d.key))
+    t.art:SetShown(art)
+    t.icon:SetShown(not art)
+    if art then t.art:SetTexCoord(unpack(TILE_TC)) else setPortrait(t.icon, d.key) end
     local c = counts[d.key]
     local n = c and (c.log + c.take) or 0
     t.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 14) .. " " .. n) or "")
@@ -314,16 +256,48 @@ end
 
 -- Quests are cards: a status icon, the name, a status tag, the levels and the chain, and what
 -- comes next (the earlier quest to do first, where to hand in). Headers and route stops stay short.
-local HEAD_H, STOP_H, CARD_H = 28, 40, 64
+local HEAD_H, STOP_H, CARD_H, STEP_H, STEPS_MAX = 28, 40, 64, 16, 8
 local STATUS = {
     log = { "Q_LOG", S.TAB.quests }, take = { "Q_TAKE", TI .. "INV_Misc_Note_01" },
     later = { "Q_LATER", ACT_ICON.later }, done = { "Q_DONE", TI .. "INV_Misc_Ribbon_01" },
     hidden = { "Q_HIDDEN", ACT_ICON.hide },
 }
+-- The steps of the quest's chain, under each other in its card (nil for a single quest).
+function ns.CardSteps(item)
+    if item.steps == nil then
+        local chain = ns.Chain(item.quest.id)
+        item.steps = #chain > 1 and chain or false
+    end
+    return item.steps or nil
+end
+
 local function rowHeight(item)
     if item.header then return HEAD_H end
     if item.stop then return STOP_H end
-    return CARD_H
+    local steps = ns.CardSteps(item)
+    return CARD_H + (steps and (math.min(#steps, STEPS_MAX) * STEP_H + 4) or 0)
+end
+
+local STEP_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", missing = "Interface\\RaidFrame\\ReadyCheck-NotReady",
+                    active = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
+
+-- One line per step: its state, its number and name; this quest in the accent, the step to do
+-- first in red. A longer chain ends in "+N" on the last line.
+local function fillSteps(r, steps)
+    for i = 1, STEPS_MAX do
+        local line, st = r.steps[i], steps and steps[i]
+        line:SetShown(st ~= nil)
+        if st then
+            local key = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
+            local mark = key and ("|T" .. STEP_ICON[key] .. ":12|t ") or "|cff666666·|r  "
+            local text = mark .. st.n .. ".  " .. st.name
+            if i == STEPS_MAX and #steps > STEPS_MAX then text = text .. "  |cff888888+" .. (#steps - STEPS_MAX) .. "|r" end
+            line:SetText(text)
+            local c = S.TEXT
+            if st.this then c = S.Accent() elseif st.missing then c = S.BAD elseif st.done then c = S.MUTED end
+            line:SetTextColor(unpack(c))
+        end
+    end
 end
 
 local function makeRow(r)
@@ -344,6 +318,16 @@ local function makeRow(r)
     r.chain = S.Text(r, 11, S.FAINT)
     r.chain:SetPoint("TOPLEFT", r.sub, "BOTTOMLEFT", 0, -3)
     r.chain:SetWordWrap(false)
+    r.steps = {}
+    for i = 1, STEPS_MAX do
+        local line = S.Text(r, 11)
+        line:SetPoint("TOPLEFT", r.badge, "TOPRIGHT", 10, -(CARD_H - 12) - (i - 1) * STEP_H)
+        line:SetPoint("RIGHT", -12, 0)
+        line:SetJustifyH("LEFT")
+        line:SetWordWrap(false)
+        line:Hide()
+        r.steps[i] = line
+    end
     r.rewards = {}
     for i = 1, REWARD_ICONS do
         local ic = S.IconBox(r, 20)
@@ -382,6 +366,7 @@ local function plainRow(r)
     r.badge:Hide()
     r.tag:SetText("")
     r.chain:SetText("")
+    fillSteps(r, nil)
     r.sub:ClearAllPoints()
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
     r.sub:SetPoint("RIGHT", r.text, "RIGHT")
@@ -454,6 +439,7 @@ local function fillRow(r, item)
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -4)
     r.sub:SetPoint("RIGHT", -12 - icons * 24, 0)
     r.chain:SetPoint("RIGHT", -12 - icons * 24, 0)
+    for _, line in ipairs(r.steps) do line:SetPoint("RIGHT", -12 - icons * 24, 0) end
     -- The quest's level in its colour, the level it opens at, the step of its chain.
     local parts = { S.Hex(ns.DiffColor(diff)) .. L.LEVEL:format(q.level) .. "|r" }
     if q.minLevel and q.minLevel > 0 then parts[2] = L.FROM_LEVEL:format(q.minLevel) end
@@ -475,6 +461,7 @@ local function fillRow(r, item)
     end
     r.chain:SetTextColor(unpack(group == "later" and S.WARN or S.FAINT))
     r.chain:SetText(table.concat(ahead, "  ·  "))
+    fillSteps(r, ns.CardSteps(item))
 end
 
 -- The dungeon's header: name, levels, bosses and quest counts, the keys, the entrance.
@@ -802,10 +789,8 @@ function ns.Refresh()
     local all = ns.Dungeons(level)
     for _, d in ipairs(all) do counts[d.key] = ns.Counts(d.key, level) end
     grid:SetShown(ns.home)
-    leftCard:SetShown(not ns.home)
     areaFrame:SetShown(not ns.home)
     if ns.home then return fillGrid(all) end
-    dungeons:SetData(all)
     local current
     for _, d in ipairs(all) do if d.key == ns.selected then current = d end end
     bossCache = ns.Bosses(ns.selected)
@@ -1436,20 +1421,6 @@ end
 local function build()
     frame = S.Window("GulliDungeonPrepFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body = frame.body
-    local left = S.Card(body)
-    left:SetPoint("TOPLEFT")
-    left:SetPoint("BOTTOMLEFT")
-    left:SetWidth(236)
-    leftCard = left
-    homeBtn = iconButton(left.body, TI .. "INV_Misc_Map_02", 28)
-    fitIcon(homeBtn, "« " .. L.ALL_DUNGEONS, 96)
-    homeBtn:SetPoint("TOPLEFT")
-    homeBtn:SetPoint("TOPRIGHT", -10, 0)
-    homeBtn:SetScript("OnClick", function() ns.home, ns.openQuest = true, nil; ns.Refresh() end)
-    dungeons = S.List(left.body, 46, makeDungeon, fillDungeon, 4)
-    dungeons:SetPoint("TOPLEFT", homeBtn, "BOTTOMLEFT", 0, -S.GAP)
-    dungeons:SetPoint("BOTTOMRIGHT", -10, 0)
-
     grid = CreateFrame("Frame", nil, body)
     grid:SetAllPoints()
     grid:Hide()
@@ -1458,12 +1429,19 @@ local function build()
     grid.list:SetPoint("BOTTOMRIGHT", -10, 0)
     grid.list.heightOf = function(row) return row.title and 24 or TILE_H end
 
+    -- Inside a dungeon its pages take the whole width; « All dungeons goes back to the tiles.
+
     local area = CreateFrame("Frame", nil, body)
     areaFrame = area
-    area:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
-    area:SetPoint("BOTTOMRIGHT")
+    area:SetAllPoints()
+    homeBtn = iconButton(area, TI .. "INV_Misc_Map_02", 30)
+    fitIcon(homeBtn, "« " .. L.ALL_DUNGEONS, 96)
+    homeBtn:SetPoint("TOPLEFT")
+    homeBtn:SetScript("OnClick", function() ns.home, ns.openQuest = true, nil; ns.Refresh() end)
     tabs = S.PageTabs(area, { L.TAB_BOSSES, L.TAB_LOOT, L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil,
         { TI .. "INV_Misc_Head_Dragon_01", TI .. "INV_Misc_Bag_10", S.TAB.quests, S.TAB.settings })
+    tabs.frame:ClearAllPoints()
+    tabs.frame:SetPoint("TOPLEFT", homeBtn, "TOPRIGHT", S.GAP, 0)
     search = S.Edit(area, 140, 30)
     search:SetJustifyH("LEFT")
     S.Placeholder(search, L.SEARCH)

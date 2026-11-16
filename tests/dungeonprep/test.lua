@@ -579,4 +579,20 @@ test("the journal opens on the dungeon grid, those for the level first; a tile o
     eq(ns.selected, "DM")
 end)
 
+test("a quest card lists its chain's steps under each other; a single quest has none", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    ns.Toggle()
+    local steps = ns.CardSteps({ quest = { id = 166 } })
+    assert(steps and #steps == 7, "The Defias Brotherhood has seven steps")
+    eq(steps[1].n, 1)
+    assert(steps[7].this, "the card's own quest is marked")
+    eq(ns.CardSteps({ quest = { id = 999999 } }), nil, "no chain, no steps")
+    -- The quest list draws the cards with their steps.
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    ns.filter = "all"
+    ns.Refresh()
+end)
+
 W.finish()
