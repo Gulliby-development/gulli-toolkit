@@ -5,7 +5,7 @@ local _, ns = ...
 local L = ns.L
 
 -- Popular addons that do a module's job, or that a module works with. Folder names come from
--- runeloader-index and CurseForge (see AGENTS.md). Each entry:
+-- the addon index and CurseForge (see AGENTS.md). Each entry:
 --   name   what the window says ("Because you have <name>")
 --   addons folder names; any one of them that runs or is switched on counts
 --   same   module key -> true: the addon does the module's job, so the module starts off.
