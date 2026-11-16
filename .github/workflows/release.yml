@@ -24,6 +24,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
     permissions:
       contents: write   # create the release and its tag
     env:
@@ -44,6 +46,7 @@ jobs:
           for t in tests/*/test.lua; do lua5.1 "$t"; done
 
       - name: Module, folder and version
+        id: meta
         run: |
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$REF_NAME" != "main" ]; then
@@ -66,6 +69,7 @@ jobs:
             echo "::error::Tag $REF_NAME does not match ## Version $v of $folder. Tag the release $tag."; exit 1
           fi
           { echo "MODULE=$module"; echo "FOLDER=$folder"; echo "VERSION=$v"; echo "TAG=$tag"; } >> "$GITHUB_ENV"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Package
         run: |
@@ -90,3 +94,12 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/bundle.yml
+
+  # Upload it to CurseForge (tools/curseforge/projects.json); does nothing until the projects
+  # have ids there and the CF_API_TOKEN secret is set.
+  curseforge:
+    needs: release
+    uses: ./.github/workflows/curseforge.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit

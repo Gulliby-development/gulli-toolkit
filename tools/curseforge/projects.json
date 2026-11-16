@@ -1,0 +1,11 @@
+{
+  "game_version": "1.60.1",
+  "game_version_id": null,
+  "toolkit": { "id": null, "slug": null },
+  "separate": {
+    "CraftProfit": { "id": null },
+    "Legacy": { "id": null },
+    "DungeonPrep": { "id": null },
+    "QuestCleaner": { "id": null }
+  }
+}

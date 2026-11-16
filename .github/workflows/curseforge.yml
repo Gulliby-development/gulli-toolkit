@@ -1,0 +1,41 @@
+name: CurseForge
+
+# Uploads a release to its CurseForge project (tools/curseforge/upload.py): a module with its own
+# project gets its zip, the core and the small modules go into the Gulli Toolkit project as one
+# zip of the newest releases. Release runs it after each release; "Run workflow" with "all"
+# uploads every project once. Without the CF_API_TOKEN secret or a project id it does nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A release tag (Core-v1.17.0, CraftProfit-v1.9.0) or all"
+        required: true
+        default: all
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: curseforge
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Upload
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: python3 tools/curseforge/upload.py "$REPO" "$TAG"
