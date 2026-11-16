@@ -12,7 +12,7 @@ end
 -- Settings: the switches. Each change goes through ns.Set.
 ns.DEFAULTS = {
     keys = true, remind = true, tomtom = true, hideLater = false,
-    warnEnter = true, wishAlert = true, learn = true,
+    warnEnter = true, wishAlert = true, learn = true, trackerLocked = true,
 }
 
 function ns.Get(key)
@@ -24,6 +24,7 @@ end
 function ns.Set(key, value)
     if ns.db then ns.db[key] = value end
     if ns.Refresh then ns.Refresh() end
+    if ns.RefreshTracker then ns.RefreshTracker() end
 end
 
 -- Puts every setting back to its default and shows hidden quests again.
@@ -155,8 +156,15 @@ ns.ART = {
 }
 
 -- The dungeon's banner picture: the journal's own (a file id) when the client has the journal,
--- else its file path; nil for a dungeon without one. The caller checks that the file loads.
+-- else its file path, else ours; nil for a dungeon without one. The caller checks that the file loads.
+-- WoW Forever's own dungeons have no journal picture: ours, drawn for the addon
+-- (tools/dungeonprep/banners/, made into Media/Banner-<KEY>.tga by tools/dungeonprep/banners.py).
+ns.OWN_BANNERS = { THANES = true, LORDAERON = true, EXCAVATION = true, DALARAN = true, DROWNED = true,
+                   KROLDOK = true, ALCAZ = true, BLACKMAW = true, SHAPERS = true }
+
+-- The second value is true for our own picture (a whole 2:1 picture, not a journal button).
 function ns.Banner(key)
+    if ns.OWN_BANNERS[key] then return "Interface\\AddOns\\Gulli-DungeonPrep\\Media\\Banner-" .. key, true end
     local a = ns.ART[key]
     if not a then return nil end
     if EJ_GetInstanceInfo then
@@ -200,7 +208,7 @@ function ns.Suggest(level)
     return best or ns.Dungeons(level)[1]
 end
 
--- The first earlier quest still missing: { id, name, who, area }, from the dungeon quests or D.pre.
+-- The first earlier quest still missing: { id, name, who, area, x, y }, from the dungeon quests or D.pre.
 local function missing(q)
     local D = data()
     local ids = {}
@@ -212,9 +220,9 @@ local function missing(q)
     end
     for _, p in ipairs(ids) do
         local d = D.quest[p]
-        if d then return { id = p, name = d[1], who = d[6], area = d[7] } end
+        if d then return { id = p, name = d[1], who = d[6], area = d[7], x = d[12] or 0, y = d[13] or 0 } end
         d = D.pre and D.pre[p]
-        if d then return { id = p, name = d[1], who = d[3], area = d[4] } end
+        if d then return { id = p, name = d[1], who = d[3], area = d[4], x = d[5] or 0, y = d[6] or 0 } end
     end
     if ids[1] then return { id = ids[1] } end
 end
@@ -367,6 +375,58 @@ function ns.Track(id)
     end
     if ns.Refresh then ns.Refresh() end
     return ns.Tracked(id)
+end
+
+-- The tracker's rows for a dungeon, at most ns.TRACK_MAX: quests ready to hand in, the rest of
+-- the log with their objectives, the ones to take, then chain quests that wait for an earlier
+-- step. { id, name, level, state = ready|log|take|chain, lines = { { text, done } },
+-- pin = { who, area, x, y } or nil }, then how many are ready and how many there are.
+ns.TRACK_MAX = 8
+local TRACK_ORDER = { ready = 1, log = 2, take = 3, chain = 4 }
+function ns.TrackerItems(key, level)
+    local q = ns.Quests(key, level)
+    local all, ready = {}, 0
+    local function pinOf(who, area, x, y)
+        if who and who ~= "" and area and area > 0 and x and (x > 0 or y > 0) then
+            return { who = who, area = area, x = x, y = y }
+        end
+    end
+    for _, e in ipairs(q.log) do
+        local it = { id = e.id, name = e.name, level = e.level, state = "log", lines = {} }
+        local t = e.turnin
+        if Q.IsComplete and Q.IsComplete(e.id) then
+            it.state, ready = "ready", ready + 1
+            it.lines[1] = { text = (t and t.who ~= "") and L.TR_READY_TO:format(t.who) or L.TR_READY, done = true }
+            if t then it.pin = pinOf(t.who, t.area, t.x, t.y) end
+        else
+            for i, o in ipairs(ns.Objectives(e)) do
+                if i > 3 then break end
+                it.lines[#it.lines + 1] = { text = o.text, done = o.done }
+            end
+        end
+        all[#all + 1] = it
+    end
+    for _, e in ipairs(q.take) do
+        local where = ns.Where(e)
+        all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
+                          lines = { { text = where ~= "" and L.TR_TAKE:format(where) or L.Q_TAKE } },
+                          pin = pinOf(e.who, e.area, e.x, e.y) }
+    end
+    for _, e in ipairs(q.later) do
+        if e.why == "WHY_EARLIER" and e.need and e.need.name then
+            local n = e.need
+            all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "chain",
+                              lines = { { text = "» " .. ns.NeedText(n) } }, pin = pinOf(n.who, n.area, n.x, n.y) }
+        end
+    end
+    local total = #all
+    table.sort(all, function(a, b)
+        if a.state ~= b.state then return TRACK_ORDER[a.state] < TRACK_ORDER[b.state] end
+        if a.level ~= b.level then return a.level < b.level end
+        return a.name < b.name
+    end)
+    while #all > ns.TRACK_MAX do all[#all] = nil end
+    return all, ready, total
 end
 
 -- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.
@@ -730,6 +790,7 @@ f:SetScript("OnEvent", function(self, event, a1)
     end
     if event == "QUEST_ACCEPTED" and ns.guide and ns.StepGuide then ns.StepGuide() end
     if ns.Refresh then ns.Refresh() end
+    if ns.RefreshTracker then ns.RefreshTracker() end
 end)
 
 SLASH_GULLIDUNGEONPREP1 = "/gdj"
@@ -753,7 +814,7 @@ ns.OPT_ICON = {
     remind = "Interface\\Icons\\INV_Letter_15", keys = "Interface\\Icons\\INV_Misc_Key_04",
     tomtom = "Interface\\Icons\\INV_Misc_Map_01", hideLater = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     warnEnter = "Interface\\Icons\\Ability_Warrior_BattleShout", wishAlert = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
-    learn = "Interface\\Icons\\INV_Misc_Book_09",
+    learn = "Interface\\Icons\\INV_Misc_Book_09", trackerLocked = "Interface\\Icons\\INV_Misc_Key_03",
 }
 
 if GulliToolkit and GulliToolkit.Register then
@@ -764,6 +825,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
+        move = function(on) if ns.MoveTracker then ns.MoveTracker(on) end end,
         reset = function() ns.Reset() end,
         options = {
             { label = L.OPT_REMIND, tip = L.OPT_REMIND_D, icon = ns.OPT_ICON.remind,

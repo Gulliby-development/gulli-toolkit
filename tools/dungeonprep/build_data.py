@@ -24,7 +24,7 @@ Q_SPECIAL, Q_TEXT = 24, 8
 REPEATABLE = 1
 N_NAME, N_MAX_LEVEL, N_SPAWNS, N_ZONE, N_FACTION = 1, 5, 7, 9, 13
 O_NAME, O_SPAWNS, O_ZONE = 1, 4, 5
-I_NAME, I_NPC_DROPS, I_OBJECT_DROPS, I_QUEST_REWARDS = 1, 2, 3, 6
+I_NAME, I_NPC_DROPS, I_OBJECT_DROPS, I_START_QUEST, I_QUEST_REWARDS = 1, 2, 3, 5, 6
 Q_SOURCE_ITEM = 11
 
 # key, area ids (the first names the dungeon; none for a Forever area the client data does not
@@ -166,6 +166,33 @@ def main(root):
         if best and sources.count(best) * 3 >= len(sources) * 2:
             return best
 
+    # The items that start a quest: its startedBy items, the items whose startQuest names it,
+    # and its sourceItemId when no NPC or object gives it. An item without drops takes the drops
+    # of the item of the same name that has them: the Forever data often lists the drop only
+    # on one faction's copy (Krol'dok Moulding: Tunk drops 267138, the Horde quest names 267137).
+    starts_of = {}
+    for iid, it in items.items():
+        if it.get(I_START_QUEST):
+            starts_of.setdefault(it[I_START_QUEST], set()).add(iid)
+    twins = {}
+    for iid, it in items.items():
+        if it.get(I_NAME) and (seq(it.get(I_NPC_DROPS) or {}) or seq(it.get(I_OBJECT_DROPS) or {})):
+            twins.setdefault(it[I_NAME], []).append(iid)
+
+    def start_items(qid, q):
+        sb = q.get(Q_STARTED_BY) or {}
+        ids = set(seq(sb.get(3) or {})) | starts_of.get(qid, set())
+        if q.get(Q_SOURCE_ITEM) and not seq(sb.get(1) or {}) and not seq(sb.get(2) or {}):
+            ids.add(q[Q_SOURCE_ITEM])
+        out = set()
+        for i in ids:
+            it = items.get(i) or {}
+            if seq(it.get(I_NPC_DROPS) or {}) or seq(it.get(I_OBJECT_DROPS) or {}):
+                out.add(i)
+            else:
+                out.update(twins.get(it.get(I_NAME), [i]))
+        return sorted(out)
+
     ranges = {k: (lo, hi) for k, _, _, lo, hi in DUNGEONS}
     by_dungeon = {k: [] for k, *_ in DUNGEONS}
     def exchange(q):
@@ -190,7 +217,7 @@ def main(root):
         keys.update(obj_key(o.get(1)) for o in seq(obj.get(2) or {}))
         keys.update(item_key(o.get(1)) for o in seq(obj.get(3) or {}))
         # Started by an item that drops there (Krol'dok Moulding from Tunk).
-        keys.update(item_key(i) for i in seq((q.get(Q_STARTED_BY) or {}).get(3) or {}))
+        keys.update(item_key(i) for i in start_items(qid, q))
         text = " ".join(t for t in seq(q.get(Q_TEXT) or {}) if isinstance(t, str))
         for k, words in WORDS.items():
             if qid >= 90000 and any(w in text for w in words):
@@ -226,7 +253,7 @@ def main(root):
             zs = sorted(zones_of(o, O_SPAWNS, O_ZONE))
             zone = o.get(O_ZONE) or (zs[0] if zs else 0)
             return (o.get(O_NAME) or "", zone) + spot(o, O_SPAWNS, zone)
-        for iid in seq(sb.get(3) or {}):
+        for iid in seq(sb.get(3) or {}) or ([q[Q_SOURCE_ITEM]] if q.get(Q_SOURCE_ITEM) else []):
             return (items.get(iid) or {}).get(I_NAME) or "", 0, 0, 0
         return "", 0, 0, 0
 

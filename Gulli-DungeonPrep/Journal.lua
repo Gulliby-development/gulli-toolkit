@@ -282,6 +282,7 @@ end
 -- next one, up to the entrance. ns.guide = { key, last }.
 function ns.StartGuide(key)
     ns.guide = { key = key }
+    if ns.ShowTracker then ns.ShowTracker(key) end
     return ns.StepGuide()
 end
 

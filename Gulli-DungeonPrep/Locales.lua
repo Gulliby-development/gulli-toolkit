@@ -10,6 +10,15 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    TR_TITLE = "Dungeon tracker",
+    TR_READY = "Ready to turn in",
+    TR_READY_TO = "Ready: hand in to %s",
+    TR_TAKE = "Take from %s",
+    TR_PIN = "Map pin on %s",
+    TR_OPEN = "Click: open in the journal",
+    TR_EMPTY = "Nothing left to do here.",
+    OPT_TRACK_LOCK = "Lock the tracker",
+    OPT_TRACK_LOCK_D = "Off: drag the tracker on the screen. A right click puts it back.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "In your quest log (%d)",
     TAKE_N = "Pick up on the way (%d)",
@@ -167,6 +176,15 @@ T.en = {
 }
 
 T.de = {
+    TR_TITLE = "Dungeon-Tracker",
+    TR_READY = "Bereit zur Abgabe",
+    TR_READY_TO = "Bereit: abgeben bei %s",
+    TR_TAKE = "Annehmen bei %s",
+    TR_PIN = "Kartenmarkierung bei %s",
+    TR_OPEN = "Klick: im Journal öffnen",
+    TR_EMPTY = "Hier ist nichts mehr zu tun.",
+    OPT_TRACK_LOCK = "Tracker sperren",
+    OPT_TRACK_LOCK_D = "Aus: den Tracker auf dem Bildschirm ziehen. Ein Rechtsklick setzt ihn zurück.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "In deinem Questlog (%d)",
     TAKE_N = "Auf dem Weg abholen (%d)",
@@ -324,6 +342,15 @@ T.de = {
 }
 
 T.es = {
+    TR_TITLE = "Seguimiento de mazmorra",
+    TR_READY = "Lista para entregar",
+    TR_READY_TO = "Lista: entrégala a %s",
+    TR_TAKE = "Cógela de %s",
+    TR_PIN = "Marca en el mapa en %s",
+    TR_OPEN = "Clic: abrir en el diario",
+    TR_EMPTY = "Aquí no queda nada por hacer.",
+    OPT_TRACK_LOCK = "Fijar el seguimiento",
+    OPT_TRACK_LOCK_D = "Desactivado: arrastra el seguimiento por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "En tu registro (%d)",
     TAKE_N = "Recoger por el camino (%d)",
@@ -481,6 +508,15 @@ T.es = {
 }
 
 T.fr = {
+    TR_TITLE = "Suivi du donjon",
+    TR_READY = "Prête à rendre",
+    TR_READY_TO = "Prête : à rendre à %s",
+    TR_TAKE = "À prendre auprès de %s",
+    TR_PIN = "Repère sur la carte : %s",
+    TR_OPEN = "Clic : ouvrir dans le journal",
+    TR_EMPTY = "Plus rien à faire ici.",
+    OPT_TRACK_LOCK = "Verrouiller le suivi",
+    OPT_TRACK_LOCK_D = "Désactivé : faites glisser le suivi à l'écran. Un clic droit le remet en place.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "Dans votre journal (%d)",
     TAKE_N = "À prendre en chemin (%d)",
@@ -638,6 +674,15 @@ T.fr = {
 }
 
 T.pl = {
+    TR_TITLE = "Śledzenie lochu",
+    TR_READY = "Gotowe do oddania",
+    TR_READY_TO = "Gotowe: oddaj u %s",
+    TR_TAKE = "Weź od %s",
+    TR_PIN = "Znacznik na mapie: %s",
+    TR_OPEN = "Kliknij: otwórz w dzienniku",
+    TR_EMPTY = "Nic tu już nie zostało.",
+    OPT_TRACK_LOCK = "Zablokuj śledzenie",
+    OPT_TRACK_LOCK_D = "Wyłączone: przeciągnij śledzenie po ekranie. Prawy klik przywraca je na miejsce.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "W dzienniku (%d)",
     TAKE_N = "Do zebrania po drodze (%d)",
@@ -795,6 +840,15 @@ T.pl = {
 }
 
 T.pt = {
+    TR_TITLE = "Rastreador da masmorra",
+    TR_READY = "Pronta para entregar",
+    TR_READY_TO = "Pronta: entregue a %s",
+    TR_TAKE = "Pegue com %s",
+    TR_PIN = "Marca no mapa em %s",
+    TR_OPEN = "Clique: abrir no diário",
+    TR_EMPTY = "Nada mais a fazer aqui.",
+    OPT_TRACK_LOCK = "Travar o rastreador",
+    OPT_TRACK_LOCK_D = "Desligado: arraste o rastreador pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "No seu registro (%d)",
     TAKE_N = "Pegar no caminho (%d)",
@@ -952,6 +1006,15 @@ T.pt = {
 }
 
 T.ru = {
+    TR_TITLE = "Трекер подземелья",
+    TR_READY = "Можно сдавать",
+    TR_READY_TO = "Можно сдавать: %s",
+    TR_TAKE = "Взять у: %s",
+    TR_PIN = "Метка на карте: %s",
+    TR_OPEN = "Клик: открыть в журнале",
+    TR_EMPTY = "Здесь больше нечего делать.",
+    OPT_TRACK_LOCK = "Закрепить трекер",
+    OPT_TRACK_LOCK_D = "Выкл.: перетащите трекер по экрану. Правый клик вернёт его на место.",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "В журнале (%d)",
     TAKE_N = "Взять по пути (%d)",
@@ -1109,6 +1172,15 @@ T.ru = {
 }
 
 T.zh = {
+    TR_TITLE = "副本追踪",
+    TR_READY = "可以交任务",
+    TR_READY_TO = "可交：交给 %s",
+    TR_TAKE = "接取：%s",
+    TR_PIN = "地图标记：%s",
+    TR_OPEN = "点击：在手册中打开",
+    TR_EMPTY = "这里没有要做的事了。",
+    OPT_TRACK_LOCK = "锁定追踪器",
+    OPT_TRACK_LOCK_D = "关闭：在屏幕上拖动追踪器。右键点击放回原处。",
     TITLE = "Dungeon Journal",
     IN_LOG_N = "任务日志中（%d）",
     TAKE_N = "顺路接取（%d）",

@@ -514,6 +514,20 @@ S.dungeonprep = {
     quest = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
     forever = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
     chain = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
+    -- The tracker of Lead me on its own, on a dark stand-in screen.
+    tracker = { spec = dpSpec, crop = "GulliDungeonPrepTrackerStage",
+                before = function()
+                    local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                    stage:SetSize(360, 420)
+                    stage:SetPoint("CENTER")
+                    local bg = stage:CreateTexture(nil, "BACKGROUND")
+                    bg:SetAllPoints()
+                    bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                end,
+                open = function(ns)
+                    ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                    ns.ShowTracker("GNOMER")
+                end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).

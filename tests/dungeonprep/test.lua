@@ -545,7 +545,7 @@ test("the journal window: every tab with and without boss data", function()
     ns.lootFilter = "wish"; ns.Refresh()
 end)
 
-test("dungeon pictures: the journal banner by instance, else a file; Forever dungeons keep the icon", function()
+test("dungeon pictures: the journal banner by instance, else a file; Forever dungeons get ours", function()
     Fake({})
     local ns = Load()
     eq(ns.Banner("RFC"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-RagefireChasm")
@@ -555,7 +555,23 @@ test("dungeon pictures: the journal banner by instance, else a file; Forever dun
     _G.EJ_GetInstanceInfo = function() error("no journal") end
     eq(ns.Banner("SFK"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
     _G.EJ_GetInstanceInfo = nil
-    eq(ns.Banner("THANES"), nil)
+    local own, isOwn = ns.Banner("THANES")
+    eq(own, "Interface\\AddOns\\Gulli-DungeonPrep\\Media\\Banner-THANES")
+    eq(isOwn, true)
+    -- Every dungeon has a picture: the journal's or ours, and ours ships with the addon.
+    for _, d in ipairs(ns.Data.dungeons) do
+        local key = d[1]
+        assert(ns.ART[key] or ns.OWN_BANNERS[key], "a picture for " .. key)
+        if ns.OWN_BANNERS[key] then
+            local f = io.open("Gulli-DungeonPrep/Media/Banner-" .. key .. ".tga", "rb")
+            assert(f, "Media/Banner-" .. key .. ".tga is there")
+            local head = f:read(18)
+            f:close()
+            eq(head:byte(3), 2, "an uncompressed TGA")
+            eq(head:byte(13) + head:byte(14) * 256, 512)
+            eq(head:byte(15) + head:byte(16) * 256, 256)
+        end
+    end
     eq(#ns.Portraits("THANES"), 0)
     eq(ns.Portraits("ZF")[2], "Interface\\LFGFrame\\LFGIcon-ZulFarak")
     for key in pairs(ns.ART) do assert(ns.ICONS[key], "an icon behind the picture of " .. key) end
@@ -593,6 +609,55 @@ test("a quest card lists its chain's steps under each other; a single quest has 
     SlashCmdList.GULLIDUNGEONPREP("dm")
     ns.filter = "all"
     ns.Refresh()
+end)
+
+test("a quest started by an item that drops in the dungeon belongs to it (Krol'dok Moulding)", function()
+    Fake({})
+    local ns = Load()
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    assert(has("KROLDOK", 94973), "the Horde Krol'dok Moulding, from Tunk's drop")
+    assert(has("KROLDOK", 94980), "the Alliance one")
+    eq(table.concat(ns.Data.chain[94973], ","), "94973,94974")
+end)
+
+test("the tracker: ready quests first, objectives, quests to take; Lead me shows it, the cross hides it", function()
+    Fake({ level = 33, raceID = 2, faction = "Horde", className = "HUNTER", areas = AREAS,
+           map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } },
+           active = { [2841] = true }, complete = { [2841] = true } })
+    local ns = Load()
+    local items, ready, total = ns.TrackerItems("GNOMER", 33)
+    eq(items[1].id, 2841)
+    eq(items[1].state, "ready")
+    eq(ready, 1)
+    assert(total >= #items and #items <= ns.TRACK_MAX, "at most TRACK_MAX rows")
+    local states = {}
+    for _, it in ipairs(items) do states[it.state] = true end
+    assert(states.take, "quests to take are listed")
+    for i = 2, #items do
+        local order = { ready = 1, log = 2, take = 3, chain = 4 }
+        assert(order[items[i - 1].state] <= order[items[i].state], "ready, log, take, chain")
+    end
+    -- An unfinished quest lists its objectives.
+    W.complete[2841] = nil
+    items = ns.TrackerItems("GNOMER", 33)
+    eq(items[1].state, "log")
+    -- Lead me shows the tracker and keeps it over a reload; the cross hides it.
+    ns.StartGuide("GNOMER")
+    eq(GulliDungeonPrepDB.tracker, "GNOMER")
+    assert(ns.TrackerFrame():IsShown(), "the tracker shows")
+    ns.OpenTracked("GNOMER", 2841)
+    eq(ns.selected, "GNOMER")
+    eq(ns.openQuest, 2841)
+    ns.HideTracker()
+    eq(GulliDungeonPrepDB.tracker, nil)
+    assert(not ns.TrackerFrame():IsShown(), "the cross hides it")
+    -- Unlocked, it shows to be placed even with nothing tracked; locked again, it hides.
+    ns.Set("trackerLocked", false)
+    assert(ns.TrackerFrame():IsShown(), "unlocked, it shows")
+    ns.Set("trackerLocked", true)
+    assert(not ns.TrackerFrame():IsShown(), "locked with nothing tracked, it hides")
 end)
 
 W.finish()
