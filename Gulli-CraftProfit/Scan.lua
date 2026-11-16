@@ -299,8 +299,8 @@ end
 -- vendors; a pattern sells to a vendor for a quarter of what the vendor asks, so the price is
 -- four times its sell price until the vendor was seen. A pattern on the auction costs its
 -- Auctionator price. A recipe with no pattern comes from the trainer, whose price is known
--- once the trainer window was open.
-local function recipeSource(state, rid, rec)
+-- once a trainer window was open, and guessed from the skill until then.
+local function recipeSource(state, rid, rec, skill)
     local D = ns.Data and ns.Data.src
     local d = D and rid ~= rec.out and D[rid]
     if d then
@@ -324,8 +324,10 @@ local function recipeSource(state, rid, rec)
         return src
     end
     local cost = rec.name and ns.db.trainer[rec.name]
-    if cost then return { t = "trainer", cost = cost } end
-    if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then return { t = "trainer" } end
+    if cost then return { t = "trainer", cost = cost, est = false } end
+    if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then
+        return { t = "trainer", cost = ns.TrainerGuess(skill and skill[1]), est = true }
+    end
     return { t = "text", text = rec.source }
 end
 
@@ -349,7 +351,7 @@ function ns.State()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
         if rec.learned or not gone[rid] then
             local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
-            local src = not rec.learned and recipeSource(state, rid, rec) or nil
+            local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
             for id in pairs(rec.r or {}) do itemFor(state, id) end
