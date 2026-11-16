@@ -545,23 +545,39 @@ test("the journal window: every tab with and without boss data", function()
     ns.lootFilter = "wish"; ns.Refresh()
 end)
 
-test("dungeon pictures: the journal banner by instance, else a file; Forever dungeons get ours", function()
+test("dungeon pictures: the loading screen, then the journal banner, then ours", function()
     Fake({})
     local ns = Load()
-    eq(ns.Banner("RFC"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-RagefireChasm")
+    local b = ns.Banners("RFC", 2.6)
+    eq(b[1][1], 131862)
+    eq(b[2][1], "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-RagefireChasm")
     _G.EJ_GetInstanceInfo = function(id) if id == 226 then return "Ragefire Chasm", "", 1, 4242 end end
-    eq(ns.Banner("RFC"), 4242)
-    eq(ns.Banner("WC"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-WailingCaverns")
+    eq(ns.Banners("RFC")[2][1], 4242)
     _G.EJ_GetInstanceInfo = function() error("no journal") end
-    eq(ns.Banner("SFK"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
+    eq(ns.Banners("SFK")[2][1], "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
     _G.EJ_GetInstanceInfo = nil
-    local own, isOwn = ns.Banner("THANES")
-    eq(own, "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\THANES")
-    eq(isOwn, true)
-    -- Every dungeon has a picture: the journal's or ours, and ours ships with the addon.
+    local own = ns.Banners("THANES", 2.6)
+    eq(own[1][1], 7963781)
+    eq(#own, 2)
+    eq(own[2][1], "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\THANES")
+    -- The band keeps the screen's shape and stays inside its picture.
+    local function inside(key, aspect, top, bottom, ratio)
+        local tc = ns.LoadingCoords(key, aspect)
+        eq(tc[1], 0); eq(tc[2], 1)
+        assert(tc[3] >= top - 1e-9 and tc[4] <= bottom + 1e-9, key .. " inside the picture")
+        assert(math.abs(ratio / (tc[4] - tc[3]) - aspect) < 0.01, key .. " keeps the aspect")
+    end
+    inside("ZF", 2.6, 0.17, 0.80, 4 / 3)
+    inside("BFD", 2.8, 0.17, 0.80, 4 / 3)
+    inside("KROLDOK", 2.6, 266 / 1684, 1418 / 1684, 2992 / 1684)
+    -- A band wider than the picture shows the whole picture.
+    local tall = ns.LoadingCoords("ALCAZ", 1.5)
+    assert(math.abs(tall[3] - 266 / 1684) < 1e-9 and math.abs(tall[4] - 1418 / 1684) < 1e-9)
+    -- Every dungeon has its loading screen, and ours ships with the addon for Forever's own.
     for _, d in ipairs(ns.Data.dungeons) do
         local key = d[1]
-        assert(ns.ART[key] or ns.OWN_BANNERS[key], "a picture for " .. key)
+        assert(ns.LOADING[key], "a loading screen for " .. key)
+        assert(ns.ART[key] or ns.OWN_BANNERS[key], "a second picture for " .. key)
         if ns.OWN_BANNERS[key] then
             local f = io.open("Gulli-DungeonPrep/Banners/" .. key .. ".tga", "rb")
             assert(f, "Banners/" .. key .. ".tga is there")

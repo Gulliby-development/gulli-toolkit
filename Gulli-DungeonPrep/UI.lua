@@ -54,11 +54,9 @@ end
 
 -- The journal banner, faded in from the left so the text keeps a dark ground.
 -- The start page: every dungeon as a tile, three to a row, the ones for the player's level
--- first. A tile is the name in capitals, the journal picture at full light, then the levels on
+-- first. A tile is the name in capitals, the dungeon picture (its loading screen) at full light, then the levels on
 -- the left and the quests waiting there on the right. A click opens the dungeon's pages.
 local GRID_COLS, TILE_H, TILE_NAME, TILE_FOOT = 3, 150, 30, 26
-local TILE_TC = { 0, 0.68359375, 0.08, 0.62 }
-local OWN_TC = { 0, 1, 0.1, 0.9 }
 
 local function makeTile(parent)
     local t = CreateFrame("Frame", nil, parent)
@@ -119,11 +117,14 @@ local function fillTile(t, d)
     t.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
     t.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
     t.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
-    local path, own = ns.Banner(d.key)
-    local art = setFile(t.art, path)
-    t.art:SetShown(art)
-    t.icon:SetShown(not art)
-    if art then t.art:SetTexCoord(unpack(own and OWN_TC or TILE_TC)) else setPortrait(t.icon, d.key) end
+    local w, h = t.art:GetWidth() or 0, t.art:GetHeight() or 0
+    local art
+    for _, b in ipairs(ns.Banners(d.key, (w > 0 and h > 0) and w / h or nil)) do
+        if setFile(t.art, b[1]) then art = b; break end
+    end
+    t.art:SetShown(art ~= nil)
+    t.icon:SetShown(art == nil)
+    if art then t.art:SetTexCoord(unpack(art[2])) else setPortrait(t.icon, d.key) end
     local c = counts[d.key]
     local n = c and (c.log + c.take) or 0
     t.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 14) .. " " .. n) or "")
