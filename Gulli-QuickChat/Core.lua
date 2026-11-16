@@ -82,6 +82,17 @@ function ns.ResetPhrases()
     wipe(ns.db.fav); wipe(ns.db.orderOf)
 end
 
+-- Puts the default phrases back on the ring; the player's own phrases stay in the list.
+function ns.ResetRing()
+    ns.db.ring = nil
+    if not ns.db.phrases then return end
+    for i = 1, math.min(ns.RING_MAX, ns.DEFAULT_COUNT) do
+        local p, found = L["P" .. i], false
+        for _, q in ipairs(ns.db.phrases) do if q == p then found = true end end
+        if not found then table.insert(ns.db.phrases, i, p) end
+    end
+end
+
 function ns.ToggleFav(text)
     ns.db.fav[text] = (not ns.db.fav[text]) or nil
 end
@@ -227,6 +238,10 @@ function ns.CanUse(key)
     end
 end
 
+-- Say, yell and the numbered channels take a message only inside a key press or a click; the
+-- release of a held key is not one.
+ns.NEEDS_PRESS = { SAY = true, YELL = true, CHANNEL = true }
+
 -- The first channel of the phrase's order that works now: key, kind, target.
 function ns.Route(text)
     for _, key in ipairs(ns.Order(text)) do
@@ -285,6 +300,12 @@ local function tooSoon(key)
 end
 
 -- Sends a phrase to the first channel of its order that works now. Returns the channel key.
+-- True when the phrase would go to a channel that needs a key press or a click right now.
+function ns.NeedsPress(text)
+    local _, kind = ns.Route(text)
+    return kind ~= nil and ns.NEEDS_PRESS[kind] == true
+end
+
 function ns.Say(text)
     local msg = ns.Fill(text)
     if msg == "" then return false end

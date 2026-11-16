@@ -108,6 +108,35 @@ test("the ring: eight places, a phrase sits in one place", function()
     eq(ns.SetRing(9, "x"), false)
 end)
 
+test("reset ring puts the defaults back on the ring and keeps own phrases", function()
+    Fake({})
+    local ns = Load()
+    ns.AddPhrase("Pull in 5")
+    ns.RemovePhrase("brb")
+    ns.SetRing(1, "Pull in 5")
+    ns.ResetRing()
+    eq(ns.Ring()[1], "inv please")
+    eq(ns.RingPlace("brb"), 3)
+    eq(ns.Phrases()[3], "brb", "a removed default comes back to its place")
+    local found = false
+    for _, p in ipairs(ns.Phrases()) do if p == "Pull in 5" then found = true end end
+    assert(found, "own phrases stay")
+    eq(ns.RingPlace("Pull in 5"), nil)
+end)
+
+test("the order button shows the phrase's own channels, else As in Setup", function()
+    Fake({})
+    local ns = Load()
+    ns.ShowPage(1)
+    local text, own = ns.OrderLabel("brb")
+    eq(own, false); assert(text:find(ns.L.CH_DEFAULT, 1, true))
+    ns.SetOwnOrder("brb", true)
+    ns.db.orderOf.brb = { "GUILD", "SAY" }
+    text, own = ns.OrderLabel("brb")
+    eq(own, true); assert(text:find(ns.CH_ICON.GUILD, 1, true)); assert(not text:find(ns.L.CH_DEFAULT, 1, true))
+    ns.Refresh()
+end)
+
 test("favourites fill the panel, else the ring's phrases", function()
     Fake({})
     local ns = Load()
@@ -155,10 +184,36 @@ test("the wheel: held key opens it, letting go sends the lit phrase", function()
     W.Fire("PLAYER_REGEN_ENABLED")
     eq(W.bindings["F6"], "GulliQuickChatWheelButton")
     local button = _G.GulliQuickChatWheelButton or nil
+    -- Alone the phrase goes to say, which the game blocks on a key release: it stays lit and
+    -- waits for a click.
     ns.WheelKey(true)
     ns.WheelHover(2)
     ns.WheelKey(false)
-    eq(W.chat[#W.chat][1], "Ready!", "let go on a lit phrase sends it")
+    eq(#W.chat, 0, "say never goes out on a key release")
+    local shown, where = ns.WheelInfo()
+    assert(shown, "the wheel waits for a click")
+    assert(where:find(ns.L.CLICK_SEND, 1, true))
+    eq(ns.WheelRelease(), true, "the click sends it")
+    eq(W.chat[1][1], "Ready!"); eq(W.chat[1][2], "SAY")
+    -- A second press of the key sends it too: a press is a key press for the game.
+    W.now = W.now + 5
+    ns.WheelKey(true); ns.WheelHover(2); ns.WheelKey(false)
+    eq(#W.chat, 1)
+    ns.WheelKey(true)
+    eq(#W.chat, 2); eq((ns.WheelInfo()), false)
+    ns.WheelKey(false)
+    eq(#W.chat, 2, "its release does nothing more")
+    W.chat[2] = nil
+    -- In a group it goes to party, which a release may send.
+    W.group, W.now = true, W.now + 5
+    ns.WheelKey(true)
+    ns.WheelHover(2)
+    ns.WheelKey(false)
+    eq(#W.chat, 2, "let go on a lit phrase sends it")
+    eq(W.chat[2][2], "PARTY")
+    eq((ns.WheelInfo()), false)
+    W.chat[2] = nil
+    W.group = false
     ns.WheelKey(true)
     ns.WheelHover(nil)
     ns.WheelKey(false)

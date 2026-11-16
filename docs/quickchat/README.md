@@ -18,13 +18,13 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 ## Features
 
-- **One ring of phrases.** Hold your key (or a gamepad button): a ring of up to eight phrases opens at the mouse. Point at one and let go of the key, or click, to send it. The middle shows what it says and where it goes.
+- **One ring of phrases.** Hold your key (or a gamepad button): a ring of up to eight phrases opens at the mouse. Point at one and let go of the key, or click, to send it. The middle shows what it says and where it goes. Say, yell and channels such as Trade take a message only on a press or a click, so for them the phrase stays lit when you let go: click, or press the key again.
 
   <img src="wheel.png" alt="The phrase ring" width="320">
 - **Set up the ring by hand.** The **Phrases** page shows the ring on the left and all phrases on the right. Click a phrase, then a place on the ring, or drag it there. A right-click empties a place.
-- **Your own phrases.** Type one in **Your phrase...** and press **Add**. "inv please", "Ready!", "brb", "Need a heal!", "WTS {item}" and more are there from the start.
-- **Where it goes.** In **Setup**, put the channels in your order: raid, party, guild, say, yell, LookingForGroup, Trade, General, whisper. A phrase goes to the first one you can write in now. A phrase can have its own order (the channel button on its row).
-- **Favourites panel.** A small panel on the screen with the phrases you marked **Fav** (or the ring's). Pick how many buttons, the size, a row or a column, and lock it. `/gulli move` places it.
+- **Your own phrases.** Type one in **Your phrase...** and press **Add**. "inv please", "Ready!", "brb", "Need a heal!", "WTS {item}" and more are there from the start. The **x** on a row removes the phrase. **Reset ring** puts the starting phrases back on the ring and keeps yours.
+- **Where it goes.** In **Setup**, put the channels in your order: raid, party, guild, say, yell, LookingForGroup, Trade, General, whisper. A phrase goes to the first one you can write in now. Each row shows where its phrase goes: **As in Setup** uses that order, a channel name in blue means the phrase has its own order. Click it to change it.
+- **Favourites panel.** A small panel on the screen with the phrases you marked with the star (or the ring's). Pick how many buttons, the size, a row or a column, and lock it. `/gulli move` places it.
 - **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader} and {item} (the last item you linked).
 - **No double posts.** Two taps on the same phrase send it once.
 
