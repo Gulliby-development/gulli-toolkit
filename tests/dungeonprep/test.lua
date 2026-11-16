@@ -539,4 +539,20 @@ test("the journal window: every tab with and without boss data", function()
     ns.lootFilter = "wish"; ns.Refresh()
 end)
 
+test("dungeon pictures: the journal banner by instance, else a file; Forever dungeons keep the icon", function()
+    Fake({})
+    local ns = Load()
+    eq(ns.Banner("RFC"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-RagefireChasm")
+    _G.EJ_GetInstanceInfo = function(id) if id == 226 then return "Ragefire Chasm", "", 1, 4242 end end
+    eq(ns.Banner("RFC"), 4242)
+    eq(ns.Banner("WC"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-WailingCaverns")
+    _G.EJ_GetInstanceInfo = function() error("no journal") end
+    eq(ns.Banner("SFK"), "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
+    _G.EJ_GetInstanceInfo = nil
+    eq(ns.Banner("THANES"), nil)
+    eq(#ns.Portraits("THANES"), 0)
+    eq(ns.Portraits("ZF")[2], "Interface\\LFGFrame\\LFGIcon-ZulFarak")
+    for key in pairs(ns.ART) do assert(ns.ICONS[key], "an icon behind the picture of " .. key) end
+end)
+
 W.finish()
