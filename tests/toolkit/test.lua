@@ -986,5 +986,131 @@ test("Ready: repairs, bags, food and drink apart, the hearthstone and class supp
     GulliRestock = nil
 end)
 
+local function mod(name, key, extra)
+    local a = { name = "Gulli-" .. name, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = key or name } }
+    for k, v in pairs(extra or {}) do a[k] = v end
+    return a
+end
+
+local function planBy(plan)
+    local t = {}
+    for _, p in ipairs(plan) do t[p.row.key] = p end
+    return t
+end
+
+local function fire(event, ...)
+    for _, f in ipairs(W.frames) do
+        local h = rawget(f, "_OnEvent")
+        if h then h(f, event, ...) end
+    end
+end
+
+test("first setup: a module whose job another addon does starts off and says why", function()
+    Fake({ addons = { mod("Merchant"), mod("Crates"), mod("XP"), mod("Mail"), mod("Social"),
+                      { name = "Scrap", enabled = true, loaded = true }, { name = "Auctionator", enabled = true },
+                      { name = "Postal", enabled = false } } })
+    local ns = Load()
+    local by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on, false, "Scrap sells junk")
+    eq(by.Merchant.why, "Because you have Scrap")
+    eq(by.Crates.on, true, "Crates reads Auctionator's prices")
+    eq(by.Crates.why, "Works with Auctionator")
+    eq(by.XP.on, true)
+    eq(by.XP.why, nil, "nothing to say: no grey reason")
+    eq(by.Mail.on, true, "Postal is installed but switched off: it does not count")
+    eq(by.Social.on, true)
+end)
+
+test("first setup: Leatrix Plus counts only for the settings it has on", function()
+    Fake({ addons = { mod("Merchant"), mod("AutoQuest"), mod("Social"), { name = "Leatrix_Plus", enabled = true, loaded = true } } })
+    local ns = Load()
+    LeaPlusDB = { AutoSellJunk = "Off", AutoRepairGear = "Off", AutomateQuests = "On" }
+    local by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on, true, "Leatrix Plus neither sells nor repairs")
+    eq(by.AutoQuest.on, false)
+    eq(by.AutoQuest.why, "Because you have Leatrix Plus")
+    eq(by.Social.on, true)
+    LeaPlusDB.AutoRepairGear = "On"
+    eq(planBy(ns.SetupPlan()).Merchant.on, false, "it repairs now")
+    LeaPlusDB = nil
+    by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on and by.AutoQuest.on, true, "settings it cannot read count as off")
+end)
+
+test("first setup: several addons are named together, the class can switch a module off", function()
+    Fake({ addons = { mod("GroupBuffs"), mod("Reminders"), mod("MobFinder") } })
+    local ns = Load()
+    UnitClass = function() return "Rogue", "ROGUE" end
+    local by = planBy(ns.SetupPlan({ SilverDragon = true, RareScanner = true, SmartBuff = true }))
+    eq(by.MobFinder.on, false)
+    assert(by.MobFinder.why:find("SilverDragon", 1, true) and by.MobFinder.why:find("RareScanner", 1, true), by.MobFinder.why)
+    eq(by.Reminders.why, "Because you have SmartBuff")
+    eq(planBy(ns.SetupPlan({})).GroupBuffs.why, "Because you play a Rogue")
+    UnitClass = function() return "Priest", "PRIEST" end
+    eq(planBy(ns.SetupPlan({})).GroupBuffs.on, true)
+end)
+
+test("first setup: every rule names a known module and a folder", function()
+    Fake({})
+    local ns = Load()
+    for _, e in ipairs(ns.OTHERS) do
+        assert(type(e.name) == "string" and e.name ~= "", "an entry without a name")
+        assert(type(e.addons) == "table" and #e.addons > 0, e.name .. ": no folder")
+        for _, part in ipairs({ "same", "with" }) do
+            for key, v in pairs(e[part] or {}) do
+                assert(ns.CATEGORY_OF[key], e.name .. ": unknown module " .. key)
+                if type(v) == "table" then assert(e.db, e.name .. ": settings without a saved variable") end
+            end
+        end
+    end
+    for key in pairs(ns.CLASS_OFF) do assert(ns.CATEGORY_OF[key], "unknown module " .. key) end
+end)
+
+test("first setup: Apply switches as picked, a module that cannot pause asks for a reload", function()
+    Fake({ addons = { mod("Merchant"), mod("XP"), mod("Mail") } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "Merchant", open = function() end, pause = function() end })
+    GulliToolkit.Register({ key = "XP", open = function() end })
+    local plan = ns.SetupPlan({ Scrap = true })
+    eq(ns.SetupNeedsReload(plan), false, "Merchant pauses at once")
+    eq(ns.ApplySetup(plan), 1)
+    eq(GulliToolkit.IsPaused("Merchant"), true)
+    eq(GulliToolkitDB.setup, true)
+    plan = ns.SetupPlan({})
+    planBy(plan).XP.on = false
+    eq(ns.SetupNeedsReload(plan), true, "XP has no pause")
+    local win = ns.OpenSetup()
+    assert(win, "the window opens from /gulli setup and Quick setup")
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(W.reloaded, false, "nothing that needs a reload was picked")
+end)
+
+test("first setup: the window opens by itself only when the toolkit has no settings yet", function()
+    Fake({ addons = { mod("Merchant") } })
+    local ns = Load()
+    local opened = 0
+    local real = ns.OpenSetup
+    ns.OpenSetup = function(auto) opened = opened + 1; return real(auto) end
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(opened, 1, "first run")
+    fire("PLAYER_ENTERING_WORLD", false, true)
+    eq(opened, 1, "only once")
+
+    Fake({ addons = { mod("Merchant") } })
+    GulliToolkitDB = { feed = {} }
+    ns = Load()
+    opened = 0
+    real = ns.OpenSetup
+    ns.OpenSetup = function(auto) opened = opened + 1; return real(auto) end
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(opened, 0, "a player with settings is not asked")
+    SlashCmdList.GULLITOOLKIT("setup")
+    eq(opened, 1, "/gulli setup opens it")
+
+    Fake({})
+    ns = Load()
+    eq(ns.OpenSetup(true), nil, "no module installed: nothing to ask")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

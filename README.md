@@ -51,6 +51,7 @@
 - **Click a module, see it.** The module's own window opens in the middle of `/gulli` at once. Next to a small window you see what the module does, its command, its version and **Reset to defaults**. **<** goes back to **Home**, **Open in its own window** takes it out. The toolkit opens again where you left it.
 - **Home: everything at a glance.** Short news from every module that runs (XP to the next level, dungeon entries left, groups on the board, what waits on your other characters), a **Modules** card (how many are on, which wait for a reload, which the game does not load, which were updated, and which use the most memory), the **Recent** messages with how long ago they came (click one to open its module), **Quick setup** and the commands of your modules.
 - **Ready to go?** The **Ready** card on the home page checks repairs, free bag slots, food, water, the hearthstone, ammo and class reagents (and your Gulli Restock list). Each one turns red under its limit; **Settings** sets the limits.
+- **Ready on the first start.** The first time the toolkit runs, a small window in the middle of the screen asks which modules you want. It looks at the addons you already have: when another addon does the same job (Scrap or Leatrix Plus sell your junk, SilverDragon finds rares, Postal empties the mail), that module starts off, with a grey line under it such as "Because you have Scrap". A module that works with one of your addons (Craft Profit and Waylaid Crates with Auctionator) stays on. Change any switch, then press **Apply**. **First setup** in **Quick setup** (or `/gulli setup`) opens it again.
 - **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off.
 - **One look on the screen.** Buff buttons, reminders, counters and notices of every module share one look: game icons with a coloured ring (red pulses: do it now, yellow: runs out soon), and notice cards that stack at the top of the screen instead of covering each other.
 - **Glass look, calm when you want.** Every window is dark glass with soft light, and opens, switches tabs and moves its selection with short animations. Nothing moves in combat. Turn on **Reduce motion** in **Quick setup** (or under Options, AddOns) to stop the animations everywhere.
@@ -82,14 +83,16 @@
 
 ## How to use it
 
-1. Type `/gulli`, or click the toolkit icon on the minimap.
-2. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
-3. To switch a module off, open it and flip the switch at the top right.
+1. On the first start, pick your modules in the window that opens, and press **Apply**.
+2. Type `/gulli`, or click the toolkit icon on the minimap.
+3. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
+4. To switch a module off, open it and flip the switch at the top right.
 
 `/gulli help` lists every command of the toolkit and of the modules you have.
 
 `/gulli questcleaner` opens a module directly, in its own window.
 
+<p align="center"><img src="docs/toolkit/setup.png" alt="The first setup window of Gulli Toolkit" width="540"></p>
 <p align="center"><img src="docs/toolkit/home.png" alt="The home page of Gulli Toolkit" width="860"></p>
 <p align="center"><img src="docs/toolkit/inside.png" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
 
@@ -99,6 +102,12 @@
 <summary><b>Do I need the toolkit?</b></summary>
 
 No. Each module is a normal addon and works alone. The toolkit only puts them in one window.
+</details>
+
+<details>
+<summary><b>Why did a module start off?</b></summary>
+
+On the first start the toolkit switches off a module when another addon you have does the same job, and says which one under it. Two addons that both sell junk or both take your mail get in each other's way. If you want ours anyway, switch it on in the first setup window, or later in `/gulli`.
 </details>
 
 <details>
