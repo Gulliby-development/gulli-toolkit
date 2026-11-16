@@ -1,9 +1,9 @@
--- The window, narrow, with three tabs. Fill: the crates in the bags to tick, the cheapest way to
--- fill each one (bags, bank, what to buy), and the two switches; Calculate and Buy are in the
--- footer. History: the crates filled, with what the auction house got for them. Favor: a goal of
--- Merchant's Favor and the cheapest crates and bundles that reach it, bought with the same Buy
--- button. A round button in the header looks at the bags again. At the auction house it opens
--- beside the auction window.
+-- The window, narrow, with four tabs. Fill: the crates in the bags to tick and the cheapest way to
+-- fill each one (bags, bank, what to buy); Calculate and Buy are in the footer. History: the
+-- crates filled, with what the auction house got for them. Favor: a goal of Merchant's Favor and
+-- the cheapest crates and bundles that reach it, bought with the same Buy button. Settings: the
+-- switches every tab uses. A round button in the header looks at the bags again. At the auction
+-- house it opens beside the auction window.
 
 local _, ns = ...
 local L = ns.L
@@ -242,11 +242,12 @@ end
 -- The footer's status line for the plan the Buy button works through.
 local function buyStatus(plan, how)
     local b, queue = ns.buy, ns.buy.queue
-    if not ns.HasAuctionator() then return L.NO_AUCTIONATOR, S.WARN
+    if ns.Scanning() then return L.SCANNING:format(math.min(ns.scan.done + 1, ns.scan.n), ns.scan.n), S.Accent()
+    elseif not ns.HasAuctionator() then return L.NO_AUCTIONATOR, S.WARN
     elseif not plan then return how
     elseif #queue == 0 then return L.NOTHING_TO_BUY, S.GOOD
     elseif b.phase == "done" then return L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD
-    elseif not ns.atAH and ns.CanBuy() then return L.NOT_AT_AH, S.WARN
+    elseif not ns.atAH and ns.CanBuy() then return plan.estimate and L.ESTIMATE or L.NOT_AT_AH, S.WARN
     elseif b.err then return itemLine(ns.Current().id, ns.Current().n) .. ": " .. L[b.err], S.BAD
     elseif b.phase == "ready" and ns.Dear() then return itemLine(ns.Current().id, ns.Current().n) .. ": " .. L.DEAR, S.WARN
     elseif b.phase ~= "idle" or b.i > 1 then
@@ -254,12 +255,13 @@ local function buyStatus(plan, how)
     end
     local total = 0
     for _, line in ipairs(queue) do total = total + line.cost end
-    return L.TOTAL:format(#queue, S.MoneyText(total)) .. S.DOT .. itemLine(ns.Current().id, ns.Current().n)
+    return L.TOTAL:format(#queue, (plan.estimate and "~" or "") .. S.MoneyText(total)) .. S.DOT
+        .. itemLine(ns.Current().id, ns.Current().n)
 end
 
 local function setBuyButton(plan, mine)
     local b, queue = ns.buy, ns.buy.queue
-    local busy = b.phase == "quote" or b.phase == "buying"
+    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning()
     buyBtn:SetText(mine and buyText() or (ns.CanBuy() and L.BUY_ASK or L.LIST))
     buyBtn:SetEnabled(mine and plan ~= nil and #queue > 0 and b.phase ~= "done" and not busy
         and (not ns.CanBuy() and ns.HasAuctionator() or ns.atAH))
@@ -276,15 +278,16 @@ local function refreshTokens()
         goalCard.rows[1].desc:SetText(held and (L.TIP_goal .. " " .. L.TOK_HAVE:format(held)) or L.TIP_goal)
     end
     tokStats.tiles[1]:Set(plan and tostring(#plan.crates) or "-")
-    tokStats.tiles[2]:Set(plan and S.MoneyText(plan.total, true) or "-")
+    local approx = plan and plan.estimate and "~" or ""
+    tokStats.tiles[2]:Set(plan and (approx .. S.MoneyText(plan.total, true)) or "-")
     local per = plan and plan.favor > 0 and math.floor(plan.total / plan.favor + 0.5) or nil
-    tokStats.tiles[3]:Set(per and S.MoneyText(per, true) or "-")
+    tokStats.tiles[3]:Set(per and (approx .. S.MoneyText(per, true)) or "-")
     tokList:SetData(ns.TokenRows(plan))
     tokEmpty:SetShown(not plan or #plan.crates == 0)
     if plan and #plan.crates == 0 then tokEmpty:Set(L.TOK_NONE, L.TOK_NONE_SUB) else tokEmpty:Set(L.TOK_EMPTY, L.TOK_EMPTY_SUB) end
     tokCard:SetTitle(L.TOK_PLAN, plan and #plan.crates > 0 and L.TOK_FAVOR:format(plan.favor) or "")
     calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
-    calcBtn:SetEnabled(true)
+    calcBtn:SetEnabled(not ns.Scanning())
     setBuyButton(plan, mine)
     local status, color
     if plan and plan.short > 0 then status, color = L.TOK_SHORT:format(plan.favor), S.WARN
@@ -299,6 +302,12 @@ function ns.Refresh()
     buyBtn:SetShown(onFill or onTokens)
     calcBtn:SetShown(onFill or onTokens)
     if onTokens then return refreshTokens() end
+    if tab == 4 then
+        skipBtn:Hide()
+        for _, row in ipairs(setCard.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+        frame.footer:SetStatus("")
+        return
+    end
     if not onFill then skipBtn:Hide(); refreshHistory(); return end
     local crates = ns.Crates()
     local hours = not ns.staleClosed and ns.HasAuctionator() and #crates > 0 and ns.StaleHours()
@@ -314,10 +323,10 @@ function ns.Refresh()
     local plan = ns.plan
     planList:SetData(ns.PlanRows(plan))
     planEmpty:SetShown(not plan or #plan.crates == 0)
-    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and S.MoneyText(plan.total) or "")
+    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and ((plan.estimate and "~" or "") .. S.MoneyText(plan.total)) or "")
 
     calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
-    calcBtn:SetEnabled(#ns.Picks(crates) > 0)
+    calcBtn:SetEnabled(#ns.Picks(crates) > 0 and not ns.Scanning())
     local mine = ns.source == "fill"
     setBuyButton(plan, mine)
     local status, color
@@ -365,12 +374,12 @@ local function build()
 
     local _, favorIcon = ns.FavorHeld()
     if favorIcon then FAVOR_ICON = favorIcon end
-    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY, L.TAB_FAVOR }, nil, function(i)
+    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY, L.TAB_FAVOR, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end, nil, { "Interface\\Icons\\INV_Crate_01", S.TAB.recent, FAVOR_ICON })
-    for i = 1, 3 do
+    end, nil, { "Interface\\Icons\\INV_Crate_01", S.TAB.recent, FAVOR_ICON, S.TAB.settings })
+    for i = 1, 4 do
         local p = CreateFrame("Frame", nil, frame.body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
         p:SetPoint("BOTTOMRIGHT")
@@ -450,21 +459,23 @@ local function build()
     crateEmpty = S.Empty(crateList)
     crateEmpty:Set(L.NO_CRATES, "")
 
+    -- Settings: the switches of every tab; a change plans the shown plan again
     local rows = {}
-    for _, key in ipairs({ "auto", "bank" }) do
-        rows[#rows + 1] = { L["OPT_" .. key], nil, function() return ns.db[key] end,
-                            function(v) ns.db[key] = v; if key == "bank" and ns.plan then ns.Calculate() end end,
+    for _, key in ipairs({ "auto", "bank", "live" }) do
+        rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
+                            function(v) ns.db[key] = v; if key ~= "auto" then ns.Replan() end end,
                             icon = ns.OPT_ICON[key] }
     end
-    setCard, h = S.SettingsCard(body, nil, rows)
-    setCard:SetPoint("BOTTOMLEFT")
-    setCard:SetPoint("BOTTOMRIGHT")
+    local sp = pages[4]
+    setCard, h = S.SettingsCard(sp, nil, rows)
+    setCard:SetPoint("TOPLEFT")
+    setCard:SetPoint("TOPRIGHT")
     setCard:SetHeight(h)
 
     planCard = S.Card(body, L.PLAN, "", "Interface\\Minimap\\Tracking\\Auctioneer")
     planCard:SetPoint("TOPLEFT", crateCard, "BOTTOMLEFT", 0, -S.GAP)
     planCard:SetPoint("TOPRIGHT", crateCard, "BOTTOMRIGHT", 0, -S.GAP)
-    planCard:SetPoint("BOTTOM", setCard, "TOP", 0, S.GAP)
+    planCard:SetPoint("BOTTOM")
     planList = S.List(planCard.body, PLAN_ROW, makePlanRow, fillPlanRow)
     planList:SetPoint("TOPLEFT")
     planList:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -478,7 +489,7 @@ function ns.Toggle()
     S.ToggleWindow(ns.Window())
 end
 
--- Opens a tab: 1 fill, 2 history, 3 Favor.
+-- Opens a tab: 1 fill, 2 history, 3 Favor, 4 settings.
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)

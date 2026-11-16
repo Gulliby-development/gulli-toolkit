@@ -86,6 +86,11 @@ T.en = {
     TOK_HOW = "Buy the crates and their bundles with the same button: one click asks the price, the next one buys.",
     TOK_HAVE = "You have %d.",
     TOK_EACH = "%d Favor each",
+    TAB_SETTINGS = "Settings",
+    OPT_live = "Read the auction listings",
+    TIP_live = "At the auction house, Calculate reads every listing of what you buy, so a big buy pays for the dearer lots too. Away from it, the plan uses Auctionator's lowest price.",
+    SCANNING = "Reading the auction: %d / %d",
+    ESTIMATE = "~ An estimate from Auctionator's lowest price. At the auction house, Calculate reads the real listings.",
 }
 
 T.de = {
@@ -165,6 +170,11 @@ T.de = {
     TOK_HOW = "Kaufe Kisten und Bündel mit demselben Knopf: ein Klick fragt den Preis, der nächste kauft.",
     TOK_HAVE = "Du hast %d.",
     TOK_EACH = "je %d Gunst",
+    TAB_SETTINGS = "Einstellungen",
+    OPT_live = "Auktionsangebote lesen",
+    TIP_live = "Im Auktionshaus liest Berechnen jedes Angebot dessen, was du kaufst, damit ein großer Kauf auch die teureren Angebote zahlt. Sonst nutzt der Plan den niedrigsten Preis von Auctionator.",
+    SCANNING = "Lese das Auktionshaus: %d / %d",
+    ESTIMATE = "~ Eine Schätzung aus dem niedrigsten Preis von Auctionator. Im Auktionshaus liest Berechnen die echten Angebote.",
 }
 
 T.es = {
@@ -244,6 +254,11 @@ T.es = {
     TOK_HOW = "Compra las cajas y sus lotes con el mismo botón: un clic pide el precio, el siguiente compra.",
     TOK_HAVE = "Tienes %d.",
     TOK_EACH = "%d de favor cada una",
+    TAB_SETTINGS = "Ajustes",
+    OPT_live = "Leer las subastas",
+    TIP_live = "En la casa de subastas, Calcular lee cada oferta de lo que compras, así una compra grande paga también las ofertas más caras. Fuera de ella, el plan usa el precio más bajo de Auctionator.",
+    SCANNING = "Leyendo la subasta: %d / %d",
+    ESTIMATE = "~ Una estimación con el precio más bajo de Auctionator. En la casa de subastas, Calcular lee las ofertas reales.",
 }
 
 T.fr = {
@@ -323,6 +338,11 @@ T.fr = {
     TOK_HOW = "Achetez les caisses et leurs lots avec le même bouton : un clic demande le prix, le suivant achète.",
     TOK_HAVE = "Vous en avez %d.",
     TOK_EACH = "%d faveur chacune",
+    TAB_SETTINGS = "Réglages",
+    OPT_live = "Lire les offres",
+    TIP_live = "À l'hôtel des ventes, Calculer lit chaque offre de ce que vous achetez, donc un gros achat paie aussi les offres plus chères. Ailleurs, le plan prend le prix le plus bas d'Auctionator.",
+    SCANNING = "Lecture des enchères : %d / %d",
+    ESTIMATE = "~ Une estimation d'après le prix le plus bas d'Auctionator. À l'hôtel des ventes, Calculer lit les vraies offres.",
 }
 
 T.pl = {
@@ -402,6 +422,11 @@ T.pl = {
     TOK_HOW = "Kupuj skrzynie i pakiety tym samym przyciskiem: jedno kliknięcie pyta o cenę, następne kupuje.",
     TOK_HAVE = "Masz %d.",
     TOK_EACH = "po %d łaski",
+    TAB_SETTINGS = "Ustawienia",
+    OPT_live = "Czytaj oferty aukcji",
+    TIP_live = "W domu aukcyjnym Oblicz czyta każdą ofertę tego, co kupujesz, więc duży zakup płaci też za droższe oferty. Poza nim plan bierze najniższą cenę z Auctionatora.",
+    SCANNING = "Czytam aukcje: %d / %d",
+    ESTIMATE = "~ Szacunek z najniższej ceny Auctionatora. W domu aukcyjnym Oblicz czyta prawdziwe oferty.",
 }
 
 T.pt = {
@@ -481,6 +506,11 @@ T.pt = {
     TOK_HOW = "Compre as caixas e os pacotes com o mesmo botão: um clique pede o preço, o seguinte compra.",
     TOK_HAVE = "Você tem %d.",
     TOK_EACH = "%d de favor cada",
+    TAB_SETTINGS = "Ajustes",
+    OPT_live = "Ler as ofertas do leilão",
+    TIP_live = "Na casa de leilões, Calcular lê cada oferta do que você compra, então uma compra grande paga também as ofertas mais caras. Fora dela, o plano usa o menor preço do Auctionator.",
+    SCANNING = "Lendo o leilão: %d / %d",
+    ESTIMATE = "~ Uma estimativa pelo menor preço do Auctionator. Na casa de leilões, Calcular lê as ofertas reais.",
 }
 
 T.ru = {
@@ -560,6 +590,11 @@ T.ru = {
     TOK_HOW = "Ящики и наборы покупаются той же кнопкой: первый клик узнаёт цену, второй покупает.",
     TOK_HAVE = "У вас %d.",
     TOK_EACH = "по %d токенов",
+    TAB_SETTINGS = "Настройки",
+    OPT_live = "Читать лоты аукциона",
+    TIP_live = "У аукциона «Посчитать» читает все лоты того, что вы покупаете, так что большая покупка учитывает и дорогие лоты. Вдали от аукциона план берёт самую низкую цену из Auctionator.",
+    SCANNING = "Читаю аукцион: %d / %d",
+    ESTIMATE = "~ Оценка по самой низкой цене Auctionator. У аукциона «Посчитать» читает настоящие лоты.",
 }
 
 T.zh = {
@@ -639,6 +674,11 @@ T.zh = {
     TOK_HOW = "用同一个按钮购买货箱和材料：第一次点击询价，第二次购买。",
     TOK_HAVE = "你有 %d。",
     TOK_EACH = "每个 %d 恩惠",
+    TAB_SETTINGS = "设置",
+    OPT_live = "读取拍卖行挂单",
+    TIP_live = "在拍卖行时，计算会读取你要买的每件物品的所有挂单，大量购买也会算上更贵的挂单。不在拍卖行时，按 Auctionator 的最低价估算。",
+    SCANNING = "正在读取拍卖行：%d / %d",
+    ESTIMATE = "~ 按 Auctionator 最低价的估算。在拍卖行点计算会读取真实挂单。",
 }
 
 ns.T = T
