@@ -75,6 +75,12 @@ From Wowhead's WoW Forever pages, counted from many players' kills. After 10 kil
 </details>
 
 <details>
+<summary><b>A dungeon has no bosses</b></summary>
+
+Wowhead has no boss list yet for the City of Dalaran, Krol'dok Stronghold and Shaper's Terrace. Their quests are there; the bosses come in a later version. Your own kills there are not counted until then.
+</details>
+
+<details>
 <summary><b>Where are the durability and food checks?</b></summary>
 
 On the home page of `/gulli`, in the **Ready** card. Its **Settings** button sets the limits.

@@ -474,12 +474,18 @@ local function makeBoss(r)
     end)
 end
 
+-- A boss's level, "??" for a skull boss (the data has 0).
+local function bossLevel(b)
+    if b.min <= 0 then return "??" end
+    return b.min == b.max and tostring(b.min) or (b.min .. "-" .. b.max)
+end
+
 local function fillBoss(r, b)
     r.b = b
     r.num:SetText(b.rare and "R" or tostring(b.n))
     r.num:SetTextColor(unpack(b.rare and S.WARN or S.Accent()))
     r.name:SetText(b.name)
-    local lv = b.min == b.max and tostring(b.min) or (b.min .. "-" .. b.max)
+    local lv = bossLevel(b)
     local parts = { L.LEVEL:format(lv) }
     if b.tag ~= "" then table.insert(parts, 1, b.tag) end
     if b.kills > 0 then parts[#parts + 1] = L.KILLS:format(b.kills) end
@@ -508,7 +514,7 @@ local function fillBossPage()
     end
     p.name:SetText(b.name)
     p.name:SetTextColor(unpack(b.rare and S.WARN or S.TEXT))
-    local lv = b.min == b.max and tostring(b.min) or (b.min .. "-" .. b.max)
+    local lv = bossLevel(b)
     local parts = { L.LEVEL:format(lv) }
     if b.tag ~= "" then table.insert(parts, 1, b.tag) end
     if b.rare then parts[#parts + 1] = L.RARE end

@@ -10,9 +10,12 @@ Its shape:
         "abilities": [[spell id, name]], "drops": [{"id", "quality", "class", "pct", "count",
         "outof"}]}], "rares": [...same...]}}}
 
-Bosses keep the snapshot's order (the order Wowhead lists them in), with rares after them.
-The snapshot is untrusted text: it is only read as JSON, never run. A drop is kept when it is
-uncommon or better, or a quest item, and its chance comes from enough kills.
+Wowhead lists every elite with a blue zone drop as a boss, and every NPC's drops include the
+world drops. So a boss is kept when Wowhead ranks it a boss (and it is not in NOT_BOSSES) or one
+of its own drops comes at BOSS_PCT or more, and a drop is kept when it is in the dungeon's own
+zone drops (or a quest item) at MIN_PCT or more, from at least MIN_OUTOF kills. Bosses go by
+level (a skull boss, level 9999, last and written as level 0), rares after them.
+The snapshot is untrusted text: it is only read as JSON, never run.
 """
 import json
 import os
@@ -24,10 +27,28 @@ OUT = os.path.join(HERE, "..", "..", "Gulli-DungeonPrep", "JournalData.lua")
 sys.path.insert(0, HERE)
 from build_data import DUNGEONS  # noqa: E402
 
+def as_int(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
 QUEST_CLASS = 12
 MIN_QUALITY = 2       # uncommon
 MIN_OUTOF = 10        # kills behind a chance
-MIN_PCT = 0.5         # rarer drops are noise
+MIN_PCT = 1           # rarer drops are noise
+BOSS_PCT = 5          # an elite with a drop this likely is a boss
+SKULL = 9999          # Wowhead's level of a skull boss
+BOSS_RANK = 3
+COMMON_SPELLS = {1604}  # Dazed: every melee mob has it
+# NPCs Wowhead ranks as bosses that are not fought there (story NPCs, items).
+NOT_BOSSES = {
+    242867,  # The Will of the Ashbringer
+    15362,   # Malfurion Stormrage
+    10162,   # Lord Victor Nefarius
+    16387,   # Atiesh
+}
 MAX_DROPS = 30        # per boss, best first
 MAX_SPELLS = 8
 
@@ -44,32 +65,42 @@ def pct_of(d):
     return float(pct or 0)
 
 
-def keep_drop(d):
+def keep_drop(d, own):
     if d.get("outof") is not None and d["outof"] < MIN_OUTOF:
         return False
     if pct_of(d) < MIN_PCT:
         return False
-    return (d.get("quality") or 0) >= MIN_QUALITY or d.get("class") == QUEST_CLASS
+    if d.get("class") == QUEST_CLASS:
+        return True
+    return as_int(d.get("id")) in own and (d.get("quality") or 0) >= MIN_QUALITY
 
 
-def as_int(v):
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return 0
+def is_boss(b, own):
+    if as_int(b.get("id")) in NOT_BOSSES:
+        return False
+    if b.get("classification") == BOSS_RANK:
+        return True
+    return any(keep_drop(d, own) and pct_of(d) >= BOSS_PCT for d in b.get("drops") or [])
 
 
-def boss_row(b, rare):
-    drops = sorted((d for d in b.get("drops") or [] if as_int(d.get("id")) > 0 and keep_drop(d)),
+def level(v):
+    v = as_int(v)
+    return 0 if v >= SKULL else v
+
+
+
+
+def boss_row(b, rare, own):
+    drops = sorted((d for d in b.get("drops") or [] if as_int(d.get("id")) > 0 and keep_drop(d, own)),
                    key=lambda d: (-(d.get("quality") or 0), -pct_of(d), as_int(d["id"])))[:MAX_DROPS]
     loot = ",".join("{%d,%d,%s}" % (as_int(d["id"]), as_int(d.get("quality")),
                                     ("%.1f" % pct_of(d)).rstrip("0").rstrip("."))
                     for d in drops)
     spells = [as_int(a[0] if isinstance(a, list) else a) for a in b.get("abilities") or []]
-    spells = ",".join(str(s) for s in [s for s in spells if s > 0][:MAX_SPELLS])
+    spells = ",".join(str(s) for s in [s for s in spells if s > 0 and s not in COMMON_SPELLS][:MAX_SPELLS])
     return "{%d,%s,%s,%d,%d,%d,%d,{%s},{%s}}" % (
-        as_int(b["id"]), lua_str(b.get("name")), lua_str(b.get("tag")), as_int(b.get("minLevel")),
-        as_int(b.get("maxLevel")), as_int(b.get("displayId")), 1 if rare else 0, spells, loot)
+        as_int(b["id"]), lua_str(b.get("name")), lua_str(b.get("tag")), level(b.get("minLevel")),
+        level(b.get("maxLevel")), as_int(b.get("displayId")), 1 if rare else 0, spells, loot)
 
 
 def build(snapshot):
@@ -89,8 +120,12 @@ def build(snapshot):
         if not d:
             missing.append(key)
             continue
-        rows = [boss_row(b, False) for b in d.get("bosses") or [] if as_int(b.get("id")) > 0]
-        rows += [boss_row(b, True) for b in d.get("rares") or [] if as_int(b.get("id")) > 0]
+        own = {as_int(z.get("id")) for z in d.get("zoneDrops") or []}
+        bosses = [b for b in d.get("bosses") or [] if as_int(b.get("id")) > 0 and is_boss(b, own)]
+        bosses.sort(key=lambda b: (as_int(b.get("minLevel")), as_int(b.get("maxLevel"))))
+        rows = [boss_row(b, False, own) for b in bosses]
+        rows += [boss_row(b, True, own) for b in d.get("rares") or []
+                 if as_int(b.get("id")) > 0 and as_int(b.get("id")) not in NOT_BOSSES]
         if not rows:
             missing.append(key)
             continue

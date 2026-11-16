@@ -397,6 +397,31 @@ test("the wishlist: the Loot list puts it first, the filter shows only it", func
     eq(GulliDungeonJournal.DropsOf(5193)[1].key, "DM", "for Gulli Tooltip")
 end)
 
+test("the journal data: bosses by level, the skull boss at level 0, no world drops", function()
+    Fake({})
+    local ns = Load()
+    local dm = ns.Data.boss.DM
+    assert(dm and #dm >= 8, "the Deadmines has its bosses")
+    eq(dm[1][2], "Rhahk'Zor", "the first boss first")
+    local names = {}
+    for _, b in ipairs(ns.Bosses("DM")) do names[#names + 1] = b.name end
+    eq(names[#names], "Miner Johnson", "the rare comes last")
+    eq(ns.Bosses("DM")[#names - 1].name, "Edwin VanCleef", "the last boss before the rares")
+    for key, list in pairs(ns.Data.boss) do
+        local known = false
+        for _, d in ipairs(ns.Data.dungeons) do if d[1] == key then known = true end end
+        assert(known, key .. " is a DungeonPrep dungeon")
+        for _, b in ipairs(list) do
+            for _, l in ipairs(b[9]) do
+                assert(l[1] ~= 1210 and l[1] ~= 7909, key .. ": " .. b[2] .. " has a world drop")
+                assert(l[3] >= 1 and l[3] <= 100, key .. ": a chance out of range")
+            end
+            for _, s in ipairs(b[8]) do assert(s ~= 1604, "Dazed is no boss spell") end
+        end
+    end
+    eq(ns.Data.boss.THANES[1][4], 0, "a Forever boss of skull level")
+end)
+
 -- A corpse with these items: { { link, quality } }, from one creature GUID.
 local function corpse(guid, loot)
     GetNumLootItems = function() return #loot end
