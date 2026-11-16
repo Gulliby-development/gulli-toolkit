@@ -738,7 +738,7 @@ SLASH_GULLIDUNGEONPREP3 = "/gullidungeonjournal"
 SlashCmdList.GULLIDUNGEONPREP = function(msg)
     msg = strtrim(msg or ""):upper()
     for _, d in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do
-        if d.key == msg then ns.selected, ns.openQuest = d.key, nil end
+        if d.key == msg then ns.selected, ns.openQuest, ns.home = d.key, nil, false end
     end
     ns.Toggle()
 end

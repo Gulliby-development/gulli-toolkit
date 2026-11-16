@@ -264,7 +264,7 @@ function ns.CheckEnter()
     if not d then warnedFor = nil return end
     if warnedFor == d.key then return end
     warnedFor = d.key
-    ns.selected, ns.openQuest = d.key, nil
+    ns.selected, ns.openQuest, ns.home = d.key, nil, false
     if not ns.Get("warnEnter") then return end
     local q = ns.Quests(d.key, UnitLevel("player") or 1)
     local outside = 0
