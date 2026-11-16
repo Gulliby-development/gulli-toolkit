@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-FarmTrack
+## Notes: Counts what you farm this session (cloth, ore, herbs or gold) against a goal, in a small panel on the screen. /gft
+## Notes-ruRU: Считает, что ты нафармил за сессию (ткань, руду, травы или золото), с целью, в маленькой панели на экране. /gft
+## Notes-deDE: Zählt, was du in dieser Sitzung farmst (Stoff, Erz, Kräuter oder Gold), mit Ziel, in einer kleinen Leiste. /gft
+## Notes-esES: Cuenta lo que farmeas en la sesión (tela, mineral, hierbas u oro) con una meta, en un panel pequeño. /gft
+## Notes-esMX: Cuenta lo que farmeas en la sesión (tela, mineral, hierbas u oro) con una meta, en un panel pequeño. /gft
+## Notes-frFR: Compte ce que vous farmez pendant la session (tissu, minerai, herbes ou or) avec un objectif, dans un petit panneau. /gft
+## Notes-ptBR: Conta o que você farma na sessão (tecido, minério, ervas ou ouro) com uma meta, num painel pequeno. /gft
+## Notes-zhCN: 在小面板中统计本次刷到的布料、矿石、草药或金币，并可设定目标。 /gft
+## Notes-zhTW: 在小面板中统计本次刷到的布料、矿石、草药或金币，并可设定目标。 /gft
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-FarmTrack\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: FarmTrack
+## SavedVariables: GulliFarmTrackDB
+## SavedVariablesPerCharacter: GulliFarmTrackCharDB
+## AddonCompartmentFunc: GulliFarmTrack_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

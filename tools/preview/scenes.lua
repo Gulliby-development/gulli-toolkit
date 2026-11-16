@@ -774,4 +774,33 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.Window():Show()
         ns.ShowTab(2)
     end } }
+-- FarmTrack: an hour of farming Mageweave and gold, with a goal for each, plus other loot.
+local function ftItems()
+    local names = { [4338] = "Mageweave Cloth", [4306] = "Silk Cloth", [3858] = "Mithril Ore", [4304] = "Thick Leather",
+                    [8838] = "Sungrass", [10285] = "Shadow Silk" }
+    local icons = { [4338] = "INV_Fabric_Mageweave_01", [4306] = "INV_Fabric_Silk_01", [3858] = "INV_Ore_Mithril_02",
+                    [4304] = "INV_Misc_LeatherScrap_08", [8838] = "INV_Misc_Herb_18", [10285] = "INV_Fabric_Silk_02" }
+    C_Item.GetItemNameByID = function(id) return names[id] end
+    C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (icons[id] or "INV_Misc_QuestionMark") end
+end
+local function ftPlay(ns, W)
+    ftItems()
+    ns.AddTarget("item", 4338, 200)
+    ns.AddTarget("gold", nil, 500000)
+    for i = 1, 30 do
+        W.now = i * 110
+        W.Loot(4338, 3 + i % 3)
+        if i % 4 == 0 then W.Loot(4306, 2) end
+        if i % 7 == 0 then W.Loot(10285, 1) end
+        if i % 5 == 0 then W.Loot(8838, 1) end
+        W.Money(2150 + i * 37)
+    end
+    ns.Refresh()
+end
+S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle() end },
+    settings = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(2) end },
+    panel = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.AddTarget("item", 3858) ; ns.Refresh() end,
+              crop = "GulliFarmTrackPanel" },
+    empty = { spec = { now = 0 }, open = function(ns) ns.Toggle() end } }
+
 return S

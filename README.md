@@ -44,6 +44,7 @@
 | [Craft Profit](docs/craftprofit/README.md) | Profitable crafts and the cheapest way to level a profession, drawn as a route: where to buy, what to craft, where to sell. | `/gcp` |
 | [Legacy](docs/legacy/README.md) | The fastest next steps to your Legacy points and the next reward of the Progress Track, on every character. | `/glg` |
 | [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, and a history of the crates you filled. | `/gcr` |
+| [Farm Tracker](docs/farmtrack/README.md) | A small panel that counts what you farm this session (cloth, ore, herbs or gold), the rate per hour and the time to your goal. | `/gft` |
 
 ## Features
 
