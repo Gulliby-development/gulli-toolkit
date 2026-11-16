@@ -124,18 +124,42 @@ test("an older save's list becomes the first set; sets switch and copy", functio
     assert(not ns.DeleteSet(), "the last set stays")
 end)
 
-test("best water counts every water and buys the best one for the level", function()
-    Fake({ level = 30, bags = { [1179] = 6, [1205] = 4 },
-           vendor = { { 159, 5 }, { 1179, 20 }, { 1205, 50 }, { 1645, 100 } } })
+test("best water buys only the newest water for the level", function()
+    Fake({ level = 30, bags = { [1179] = 6, [1708] = 4 },
+           vendor = { { 159, 5 }, { 1179, 20 }, { 1205, 50 }, { 1708, 80 }, { 1645, 100 } } })
     local ns = Load()
     eq(ns.AddFromText("water"), "best:water")
     ns.Set("best:water", 30)
-    eq(ns.Have("best:water"), 10)
+    eq(ns.Have("best:water"), 4, "old water does not count")
     local plan = ns.Plan()
     eq(#plan, 1)
-    eq(plan[1].id, 1205, "level 25 water is not sold here, so the level 15 one")
-    eq(plan[1].buy, 20)
+    eq(plan[1].id, 1708, "level 25 water, not the level 35 one")
+    eq(plan[1].buy, 26)
     eq(ns.BestItem("water"), 1708)
+end)
+
+test("a vendor with only old water or arrows sells nothing", function()
+    Fake({ level = 40, vendor = { { 159, 5 }, { 1179, 20 }, { 2512, 10 }, { 3030, 100 } } })
+    local ns = Load()
+    ns.Set("best:water", 20)
+    ns.Set("best:arrow", 200)
+    eq(#ns.Plan(), 0, "Refreshing Spring Water and Sharp Arrows stay at the vendor")
+end)
+
+test("with lower on, one tier below the level is bought and counted too", function()
+    Fake({ level = 40, bags = { [1708] = 5 }, vendor = { { 159, 5 }, { 1205, 50 }, { 1708, 80 }, { 3030, 100 } } })
+    local ns = Load()
+    ns.db.lower = true
+    ns.Set("best:water", 20)
+    ns.Set("best:arrow", 200)
+    eq(ns.Have("best:water"), 5)
+    local plan = ns.Plan()
+    table.sort(plan, function(x, y) return x.id < y.id end)
+    eq(#plan, 2)
+    eq(plan[1].id, 1708, "level 25 water, one tier below level 35")
+    eq(plan[2].id, 3030, "level 25 arrows, one tier below level 40")
+    ns.db.lower = false
+    eq(#ns.Plan(), 0)
 end)
 
 test("add by link, id and amount", function()

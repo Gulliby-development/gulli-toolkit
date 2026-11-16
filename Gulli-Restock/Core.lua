@@ -20,9 +20,9 @@ ns.PRESETS = {
     ROGUE = { { 5140, 10, 22 } },
 }
 
--- "Best for my level" entries: vendor items by the level they need. The entry counts every
--- item of its kind in the bags (old water still counts), and buys the best one the open
--- vendor sells for the character's level. Keys in a list are "best:<kind>".
+-- "Best for my level" entries: vendor items by the level they need. The entry counts and buys
+-- only the newest tier for the character's level (with `lower`, also the tier before it), so a
+-- vendor that sells only old water sells nothing to a level 40. Keys in a list are "best:<kind>".
 ns.BEST = {
     water = { { 159, 1 }, { 1179, 5 }, { 1205, 15 }, { 1708, 25 }, { 1645, 35 }, { 8766, 45 } },
     food = { { 4540, 1 }, { 4541, 5 }, { 4542, 15 }, { 4544, 25 }, { 4601, 35 }, { 8950, 45 },     -- bread
@@ -105,23 +105,43 @@ end
 
 local function isBest(key) return type(key) == "string" and key:match("^best:(%a+)$") end
 
--- How many the bags hold of an entry: one item, or every item of a "best" kind.
+-- The items of a "best" kind this character uses: id -> level. Only the newest tier for the
+-- level, and with `lower` the tier before it.
+function ns.BestIds(kind)
+    local level = UnitLevel("player") or 1
+    local levels = {}
+    for _, e in ipairs(ns.BEST[kind] or {}) do
+        if e[2] <= level then levels[e[2]] = true end
+    end
+    local sorted = {}
+    for l in pairs(levels) do sorted[#sorted + 1] = l end
+    table.sort(sorted, function(a, b) return a > b end)
+    local keep = { [sorted[1] or -1] = true }
+    if ns.db and ns.db.lower and sorted[2] then keep[sorted[2]] = true end
+    local ids = {}
+    for _, e in ipairs(ns.BEST[kind] or {}) do
+        if keep[e[2]] then ids[e[1]] = e[2] end
+    end
+    return ids
+end
+
+-- How many the bags hold of an entry: one item, or the items of a "best" kind it uses.
 function ns.Have(key, bank)
     local kind = isBest(key)
     if not kind then return count(key, bank) end
     local n = 0
-    for _, e in ipairs(ns.BEST[kind] or {}) do n = n + count(e[1], bank) end
+    for id in pairs(ns.BestIds(kind)) do n = n + count(id, bank) end
     return n
 end
 
 -- The item a "best" kind buys for this character, from `offer` (id -> true) when given.
 function ns.BestItem(kind, offer)
-    local level = UnitLevel("player") or 1
-    local best
+    local best, bestLevel
     for _, e in ipairs(ns.BEST[kind] or {}) do
-        if e[2] <= level and (not offer or offer[e[1]]) and (not best or e[2] > best[2]) then best = e end
+        local level = ns.BestIds(kind)[e[1]]
+        if level and (not offer or offer[e[1]]) and (not best or level > bestLevel) then best, bestLevel = e[1], level end
     end
-    return best and best[1]
+    return best
 end
 
 function ns.EntryName(key)
@@ -412,7 +432,7 @@ function ns.BankPlan()
         local bank = ns.Have(key, true) - have
         local ids = {}
         local kind = isBest(key)
-        if kind then for _, e in ipairs(ns.BEST[kind]) do ids[e[1]] = true end else ids[key] = true end
+        if kind then ids = ns.BestIds(kind) else ids[key] = true end
         local take = math.max(0, math.min(want - have, bank))
         local put = ns.db.deposit and math.max(0, have - want) or 0
         if take > 0 or put > 0 then sum[#sum + 1] = { key = key, take = take, put = put } end
@@ -563,7 +583,7 @@ GulliRestock.Missing = function() return ns.char and ns.Missing() or {} end
 
 -- Events -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { auto = false, deposit = false, reserve = 0, forecast = true }
+ns.DEFAULTS = { auto = false, deposit = false, reserve = 0, forecast = true, lower = false }
 
 local pending = false
 local f = CreateFrame("Frame")
@@ -675,6 +695,7 @@ ns.OPT_ICON = {
     deposit = "Interface\\Minimap\\Tracking\\Banker",
     forecast = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     reserve = "Interface\\Icons\\INV_Misc_Coin_02",
+    lower = "Interface\\Icons\\INV_Drink_07",
 }
 
 local function option(key, label)
@@ -697,7 +718,8 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/grs",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
-        options = { option("auto", ns.L.AUTO), option("deposit", ns.L.OPT_DEPOSIT), option("forecast", ns.L.OPT_FORECAST) },
+        options = { option("auto", ns.L.AUTO), option("deposit", ns.L.OPT_DEPOSIT), option("forecast", ns.L.OPT_FORECAST),
+                    option("lower", ns.L.OPT_LOWER) },
         summary = function()
             if not ns.char then return nil end
             local miss = ns.Missing()
