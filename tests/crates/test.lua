@@ -648,6 +648,86 @@ test("the Favor tab plans for the player's level and buys through the same butto
     assert(ns.tokenPlan ~= nil, "the Favor plan stays")
 end)
 
+test("the price of n units walks up the auction lots", function()
+    Fake({})
+    local ns = Load()
+    local lots = { { 5, 10 }, { 50, 100 } }
+    eq(ns.LadderPrice(lots, 10, 0), 5)
+    eq(ns.LadderPrice(lots, 10, 10), 50, "the next ten take the dearer lot")
+    eq(ns.LadderPrice(lots, 20, 0), 27.5)
+    eq(ns.LadderPrice(lots, 1, 110), nil, "more than is listed")
+    eq(ns.LadderPrice({}, 1, 0), nil)
+end)
+
+test("when the cheap lots run out, the Favor plan takes another crate", function()
+    Fake({})
+    local ns = Load()
+    local FAV2 = { [A] = 10, [B] = 10 }
+    local bundles = { [A] = { { X, 10 } }, [B] = { { Y, 10 } } }
+    local lots = { [X] = { { 5, 20 }, { 50, 100 } } }
+    local function price(id, n, skip)
+        if lots[id] then return ns.LadderPrice(lots[id], n or 1, skip or 0) end
+        return ({ [A] = 100, [B] = 100, [Y] = 10 })[id]
+    end
+    local plan = ns.TokenPlan(30, { A, B }, function(id) return FAV2[id] end, function(id) return bundles[id] end,
+        function() return 0, 0 end, price, true, function() return 0 end)
+    local n = {}
+    for _, e in ipairs(plan.crates) do n[e.crate] = (n[e.crate] or 0) + 1 end
+    eq(n[A], 2, "two A while the cheap herbs last")
+    eq(n[B], 1, "then one B, not a third A at the dear lot")
+    eq(plan.total, 150 + 150 + 200)
+end)
+
+local function liveFake(extra)
+    local spec = { bags = { [FLOWER] = 2 }, names = names(), prices = { [WB] = 300, [FB] = 310, [PL] = 900, [AT] = 900 },
+                   lots = { [WB] = { { 300, 10 }, { 2000, 100 } }, [FB] = { { 310, 100 } } } }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    Fake(spec)
+    return Load()
+end
+
+test("at the auction house Calculate reads the lots of what it buys and plans again", function()
+    local ns = liveFake()
+    ns.Calculate()
+    assert(ns.plan.estimate, "away from the auction house the plan is an estimate")
+    eq(#W.searches, 0, "no search away from the auction house")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    assert(ns.Scanning(), "the auction house reads the lots")
+    W.AnswerSearches()
+    assert(not ns.Scanning())
+    eq(W.searches[1], WB)
+    eq(W.searches[2], FB, "the second plan buys Firebloom, so it is read too")
+    eq(#W.searches, 2)
+    eq(ns.plan.crates[1].bundle[1], WB)
+    eq(ns.plan.crates[2].bundle[1], FB, "only ten Wintersbite are cheap")
+    eq(ns.plan.total, 3000 + 3100)
+    assert(not ns.plan.estimate, "every price comes from the lots")
+end)
+
+test("the lots switch and closing the auction house stop the reading", function()
+    local ns = liveFake({ db = { live = false } })
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Calculate()
+    eq(#W.searches, 0, "switched off")
+    assert(ns.plan.estimate)
+    ns.db.live = true
+    ns.Calculate()
+    eq(#W.searches, 1)
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    assert(not ns.Scanning(), "closing stops it")
+    W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", WB)
+    W.RunTimers()
+    eq(#W.searches, 1, "no search after closing")
+end)
+
+test("a search for another item (the player's own) is not taken for ours", function()
+    local ns = liveFake()
+    W.Fire("AUCTION_HOUSE_SHOW")
+    W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 12345)
+    eq(ns.lots[12345], nil)
+    assert(ns.Scanning())
+end)
+
 test("the setting from 1.4.0 is dropped", function()
     Fake({ db = { favor = 7 } })
     local ns = Load()

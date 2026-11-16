@@ -784,4 +784,11 @@ local function crFavorOpen(ns, W)
 end
 S.crates.favor = { spec = crFavor(), open = crFavorOpen }
 S.crates.favor_ru = { spec = crFavor("ruRU"), open = crFavorOpen }
+local function crSettings(ns, W)
+    crIcons(W)
+    ns.Window():Show()
+    ns.ShowTab(4)
+end
+S.crates.settings = { spec = crSpec(), open = crSettings }
+S.crates.settings_ru = { spec = crSpec("ruRU"), open = crSettings }
 return S
