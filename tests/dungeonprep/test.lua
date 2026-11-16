@@ -17,6 +17,12 @@ test("the data lists the dungeons in level order, each with its quests", functio
     eq(#d, 28, "19 classic and 9 Forever dungeons")
     for _, x in ipairs(d) do assert(ns.Data.byDungeon[x.key], "no quests for " .. x.key) end
     for i = 2, #d do assert(d[i].min >= d[i - 1].min, "level order") end
+    -- Quests filed under a dungeon's second zone id (Uldaman 1517, Razorfen Kraul 1717).
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    for _, id in ipairs({ 2342, 709, 2418, 2279, 17 }) do assert(has("ULDA", id), "Uldaman quest " .. id) end
+    assert(has("RFK", 1221), "Razorfen Kraul quest 1221")
 end)
 
 test("the suggestion is the highest dungeon that fits the level", function()
@@ -553,6 +559,24 @@ test("dungeon pictures: the journal banner by instance, else a file; Forever dun
     eq(#ns.Portraits("THANES"), 0)
     eq(ns.Portraits("ZF")[2], "Interface\\LFGFrame\\LFGIcon-ZulFarak")
     for key in pairs(ns.ART) do assert(ns.ICONS[key], "an icon behind the picture of " .. key) end
+end)
+
+test("the journal opens on the dungeon grid, those for the level first; a tile opens the dungeon", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    ns.Toggle()
+    eq(ns.home, true, "the grid first")
+    local order = ns.GridOrder(ns.Dungeons(20))
+    assert(order[1].fits, "a dungeon for the level comes first")
+    local seenOther = false
+    for _, d in ipairs(order) do
+        if not d.fits then seenOther = true end
+        assert(not (seenOther and d.fits), "every fitting dungeon before the others")
+    end
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    eq(ns.home, false, "a slash key opens the dungeon")
+    eq(ns.selected, "DM")
 end)
 
 W.finish()

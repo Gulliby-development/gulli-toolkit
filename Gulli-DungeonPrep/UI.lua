@@ -10,6 +10,7 @@ local S = ns.Skin
 
 local frame, dungeons, list, tabs, search, entranceBtn, settings, questPage, listCard
 local detail, head, filterRow, guideBtn, bossPage, lootPage
+local grid, leftCard, areaFrame, homeBtn
 local filters, lootFilters = {}, {}
 local counts = {}
 local bossCache = {}
@@ -82,7 +83,7 @@ local function makeDungeon(r)
     r.click:SetAllPoints()
     r.click:SetScript("OnClick", function(self)
         ns.selected = self:GetParent().d.key
-        ns.openQuest = nil
+        ns.openQuest, ns.home = nil, false
         ns.Refresh()
     end)
     -- What waits there.
@@ -120,6 +121,122 @@ local function fillDungeon(r, d)
     r.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 12) .. " " .. n) or "")
     r.count:SetTextColor(unpack((c and c.log > 0) and S.Accent() or S.GOOD))
     r:SetSelected(d.key == ns.selected)
+end
+
+-- The start page: every dungeon as a big banner tile, three to a row, the ones for the
+-- player's level first. A click opens the dungeon's pages with the short list on the left.
+local GRID_COLS, TILE_H = 3, 92
+local TILE_TC = { 0, 0.68359375, 0.12, 0.6 }
+
+local function makeTile(parent)
+    local t = CreateFrame("Frame", nil, parent)
+    S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    t.art = t:CreateTexture(nil, "ARTWORK", nil, -2)
+    t.art:SetPoint("TOPLEFT", 1, -1)
+    t.art:SetPoint("BOTTOMRIGHT", -1, 1)
+    S.RoundMask(t, t.art, S.ROUND_SQ)
+    if t.art.SetGradient and CreateColor then
+        t.art:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0.15), CreateColor(1, 1, 1, 0.85))
+    end
+    t.icon = S.IconBox(t, 40)
+    t.icon:SetPoint("LEFT", 12, 0)
+    t.name = S.Text(t, 14)
+    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 0)
+    t.name:SetPoint("RIGHT", -10, 0)
+    t.name:SetJustifyH("LEFT")
+    t.name:SetWordWrap(false)
+    t.range = S.Text(t, 12)
+    t.range:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -6)
+    t.count = S.Text(t, 12)
+    t.count:SetPoint("BOTTOMRIGHT", -12, 10)
+    t.count:SetJustifyH("RIGHT")
+    t.click = CreateFrame("Button", nil, t)
+    t.click:SetAllPoints()
+    t.click:SetScript("OnClick", function(self)
+        local d = self:GetParent().d
+        if not d then return end
+        ns.selected, ns.openQuest, ns.home = d.key, nil, false
+        ns.Refresh()
+    end)
+    t.click:SetScript("OnEnter", function(self) S.SetBorder(self:GetParent(), S.Accent()) end)
+    t.click:SetScript("OnLeave", function(self) S.SetBorder(self:GetParent(), S.CARD_EDGE) end)
+    return t
+end
+
+local function fillTile(t, d)
+    t.d = d
+    if not d then t:Hide() return end
+    t:Show()
+    setPortrait(t.icon, d.key)
+    t.name:SetText(ns.DungeonName(d))
+    t.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
+    t.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
+    t.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
+    if setFile(t.art, ns.Banner(d.key)) then
+        t.art:SetTexCoord(unpack(TILE_TC))
+        t.art:SetAlpha(d.fits and 1 or 0.55)
+    else
+        t.art:SetTexture(ns.Icon(d.key))
+        t.art:SetTexCoord(0.1, 0.9, 0.3, 0.7)
+        t.art:SetAlpha(d.fits and 0.3 or 0.18)
+    end
+    local c = counts[d.key]
+    local n = c and (c.log + c.take) or 0
+    t.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 14) .. " " .. n) or "")
+    t.count:SetTextColor(unpack((c and c.log > 0) and S.Accent() or S.GOOD))
+end
+
+local function makeGridRow(r)
+    r.line:Hide()
+    r.title = S.Text(r, 11, S.Accent())
+    r.title:SetPoint("BOTTOMLEFT", 4, 4)
+    r.title:SetPoint("RIGHT", -4, 0)
+    r.title:SetJustifyH("LEFT")
+    r.title:SetWordWrap(false)
+    r.tiles = {}
+    for i = 1, GRID_COLS do r.tiles[i] = makeTile(r) end
+    r:SetScript("OnSizeChanged", function(self, w)
+        local tw = ((w or 0) - (GRID_COLS - 1) * S.GAP) / GRID_COLS
+        for i, t in ipairs(self.tiles) do
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", (i - 1) * (tw + S.GAP), 0)
+            t:SetSize(math.max(tw, 1), TILE_H)
+        end
+    end)
+end
+
+local function fillGridRow(r, row)
+    r.title:SetText(row.title and S.Upper(row.title) or "")
+    local w = r:GetWidth()
+    if not w or w <= 1 then w = (grid and grid:GetWidth()) or 800 end
+    r:GetScript("OnSizeChanged")(r, w)
+    for i = 1, GRID_COLS do fillTile(r.tiles[i], row[i]) end
+end
+
+-- Dungeons for the player's level first, each part by level.
+function ns.GridOrder(all)
+    local list = {}
+    for _, d in ipairs(all) do list[#list + 1] = d end
+    table.sort(list, function(a, b)
+        if (a.fits and 1 or 0) ~= (b.fits and 1 or 0) then return a.fits and true or false end
+        if a.min ~= b.min then return a.min < b.min end
+        return a.key < b.key
+    end)
+    return list
+end
+
+local function fillGrid(all)
+    local rows, row, part = {}, nil, nil
+    for _, d in ipairs(ns.GridOrder(all)) do
+        if d.fits ~= part then
+            part = d.fits
+            rows[#rows + 1] = { title = part and L.GRID_FITS or L.GRID_OTHER }
+            row = nil
+        end
+        if not row or #row == GRID_COLS then row = {}; rows[#rows + 1] = row end
+        row[#row + 1] = d
+    end
+    grid.list:SetData(rows)
 end
 
 function ns.DiffColor(key) return ns.DIFF_COLOR[key] or S.TEXT end
@@ -195,20 +312,42 @@ local function onRowClick(self, button)
     ns.OpenQuest(q.id)
 end
 
+-- Quests are cards: a status icon, the name, a status tag, the levels and the chain, and what
+-- comes next (the earlier quest to do first, where to hand in). Headers and route stops stay short.
+local HEAD_H, STOP_H, CARD_H = 28, 40, 64
+local STATUS = {
+    log = { "Q_LOG", S.TAB.quests }, take = { "Q_TAKE", TI .. "INV_Misc_Note_01" },
+    later = { "Q_LATER", ACT_ICON.later }, done = { "Q_DONE", TI .. "INV_Misc_Ribbon_01" },
+    hidden = { "Q_HIDDEN", ACT_ICON.hide },
+}
+local function rowHeight(item)
+    if item.header then return HEAD_H end
+    if item.stop then return STOP_H end
+    return CARD_H
+end
+
 local function makeRow(r)
     r.num = S.Text(r, 12, S.Accent())
     r.num:SetPoint("LEFT", 10, 0)
     r.num:SetWidth(18)
+    r.badge = S.IconBox(r, 30)
+    r.badge:SetPoint("LEFT", 10, 0)
+    r.tag = S.Text(r, 10)
+    r.tag:SetPoint("TOPRIGHT", -10, -9)
+    r.tag:SetJustifyH("RIGHT")
+    r.tag:SetWordWrap(false)
     r.text = S.Text(r, 12)
     r.text:SetWordWrap(false)
     r.sub = S.Text(r, 11, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
-    r.sub:SetPoint("RIGHT", r.text, "RIGHT")
     r.sub:SetWordWrap(false)
+    r.chain = S.Text(r, 11, S.FAINT)
+    r.chain:SetPoint("TOPLEFT", r.sub, "BOTTOMLEFT", 0, -3)
+    r.chain:SetWordWrap(false)
     r.rewards = {}
     for i = 1, REWARD_ICONS do
         local ic = S.IconBox(r, 20)
-        ic:SetPoint("RIGHT", -8 - (REWARD_ICONS - i) * 24, 0)
+        ic:SetPoint("BOTTOMRIGHT", -10 - (REWARD_ICONS - i) * 24, 8)
         r.rewards[i] = ic
     end
     r.click = CreateFrame("Button", nil, r)
@@ -235,31 +374,43 @@ local function setRewards(r, q)
     return shown
 end
 
+-- A plain row (a header or a route stop): no card, no badge, no tag.
+local function plainRow(r)
+    S.Fill(r, S.CLEAR)
+    S.SetBorder(r, S.CLEAR)
+    r.line:Show()
+    r.badge:Hide()
+    r.tag:SetText("")
+    r.chain:SetText("")
+    r.sub:ClearAllPoints()
+    r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
+    r.sub:SetPoint("RIGHT", r.text, "RIGHT")
+end
+
 local function fillRow(r, item)
     r.item = item
     r.text:ClearAllPoints()
     r.num:SetText("")
     setRewards(r, nil)
     if item.header then
-        S.Fill(r, S.RAISED)
+        plainRow(r)
         r.text:SetPoint("LEFT", 10, 0)
         r.text:SetPoint("RIGHT", -8, 0)
-        r.text:SetTextColor(unpack(item.toggleHidden and S.MUTED or S.TEXT))
-        r.text:SetText(item.text)
+        r.text:SetTextColor(unpack(item.toggleHidden and S.MUTED or S.Accent()))
+        r.text:SetText(S.Upper(item.text))
         r.sub:SetText("")
         return
     end
-    local indent = (item.indent or item.stop) and 32 or 10
-    S.Fill(r, S.CLEAR)
     local stop = item.stop
     if stop then
-        r.text:SetPoint("TOPLEFT", indent, -5)
+        plainRow(r)
+        r.text:SetPoint("TOPLEFT", 32, -5)
         r.text:SetPoint("RIGHT", -8, 0)
         r.num:SetText(item.n)
         r.text:SetTextColor(unpack(stop.entrance and S.Accent() or S.TEXT))
         if stop.inside then
             r.text:ClearAllPoints()
-            r.text:SetPoint("LEFT", indent, 0)
+            r.text:SetPoint("LEFT", 32, 0)
             r.text:SetPoint("RIGHT", -8, 0)
             r.text:SetText(L.INSIDE)
             r.sub:SetText("")
@@ -275,26 +426,55 @@ local function fillRow(r, item)
         r.sub:SetText(at .. "  ·  " .. L.STOP_PIN)
         return
     end
+    -- A quest card.
     local q = item.quest
+    local group = item.hidden and "hidden" or item.group
+    local status = STATUS[group] or STATUS.take
+    local faded = group == "later" or group == "hidden" or group == "done"
+    S.Fill(r, S.RAISED)
+    S.SetBorder(r, S.CARD_EDGE)
+    r.line:Hide()
+    local left = item.indent and 32 or 10
+    r.badge:ClearAllPoints()
+    r.badge:SetPoint("TOPLEFT", left, -10)
+    r.badge:Show()
+    r.badge:SetIcon(status[2])
+    r.badge:SetAlpha(faded and 0.55 or 1)
+    local tagColor = (group == "log" and S.Accent()) or (group == "take" and S.GOOD)
+        or (group == "later" and S.WARN) or S.MUTED
+    r.tag:SetText(S.Upper(L[status[1]]))
+    r.tag:SetTextColor(unpack(tagColor))
     local icons = setRewards(r, q)
-    r.text:SetPoint("TOPLEFT", indent, -5)
-    r.text:SetPoint("RIGHT", -12 - icons * 24, 0)
+    r.text:SetPoint("TOPLEFT", r.badge, "TOPRIGHT", 10, 1)
+    r.text:SetPoint("RIGHT", r.tag, "LEFT", -8, 0)
     local diff = ns.Difficulty(q.level, ns.level or 1)
-    r.text:SetTextColor(unpack((item.group == "later" or item.hidden) and S.MUTED or ns.DiffColor(diff)))
-    r.text:SetText("[" .. q.level .. "] " .. q.name)
-    local parts = {}
-    if item.group == "take" then
-        parts[1] = L["DIFF_" .. diff]
-    elseif item.group == "later" then
-        parts[1] = q.why == "WHY_LEVEL" and L.WHY_LEVEL:format(q.minLevel) or ns.NeedText(q.need)
-    elseif item.group == "log" then
-        parts[1] = L.IN_LOG
-        if q.turnin and q.turnin.who ~= "" then parts[2] = L.HAND_TO:format(q.turnin.who) end
-        local others = ns.GroupOn(q.id)
-        if #others > 0 then parts[#parts + 1] = L.ALSO:format(table.concat(others, ", ")) end
-    end
-    if q.steps and q.steps > 1 then table.insert(parts, 1, L.STEP:format(q.step, q.steps)) end
+    r.text:SetTextColor(unpack(faded and S.MUTED or S.TEXT))
+    r.text:SetText(q.name)
+    r.sub:ClearAllPoints()
+    r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -4)
+    r.sub:SetPoint("RIGHT", -12 - icons * 24, 0)
+    r.chain:SetPoint("RIGHT", -12 - icons * 24, 0)
+    -- The quest's level in its colour, the level it opens at, the step of its chain.
+    local parts = { S.Hex(ns.DiffColor(diff)) .. L.LEVEL:format(q.level) .. "|r" }
+    if q.minLevel and q.minLevel > 0 then parts[2] = L.FROM_LEVEL:format(q.minLevel) end
+    if q.steps and q.steps > 1 then parts[#parts + 1] = L.STEP:format(q.step, q.steps) end
     r.sub:SetText(table.concat(parts, "  ·  "))
+    -- What comes next: the earlier quest first, where to hand in, how hard.
+    local ahead = {}
+    if group == "take" then
+        ahead[1] = L["DIFF_" .. diff]
+        -- Under a route stop the giver is the stop itself.
+        local where = not item.indent and ns.Where(q) or ""
+        if where ~= "" then ahead[2] = where end
+    elseif group == "later" then
+        ahead[1] = "» " .. (q.why == "WHY_LEVEL" and L.WHY_LEVEL:format(q.minLevel) or ns.NeedText(q.need))
+    elseif group == "log" then
+        if q.turnin and q.turnin.who ~= "" then ahead[1] = L.HAND_TO:format(q.turnin.who) end
+        local others = ns.GroupOn(q.id)
+        if #others > 0 then ahead[#ahead + 1] = L.ALSO:format(table.concat(others, ", ")) end
+    end
+    r.chain:SetTextColor(unpack(group == "later" and S.WARN or S.FAINT))
+    r.chain:SetText(table.concat(ahead, "  ·  "))
 end
 
 -- The dungeon's header: name, levels, bosses and quest counts, the keys, the entrance.
@@ -610,13 +790,21 @@ function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local level = UnitLevel("player") or 1
     ns.level = level
-    if not ns.selected then
+    if ns.home == nil then
         local here = ns.CurrentDungeon and ns.CurrentDungeon()
-        local s = here or ns.Suggest(level)
+        ns.home = here == nil
+        if here then ns.selected = here.key end
+    end
+    if not ns.selected then
+        local s = ns.Suggest(level)
         ns.selected = s and s.key
     end
     local all = ns.Dungeons(level)
     for _, d in ipairs(all) do counts[d.key] = ns.Counts(d.key, level) end
+    grid:SetShown(ns.home)
+    leftCard:SetShown(not ns.home)
+    areaFrame:SetShown(not ns.home)
+    if ns.home then return fillGrid(all) end
     dungeons:SetData(all)
     local current
     for _, d in ipairs(all) do if d.key == ns.selected then current = d end end
@@ -1234,7 +1422,8 @@ local function buildQuestPage(parent)
     listCard = right
     right:SetPoint("TOPLEFT", filterRow, "BOTTOMLEFT", 0, -S.GAP)
     right:SetPoint("BOTTOMRIGHT")
-    list = S.List(right.body, 40, makeRow, fillRow)
+    list = S.List(right.body, CARD_H, makeRow, fillRow, 4)
+    list.heightOf = rowHeight
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
 
@@ -1251,11 +1440,26 @@ local function build()
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
     left:SetWidth(236)
+    leftCard = left
+    homeBtn = iconButton(left.body, TI .. "INV_Misc_Map_02", 28)
+    fitIcon(homeBtn, "« " .. L.ALL_DUNGEONS, 96)
+    homeBtn:SetPoint("TOPLEFT")
+    homeBtn:SetPoint("TOPRIGHT", -10, 0)
+    homeBtn:SetScript("OnClick", function() ns.home, ns.openQuest = true, nil; ns.Refresh() end)
     dungeons = S.List(left.body, 46, makeDungeon, fillDungeon, 4)
-    dungeons:SetPoint("TOPLEFT")
+    dungeons:SetPoint("TOPLEFT", homeBtn, "BOTTOMLEFT", 0, -S.GAP)
     dungeons:SetPoint("BOTTOMRIGHT", -10, 0)
 
+    grid = CreateFrame("Frame", nil, body)
+    grid:SetAllPoints()
+    grid:Hide()
+    grid.list = S.List(grid, TILE_H, makeGridRow, fillGridRow, S.GAP)
+    grid.list:SetPoint("TOPLEFT")
+    grid.list:SetPoint("BOTTOMRIGHT", -10, 0)
+    grid.list.heightOf = function(row) return row.title and 24 or TILE_H end
+
     local area = CreateFrame("Frame", nil, body)
+    areaFrame = area
     area:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     area:SetPoint("BOTTOMRIGHT")
     tabs = S.PageTabs(area, { L.TAB_BOSSES, L.TAB_LOOT, L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil,

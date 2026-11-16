@@ -2003,7 +2003,8 @@ end
 
 -- A scrolling list of rows that are made once and reused. make(row) builds a row frame,
 -- fill(row, item, i) shows one item in it. list:SetData(items) redraws. Rows are separated by
--- a hairline and light up under the cursor when they are buttons.
+-- a hairline and light up under the cursor when they are buttons. list.heightOf(item), when
+-- set, gives a row its own height (cards between short headers).
 function S.List(parent, rowHeight, make, fill, gap)
     gap = gap or 0
     local sf = S.Scroll(parent)
@@ -2013,13 +2014,11 @@ function S.List(parent, rowHeight, make, fill, gap)
     function sf:SetData(items)
         local width = self:GetWidth()
         self.child:SetWidth(width > 1 and width or 400)
+        local y = 0
         for i, item in ipairs(items) do
             local r = rows[i]
             if not r then
                 r = CreateFrame("Frame", nil, self.child)
-                r:SetHeight(rowHeight)
-                r:SetPoint("TOPLEFT", 0, -(i - 1) * (rowHeight + gap))
-                r:SetPoint("TOPRIGHT", 0, -(i - 1) * (rowHeight + gap))
                 S.Box(r, S.CLEAR, S.CLEAR, S.R_MD)
                 r.line = S.Divider(r)
                 r.line:SetPoint("BOTTOMLEFT")
@@ -2028,11 +2027,18 @@ function S.List(parent, rowHeight, make, fill, gap)
                 make(r)
                 rows[i] = r
             end
+            local heightOf = rawget(self, "heightOf")
+            local rh = heightOf and heightOf(item) or rowHeight
+            r:SetHeight(rh)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, -y)
+            r:SetPoint("TOPRIGHT", 0, -y)
+            y = y + rh + gap
             fill(r, item, i)
             r:Show()
         end
         for i = #items + 1, #rows do rows[i]:Hide() end
-        local h = #items * (rowHeight + gap)
+        local h = y
         self.child:SetHeight(math.max(h, 1))
         self:Update(h)
     end

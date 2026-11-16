@@ -503,16 +503,17 @@ local function dpBosses(ns)
     ns.SetWish(9492, true)
 end
 S.dungeonprep = {
-    default = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.selected = "GNOMER"; ns.Toggle() end },
-    loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
-    quests = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
-    settings = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
-    real = { spec = dpSpec, open = function(ns) ns.selected = "THANES"; ns.Toggle() end },
-    levels = { spec = dpSpec, open = function(ns) ns.selected = "SM"; ns.Toggle() end },
-    empty = { spec = dpSpec, open = function(ns) ns.selected = "DALARAN"; ns.Toggle() end },
-    quest = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
-    forever = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
-    chain = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
+    home = { spec = dpSpec, open = function(ns) ns.Toggle() end },
+    default = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle() end },
+    loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
+    quests = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
+    settings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
+    real = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "THANES"; ns.Toggle() end },
+    levels = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "SM"; ns.Toggle() end },
+    empty = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DALARAN"; ns.Toggle() end },
+    quest = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
+    forever = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
+    chain = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).
