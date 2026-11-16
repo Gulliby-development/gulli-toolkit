@@ -49,11 +49,15 @@ ns.EARN_MAX = 200
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
 
--- What a trainer asks for a recipe before its window was open: Classic trainers ask about
--- skill^2 / 10 copper (10 silver at 100, 40 at 200). The price seen at a trainer replaces it.
+-- What a trainer asks for a recipe before any trainer window was open: the most a recipe of
+-- that skill costs (skill below -> copper). The price seen at a trainer is kept for good and
+-- replaces it.
+ns.TRAINER_GUESS = { { 75, 5000 }, { 150, 10000 }, { 225, 20000 }, { math.huge, 25000 } }
 function ns.TrainerGuess(skill)
-    skill = math.max(1, skill or 1)
-    return math.max(10, math.floor(skill * skill / 10 + 0.5))
+    skill = skill or 0
+    for _, t in ipairs(ns.TRAINER_GUESS) do
+        if skill < t[1] then return t[2] end
+    end
 end
 
 -- Kinds of stops on the route, in walking order. A new kind gets a colour and a test.
