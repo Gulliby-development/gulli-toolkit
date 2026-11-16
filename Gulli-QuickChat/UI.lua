@@ -300,6 +300,35 @@ function ns.EditOrder(text)
     ns.Refresh()
 end
 
+-- A tooltip on a control: fn returns its text.
+local function tip(b, fn)
+    b:HookScript("OnEnter", function(self)
+        if not (GameTooltip and GameTooltip.SetOwner) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(fn(self), 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+-- A phrase's order in one line: "Raid » Party » Say".
+local function orderLine(text)
+    local names = {}
+    for _, key in ipairs(ns.Order(text)) do names[#names + 1] = chanLabel(key) end
+    return table.concat(names, " » ")
+end
+
+-- What the order button of a row shows: the phrase's own channels as icons, else "As in Setup".
+function ns.OrderLabel(text)
+    local list = ns.db.orderOf[text]
+    if not list then return S.Hex(S.MUTED) .. S.IconTag(S.TAB.settings, 14) .. " " .. L.CH_DEFAULT .. "|r", false end
+    if #list == 0 then return S.Hex(S.WARN) .. "-|r", true end
+    local more = #list > 1 and (" " .. S.Hex(S.MUTED) .. "+" .. (#list - 1) .. "|r") or ""
+    return S.IconTag(ns.CH_ICON[list[1]], 14) .. " " .. S.Hex(S.Accent()) .. chanLabel(list[1]) .. "|r" .. more, true
+end
+
+local STAR = "Interface\\Common\\FavoritesIcon"
+
 local function makePhrase(r)
     r.btn = CreateFrame("Button", nil, r)
     r.btn:SetAllPoints()
@@ -315,30 +344,44 @@ local function makePhrase(r)
     r.del:SetPoint("RIGHT", 0, 0)
     r.del:SetText("x")
     r.del:SetScript("OnClick", function(self)
-        ns.RemovePhrase(self:GetParent().phrase)
-        if held == self:GetParent().phrase then held = nil end
+        local text = self:GetParent().phrase
+        ns.RemovePhrase(text)
+        if held == text then held = nil end
         ns.Refresh()
         if ns.Panel then ns.Panel() end
     end)
-    r.chan = S.Ghost(S.Button(r, 96, 26))
+    r.chan = S.Ghost(S.Button(r, 104, 26))
     r.chan:SetPoint("RIGHT", r.del, "LEFT", -4, 0)
     r.chan:SetScript("OnClick", function(self) ns.EditOrder(self:GetParent().phrase) end)
-    r.fav = S.Ghost(S.Button(r, 48, 26))
+    tip(r.chan, function(self)
+        local text = self:GetParent().phrase
+        return (ns.HasOwnOrder(text) and L.TIP_OWN or L.TIP_SETUP):format(orderLine(text))
+    end)
+    r.fav = S.Ghost(S.Button(r, 28, 26))
     r.fav:SetPoint("RIGHT", r.chan, "LEFT", -4, 0)
-    r.fav:SetText(L.FAV)
+    r.fav:SetText("")
+    r.fav.star = r.fav:CreateTexture(nil, "ARTWORK")
+    r.fav.star:SetSize(16, 16)
+    r.fav.star:SetPoint("CENTER")
+    r.fav.star:SetTexture(STAR)
     r.fav:SetScript("OnClick", function(self)
         ns.ToggleFav(self:GetParent().phrase)
         ns.Refresh()
         if ns.Panel then ns.Panel() end
     end)
+    tip(r.fav, function() return L.TIP_FAV end)
     r.place = S.Text(r, 11, S.Accent())
-    r.place:SetPoint("RIGHT", r.fav, "LEFT", -6, 0)
+    r.place:SetPoint("RIGHT", r.fav, "LEFT", -4, 0)
     r.place:SetWidth(18)
     r.place:SetJustifyH("CENTER")
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
     r.text:SetPoint("RIGHT", r.place, "LEFT", -4, 0)
     r.text:SetWordWrap(false)
+    -- The row's own click area lies under its buttons, so they take their clicks.
+    local base = r:GetFrameLevel()
+    r.btn:SetFrameLevel(base + 1)
+    for _, b in ipairs({ r.del, r.chan, r.fav }) do b:SetFrameLevel(base + 3) end
 end
 
 local function fillPhrase(r, text)
@@ -347,12 +390,10 @@ local function fillPhrase(r, text)
     r.text:SetText(text)
     local place = ns.RingPlace(text)
     r.place:SetText(place and tostring(place) or "")
-    local fav = ns.db.fav[text] and S.Accent() or S.MUTED
-    r.fav.text:SetTextColor(fav[1], fav[2], fav[3], 1)
-    local list = ns.db.orderOf[text]
-    r.chan:SetText(list and chanLabel(list[1]) or L.CH_DEFAULT)
-    local c = list and S.Accent() or S.MUTED
-    r.chan.text:SetTextColor(c[1], c[2], c[3], 1)
+    local fav = ns.db.fav[text] and true or false
+    r.fav.star:SetDesaturated(not fav)
+    r.fav.star:SetAlpha(fav and 1 or 0.3)
+    r.chan:SetText((ns.OrderLabel(text)))
     S.Fill(r, text == held and S.RAISED or S.CLEAR)
 end
 
@@ -403,7 +444,7 @@ local function buildPhrases(page, width)
     reset:SetPoint("BOTTOMRIGHT")
     reset:SetText(L.RESET)
     reset:SetScript("OnClick", function()
-        ns.ResetPhrases(); held, chosen = nil, nil
+        ns.ResetRing(); held, chosen = nil, nil
         ns.Refresh()
         if ns.Panel then ns.Panel() end
     end)
@@ -450,7 +491,8 @@ local function buildPhrases(page, width)
             title:SetText(S.Hex(S.MUTED) .. "\"" .. editing .. "\"|r")
             ownSwitch:SetChecked(ns.HasOwnOrder(editing))
             page.order:Refresh()
-            page.orderWhere:SetText(goesText(editing))
+            page.orderWhere:SetText(goesText(editing) ..
+                (ns.HasOwnOrder(editing) and "" or ("\n" .. S.Hex(S.MUTED) .. L.ORDER_FROM_SETUP .. "|r")))
         else
             card:SetTitle(L.SEC_PHRASES)
             local items = ns.Phrases()
