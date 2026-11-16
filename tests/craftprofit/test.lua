@@ -613,11 +613,20 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     n.Data.src[104] = { "d", 7 }
     src = n.State().recipes[104].src
     eq(src.t, "drop"); eq(n.CanGet({ src = src }, n.Prefs({})), false)
-    -- no pattern, but a known recipe: the trainer, at no known price yet
+    -- no pattern, but a known recipe: the trainer, at a guessed price until a trainer was seen,
+    -- so the plan can already use it
     n.Data.src[104] = nil
     n.Data.spell[104] = { 160, 170, 180 }
+    local r = n.State().recipes[104]
+    src = r.src
+    eq(src.t, "trainer"); eq(src.cost, n.TrainerGuess(r.skill[1])); eq(src.est, true)
+    assert(src.cost > 0)
+    eq(n.CanGet({ src = src }, n.Prefs({})), true)
+    eq(n.CanGet({ src = src }, n.Prefs({ trainer = false })), false, "the trainer switch still stops it")
+    n.db.trainer[r.name] = 777
     src = n.State().recipes[104].src
-    eq(src.t, "trainer"); eq(src.cost, nil)
+    eq(src.cost, 777); eq(src.est, false)
+    n.db.trainer[r.name] = nil
     n.Data.spell[104] = nil
     eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
     -- a recipe WoW Forever does not give is left out until the character knows it
@@ -772,6 +781,28 @@ test("the levelling switch and the route tiles", function()
     eq(n.view.mode, "l1")
     eq(n.ui.graphCard.title:GetText(), n.Skin.Upper(n.L.VAR_cheap), "card titles are capitals")
     assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
+end)
+
+test("a levelling tile shows the target and the crafts of the whole way, not of the next run", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    for i, x in ipairs(n.view.variants) do
+        local p = x.plan
+        if p and not p.earn and not x.over and not (x.best and n.view.prefs.budget > 0) then
+            local full = p.full or p
+            if full.reached >= full.target then
+                eq(n.ui.varTiles[i].sub:GetText(), n.L.VAR_RUN:format(full.target, n.Ceil(full.crafts)))
+            end
+        end
+    end
+    -- a route of several runs: the tile still names the end of the way
+    local x = n.view.variants[1]
+    local run = { segs = {}, reached = x.plan.reached, target = x.plan.target, crafts = 2, net = -200, spend = 200, own = 0, income = 0 }
+    run.full = { segs = {}, reached = run.target + 14, target = run.target + 14, crafts = 69, net = -2900 }
+    run.reached = run.target; run.target = run.full.target
+    x.plan = run
+    n.Refresh()
+    eq(n.ui.varTiles[1].sub:GetText(), n.L.VAR_RUN:format(run.full.target, 69))
 end)
 
 test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()

@@ -1004,11 +1004,11 @@ local function refreshRoute()
         b.mark:SetShown(on)
         b.label:SetText(j .. ". " .. routeName(x.mode, levels))
         if p then
-            -- the money of the whole way, so the tiles compare routes; the crafts of the next run
+            -- the whole way, so the tiles compare routes: its money, its target and all its crafts
             local full = p.full or p
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
-                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(p.reached, ns.Ceil(p.crafts)))
+                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(full.target, ns.Ceil(full.crafts)))
             if x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
             b.sub:SetText(sub)
