@@ -1414,9 +1414,9 @@ local function setupItems()
     end
     if #found > 0 then
         items[#items + 1] = { head = L.SETUP_FOUND }
-        for _, want in ipairs({ false, true }) do
-            for _, p in ipairs(found) do if p.on == want then items[#items + 1] = p end end
-        end
+        -- The ones that start off first, then the ones that stay on.
+        for _, p in ipairs(found) do if not p.on then items[#items + 1] = p end end
+        for _, p in ipairs(found) do if p.on then items[#items + 1] = p end end
     end
     local cats = {}
     for _, c in ipairs(ns.CATEGORIES) do cats[#cats + 1] = c end
