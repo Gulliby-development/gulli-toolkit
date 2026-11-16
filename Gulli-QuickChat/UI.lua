@@ -723,10 +723,13 @@ end
 
 local function buildWheel()
     local size = 2 * (ns.WHEEL_R + 80)
-    wheel = CreateFrame("Frame", "GulliQuickChatWheel", UIParent)
+    -- A Button, not a Frame: the game counts only a button's click as the key press or click that
+    -- say, yell and channels need (a plain frame's OnMouseDown is blocked).
+    wheel = CreateFrame("Button", "GulliQuickChatWheel", UIParent)
     wheel:SetAllPoints(UIParent)
     wheel:SetFrameStrata("DIALOG")
     wheel:EnableMouse(true)
+    wheel:RegisterForClicks("LeftButtonDown", "RightButtonDown")
     tinsert(UISpecialFrames, "GulliQuickChatWheel")
     local ring = CreateFrame("Frame", "GulliQuickChatRing", wheel)
     ring:SetSize(size, size)
@@ -774,7 +777,7 @@ local function buildWheel()
         if i ~= hovered then wheelSelect(i) end
     end)
     -- Any click on the screen: the left button sends the lit phrase, the right one closes.
-    wheel:SetScript("OnMouseDown", function(_, button)
+    wheel:SetScript("OnClick", function(_, button)
         if button == "RightButton" then wheel:Hide() else ns.WheelRelease() end
     end)
     wheel:Hide() -- a new frame starts shown
