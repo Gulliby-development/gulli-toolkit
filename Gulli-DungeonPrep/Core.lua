@@ -155,23 +155,62 @@ ns.ART = {
     DIREMAUL = { 230, "DireMaul" }, SCHOLO = { 246, "Scholomance" }, STRAT = { 236, "Stratholme" },
 }
 
--- The dungeon's banner picture: the journal's own (a file id) when the client has the journal,
--- else its file path, else ours; nil for a dungeon without one. The caller checks that the file loads.
 -- WoW Forever's own dungeons have no journal picture: ours, drawn for the addon
 -- (tools/dungeonprep/banners/, made into Banners/<KEY>.tga by tools/dungeonprep/banners.py).
 ns.OWN_BANNERS = { THANES = true, LORDAERON = true, EXCAVATION = true, DALARAN = true, DROWNED = true,
                    KROLDOK = true, ALCAZ = true, BLACKMAW = true, SHAPERS = true }
 
--- The second value is true for our own picture (a whole 2:1 picture, not a journal button).
-function ns.Banner(key)
-    if ns.OWN_BANNERS[key] then return "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\" .. key, true end
+-- The loading screen the game shows on the way into each dungeon: its file id in the client
+-- (Map.LoadingScreenID, then LoadingScreens: the classic 4:3 screen, or for Forever's own
+-- dungeons the 2992x1684 main image) and the height, 0 to 1, the band is centred on.
+ns.LOADING = {
+    RFC = { 131862, 0.53 }, WC = { 131882, 0.5 }, DM = { 131833, 0.49 }, SFK = { 131869, 0.55 },
+    BFD = { 131823, 0.45 }, STOCKS = { 131870, 0.49 }, GNOMER = { 131841, 0.49 }, RFK = { 131865, 0.49 },
+    SM = { 131852, 0.49 }, RFD = { 131864, 0.48 }, ULDA = { 131876, 0.47 }, ZF = { 131885, 0.57 },
+    MARA = { 131850, 0.49 }, ST = { 131872, 0.49 }, BRD = { 131824, 0.49 }, BRS = { 131825, 0.46 },
+    DIREMAUL = { 131835, 0.5 }, SCHOLO = { 131868, 0.51 }, STRAT = { 131871, 0.49 },
+    ALCAZ = { 7963734, 0.5, true }, BLACKMAW = { 7963784, 0.5, true }, DALARAN = { 7963775, 0.5, true },
+    EXCAVATION = { 7963777, 0.5, true }, KROLDOK = { 7963780, 0.5, true }, LORDAERON = { 7963782, 0.5, true },
+    DROWNED = { 7963741, 0.5, true }, THANES = { 7963781, 0.5, true }, SHAPERS = { 7963783, 0.5, true },
+}
+
+-- A classic screen is a 4:3 picture in a square texture, painted between the logo band
+-- (0.17) and the parchment (0.80); a Forever one shows its picture in rows 266-1418 of 1684.
+local SCREEN = { classic = { 4 / 3, 0.17, 0.80 }, forever = { 2992 / 1684, 266 / 1684, 1418 / 1684 } }
+
+-- Texture coordinates of a band `aspect` times wider than high across the whole screen.
+function ns.LoadingCoords(key, aspect)
+    local l = ns.LOADING[key]
+    if not l then return nil end
+    local s = SCREEN[l[3] and "forever" or "classic"]
+    local h = math.min(s[1] / aspect, s[3] - s[2])
+    local c = math.max(s[2] + h / 2, math.min(s[3] - h / 2, l[2]))
+    return { 0, 1, c - h / 2, c + h / 2 }
+end
+
+local JOURNAL_TC = { 0, 0.68359375, 0.08, 0.62 }
+local OWN_TC = { 0, 1, 0.1, 0.9 }
+
+-- The dungeon's banner pictures for a band `aspect` times wider than high, best first, each
+-- { file, texcoords }: the loading screen, the journal banner (a file id when the client has
+-- the journal, else its path), then ours. The caller takes the first file that loads.
+function ns.Banners(key, aspect)
+    local list = {}
+    local l = ns.LOADING[key]
+    if l then list[#list + 1] = { l[1], ns.LoadingCoords(key, aspect or 2.6) } end
     local a = ns.ART[key]
-    if not a then return nil end
-    if EJ_GetInstanceInfo then
-        local ok, _, _, _, button = pcall(EJ_GetInstanceInfo, a[1])
-        if ok and button and button ~= 0 and button ~= "" then return button end
+    if a then
+        local file = "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-" .. a[2]
+        if EJ_GetInstanceInfo then
+            local ok, _, _, _, button = pcall(EJ_GetInstanceInfo, a[1])
+            if ok and button and button ~= 0 and button ~= "" then file = button end
+        end
+        list[#list + 1] = { file, JOURNAL_TC }
     end
-    return "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-" .. a[2]
+    if ns.OWN_BANNERS[key] then
+        list[#list + 1] = { "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\" .. key, OWN_TC }
+    end
+    return list
 end
 
 -- The dungeon finder's round portrait files of a dungeon, best first (none for Forever's own).
