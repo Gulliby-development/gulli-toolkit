@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
-<p align="center"><img src="window.jpg" alt="The window" width="380"> <img src="history.jpg" alt="The History tab" width="380"></p>
+<p align="center"><img src="window.jpg" alt="The window" width="380"> <img src="history.jpg" alt="The History tab" width="380"> <img src="favor.jpg" alt="The Favor tab" width="380"></p>
 
 ---
 
@@ -29,6 +29,7 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 - **Bought is bought.** A crate whose items are already in your bags leaves the plan and waits at the top of the History as ready to fill, with what you paid. When you come back to the auction house, the plan is made again, so nothing is offered twice.
 - **Old prices.** When Auctionator's prices are more than 4 hours old, a yellow note at the top of the window asks you to run a full scan first. Its cross closes it until your next visit to the auction house.
 - **Refresh.** The round arrow at the top looks at your bags again and calculates anew. When no crate is left, or all is bought and you left the auction house, the old plan is cleared by itself.
+- **A Favor goal.** The Favor tab asks how much Merchant's Favor you want: pick 5, 15, 20, 30, 45, 50 or 180, or set any number with **-** and **+**. **Calculate** finds the cheapest crates to reach it: the crates in your bags first, then crates from the auction house, each with its cheapest bundle. It shows how many crates, the total and the price of one Favor. **Buy** buys the crates and their bundles, two presses a line as always.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 
 ## Install
@@ -60,6 +61,12 @@ The game lets an addon ask for a price and buy at the auction house only when yo
 <summary><b>Why does the real price differ from the plan?</b></summary>
 
 Auctionator remembers the lowest price of one item. Buying 20 may take some dearer ones too. The button always shows the real price before you buy.
+</details>
+
+<details>
+<summary><b>How much Favor does a crate give?</b></summary>
+
+Players report 5 Merchant's Favor for each crate they hand in, and sometimes double. The game does not tell an addon, so the Favor tab starts at 5. If you get another amount, set it under **Favor per crate**. The tab only uses crates up to your level, and only crates the auction house has a price for in Auctionator.
 </details>
 
 <details>

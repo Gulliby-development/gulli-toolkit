@@ -774,4 +774,25 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.Window():Show()
         ns.ShowTab(2)
     end } }
+-- The Favor tab: 30 Merchant's Favor from the crates in the bags and the auction house.
+local function crFavor(locale)
+    local sp = crSpec(locale)
+    sp.level = 40
+    for id, p in pairs({ [248682] = 9000, [248686] = 12000, [248690] = 15000, [248691] = 14000, [248692] = 11000,
+                         [248683] = 8000, [2770] = 60, [2771] = 90, [2775] = 300, [2772] = 140 }) do sp.prices[id] = p end
+    sp.names[248683], sp.names[2770], sp.names[2771] = "Waylaid Crate: Apprentice Ore", "Copper Ore", "Tin Ore"
+    sp.db = { goal = 30 }
+    return sp
+end
+local function crFavorOpen(ns, W)
+    crIcons(W)
+    AuctionHouseFrame = nil
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Window():Show()
+    ns.ShowTab(3)
+    ns.TokenCalculate()
+    ns.Refresh()
+end
+S.crates.favor = { spec = crFavor(), open = crFavorOpen }
+S.crates.favor_ru = { spec = crFavor("ruRU"), open = crFavorOpen }
 return S
