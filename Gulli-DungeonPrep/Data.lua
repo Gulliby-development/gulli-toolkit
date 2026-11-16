@@ -478,7 +478,7 @@ D.quest = {
 [96381]={"A Bit of Wet Work",53,48,4294967373,0,"Sully McCleary",15,{},{95198},{},"A",63.5,42.3,"Sully McCleary",15,63.5,42.3,4,4},
 [96393]={"Old Ironforge Incursion",16,9,4294967373,0,"Earthseer Farsen",1,{},{96391},{},"A",64.9,58.5,"King Magni Bronzebeard",1537,39.1,56.2,2,2},
 [96394]={"The Restless Dead",15,10,4294967373,0,"Afadra Dunwall",1537,{},{},{},"A",33.2,48,"Afadra Dunwall",1537,33.2,48,0,0},
-[96395]={"An Ancient Grudge",15,0,0,0,"Ghostly Attendant",16919,{},{},{},"",0,0,"Ghostly Attendant",16919,0,0,0,0},
+[96395]={"An Ancient Grudge",15,10,0,0,"Ghostly Attendant",16919,{},{},{},"",0,0,"Ghostly Attendant",16919,0,0,0,0},
 [96403]={"Important Heirlooms",15,10,4294967373,0,"Thom Filch",1537,{},{},{},"A",32.2,44.5,"Thom Filch",1537,32.2,44.5,0,0},
 [96770]={"The Witch Doctor's Head",46,39,4294967373,0,"Archmage Lan'dalock",36,{},{},{},"A",15.3,73.9,"Archmage Lan'dalock",36,15.3,73.9,0,0},
 [96771]={"Vengeance of the Highborne",45,37,4294967373,0,"Ranath Nightstride",36,{},{},{},"A",17.8,66,"Ranath Nightstride",36,17.8,66,0,0},
@@ -1962,7 +1962,6 @@ D.target = {
 [95216]={"Witherfang"},
 [95250]={"The Baron"},
 [95664]={"Relic Guardian"},
-[95697]={"Shadetooth","Thicket Lurker"},
 [95776]={"Var'Taka"},
 [95791]={"Captain Dreadrise"},
 [95810]={"Relic Guardian"},
@@ -1983,7 +1982,6 @@ D.target = {
 [97173]={"Elder Shaman Bloodmane"},
 [97197]={"Magmus"},
 [97198]={"Elder Shaman Bloodmane"},
-[98815]={"Shadetooth","Thicket Lurker"},
 }
 -- Area ids on Kalimdor; the rest are in the Eastern Kingdoms.
 D.kalimdor = {14,15,16,17,141,148,215,331,357,361,400,405,406,440,490,493,618,1377,1637,1638,1657,2437,718,719,491,722,1176,2100,2557,16985}

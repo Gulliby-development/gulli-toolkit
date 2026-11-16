@@ -206,6 +206,29 @@ function ns.OnInvite(name)
     end
 end
 
+---- Busy auto-reply -------------------------------------------------------------------------------
+
+-- In a fight or away (or always, with busyAlways), a whisper gets the busy text once per player
+-- every busyMinutes. The player's own text wins over the default one.
+ns.busySent = {}
+function ns.BusyText()
+    local t = strtrim(ns.db.busyText or "")
+    return t ~= "" and t or L.BUSY_TEXT
+end
+
+function ns.AutoBusy(sender, now)
+    if not ns.db.busy or not sender or secret(sender) then return false end
+    local busy = inCombat() or (UnitIsAFK and UnitIsAFK("player")) or ns.db.busyAlways
+    if not busy then return false end
+    now = now or time()
+    local last = ns.busySent[sender]
+    if last and now - last < (ns.db.busyMinutes or 5) * 60 then return false end
+    ns.busySent[sender] = now
+    SendChatMessage(ns.BusyText(), "WHISPER", nil, sender)
+    ns.Log("busy", sender)
+    return true
+end
+
 ---- Duels, guilds, trades, charters ---------------------------------------------------------
 
 function ns.OnDuel(name)
@@ -301,7 +324,8 @@ end
 ns.DEFAULTS = { invite = true, words = "inv, invite, 123", match = "WHOLE", inviteKnown = false, acceptKnown = true,
                 bnet = true, reply = true, toRaid = false, blockStrangers = false, noDuels = false,
                 duelKnown = true, noGuildInvites = false, noTrade = false, noPetition = false, summon = false,
-                res = false, spam = false, allow = "", deny = "" }
+                res = false, spam = false, allow = "", deny = "", busy = false, busyAlways = false,
+                busyMinutes = 5, busyText = "" }
 
 function ns.Defaults()
     for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
@@ -332,7 +356,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     if ns.paused then return end
     if event == "CHAT_MSG_WHISPER" then
-        ns.OnWhisper(a1, a2)
+        if not ns.OnWhisper(a1, a2) and not ns.IsSpam(a1, a2) then ns.AutoBusy(a2) end
     elseif event == "PARTY_INVITE_REQUEST" then
         ns.OnInvite(a1)
     elseif event == "DUEL_REQUESTED" then
@@ -374,6 +398,8 @@ ns.OPT_ICON = {
     res = "Interface\\Icons\\Spell_Holy_Resurrection",
     spam = "Interface\\Icons\\Spell_Holy_Silence",
     duelKnown = "Interface\\Icons\\Ability_Warrior_Challange",
+    busy = "Interface\\Icons\\INV_Letter_15",
+    busyAlways = "Interface\\Icons\\INV_Letter_02",
 }
 
 local function option(key, label, tip)
@@ -395,7 +421,7 @@ if GulliToolkit and GulliToolkit.Register then
             option("acceptKnown", L.OPT_ACCEPT_KNOWN, L.TIP_ACCEPT),
             option("blockStrangers", L.OPT_BLOCK, L.TIP_BLOCK),
             option("noDuels", L.OPT_DUELS),
-            option("noTrade", L.OPT_TRADE),
+            option("busy", L.OPT_BUSY, L.OPT_BUSY_D),
             option("spam", L.OPT_SPAM, L.TIP_SPAM),
         },
         -- The hub's home page: what was turned away today.

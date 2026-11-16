@@ -24,13 +24,13 @@
 | [Quest Cleaner](docs/questcleaner/README.md) | Abandons low-level quests and deletes leftover quest items from your bags. You see a list before anything goes. | `/gqc` |
 | [Mob Finder](docs/mobfinder/README.md) | Finds the mobs and rares you look for, with a sound and a Target button. | `/gmf` |
 | [Group Buffs](docs/groupbuffs/README.md) | Casts the buffs your group is missing, one press at a time, also in combat. | `/ggb` |
-| [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds. | `/gbul` |
+| [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds; alerts on your words. | `/gbul` |
 | [Party Quests](docs/partyquests/README.md) | Shows which quests your group shares and who still needs one. Share in one tap. | `/gpq` |
 | [Instance Limit](docs/instancelimit/README.md) | Counts your dungeon entries this hour and today, and shows when the next one is free. | `/gil` |
 | [Attunements](docs/attune/README.md) | Raid attunements and dungeon keys for all your characters, with the next step and where it starts. | `/gat` |
 | [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
 | [Dungeon Journal](docs/dungeonprep/README.md) | Every dungeon's bosses with their loot and drop chances, a wishlist, its quests for your faction and a way to pick them up from where you stand. | `/gdj` |
-| [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons and a phrase wheel, group messages for quests and dungeons, whispers you missed. | `/gqk` |
+| [Quick Chat](docs/quickchat/README.md) | A ring of ready phrases on a held key, a favourites panel, and your own order of chat channels. | `/gqk` |
 | [Chores](docs/chores/README.md) | A to-do list for each character: mail that runs out, cooldowns, trainer, rested XP, repairs; all characters in one table. | `/gch` |
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
 | [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
@@ -39,11 +39,11 @@
 | [Tooltip](docs/tooltip/README.md) | Stack and auction prices, the quests that need an item, what your other characters hold, ids. | `/gtt` |
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
-| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
+| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites, a busy auto-reply. | `/gso` |
 | [Reminders](docs/reminders/README.md) | A movable panel of icons for missing class buffs, poisons, pet, ammo and soul shards. | `/grm` |
 | [Craft Profit](docs/craftprofit/README.md) | Profitable crafts and the cheapest way to level a profession, drawn as a route: where to buy, what to craft, where to sell. | `/gcp` |
 | [Legacy](docs/legacy/README.md) | The fastest next steps to your Legacy points and the next reward of the Progress Track, on every character. | `/glg` |
-| [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, and a history of the crates you filled. | `/gcr` |
+| [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, a history of the crates you filled, and the cheapest crates to reach a Merchant's Favor goal. | `/gcr` |
 
 ## Features
 

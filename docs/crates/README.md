@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
-<p align="center"><img src="window.jpg" alt="The window" width="380"> <img src="history.jpg" alt="The History tab" width="380"></p>
+<p align="center"><img src="window.jpg" alt="The window" width="380"> <img src="history.jpg" alt="The History tab" width="380"> <img src="favor.jpg" alt="The Favor tab" width="380"></p>
 
 ---
 
@@ -18,10 +18,10 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 
 ## Features
 
-- **Opens at the auction house.** Carry a crate and open the auction house: the window opens beside it. A switch turns this off.
+- **Opens at the auction house.** Carry a crate and open the auction house: the window opens beside it. A switch on the Settings tab turns this off.
 - **Pick the crates.** Every crate in your bags is listed. Untick the ones you want to keep for later, and tick them again at any time: the price follows at once.
-- **The cheapest bundle.** **Calculate** prices every bundle of every crate. What you already have costs nothing; the rest is priced from Auctionator's database.
-- **Your bank counts.** Items in your bank are used too, and the list says so in orange: take them out before you fill the crate. A switch turns this off.
+- **The cheapest bundle.** **Calculate** prices every bundle of every crate. What you already have costs nothing. At the auction house, it reads every listing of what you buy, so buying 100 of something pays for the dearer lots too, and a cheaper bundle or crate takes over when the cheap lots run out. Away from the auction house it uses Auctionator's lowest price, and the total starts with **~** to show it is an estimate.
+- **Your bank counts.** Items in your bank are used too, and the list says so in orange: take them out before you fill the crate. A switch on the Settings tab turns this off.
 - **Several crates at once.** Your stock is shared fairly: a stack that fills one crate is not split over two.
 - **Buy what is missing.** Press **Buy** to go through the list. For each line, the first press asks the auction house for the real price and shows it on the button. The second press buys.
 - **No surprises.** If the real price is much higher than Auctionator's, the line turns orange. Press **Skip** to leave a line out.
@@ -29,6 +29,8 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 - **Bought is bought.** A crate whose items are already in your bags leaves the plan and waits at the top of the History as ready to fill, with what you paid. When you come back to the auction house, the plan is made again, so nothing is offered twice.
 - **Old prices.** When Auctionator's prices are more than 4 hours old, a yellow note at the top of the window asks you to run a full scan first. Its cross closes it until your next visit to the auction house.
 - **Refresh.** The round arrow at the top looks at your bags again and calculates anew. When no crate is left, or all is bought and you left the auction house, the old plan is cleared by itself.
+- **A Favor goal.** The Favor tab asks how much Merchant's Favor you want: pick 5, 15, 20, 30, 45, 50 or 180, or set any number with **-** and **+**. Each crate pays its own Favor: Apprentice 5, Journeyman 10, Expert 15, Artisan 20, and crafted crates (fabrics, ingots, parts) twice as much. **Calculate** looks at every crate up to your level, in your bags and on the auction house, and finds the mix that reaches your goal for the least gold, each crate with its cheapest bundle. It shows how many crates, the total and the price of one Favor. **Buy** buys the crates and their bundles, two presses a line as always.
+- **Settings.** The Settings tab holds the switches every tab uses: open at the auction house, use the bank, and read the auction listings.
 - **All 30 crates.** Apprentice, Journeyman, Expert and Artisan: herbs, ore, textiles, curiosities, fabrics, ingots and parts.
 
 ## Install
@@ -59,7 +61,13 @@ The game lets an addon ask for a price and buy at the auction house only when yo
 <details>
 <summary><b>Why does the real price differ from the plan?</b></summary>
 
-Auctionator remembers the lowest price of one item. Buying 20 may take some dearer ones too. The button always shows the real price before you buy.
+Away from the auction house, the plan uses Auctionator's lowest price of one item, and buying 20 may take some dearer ones too. That is why the total starts with **~** there. At the auction house, **Calculate** reads the real listings and counts every lot you would buy. Prices can still move between the plan and your press, so the button always shows the real price before you buy.
+</details>
+
+<details>
+<summary><b>How much Favor does a crate give?</b></summary>
+
+Apprentice 5, Journeyman 10, Expert 15, Artisan 20; crafted crates (fabrics, ingots, parts) 10, 20, 30 and 40. These come from the game's quest data for "A Sealed Crate". The Artisan numbers are not in that data yet and follow the same steps. Sometimes a crate pays double (a Performance Bonus); the plan never counts on it. The tab only uses crates up to your level, and only crates the auction house sells.
 </details>
 
 <details>

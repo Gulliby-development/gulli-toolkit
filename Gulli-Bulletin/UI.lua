@@ -1,12 +1,12 @@
 -- The board window: a tab per kind, groups split by dungeon (a header click folds one), a
--- search box, and Hide, Whisper, Ask or Invite on each row. The Setup tab picks the dungeons
--- to show and to alert on, the role for Ask, the blocked and watched words and the small feed.
+-- search box, and Hide, Whisper, Ask or Invite on each row. The Setup tab holds the watched
+-- words (a post with one rings), how long posts stay, the role for Ask, blocked words and the feed.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, tabs, card, list, empty, myLevel, search, setup, dlist, blockedRow, channelHint
+local frame, tabs, card, list, empty, myLevel, search, setup, wlist, wempty, wordEdit, blockedRow, channelHint
 local craftTabs, profRow
 local feed
 local current = 1
@@ -56,12 +56,8 @@ local function makeRow(r)
     end)
     r.head = S.Text(r, 12)
     r.head:SetPoint("LEFT", 10, 0)
-    r.head:SetPoint("RIGHT", -110, 0)
+    r.head:SetPoint("RIGHT", -10, 0)
     r.head:SetWordWrap(false)
-    r.lfm = S.Ghost(S.Button(r, 96, 28))
-    r.lfm:SetPoint("RIGHT", 0, 0)
-    r.lfm:SetText(L.POST_LFM)
-    r.lfm:SetScript("OnClick", function(self) ns.PostLFM(self:GetParent().key) end)
 
     r.who = S.Text(r, 12)
     r.who:SetPoint("TOPLEFT", 10, -7)
@@ -94,7 +90,6 @@ local function fillRow(r, item)
     local header = item.header
     r.fold:SetShown(header)
     r.head:SetShown(header)
-    r.lfm:SetShown(header and item.dungeon ~= nil and ns.CanPostLFM())
     for _, w in ipairs({ r.who, r.age, r.text, r.whisper, r.act, r.hide }) do w:SetShown(not header) end
     r.icon:SetShown(not header and item.item ~= nil)
     if header then
@@ -146,36 +141,27 @@ end
 
 ---- Setup rows ------------------------------------------------------------------
 
--- A row of the setup list: the dungeon, its level range, and the Show and Alert boxes.
-local function makeDungeonRow(r)
-    r.name = S.Text(r, 12)
-    r.name:SetPoint("LEFT", 4, 0)
-    r.name:SetPoint("RIGHT", -150, 0)
-    r.name:SetWordWrap(false)
-    r.alert = S.Check(r, 26)
-    r.alert:SetPoint("RIGHT", -24, 0)
-    r.show = S.Check(r, 26)
-    r.show:SetPoint("RIGHT", -96, 0)
-    r.show:SetScript("OnClick", function(self)
-        local key = self:GetParent().key
-        ns.db.only[key] = (not ns.db.only[key]) or nil
-        ns.Refresh()
-    end)
-    r.alert:SetScript("OnClick", function(self)
-        local key = self:GetParent().key
-        ns.db.alert[key] = (not ns.db.alert[key]) or nil
-        ns.Refresh()
-        if ns.Feed then ns.Feed() end
-    end)
+-- A watched word: the word, how many posts on the board have it, and a cross to take it off.
+local function makeWordRow(r)
+    r.icon = S.IconBox(r, 22, I .. "INV_Misc_Spyglass_02")
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.del = S.Ghost(S.Button(r, 28, 26))
+    r.del:SetPoint("RIGHT", 0, 0)
+    r.del:SetText("x")
+    r.del:SetScript("OnClick", function(self) ns.RemoveWord(self:GetParent().word); ns.Refresh(); ns.Feed() end)
+    r.count = S.Text(r, 11, S.FAINT)
+    r.count:SetPoint("RIGHT", r.del, "LEFT", -8, 0)
+    r.label = S.Text(r, 12)
+    r.label:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    r.label:SetPoint("RIGHT", r.count, "LEFT", -8, 0)
+    r.label:SetWordWrap(false)
 end
 
-local function fillDungeonRow(r, d)
-    r.key = d.key
-    local range = d.min == d.max and tostring(d.min) or (d.min .. "-" .. d.max)
-    r.name:SetText(S.Hex(S.LevelColor(math.floor((d.min + d.max) / 2))) .. ns.DungeonName(d.key) .. "|r  " ..
-        S.Hex(S.MUTED) .. range .. "|r")
-    r.show:SetChecked(ns.db.only[d.key] == true)
-    r.alert:SetChecked(ns.db.alert[d.key] == true)
+local function fillWordRow(r, word)
+    r.word = word
+    r.label:SetText(word)
+    local n = ns.WordCount(word)
+    r.count:SetText(n > 0 and L.ON_BOARD:format(n) or "")
 end
 
 local function channelText()
@@ -195,9 +181,9 @@ function ns.Refresh()
     card:SetShown(current ~= SETUP)
     setup:SetShown(current == SETUP)
     if current == SETUP then
-        local rows = {}
-        for _, d in ipairs(ns.DUNGEONS) do rows[#rows + 1] = ns.Dungeon(d[1]) end
-        dlist:SetData(rows)
+        local words = ns.WordList()
+        wlist:SetData(words)
+        wempty:SetShown(#words == 0)
         blockedRow.label:SetText(L.BLOCKED_N:format(ns.BlockedCount()))
         blockedRow.control:SetEnabled(ns.BlockedCount() > 0)
         channelHint:SetText(channelText())
@@ -208,8 +194,6 @@ function ns.Refresh()
     empty:SetShown(#items == 0)
     if query ~= "" then
         empty:Set(L.EMPTY_SEARCH)
-    elseif current == 1 and next(ns.db.only) then
-        empty:Set(L.EMPTY_PICKED, channelText())
     elseif current == CRAFT and (next(ns.db.craftProfs) or ns.db.craftMode ~= "ALL") then
         empty:Set(L.EMPTY_CRAFT)
     else
@@ -259,40 +243,82 @@ local function textEdit(width, get, set)
     return e
 end
 
+-- The board's time: the whole session (0) or a number of minutes.
+local KEEP = { 0, 15, 30, 60, 120 }
+local function keepText(v) return v == 0 and L.KEEP_SESSION or L.MIN_N:format(v) end
+
 local function buildSetup(body, width)
     setup = CreateFrame("Frame", nil, body)
     setup:SetPoint("TOPLEFT", 0, -30 - S.GAP)
     setup:SetPoint("BOTTOMRIGHT")
-    local leftW = math.floor((width - S.GAP) * 0.48)
+    local leftW = math.floor((width - S.GAP) * 0.46)
     local rightW = width - leftW - S.GAP
-    local dcard = S.Card(setup, L.SEC_DUNGEONS)
-    dcard:SetPoint("TOPLEFT")
-    dcard:SetPoint("BOTTOMLEFT")
-    dcard:SetWidth(leftW)
-    dlist = S.List(dcard.body, 32, makeDungeonRow, fillDungeonRow)
-    dlist:SetPoint("TOPLEFT")
-    dlist:SetPoint("BOTTOMRIGHT", -10, 0)
-    -- Column names over the middle of the Show and Alert boxes.
-    for _, c in ipairs({ { L.COL_SHOW, -109 }, { L.COL_ALERT, -37 } }) do
-        local t = S.Text(dcard, 11, S.MUTED)
-        t:SetPoint("BOTTOM", dlist, "TOPRIGHT", c[2], 10)
-        t:SetText(c[1])
-    end
 
-    local right = CreateFrame("Frame", nil, setup)
-    right:SetPoint("TOPLEFT", leftW + S.GAP, 0)
-    right:SetPoint("BOTTOMRIGHT")
+    -- Watched words: type one, Add; each row has its cross.
+    local wcard = S.Card(setup, L.SEC_WORDS, nil, I .. "INV_Misc_Spyglass_02")
+    wcard:SetPoint("TOPLEFT")
+    wcard:SetPoint("BOTTOMLEFT")
+    wcard:SetWidth(leftW)
+    local hint = S.Note(wcard.body, 11)
+    hint:SetPoint("TOPLEFT")
+    hint:SetPoint("TOPRIGHT")
+    hint:SetHeight(30)
+    hint:SetMaxLines(2)
+    hint:SetText(L.WORDS_HINT)
+    wordEdit = S.Edit(wcard.body, 200, 30)
+    wordEdit:SetPoint("TOPLEFT", 0, -36)
+    wordEdit:SetPoint("TOPRIGHT", -98, -36)
+    wordEdit:SetJustifyH("LEFT")
+    wordEdit:SetMaxLetters(60)
+    S.Placeholder(wordEdit, L.WORD_HINT)
+    local add = S.Button(wcard.body, 90, 30)
+    add:SetPoint("TOPRIGHT", 0, -36)
+    add:SetText(L.ADD)
+    local function doAdd()
+        if ns.AddWord(wordEdit:GetText()) then wordEdit:SetText("") end
+        wordEdit:ClearFocus()
+        ns.Refresh(); ns.Feed()
+    end
+    add:SetScript("OnClick", doAdd)
+    wordEdit:SetScript("OnEnterPressed", doAdd)
+    wlist = S.List(wcard.body, 34, makeWordRow, fillWordRow)
+    wlist:SetPoint("TOPLEFT", 0, -74)
+    wlist:SetPoint("BOTTOMRIGHT", -10, 0)
+    wempty = S.Empty(wlist)
+    wempty:Set(L.NO_WORDS, L.NO_WORDS_D)
+
+    local scroll = S.Scroll(setup)
+    scroll:SetPoint("TOPLEFT", leftW + S.GAP, 0)
+    scroll:SetPoint("BOTTOMRIGHT", -12, 0)
+    local right = scroll.child
+    right:SetWidth(rightW - 12)
     local st = S.Stack(right)
-    local alpha = S.Stepper(body, function() return ns.db.feed.alpha end,
-        function(v) ns.db.feed.alpha = v; if ns.Feed then ns.Feed() end end, 10, 30, 100,
-        function(v) return v .. "%" end, 110)
     local alerts, h1 = S.SettingsCard(right, L.SEC_ALERTS, {
+        { L.OPT_POPUP, nil, function() return ns.db.popup end, function(v) ns.db.popup = v end,
+          icon = I .. "INV_Misc_Note_06" },
         { L.OPT_SOUND, nil, function() return ns.db.sound end, function(v) ns.db.sound = v end,
           icon = I .. "INV_Misc_Bell_01" },
         { L.OPT_CHAT, nil, function() return ns.db.chat end, function(v) ns.db.chat = v end,
           icon = I .. "INV_Letter_15" },
-        { L.WATCH, nil, control = textEdit(170, function() return ns.db.watch end,
-            function(v) ns.db.watch = v end), icon = I .. "INV_Misc_Spyglass_02" },
+    })
+    st:Add(alerts, h1)
+
+    local keep = S.Stepper(right, function()
+            for i, v in ipairs(KEEP) do if v == ns.db.minutes then return i end end
+            return 1
+        end, function(i) ns.db.minutes = KEEP[i]; ns.Refresh() end, 1, 1, #KEEP,
+        function(i) return keepText(KEEP[i]) end, 130)
+    local board, hb = S.SettingsCard(right, L.SEC_BOARD, {
+        { L.KEEP_POSTS, L.KEEP_POSTS_D, control = keep, icon = I .. "INV_Misc_PocketWatch_01" },
+        { L.OPT_OTHER, nil, function() return ns.db.other end, function(v) ns.db.other = v end,
+          icon = S.TAB.chat },
+    })
+    st:Add(board, hb)
+
+    local alpha = S.Stepper(right, function() return ns.db.feed.alpha end,
+        function(v) ns.db.feed.alpha = v; if ns.Feed then ns.Feed() end end, 10, 30, 100,
+        function(v) return v .. "%" end, 110)
+    local feedCard, h3 = S.SettingsCard(right, L.SEC_FEED, {
         { L.OPT_FEED, nil, function() return ns.db.feed.show end,
           function(v) ns.db.feed.show = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Scroll_03" },
         { L.OPT_THROUGH, nil, function() return ns.db.feed.through end,
@@ -301,24 +327,24 @@ local function buildSetup(body, width)
           function(v) ns.db.feed.locked = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Misc_Key_04" },
         { L.FEED_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
     })
-    st:Add(alerts, h1)
+    st:Add(feedCard, h3)
 
     local roleLabels = {}
     for i, r in ipairs(ns.ROLES) do roleLabels[i] = L["ROLE_" .. r] end
-    local roleHolder = CreateFrame("Frame", nil, body)
-    roleHolder:SetSize(3 * 84 + 4, 30)
+    local roleHolder = CreateFrame("Frame", nil, right)
+    roleHolder:SetSize(3 * 72 + 4, 30)
     local roleIcons = {}
     for i, r in ipairs(ns.ROLES) do roleIcons[i] = S.ROLE_ICON[r] end
-    local roles = S.Tabs(roleHolder, roleLabels, 84, function(i) ns.db.role = ns.ROLES[i] end, nil, roleIcons)
+    local roles = S.Tabs(roleHolder, roleLabels, 72, function(i) ns.db.role = ns.ROLES[i] end, nil, roleIcons)
     roleHolder:SetScript("OnShow", function()
         for i, r in ipairs(ns.ROLES) do if r == ns.db.role then roles:Select(i, true) end end
     end)
-    local clear = S.Button(body, 90, 28)
+    local clear = S.Button(right, 90, 28)
     clear:SetText(L.UNBLOCK)
     clear:SetScript("OnClick", function() wipe(ns.db.blockNames); ns.Refresh() end)
     local me, h2 = S.SettingsCard(right, L.SEC_ME, {
         { L.MY_ROLE, nil, control = roleHolder, icon = I .. "Ability_Warrior_DefensiveStance" },
-        { L.BLOCK_WORDS, nil, control = textEdit(170, function() return ns.db.blockWords end,
+        { L.BLOCK_WORDS, nil, control = textEdit(150, function() return ns.db.blockWords end,
             function(v) ns.db.blockWords = v; ns.Refresh() end), icon = I .. "Ability_Warrior_ShieldWall" },
         { L.BLOCKED_N:format(0), nil, control = clear, icon = I .. "Spell_Holy_Silence" },
     })
@@ -327,7 +353,9 @@ local function buildSetup(body, width)
     channelHint = S.Note(right, 11)
     channelHint:SetTextColor(S.WARN[1], S.WARN[2], S.WARN[3], 1)
     st:Add(channelHint, 30)
-    channelHint:SetWidth(rightW)
+    channelHint:SetWidth(rightW - 12)
+    right:SetHeight(st:Height())
+    setup:SetScript("OnShow", function() scroll:Update(st:Height()); keep:Refresh() end)
 end
 
 local function build()
@@ -424,15 +452,22 @@ end
 
 ---- The small feed ------------------------------------------------------------
 
--- The newest groups for the alerted dungeons (all groups while none is alerted), on a small
+-- The newest posts with a watched word (the newest groups while no word is watched), on a small
 -- movable panel. Its opacity is a setting; click-through lets clicks reach the game below.
 ns.FEED_ROWS = 5
 
 function ns.FeedItems()
     local out = {}
-    local any = next(ns.db.alert) ~= nil
+    local words = ns.Words(ns.db.watch)
     for _, p in ipairs(ns.posts) do
-        if p.kind == "GROUP" and (not any or (p.dungeon and ns.db.alert[p.dungeon])) then
+        local hit
+        if #words > 0 then
+            local text = ns.Normalize(p.text)
+            for _, w in ipairs(words) do if text:find(w, 1, true) then hit = true; break end end
+        else
+            hit = p.kind == "GROUP"
+        end
+        if hit then
             out[#out + 1] = p
             if #out >= ns.FEED_ROWS then break end
         end
@@ -494,14 +529,18 @@ function ns.Feed()
     feed:Show()
 end
 
--- A watched dungeon got a new group: a Gulli HUD notice with Ask (or Invite for an LFG).
-function ns.ShowAlert(post)
+-- A post with a watched word: a Gulli HUD notice with Whisper, and Ask (or Invite for an LFG)
+-- for a group.
+function ns.ShowAlert(post, word)
     local lfg = post.role == "LFG"
-    return S.Toast({ key = "alert", icon = "Interface\\AddOns\\Gulli-Bulletin\\icon",
-        title = L.ALERT:format(post.short, ns.DungeonName(post.dungeon)), text = post.text, seconds = 20,
-        buttons = { { text = lfg and L.INVITE or L.ASK_BTN, primary = true, onClick = function()
+    local buttons = { { text = L.WHISPER, primary = post.kind ~= "GROUP", onClick = function() ns.Whisper(post.author) end } }
+    if post.kind == "GROUP" then
+        table.insert(buttons, 1, { text = lfg and L.INVITE or L.ASK_BTN, primary = true, onClick = function()
             if lfg then ns.Invite(post.author) else ns.Ask(post) end
-        end } } })
+        end })
+    end
+    return S.Toast({ key = "alert", icon = "Interface\\AddOns\\Gulli-Bulletin\\icon",
+        title = L.WATCHED:format(post.short, word), text = post.text, seconds = 20, buttons = buttons })
 end
 
 -- /gulli move: the feed shows and can be placed even when it is off.

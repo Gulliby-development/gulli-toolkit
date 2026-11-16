@@ -169,10 +169,34 @@ function Fake(spec)
             ConfirmCommoditiesPurchase = function(id, n) W.calls[#W.calls + 1] = "buy " .. id .. " " .. n end,
             CancelCommoditiesPurchase = function() W.calls[#W.calls + 1] = "cancel" end,
         }
+        -- spec.lots = { [item id] = { { unit price, count } } }: the listings a search finds
+        if spec.lots then
+            W.lots, W.searches = spec.lots, {}
+            C_AuctionHouse.MakeItemKey = function(id) return { itemID = id } end
+            C_AuctionHouse.SendSearchQuery = function(key) W.searches[#W.searches + 1] = key.itemID end
+            C_AuctionHouse.GetNumCommoditySearchResults = function(id) return #(W.lots[id] or {}) end
+            C_AuctionHouse.GetCommoditySearchResultInfo = function(id, i)
+                local l = W.lots[id][i]
+                return { unitPrice = l[1], quantity = l[2] }
+            end
+        end
     end
     AuctionHouseFrame = W.stub()
     GulliCratesDB = spec.db
     return W
+end
+
+-- Answers every search the addon sends, one at a time, until it sends no more.
+function W.AnswerSearches()
+    local answered = 0
+    for _ = 1, 200 do
+        local id = W.searches[answered + 1]
+        if not id then break end
+        answered = answered + 1
+        W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", id)
+        W.RunTimers()
+    end
+    return answered
 end
 
 function Load()

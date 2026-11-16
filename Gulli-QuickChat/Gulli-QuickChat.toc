@@ -1,16 +1,16 @@
 ## Interface: 16001
 ## Title: |cff9ad0ffGulli|r-QuickChat
-## Notes: Chat without a keyboard: ready phrases on big buttons, a group message from a quest, missed whispers. /gqk
-## Notes-ruRU: Чат без клавиатуры: готовые фразы на крупных кнопках, сообщение о сборе группы по квесту, пропущенные шёпоты. /gqk
-## Notes-deDE: Chatten ohne Tastatur: fertige Sätze auf großen Knöpfen, eine Gruppensuche aus einer Quest, verpasste Flüstern. /gqk
-## Notes-esES: Chat sin teclado: frases listas en botones grandes, un mensaje de grupo desde una misión, susurros perdidos. /gqk
-## Notes-esMX: Chat sin teclado: frases listas en botones grandes, un mensaje de grupo desde una misión, susurros perdidos. /gqk
-## Notes-frFR: Discuter sans clavier : phrases prêtes sur de grands boutons, une recherche de groupe depuis une quête, chuchotements manqués. /gqk
-## Notes-ptBR: Chat sem teclado: frases prontas em botões grandes, uma mensagem de grupo a partir de uma missão, sussurros perdidos. /gqk
-## Notes-zhCN: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
-## Notes-zhTW: 无需键盘聊天：大按钮常用语、根据任务生成组队消息、错过的密语。 /gqk
+## Notes: Chat without a keyboard: a ring of ready phrases on a held key, a favourites panel, your own order of channels. /gqk
+## Notes-ruRU: Чат без клавиатуры: кольцо готовых фраз по удержанию клавиши, панель избранного, свой порядок каналов. /gqk
+## Notes-deDE: Chatten ohne Tastatur: ein Ring fertiger Sätze auf gehaltener Taste, ein Favoritenfeld, eigene Kanalreihenfolge. /gqk
+## Notes-esES: Chat sin teclado: un anillo de frases listas con una tecla mantenida, panel de favoritas, tu orden de canales. /gqk
+## Notes-esMX: Chat sin teclado: un anillo de frases listas con una tecla mantenida, panel de favoritas, tu orden de canales. /gqk
+## Notes-frFR: Discuter sans clavier : un anneau de phrases prêtes sur une touche maintenue, un panneau de favoris, votre ordre des canaux. /gqk
+## Notes-ptBR: Chat sem teclado: um anel de frases prontas numa tecla segurada, painel de favoritas, sua ordem de canais. /gqk
+## Notes-zhCN: 无需键盘聊天：按住按键弹出常用语轮盘、常用语面板、自定频道顺序。 /gqk
+## Notes-zhTW: 无需键盘聊天：按住按键弹出常用语轮盘、常用语面板、自定频道顺序。 /gqk
 ## Author: Gulliby
-## Version: 1.9.1
+## Version: 2.0.1
 ## IconTexture: Interface\AddOns\Gulli-QuickChat\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: QuickChat

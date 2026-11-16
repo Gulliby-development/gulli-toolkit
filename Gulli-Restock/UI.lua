@@ -213,6 +213,8 @@ local function build()
           icon = ns.OPT_ICON.deposit },
         { L.OPT_FORECAST, nil, function() return ns.db.forecast end, function(v) ns.db.forecast = v; ns.Refresh() end,
           icon = ns.OPT_ICON.forecast },
+        { L.OPT_LOWER, nil, function() return ns.db.lower end, function(v) ns.db.lower = v; ns.Refresh() end,
+          icon = ns.OPT_ICON.lower },
         { L.OPT_RESERVE, nil, control = reserve, icon = ns.OPT_ICON.reserve },
     })
     st:Add(scard, h)

@@ -545,4 +545,210 @@ test("the window draws a plan without errors", function()
     eq(ns.ShortName(NAMES[FLOWER]), "Flowering Expert Herbs")
 end)
 
+-- ---------- the Merchant's Favor goal ----------
+
+test("every crate pays its Favor: gathering 5 a tier, crafted twice that", function()
+    Fake({})
+    local ns = Load()
+    for id in pairs(ns.CRATES) do assert(ns.FAVOR[id] and ns.FAVOR[id] % 5 == 0, "Favor of " .. id) end
+    eq(ns.FAVOR[248682], 5, "Apprentice Herbs")
+    eq(ns.FAVOR[248691], 15, "Flowering Expert Herbs")
+    eq(ns.FAVOR[248703], 10, "Apprentice Ingots")
+    eq(ns.FAVOR[248709], 30, "Expert Ingots")
+end)
+
+-- A pays 5, B pays 10, C pays 30. Each bundle item has a price.
+local A, B, C, X, Y, Z = 1, 2, 3, 10, 20, 30
+local FAV = { [A] = 5, [B] = 10, [C] = 30 }
+local function tplan(ns, goal, prices, stock, crates)
+    local bundles = { [A] = { { X, 10 } }, [B] = { { Y, 10 } }, [C] = { { Z, 10 } } }
+    return ns.TokenPlan(goal, { A, B, C }, function(id) return FAV[id] end, function(id) return bundles[id] end,
+        function(id) return (stock or {})[id] or 0, 0 end, function(id) return prices[id] end, true,
+        function(id) return (crates or {})[id] or 0 end)
+end
+
+test("the Favor goal takes the mix of crates that costs least", function()
+    Fake({})
+    local ns = Load()
+    -- A: 100 + 50 = 150 for 5; B: 100 + 100 = 200 for 10; C: 900 + 100 = 1000 for 30
+    local prices = { [A] = 100, [B] = 100, [C] = 900, [X] = 5, [Y] = 10, [Z] = 10 }
+    local plan = tplan(ns, 30, prices)
+    eq(plan.favor, 30)
+    eq(plan.total, 600, "three B, not six A (900) nor one C (1000)")
+    eq(#plan.crates, 3)
+    for _, e in ipairs(plan.crates) do eq(e.crate, B) end
+    eq(plan.short, 0)
+    -- 35: three B and one A beat four B
+    plan = tplan(ns, 35, prices)
+    eq(plan.favor, 35); eq(plan.total, 750)
+end)
+
+test("crates and bundle items in the bags are used first", function()
+    Fake({})
+    local ns = Load()
+    local prices = { [A] = 100, [B] = 100, [C] = 900, [X] = 5, [Y] = 10, [Z] = 10 }
+    local plan = tplan(ns, 30, prices, { [Z] = 10 }, { [C] = 1 })
+    eq(#plan.crates, 1, "the Expert crate in the bags with its herbs is free")
+    eq(plan.crates[1].crate, C)
+    assert(plan.crates[1].own)
+    eq(plan.total, 0)
+    eq(#ns.ShoppingList(plan), 0)
+    plan = tplan(ns, 10, prices, nil, { [A] = 2 })
+    eq(plan.total, 100, "two A from the bags (two bundles, 100) beat one B bought (200)")
+    local list = ns.ShoppingList(plan)
+    eq(#list, 1); eq(list[1].id, X); eq(list[1].n, 20)
+    local groups = ns.TokenGroups(plan)
+    eq(#groups, 1); eq(groups[1].own, 2); eq(groups[1].favor, 5)
+end)
+
+test("a crate with no price is left out, and the Favor out of reach is told", function()
+    Fake({})
+    local ns = Load()
+    local plan = tplan(ns, 50, { [A] = 100, [X] = 5 }, nil, { [B] = 1 })
+    eq(plan.short, 0, "A has a price, so the goal is reached")
+    plan = tplan(ns, 50, { [Y] = 1 }, nil, { [B] = 2 })
+    eq(plan.favor, 20, "only the two B in the bags")
+    eq(plan.short, 30)
+end)
+
+test("the Favor tab plans for the player's level and buys through the same button", function()
+    Fake({ level = 15, names = names(), prices = { [248682] = 500, [2447] = 10, [248690] = 1 } })
+    local ns = Load()
+    for _, id in ipairs(ns.TokenCrates()) do assert(ns.CRATES[id][1] <= 15, "crate " .. id .. " above the level") end
+    ns.SetGoal(10)
+    eq(ns.db.goal, 10)
+    eq(ns.tokenPlan, nil, "no plan before Calculate")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local plan = ns.TokenCalculate()
+    eq(ns.source, "tokens")
+    eq(#plan.crates, 2, "Apprentice Herbs pay 5 each")
+    eq(plan.crates[1].crate, 248682)
+    eq(plan.total, 2 * (500 + 20 * 10))
+    eq(ns.Current().id, 248682, "the crates are bought first")
+    eq(ns.Current().n, 2)
+    ns.BuyClick()
+    eq(W.calls[#W.calls], "start 248682 2")
+    W.Fire("COMMODITY_PRICE_UPDATED", 500, 1000)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(ns.Current().id, 2447)
+    -- a preset plans again at once while a plan is shown
+    ns.SetGoal(5)
+    eq(#ns.tokenPlan.crates, 1)
+    ns.SetGoal(10)
+    W.bags[248682] = 2
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq(ns.source, "tokens", "the auction house plans the goal again")
+    assert(ns.tokenPlan.crates[1].own, "the bought crates count now")
+    eq(ns.Current().id, 2447)
+    -- a Fill plan takes the Buy button over
+    ns.Calculate()
+    eq(ns.source, "fill")
+    assert(ns.tokenPlan ~= nil, "the Favor plan stays")
+end)
+
+test("the price of n units walks up the auction lots", function()
+    Fake({})
+    local ns = Load()
+    local lots = { { 5, 10 }, { 50, 100 } }
+    eq(ns.LadderPrice(lots, 10, 0), 5)
+    eq(ns.LadderPrice(lots, 10, 10), 50, "the next ten take the dearer lot")
+    eq(ns.LadderPrice(lots, 20, 0), 27.5)
+    eq(ns.LadderPrice(lots, 1, 110), nil, "more than is listed")
+    eq(ns.LadderPrice({}, 1, 0), nil)
+end)
+
+test("when the cheap lots run out, the Favor plan takes another crate", function()
+    Fake({})
+    local ns = Load()
+    local FAV2 = { [A] = 10, [B] = 10 }
+    local bundles = { [A] = { { X, 10 } }, [B] = { { Y, 10 } } }
+    local lots = { [X] = { { 5, 20 }, { 50, 100 } } }
+    local function price(id, n, skip)
+        if lots[id] then return ns.LadderPrice(lots[id], n or 1, skip or 0) end
+        return ({ [A] = 100, [B] = 100, [Y] = 10 })[id]
+    end
+    local plan = ns.TokenPlan(30, { A, B }, function(id) return FAV2[id] end, function(id) return bundles[id] end,
+        function() return 0, 0 end, price, true, function() return 0 end)
+    local n = {}
+    for _, e in ipairs(plan.crates) do n[e.crate] = (n[e.crate] or 0) + 1 end
+    eq(n[A], 2, "two A while the cheap herbs last")
+    eq(n[B], 1, "then one B, not a third A at the dear lot")
+    eq(plan.total, 150 + 150 + 200)
+end)
+
+local function liveFake(extra)
+    local spec = { bags = { [FLOWER] = 2 }, names = names(), prices = { [WB] = 300, [FB] = 310, [PL] = 900, [AT] = 900 },
+                   lots = { [WB] = { { 300, 10 }, { 2000, 100 } }, [FB] = { { 310, 100 } } } }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    Fake(spec)
+    return Load()
+end
+
+test("at the auction house Calculate reads the lots of what it buys and plans again", function()
+    local ns = liveFake()
+    ns.Calculate()
+    assert(ns.plan.estimate, "away from the auction house the plan is an estimate")
+    eq(#W.searches, 0, "no search away from the auction house")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    assert(ns.Scanning(), "the auction house reads the lots")
+    W.AnswerSearches()
+    assert(not ns.Scanning())
+    eq(W.searches[1], WB)
+    eq(W.searches[2], FB, "the second plan buys Firebloom, so it is read too")
+    eq(#W.searches, 2)
+    eq(ns.plan.crates[1].bundle[1], WB)
+    eq(ns.plan.crates[2].bundle[1], FB, "only ten Wintersbite are cheap")
+    eq(ns.plan.total, 3000 + 3100)
+    assert(not ns.plan.estimate, "every price comes from the lots")
+end)
+
+test("the lots switch and closing the auction house stop the reading", function()
+    local ns = liveFake({ db = { live = false } })
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Calculate()
+    eq(#W.searches, 0, "switched off")
+    assert(ns.plan.estimate)
+    ns.db.live = true
+    ns.Calculate()
+    eq(#W.searches, 1)
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    assert(not ns.Scanning(), "closing stops it")
+    W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", WB)
+    W.RunTimers()
+    eq(#W.searches, 1, "no search after closing")
+end)
+
+test("a search for another item (the player's own) is not taken for ours", function()
+    local ns = liveFake()
+    W.Fire("AUCTION_HOUSE_SHOW")
+    W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 12345)
+    eq(ns.lots[12345], nil)
+    assert(ns.Scanning())
+end)
+
+test("the setting from 1.4.0 is dropped", function()
+    Fake({ db = { favor = 7 } })
+    local ns = Load()
+    eq(ns.db.favor, nil)
+end)
+
+test("the Favor tab draws without errors", function()
+    Fake({ bags = { [248682] = 1 }, names = names(), prices = { [248682] = 500, [2447] = 10 } })
+    local ns = Load()
+    local w = ns.Window()
+    w:Show()
+    ns.ShowTab(3)
+    ns.Refresh()
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.TokenCalculate()
+    ns.Refresh()
+    local rows = ns.TokenRows(ns.tokenPlan)
+    eq(rows[1].kind, "tcrate")
+    eq(rows[2].kind, "item")
+    ns.Recheck("tokens")
+    eq(ns.source, "tokens")
+end)
+
 W.finish()

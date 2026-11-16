@@ -3,7 +3,7 @@
     python3 tools/health/forever_content.py <questiedb> [--out report.md] [--update-seen]
 
 1. Dungeons: the dungeons of DungeonPrep's generator (`DUNGEONS` in
-   tools/dungeonprep/build_data.py) are the list. Bulletin and QuickChat (`ns.DUNGEONS`)
+   tools/dungeonprep/build_data.py) are the list. Bulletin (`ns.DUNGEONS`)
    must name each one (by area id or by name), and DungeonPrep needs its icon (`ns.ICONS`)
    and entrance (`ENTRANCES`).
 2. New Forever areas: every area in a "Forever:" section of QuestieDB's zones.lua that is not
@@ -114,7 +114,7 @@ def norm(name):
 def check_dungeons():
     dungeons, entrances = prep_dungeons()
     lines = []
-    for module in ("Bulletin", "QuickChat"):
+    for module in ("Bulletin",):
         rows = lua_dungeons(os.path.join(ROOT, "Gulli-" + module, "Core.lua"))
         areas = {a for a, _ in rows if a}
         names = {norm(n) for _, n in rows}
@@ -223,7 +223,7 @@ def main(argv):
         report += ["### Dungeons a module lacks", ""] + dungeon_lines + [""]
     if area_lines:
         report += ["### Forever areas to look at", "",
-                   "Add what a module needs (a dungeon to DungeonPrep, Bulletin and QuickChat; rares to "
+                   "Add what a module needs (a dungeon to DungeonPrep and Bulletin; rares to "
                    "MobFinder; an attunement to Attune), then run "
                    "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + area_lines + [""]
     if recipe_lines:

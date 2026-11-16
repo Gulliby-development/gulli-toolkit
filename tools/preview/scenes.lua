@@ -247,37 +247,27 @@ S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "
     end,
 }, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
     open = function(ns)
-        ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
+        ns.AddWord("Arcanite Bar"); ns.AddWord("Strat"); ns.AddWord("enchanter")
+        ns.Add("LFM Strat UD need heals", "Ann"); ns.Add("WTS [Arcanite Bar] 20g", "Bob")
         ns.ShowTab(7)
     end,
 } }
 
 S.quickchat = {
     default = {},
-    edit = { open = function(ns)
-        ns.ToggleFav("Ready!"); ns.ToggleFav("brb"); ns.db.chan["Need a heal!"] = "PARTY"
-        ns.ShowPage(1, { editing = true })
+    picked = { open = function(ns)
+        ns.AddPhrase("Pull in 5, ready?"); ns.ToggleFav("Ready!"); ns.db.orderOf["Need a heal!"] = { "PARTY" }
+        ns.Toggle(); ns.PickPhrase("Pull in 5, ready?")
     end },
-    group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
-    dungeon = { spec = { level = 57, areas = { [2017] = "Stratholme" } }, open = function(ns)
-        ns.ShowPage(2, { mode = 2 })
+    order = { spec = { channels = { 1, "General - Elwynn", false, 2, "Trade - City", false } }, open = function(ns)
+        ns.db.orderOf["WTS {item}, pst"] = { "TRADE", "GENERAL", "SAY" }
+        ns.Toggle(); ns.EditOrder("WTS {item}, pst")
     end },
-    whispers = { open = function(ns, W)
-        W.combat = true
-        W.Fire("CHAT_MSG_WHISPER", "can you craft a bag?", "Ann-Realm")
-        W.Fire("CHAT_MSG_WHISPER", "inv for ST?", "Bob")
-        W.combat = false
-        ns.ShowPage(3)
+    setup = { spec = { channels = { 1, "General - Elwynn", false, 4, "LookingForGroup", false } }, open = function(ns)
+        ns.db.wheelKey = "F5"; ns.db.order = { "RAID", "PARTY", "LFG", "SAY" }; ns.ShowPage(2)
     end },
-    more = { open = function(ns)
-        ns.Say("Ready!"); ns.Say("brb", "GUILD")
-        ns.ShowPage(4)
-    end },
-    setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
-    wheel = { crop = "GulliQuickChatWheel", open = function(ns)
-        for _, p in ipairs({ "inv please", "Ready!", "brb", "Back", "Thanks for the group!", "On my way",
-                             "Need a heal!", "WTS {item}, pst" }) do ns.ToggleFav(p) end
-        ns.ToggleWheel()
+    wheel = { crop = "GulliQuickChatRing", open = function(ns)
+        ns.OpenWheel(true)
         ns.WheelHover(2)
     end },
 }
@@ -755,7 +745,6 @@ end
 S.legacy.zones = lgExplore(80000)
 S.legacy.valthalak = lgExplore(80010)
 -- The settings pages with the Lock switch of their frame on the screen.
-S.bulletin.setup = { spec = S.bulletin.default.spec, open = function(ns) ns.ShowTab(7) end }
 S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
 S.mobfinder.search = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(1) end }
 -- Crates: two Flowering crates, Apprentice Herbs and Expert Ore at the auction house, with some
@@ -811,4 +800,32 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.Window():Show()
         ns.ShowTab(2)
     end } }
+-- The Favor tab: 30 Merchant's Favor from the crates in the bags and the auction house.
+local function crFavor(locale)
+    local sp = crSpec(locale)
+    sp.level = 40
+    for id, p in pairs({ [248682] = 9000, [248686] = 12000, [248690] = 15000, [248691] = 14000, [248692] = 11000,
+                         [248683] = 8000, [2770] = 60, [2771] = 90, [2775] = 300, [2772] = 140 }) do sp.prices[id] = p end
+    sp.names[248683], sp.names[2770], sp.names[2771] = "Waylaid Crate: Apprentice Ore", "Copper Ore", "Tin Ore"
+    sp.db = { goal = 30 }
+    return sp
+end
+local function crFavorOpen(ns, W)
+    crIcons(W)
+    AuctionHouseFrame = nil
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Window():Show()
+    ns.ShowTab(3)
+    ns.TokenCalculate()
+    ns.Refresh()
+end
+S.crates.favor = { spec = crFavor(), open = crFavorOpen }
+S.crates.favor_ru = { spec = crFavor("ruRU"), open = crFavorOpen }
+local function crSettings(ns, W)
+    crIcons(W)
+    ns.Window():Show()
+    ns.ShowTab(4)
+end
+S.crates.settings = { spec = crSpec(), open = crSettings }
+S.crates.settings_ru = { spec = crSpec("ruRU"), open = crSettings }
 return S
