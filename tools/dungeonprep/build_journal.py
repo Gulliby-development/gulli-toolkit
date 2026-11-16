@@ -122,6 +122,13 @@ def build(snapshot):
             continue
         own = {as_int(z.get("id")) for z in d.get("zoneDrops") or []}
         bosses = [b for b in d.get("bosses") or [] if as_int(b.get("id")) > 0 and is_boss(b, own)]
+        # One boss can come twice under two ids (an old and a Forever copy): keep the one with loot.
+        by_name = {}
+        for b in bosses:
+            name = b.get("name")
+            if name not in by_name or len(b.get("drops") or []) > len(by_name[name].get("drops") or []):
+                by_name[name] = b
+        bosses = [b for b in bosses if by_name[b.get("name")] is b]
         bosses.sort(key=lambda b: (as_int(b.get("minLevel")), as_int(b.get("maxLevel"))))
         rows = [boss_row(b, False, own) for b in bosses]
         rows += [boss_row(b, True, own) for b in d.get("rares") or []

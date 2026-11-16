@@ -458,9 +458,12 @@ local function makeBoss(r)
     r.num = S.Text(r, 12, S.Accent())
     r.num:SetPoint("LEFT", 8, 0)
     r.num:SetWidth(16)
+    r.lv = S.Text(r, 11)
+    r.lv:SetPoint("TOPRIGHT", -8, -6)
+    r.lv:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
     r.name:SetPoint("TOPLEFT", 28, -5)
-    r.name:SetPoint("RIGHT", -6, 0)
+    r.name:SetPoint("RIGHT", r.lv, "LEFT", -4, 0)
     r.name:SetWordWrap(false)
     r.sub = S.Text(r, 10, S.FAINT)
     r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
@@ -474,10 +477,15 @@ local function makeBoss(r)
     end)
 end
 
--- A boss's level, "??" for a skull boss (the data has 0).
+-- A boss's level, "??" for a skull boss (the data has 0), and its colour against the player's
+-- level, as the game colours a mob (a skull is always red).
 local function bossLevel(b)
     if b.min <= 0 then return "??" end
     return b.min == b.max and tostring(b.min) or (b.min .. "-" .. b.max)
+end
+local function bossColor(b)
+    if b.min <= 0 then return S.BAD end
+    return ns.DiffColor(ns.Difficulty(b.max, ns.level or 1))
 end
 
 local function fillBoss(r, b)
@@ -485,10 +493,12 @@ local function fillBoss(r, b)
     r.num:SetText(b.rare and "R" or tostring(b.n))
     r.num:SetTextColor(unpack(b.rare and S.WARN or S.Accent()))
     r.name:SetText(b.name)
-    local lv = bossLevel(b)
-    local parts = { L.LEVEL:format(lv) }
-    if b.tag ~= "" then table.insert(parts, 1, b.tag) end
+    r.lv:SetText(bossLevel(b))
+    r.lv:SetTextColor(unpack(bossColor(b)))
+    local parts = {}
+    if b.tag ~= "" then parts[#parts + 1] = b.tag end
     if b.kills > 0 then parts[#parts + 1] = L.KILLS:format(b.kills) end
+    if b.rare then parts[#parts + 1] = L.RARE end
     r.sub:SetText(table.concat(parts, "  ·  "))
     r:SetSelected(b.npc == ns.boss)
 end
@@ -514,8 +524,7 @@ local function fillBossPage()
     end
     p.name:SetText(b.name)
     p.name:SetTextColor(unpack(b.rare and S.WARN or S.TEXT))
-    local lv = bossLevel(b)
-    local parts = { L.LEVEL:format(lv) }
+    local parts = { S.Hex(bossColor(b)) .. L.LEVEL:format(bossLevel(b)) .. "|r" }
     if b.tag ~= "" then table.insert(parts, 1, b.tag) end
     if b.rare then parts[#parts + 1] = L.RARE end
     p.sub:SetText(table.concat(parts, "  ·  "))
@@ -1057,7 +1066,7 @@ local function buildBossPage(parent)
     local left = S.Card(p)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
-    left:SetWidth(190)
+    left:SetWidth(212)
     p.left = left
     p.list = S.List(left.body, 38, makeBoss, fillBoss)
     p.list:SetPoint("TOPLEFT")
