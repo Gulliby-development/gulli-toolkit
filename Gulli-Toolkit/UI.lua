@@ -26,6 +26,7 @@ local QUICK_ICON = {
     move = "Interface\\Icons\\Ability_Hunter_Pathfinding",
     transfer = "Interface\\Icons\\INV_Misc_Note_01",
     protect = "Interface\\Icons\\Spell_Holy_SealOfProtection",
+    setup = "Interface\\Icons\\INV_Misc_Gear_02",
 }
 
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
@@ -1240,13 +1241,19 @@ local function buildHome()
         if not transfer then buildTransfer() end
         showPanel("transfer")
     end)
-    protectBtn = S.Button(q, QUICK_W - 2 * S.INSET, 30)
+    protectBtn = S.Button(q, bw, 30)
     protectBtn:SetPoint("TOPLEFT", 0, -(y + 38))
     S.SetButtonIcon(protectBtn, QUICK_ICON.protect)
     protectBtn:SetScript("OnClick", function()
         if not protectFrame then buildProtected() end
         if protectFrame:IsShown() then showHome() else showPanel("protect") end
     end)
+    local setup = S.Button(q, bw, 30)
+    setup:SetPoint("TOPLEFT", bw + 8, -(y + 38))
+    setup:SetText(L.SETUP)
+    S.SetButtonIcon(setup, QUICK_ICON.setup)
+    setup:SetScript("OnClick", function() ns.OpenSetup() end)
+    home.setup = setup
     local map = minimapRow(q)
     map:SetPoint("TOPLEFT", 0, -(y + 84))
     map:SetPoint("TOPRIGHT", 0, -(y + 84))
@@ -1385,6 +1392,137 @@ function ns.ShowPanel(name)
     if name == "transfer" and not transfer then buildTransfer() end
     showPanel(name)
     return name == "protect" and protectFrame or transfer
+end
+
+-- The first-run window ---------------------------------------------------------------------------
+
+-- Which modules to use: a switch per installed module, grouped like the hub, with a grey line
+-- that says why a module starts off or on (ns.SetupPlan). Nothing changes before Apply.
+local setupWin, setupPlan
+local SETUP_H, SETUP_ROW = 600, 48
+
+local function setupItems()
+    -- The modules with a reason come first, so the player sees at once what was picked and why.
+    local by, items, found = {}, {}, {}
+    for _, p in ipairs(setupPlan) do
+        if p.why then
+            found[#found + 1] = p
+        else
+            by[p.row.category] = by[p.row.category] or {}
+            table.insert(by[p.row.category], p)
+        end
+    end
+    if #found > 0 then
+        items[#items + 1] = { head = L.SETUP_FOUND }
+        for _, want in ipairs({ false, true }) do
+            for _, p in ipairs(found) do if p.on == want then items[#items + 1] = p end end
+        end
+    end
+    local cats = {}
+    for _, c in ipairs(ns.CATEGORIES) do cats[#cats + 1] = c end
+    cats[#cats + 1] = "Other"
+    for _, c in ipairs(cats) do
+        if by[c] then
+            items[#items + 1] = { head = catName(c) or c }
+            for _, p in ipairs(by[c]) do items[#items + 1] = p end
+        end
+    end
+    return items
+end
+
+local function setupStatus()
+    local on = 0
+    for _, p in ipairs(setupPlan) do if p.on then on = on + 1 end end
+    setupWin.footer:SetStatus(L.SETUP_COUNT:format(on, #setupPlan))
+    setupWin.apply:SetText(ns.SetupNeedsReload(setupPlan) and L.SETUP_APPLY_RELOAD or L.SETUP_APPLY)
+    setupWin.apply:SetWidth(math.max(120, math.floor((tonumber(setupWin.apply.text:GetStringWidth()) or 100) + 28)))
+end
+
+local function makeSetupRow(r)
+    r.head = S.Text(r, 11, S.FAINT)
+    r.head:SetPoint("BOTTOMLEFT", 4, 8)
+    r.head:SetPoint("RIGHT", -4, 0)
+    r.head:SetWordWrap(false)
+    r.icon = S.IconBox(r, 28)
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.switch = S.Switch(r)
+    r.switch:SetPoint("RIGHT", -4, 0)
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 12, 2)
+    r.name:SetPoint("RIGHT", r.switch, "LEFT", -12, 0)
+    r.name:SetWordWrap(false)
+    r.why = S.Text(r, 11, S.FAINT)
+    r.why:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -4)
+    r.why:SetPoint("RIGHT", r.switch, "LEFT", -12, 0)
+    r.why:SetWordWrap(false)
+    r.switch:SetScript("OnClick", function(self)
+        if not r.item then return end
+        r.item.on = not r.item.on
+        self:SetChecked(r.item.on)
+        setupStatus()
+    end)
+end
+
+local function fillSetupRow(r, item)
+    r.item = not item.head and item or nil
+    r.head:SetShown(item.head ~= nil)
+    r.icon:SetShown(item.head == nil)
+    r.switch:SetShown(item.head == nil)
+    r.name:SetShown(item.head == nil)
+    r.why:SetShown(item.head == nil)
+    r.line:SetShown(item.head == nil)
+    if item.head then
+        r.head:SetText(S.Upper(item.head))
+        return
+    end
+    r.icon:SetIcon(item.row.icon or TOOLKIT_ICON)
+    r.name:SetText(item.row.title)
+    r.why:SetText(item.why or item.row.desc or "")
+    local c = item.why and S.MUTED or S.FAINT
+    r.why:SetTextColor(c[1], c[2], c[3], 1)
+    r.switch:SetChecked(item.on)
+end
+
+local function buildSetup()
+    setupWin = S.Window("GulliToolkitSetup", L.SETUP_TITLE, S.NARROW_W, SETUP_H,
+        { sub = "/gulli setup", icon = TOOLKIT_ICON, fullTitle = true })
+    local ft = S.Footer(setupWin)
+    setupWin.apply = ft:Add(S.Primary(S.FitButton(setupWin, L.SETUP_APPLY, 32, 120)))
+    setupWin.later = ft:Add(S.Ghost(S.FitButton(setupWin, L.SETUP_LATER, 32, 90)))
+    local body = setupWin.body
+    local st = S.Stack(body)
+    local intro = S.Card(body)
+    local w = S.NARROW_W - 2 * S.PAD - 2 * S.INSET
+    local text, th = S.Paragraph(intro.body, L.SETUP_HINT, w, 12)
+    text:SetPoint("TOPLEFT")
+    st:Add(intro, intro:Fit(th + 4))
+    local listCard = S.Card(body, L.SETUP_MODULES)
+    st:Add(listCard, setupWin.inner[2] - st.y)
+    setupWin.list = S.List(listCard.body, SETUP_ROW, makeSetupRow, fillSetupRow)
+    setupWin.list:SetPoint("TOPLEFT")
+    setupWin.list:SetPoint("BOTTOMRIGHT")
+    setupWin.apply:SetScript("OnClick", function()
+        local reload = ns.SetupNeedsReload(setupPlan)
+        local n = ns.ApplySetup(setupPlan)
+        setupWin:Hide()
+        if reload then ReloadUI()
+        elseif n > 0 then ns.Print(L.SETUP_DONE:format(n)) end
+    end)
+    setupWin.later:SetScript("OnClick", function() setupWin:Hide() end)
+    -- Closing it any way counts: it does not open by itself again.
+    setupWin:HookScript("OnHide", function() ns.SetupDone() end)
+end
+
+-- Opens the setup window. auto: opened by the first run, so only when there is a module to pick.
+function ns.OpenSetup(auto)
+    setupPlan = ns.SetupPlan()
+    if auto and #setupPlan == 0 then ns.SetupDone(); return nil end
+    if not setupWin then buildSetup() end
+    if frame and frame:IsShown() then frame:Hide() end
+    setupWin:Show()
+    setupWin.list:SetData(setupItems())
+    setupStatus()
+    return setupWin, setupPlan
 end
 
 -- A page under Options > AddOns with a button that opens the hub.

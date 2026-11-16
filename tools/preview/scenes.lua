@@ -828,4 +828,25 @@ local function crSettings(ns, W)
 end
 S.crates.settings = { spec = crSpec(), open = crSettings }
 S.crates.settings_ru = { spec = crSpec("ruRU"), open = crSettings }
+-- The first-run window: Leatrix Plus sells junk, SilverDragon finds rares, Auctionator is on.
+S.toolkit.setup = {
+    spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.20.0" } },
+        mod("QuestCleaner"), mod("AutoQuest"), mod("PartyQuests"), mod("GroupBuffs"), mod("DungeonPrep"),
+        mod("InstanceLimit"), mod("Loot"), mod("BagSpace"), mod("Merchant"), mod("Mail"), mod("Crates"),
+        mod("CraftProfit"), mod("Bulletin"), mod("Social"), mod("XP"), mod("MobFinder"), mod("Tooltip"),
+        { name = "Leatrix_Plus", enabled = true, loaded = true }, { name = "SilverDragon", enabled = true, loaded = true },
+        { name = "Auctionator", enabled = true, loaded = true } } },
+    crop = "GulliToolkitSetup",
+    open = function(ns)
+        LeaPlusDB = { AutoSellJunk = "On", AutoRepairGear = "On" }
+        for _, k in ipairs({ "QuestCleaner", "AutoQuest", "PartyQuests", "GroupBuffs", "DungeonPrep", "InstanceLimit",
+                             "Loot", "BagSpace", "Merchant", "Mail", "Crates", "CraftProfit", "Bulletin", "Social",
+                             "XP", "MobFinder", "Tooltip" }) do
+            GulliToolkit.Register({ key = k, open = function() end, pause = function() end,
+                icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon" })
+        end
+        ns.OpenSetup()
+    end,
+}
+
 return S

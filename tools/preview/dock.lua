@@ -46,7 +46,7 @@ C_AddOns = {
 local savedSlash = SlashCmdList
 SlashCmdList = SlashCmdList or {}
 local hub = { }
-for _, f in ipairs({ "Locales.lua", "Core.lua", "Ready.lua", "Skin.lua", "UI.lua" }) do
+for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Skin.lua", "UI.lua" }) do
     assert(loadfile("Gulli-Toolkit/" .. f))("Gulli-Toolkit", hub)
 end
 SlashCmdList = savedSlash or SlashCmdList
