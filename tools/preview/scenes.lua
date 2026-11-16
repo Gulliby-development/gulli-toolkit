@@ -464,8 +464,26 @@ S.mail = { panel = {
 
 -- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.
 local dpIcons = { "INV_Pants_03", "INV_Weapon_Rifle_05", "INV_Chest_Chain_05", "INV_Gauntlets_04", "INV_Boots_05" }
+-- The Gnomeregan boss loot by name, for the journal pages.
+local DP_LOOT = { [9445] = { "Grubbis Paws", "INVTYPE_HAND", "INV_Gauntlets_04" },
+    [9446] = { "Electrocutioner Leg", "INVTYPE_2HWEAPON", "INV_Mace_04" },
+    [9454] = { "Acidic Walkers", "INVTYPE_FEET", "INV_Boots_05" }, [9452] = { "Hydrocane", "INVTYPE_2HWEAPON", "INV_Staff_08" },
+    [9453] = { "Toxic Revenger", "INVTYPE_WEAPON", "INV_Weapon_ShortBlade_05" },
+    [9447] = { "Electrocutioner Lagnut", "INVTYPE_FINGER", "INV_Jewelry_Ring_15" },
+    [9448] = { "Spidertank Oilrag", "INVTYPE_WRIST", "INV_Bracer_07" },
+    [9449] = { "Manual Crowd Pummeler", "INVTYPE_2HWEAPON", "INV_Hammer_05" },
+    [9450] = { "Gnomebot Operating Boots", "INVTYPE_FEET", "INV_Boots_02" },
+    [9492] = { "Electromagnetic Gigaflux Reactivator", "INVTYPE_HEAD", "INV_Helmet_49" },
+    [9459] = { "Thermaplugg's Left Arm", "INVTYPE_2HWEAPON", "INV_Axe_09" },
+    [9461] = { "Charged Gear", "INVTYPE_FINGER", "INV_Misc_Gear_01" },
+    [9458] = { "Thermaplugg's Central Core", "INVTYPE_SHIELD", "INV_Shield_05" },
+    [4415] = { "Schematic: Craftsman's Monocle", "", "INV_Scroll_03" },
+    [9455] = { "Emissary Cuffs", "INVTYPE_WRIST", "INV_Bracer_04" },
+    [9457] = { "Royal Diplomatic Scepter", "INVTYPE_WEAPON", "INV_Mace_06" } }
 local dpItems = setmetatable({ [6893] = { "Workshop Key", 1, 1, "", 13, 0, "Interface\\Icons\\INV_Misc_Key_06" } },
     { __index = function(_, id)
+        local l = DP_LOOT[id]
+        if l then return { l[1], 3, 34, l[2], l[2] == "" and 9 or 4, id % 3, "Interface\\Icons\\" .. l[3] } end
         return { "Reward " .. id, 2, 34 + id % 4, ({ "INVTYPE_LEGS", "INVTYPE_RANGEDRIGHT", "INVTYPE_CHEST" })[id % 3 + 1],
                  id % 3 == 1 and 2 or 4, id % 3 == 1 and 3 or (id % 2 == 0 and 3 or 1),
                  "Interface\\Icons\\" .. dpIcons[id % #dpIcons + 1] }
@@ -479,12 +497,30 @@ local dpSpec = { level = 33, raceID = 6, faction = "Horde", className = "HUNTER"
     map = { best = 1454, pos = { 0.70, 0.30 },
             maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } },
     bags = { [0] = { size = 16, slots = { [1] = { 4540, 4 } } } } }
+-- Sample bosses for the journal pages (the real ones come from JournalData.lua).
+local function dpBosses(ns)
+    ns.Data.boss = ns.Data.boss or {}
+    ns.Data.boss.GNOMER = {
+        { 7361, "Grubbis", "", 32, 32, 6533, 0, { 9143 }, { { 9445, 3, 21.4 }, { 9446, 3, 18.9 } } },
+        { 7079, "Viscous Fallout", "", 30, 30, 6531, 0, { 9459 }, { { 9454, 3, 34.2 }, { 9452, 3, 29.8 }, { 9453, 3, 27.1 } } },
+        { 6235, "Electrocutioner 6000", "", 32, 32, 6942, 0, { 11085 }, { { 9447, 3, 31.5 }, { 9446, 3, 24.6 }, { 9448, 3, 22 } } },
+        { 6229, "Crowd Pummeler 9-60", "", 32, 32, 6774, 0, { 10887 }, { { 9449, 3, 41.3 }, { 9450, 3, 37 } } },
+        { 7800, "Mekgineer Thermaplugg", "Leper Gnome King", 34, 34, 6980, 0, { 10101, 11518 },
+          { { 9492, 3, 18.7 }, { 9459, 3, 17.2 }, { 9461, 3, 16.4 }, { 9458, 3, 15.3 }, { 4415, 3, 4.1 } } },
+        { 6228, "Dark Iron Ambassador", "", 33, 33, 6669, 1, {}, { { 9455, 3, 33.3 }, { 9457, 3, 30.6 } } },
+    }
+    ns.db.kills = { [7800] = 3 }
+    ns.SetWish(9492, true)
+end
 S.dungeonprep = {
-    default = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle() end },
-    settings = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
-    quest = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.OpenQuest(2841) end },
-    forever = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle() end },
-    chain = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.OpenQuest(95775) end },
+    default = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.selected = "GNOMER"; ns.Toggle() end },
+    loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
+    quests = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
+    settings = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
+    empty = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle() end },
+    quest = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
+    forever = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
+    chain = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).
