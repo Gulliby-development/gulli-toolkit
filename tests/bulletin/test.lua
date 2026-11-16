@@ -127,6 +127,8 @@ test("one poster keeps one message per kind, and messages expire", function()
     eq(ns.posts[1].short, "Bob")
     eq(ns.Count("WTS"), 1)
     W.now = W.now + 16 * 60
+    eq(#ns.View("WTS"), 1, "by default a post lasts the session")
+    ns.db.minutes = 15
     ns.Add("WTB Linen", "Ann", "Trade")
     eq(#ns.View("WTS"), 0, "15 minutes later the old message is gone")
     eq(#ns.View("WTB"), 1)
@@ -257,47 +259,44 @@ test("short words do not make false matches", function()
     eq(k, "GROUP"); eq(d, "DM", "a full name alone is still a group")
 end)
 
-test("the Groups tab shows only the picked dungeons", function()
-    Fake({ level = 30 })
-    local ns = Load()
-    ns.Add("LFM RFC", "A"); ns.Add("LFM WC", "B"); ns.Add("LFG anything", "C")
-    eq(#ns.View("GROUP", false, 30), 6)
-    ns.db.only.WC = true
-    local v = ns.View("GROUP", false, 30)
-    eq(#v, 2); eq(v[1].dungeon, "WC"); eq(v[2].author, "B")
-    ns.db.only.WC = nil
-    eq(#ns.View("GROUP", false, 30), 6, "none picked shows all")
-end)
-
-test("a new group for a watched dungeon alerts once: sound, chat and the hub feed", function()
+test("a new post with a watched word alerts once: sound, chat, the hub feed and a notice", function()
     Fake({})
     local sounds, notes = 0, {}
     PlaySound = function() sounds = sounds + 1 end
     GulliToolkit = { Notify = function(key, text) notes[#notes + 1] = key .. ":" .. text end }
     local ns = Load()
+    local toasts = 0
+    ns.ShowAlert = function() toasts = toasts + 1 end
     ns.Add("LFM Strat", "Bob-Realm")
     eq(sounds, 0, "not watched")
-    ns.db.alert.STRAT = true
+    assert(ns.AddWord("strat"))
+    eq(ns.AddWord(" Strat "), false, "a word is listed once")
     ns.Add("LFM WC", "Ann")
     eq(sounds, 0)
     ns.Add("LFM Strat UD", "Ann")
-    eq(sounds, 1)
-    eq(notes[1], "Bulletin:Ann posted a group for Stratholme.")
-    assert(W.printed[#W.printed]:find("Ann posted", 1, true))
+    eq(sounds, 1); eq(toasts, 1)
+    eq(notes[1], "Bulletin:Ann wrote about strat.")
     ns.Add("LFM Strat UD need 1 heal", "Ann")
     eq(sounds, 1, "the same poster again is not new")
-    ns.db.sound, ns.db.chat = false, false
+    ns.db.sound, ns.db.chat, ns.db.popup = false, false, false
     local printed = #W.printed
     ns.Add("LFG Strat", "Cid")
-    eq(sounds, 1); eq(#W.printed, printed); eq(#notes, 2, "the feed still gets it")
+    eq(sounds, 1); eq(#W.printed, printed); eq(#notes, 2, "the feed still gets it"); eq(toasts, 1)
     ns.Add("LFM Strat", "Tester")
     eq(#notes, 2, "not for my own post")
+    eq(ns.WordCount("strat"), 4)
+    ns.AddWord("black lotus")
+    eq(table.concat(ns.WordList(), "|"), "strat|black lotus")
+    ns.RemoveWord("STRAT")
+    eq(ns.db.watch, "black lotus")
 end)
 
-test("the setup tab lists the dungeons with their boxes", function()
+test("the setup tab lists the watched words", function()
     Fake({})
     local ns = Load()
     SlashCmdList.GULLIBULLETIN("")
+    ns.AddWord("ore")
+    ns.ShowTab(7)
     ns.Refresh()
 end)
 
@@ -355,8 +354,23 @@ test("hidden players and words never reach the board", function()
     eq(ns.BlockedCount(), 1)
 end)
 
-test("the board is still there after a reload, without the expired posts", function()
+test("the board lasts the session: a reload keeps it, a new login clears it", function()
     Fake({})
+    local ns = Load()
+    ns.Add("LFM RFC", "Bob")
+    W.now = W.now + 3 * 3600
+    local saved = GulliBulletinDB
+    Fake({ db = saved, now = W.now })
+    ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD", false, true)
+    eq(#ns.posts, 1, "a /reload keeps old posts")
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(#ns.posts, 0, "a new login starts a new board")
+    eq(GulliBulletinDB.only, nil)
+end)
+
+test("with minutes picked, a reload drops the expired posts", function()
+    Fake({ db = { minutes = 15, sessionV = 1 } })
     local ns = Load()
     ns.Add("LFM RFC", "Bob")
     ns.Add("WTS ore", "Ann")
@@ -392,25 +406,14 @@ test("a hint when LookingForGroup or Trade is missing", function()
     eq(table.concat(ns.MissingChannels(), ","), "LFG")
 end)
 
-test("My LFM opens Quick Chat for the dungeon when it is there", function()
-    Fake({})
-    local ns = Load()
-    eq(ns.CanPostLFM(), false)
-    local got
-    Fake({ quickchat = { OpenLFM = function(key) got = key end } })
-    ns = Load()
-    eq(ns.CanPostLFM(), true)
-    ns.PostLFM("STRAT")
-    eq(got, "STRAT")
-end)
-
-test("the small feed shows the newest alerted groups and follows its settings", function()
+test("the small feed shows the watched posts (every group without words) and follows its settings", function()
     Fake({})
     local ns = Load()
     ns.Add("LFM RFC", "A"); ns.Add("LFM Strat", "B"); ns.Add("WTS ore", "C")
-    eq(#ns.FeedItems(), 2, "every group while no dungeon is alerted")
-    ns.db.alert.STRAT = true
+    eq(#ns.FeedItems(), 2, "every group while no word is watched")
+    ns.AddWord("ore")
     eq(#ns.FeedItems(), 1)
+    eq(ns.FeedItems()[1].short, "C")
     ns.db.feed.show, ns.db.feed.through, ns.db.feed.alpha = true, true, 50
     ns.Feed()
     assert(GulliBulletinFeed == nil or true)

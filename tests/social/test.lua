@@ -215,4 +215,31 @@ test("paused from the hub it answers no whisper", function()
     eq(W.did[1], "invite:Bob", "started again")
 end)
 
+test("busy auto-reply: once per player every few minutes, only when on and busy", function()
+    Fake({})
+    local ns = Load()
+    W.combat = true
+    W.Fire("CHAT_MSG_WHISPER", "hi", "Ann")
+    eq(#W.said, 0, "off by default")
+    ns.db.busy = true
+    W.Fire("CHAT_MSG_WHISPER", "hi", "Ann")
+    W.Fire("CHAT_MSG_WHISPER", "hi?", "Ann")
+    eq(#W.said, 1)
+    assert(W.said[1]:find("^WHISPER:Ann:Sorry"))
+    W.now = W.now + ns.db.busyMinutes * 60
+    ns.db.busyText = "Raiding, later"
+    W.Fire("CHAT_MSG_WHISPER", "hi??", "Ann")
+    eq(W.said[2], "WHISPER:Ann:Raiding, later")
+    W.combat = false
+    W.Fire("CHAT_MSG_WHISPER", "yo", "Bob")
+    eq(#W.said, 2, "not busy: no answer")
+    ns.db.busyAlways = true
+    W.Fire("CHAT_MSG_WHISPER", "yo", "Bob")
+    eq(#W.said, 3)
+    eq(ns.db.log[1].what, "busy")
+    W.Fire("CHAT_MSG_WHISPER", "inv", "Cid")
+    eq(#W.said, 3, "an invite is not answered as busy")
+    ns.ShowPage(1)
+end)
+
 W.finish()
