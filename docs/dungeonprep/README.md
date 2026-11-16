@@ -28,12 +28,12 @@ You are about to run a dungeon. Who is inside, what can drop for you, and did yo
 - **Every dungeon of WoW Forever**, also the new ones: the Hall of Thanes, the Ruins of Lordaeron, the Excavation Site in the Wetlands, the City of Dalaran, the Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace.
 - **A page for each quest**, like a dungeon journal. Click a quest to see what to do (each objective with its count, ticked when done), who gives it and who takes it back (each with a **Show on map** button), the whole quest chain as numbered steps (done steps ticked, the step you still miss in red), the rewards by name (marked when they are better than yours or not for your class) and the mobs it needs. The arrows go to the quest before and after it in the list. **Track** puts it on your quest tracker, **Share** offers it to your group, **Hide** takes it off the list.
 - **A header for each dungeon**, like a dungeon journal: its name and levels, its bosses, how many of its quests are in your log, to take, for later and done, whether its key is in your bags, and the **Entrance** button. The dungeon list shows how many quests wait in each dungeon.
-- **All dungeons at a glance.** The journal opens on big tiles of every dungeon, the ones for your level first, each with its picture, levels and the quests that wait there. Click one to open it; **« All dungeons** goes back. Inside a dungeon it opens on the dungeon you are in.
-- **Suggests a dungeon** for your level. Each dungeon in the list on the left shows its full name on one line and its levels and waiting quests on the next. Classic dungeons show the game's own dungeon picture and portrait; WoW Forever's new dungeons show their icon. The level range has the game's colours: red is too hard, yellow is right for you, green is easy, gray gives little experience.
+- **All dungeons at a glance.** The journal opens on big tiles of every dungeon, the ones for your level first: the name in capitals, the dungeon's picture at full light, and under it the levels on the left and the quests that wait there on the right. Click one to open it: its pages (Bosses, Loot, Quests, Settings) take the whole window, and **« All dungeons** goes back to the tiles. Inside a dungeon it opens on the dungeon you are in.
+- **Suggests a dungeon** for your level. Classic dungeons show the game's own dungeon picture; WoW Forever's new dungeons show their icon. The level range has the game's colours: red is too hard, yellow is right for you, green is easy, gray gives little experience.
 - **Only your quests.** Horde and Alliance quests are kept apart. Repeatable turn-ins with no experience (like the Sparklematic 5200 in Gnomeregan) are not listed.
 - **A way to pick them up.** The quests you can take now come as stops: first the ones in your zone, nearest first, then other zones. The last stop is the dungeon entrance. Click a stop to put a pin on the map (and a TomTom arrow, if you have TomTom). **Entrance** pins the way in at once.
 - **Rewards.** Each quest shows its reward items. Items for another class are pale, and an item better than what you wear has a green border. Point at a quest for the list, and for the experience and money of a quest in your log.
-- **Chains.** "Step 2 of 4" on quests in a chain. A quest you cannot take yet says which quest you need first and where it starts.
+- **Chains.** "Step 2 of 4" on quests in a chain, and every step of the chain under each other on the card: done steps ticked, steps in your log marked, the step you still miss in red and this quest in blue. A quest you cannot take yet says which quest you need first and where it starts.
 - **Hand in.** A quest in your log says who takes it back. When you leave a dungeon, it tells you in chat where to hand in your finished quests and pins the first one.
 - **Your group.** A quest in your log shows who in your group has it too. Share it from its page.
 - **Search and hide.** Find a quest by its name, its quest giver or a mob it needs. Right-click a quest to hide it. The filters **All**, **To take**, **In log** and **Done** show only those quests, each with its count. A switch in **Settings** folds the quests you cannot take yet.
@@ -51,7 +51,7 @@ You are about to run a dungeon. Who is inside, what can drop for you, and did yo
 ## How to use it
 
 1. Type `/gdj`, or `/gdj DM` for a dungeon by its short name (`/gdp` works too).
-2. Pick a dungeon tile (or a dungeon on the left). **Bosses** shows who is inside and what they drop.
+2. Pick a dungeon tile. **Bosses** shows who is inside and what they drop.
 3. On **Quests**, follow the stops in **Pick up on the way** before you go. Click a stop for a map pin.
 4. Point at a quest for a short card, or click it for its page with the chain and the map buttons. **<** goes back to the list.
 
