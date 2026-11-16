@@ -1,4 +1,4 @@
-"""Turns the drawn dungeon pictures in tools/dungeonprep/banners/<KEY>.png into the
+"""Turns the drawn dungeon pictures in tools/dungeonprep/banners/<KEY>.jpg into the
 addon's Gulli-DungeonPrep/Media/Banner-<KEY>.tga: the middle 2:1 band, 512 x 256,
 24-bit uncompressed (the game reads TGA, not PNG, and wants powers of two).
 
@@ -28,7 +28,7 @@ def convert(src, out):
 
 
 def main():
-    pictures = sorted(SRC.glob("*.png"))
+    pictures = sorted(SRC.glob("*.jpg")) + sorted(SRC.glob("*.png"))
     if not pictures:
         sys.exit("no pictures in " + str(SRC))
     for src in pictures:
