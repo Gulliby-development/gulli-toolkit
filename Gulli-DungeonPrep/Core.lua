@@ -1,21 +1,18 @@
--- Before a dungeon: its quests (in the log, can take now and where, not yet), their rewards
--- and chains, the way there with the entrance, and a short checklist of what runs out
--- inside: repairs, bag space, food and drink, the hearthstone, keys and class supplies.
+-- Dungeon Journal: each dungeon's quests (in the log, can take now and where, not yet), their
+-- rewards and chains, and the way there with the entrance. Journal.lua adds the bosses and their
+-- loot. What runs out on the road (repairs, food, the hearthstone) is the hub's Ready card.
 
 local ADDON, ns = ...
 local L = ns.L
-
-local HEARTHSTONE = 6948
-local CONSUMABLE, FOOD_DRINK = 0, 5
 
 local function data()
     return ns.Data or { dungeons = {}, byDungeon = {}, quest = {} }
 end
 
--- Settings: the checklist thresholds and the switches. Each change goes through ns.Set.
+-- Settings: the switches. Each change goes through ns.Set.
 ns.DEFAULTS = {
-    durMin = 50, bagsMin = 6, foodMin = 10, ammoMin = 400, shardsMin = 5, reagentMin = 5,
-    keys = true, classCheck = true, remind = true, tomtom = true, hideLater = false,
+    keys = true, remind = true, tomtom = true, hideLater = false,
+    warnEnter = true, wishAlert = true, learn = true,
 }
 
 function ns.Get(key)
@@ -60,24 +57,6 @@ local function areaName(id)
     local name = id and id > 0 and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(id)
     return (type(name) == "string" and name ~= "") and name or nil
 end
-local C = C_Container or {}
-local function numSlots(bag) return (C.GetContainerNumSlots or GetContainerNumSlots)(bag) or 0 end
-local function freeSlots(bag)
-    local free, family = (C.GetContainerNumFreeSlots or GetContainerNumFreeSlots)(bag)
-    return free or 0, family or 0
-end
-local function slotItem(bag, slot)
-    if C.GetContainerItemInfo then
-        local i = C.GetContainerItemInfo(bag, slot)
-        return i and i.itemID, i and i.stackCount
-    end
-    local _, count, _, _, _, _, _, _, _, id = GetContainerItemInfo(bag, slot)
-    return id, count
-end
-local function itemClass(id)
-    local _, _, _, _, _, classID, subclassID = ((C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant)(id)
-    return classID, subclassID
-end
 local function itemCount(id)
     return ((C_Item and C_Item.GetItemCount) or GetItemCount or function() return 0 end)(id) or 0
 end
@@ -87,10 +66,6 @@ local function itemInfo(id)
     local name, link, quality, ilvl, _, _, _, _, equipLoc, icon, _, classID, subclassID = get(id)
     if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
     return name, link, quality, ilvl, equipLoc, icon, classID, subclassID
-end
-local function itemCooldown(id)
-    local start, duration = ((C_Container and C_Container.GetItemCooldown) or GetItemCooldown)(id)
-    return start or 0, duration or 0
 end
 
 -- Whether bit `id` (1-based) is set in a race or class mask; 0 means everyone. Masks pass
@@ -421,21 +396,26 @@ local function wornLevel(slots)
     return low or 0
 end
 
+-- Whether an item is for this class, and whether it beats what is worn there (a higher item
+-- level). Both nil until the game has the item.
+function ns.ItemFor(id)
+    local name, _, _, ilvl, equipLoc, _, classID, subclassID = itemInfo(id)
+    if not name then return nil, nil end
+    local _, class = UnitClass("player")
+    local fits = ns.Fits(classID, subclassID, equipLoc, class, UnitLevel("player") or 1)
+    local slots = SLOTS[equipLoc or ""]
+    return fits, fits and slots ~= nil and (ilvl or 0) > wornLevel(slots)
+end
+
 -- A quest's reward items: { id, name, link, icon, quality, fits, better }. `better` is an item
 -- for this class with a higher item level than what is worn there. Names come once the game
 -- has the item; until then only the id.
 function ns.Rewards(entry)
     local out = {}
-    local _, class = UnitClass("player")
-    local level = UnitLevel("player") or 1
     for _, id in ipairs(entry.reward or {}) do
-        local name, link, quality, ilvl, equipLoc, icon, classID, subclassID = itemInfo(id)
+        local name, link, quality, _, _, icon = itemInfo(id)
         local r = { id = id, name = name, link = link, icon = icon, quality = quality }
-        if name then
-            r.fits = ns.Fits(classID, subclassID, equipLoc, class, level)
-            local slots = SLOTS[equipLoc or ""]
-            r.better = r.fits and slots ~= nil and (ilvl or 0) > wornLevel(slots)
-        end
+        if name then r.fits, r.better = ns.ItemFor(id) end
         out[#out + 1] = r
     end
     return out
@@ -621,85 +601,15 @@ ns.KEYS = {
     STRAT = { 12382 },   -- Key to the City
 }
 
--- What each class brings along: a reagent from the level its spell comes, or ammo and shards.
-ns.CLASS_ITEMS = {
-    PRIEST = { id = 17028, level = 48 },  -- Holy Candle
-    MAGE = { id = 17020, level = 56 },    -- Arcane Powder
-    SHAMAN = { id = 17030, level = 30 },  -- Ankh
-    DRUID = { id = 17034, level = 20 },   -- Maple Seed
-    ROGUE = { id = 5140, level = 22 },    -- Flash Powder
-    PALADIN = { id = 21177, level = 52 }, -- Symbol of Kings
-    WARLOCK = { id = 6265, level = 1, key = "SHARDS" }, -- Soul Shard
-}
-
 local function nameOf(id)
     return itemInfo(id) or ("item:" .. id)
 end
 
--- The checklist: { key, ok, text } for repairs, bag space, food and drink, hearthstone, then
--- the keys of the dungeon (`dungeonKey`) and what the class brings along.
-function ns.Checklist(dungeonKey)
+-- The keys of a dungeon and whether they are in the bags: { id, name, have }.
+function ns.KeyState(dungeonKey)
     local out = {}
-    local lowest = 100
-    for slot = 1, 18 do
-        local cur, max = GetInventoryItemDurability(slot)
-        if cur and max and max > 0 then lowest = math.min(lowest, math.floor(cur * 100 / max)) end
-    end
-    out[#out + 1] = { key = "REPAIR", ok = lowest >= ns.Get("durMin"), text = L.CHECK_REPAIR:format(lowest) }
-
-    local free, food = 0, 0
-    for bag = 0, 4 do
-        local f, family = freeSlots(bag)
-        if family == 0 then free = free + f end
-        for slot = 1, numSlots(bag) do
-            local id, count = slotItem(bag, slot)
-            if id then
-                local class, sub = itemClass(id)
-                if class == CONSUMABLE and sub == FOOD_DRINK then food = food + (count or 1) end
-            end
-        end
-    end
-    out[#out + 1] = { key = "BAGS", ok = free >= ns.Get("bagsMin"), text = L.CHECK_BAGS:format(free) }
-    out[#out + 1] = { key = "FOOD", ok = food >= ns.Get("foodMin"), text = L.CHECK_FOOD:format(food) }
-
-    local start, duration = itemCooldown(HEARTHSTONE)
-    local left = (start > 0 and duration > 0) and math.ceil(start + duration - GetTime()) or 0
-    out[#out + 1] = { key = "HEARTH", ok = left <= 0,
-                      text = left > 0 and L.CHECK_HEARTH_CD:format(math.ceil(left / 60)) or L.CHECK_HEARTH }
-
-    -- Gulli Restock, when it runs: what its keep list misses.
-    if GulliRestock and GulliRestock.Missing then
-        local miss = GulliRestock.Missing() or {}
-        local names = {}
-        for i, m in ipairs(miss) do
-            if i <= 2 then names[#names + 1] = m.name .. " " .. m.have .. "/" .. m.want end
-        end
-        if #miss > 2 then names[#names + 1] = "..." end
-        out[#out + 1] = { key = "RESTOCK", ok = #miss == 0,
-                          text = #miss == 0 and L.CHECK_RESTOCK_OK or L.CHECK_RESTOCK:format(table.concat(names, ", ")) }
-    end
-
-    if ns.Get("keys") and dungeonKey then
-        for _, id in ipairs(ns.KEYS[dungeonKey] or {}) do
-            local have = itemCount(id) > 0
-            out[#out + 1] = { key = "KEY", item = id, ok = have,
-                              text = (have and L.CHECK_KEY or L.CHECK_NO_KEY):format(nameOf(id)) }
-        end
-    end
-    if ns.Get("classCheck") then
-        local _, class = UnitClass("player")
-        local level = UnitLevel("player") or 1
-        if class == "HUNTER" then
-            local ammo = GetInventoryItemCount and GetInventoryItemCount("player", 0) or 0
-            out[#out + 1] = { key = "AMMO", ok = ammo >= ns.Get("ammoMin"), text = L.CHECK_AMMO:format(ammo) }
-        end
-        local c = ns.CLASS_ITEMS[class]
-        if c and level >= c.level then
-            local n = itemCount(c.id)
-            local min = ns.Get(c.key == "SHARDS" and "shardsMin" or "reagentMin")
-            out[#out + 1] = { key = c.key or "REAGENT", item = c.id, ok = n >= min,
-                              text = L.CHECK_ITEM:format(n, nameOf(c.id)) }
-        end
+    for _, id in ipairs(ns.KEYS[dungeonKey] or {}) do
+        out[#out + 1] = { id = id, name = nameOf(id), have = itemCount(id) > 0 }
     end
     return out
 end
@@ -771,16 +681,26 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
         self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
-        self:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+        self:RegisterEvent("LOOT_READY")
+        self:RegisterEvent("QUEST_ACCEPTED")
         return
     end
-    if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then checkLeave() end
+    if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
+        checkLeave()
+        if ns.CheckEnter then ns.CheckEnter() end
+    end
+    if event == "LOOT_READY" then
+        if ns.OnLoot then ns.OnLoot() end
+        return
+    end
+    if event == "QUEST_ACCEPTED" and ns.guide and ns.StepGuide then ns.StepGuide() end
     if ns.Refresh then ns.Refresh() end
 end)
 
-SLASH_GULLIDUNGEONPREP1 = "/gdp"
-SLASH_GULLIDUNGEONPREP2 = "/gullidungeonprep"
+SLASH_GULLIDUNGEONPREP1 = "/gdj"
+SLASH_GULLIDUNGEONPREP2 = "/gdp"
+SLASH_GULLIDUNGEONPREP3 = "/gullidungeonjournal"
 SlashCmdList.GULLIDUNGEONPREP = function(msg)
     msg = strtrim(msg or ""):upper()
     for _, d in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do
@@ -791,18 +711,22 @@ end
 
 function GulliDungeonPrep_Toggle() ns.Toggle() end
 
+-- For other addons (Gulli Tooltip): where an item drops, { key, boss, pct }.
+GulliDungeonJournal = { DropsOf = function(item) return ns.DropsOf and ns.DropsOf(item) or {} end }
+
 -- The game icon of each switch, in the window and in the hub.
 ns.OPT_ICON = {
     remind = "Interface\\Icons\\INV_Letter_15", keys = "Interface\\Icons\\INV_Misc_Key_04",
-    classCheck = "Interface\\Icons\\INV_Misc_Bag_10", tomtom = "Interface\\Icons\\INV_Misc_Map_01",
-    hideLater = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    tomtom = "Interface\\Icons\\INV_Misc_Map_01", hideLater = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    warnEnter = "Interface\\Icons\\Ability_Warrior_BattleShout", wishAlert = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
+    learn = "Interface\\Icons\\INV_Misc_Book_09",
 }
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         key = "DungeonPrep",
         icon = "Interface\\AddOns\\Gulli-DungeonPrep\\icon",
-        slash = "/gdp",
+        slash = "/gdj",
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
@@ -812,8 +736,10 @@ if GulliToolkit and GulliToolkit.Register then
               get = function() return ns.Get("remind") end, set = function(v) ns.Set("remind", v) end },
             { label = L.OPT_KEYS, tip = L.OPT_KEYS_D, icon = ns.OPT_ICON.keys,
               get = function() return ns.Get("keys") end, set = function(v) ns.Set("keys", v) end },
-            { label = L.OPT_CLASS, tip = L.OPT_CLASS_D, icon = ns.OPT_ICON.classCheck,
-              get = function() return ns.Get("classCheck") end, set = function(v) ns.Set("classCheck", v) end },
+            { label = L.OPT_ENTER, tip = L.OPT_ENTER_D, icon = ns.OPT_ICON.warnEnter,
+              get = function() return ns.Get("warnEnter") end, set = function(v) ns.Set("warnEnter", v) end },
+            { label = L.OPT_WISH, tip = L.OPT_WISH_D, icon = ns.OPT_ICON.wishAlert,
+              get = function() return ns.Get("wishAlert") end, set = function(v) ns.Set("wishAlert", v) end },
             { label = L.OPT_TOMTOM, tip = L.OPT_TOMTOM_D, icon = ns.OPT_ICON.tomtom,
               get = function() return ns.Get("tomtom") end, set = function(v) ns.Set("tomtom", v) end },
         },

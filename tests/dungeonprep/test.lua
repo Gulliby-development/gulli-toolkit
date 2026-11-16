@@ -149,32 +149,6 @@ test("a click on a stop sets a map pin in its zone", function()
     eq(ns.SetPin({ inside = true, quests = {} }), false)
 end)
 
-test("checklist: gear, bags, food and drink, hearthstone", function()
-    Fake({ durability = { [1] = { 30, 100 }, [5] = { 90, 100 } },
-           bags = { [0] = { size = 16, slots = { [1] = { 4540, 12 }, [2] = { 25, 1 } } } },
-           hearth = { 99000, 3600 }, now = 100000 })
-    local ns = Load()
-    local c = ns.Checklist()
-    eq(c[1].key, "REPAIR"); eq(c[1].ok, false); eq(c[1].text, "Gear at 30%")
-    eq(c[2].ok, true); eq(c[2].text, "14 free bag slots")
-    eq(c[3].ok, true); eq(c[3].text, "12 food and drink")
-    eq(c[4].ok, false); eq(c[4].text, "Hearthstone in 44 min")
-end)
-
-test("checklist: what Gulli Restock misses", function()
-    Fake({})
-    local ns = Load()
-    eq(#ns.Checklist(), 4, "no line without Restock")
-    GulliRestock = { Missing = function() return { { name = "Water", have = 5, want = 20 } } end }
-    local c = ns.Checklist()
-    eq(c[5].key, "RESTOCK"); eq(c[5].ok, false); eq(c[5].text, "Short: Water 5/20")
-    GulliRestock.Missing = function() return {} end
-    eq(ns.Checklist()[5].ok, true)
-    ns.Toggle()
-    ns.Refresh()
-    GulliRestock = nil
-end)
-
 test("rewards: which fit the class and which beat what is worn", function()
     Fake({ level = 22, items = {
         [2041] = { "Tunic of Westfall", 2, 26, "INV_CHEST_MAIL", 4, 2 },   -- leather tunic
@@ -240,31 +214,15 @@ test("hidden quests and the search", function()
     eq(#ns.Quests("DM", 18, "VanCleef").later, 1, "found by the mob it needs")
 end)
 
-test("checklist: the dungeon key and class supplies follow their switches and thresholds", function()
-    Fake({ className = "HUNTER", level = 40, ammo = 250, counts = { [7146] = 1 },
-           items = { [7146] = { "The Scarlet Key", 1, 1, "", 13, 0 } } })
+test("the dungeon key in the header follows its switch", function()
+    Fake({ counts = { [7146] = 1 }, items = { [7146] = { "The Scarlet Key", 1, 1, "", 13, 0 } } })
     local ns = Load()
-    local by = {}
-    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
-    eq(by.KEY.ok, true); eq(by.KEY.text, "The Scarlet Key in your bags")
-    eq(by.AMMO.ok, false, "250 is below 400")
-    ns.Set("ammoMin", 200)
-    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
-    eq(by.AMMO.ok, true)
-    ns.Set("keys", false); ns.Set("classCheck", false)
-    eq(#ns.Checklist("SM"), 4, "only the four basic checks")
-    Fake({ className = "WARLOCK", level = 30, counts = { [6265] = 2 } })
+    local k = ns.KeyState("SM")[1]
+    eq(k.have, true); eq(k.name, "The Scarlet Key")
+    eq(#ns.KeyState("DM"), 0, "the Deadmines need no key")
+    Fake({})
     ns = Load()
-    local last = ns.Checklist("DM")[5]
-    eq(last.key, "SHARDS"); eq(last.ok, false); eq(last.text, "2 item:6265")
-    eq(#ns.Checklist("DM"), 5, "the Deadmines need no key")
-    ns.Set("durMin", 20)
-    Fake({ durability = { [1] = { 30, 100 } } })
-    ns = Load()
-    ns.Set("durMin", 20)
-    eq(ns.Checklist()[1].ok, true, "30% passes a 20% threshold")
-    ns.Reset()
-    eq(ns.Get("durMin"), 50)
+    eq(ns.KeyState("SM")[1].have, false)
 end)
 
 test("leaving a dungeon: finished quests and where to hand them in, unless switched off", function()
@@ -312,7 +270,7 @@ test("hub: a summary line, reset and the switches", function()
     local ns = Load()
     local line = reg.summary()
     eq(line, "The Deadmines: 1 in log, 3 to pick up")
-    eq(#reg.options, 4)
+    eq(#reg.options, 5)
     for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
     reg.options[1].set(false)
     eq(ns.Get("remind"), false)
@@ -387,6 +345,195 @@ end)
 test("every language has every key, with the same placeholders", function()
     Fake({})
     W.CheckLocales(Load())
+end)
+
+-- A small journal: the Deadmines with two bosses and a rare.
+local function journal(ns)
+    ns.Data.boss = { DM = {
+        { 639, "Edwin VanCleef", "", 21, 21, 2029, 0, { 5200 }, { { 5193, 3, 18.2 }, { 5191, 3, 9.5 }, { 2874, 1, 100 } } },
+        { 644, "Rhahk'Zor", "The Foreman", 19, 19, 1234, 0, {}, { { 872, 3, 25 } } },
+        { 596, "Brainwashed Noble", "", 18, 18, 0, 1, {}, { { 3902, 3, 40 } } },
+    } }
+end
+strsplit = function(sep, s)
+    local out = {}
+    for part in (s .. sep):gmatch("(.-)" .. sep:gsub("%-", "%%-")) do out[#out + 1] = part end
+    return unpack(out)
+end
+
+test("bosses in order with the rare last, loot best first, runs from the chance", function()
+    Fake({ items = { [5193] = { "Cape of the Brotherhood", 3, 24, "INVTYPE_CLOAK", 4, 1 } } })
+    local ns = Load()
+    journal(ns)
+    local b = ns.Bosses("DM")
+    eq(#b, 3)
+    eq(b[1].name, "Edwin VanCleef"); eq(b[1].n, 1)
+    eq(b[3].rare, true, "the rare comes last")
+    eq(b[1].loot[1].item, 5193, "blue before white, the best chance first")
+    eq(b[1].loot[1].name, "Cape of the Brotherhood")
+    eq(b[1].loot[1].fits, true, "a cloak fits everyone")
+    eq(b[1].loot[1].runs, 5, "18.2% is about 5 runs")
+    eq(ns.Runs(100), nil, "a sure drop needs no count")
+    eq(ns.Runs(0), nil)
+    eq(#ns.Bosses("RFC"), 0, "no data yet")
+    eq(ns.NpcOf("Creature-0-1-2-3-639-0000AB"), 639)
+    eq(ns.NpcOf("Player-1-0ABC"), nil)
+end)
+
+test("the wishlist: the Loot list puts it first, the filter shows only it", function()
+    Fake({})
+    local ns = Load()
+    journal(ns)
+    ns.SetWish(872, true)
+    local all = ns.Loot("DM", "all")
+    eq(all[1].item, 872, "wished first")
+    eq(#ns.Loot("DM", "wish"), 1)
+    eq(#ns.Loot("DM", "all", "rhahk"), 1, "found by the boss")
+    eq(ns.WishCount(), 1)
+    ns.SetWish(872, false)
+    eq(#ns.Loot("DM", "wish"), 0)
+    local where = ns.DropsOf(5193)
+    eq(where[1].boss, "Edwin VanCleef"); eq(where[1].pct, 18.2)
+    eq(GulliDungeonJournal.DropsOf(5193)[1].key, "DM", "for Gulli Tooltip")
+end)
+
+test("the journal data: bosses by level, the skull boss at level 0, no world drops", function()
+    Fake({})
+    local ns = Load()
+    local dm = ns.Data.boss.DM
+    assert(dm and #dm >= 8, "the Deadmines has its bosses")
+    eq(dm[1][2], "Rhahk'Zor", "the first boss first")
+    local names = {}
+    for _, b in ipairs(ns.Bosses("DM")) do names[#names + 1] = b.name end
+    eq(names[#names], "Miner Johnson", "the rare comes last")
+    eq(ns.Bosses("DM")[#names - 1].name, "Edwin VanCleef", "the last boss before the rares")
+    for key, list in pairs(ns.Data.boss) do
+        local known = false
+        for _, d in ipairs(ns.Data.dungeons) do if d[1] == key then known = true end end
+        assert(known, key .. " is a DungeonPrep dungeon")
+        for _, b in ipairs(list) do
+            for _, l in ipairs(b[9]) do
+                assert(l[1] ~= 1210 and l[1] ~= 7909, key .. ": " .. b[2] .. " has a world drop")
+                assert(l[3] >= 1 and l[3] <= 100, key .. ": a chance out of range")
+            end
+            for _, s in ipairs(b[8]) do assert(s ~= 1604, "Dazed is no boss spell") end
+        end
+    end
+    eq(ns.Data.boss.THANES[1][4], 0, "a Forever boss of skull level")
+end)
+
+-- A corpse with these items: { { link, quality } }, from one creature GUID.
+local function corpse(guid, loot)
+    GetNumLootItems = function() return #loot end
+    GetLootSlotLink = function(i) return loot[i][1] end
+    GetLootSlotInfo = function(i) return "icon", "name", 1, nil, loot[i][2] end
+    GetLootSourceInfo = function() return guid, 1 end
+end
+
+test("own drops: kills count once per corpse, chances take over after 10, unknown loot is added", function()
+    local W = Fake({})
+    local ns = Load()
+    journal(ns)
+    for i = 1, 10 do
+        corpse("Creature-0-1-2-3-639-" .. i, { { "|Hitem:5193::|h", 3 }, { "|Hitem:9999::|h", 2 } })
+        W.Fire("LOOT_READY")
+        if i == 1 then W.Fire("LOOT_READY") end
+    end
+    eq(ns.Kills(639), 10, "the same corpse twice counts once")
+    local b = ns.Bosses("DM")[1]
+    local by = {}
+    for _, l in ipairs(b.loot) do by[l.item] = l end
+    eq(by[5193].pct, 100); eq(by[5193].own, true, "your own chance after 10 kills")
+    eq(by[9999].seen, true, "loot the table lacks is added")
+    corpse("Creature-0-1-2-3-12345-1", { { "|Hitem:5193::|h", 3 } })
+    W.Fire("LOOT_READY")
+    eq(ns.Kills(12345), 0, "a mob that is no boss is not counted")
+    ns.Set("learn", false)
+    corpse("Creature-0-1-2-3-644-1", { { "|Hitem:872::|h", 3 } })
+    W.Fire("LOOT_READY")
+    eq(ns.Kills(644), 0, "the switch stops the counting")
+end)
+
+test("a wished item that drops: chat, a sound and the hub's feed, unless switched off", function()
+    local W = Fake({})
+    local ns = Load()
+    journal(ns)
+    local notes = {}
+    GulliToolkit = { Notify = function(_, text) notes[#notes + 1] = text end }
+    ns.SetWish(872, true)
+    corpse("Creature-0-1-2-3-644-1", { { "|Hitem:872::|h[Rockslicer]", 3 } })
+    W.Fire("LOOT_READY")
+    eq(#notes, 1)
+    assert(W.printed[1]:find("Rockslicer", 1, true), W.printed[1])
+    ns.Set("wishAlert", false)
+    corpse("Creature-0-1-2-3-644-2", { { "|Hitem:872::|h[Rockslicer]", 3 } })
+    W.Fire("LOOT_READY")
+    eq(#notes, 1, "the switch stops the alert")
+    GulliToolkit = nil
+end)
+
+test("entering a dungeon with quests not taken: one warning per entry, and the journal opens on it", function()
+    local W = Fake({ level = 18, active = { [168] = true }, instance = "party" })
+    GetInstanceInfo = function() return "The Deadmines" end
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    eq(ns.selected, "DM")
+    local n = #W.printed
+    assert(n >= 1 and W.printed[n]:find("The Deadmines", 1, true), "warned")
+    W.Fire("ZONE_CHANGED_NEW_AREA")
+    eq(#W.printed, n, "only once per entry")
+    W.instance = "none"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    W.printed = {}
+    ns.Set("warnEnter", false)
+    W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    for _, l in ipairs(W.printed) do assert(not l:find("did not take", 1, true), "the switch stops the warning") end
+    GetInstanceInfo = nil
+end)
+
+test("the guide pins the first stop, then the next after a quest is taken, and ends at the entrance", function()
+    local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
+        map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },
+                                      [1436] = { "Westfall", 3, 1415 } }, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    eq(ns.StartGuide("DM"), true)
+    eq(#W.pins, 1, "the first stop")
+    local first = ns.guide.last
+    local take = ns.Quests("DM", 18).take
+    for _, q in ipairs(take) do
+        if (q.who .. "@" .. q.area) == first then W.active[q.id] = true end
+    end
+    W.Fire("QUEST_ACCEPTED")
+    assert(#W.pins >= 2, "the pin moved on")
+    for _ = 1, 10 do
+        for _, q in ipairs(ns.Quests("DM", 18).take) do W.active[q.id] = true end
+        W.Fire("QUEST_ACCEPTED")
+    end
+    eq(ns.guide, nil, "done at the entrance")
+end)
+
+test("notes on a boss and a quest are kept, trimmed and short", function()
+    Fake({})
+    local ns = Load()
+    ns.SetNote("n639", "  kill adds first  ")
+    eq(ns.Note("n639"), "kill adds first")
+    ns.SetNote("q168", string.rep("x", 400))
+    eq(#ns.Note("q168"), 300)
+    ns.SetNote("n639", "")
+    eq(ns.Note("n639"), "")
+end)
+
+test("the journal window: every tab with and without boss data", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    for i = 1, 4 do ns.ShowTab(i); ns.Refresh() end
+    ns.boss = 644
+    ns.ShowTab(1); ns.Refresh()
+    ns.selected = "RFC"
+    ns.ShowTab(1); ns.Refresh()
+    ns.ShowTab(2); ns.Refresh()
+    ns.lootFilter = "wish"; ns.Refresh()
 end)
 
 W.finish()

@@ -35,7 +35,7 @@ local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
 -- page: "home", "module", "protect", "transfer" or "errors"; inside: the key of the docked module.
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
-local scaleText, protectBtn, protectFrame, transfer, errorsFrame
+local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
 local host, hubSwitch, offWin, insideWin, card, home, homeRow
 local rows, heads = {}, {}
 
@@ -133,6 +133,7 @@ local function hidePanels()
     if protectFrame then protectFrame:Hide() end
     if transfer then transfer:Hide() end
     if errorsFrame then errorsFrame:Hide() end
+    if readyFrame then readyFrame:Hide() end
 end
 
 -- Takes the docked module out, without choosing another page.
@@ -205,6 +206,7 @@ local function showPanel(name)
     view.page = name
     if name == "protect" then protectFrame:Show()
     elseif name == "errors" then errorsFrame:Show()
+    elseif name == "ready" then readyFrame:Show()
     else transfer:Show() end
     ns.Refresh()
 end
@@ -421,6 +423,7 @@ end
 -- The home page ---------------------------------------------------------------------------------
 
 local tiles, feedLines, ovLines, cmdLines = {}, {}, {}, {}
+local fillReady
 
 local function makeTile(i)
     local t = CreateFrame("Button", nil, home.summary)
@@ -581,6 +584,58 @@ local function fillCommands(data)
     for i = n + 1, #cmdLines do cmdLines[i]:Hide() end
 end
 
+-- The Ready card: one chip per check of ns.Readiness, red while it is not met. Returns its
+-- height, 0 when it is switched off.
+local readyChips = {}
+local CHIP_W, CHIP_H = 150, 30
+local function makeChip(i)
+    local c = CreateFrame("Frame", nil, home.ready.body)
+    c:SetSize(CHIP_W, CHIP_H)
+    S.Box(c, S.ROW, S.CARD_EDGE, S.R_MD)
+    c.icon = S.IconBox(c, 20)
+    c.icon:SetPoint("LEFT", 5, 0)
+    c.value = S.Text(c, 12)
+    c.value:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
+    c.value:SetPoint("RIGHT", -6, 0)
+    c.value:SetWordWrap(false)
+    c:EnableMouse(true)
+    c:SetScript("OnEnter", function(self) if self.text then tip(self, self.text, {}) end end)
+    c:SetScript("OnLeave", hideTip)
+    readyChips[i] = c
+    return c
+end
+
+function fillReady()
+    local card = home.ready
+    if not ns.ReadyGet("show") then
+        card:Hide()
+        home.overview:SetPoint("TOPLEFT", home.summaryCard, "BOTTOMLEFT", 0, -GAP)
+        return 0
+    end
+    card:Show()
+    home.overview:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -GAP)
+    local list = ns.Readiness()
+    local ok, n = ns.ReadyCount(list)
+    card:SetTitle(L.READY, S.Hex(ok == n and S.GOOD or S.WARN) .. ok .. "/" .. n .. "|r")
+    local width = HOST_W - QUICK_W - GAP - 2 * S.INSET
+    local cols = math.max(1, math.floor((width + 6) / (CHIP_W + 6)))
+    local w = math.floor((width - (cols - 1) * 6) / cols)
+    for i, r in ipairs(list) do
+        local c = readyChips[i] or makeChip(i)
+        c.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        c.value:SetText(r.text)
+        c.value:SetTextColor(unpack(r.ok and S.GOOD or S.BAD))
+        c.text = r.text
+        c:SetWidth(w)
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", ((i - 1) % cols) * (w + 6), -math.floor((i - 1) / cols) * (CHIP_H + 6))
+        c:Show()
+    end
+    for i = #list + 1, #readyChips do readyChips[i]:Hide() end
+    local rows = math.max(1, math.ceil(#list / cols))
+    return card:Fit(rows * (CHIP_H + 6) - 6)
+end
+
 local function fillHome(data)
     local list2 = ns.Summaries(data)
     local n = math.min(#list2, TILE_MAX)
@@ -605,8 +660,9 @@ local function fillHome(data)
     home.summaryCard:SetHeight(sh)
     local lower = HOST_H - sh - GAP
     home.quick:SetHeight(lower)
+    local rdh = fillReady()
     local oh = fillOverview(data)
-    local rh = lower - oh - GAP
+    local rh = lower - oh - GAP - (rdh > 0 and (rdh + GAP) or 0)
     home.recent:SetHeight(rh)
     fillCommands(data)
 
@@ -752,6 +808,53 @@ local function buildProtected()
     protectFrame.list = protectFrame.scroll.child
     protectFrame.list:SetWidth(HOST_W - 2 * S.INSET - 10)
     protectFrame:SetScript("OnShow", ns.RefreshProtected)
+end
+
+-- The Ready page: the thresholds of the checks and the switches.
+function ns.BuildReady()
+    readyFrame = centrePage("GulliToolkitReady", L.READY)
+    readyFrame.hint:SetText(L.READY_HINT)
+    local function stepper(key, step, min, max, fmt)
+        return S.Stepper(readyFrame, function() return ns.ReadyGet(key) end,
+            function(v) ns.ReadySet(key, v) end, step, min, max, fmt)
+    end
+    local pct = function(v) return v .. "%" end
+    local I = "Interface\\Icons\\"
+    local rows = {}
+    for _, x in ipairs({ { "durMin", L.RD_SET_DUR, 10, 10, 100, pct, ns.READY_ICON.REPAIR },
+                         { "bagsMin", L.RD_SET_BAGS, 1, 0, 30, nil, ns.READY_ICON.BAGS },
+                         { "foodMin", L.RD_SET_FOOD, 5, 0, 100, nil, ns.READY_ICON.FOOD },
+                         { "drinkMin", L.RD_SET_DRINK, 5, 0, 100, nil, ns.READY_ICON.DRINK },
+                         { "ammoMin", L.RD_SET_AMMO, 100, 0, 3000, nil, ns.READY_ICON.AMMO },
+                         { "shardsMin", L.RD_SET_SHARDS, 1, 0, 30, nil, ns.READY_ICON.SHARDS },
+                         { "reagentMin", L.RD_SET_REAGENT, 1, 0, 40, nil, ns.READY_ICON.REAGENT } }) do
+        rows[#rows + 1] = { x[2], nil, control = stepper(x[1], x[3], x[4], x[5], x[6]), icon = x[7] }
+    end
+    local w = math.floor((HOST_W - 2 * S.INSET - GAP) / 2)
+    local left, lh = S.SettingsCard(readyFrame, L.RD_THRESHOLDS, rows)
+    left:SetPoint("TOPLEFT", S.INSET, -84)
+    left:SetWidth(w)
+    left:SetHeight(lh)
+    local sw = {
+        { L.RD_SHOW, L.RD_SHOW_D, function() return ns.ReadyGet("show") end, function(v) ns.ReadySet("show", v) end,
+          icon = I .. "INV_Misc_Note_01" },
+        { L.RD_CLASS, L.RD_CLASS_D, function() return ns.ReadyGet("classCheck") end,
+          function(v) ns.ReadySet("classCheck", v) end, icon = I .. "INV_Misc_Bag_10" },
+    }
+    local right, rh = S.SettingsCard(readyFrame, L.RD_SWITCHES, sw)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", GAP, 0)
+    right:SetWidth(w)
+    right:SetHeight(rh)
+    readyFrame.steppers = rows
+    readyFrame:SetScript("OnShow", function()
+        for _, r in ipairs(rows) do if r.control.Refresh then r.control:Refresh() end end
+    end)
+    local reset = S.Ghost(S.FitButton(readyFrame, L.RD_RESET, 28, 120))
+    reset:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    reset:SetScript("OnClick", function()
+        ns.ReadyReset()
+        for _, r in ipairs(rows) do if r.control.Refresh then r.control:Refresh() end end
+    end)
 end
 
 -- Export / import: one line of text with every Gulli setting.
@@ -1160,8 +1263,22 @@ local function buildHome()
     line:SetPoint("TOPLEFT", 0, -(home.cmdTop - 10))
     line:SetPoint("TOPRIGHT", 0, -(home.cmdTop - 10))
 
+    local ready = S.Card(home, L.READY, "")
+    ready:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    ready:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    ready:SetHeight(80)
+    ready.hint:ClearAllPoints()
+    ready.hint:SetPoint("TOPRIGHT", -S.INSET - 92, -13)
+    home.ready = ready
+    local rs = S.Ghost(S.FitButton(ready, L.READY_SET, 24, 84))
+    rs:SetPoint("TOPRIGHT", -8, -6)
+    rs:SetScript("OnClick", function()
+        if not readyFrame then ns.BuildReady() end
+        if readyFrame:IsShown() then showHome() else showPanel("ready") end
+    end)
+
     local ov = S.Card(home, L.OV_TITLE)
-    ov:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    ov:SetPoint("TOPLEFT", ready, "BOTTOMLEFT", 0, -GAP)
     ov:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
     home.overview = ov
     home.ovReload = S.Primary(S.FitButton(ov, L.RELOAD, 24, 90))

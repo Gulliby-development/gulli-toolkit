@@ -928,5 +928,63 @@ test("the hub builds the side list with its selection plate and opens on Home", 
     eq(view.page, "home")
 end)
 
+test("Ready: repairs, bags, food and drink apart, the hearthstone and class supplies, each against its limit", function()
+    Fake({ addons = { QC } })
+    -- Bag 0: 3 bread, 4 water; 5 free slots. Gear at 40%.
+    local items = { [1] = { itemID = 4540, stackCount = 3 }, [2] = { itemID = 159, stackCount = 4 } }
+    C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 0 and 8 or 0 end,
+        GetContainerNumFreeSlots = function(bag) return bag == 0 and 5 or 0, 0 end,
+        GetContainerItemInfo = function(bag, slot) return bag == 0 and items[slot] or nil end,
+        GetItemCooldown = function() return 100, 1800 end,
+    }
+    C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, "", "", "", 0, 0, 5 end,
+               GetItemSpell = function(id) return id == 159 and "Drink" or "Food" end,
+               GetItemCount = function() return 0 end }
+    C_Spell = { GetSpellName = function(id) return id == 430 and "Drink" or "?" end }
+    GetInventoryItemDurability = function(slot) if slot == 1 then return 40, 100 end end
+    GetTime = function() return 400 end
+    UnitLevel = function() return 50 end
+    local ns = Load()
+    local by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.REPAIR.ok, false, "40% is under 50%")
+    eq(by.REPAIR.value, "40%")
+    eq(by.BAGS.value, "5")
+    eq(by.BAGS.ok, false, "5 free slots is under 6")
+    eq(by.FOOD.value, "3", "only the bread")
+    eq(by.DRINK.value, "4", "only the water")
+    eq(by.HEARTH.ok, false, "the hearthstone waits")
+    eq(by.HEARTH.text, "Hearthstone in 25 min")
+    eq(by.REAGENT.ok, false, "a priest of 50 has no candles")
+    ns.ReadySet("durMin", 30)
+    ns.ReadySet("bagsMin", 5)
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.REPAIR.ok, true, "the limit is a setting")
+    eq(by.BAGS.ok, true)
+    eq(GulliToolkitDB.ready.durMin, 30, "saved in the hub's own settings")
+    UnitClass = function() return "Warrior", "WARRIOR" end
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.DRINK, nil, "a warrior does not drink")
+    ns.ReadyReset()
+    eq(ns.ReadyGet("durMin"), 50, "back to the default")
+    GulliRestock = { Missing = function() return { { name = "Ice Cold Milk", have = 5, want = 20 },
+        { name = "Arrow", have = 0, want = 1000 }, { name = "Light Feather", have = 2, want = 10 } } end }
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.RESTOCK.ok, false, "Restock's list misses three")
+    eq(by.RESTOCK.value, "3")
+    assert(by.RESTOCK.text:find("Ice Cold Milk 5/20, Arrow 0/1000, ...", 1, true), by.RESTOCK.text)
+    GulliRestock.Missing = function() return {} end
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.RESTOCK.ok, true, "nothing missing")
+    ns.ReadySet("show", false)
+    eq(ns.ReadyGet("show"), false, "the card can be hidden")
+    GulliRestock = nil
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)
