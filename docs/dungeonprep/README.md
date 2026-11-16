@@ -18,7 +18,7 @@ You are about to run a dungeon. Who is inside, what can drop for you, and did yo
 
 ## Features
 
-- **Bosses.** Each dungeon lists its bosses in order, then its rare mobs. Click a boss to see it in 3D (drag to turn it), its level, its spells and how many times you killed it.
+- **Bosses.** Each dungeon lists its bosses in order, then its rare mobs. Each boss shows its level in the game's colours for you (red is too hard, grey is easy). Click a boss to see it in 3D (drag to turn it), its spells and how many times you killed it.
 - **Loot and drop chances.** Every item a boss drops, with its chance and about how many runs it takes (**~5 runs**). Items better than yours are marked, items for another class are pale. Ctrl+click tries an item on, Shift+click links it in chat.
 - **Your own numbers.** The journal counts your kills and what dropped. After 10 kills of a boss it shows your own chances, and items the data did not know are added.
 - **Wishlist.** Click the gem next to an item (or right-click the item) to wish for it. The **Loot** tab shows the whole dungeon's loot with the filters **All**, **For me** and **Wishlist**. When a wished item drops, you get a notice and a sound.

@@ -411,7 +411,10 @@ test("the journal data: bosses by level, the skull boss at level 0, no world dro
         local known = false
         for _, d in ipairs(ns.Data.dungeons) do if d[1] == key then known = true end end
         assert(known, key .. " is a DungeonPrep dungeon")
+        local seen = {}
         for _, b in ipairs(list) do
+            assert(not seen[b[2]], key .. ": " .. b[2] .. " is listed twice")
+            seen[b[2]] = true
             for _, l in ipairs(b[9]) do
                 assert(l[1] ~= 1210 and l[1] ~= 7909, key .. ": " .. b[2] .. " has a world drop")
                 assert(l[3] >= 1 and l[3] <= 100, key .. ": a chance out of range")
