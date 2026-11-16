@@ -15,7 +15,7 @@ local tabs, pages, histStats, histList, histEmpty, periodTabs = nil, {}, nil, ni
 local goalTabs, goalCard, tokStats, tokCard, tokList, tokEmpty
 local CRATE_ROW, PLAN_ROW, HIST_ROW, CRATE_ROWS_MAX = 32, 30, 38, 4
 local tab, period = 1, "all"
-local FAVOR_ICON = "Interface\\Icons\\INV_Misc_Ribbon_01"
+local FAVOR_ICON = "Interface\\Icons\\INV_Misc_Ribbon_01" -- until the game gives the currency's own
 local stale
 
 -- "Waylaid Crate: Flowering Expert Herbs" -> "Flowering Expert Herbs"
@@ -167,6 +167,7 @@ local function fillTokenRow(r, row)
     local c = done and S.GOOD or (current and S.Accent() or S.TEXT)
     r.name:SetText(S.Hex(c) .. ns.ShortName(ns.ItemName(g.crate) or ("item:" .. g.crate)) .. "|r")
     local parts = {}
+    if g.favor then parts[#parts + 1] = L.TOK_EACH:format(g.favor) end
     if g.own > 0 then parts[#parts + 1] = L.FROM_BAGS:format(g.own) end
     if g.buy > 0 then parts[#parts + 1] = L.TO_BUY:format(g.buy) end
     r.note:SetPoint("LEFT", r.name, "RIGHT", 8, 0)
@@ -270,9 +271,11 @@ local function refreshTokens()
     local mine = ns.source == "tokens"
     goalTabs.sync()
     goalCard.rows[1].control:Refresh()
-    goalCard.rows[2].control:Refresh()
-    local need = ns.CratesFor(ns.db.goal, ns.db.favor)
-    tokStats.tiles[1]:Set(tostring(plan and #plan.crates or need))
+    local held = ns.FavorHeld()
+    if goalCard.rows[1].desc then
+        goalCard.rows[1].desc:SetText(held and (L.TIP_goal .. " " .. L.TOK_HAVE:format(held)) or L.TIP_goal)
+    end
+    tokStats.tiles[1]:Set(plan and tostring(#plan.crates) or "-")
     tokStats.tiles[2]:Set(plan and S.MoneyText(plan.total, true) or "-")
     local per = plan and plan.favor > 0 and math.floor(plan.total / plan.favor + 0.5) or nil
     tokStats.tiles[3]:Set(per and S.MoneyText(per, true) or "-")
@@ -284,7 +287,7 @@ local function refreshTokens()
     calcBtn:SetEnabled(true)
     setBuyButton(plan, mine)
     local status, color
-    if plan and plan.short > 0 then status, color = L.TOK_SHORT:format(plan.short), S.WARN
+    if plan and plan.short > 0 then status, color = L.TOK_SHORT:format(plan.favor), S.WARN
     elseif mine then status, color = buyStatus(plan, L.TOK_HOW)
     else status = L.TOK_HOW end
     frame.footer:SetStatus(status, color)
@@ -360,6 +363,8 @@ local function build()
     end)
     refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
+    local _, favorIcon = ns.FavorHeld()
+    if favorIcon then FAVOR_ICON = favorIcon end
     tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY, L.TAB_FAVOR }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
@@ -416,8 +421,6 @@ local function build()
     goalCard, h = S.SettingsCard(tp, nil, {
         { L.OPT_goal, L.TIP_goal, control = S.Stepper(tp, function() return ns.db.goal end, function(v) ns.SetGoal(v) end,
             5, 5, ns.GOAL_MAX, nil, 120), icon = FAVOR_ICON },
-        { L.OPT_favor, L.TIP_favor, control = S.Stepper(tp, function() return ns.db.favor end, function(v) ns.SetFavor(v) end,
-            1, 1, ns.FAVOR_MAX, nil, 120), icon = "Interface\\Icons\\INV_Crate_01" },
     })
     ts:Add(goalCard, h)
     tokStats = S.StatRow(tp, { L.ST_CRATES, L.ST_TOTAL, L.ST_PER_FAVOR }, 62,

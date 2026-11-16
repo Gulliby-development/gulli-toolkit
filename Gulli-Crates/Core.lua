@@ -9,7 +9,7 @@ local L = ns.L
 local CALLER = "Gulli-Crates"
 local QUOTE_WAIT = 6 -- seconds the auction house has to answer a price request
 
-ns.DEFAULTS = { auto = true, bank = true, goal = 30, favor = 5 }
+ns.DEFAULTS = { auto = true, bank = true, goal = 30 }
 
 local function say(msg) print("|cff9ad0ffCrates|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Crates", msg) end end
@@ -330,39 +330,102 @@ function ns.ShoppingList(plan)
 end
 
 -- ---------- Merchant's Favor goal (no game calls) ----------
--- Each filled crate hands in for Merchant's Favor. The goal asks for that many: the crates it
--- takes come from the bags first (free), then from the auction house, and each gets the bundle
--- that costs least to complete from what is left. Every step settles the cheapest crate (its
--- price plus its bundle) of all, so the stock goes where it saves the most.
+-- Each filled crate hands in for Merchant's Favor, by its tier and kind (ns.FAVOR). For a goal,
+-- every crate type gets the cost of its 1st, 2nd, ... copy (crates in the bags are free, then the
+-- auction house; each copy with its cheapest bundle from what is left), and a knapsack over the
+-- Favor picks the counts that reach the goal for the least gold. Then one pass settles the
+-- picked crates against the shared stock, cheapest first, for the rows and the real total.
 
 ns.GOALS = { 5, 15, 20, 30, 45, 50, 180 }
 ns.GOAL_MAX = 1000
-ns.FAVOR_MAX = 50
+local UNIT = 5 -- every crate pays a multiple of 5
 
--- How many crates a goal takes at `per` Favor a crate.
-function ns.CratesFor(goal, per)
-    per = math.max(1, per or 1)
-    return math.max(0, math.ceil((goal or 0) / per))
-end
+-- ids: the crates that may be used; favorOf(id) -> Favor of one; crateStock(id) -> crates in bags.
+-- Returns { crates = { { crate, k, bundle, rows, cost, own, favor } }, total, favor, short }:
+-- rows start with the crate itself ({ crate = true, buy = 1 } when it is bought); short is the
+-- Favor the priced crates cannot reach.
+function ns.TokenPlan(goal, ids, favorOf, bundles, stock, price, useBank, crateStock)
+    local U = math.max(0, math.ceil((goal or 0) / UNIT))
+    local result = { crates = {}, total = 0, favor = 0, short = 0 }
+    if U == 0 then return result end
 
--- ids: the crates that may be used; crateStock(id) -> crates of it in the bags.
--- Returns { crates = { { crate, k, bundle, rows, cost, own } }, total, need, short, favor }:
--- rows start with the crate itself ({ crate = true, buy = 1 } when it is bought).
-function ns.TokenPlan(goal, per, ids, bundles, stock, price, useBank, crateStock)
+    -- the cost of each further copy of one crate type, from its own view of the stock
+    local types = {}
+    for _, id in ipairs(ids) do
+        local f = favorOf(id)
+        local list = bundles(id)
+        if f and f > 0 and list then
+            local u = math.max(1, math.floor(f / UNIT))
+            local cost, use = stockPool(stock, price, useBank)
+            local own = crateStock and crateStock(id) or 0
+            local steps = {}
+            for _ = 1, math.ceil(U / u) do
+                local unit = own <= 0 and price(id) or nil
+                if own <= 0 and not unit then break end
+                local best, bestRows
+                for _, bundle in ipairs(list) do
+                    local total, rows = cost({ bundle })
+                    if total and (not best or total < best) then best, bestRows = total, rows end
+                end
+                if not best then break end
+                use(bestRows)
+                own = own - 1
+                steps[#steps + 1] = best + (unit or 0)
+            end
+            if #steps > 0 then types[#types + 1] = { id = id, u = u, steps = steps } end
+        end
+    end
+
+    -- knapsack: dp[x] = least gold for at least x units of Favor (x capped at U)
+    local INF = math.huge
+    local dp, pick = { [0] = 0 }, {}
+    for x = 1, U do dp[x] = INF end
+    for t, ty in ipairs(types) do
+        local nd, np = {}, {}
+        for x = 0, U do nd[x], np[x] = dp[x], 0 end
+        for x = 0, U do
+            if dp[x] < INF then
+                local sum = 0
+                for k, c in ipairs(ty.steps) do
+                    sum = sum + c
+                    local y = math.min(U, x + k * ty.u)
+                    if dp[x] + sum < nd[y] then nd[y], np[y] = dp[x] + sum, k * 10000 + x end
+                    if y == U then break end
+                end
+            end
+        end
+        dp, pick[t] = nd, np
+    end
+    -- the best reachable amount: the goal, or the most Favor when the goal cannot be reached
+    local at = U
+    if dp[U] == INF then
+        at = 0
+        for x = U, 0, -1 do if dp[x] < INF then at = x; break end end
+        result.short = (U - at) * UNIT
+    end
+    local counts = {}
+    for t = #types, 1, -1 do
+        local p = pick[t][at]
+        if p and p > 0 then
+            counts[types[t].id] = math.floor(p / 10000)
+            at = p % 10000
+        end
+    end
+
+    -- settle the picked crates on the shared stock, the cheapest crate and bundle first
     local cost, use = stockPool(stock, price, useBank)
-    local need = ns.CratesFor(goal, per)
     local left = {}
     for _, id in ipairs(ids) do left[id] = crateStock and crateStock(id) or 0 end
-    local result = { crates = {}, total = 0, need = need, short = 0, favor = 0 }
-    for k = 1, need do
+    local k = 0
+    while true do
         local best
         for _, id in ipairs(ids) do
-            local own = left[id] > 0
-            local unit = not own and price(id) or nil
-            if own or unit then
-                for _, bundle in ipairs(bundles(id) or {}) do
+            if (counts[id] or 0) > 0 then
+                local own = left[id] > 0
+                local unit = not own and price(id) or nil
+                for _, bundle in ipairs(bundles(id)) do
                     local total, rows, buy = cost({ bundle })
-                    if total then
+                    if total and (own or unit) then
                         total, buy = total + (unit or 0), buy + (own and 0 or 1)
                         if not best or total < best.cost or (total == best.cost and buy < best.buy) then
                             best = { crate = id, bundle = bundle, rows = rows, cost = total, buy = buy, own = own, unit = unit }
@@ -371,16 +434,19 @@ function ns.TokenPlan(goal, per, ids, bundles, stock, price, useBank, crateStock
                 end
             end
         end
-        if not best then result.short = need - k + 1; break end
+        if not best then break end
         use(best.rows)
+        counts[best.crate] = counts[best.crate] - 1
         if best.own then left[best.crate] = left[best.crate] - 1 end
         table.insert(best.rows, 1, { id = best.crate, n = 1, crate = true, bags = best.own and 1 or 0, bank = 0,
                                      buy = best.own and 0 or 1, unit = best.unit, cost = best.unit or 0 })
+        k = k + 1
+        local f = favorOf(best.crate)
         result.crates[#result.crates + 1] = { crate = best.crate, k = k, bundle = best.bundle, rows = best.rows,
-                                              cost = best.cost, own = best.own, others = {} }
+                                              cost = best.cost, own = best.own, favor = f, others = {} }
         result.total = result.total + best.cost
+        result.favor = result.favor + f
     end
-    result.favor = #result.crates * math.max(1, per or 1)
     return result
 end
 
@@ -392,7 +458,7 @@ function ns.TokenGroups(plan)
         local key = e.crate .. ":" .. e.bundle[1]
         local g = at[key]
         if not g then
-            g = { crate = e.crate, bundle = e.bundle, n = 0, own = 0, buy = 0, crateCost = 0, cost = 0,
+            g = { crate = e.crate, bundle = e.bundle, n = 0, own = 0, buy = 0, crateCost = 0, cost = 0, favor = e.favor,
                   item = { id = e.bundle[1], n = 0, bags = 0, bank = 0, buy = 0, cost = 0 } }
             at[key] = g
             out[#out + 1] = g
@@ -471,6 +537,17 @@ function ns.TokenCrates()
     return ids
 end
 
+-- Merchant's Favor one crate pays.
+function ns.FavorOf(id) return ns.FAVOR[id] end
+
+-- How much Merchant's Favor the player holds, and its icon, or nil.
+function ns.FavorHeld()
+    local C = C_CurrencyInfo
+    local info = C and C.GetCurrencyInfo and C.GetCurrencyInfo(ns.CURRENCY)
+    if type(info) ~= "table" then return nil end
+    return info.quantity, info.iconFileID
+end
+
 function ns.SetGoal(n)
     if not ns.db then return end
     ns.db.goal = math.max(1, math.min(ns.GOAL_MAX, math.floor(tonumber(n) or ns.DEFAULTS.goal)))
@@ -478,17 +555,10 @@ function ns.SetGoal(n)
     if ns.Refresh then ns.Refresh() end
 end
 
-function ns.SetFavor(n)
-    if not ns.db then return end
-    ns.db.favor = math.max(1, math.min(ns.FAVOR_MAX, math.floor(tonumber(n) or ns.DEFAULTS.favor)))
-    if ns.tokenPlan and not ns.Busy() then return ns.TokenCalculate() end
-    if ns.Refresh then ns.Refresh() end
-end
-
 function ns.TokenCalculate()
     ns.ClearCache()
     local function crateStock(id) return itemCount(id, false) end
-    ns.tokenPlan = ns.TokenPlan(ns.db.goal, ns.db.favor, ns.TokenCrates(), ns.Bundles, ns.Stock,
+    ns.tokenPlan = ns.TokenPlan(ns.db.goal, ns.TokenCrates(), ns.FavorOf, ns.Bundles, ns.Stock,
                                 ns.AuctionPrice, ns.db.bank, crateStock)
     ns.tokenPlan.at = time()
     ns.source = "tokens"
@@ -850,6 +920,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         GulliCratesDB = GulliCratesDB or {}
         ns.db = GulliCratesDB
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+        ns.db.favor = nil -- 1.4.0 asked for it; the table knows it now
         ns.db.picked = ns.db.picked or {}
         ns.picked = ns.db.picked
         ns.db.history = ns.db.history or {}
