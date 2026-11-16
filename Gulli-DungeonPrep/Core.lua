@@ -141,6 +141,40 @@ function ns.Icon(key)
     return "Interface\\Icons\\" .. (ns.ICONS[key] or "INV_Misc_QuestionMark")
 end
 
+-- The game's own dungeon pictures: the Encounter Journal instance (its banner) and the file
+-- name both the journal banner and the dungeon finder portrait use. WoW Forever's own dungeons
+-- have none and keep their icon.
+ns.ART = {
+    RFC = { 226, "RagefireChasm" }, WC = { 240, "WailingCaverns" }, DM = { 63, "TheDeadmines", "Deadmines" },
+    SFK = { 64, "ShadowfangKeep" }, BFD = { 227, "BlackfathomDeeps" },
+    STOCKS = { 238, "TheStockade", "StormwindStockades" }, GNOMER = { 231, "Gnomeregan" },
+    RFK = { 234, "RazorfenKraul" }, SM = { 316, "ScarletMonastery" }, RFD = { 233, "RazorfenDowns" },
+    ULDA = { 239, "Uldaman" }, ZF = { 241, "ZulFarrak", "ZulFarak" }, MARA = { 232, "Maraudon" },
+    ST = { 237, "SunkenTemple" }, BRD = { 228, "BlackrockDepths" }, BRS = { 229, "BlackrockSpire" },
+    DIREMAUL = { 230, "DireMaul" }, SCHOLO = { 246, "Scholomance" }, STRAT = { 236, "Stratholme" },
+}
+
+-- The dungeon's banner picture: the journal's own (a file id) when the client has the journal,
+-- else its file path; nil for a dungeon without one. The caller checks that the file loads.
+function ns.Banner(key)
+    local a = ns.ART[key]
+    if not a then return nil end
+    if EJ_GetInstanceInfo then
+        local ok, _, _, _, button = pcall(EJ_GetInstanceInfo, a[1])
+        if ok and button and button ~= 0 and button ~= "" then return button end
+    end
+    return "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-" .. a[2]
+end
+
+-- The dungeon finder's round portrait files of a dungeon, best first (none for Forever's own).
+function ns.Portraits(key)
+    local a = ns.ART[key]
+    if not a then return {} end
+    local list = { "Interface\\LFGFrame\\LFGIcon-" .. a[2] }
+    if a[3] then list[2] = "Interface\\LFGFrame\\LFGIcon-" .. a[3] end
+    return list
+end
+
 -- Dungeons in level order: { key, areas, name, min, max, fits }.
 function ns.Dungeons(level)
     local out = {}

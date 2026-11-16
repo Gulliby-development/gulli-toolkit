@@ -37,21 +37,47 @@ local function fitIcon(b, text, min)
     b:SetWidth(math.max(min or 96, math.floor((b.text:GetStringWidth() or 0) + 42)))
 end
 
+-- A texture file that the client has: SetTexture answers false for a missing one.
+local function setFile(t, path)
+    if not path then return false end
+    return t:SetTexture(path) ~= false
+end
+
+-- The dungeon finder's portrait of a dungeon, else its game icon.
+local function setPortrait(box, key)
+    for _, p in ipairs(ns.Portraits(key)) do
+        if setFile(box.tex, p) then return end
+    end
+    box:SetIcon(ns.Icon(key))
+end
+
+-- The journal banner, faded in from the left so the text keeps a dark ground.
+local ART_TC = { 0, 0.68359375, 0.2, 0.54 }
 local function makeDungeon(r)
     S.NavRow(r)
     r.line:Hide()
-    r.icon = S.IconBox(r, 20)
+    r.art = r:CreateTexture(nil, "ARTWORK", nil, -2)
+    r.art:SetPoint("TOPLEFT", 1, -1)
+    r.art:SetPoint("BOTTOMRIGHT", -1, 1)
+    r.art:SetTexCoord(unpack(ART_TC))
+    S.RoundMask(r, r.art, S.ROUND_SQ)
+    if r.art.SetGradient and CreateColor then
+        r.art:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0.05), CreateColor(1, 1, 1, 0.6))
+    end
+    r.icon = S.IconBox(r, 30)
     r.icon:SetPoint("LEFT", 8, 0)
-    r.range = S.Text(r, 11, S.FAINT)
-    r.range:SetPoint("RIGHT", -8, 0)
-    r.range:SetJustifyH("RIGHT")
-    r.count = S.Text(r, 10)
-    r.count:SetPoint("RIGHT", r.range, "LEFT", -6, 0)
-    r.count:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
-    r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
-    r.name:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
+    r.name:SetPoint("RIGHT", -8, 0)
+    r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
+    r.count = S.Text(r, 11)
+    r.count:SetPoint("BOTTOMRIGHT", -8, 7)
+    r.count:SetJustifyH("RIGHT")
+    r.range = S.Text(r, 11, S.FAINT)
+    r.range:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -1)
+    r.range:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
+    r.range:SetJustifyH("LEFT")
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
     r.click:SetScript("OnClick", function(self)
@@ -59,7 +85,7 @@ local function makeDungeon(r)
         ns.openQuest = nil
         ns.Refresh()
     end)
-    -- The full name (the row may cut it) and what waits there.
+    -- What waits there.
     r.click:SetScript("OnEnter", function(self)
         local d = self:GetParent().d
         if not (GameTooltip and d) then return end
@@ -76,13 +102,22 @@ local function fillDungeon(r, d)
     r.d = d
     r.name:SetText(ns.DungeonName(d))
     r.name:SetTextColor(unpack(d.fits and S.TEXT or S.MUTED))
-    r.icon:SetIcon(ns.Icon(d.key))
-    r.range:SetText(d.min .. "-" .. d.max)
+    setPortrait(r.icon, d.key)
+    -- The journal banner, else the icon itself stretched and faint.
+    if setFile(r.art, ns.Banner(d.key)) then
+        r.art:SetTexCoord(unpack(ART_TC))
+        r.art:SetAlpha(d.fits and 1 or 0.6)
+    else
+        r.art:SetTexture(ns.Icon(d.key))
+        r.art:SetTexCoord(0.1, 0.9, 0.35, 0.65)
+        r.art:SetAlpha(d.fits and 0.3 or 0.18)
+    end
+    r.range:SetText(L.LEVEL:format(d.min .. "-" .. d.max))
     r.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(d, ns.level or 1))))
     -- Quests in the log (accent) or to take (green) here.
     local c = counts[d.key]
     local n = c and (c.log + c.take) or 0
-    r.count:SetText(n > 0 and tostring(n) or "")
+    r.count:SetText(n > 0 and (S.IconTag(S.TAB.quests, 12) .. " " .. n) or "")
     r.count:SetTextColor(unpack((c and c.log > 0) and S.Accent() or S.GOOD))
     r:SetSelected(d.key == ns.selected)
 end
@@ -265,7 +300,7 @@ end
 -- The dungeon's header: name, levels, bosses and quest counts, the keys, the entrance.
 local function fillHead(current, level)
     local c = counts[ns.selected] or { log = 0, take = 0, later = 0, done = 0 }
-    head.icon:SetIcon(ns.Icon(ns.selected or ""))
+    setPortrait(head.icon, ns.selected or "")
     head.name:SetText(current and ns.DungeonName(current) or "")
     head.range:SetText(current and (current.min .. "-" .. current.max) or "")
     if current then head.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(current, level)))) end
@@ -1215,8 +1250,8 @@ local function build()
     local left = S.Card(body)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
-    left:SetWidth(210)
-    dungeons = S.List(left.body, 30, makeDungeon, fillDungeon)
+    left:SetWidth(236)
+    dungeons = S.List(left.body, 46, makeDungeon, fillDungeon, 4)
     dungeons:SetPoint("TOPLEFT")
     dungeons:SetPoint("BOTTOMRIGHT", -10, 0)
 
