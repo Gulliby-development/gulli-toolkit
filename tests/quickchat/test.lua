@@ -155,10 +155,36 @@ test("the wheel: held key opens it, letting go sends the lit phrase", function()
     W.Fire("PLAYER_REGEN_ENABLED")
     eq(W.bindings["F6"], "GulliQuickChatWheelButton")
     local button = _G.GulliQuickChatWheelButton or nil
+    -- Alone the phrase goes to say, which the game blocks on a key release: it stays lit and
+    -- waits for a click.
     ns.WheelKey(true)
     ns.WheelHover(2)
     ns.WheelKey(false)
-    eq(W.chat[#W.chat][1], "Ready!", "let go on a lit phrase sends it")
+    eq(#W.chat, 0, "say never goes out on a key release")
+    local shown, where = ns.WheelInfo()
+    assert(shown, "the wheel waits for a click")
+    assert(where:find(ns.L.CLICK_SEND, 1, true))
+    eq(ns.WheelRelease(), true, "the click sends it")
+    eq(W.chat[1][1], "Ready!"); eq(W.chat[1][2], "SAY")
+    -- A second press of the key sends it too: a press is a key press for the game.
+    W.now = W.now + 5
+    ns.WheelKey(true); ns.WheelHover(2); ns.WheelKey(false)
+    eq(#W.chat, 1)
+    ns.WheelKey(true)
+    eq(#W.chat, 2); eq((ns.WheelInfo()), false)
+    ns.WheelKey(false)
+    eq(#W.chat, 2, "its release does nothing more")
+    W.chat[2] = nil
+    -- In a group it goes to party, which a release may send.
+    W.group, W.now = true, W.now + 5
+    ns.WheelKey(true)
+    ns.WheelHover(2)
+    ns.WheelKey(false)
+    eq(#W.chat, 2, "let go on a lit phrase sends it")
+    eq(W.chat[2][2], "PARTY")
+    eq((ns.WheelInfo()), false)
+    W.chat[2] = nil
+    W.group = false
     ns.WheelKey(true)
     ns.WheelHover(nil)
     ns.WheelKey(false)

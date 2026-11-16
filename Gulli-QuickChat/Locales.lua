@@ -72,6 +72,7 @@ T.en = {
     PANEL_COUNT = "Buttons",
     PANEL_SIZE = "Size",
     PANEL_ROW = "In a row",
+    CLICK_SEND = "Click to send",
     NO_CHANNEL = "No channel on your list works here now. Check Setup.",
 }
 
@@ -138,6 +139,7 @@ T.de = {
     PANEL_COUNT = "Knöpfe",
     PANEL_SIZE = "Größe",
     PANEL_ROW = "In einer Reihe",
+    CLICK_SEND = "Zum Senden klicken",
     NO_CHANNEL = "Kein Kanal deiner Liste geht hier gerade. Sieh in Einstellungen nach.",
 }
 
@@ -204,6 +206,7 @@ T.es = {
     PANEL_COUNT = "Botones",
     PANEL_SIZE = "Tamaño",
     PANEL_ROW = "En fila",
+    CLICK_SEND = "Haz clic para enviar",
     NO_CHANNEL = "Ningún canal de tu lista sirve aquí ahora. Mira en Ajustes.",
 }
 
@@ -270,6 +273,7 @@ T.fr = {
     PANEL_COUNT = "Boutons",
     PANEL_SIZE = "Taille",
     PANEL_ROW = "En ligne",
+    CLICK_SEND = "Cliquez pour envoyer",
     NO_CHANNEL = "Aucun canal de votre liste ne marche ici. Voir les Réglages.",
 }
 
@@ -336,6 +340,7 @@ T.pl = {
     PANEL_COUNT = "Przyciski",
     PANEL_SIZE = "Rozmiar",
     PANEL_ROW = "W rzędzie",
+    CLICK_SEND = "Kliknij, aby wysłać",
     NO_CHANNEL = "Żaden kanał z listy nie działa tu teraz. Zajrzyj do Ustawień.",
 }
 
@@ -402,6 +407,7 @@ T.pt = {
     PANEL_COUNT = "Botões",
     PANEL_SIZE = "Tamanho",
     PANEL_ROW = "Em linha",
+    CLICK_SEND = "Clique para enviar",
     NO_CHANNEL = "Nenhum canal da sua lista serve aqui agora. Veja em Ajustes.",
 }
 
@@ -468,6 +474,7 @@ T.ru = {
     PANEL_COUNT = "Кнопок",
     PANEL_SIZE = "Размер",
     PANEL_ROW = "В ряд",
+    CLICK_SEND = "Кликните, чтобы отправить",
     NO_CHANNEL = "Здесь сейчас не подходит ни один канал из списка. Проверьте Настройку.",
 }
 
@@ -534,6 +541,7 @@ T.zh = {
     PANEL_COUNT = "按钮数",
     PANEL_SIZE = "大小",
     PANEL_ROW = "横向排列",
+    CLICK_SEND = "点击发送",
     NO_CHANNEL = "列表中的频道在这里都不可用。请查看设置。",
 }
 

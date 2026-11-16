@@ -634,7 +634,9 @@ local function wheelSelect(i)
         wheel.dot:SetPoint("CENTER", wheel.ring, "CENTER", math.floor(math.cos(slot.angle) * 104),
             math.floor(math.sin(slot.angle) * 104))
         wheel.say:SetText(ns.Fill(slot.phrase))
-        wheel.where:SetText(goesText(slot.phrase))
+        local where = goesText(slot.phrase)
+        if wheel.clickOnly then where = where .. "\n" .. S.Hex(S.WARN) .. L.CLICK_SEND .. "|r" end
+        wheel.where:SetText(where)
     else
         wheel.say:SetText(L.WHEEL_PICK)
         wheel.where:SetText("")
@@ -659,6 +661,12 @@ local function pointedSlot()
         end
     end
     return best
+end
+
+-- Whether the wheel shows and the line under its text, for the tests.
+function ns.WheelInfo()
+    if not wheel then return false, nil end
+    return wheel:IsShown() and true or false, wheel.where:GetText()
 end
 
 -- Lights a place, for the previews and the tests.
@@ -747,6 +755,7 @@ function ns.OpenWheel(hold)
     end
     if not any then return false end
     wheel.hold = hold and true or false
+    wheel.clickOnly = nil
     wheelSelect(nil)
     wheel.ring:ClearAllPoints()
     local x, y
@@ -765,9 +774,17 @@ function ns.OpenWheel(hold)
     return true
 end
 
--- The key let go, or a click: sends the lit phrase, or just closes.
-function ns.WheelRelease()
+-- The key let go (keyUp), or a click: sends the lit phrase, or just closes. A release is not a
+-- key press for the game, so a phrase bound for say, yell or a numbered channel stays lit and
+-- waits for a click instead of being blocked.
+function ns.WheelRelease(keyUp)
     if not wheel or not wheel:IsShown() then return false end
+    if hovered and keyUp and ns.NeedsPress(wheel.slots[hovered].phrase) then
+        wheel.hold = false
+        wheel.clickOnly = true
+        wheelSelect(hovered)
+        return false
+    end
     if hovered then return ns.WheelSend(hovered) end
     wheel:Hide()
     return false
@@ -789,9 +806,10 @@ function ns.WheelKey(down)
         return
     end
     if down then
-        if not (wheel and wheel:IsShown()) then ns.OpenWheel(true) end
+        if not (wheel and wheel:IsShown()) then ns.OpenWheel(true)
+        elseif wheel.clickOnly then ns.WheelRelease() end -- a press is a key press for the game
     elseif wheel and wheel.hold then
-        ns.WheelRelease()
+        ns.WheelRelease(true)
     end
 end
 
