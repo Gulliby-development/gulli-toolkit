@@ -134,6 +134,25 @@ local function buildRules(body, width)
     })
     st:Add(away, h3)
 
+    local minutes = S.Stepper(c, function() return ns.db.busyMinutes end, function(v) ns.db.busyMinutes = v end,
+        1, 1, 30, function(v) return L.MIN_N:format(v) end, 110)
+    local text = S.Edit(c, 200, 28)
+    text:SetJustifyH("LEFT")
+    text:SetMaxLetters(200)
+    S.Placeholder(text, L.BUSY_TEXT)
+    text:SetScript("OnShow", function(self) self:SetText(ns.db.busyText or "") end)
+    local function apply(self) ns.db.busyText = self:GetText() or ""; self:ClearFocus() end
+    text:SetScript("OnEnterPressed", apply)
+    text:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); apply(self) end)
+    text:SetText(ns.db.busyText or "")
+    local busy, hb = S.SettingsCard(c, L.SEC_BUSY, {
+        switch("busy", L.OPT_BUSY, L.OPT_BUSY_D),
+        switch("busyAlways", L.BUSY_ALWAYS),
+        { L.BUSY_EVERY, nil, control = minutes, icon = I .. "INV_Misc_PocketWatch_01" },
+        { L.BUSY_MSG, nil, control = text, icon = I .. "INV_Misc_Note_05" },
+    })
+    st:Add(busy, hb)
+
     local help, h4 = S.SettingsCard(c, L.SEC_HELP, {
         switch("summon", L.OPT_SUMMON),
         switch("res", L.OPT_RES),

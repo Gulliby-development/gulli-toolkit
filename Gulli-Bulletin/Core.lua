@@ -316,36 +316,59 @@ function ns.Add(msg, author, channel, guid)
                    needs = role == "LFM" and ns.Needs(msg) or nil }
     table.insert(ns.posts, 1, post)
     while #ns.posts > ns.MAX_POSTS do table.remove(ns.posts) end
-    if not repost then
-        if not ns.Alert(post) then ns.Watch(post) end
-    end
+    if not repost then ns.Watch(post) end
     if ns.Feed then ns.Feed() end
     if ns.Refresh then ns.Refresh() end
     return post
 end
 
--- Whether the group list shows a dungeon: every one while none is picked, else the picked.
-function ns.Shown(key)
-    if not next(ns.db.only) then return true end
-    return key ~= nil and ns.db.only[key] == true
-end
-
--- A new group for a dungeon the player watches: a sound, a chat line and a line in the hub.
--- The same poster posting again for the same dungeon is not new.
-function ns.Alert(post)
-    if post.kind ~= "GROUP" or not post.dungeon or not ns.db.alert[post.dungeon] then return false end
-    if post.short == UnitName("player") then return false end
-    local rang = ns.Ring(L.ALERT:format(post.short, ns.DungeonName(post.dungeon)))
-    if rang and ns.ShowAlert then ns.ShowAlert(post) end
-    return rang
-end
-
--- A post that has a word the player watches (an item, a profession...).
+-- A post that has a word the player watches (an item, a dungeon, a profession...): a sound, a
+-- chat line, a line in the hub and a notice. The same poster posting again is not new.
 function ns.Watch(post)
     if post.short == UnitName("player") then return false end
     local w = anyWord(ns.Normalize(post.text), ns.db.watch)
     if not w then return false end
-    return ns.Ring(L.WATCHED:format(post.short, w))
+    local rang = ns.Ring(L.WATCHED:format(post.short, w))
+    if ns.db.popup and ns.ShowAlert then ns.ShowAlert(post, w) end
+    return rang
+end
+
+-- The watched words as a list the window edits: add one, take one off, how many posts have it.
+function ns.AddWord(word)
+    word = strtrim(word or ""):gsub(",", " ")
+    word = strtrim(word)
+    if word == "" then return false end
+    local low = lowerUtf8(word)
+    for _, w in ipairs(ns.Words(ns.db.watch)) do if w == low then return false end end
+    ns.db.watch = (ns.db.watch ~= "" and (ns.db.watch .. ", ") or "") .. word
+    return true
+end
+
+function ns.RemoveWord(word)
+    local keep = {}
+    for w in (ns.db.watch or ""):gmatch("[^,]+") do
+        w = strtrim(w)
+        if w ~= "" and lowerUtf8(w) ~= lowerUtf8(word) then keep[#keep + 1] = w end
+    end
+    ns.db.watch = table.concat(keep, ", ")
+end
+
+function ns.WordList()
+    local out = {}
+    for w in (ns.db.watch or ""):gmatch("[^,]+") do
+        w = strtrim(w)
+        if w ~= "" then out[#out + 1] = w end
+    end
+    return out
+end
+
+-- The posts on the board now that have the word.
+function ns.WordCount(word)
+    local low, n = lowerUtf8(word), 0
+    for _, p in ipairs(ns.posts) do
+        if ns.Normalize(p.text):find(low, 1, true) then n = n + 1 end
+    end
+    return n
 end
 
 function ns.Ring(text)
@@ -356,8 +379,11 @@ function ns.Ring(text)
     return true
 end
 
+-- Posts last the session (minutes = 0: until the next login, a /reload keeps them) or that many
+-- minutes.
 function ns.Expire()
-    local limit = time() - (ns.db.minutes or 15) * 60
+    if (ns.db.minutes or 0) <= 0 then return end
+    local limit = time() - ns.db.minutes * 60
     for i = #ns.posts, 1, -1 do
         if ns.posts[i].t < limit then table.remove(ns.posts, i) end
     end
@@ -390,7 +416,7 @@ function ns.View(kind, onlyMyLevel, level, query)
     end
     local groups, keys = {}, {}
     for _, p in ipairs(ns.posts) do
-        if p.kind == "GROUP" and ns.Shown(p.dungeon) and match(p)
+        if p.kind == "GROUP" and match(p)
             and (not onlyMyLevel or not p.dungeon or ns.FitsLevel(p.dungeon, level)) then
             local k = p.dungeon or "?"
             if not groups[k] then groups[k] = {}; keys[#keys + 1] = k end
@@ -485,17 +511,6 @@ function ns.MissingChannels()
     return out
 end
 
--- Opens Gulli Quick Chat's group message for a dungeon, when Quick Chat is installed.
-function ns.CanPostLFM()
-    return GulliQuickChat ~= nil and type(GulliQuickChat.OpenLFM) == "function"
-end
-
-function ns.PostLFM(key)
-    if not ns.CanPostLFM() then return false end
-    GulliQuickChat.OpenLFM(key)
-    return true
-end
-
 -- Game calls.
 function ns.Whisper(name)
     if ChatFrame_OpenChat then ChatFrame_OpenChat("/w " .. name .. " ") end
@@ -513,11 +528,13 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _,
         if a1 ~= ADDON then return end
         GulliBulletinDB = GulliBulletinDB or {}
         ns.db = GulliBulletinDB
-        if ns.db.minutes == nil then ns.db.minutes = 15 end
+        -- 2.0: the board lasts the session unless the player picked minutes.
+        if not ns.db.sessionV then ns.db.minutes, ns.db.sessionV = 0, 1 end
+        if ns.db.minutes == nil then ns.db.minutes = 0 end
+        if ns.db.popup == nil then ns.db.popup = true end
         if ns.db.myLevel == nil then ns.db.myLevel = true end
         if ns.db.other == nil then ns.db.other = false end
-        ns.db.only = ns.db.only or {}
-        ns.db.alert = ns.db.alert or {}
+        ns.db.only, ns.db.alert = nil, nil
         ns.db.craftProfs = ns.db.craftProfs or {}
         ns.db.craftMode = ns.db.craftMode or "ALL"
         if ns.db.sound == nil then ns.db.sound = true end
@@ -536,6 +553,15 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _,
         self:RegisterEvent("CHAT_MSG_CHANNEL")
         self:RegisterEvent("CHAT_MSG_SAY")
         self:RegisterEvent("CHAT_MSG_YELL")
+        self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        return
+    end
+    if event == "PLAYER_ENTERING_WORLD" then
+        -- A new login starts a new board; a /reload keeps it.
+        if a1 then
+            wipe(ns.posts)
+            if ns.Feed then ns.Feed() end
+        end
         return
     end
     ns.Add(a1, a2, event == "CHAT_MSG_CHANNEL" and a9 or event, a12)
@@ -557,13 +583,13 @@ SlashCmdList.GULLIBULLETIN = function(msg)
     end
 end
 
--- The hub's home line: groups for the shown dungeons and the trade posts on the board now.
+-- The hub's home line: groups and trade posts on the board now.
 function ns.HubSummary()
     if not ns.db then return nil end
     ns.Expire()
     local groups, trade = 0, 0
     for _, p in ipairs(ns.posts) do
-        if p.kind == "GROUP" and p.role ~= "LFG" and ns.Shown(p.dungeon) then groups = groups + 1 end
+        if p.kind == "GROUP" and p.role ~= "LFG" then groups = groups + 1 end
         if p.kind == "WTS" or p.kind == "WTB" then trade = trade + 1 end
     end
     if groups + trade == 0 then return nil end

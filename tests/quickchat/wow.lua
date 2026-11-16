@@ -130,6 +130,8 @@ function Fake(spec)
     UnitIsAFK = function() return W.afk end
     IsInRaid = function() return W.raid end
     IsInGroup = function() return W.group end
+    W.guild = spec.guild or false
+    IsInGuild = function() return W.guild end
     GetZoneText = function() return spec.zone or "Westfall" end
     SendChatMessage = function(m, kind, _, to) W.chat[#W.chat + 1] = { m, kind, to } end
     ChatFrame_OpenChat = function(t) W.opened[#W.opened + 1] = t end
