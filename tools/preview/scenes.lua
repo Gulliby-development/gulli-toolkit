@@ -800,7 +800,7 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
     end)(), open = function(ns, W)
         crIcons(W)
         ns.Window():Show()
-        ns.ShowTab(2)
+        ns.ShowTab(3)
     end } }
 -- The Favor tab: 30 Merchant's Favor from the crates in the bags and the auction house.
 local function crFavor(locale)
@@ -817,7 +817,7 @@ local function crFavorOpen(ns, W)
     AuctionHouseFrame = nil
     W.Fire("AUCTION_HOUSE_SHOW")
     ns.Window():Show()
-    ns.ShowTab(3)
+    ns.ShowTab(2)
     ns.TokenCalculate()
     ns.Refresh()
 end

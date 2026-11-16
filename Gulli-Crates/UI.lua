@@ -1,7 +1,7 @@
 -- The window, narrow, with four tabs. Fill: the crates in the bags to tick and the cheapest way to
--- fill each one (bags, bank, what to buy); Calculate and Buy are in the footer. History: the
--- crates filled, with what the auction house got for them. Favor: a goal of Merchant's Favor and
--- the cheapest crates and bundles that reach it, bought with the same Buy button. Settings: the
+-- fill each one (bags, bank, what to buy); Calculate and Buy are in the footer. Favor: a goal of
+-- Merchant's Favor and the cheapest crates and bundles that reach it, bought with the same Buy
+-- button. History: the crates filled, with what the auction house got for them. Settings: the
 -- switches every tab uses. A round button in the header looks at the bags again. At the auction
 -- house it opens beside the auction window.
 
@@ -298,7 +298,7 @@ end
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
-    local onFill, onTokens = tab == 1, tab == 3
+    local onFill, onTokens = tab == 1, tab == 2
     buyBtn:SetShown(onFill or onTokens)
     calcBtn:SetShown(onFill or onTokens)
     if onTokens then return refreshTokens() end
@@ -351,7 +351,7 @@ local function build()
     calcBtn = S.Button(ft, 120, 32)
     ft:Add(calcBtn)
     calcBtn:SetText(L.CALCULATE)
-    calcBtn:SetScript("OnClick", function() if tab == 3 then ns.TokenCalculate() else ns.Calculate() end end)
+    calcBtn:SetScript("OnClick", function() if tab == 2 then ns.TokenCalculate() else ns.Calculate() end end)
     skipBtn = S.Ghost(S.Button(ft, 80, 32))
     ft:Add(skipBtn)
     skipBtn:SetText(L.SKIP)
@@ -361,7 +361,7 @@ local function build()
     S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
     refreshBtn.btnIcon:ClearAllPoints()
     refreshBtn.btnIcon:SetPoint("CENTER")
-    refreshBtn:SetScript("OnClick", function() ns.Recheck(tab == 3 and "tokens" or nil) end)
+    refreshBtn:SetScript("OnClick", function() ns.Recheck(tab == 2 and "tokens" or nil) end)
     refreshBtn:HookScript("OnEnter", function(self)
         if GameTooltip and GameTooltip.SetOwner then
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
@@ -374,11 +374,11 @@ local function build()
 
     local _, favorIcon = ns.FavorHeld()
     if favorIcon then FAVOR_ICON = favorIcon end
-    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY, L.TAB_FAVOR, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_FAVOR, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end, nil, { "Interface\\Icons\\INV_Crate_01", S.TAB.recent, FAVOR_ICON, S.TAB.settings })
+    end, nil, { "Interface\\Icons\\INV_Crate_01", FAVOR_ICON, S.TAB.recent, S.TAB.settings })
     for i = 1, 4 do
         local p = CreateFrame("Frame", nil, frame.body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
@@ -388,7 +388,7 @@ local function build()
     end
 
     -- History
-    local hp = pages[2]
+    local hp = pages[3]
     local st = S.Stack(hp)
     periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
         period = ns.PERIODS[i]
@@ -412,7 +412,7 @@ local function build()
     histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
 
     -- Favor
-    local tp = pages[3]
+    local tp = pages[2]
     local ts = S.Stack(tp)
     local goalLabels = {}
     for i, n in ipairs(ns.GOALS) do goalLabels[i] = tostring(n) end
@@ -489,7 +489,7 @@ function ns.Toggle()
     S.ToggleWindow(ns.Window())
 end
 
--- Opens a tab: 1 fill, 2 history, 3 Favor, 4 settings.
+-- Opens a tab: 1 fill, 2 Favor, 3 history, 4 settings.
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)
