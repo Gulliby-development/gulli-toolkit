@@ -235,6 +235,7 @@ T.en = {
     FR_InstanceLimit = "Dungeon counter",
     FR_QuickChat = "Phrase panel",
     FR_MobFinder = "Rare card",
+    FR_FarmTrack = "Farm panel",
 }
 
 T.de = {
@@ -463,6 +464,7 @@ T.de = {
     FR_InstanceLimit = "Dungeonzähler",
     FR_QuickChat = "Phrasenleiste",
     FR_MobFinder = "Rare-Karte",
+    FR_FarmTrack = "Farm-Leiste",
 }
 
 T.es = {
@@ -691,6 +693,7 @@ T.es = {
     FR_InstanceLimit = "Contador de mazmorras",
     FR_QuickChat = "Panel de frases",
     FR_MobFinder = "Tarjeta de raro",
+    FR_FarmTrack = "Panel de farmeo",
 }
 
 T.fr = {
@@ -919,6 +922,7 @@ T.fr = {
     FR_InstanceLimit = "Compteur de donjons",
     FR_QuickChat = "Panneau de phrases",
     FR_MobFinder = "Carte de rare",
+    FR_FarmTrack = "Panneau de farm",
 }
 
 T.pl = {
@@ -1147,6 +1151,7 @@ T.pl = {
     FR_InstanceLimit = "Licznik lochów",
     FR_QuickChat = "Panel fraz",
     FR_MobFinder = "Karta rzadkiego",
+    FR_FarmTrack = "Panel farmienia",
 }
 
 T.pt = {
@@ -1375,6 +1380,7 @@ T.pt = {
     FR_InstanceLimit = "Contador de masmorras",
     FR_QuickChat = "Painel de frases",
     FR_MobFinder = "Cartão de raro",
+    FR_FarmTrack = "Painel de farm",
 }
 
 T.ru = {
@@ -1603,6 +1609,7 @@ T.ru = {
     FR_InstanceLimit = "Счётчик подземелий",
     FR_QuickChat = "Панель фраз",
     FR_MobFinder = "Карточка редкого",
+    FR_FarmTrack = "Панель фарма",
 }
 
 T.zh = {
@@ -1831,6 +1838,7 @@ T.zh = {
     FR_InstanceLimit = "副本计数",
     FR_QuickChat = "短语面板",
     FR_MobFinder = "稀有卡片",
+    FR_FarmTrack = "刷取面板",
 }
 
 ns.T = T

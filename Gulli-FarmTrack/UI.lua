@@ -91,8 +91,7 @@ local function buildPanel()
     panel.empty:SetText(L.PANEL_EMPTY)
     S.Mover(panel, { label = L.TITLE, hint = L.TIP_MOVE,
         save = function(p, rp, x, y) ns.db.point = { p, rp, x, y } end,
-        reset = function() ns.db.point = nil; ns.Place() end,
-        lock = function() ns.SetPref("locked", true) end, lockTip = L.OPT_LOCK })
+        reset = function() ns.db.point = nil; ns.Place() end })
     panel:SetScript("OnClick", function() ns.Toggle() end)
     panel:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
@@ -117,7 +116,7 @@ local function buildPanel()
     ns.Place()
 end
 
--- The panel shows while there is something to farm, or unlocked so the player can place it.
+-- The panel shows while there is something to farm, or in the Unlock mode so it can be placed.
 function ns.PanelShown()
     if ns.Unlocked() then return true end
     return ns.db.panel and #ns.Targets() > 0
@@ -270,8 +269,6 @@ local function settingsPage(body, width)
     local card, h = S.SettingsCard(p, L.SEC_PANEL, {
         { L.OPT_PANEL, L.OPT_PANEL_TIP, function() return ns.db.panel end, function(v) ns.SetPref("panel", v) end,
           icon = ns.OPT_ICON.panel },
-        { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
-          icon = ns.OPT_ICON.locked },
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
         { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
@@ -386,3 +383,9 @@ end
 
 -- For the tests and the previews.
 function ns.Parts() return panel, frame, tabs, pages end
+
+-- The panel for the hub's Unlock mode, built hidden when it is asked for.
+function ns.PanelFrame()
+    if not panel and ns.db then buildPanel(); panel:SetShown(ns.PanelShown()) end
+    return panel
+end
