@@ -1,10 +1,10 @@
 {
   "game_version": "1.60.1",
   "game_version_id": null,
-  "toolkit": { "id": null, "slug": null },
+  "toolkit": { "id": 1813362, "slug": null },
   "separate": {
     "CraftProfit": { "id": 1813366, "optional": ["auctionator"] },
-    "Crates": { "id": null, "optional": ["auctionator"] },
+    "Crates": { "id": 1813374, "optional": ["auctionator"] },
     "DungeonPrep": { "id": 1813371 },
     "GroupBuffs": { "id": 1813373 }
   }
