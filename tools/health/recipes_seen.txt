@@ -685,3 +685,4 @@
 285288 Schematic: Satchel of Dark Iron Bombs
 286153 Recipe: Plated Armorfish
 289560 Formula: Enchant Boots - Speed
+252762 Pattern: Dark Leather Boots
