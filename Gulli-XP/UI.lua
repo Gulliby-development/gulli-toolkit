@@ -66,11 +66,6 @@ end
 
 local function textLabel(mode) return L["TEXT_" .. mode:upper()] end
 
-local function savePoint()
-    local p, _, _, x, y = bar:GetPoint()
-    ns.db.point = { p, x, y }
-end
-
 -- Opacity, scale, width, lock and place from the settings; the text keeps full opacity.
 function ns.StyleBar()
     if not bar then return end
@@ -99,22 +94,18 @@ function ns.StyleBar()
         -- Across the whole screen, at the height the player chose.
         local w = (tonumber(UIParent:GetWidth()) or 1024) / (d.scale / 100)
         bar:SetWidth(w)
-        bar:SetPoint(p[1], UIParent, p[1], 0, p[3])
+        bar:SetPoint(p[1], UIParent, p[4] or p[1], 0, p[3])
     else
         -- The filled bar is wider: the level and the percent sit at its ends.
         bar:SetWidth(fill and ns.BAR_W_FILL or ns.BAR_W)
-        bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+        bar:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
     end
 end
 
 local function buildBar()
     bar = CreateFrame("Button", "GulliXPBar", UIParent)
     bar:SetSize(260, 24)
-    bar:SetMovable(true)
     bar:SetClampedToScreen(true)
-    bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function(self) if not ns.Locked() then self:StartMoving() end end)
-    bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); savePoint() end)
     S.Box(bar)
     -- A thin line along the bottom: the level so far, finished quests, then the rested part.
     bar.track = CreateFrame("Frame", nil, bar)
@@ -172,7 +163,7 @@ local function buildBar()
         else
             GameTooltip:SetText(L.TITLE, 1, 1, 1)
         end
-        GameTooltip:AddLine(ns.Locked() and L.TIP_LOCKED or L.TIP_MOVE, S.FAINT[1], S.FAINT[2], S.FAINT[3], true)
+        GameTooltip:AddLine(L.TIP_CLICK, S.FAINT[1], S.FAINT[2], S.FAINT[3], true)
         GameTooltip:Show()
     end)
     bar:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -181,7 +172,16 @@ local function buildBar()
         elapsed = elapsed + (dt or 0)
         if elapsed >= 5 then elapsed = 0; ns.Refresh() end
     end)
+    S.Mover(bar, { label = L.TITLE,
+        save = function(point, rel, x, y) ns.db.point = { point, x, y, rel } end,
+        reset = function() ns.db.point = nil; ns.StyleBar() end })
     ns.StyleBar()
+end
+
+-- The bar for the hub's Unlock mode, built when it is asked for.
+function ns.BarFrame()
+    if not bar and ns.db then buildBar() end
+    return bar
 end
 
 local function setLine(done, readyPart, rested)
@@ -264,6 +264,7 @@ function ns.Refresh()
     if bar then
         bar.atCap = atCap
         bar:SetShown(show)
+        bar:SetMoving(ns.moving and not (InCombatLockdown and InCombatLockdown()))
         if show then paintBar() end
     end
     if not frame or not frame:IsShown() then return end
@@ -440,8 +441,6 @@ local function barPage(body)
     local sw = S.SettingsCard(p, L.SEC_BAR, {
         { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
           icon = ns.OPT_ICON.bar },
-        { L.OPT_LOCK, nil, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
-          icon = ns.OPT_ICON.locked },
         { L.OPT_STYLE, nil, control = look, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02" },
         { L.OPT_TEXT, nil, control = text, icon = "Interface\\Icons\\INV_Misc_Note_01" },
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },

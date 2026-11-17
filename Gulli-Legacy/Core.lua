@@ -887,7 +887,7 @@ function ns.SetPref(key, value)
 end
 
 function ns.Reset()
-    local keep = { chars = ns.db.chars, pins = ns.db.pins, skillNames = ns.db.skillNames }
+    local keep = { chars = ns.db.chars, pins = ns.db.pins, skillNames = ns.db.skillNames, hudHidden = true }
     for k in pairs(ns.db) do ns.db[k] = nil end
     for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
     for k, v in pairs(keep) do ns.db[k] = v end

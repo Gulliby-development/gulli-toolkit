@@ -221,7 +221,7 @@ end
 -- Settings -------------------------------------------------------------------------------------
 
 -- The bar's settings; a new one gets its default here. text: what the bar says (ns.TEXTS).
-ns.DEFAULTS = { bar = true, locked = false, alpha = 100, scale = 100, text = "all", wide = false, rep = true,
+ns.DEFAULTS = { bar = false, alpha = 100, scale = 100, text = "all", wide = false, rep = true,
                 style = "fill" }
 ns.TEXTS = { "all", "rate", "eta", "left", "pct" }
 -- How the bar looks: filled from end to end, or the old thin line under the text. A new look
@@ -230,7 +230,6 @@ ns.STYLES = { "fill", "line" }
 ns.BAR_POINT = { "TOP", 0, -150 }
 ns.OPT_ICON = {
     bar = "Interface\\Icons\\INV_Misc_Spyglass_02",
-    locked = "Interface\\Icons\\INV_Misc_Key_04",
     rep = "Interface\\Icons\\INV_Misc_Note_02",
 }
 
@@ -244,19 +243,16 @@ end
 function ns.Reset()
     for k in pairs(ns.db) do ns.db[k] = nil end
     for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+    ns.db.hudHidden = true
     if ns.StyleBar then ns.StyleBar() end
     if ns.Refresh then ns.Refresh() end
 end
 
--- /gulli move: the bar shows and follows the mouse until it is locked again.
+-- The hub's Unlock mode: the bar shows, even when it is off, and can be dragged.
 ns.moving = false
 function ns.Move(on)
     ns.moving = on and true or false
     if ns.Refresh then ns.Refresh() end
-end
-
-function ns.Locked()
-    return ns.db.locked and not ns.moving
 end
 
 -- The bottom line of the bar: the share of the level done, the XP of finished quests after it
@@ -342,6 +338,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
+        -- Frames on the screen start hidden: older saves hide the bar once.
+        if not ns.db.hudHidden then ns.db.bar, ns.db.hudHidden = false, true end
+        ns.db.locked = nil
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "CHAT_MSG_COMBAT_XP_GAIN",
                              "QUEST_TURNED_IN", "PLAYER_LEVEL_UP", "QUEST_LOG_UPDATE", "UPDATE_FACTION" }) do
             self:RegisterEvent(e)
@@ -402,11 +401,13 @@ if GulliToolkit and GulliToolkit.Register then
         summary = function() return ns.Summary() end,
         move = function(on) ns.Move(on) end,
         reset = function() ns.Reset() end,
+        frames = { { key = "bar", icon = ns.OPT_ICON.bar,
+                     get = function() return ns.db ~= nil and ns.db.bar == true end,
+                     set = function(v) ns.SetPref("bar", v) end,
+                     frame = function() return ns.BarFrame and ns.BarFrame() end } },
         options = {
             { label = ns.L.OPT_BAR, icon = ns.OPT_ICON.bar, tip = ns.L.OPT_BAR_TIP,
               get = function() return ns.db ~= nil and ns.db.bar == true end, set = function(v) ns.SetPref("bar", v) end },
-            { label = ns.L.OPT_LOCK, icon = ns.OPT_ICON.locked, tip = ns.L.OPT_LOCK_D,
-              get = function() return ns.db ~= nil and ns.db.locked == true end, set = function(v) ns.SetPref("locked", v) end },
             { label = ns.L.OPT_REP, icon = ns.OPT_ICON.rep, tip = ns.L.OPT_REP_TIP,
               get = function() return ns.db ~= nil and ns.db.rep == true end, set = function(v) ns.SetPref("rep", v) end },
         },
