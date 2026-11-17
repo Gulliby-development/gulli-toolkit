@@ -3,7 +3,7 @@
   "game_version_id": null,
   "toolkit": { "id": null, "slug": null },
   "separate": {
-    "CraftProfit": { "id": null, "optional": ["auctionator"] },
+    "CraftProfit": { "id": 1813366, "optional": ["auctionator"] },
     "Crates": { "id": null, "optional": ["auctionator"] },
     "DungeonPrep": { "id": null },
     "GroupBuffs": { "id": null }
