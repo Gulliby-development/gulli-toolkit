@@ -83,7 +83,7 @@
 
 ## How to use it
 
-1. On the first start, pick your modules in the window that opens, and press **Apply**.
+1. On the first start, pick your modules in the window that opens, and press **Apply**. When a module needs a reload, the button turns into **Reload now**: press it once more.
 2. Type `/gulli`, or click the toolkit icon on the minimap.
 3. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
 4. To switch a module off, open it and flip the switch at the top right.

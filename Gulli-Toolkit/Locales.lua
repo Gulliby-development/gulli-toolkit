@@ -206,6 +206,8 @@ T.en = {
     SETUP_APPLY_RELOAD = "Apply and reload",
     SETUP_LATER = "Later",
     SETUP_DONE = "%d modules switched.",
+    SETUP_RELOAD = "Reload now",
+    SETUP_SAVED = "Saved. Press Reload now (or type /reload) to finish.",
     SETUP_HELP = "/gulli setup picks the modules again.",
     SETUP_FOUND = "Picked for your addons",
 }
@@ -407,6 +409,8 @@ T.de = {
     SETUP_APPLY_RELOAD = "Übernehmen und neu laden",
     SETUP_LATER = "Später",
     SETUP_DONE = "%d Module umgeschaltet.",
+    SETUP_RELOAD = "Jetzt neu laden",
+    SETUP_SAVED = "Gespeichert. Drücke Jetzt neu laden (oder tippe /reload), um fertig zu werden.",
     SETUP_HELP = "/gulli setup wählt die Module neu.",
     SETUP_FOUND = "Passend zu deinen Addons",
 }
@@ -608,6 +612,8 @@ T.es = {
     SETUP_APPLY_RELOAD = "Aplicar y recargar",
     SETUP_LATER = "Más tarde",
     SETUP_DONE = "%d módulos cambiados.",
+    SETUP_RELOAD = "Recargar ahora",
+    SETUP_SAVED = "Guardado. Pulsa Recargar ahora (o escribe /reload) para terminar.",
     SETUP_HELP = "/gulli setup vuelve a elegir los módulos.",
     SETUP_FOUND = "Elegido según tus addons",
 }
@@ -809,6 +815,8 @@ T.fr = {
     SETUP_APPLY_RELOAD = "Appliquer et recharger",
     SETUP_LATER = "Plus tard",
     SETUP_DONE = "%d modules modifiés.",
+    SETUP_RELOAD = "Recharger",
+    SETUP_SAVED = "Enregistré. Clique sur Recharger (ou tape /reload) pour terminer.",
     SETUP_HELP = "/gulli setup choisit à nouveau les modules.",
     SETUP_FOUND = "Choisi selon vos addons",
 }
@@ -1010,6 +1018,8 @@ T.pl = {
     SETUP_APPLY_RELOAD = "Zastosuj i przeładuj",
     SETUP_LATER = "Później",
     SETUP_DONE = "Przełączono modułów: %d.",
+    SETUP_RELOAD = "Przeładuj teraz",
+    SETUP_SAVED = "Zapisano. Naciśnij Przeładuj teraz (lub wpisz /reload), aby zakończyć.",
     SETUP_HELP = "/gulli setup wybiera moduły od nowa.",
     SETUP_FOUND = "Dobrane do twoich addonów",
 }
@@ -1211,6 +1221,8 @@ T.pt = {
     SETUP_APPLY_RELOAD = "Aplicar e recarregar",
     SETUP_LATER = "Depois",
     SETUP_DONE = "%d módulos alterados.",
+    SETUP_RELOAD = "Recarregar agora",
+    SETUP_SAVED = "Salvo. Clique em Recarregar agora (ou digite /reload) para terminar.",
     SETUP_HELP = "/gulli setup escolhe os módulos de novo.",
     SETUP_FOUND = "Escolhido pelos seus addons",
 }
@@ -1412,6 +1424,8 @@ T.ru = {
     SETUP_APPLY_RELOAD = "Применить и перезагрузить",
     SETUP_LATER = "Позже",
     SETUP_DONE = "Переключено модулей: %d.",
+    SETUP_RELOAD = "Перезагрузить",
+    SETUP_SAVED = "Сохранено. Нажмите «Перезагрузить» (или введите /reload), чтобы закончить.",
     SETUP_HELP = "/gulli setup — выбрать модули заново.",
     SETUP_FOUND = "Подобрано под ваши аддоны",
 }
@@ -1613,6 +1627,8 @@ T.zh = {
     SETUP_APPLY_RELOAD = "应用并重载",
     SETUP_LATER = "稍后",
     SETUP_DONE = "已切换 %d 个模块。",
+    SETUP_RELOAD = "立即重载",
+    SETUP_SAVED = "已保存。点击“立即重载”（或输入 /reload）完成设置。",
     SETUP_HELP = "/gulli setup 重新选择模块。",
     SETUP_FOUND = "根据你的插件选择",
 }
