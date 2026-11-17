@@ -123,8 +123,9 @@ end
 --     icon = "Interface\\Icons\\INV_Misc_Coin_02", tip = "Sells gray items at a vendor." } }
 -- (icon and tip optional). More optional fields: window (see AGENTS.md), summary = function()
 -- return text[, icon] end (one short line for the hub's home page), move = function(on) end
--- (unlock or lock the module's frames on the screen, /gulli move) and reset = function() end
--- (back to the defaults).
+-- (show or hide the module's frames with their movers for the hub's Unlock mode; a frame that
+-- is off shows too, so it can be placed), frames = { { key, label, icon, get, set } } (the
+-- frames the Unlock mode lists, see ns.Frames) and reset = function() end (back to the defaults).
 -- pause = function(on) end stops the module at once (events, frames, anything it does on its own)
 -- and starts it again; the hub's switch then needs no reload.
 function Toolkit.Register(a, b)
@@ -645,17 +646,110 @@ function ns.SetGroup(category, on)
     return n
 end
 
--- One place to move every frame on the screen: each module with move(on) unlocks its frames.
+-- Frames on the screen. Each running module lists its frames in Register `frames`:
+-- { key, label, icon, get = function() shown end, set = function(on) end }; a frame without
+-- get and set is a notice that only gets a place. ns.Frames() gives every one with its module
+-- (`module`, `title`, `label` the hub's FR_<Module> text when it has one), the hub's notice
+-- stack last.
+function ns.Frames()
+    local out = {}
+    for _, row in ipairs(ns.List()) do
+        local info = Toolkit.modules[row.key]
+        if info and row.running and not row.paused and type(info.frames) == "table" then
+            for _, fr in ipairs(info.frames) do
+                if type(fr) == "table" then
+                    local own = ns.T.en["FR_" .. row.key] and L["FR_" .. row.key]
+                    out[#out + 1] = { module = row.key, key = fr.key or row.key, title = row.title,
+                                      label = own or fr.label or row.title, icon = fr.icon or row.icon,
+                                      get = type(fr.get) == "function" and fr.get or nil,
+                                      set = type(fr.set) == "function" and fr.set or nil }
+                end
+            end
+        end
+    end
+    out[#out + 1] = { module = "Toolkit", key = "toasts", title = L.FR_ALL, label = L.FR_TOASTS,
+                      icon = "Interface\\Icons\\INV_Letter_15" }
+    return out
+end
+
+local function shown(fr)
+    if not fr.get then return nil end
+    local ok, v = pcall(fr.get)
+    return ok and v and true or false
+end
+ns.FrameShown = shown
+
+-- How many frames that can be hidden show now, and how many there are.
+function ns.FrameCount(frames)
+    local on, total = 0, 0
+    for _, fr in ipairs(frames or ns.Frames()) do
+        if fr.get then
+            total = total + 1
+            if shown(fr) then on = on + 1 end
+        end
+    end
+    return on, total
+end
+
+-- Shows or hides one frame through its module.
+function ns.SetFrameShown(fr, on)
+    if fr.set then pcall(fr.set, on and true or false) end
+    if ns.RefreshUnlock then ns.RefreshUnlock() end
+end
+
+-- The place of the notice stack, saved in GulliToolkitDB.toastAt and read by every Skin copy.
+function ns.ApplyToastPlace()
+    GulliHUD = GulliHUD or {}
+    GulliHUD.toastAt = GulliToolkitDB and GulliToolkitDB.toastAt or nil
+    local S = ns.Skin
+    if S and S.RestackToasts then S.RestackToasts() end
+end
+
+-- The Unlock mode (owner's decision, EllesmereUI-like): every frame of every running module
+-- shows with its mover over a grid, a panel lists them with their switches, and the mode ends
+-- with Save (keep) or Cancel (every place and switch as before). Frames are locked outside it.
+-- ns.SetMoving(true) starts it, ns.SetMoving(false) saves, ns.SetMoving(false, true) cancels.
+-- Returns how many modules have frames to move.
 ns.moving = false
-function ns.SetMoving(on)
-    ns.moving = on and true or false
+function ns.SetMoving(on, cancel)
+    on = on and true or false
+    local S = ns.Skin
+    if on and not ns.moving then
+        ns.toastBefore = GulliToolkitDB and GulliToolkitDB.toastAt or false
+        ns.before = {}
+        for _, fr in ipairs(ns.Frames()) do
+            if fr.get then ns.before[fr.module .. "." .. fr.key] = { fr = fr, on = shown(fr) } end
+        end
+    elseif not on and ns.moving then
+        if cancel then
+            if S and S.MoversRestore then S.MoversRestore() end
+            for _, b in pairs(ns.before or {}) do
+                if shown(b.fr) ~= b.on then pcall(b.fr.set, b.on) end
+            end
+            if ns.toastBefore ~= nil then
+                GulliToolkitDB = GulliToolkitDB or {}
+                GulliToolkitDB.toastAt = ns.toastBefore or nil
+                ns.ApplyToastPlace()
+            end
+        elseif S and S.MoversCommit then
+            S.MoversCommit()
+        end
+        ns.before, ns.toastBefore = nil, nil
+    end
+    ns.moving = on
     local n = 0
     for _, info in pairs(Toolkit.modules) do
         if type(info.move) == "function" and pcall(info.move, ns.moving) then n = n + 1 end
     end
-    if ns.MoveOverlay then ns.MoveOverlay(ns.moving and n > 0) end
+    if ns.MoveOverlay then ns.MoveOverlay(ns.moving) end
     if ns.Refresh then ns.Refresh() end
     return n
+end
+
+-- For a module's own "Place on the screen" button: opens the Unlock mode.
+function Toolkit.Unlock()
+    if not ns.moving then ns.SetMoving(true) end
+    return true
 end
 
 -- The module's own defaults again.
@@ -994,8 +1088,8 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
         return
     end
     if event == "PLAYER_REGEN_DISABLED" then
-        -- Nothing moves in combat: a fight ends the move mode.
-        if ns.moving then ns.SetMoving(false) end
+        -- Nothing moves in combat: a fight ends the Unlock mode and keeps what was done.
+        if ns.moving then ns.SetMoving(false); ns.Print(L.MOVE_OFF) end
         return
     end
     if event == "CHAT_MSG_ADDON" then
@@ -1052,9 +1146,9 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         local on = not ns.MinimapShown()
         ns.SetMinimap("hide", (not on) or nil)
         ns.Print(on and L.MINIMAP_ON or L.MINIMAP_OFF)
-    elseif msg:lower() == "move" then
-        local n = ns.SetMoving(not ns.moving)
-        ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
+    elseif msg:lower() == "move" or msg:lower() == "unlock" then
+        ns.SetMoving(not ns.moving)
+        ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF)
     elseif msg:lower():match("^debug%s") then
         if not ns.Debug(msg:match("^%S+%s+(.+)$")) then ns.Print(L.UNKNOWN:format(msg)) end
     elseif msg:lower() == "errors" then

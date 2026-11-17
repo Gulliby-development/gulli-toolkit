@@ -751,6 +751,9 @@ local function fillHome(data)
     home.noRecent:SetShown(#feed == 0)
     home.clear:SetShown(#feed > 0)
     home.move:SetText(ns.moving and L.MOVE_DONE or L.MOVE)
+    -- How many frames show on the screen, so the Unlock mode is easy to find.
+    local fon, ftotal = ns.FrameCount()
+    home.move.value:SetText(ftotal > 0 and (fon .. "/" .. ftotal) or "")
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -1334,8 +1337,8 @@ local function buildHome()
     end
     local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
     home.move = toolRow(q, L.MOVE, QUICK_ICON.move, function()
-        local n = ns.SetMoving(not ns.moving)
-        ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
+        ns.SetMoving(not ns.moving)
+        ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF)
     end)
     home.move:SetPoint("TOPLEFT", 0, -y)
     local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
@@ -1768,9 +1771,246 @@ end
 
 function ns.MinimapButton() return mapButton end
 
--- /gulli move: a grid over the screen and a bar at the top with Lock frames, so it is clear
--- that the frames can be dragged and how to end it.
-local overlay
+-- The Unlock mode (/gulli unlock): a grid over the screen, a bar at the top that says what to
+-- do, and a panel on the left with every frame of the running modules: a switch to show it, a
+-- button that puts it back, Cancel and Save & lock. A click on a row or a frame selects it, and
+-- the arrow keys move it by one (Shift: ten). Esc or the cross cancels.
+local overlay, panel, sample
+local gridLines = {}
+local PANEL_W, PANEL_H = 420, 600
+local STEPS = { 16, 32, 64 }
+
+local function unlockDB()
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.unlock = GulliToolkitDB.unlock or {}
+    local u = GulliToolkitDB.unlock
+    if u.snap == nil then u.snap = true end
+    if not u.step then u.step = 32 end
+    return u
+end
+
+local function applySnap()
+    local u = unlockDB()
+    GulliHUD = GulliHUD or {}
+    GulliHUD.snap, GulliHUD.step = u.snap, u.step
+end
+
+-- Lines every step units out from the middle of the screen; the middle lines in the accent.
+local function drawGrid()
+    local step = unlockDB().step
+    for _, t in ipairs(gridLines) do t:Hide() end
+    local w = tonumber((UIParent:GetWidth())) or 1366
+    local h = tonumber((UIParent:GetHeight())) or 768
+    local n = 0
+    local function line()
+        n = n + 1
+        local t = gridLines[n]
+        if not t then
+            t = S.Tex(overlay, "ARTWORK", 0, { 1, 1, 1, 0.06 })
+            gridLines[n] = t
+        end
+        t:ClearAllPoints()
+        t:Show()
+        return t
+    end
+    for i = -math.ceil(w / 2 / step), math.ceil(w / 2 / step) do
+        if i ~= 0 then
+            local t = line()
+            t:SetPoint("TOP", overlay, "TOP", i * step, 0)
+            t:SetPoint("BOTTOM", overlay, "BOTTOM", i * step, 0)
+            t:SetWidth(1)
+        end
+    end
+    for i = -math.ceil(h / 2 / step), math.ceil(h / 2 / step) do
+        if i ~= 0 then
+            local t = line()
+            t:SetPoint("LEFT", overlay, "LEFT", 0, i * step)
+            t:SetPoint("RIGHT", overlay, "RIGHT", 0, i * step)
+            t:SetHeight(1)
+        end
+    end
+end
+
+-- The frame a row stands for, and its mover (built when the module shows it for the mode).
+local function moverOf(fr)
+    if fr.module == "Toolkit" then return sample and sample.mover end
+    local info = GulliToolkit.modules[fr.module]
+    local list = info and info.frames
+    for _, d in ipairs(type(list) == "table" and list or {}) do
+        if (d.key or fr.module) == fr.key and type(d.frame) == "function" then
+            local ok, f = pcall(d.frame)
+            return ok and type(f) == "table" and rawget(f, "mover") or nil
+        end
+    end
+end
+
+local function placeSample()
+    local at = GulliToolkitDB and GulliToolkitDB.toastAt
+    local k = tonumber((sample:GetScale())) or 1
+    if k <= 0 then k = 1 end
+    sample:ClearAllPoints()
+    sample:SetPoint("TOP", UIParent, "TOP", (tonumber(at and at[1]) or 0) / k, (tonumber(at and at[2]) or -150) / k)
+end
+
+-- A notice that stands where the stack starts, to place it.
+local function buildSample()
+    sample = S.ToastFrame("GulliToolkitToastSample", UIParent)
+    S.ApplyScale(sample, S.BaseScale())
+    sample:Set({ icon = "Interface\\Icons\\INV_Letter_15", title = L.FR_TOASTS, text = L.UNLOCK_TOAST })
+    sample.close:Hide()
+    sample:Hide()
+    S.Mover(sample, { label = L.FR_TOASTS,
+        save = function()
+            GulliToolkitDB = GulliToolkitDB or {}
+            GulliToolkitDB.toastAt = S.ToastPlace(sample)
+            ns.ApplyToastPlace()
+        end,
+        reset = function()
+            GulliToolkitDB = GulliToolkitDB or {}
+            GulliToolkitDB.toastAt = nil
+            placeSample()
+            ns.ApplyToastPlace()
+        end })
+end
+
+local function buildPanel()
+    panel = S.Window("GulliToolkitUnlock", L.UNLOCK_TITLE, PANEL_W, PANEL_H,
+        { sub = "/gulli unlock", icon = "Interface\\AddOns\\Gulli-Toolkit\\icon", strata = "FULLSCREEN_DIALOG", fullTitle = true })
+    panel:ClearAllPoints()
+    panel:SetPoint("LEFT", UIParent, "LEFT", 24, 0)
+    -- The cross and Esc cancel.
+    panel:HookScript("OnHide", function()
+        if ns.moving then
+            ns.SetMoving(false, true)
+            ns.Print(L.UNLOCK_CANCELLED)
+        end
+    end)
+    local body = panel.body
+    local inner = PANEL_W - 2 * S.PAD
+    local st = S.Stack(body)
+
+    local u = unlockDB()
+    local steps = {}
+    for i, n in ipairs(STEPS) do steps[i] = tostring(n) end
+    local tabs = S.Tabs(body, steps, 48, function(i)
+        unlockDB().step = STEPS[i]
+        applySnap()
+        drawGrid()
+    end, 30)
+    for i, n in ipairs(STEPS) do if n == u.step then tabs:Select(i) end end
+    tabs.frame:SetSize(3 * 48 + 4, 30)
+    local card, ch = S.SettingsCard(body, nil, {
+        { L.UNLOCK_SNAP, nil, function() return unlockDB().snap end,
+          function(v) unlockDB().snap = v; applySnap() end, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
+        { L.UNLOCK_STEP, nil, control = tabs.frame, icon = "Interface\\Icons\\Ability_Hunter_Pathfinding" },
+    })
+    st:Add(card, ch)
+
+    local head = CreateFrame("Frame", nil, body)
+    head.label = S.Text(head, 12, S.GOLD_DIM, nil, "bold")
+    head.label:SetPoint("LEFT", 2, 0)
+    head.hideAll = S.Ghost(S.FitButton(head, L.UNLOCK_HIDE_ALL, 28, 90))
+    head.hideAll:SetPoint("RIGHT")
+    head.label:SetPoint("RIGHT", head.hideAll, "LEFT", -8, 0)
+    head.label:SetWordWrap(false)
+    head.hideAll:SetScript("OnClick", function()
+        for _, fr in ipairs(ns.Frames()) do
+            if fr.get and ns.FrameShown(fr) then ns.SetFrameShown(fr, false) end
+        end
+        ns.RefreshUnlock()
+    end)
+    st:Add(head, 30)
+    panel.head = head
+
+    local list = S.List(body, 48, function(r)
+        r.icon = S.IconBox(r, 26)
+        r.icon:SetPoint("LEFT", 4, 0)
+        r.sw = S.Switch(r)
+        r.sw:SetPoint("RIGHT", -2, 0)
+        r.auto = S.Note(r, 12)
+        r.auto:SetPoint("RIGHT", -6, 0)
+        r.auto:SetText(L.UNLOCK_AUTO)
+        r.reset = S.Button(r, 28, 28)
+        S.SetButtonIcon(r.reset, "Interface\\Buttons\\UI-RefreshButton", 16)
+        r.reset.btnIcon:ClearAllPoints()
+        r.reset.btnIcon:SetPoint("CENTER")
+        r.reset:SetPoint("RIGHT", -54, 0)
+        r.reset:SetScript("OnEnter", function(self) tip(self, L.UNLOCK_RESET, {}) end)
+        r.reset:SetScript("OnLeave", hideTip)
+        r.name = S.Text(r, 13)
+        r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 1)
+        r.name:SetPoint("RIGHT", r.reset, "LEFT", -8, 0)
+        r.name:SetWordWrap(false)
+        r.sub = S.Note(r, 12)
+        r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -2)
+        r.sub:SetPoint("RIGHT", r.reset, "LEFT", -8, 0)
+        r.sub:SetWordWrap(false)
+        r.hit = CreateFrame("Button", nil, r)
+        r.hit:SetPoint("TOPLEFT")
+        r.hit:SetPoint("BOTTOMRIGHT", r.reset, "BOTTOMLEFT", -4, -10)
+    end, function(r, fr)
+        r.icon:SetIcon(fr.icon)
+        r.name:SetText(fr.label or "")
+        r.sub:SetText(fr.title or "")
+        local m = moverOf(fr)
+        local sel = m ~= nil and GulliHUD ~= nil and GulliHUD.selected == m
+        S.Fill(r, sel and { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 } or S.CLEAR)
+        r.sw:SetShown(fr.get ~= nil)
+        r.auto:SetShown(fr.get == nil)
+        if fr.get then
+            r.sw:SetChecked(ns.FrameShown(fr))
+            r.sw:SetScript("OnClick", function() ns.SetFrameShown(fr, not ns.FrameShown(fr)) end)
+        end
+        r.reset:SetEnabled(m ~= nil)
+        r.reset:SetScript("OnClick", function() S.ResetMover(moverOf(fr)); ns.RefreshUnlock() end)
+        r.hit:SetScript("OnClick", function() S.SelectMover(moverOf(fr)) end)
+    end)
+    list:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -st.y)
+    list:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", 0, 0)
+    panel.list = list
+
+    local ft = S.Footer(panel)
+    panel.save = ft:Add(S.Primary(S.FitButton(ft, L.UNLOCK_SAVE, 32, 120)))
+    panel.save:SetScript("OnClick", function()
+        ns.SetMoving(false)
+        ns.Print(L.MOVE_OFF)
+    end)
+    panel.cancel = ft:Add(S.FitButton(ft, L.UNLOCK_CANCEL, 32, 90))
+    panel.cancel:SetScript("OnClick", function()
+        ns.SetMoving(false, true)
+        ns.Print(L.UNLOCK_CANCELLED)
+    end)
+    panel.footer = ft
+
+    -- The arrow keys move the selected frame; every other key goes on to the game.
+    panel:EnableKeyboard(true)
+    panel:SetScript("OnKeyDown", function(self, key)
+        local H = GulliHUD
+        local d = ({ UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } })[key]
+        local free = not (InCombatLockdown and InCombatLockdown())
+        if d and H and H.selected and free then
+            local n = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+            S.NudgeMover(H.selected, d[1] * n, d[2] * n)
+            if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(false) end
+            return
+        end
+        if free and self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(true) end
+    end)
+end
+
+-- The panel's list and counts again (a switch changed, a frame was selected).
+function ns.RefreshUnlock()
+    if not (panel and panel:IsShown()) then return end
+    local frames = ns.Frames()
+    local on, total = ns.FrameCount(frames)
+    panel.head.label:SetText(S.Upper(L.UNLOCK_LIST:format(on, total)))
+    panel.head.hideAll:SetEnabled(on > 0)
+    panel.list:SetData(frames)
+    local sel = GulliHUD and GulliHUD.selected
+    local name = sel and sel.opts and sel.opts.label
+    panel.footer:SetStatus(name and L.UNLOCK_SELECTED:format(name) or L.UNLOCK_HINT)
+end
+
 function ns.MoveOverlay(on)
     if not overlay then
         if not on then return end
@@ -1778,22 +2018,6 @@ function ns.MoveOverlay(on)
         overlay:SetAllPoints()
         overlay:SetFrameStrata("BACKGROUND")
         overlay:EnableMouse(false)
-        local w = tonumber((UIParent:GetWidth())) or 1366
-        local h = tonumber((UIParent:GetHeight())) or 768
-        -- Lines every 64 pixels out from the middle, so the middle lines (accent) sit on the grid.
-        local step = 64
-        for i = -math.ceil(w / 2 / step), math.ceil(w / 2 / step) do
-            local t = S.Tex(overlay, "ARTWORK", 0, { 1, 1, 1, 0.05 })
-            t:SetPoint("TOP", overlay, "TOP", i * step, 0)
-            t:SetPoint("BOTTOM", overlay, "BOTTOM", i * step, 0)
-            t:SetWidth(1)
-        end
-        for i = -math.ceil(h / 2 / step), math.ceil(h / 2 / step) do
-            local t = S.Tex(overlay, "ARTWORK", 0, { 1, 1, 1, 0.05 })
-            t:SetPoint("LEFT", overlay, "LEFT", 0, i * step)
-            t:SetPoint("RIGHT", overlay, "RIGHT", 0, i * step)
-            t:SetHeight(1)
-        end
         local a = S.Accent()
         local cx = S.Tex(overlay, "ARTWORK", 1, { a[1], a[2], a[3], 0.35 })
         cx:SetPoint("TOP")
@@ -1807,21 +2031,36 @@ function ns.MoveOverlay(on)
         local bar = CreateFrame("Frame", "GulliToolkitMoveBar", UIParent)
         bar:SetFrameStrata("FULLSCREEN_DIALOG")
         bar:SetPoint("TOP", 0, -24)
-        bar:SetHeight(44)
+        bar:SetHeight(40)
         S.HudPanel(bar)
-        bar.text = S.Text(bar, 12)
-        bar.text:SetPoint("LEFT", 14, 0)
+        bar.text = S.Text(bar, 13)
+        bar.text:SetPoint("CENTER")
         bar.text:SetText(L.MOVE_BAR)
-        bar.done = S.Primary(S.FitButton(bar, L.MOVE_DONE, 30, 110))
-        bar.done:SetPoint("RIGHT", -7, 0)
-        bar.done:SetScript("OnClick", function()
-            ns.SetMoving(false)
-            ns.Print(L.MOVE_OFF)
-        end)
-        bar:SetWidth(math.floor((tonumber((bar.text:GetStringWidth())) or 300) + 14 + 16 + bar.done:GetWidth() + 7))
+        bar:SetWidth(math.floor((tonumber((bar.text:GetStringWidth())) or 400) + 32))
         overlay.bar = bar
+        GulliHUD = GulliHUD or {}
+        GulliHUD.onSelect = function() ns.RefreshUnlock() end
+    end
+    if on then
+        applySnap()
+        drawGrid()
+        if not panel then buildPanel() end
+        if not sample then buildSample() end
+        placeSample()
+        sample:Show()
+        sample:SetMoving(true)
+    elseif sample then
+        sample:SetMoving(false)
+        sample:Hide()
     end
     overlay:SetShown(on and true or false)
     overlay.bar:SetShown(on and true or false)
+    if on then
+        panel:Show()
+        ns.RefreshUnlock()
+    elseif panel and panel:IsShown() then
+        panel:Hide()
+    end
 end
 function ns.MoveGrid() return overlay end
+function ns.UnlockPanel() return panel end

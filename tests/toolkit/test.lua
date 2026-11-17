@@ -410,7 +410,7 @@ test("versions: a newer one in the group is told once, New marks an updated modu
     eq(byKey(ns.List()).XP.new, nil)
     SlashCmdList.GULLITOOLKIT("help")
     local all = table.concat(W.printed, "\n")
-    assert(all:find("/gulli move", 1, true), "help names the toolkit's commands")
+    assert(all:find("/gulli unlock", 1, true), "help names the toolkit's commands")
 end)
 
 test("protected items: by id or link, saved, listed, switched off again", function()
