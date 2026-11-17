@@ -12,7 +12,7 @@ end
 -- Settings: the switches. Each change goes through ns.Set.
 ns.DEFAULTS = {
     keys = true, remind = true, tomtom = true, hideLater = false,
-    warnEnter = true, wishAlert = true, learn = true, trackerLocked = true,
+    warnEnter = true, wishAlert = true, learn = true, trackerLocked = true, mainOnly = true,
 }
 
 function ns.Get(key)
@@ -315,17 +315,42 @@ local function stateOf(entry, q, level)
     return "take"
 end
 
+-- The levelling chains of a dungeon (D.main): quest id -> true, or nil when the data has none.
+local mainSets = {}
+function ns.MainSet(key)
+    local D = data()
+    local ids = D.main and D.main[key]
+    if not ids or #ids == 0 then return nil end
+    if not mainSets[key] then
+        local set = {}
+        for _, id in ipairs(ids) do set[id] = true end
+        mainSets[key] = set
+    end
+    return mainSets[key]
+end
+
+-- The quests the window shows for a dungeon: only its levelling chains while mainOnly is on
+-- and the data has them, else every quest that touches it.
+function ns.ShownSet(key)
+    if ns.Get("mainOnly") then return ns.MainSet(key) end
+end
+
 -- The quests of a dungeon for this character, split in three lists and a done count:
 -- log (in the quest log), take (can take now), later (level too low or an earlier quest missing).
 -- Quests the player hid go to `hidden` instead; `filter` is a text to find in the name, the
--- quest givers or the mobs.
+-- quest givers or the mobs. Only the levelling chains count while ns.ShownSet gives them;
+-- `more` is how many other quests of the dungeon are for this character then.
 function ns.Quests(key, level, filter)
     local D = data()
-    local out = { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0 }
+    local out = { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0, more = 0 }
+    local main, shown = ns.MainSet(key), ns.ShownSet(key)
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
-        if q and forMe(q) then
+        if q and forMe(q) and shown and not shown[id] then
+            out.more = out.more + 1
+        elseif q and forMe(q) then
             local entry = entryOf(id, q)
+            entry.main = main ~= nil and main[id] == true
             local state = stateOf(entry, q, level)
             if state == "done" then
                 out.done = out.done + 1

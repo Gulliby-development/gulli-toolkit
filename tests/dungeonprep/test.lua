@@ -38,7 +38,8 @@ test("Deadmines for a level 18 human: in the log, can take, needs an earlier que
     local ns = Load()
     local q = ns.Quests("DM", 18)
     eq(ids(q.log), "168")
-    eq(ids(q.take), "167,373,2040", "Oh Brother, The Unsent Letter and Underground Assault")
+    eq(ids(q.take), "65,167,373,2040,92742,92744",
+       "the Westfall chains, Oh Brother, The Unsent Letter and Underground Assault")
     local later = {}
     for _, x in ipairs(q.later) do later[x.id] = x.why end
     eq(later[214], "WHY_EARLIER", "Red Silk Bandanas needs Westfall Stew first")
@@ -50,10 +51,10 @@ test("done quests are counted; an earlier quest in the log is enough for one-of 
     Fake({ done = { [167] = true, [155] = true } })
     local ns = Load()
     local q = ns.Quests("DM", 14)
-    eq(q.done, 1)
-    eq(ids(q.finished), "167", "the done quest is listed for the Done filter")
+    eq(q.done, 2)
+    eq(ids(q.finished), "155,167", "the done quests are listed for the Done filter")
     local c = ns.Counts("DM", 14)
-    eq(c.done, 1)
+    eq(c.done, 2)
     eq(c.log + c.take + c.later, #q.log + #q.take + #q.later, "counts match the lists")
     local take, later = {}, {}
     for _, x in ipairs(q.take) do take[x.id] = true end
@@ -215,7 +216,7 @@ test("hidden quests and the search", function()
     for _, x in ipairs(q.take) do assert(x.id ~= 2040, "hidden is not in take") end
     ns.SetHidden(2040, false)
     eq(#ns.Quests("DM", 18).hidden, 0)
-    local found = ns.Quests("DM", 18, "brother")
+    local found = ns.Quests("DM", 18, "oh brother")
     eq(#found.take, 1); eq(found.take[1].id, 167)
     eq(#ns.Quests("DM", 18, "VanCleef").later, 1, "found by the mob it needs")
 end)
@@ -275,7 +276,7 @@ test("hub: a summary line, reset and the switches", function()
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     local line = reg.summary()
-    eq(line, "The Deadmines: 1 in log, 3 to pick up")
+    eq(line, "The Deadmines: 1 in log, 6 to pick up")
     eq(#reg.options, 5)
     for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
     reg.options[1].set(false)
@@ -651,6 +652,42 @@ test("AllTheThings fills the gaps: its dungeon quests join, its faction wins for
     assert(has("KROLDOK", 94969), "Krol'dok No More!, which only ATT ties to the dungeon")
     assert(has("ALCAZ", 96376), "State Secrets")
     assert(not has("GNOMER", 2951), "a Sparklematic exchange stays out")
+end)
+
+test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
+    Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    eq(ns.Get("mainOnly"), true, "on by default")
+    local function all(q)
+        local t = {}
+        for _, l in ipairs({ q.log, q.take, q.later, q.hidden }) do
+            for _, x in ipairs(l) do t[x.id] = x end
+        end
+        return t
+    end
+    local q = ns.Quests("SCHOLO", 58)
+    local shown = all(q)
+    for _, id in ipairs({ 5096, 5341, 5466, 5529, 4771 }) do
+        assert(shown[id], "a Horde chain step: " .. id)
+        eq(shown[id].main, true)
+    end
+    assert(not shown[5343], "the Alliance Barov Family Fortune is not for the Horde")
+    assert(q.more > 0, "other dungeon quests are left out")
+    local main = ns.MainSet("SCHOLO")
+    for id in pairs(shown) do assert(main[id], "only chain quests: " .. id) end
+    ns.Set("mainOnly", false)
+    local every = ns.Quests("SCHOLO", 58)
+    eq(every.more, 0)
+    local n = 0
+    for _ in pairs(all(every)) do n = n + 1 end
+    local m = 0
+    for _ in pairs(shown) do m = m + 1 end
+    eq(n, m + q.more, "every quest once the switch is off")
+    eq(ns.Counts("SCHOLO", 58).take, #every.take, "the counts follow the switch")
+    -- A dungeon whose guide the data lacks shows every quest.
+    ns.Set("mainOnly", true)
+    ns.Data.main.SHAPERS = nil
+    eq(ns.Quests("SHAPERS", 60).more, 0)
 end)
 
 test("the tracker: ready quests first, objectives, quests to take; Lead me shows it, the cross hides it", function()

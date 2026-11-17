@@ -26,13 +26,14 @@ jobs:
           git clone -q --depth 1 https://github.com/Questie/QuestieDB /tmp/questiedb
           git clone -q --depth 1 --filter=blob:none --sparse https://github.com/ATTWoWAddon/AllTheThings /tmp/att
           git -C /tmp/att sparse-checkout set .contrib/.db/forever
+          git clone -q --depth 1 https://github.com/JanRK/Guidelime_DungeonQuests /tmp/gdq
           curl -sSfL -o /tmp/SkillLevelData1.lua https://raw.githubusercontent.com/b-morgan/Skillet-Classic/master/SkillLevelData1.lua
           echo "QUESTIEDB=$(git -C /tmp/questiedb log -1 --format='%h %cs')" >> "$GITHUB_ENV"
 
       - name: Rebuild Data.lua
         run: |
           python3 tools/questcleaner/build_data.py /tmp/questiedb
-          python3 tools/dungeonprep/build_data.py /tmp/questiedb /tmp/att
+          python3 tools/dungeonprep/build_data.py /tmp/questiedb /tmp/att /tmp/gdq
           python3 tools/mobfinder/build_data.py /tmp/questiedb
           python3 tools/craftprofit/build_data.py /tmp/SkillLevelData1.lua /tmp/questiedb
 
