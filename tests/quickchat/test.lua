@@ -32,13 +32,19 @@ test("the default order sends to raid, party, else say", function()
     Fake({})
     local ns = Load()
     eq(ns.Say("hi"), "SAY")
-    eq(W.chat[1][2], "SAY")
+    eq(#W.chat, 0, "say outside an instance never goes out from the addon")
+    eq(W.opened[1], "/s hi", "it waits in the chat box for Enter")
+    W.instance, W.now = true, W.now + 5
+    eq(ns.Say("hi"), "SAY")
+    eq(W.chat[1][2], "SAY", "inside an instance say goes out at once")
+    W.instance = false
     W.group, W.now = true, W.now + 5
     ns.Say("hi")
     eq(W.chat[2][2], "PARTY")
     W.raid, W.now = true, W.now + 5
     ns.Say("hi")
     eq(W.chat[3][2], "RAID")
+    eq(#W.opened, 1)
 end)
 
 test("the channel order: switch on, move up and down, the first that works wins", function()
@@ -53,7 +59,8 @@ test("the channel order: switch on, move up and down, the first that works wins"
     ns.ToggleChannel(order, "LFG")
     ns.ToggleChannel(order, "GUILD")
     eq(ns.Say("hi"), "LFG", "LookingForGroup by its name in another language")
-    eq(W.chat[1][2], "CHANNEL"); eq(W.chat[1][3], 4)
+    eq(W.opened[1], "/4 hi", "a numbered channel goes into the chat box")
+    eq(#W.chat, 0)
     assert(ns.MoveChannel(order, "GUILD", -1))
     eq(table.concat(order, ","), "RAID,PARTY,GUILD,LFG")
     eq(ns.MoveChannel(order, "RAID", -1), false, "the first stays first")
@@ -184,60 +191,51 @@ test("the wheel: held key opens it, letting go sends the lit phrase", function()
     W.Fire("PLAYER_REGEN_ENABLED")
     eq(W.bindings["F6"], "GulliQuickChatWheelButton")
     local button = _G.GulliQuickChatWheelButton or nil
-    -- Alone the phrase goes to say, which the game blocks on a key release: it stays lit and
-    -- waits for a click.
+    -- Alone the phrase goes to say: letting go puts it in the chat box, never blocked.
     ns.WheelKey(true)
     ns.WheelHover(2)
+    local _, where = ns.WheelInfo()
+    assert(where:find(ns.L.CLICK_SEND, 1, true), "the wheel says it goes to the chat box")
     ns.WheelKey(false)
-    eq(#W.chat, 0, "say never goes out on a key release")
-    local shown, where = ns.WheelInfo()
-    assert(shown, "the wheel waits for a click")
-    assert(where:find(ns.L.CLICK_SEND, 1, true))
-    eq(ns.WheelRelease(), true, "the click sends it")
-    eq(W.chat[1][1], "Ready!"); eq(W.chat[1][2], "SAY")
-    -- A second press of the key sends it too: a press is a key press for the game.
-    W.now = W.now + 5
-    ns.WheelKey(true); ns.WheelHover(2); ns.WheelKey(false)
-    eq(#W.chat, 1)
-    ns.WheelKey(true)
-    eq(#W.chat, 2); eq((ns.WheelInfo()), false)
-    ns.WheelKey(false)
-    eq(#W.chat, 2, "its release does nothing more")
-    W.chat[2] = nil
-    -- In a group it goes to party, which a release may send.
+    eq(#W.chat, 0, "say never goes out from the addon")
+    eq(W.opened[1], "/s Ready!")
+    eq((ns.WheelInfo()), false)
+    -- In a group it goes to party, which a release sends at once.
     W.group, W.now = true, W.now + 5
     ns.WheelKey(true)
     ns.WheelHover(2)
+    local _, where2 = ns.WheelInfo()
+    assert(not where2:find(ns.L.CLICK_SEND, 1, true))
     ns.WheelKey(false)
-    eq(#W.chat, 2, "let go on a lit phrase sends it")
-    eq(W.chat[2][2], "PARTY")
+    eq(#W.chat, 1, "let go on a lit phrase sends it")
+    eq(W.chat[1][2], "PARTY")
     eq((ns.WheelInfo()), false)
-    W.chat[2] = nil
     W.group = false
     ns.WheelKey(true)
     ns.WheelHover(nil)
     ns.WheelKey(false)
     eq(#W.chat, 1, "let go in the middle sends nothing")
+    eq(#W.opened, 1)
     -- A mouse click anywhere sends the lit phrase too.
     W.now = W.now + 5
     ns.WheelKey(true)
     ns.WheelHover(3)
     eq(ns.WheelRelease(), true)
-    eq(W.chat[#W.chat][1], "brb")
+    eq(W.opened[#W.opened], "/s brb")
     -- Press mode: a press opens, the next press sends.
     ns.db.wheelHold = false
     W.now = W.now + 5
     ns.WheelKey(true); ns.WheelKey(false)
     ns.WheelHover(4)
     ns.WheelKey(true)
-    eq(W.chat[#W.chat][1], "Back")
+    eq(W.opened[#W.opened], "/s Back")
     eq(ns.ToggleWheel(), true)
     SlashCmdList.GULLIQUICKCHAT("wheel")
     eq(ns.ToggleWheel(), true, "the slash command closed it, this opens it again")
     ns.WheelHover(7)
     W.now = W.now + 5
     eq(ns.WheelSend(7), true)
-    eq(W.chat[#W.chat][1], "Need a heal!")
+    eq(W.opened[#W.opened], "/s Need a heal!")
     for i = 1, 8 do ns.SetRing(i, nil) end
     eq(ns.OpenWheel(true), false, "an empty ring does not open")
     eq(button, nil)
@@ -266,11 +264,12 @@ end)
 test("a double tap sends once", function()
     Fake({})
     local ns = Load()
-    eq(ns.Say("hi"), "SAY")
+    W.group = true
+    eq(ns.Say("hi"), "PARTY")
     eq(ns.Say("hi"), false, "the same text within 3 seconds")
     eq(#W.chat, 1)
     W.now = W.now + 4
-    eq(ns.Say("hi"), "SAY")
+    eq(ns.Say("hi"), "PARTY")
 end)
 
 test("the hub: options, moving the panel, defaults come back", function()

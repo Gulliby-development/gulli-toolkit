@@ -115,6 +115,27 @@ local function stepRow(parent, key, step, min, max, fmt)
             return at
         end
         set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+    elseif key == "maxCrafts" then
+        -- auto (0) shows and steps from the limit it stands for; stepping back onto that value
+        -- binds it to the target again; one step past the top is "no limit" (-1)
+        local top = max
+        local function auto()
+            local st = ns.view.state or (ns.State and ns.State())
+            local P = ns.Prefs(ns.db and ns.db.prefs)
+            P.maxCrafts = 0
+            return st and ns.CraftCap(st, P) or ns.CRAFTS_SPARE
+        end
+        get = function()
+            local v = pref(key) or 0
+            if v < 0 then return top + step end
+            return v == 0 and auto() or v
+        end
+        set = function(v) ns.SetPref(key, (v > top and -1) or (v == auto() and 0) or v) end
+        fmt = function(v)
+            if v > top then return L.NO_LIMIT end
+            return (pref(key) or 0) == 0 and L.CRAFTS_AUTO:format(v) or tostring(v)
+        end
+        max = top + step
     elseif UNLIMITED[key] then
         -- one step past the top is "no limit", saved as 0
         local top, show = max, fmt
@@ -168,7 +189,8 @@ local function buildSide(scroll)
     local lv = sw("level")
     local target = stepRow(col, "target", 5, 1, 300)
     local budget = stepRow(col, "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end)
-    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, budget })
+    local crafts = stepRow(col, "maxCrafts", 5, 5, 500)
+    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, crafts, budget })
     st:Add(c0, h0)
 
     local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
@@ -208,7 +230,7 @@ end
 local function refreshSide()
     local P = ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    for _, key in ipairs({ "target", "budget" }) do
+    for _, key in ipairs({ "target", "maxCrafts", "budget" }) do
         ui[key].minus:SetEnabled(P.level and true or false)
         ui[key].plus:SetEnabled(P.level and true or false)
     end
@@ -1009,10 +1031,11 @@ local function refreshRoute()
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
                 or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(full.target, ns.Ceil(full.crafts)))
-            if x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
+            if x.many then sub = color(BAD) .. L.VAR_MANY .. "|r"
+            elseif x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
             b.sub:SetText(sub)
-            b:SetAlpha(x.over and 0.55 or 1)
+            b:SetAlpha((x.over or x.many) and 0.55 or 1)
         else
             b.label:SetText(j .. ". " .. L.TILE_cheap)
             b.value:SetText(color(S.FAINT) .. "-|r")
