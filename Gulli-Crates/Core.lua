@@ -35,6 +35,13 @@ end
 local function requestItem(id)
     if I.RequestLoadItemDataByID then pcall(I.RequestLoadItemDataByID, id) end
 end
+-- The name to show: never the bare id, which means nothing to a player.
+function ns.DisplayName(id)
+    local n = id and itemName(id)
+    if n then return n end
+    if id then requestItem(id) end
+    return ns.L.ITEM_LOADING
+end
 local function numSlots(bag)
     if C_Container and C_Container.GetContainerNumSlots then return C_Container.GetContainerNumSlots(bag) or 0 end
     return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
@@ -213,7 +220,7 @@ function ns.Crates()
                     if not crate then ns.notCrate[id] = true end
                 end
                 if crate then
-                    seen[id] = { id = id, count = 0, name = itemName(id) or ("item:" .. id), icon = ns.ItemIcon(id) }
+                    seen[id] = { id = id, count = 0, name = itemName(id), icon = ns.ItemIcon(id) }
                     out[#out + 1] = seen[id]
                 end
             end
@@ -1129,6 +1136,14 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.OnSearch(a1)
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         ns.notCrate = {}
+        -- a burst of item answers redraws the names once
+        if not ns.namesPending and C_Timer and ns.Refresh then
+            ns.namesPending = true
+            C_Timer.After(0.3, function()
+                ns.namesPending = nil
+                if ns.Refresh then ns.Refresh() end
+            end)
+        end
     elseif event == "PLAYER_ENTERING_WORLD" then
         ns.Track()
     elseif event == "BAG_UPDATE_DELAYED" then
