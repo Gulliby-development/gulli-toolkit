@@ -209,7 +209,9 @@ function Fake(spec)
     GetMerchantItemMaxStack = function(i) return W.merchant[i][4] end
     BuyMerchantItem = function(i, n) W.bought[#W.bought + 1] = { i, n } end
     GetMoney = function() return W.money end
-    GulliRemindersDB = spec.db
+    -- The panel starts hidden; the tests turn it on unless the spec says otherwise.
+    GulliRemindersDB = spec.db or {}
+    if GulliRemindersDB.show == nil and not spec.fresh then GulliRemindersDB.show, GulliRemindersDB.hudHidden = true, true end
     return W
 end
 

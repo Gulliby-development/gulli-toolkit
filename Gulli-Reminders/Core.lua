@@ -79,9 +79,9 @@ local AMMO_SLOT, OFF_HAND = 0, 17
 local ITEM_WEAPON = 2
 
 ns.DEFAULTS = {
-    show = true, inRest = true, track = {}, weapon = true, ammo = true, shards = true, pet = true,
+    show = false, inRest = true, track = {}, weapon = true, ammo = true, shards = true, pet = true,
     ammoMin = 200, shardsMin = 3, soonMin = 3,
-    locked = true, size = 40, alpha = 100, labels = true, vertical = false,
+    size = 40, alpha = 100, labels = true, vertical = false,
     anyWeapon = false, food = true, where = "always", whereItems = "instance", alert = "instance",
     durability = true, durMin = 20, bags = true, bagsMin = 2, others = false, custom = {},
 }
@@ -684,6 +684,23 @@ local function migrate(db)
     end
     -- The old "not in towns" switch hid every icon in a capital; the new default shows them.
     db.buffs, db.notResting = nil, nil
+    -- Frames on the screen start hidden: older saves hide the panel once. The hub's Unlock
+    -- mode places it now, so the panel has no lock of its own.
+    if not db.hudHidden then db.show, db.hudHidden = false, true end
+    db.locked = nil
+end
+
+-- The hub's Unlock mode: the panel shows every icon it can show, to be placed.
+ns.moving = false
+function ns.Move(on)
+    ns.moving = on and true or false
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Opens the hub's Unlock mode, when the hub is there.
+function ns.Unlock()
+    if GulliToolkit and GulliToolkit.Unlock then return GulliToolkit.Unlock() end
+    return false
 end
 
 local f = CreateFrame("Frame")
@@ -724,8 +741,8 @@ SLASH_GULLIREMINDERS1 = "/grm"
 SLASH_GULLIREMINDERS2 = "/gullireminders"
 SlashCmdList.GULLIREMINDERS = function(msg)
     msg = strtrim(msg or ""):lower()
-    if msg == "unlock" or msg == "lock" then
-        ns.SetPref("locked", msg == "lock")
+    if msg == "unlock" or msg == "move" then
+        if not ns.Unlock() then print("|cff9ad0ffGulli-Reminders|r: " .. L.NEEDS_HUB) end
     elseif msg == "reset" then
         ns.SetPref("point", nil)
     elseif msg:match("^item%s") or msg:match("^spell%s") then
@@ -745,7 +762,6 @@ function GulliReminders_Toggle() ns.Toggle() end
 ns.OPT_ICON = {
     show = "Interface\\Icons\\Spell_Holy_MindVision",
     inRest = "Interface\\Icons\\Spell_Nature_Sleep",
-    locked = "Interface\\Icons\\INV_Misc_Key_03",
     weapon = "Interface\\Icons\\INV_Stone_02",
     anyWeapon = "Interface\\Icons\\INV_Potion_100",
     food = "Interface\\Icons\\INV_Misc_Food_14",
@@ -780,15 +796,19 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         options = {
             option("show", ns.L.OPT_SHOW),
-            option("locked", ns.L.OPT_LOCK),
             option("inRest", ns.L.OPT_REST),
             option("food", ns.L.OPT_FOOD),
         },
-        move = function(on) if ns.db then ns.SetPref("locked", not on) end end,
+        frames = { { key = "panel", icon = ns.OPT_ICON.show,
+                     get = function() return ns.db ~= nil and ns.db.show == true end,
+                     set = function(on) if ns.db then ns.SetPref("show", on and true or false) end end,
+                     frame = function() return ns.PanelFrame and ns.PanelFrame() end } },
+        move = function(on) ns.Move(on) end,
         reset = function()
             if not ns.db then return end
             for k in pairs(ns.db) do ns.db[k] = nil end
             for k, v in pairs(ns.DEFAULTS) do ns.db[k] = type(v) == "table" and {} or v end
+            ns.db.hudHidden = true
             if ns.Refresh then ns.Refresh() end
             if ns.RebuildWindow then ns.RebuildWindow() end
         end,

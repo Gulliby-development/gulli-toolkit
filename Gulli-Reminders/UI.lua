@@ -1,4 +1,4 @@
--- The panel of icons on screen (unlock it to drag it; it then shows every icon it can show) and the
+-- The panel of icons on screen (the hub's Unlock mode places it; it then shows every icon it can show) and the
 -- settings window: the class buffs to watch, the other checks, when to show the panel and its look.
 
 local _, ns = ...
@@ -10,11 +10,6 @@ local icons = {}
 local GAP = 4
 
 -- Panel --------------------------------------------------------------------------------------
-
-local function savePoint()
-    local p, _, _, x, y = panel:GetPoint()
-    ns.db.point = { p, x, y }
-end
 
 local function tip(owner, m)
     if not GameTooltip then return end
@@ -28,16 +23,10 @@ local function tip(owner, m)
         GameTooltip:AddLine(L.TIP_MISSING, 0.93, 0.42, 0.40)
     end
     if m.none then GameTooltip:AddLine(L.TIP_NONE, 0.93, 0.42, 0.40, true) end
-    local hint = L.TIP_MOVE
-    if ns.db.locked then
-        hint = m.act and L.TIP_ACT or (m.buy and L.TIP_BUY) or L.TIP_LOCKED
-    end
+    local hint = ns.moving and L.DRAG or m.act and L.TIP_ACT or (m.buy and L.TIP_BUY) or L.TIP_LOCKED
     GameTooltip:AddLine(hint, 0.6, 0.61, 0.66, true)
     GameTooltip:Show()
 end
-
-local function startDrag() if not ns.db.locked then panel:StartMoving() end end
-local function stopDrag() panel:StopMovingOrSizing(); savePoint() end
 
 local function buildPanel()
     panel = CreateFrame("Frame", "GulliRemindersPanel", UIParent)
@@ -45,13 +34,19 @@ local function buildPanel()
     panel:SetFrameStrata("MEDIUM")
     panel:SetMovable(true)
     panel:SetClampedToScreen(true)
-    -- While the panel is unlocked, the mover lies over it: drag to place, right click to reset.
-    S.Mover(panel, { label = L.TITLE, hint = L.DRAG, save = function() savePoint() end,
-        reset = function() ns.db.point = nil; ns.Refresh() end,
-        lock = function() ns.SetPref("locked", true) end, lockTip = L.OPT_LOCK })
+    -- In the hub's Unlock mode the mover lies over it: drag to place, right click to reset.
+    S.Mover(panel, { label = L.TITLE, hint = L.DRAG,
+        save = function(point, rel, x, y) ns.db.point = { point, x, y, rel } end,
+        reset = function() ns.db.point = nil; ns.Refresh() end })
     panel.line = S.Text(panel, 12, S.TEXT, "OUTLINE")
     panel.line:SetJustifyH("CENTER")
     panel.line:SetWordWrap(false)
+end
+
+-- The panel for the hub's Unlock mode, built when it is asked for.
+function ns.PanelFrame()
+    if not panel and ns.db then buildPanel() end
+    return panel
 end
 
 local function keyDown()
@@ -66,14 +61,14 @@ local function postClick(self, button, down)
     if down ~= keyDown() then return end
     local m = self.m
     if button == "RightButton" then ns.Toggle(); return end
-    if not ns.db.locked then return end
+    if ns.moving then return end
     if m and m.act and ns.NoteClick then ns.NoteClick(m.key) end
     if m and m.buy and ns.Buy(m) > 0 then return end
     if not (m and m.act) then ns.Toggle() end
 end
 
 local function aim(b, m)
-    local act = ns.db.locked and m and not m.sample and m.act or nil
+    local act = not ns.moving and m and not m.sample and m.act or nil
     b:SetAttribute("type1", act and act.type or nil)
     b:SetAttribute("spell1", act and act.spell or nil)
     b:SetAttribute("item1", act and act.item or nil)
@@ -94,9 +89,6 @@ local function icon(i)
     b.label = S.Text(b, 12, S.TEXT, "OUTLINE")
     b.label:SetPoint("LEFT", b, "RIGHT", 8, 0)
     b.label:SetWordWrap(false)
-    b:RegisterForDrag("LeftButton")
-    b:SetScript("OnDragStart", startDrag)
-    b:SetScript("OnDragStop", stopDrag)
     b:SetScript("PostClick", postClick)
     b:SetScript("OnEnter", function(self) tip(self, self.m) end)
     b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -140,11 +132,11 @@ local function layout(list, missingKeys)
     panel.line:SetPoint("TOP", panel, "BOTTOM", 0, -6)
     panel.line:SetText(table.concat(labels, "  ·  "))
     panel.line:SetShown(d.labels and not d.vertical)
-    panel:SetMoving(not d.locked)
+    panel:SetMoving(ns.moving)
     panel:SetAlpha(math.max(0.2, d.alpha / 100))
     panel:ClearAllPoints()
     local p = d.point or ns.PANEL_POINT
-    panel:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+    panel:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
 end
 
 local refreshWindow
@@ -152,7 +144,7 @@ local refreshWindow
 local function alert(missing)
     local d = ns.db
     local new = ns.NewOnes(missing)
-    if #new == 0 or d.alert == "off" or not d.locked then return end
+    if #new == 0 or d.alert == "off" or ns.moving then return end
     if d.alert == "instance" and not ns.PlaceOK("instance") then return end
     if PlaySound then PlaySound(SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959, "Master") end
     if UIErrorsFrame then UIErrorsFrame:AddMessage(new[1].text, 1, 0.72, 0.3) end
@@ -169,7 +161,7 @@ function ns.Refresh()
     end
     alert(missing)
     local list, keys
-    if not d.locked and d.show and why ~= "combat" then
+    if ns.moving and why ~= "combat" then
         keys = {}
         for _, m in ipairs(missing) do keys[m.key] = m end
         list = ns.Sample()
@@ -258,7 +250,9 @@ local function build()
     frame = S.Window("GulliRemindersFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local ft = S.Footer(frame)
     frame.move = ft:Add(S.Primary(S.FitButton(ft, L.MOVE, 32, 150)))
-    frame.move:SetScript("OnClick", function() ns.SetPref("locked", not ns.db.locked) end)
+    frame.move:SetScript("OnClick", function() ns.Unlock() end)
+    -- Without the hub there is no Unlock mode, so the panel stays where it is.
+    frame.move:SetShown(GulliToolkit ~= nil and GulliToolkit.Unlock ~= nil)
     local body, width = frame.body, frame.inner[1]
     local colW = math.floor((width - S.GAP) / 2)
     local leftScroll, left = column(body, colW, "LEFT")
@@ -359,7 +353,6 @@ local function build()
     local reset = S.FitButton(body, L.PLACE_RESET, 28, 110)
     reset:SetScript("OnClick", function() ns.SetPref("point", nil) end)
     local pc, ph = S.SettingsCard(rightCol, L.SEC_PANEL, {
-        switch("locked", L.OPT_LOCK, L.OPT_LOCK_D),
         { L.OPT_SIZE, nil, icon = ns.OPT_ICON.size, control = stepper("size", 4, 24, 64) },
         { L.OPT_ALPHA, nil, icon = ns.OPT_ICON.alpha,
           control = stepper("alpha", 10, 20, 100, function(v) return v .. "%" end) },
@@ -430,7 +423,6 @@ local function build()
 
     refreshWindow = function(missing, why)
         if not frame:IsShown() then return end
-        frame.move:SetText(ns.db.locked and L.MOVE or L.DONE)
         for _, st in ipairs(frame.steppers) do st:Refresh() end
         frame.custom:SetData(ns.db.custom)
         local reason = why and L["STATUS_" .. why:upper()]
