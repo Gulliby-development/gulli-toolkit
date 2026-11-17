@@ -25,8 +25,9 @@ function ns.ShortName(name)
 end
 
 local function itemLine(id, n)
-    return n .. " × " .. ns.ShortName(ns.ItemName(id) or ("item:" .. id))
+    return n .. " × " .. ns.ShortName(ns.DisplayName(id))
 end
+ns.ItemLine = itemLine
 
 -- ---------- crate rows ----------
 
@@ -52,7 +53,7 @@ local function fillCrateRow(r, c)
     r.crate = c
     r.check:SetChecked(ns.picked[c.id] ~= false)
     r.icon:Set(c.icon, c.count, 1)
-    r.name:SetText(ns.ShortName(c.name))
+    r.name:SetText(ns.ShortName(c.name or ns.DisplayName(c.id)))
     local level = ns.CRATES[c.id] and ns.CRATES[c.id][1]
     r.value:SetText(level and (S.Hex(S.LevelColor(level)) .. level .. "|r") or "")
 end
@@ -80,7 +81,7 @@ local function fillPlanRow(r, row)
         r.icon:Set(ns.ItemIcon(row.e.crate), nil, 1)
         r.icon:Show()
         r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
-        r.name:SetText(ns.ShortName(ns.ItemName(row.e.crate) or "") .. (row.e.k > 1 and ("  #" .. row.e.k) or ""))
+        r.name:SetText(ns.ShortName(ns.DisplayName(row.e.crate)) .. (row.e.k > 1 and ("  #" .. row.e.k) or ""))
         if row.e.none then r.value:SetText(S.Hex(S.BAD) .. L.NO_PRICE .. "|r")
         elseif row.e.cost == 0 then r.value:SetText(S.Hex(S.GOOD) .. L.FILLED .. "|r")
         else r.value:SetText(S.MoneyText(row.e.cost)) end
@@ -165,7 +166,7 @@ local function fillTokenRow(r, row)
     local done = row.line and row.line.done
     local current = row.line and row.line == ns.Current() and ns.buy.phase ~= "done"
     local c = done and S.GOOD or (current and S.Accent() or S.TEXT)
-    r.name:SetText(S.Hex(c) .. ns.ShortName(ns.ItemName(g.crate) or ("item:" .. g.crate)) .. "|r")
+    r.name:SetText(S.Hex(c) .. ns.ShortName(ns.DisplayName(g.crate)) .. "|r")
     local parts = {}
     if g.favor then parts[#parts + 1] = L.TOK_EACH:format(g.favor) end
     if g.own > 0 then parts[#parts + 1] = L.FROM_BAGS:format(g.own) end
@@ -200,7 +201,7 @@ end
 local fmtDate = date or (os and os.date)
 local function fillHistRow(r, e)
     r.icon:Set(ns.ItemIcon(e.crate), nil, 1)
-    r.name:SetText(ns.ShortName(ns.ItemName(e.crate) or ("item:" .. e.crate)))
+    r.name:SetText(ns.ShortName(ns.DisplayName(e.crate)))
     local note = itemLine(e.item, e.n)
     if e.bought and e.bought > 0 and e.bought < e.n then note = note .. S.DOT .. L.HIST_BOUGHT:format(e.bought) end
     if e.ready and e.bank > 0 then note = note .. S.DOT .. S.Hex(S.WARN) .. L.FROM_BANK:format(e.bank) .. "|r" end
