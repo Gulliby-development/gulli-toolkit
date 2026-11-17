@@ -724,8 +724,9 @@ function ns.Route(take, here, dungeon)
 end
 
 -- A map pin on a stop, through the world map's own waypoint. Returns true when it is set.
+-- With `open`, the world map opens on the pin's zone too (out of combat only).
 local mapOfZone
-function ns.SetPin(stop)
+function ns.SetPin(stop, open)
     if not (stop.zone and MAP.SetUserWaypoint and UiMapPoint and MAP.GetMapChildrenInfo) then return false end
     if not mapOfZone then
         mapOfZone = {}
@@ -743,8 +744,23 @@ function ns.SetPin(stop)
     if ns.Get("tomtom") and TomTom and TomTom.AddWaypoint then
         TomTom:AddWaypoint(id, stop.x / 100, stop.y / 100, { title = stop.who, from = "Gulli-DungeonPrep" })
     end
+    if open then ns.OpenMap(id) end
     print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.PIN_SET:format(stop.who))
     return true
+end
+
+-- Opens the world map on a map id. The map can be taken out of combat only.
+function ns.OpenMap(id)
+    if not id or (InCombatLockdown and InCombatLockdown()) then return false end
+    if OpenWorldMap then
+        OpenWorldMap(id)
+        return true
+    elseif WorldMapFrame and WorldMapFrame.SetMapID and ShowUIPanel then
+        ShowUIPanel(WorldMapFrame)
+        WorldMapFrame:SetMapID(id)
+        return true
+    end
+    return false
 end
 
 -- Keys and items that open a dungeon or a part of it.
@@ -827,6 +843,7 @@ function ns.Summary()
     return L.SUMMARY:format(ns.DungeonName(d), #q.log, #q.take), ns.Icon(d.key)
 end
 
+ns.ITEM_REFRESH = 0.5
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1)
@@ -853,6 +870,18 @@ f:SetScript("OnEvent", function(self, event, a1)
         return
     end
     if event == "QUEST_ACCEPTED" and ns.guide and ns.StepGuide then ns.StepGuide() end
+    -- A big dungeon asks for hundreds of loot items at once and each answer is an event:
+    -- one refresh for the whole burst, not one per item.
+    if event == "GET_ITEM_INFO_RECEIVED" and C_Timer and C_Timer.After then
+        if not ns.refreshWaiting then
+            ns.refreshWaiting = true
+            C_Timer.After(ns.ITEM_REFRESH, function()
+                ns.refreshWaiting = false
+                if ns.Refresh then ns.Refresh() end
+            end)
+        end
+        return
+    end
     if ns.Refresh then ns.Refresh() end
     if ns.RefreshTracker then ns.RefreshTracker() end
 end)
@@ -908,7 +937,7 @@ end
 
 -- A map pin on someone the data places on a zone map (a quest giver, a turn-in, a chain step).
 -- Returns false when the spot is not on an outdoor map (inside a dungeon, an item).
-function ns.PinAt(who, area, x, y)
+function ns.PinAt(who, area, x, y, open)
     if not area or area == 0 or not x or (x == 0 and y == 0) then return false end
-    return ns.SetPin({ who = who ~= "" and who or "?", zone = areaName(area), x = x, y = y })
+    return ns.SetPin({ who = who ~= "" and who or "?", zone = areaName(area), x = x, y = y }, open)
 end

@@ -66,7 +66,7 @@ local function makeRow(parent)
     r.pin.icon:SetAllPoints()
     r.pin:SetScript("OnClick", function(self)
         local it = self:GetParent().item
-        if it and it.pin then ns.PinAt(it.pin.who, it.pin.area, it.pin.x, it.pin.y) end
+        if it and it.pin then ns.PinAt(it.pin.who, it.pin.area, it.pin.x, it.pin.y, true) end
     end)
     r.pin:SetScript("OnEnter", function(self)
         local it = self:GetParent().item

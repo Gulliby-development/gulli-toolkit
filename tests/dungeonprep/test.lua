@@ -156,6 +156,41 @@ test("a click on a stop sets a map pin in its zone", function()
     eq(ns.SetPin({ inside = true, quests = {} }), false)
 end)
 
+test("the tracker's map button pins and opens the world map on the pin's zone", function()
+    local W = Fake({ areas = AREAS, map = { maps = MAPS } })
+    local opened
+    OpenWorldMap = function(id) opened = id end
+    local ns = Load()
+    eq(ns.PinAt("Nogg", 1637, 76, 25), true)
+    eq(opened, nil, "a pin alone leaves the map closed")
+    eq(ns.PinAt("Nogg", 1637, 76, 25, true), true)
+    eq(opened, 1454, "the map opens on Orgrimmar")
+    opened, W.combat = nil, true
+    ns.PinAt("Nogg", 1637, 76, 25, true)
+    eq(opened, nil, "never in combat")
+    OpenWorldMap = nil
+end)
+
+test("big dungeons: one refresh for a burst of item answers, bosses only on their page", function()
+    local W = Fake({ level = 50, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    SlashCmdList.GULLIDUNGEONPREP("brd")
+    local refreshes, bosses = 0, 0
+    local refresh, getBosses = ns.Refresh, ns.Bosses
+    ns.Refresh = function() refreshes = refreshes + 1; return refresh() end
+    ns.Bosses = function(k) bosses = bosses + 1; return getBosses(k) end
+    W.timers = {}
+    for _ = 1, 200 do W.Fire("GET_ITEM_INFO_RECEIVED", 1, true) end
+    eq(refreshes, 0, "no refresh per item")
+    eq(#W.timers, 1, "one waiting refresh")
+    W.RunTimers()
+    eq(refreshes, 1)
+    ns.ShowTab(3); bosses = 0; refresh()
+    eq(bosses, 0, "the quest page builds no boss loot")
+    ns.ShowTab(1); bosses = 0; refresh()
+    eq(bosses, 1)
+end)
+
 test("rewards: which fit the class and which beat what is worn", function()
     Fake({ level = 22, items = {
         [2041] = { "Tunic of Westfall", 2, 26, "INV_CHEST_MAIL", 4, 2 },   -- leather tunic
