@@ -36,6 +36,13 @@ def targets(tag, config):
     return [m.group(1)] if m.group(1) in sep else ["toolkit"]
 
 
+def route(tag, config):
+    """The concurrency key of an upload: one queue per project, so a batch of releases never
+    drops a module's upload, and toolkit uploads that wait fold into the newest one."""
+    t = targets(tag, config)
+    return "all" if len(t) > 1 else t[0]
+
+
 def project_of(target, config):
     return config["toolkit"] if target == "toolkit" else config["separate"][target]
 
@@ -163,6 +170,10 @@ def main(repo, tag):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--route":
+        with open(CONFIG) as f:
+            print(route(sys.argv[2], json.load(f)))
+        sys.exit(0)
     if len(sys.argv) != 3:
         raise SystemExit(__doc__)
     main(sys.argv[1], sys.argv[2])

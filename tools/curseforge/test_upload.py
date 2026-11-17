@@ -20,6 +20,12 @@ class Targets(unittest.TestCase):
         self.assertEqual(U.targets("Core-v1.17.0", CONFIG), ["toolkit"])
         self.assertEqual(U.targets("QuickChat-v2.0.2", CONFIG), ["toolkit"])
 
+    def test_each_project_has_its_own_upload_queue(self):
+        self.assertEqual(U.route("CraftProfit-v1.9.0", CONFIG), "CraftProfit")
+        self.assertEqual(U.route("Core-v1.17.0", CONFIG), "toolkit")
+        self.assertEqual(U.route("XP-v1.2.0", CONFIG), "toolkit")
+        self.assertEqual(U.route("all", CONFIG), "all")
+
     def test_all_is_every_project(self):
         self.assertEqual(U.targets("all", CONFIG), ["toolkit", "CraftProfit", "Legacy"])
 
