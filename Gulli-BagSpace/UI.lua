@@ -21,7 +21,7 @@ local function makeRow(r)
     r.iconBox = S.IconBox(r, 22)
     r.iconBox:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
     r.icon = r.iconBox.tex
-    r.value = S.Text(r, 11, S.MUTED)
+    r.value = S.Text(r, 12, S.MUTED)
     r.value:SetPoint("RIGHT", -4, 0)
     r.value:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
@@ -173,7 +173,7 @@ function ns.UpdateCounter()
     local b = MainMenuBarBackpackButton
     if not b or not b.CreateFontString then return end
     if not b.gulliFree then
-        b.gulliFree = S.Text(b, 11, S.TEXT, "OUTLINE")
+        b.gulliFree = S.Text(b, 12, S.TEXT, "OUTLINE")
         b.gulliFree:SetPoint("TOP", 0, -2)
     end
     local free = ns.Space()

@@ -34,7 +34,7 @@ local function makeRow(r)
     r.what:SetPoint("TOPLEFT", 2, -6)
     r.what:SetPoint("RIGHT", -150, 0)
     r.what:SetWordWrap(false)
-    r.when = S.Text(r, 11, S.FAINT)
+    r.when = S.Text(r, 12, S.FAINT)
     r.when:SetPoint("BOTTOMLEFT", 2, 6)
     r.block = S.Ghost(S.Button(r, 70, 28))
     r.block:SetPoint("RIGHT", 0, 0)
@@ -110,7 +110,7 @@ local function buildRules(body, width)
         switch("toRaid", L.OPT_RAID),
     })
     st:Add(invites, h1, 4)
-    wordsHint = S.Note(c, 11)
+    wordsHint = S.Note(c, 12)
     st:Add(wordsHint, 16)
 
     local friends, h2 = S.SettingsCard(c, L.SEC_FRIENDS, {
