@@ -36,6 +36,7 @@ local QUICK_ICON = {
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
 local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
+local MARK = "Interface\\AddOns\\Gulli-Toolkit\\Art\\Mark"
 
 -- page: "home", "module", "protect", "transfer" or "errors"; inside: the key of the docked module.
 local view = { page = "home", query = "" }
@@ -1074,6 +1075,14 @@ local function buildSide()
     side:SetPoint("TOPLEFT", -(S.PAD - 1), VPAD)
     side:SetPoint("BOTTOMLEFT", -(S.PAD - 1), -(VPAD - 1))
     S.Box(side, S.SIDE, S.CLEAR, S.R_XL - 1, "bottomleft")
+    S.Glass(side, S.R_XL)
+    -- The dim emblem of the toolkit behind the lower end of the module list.
+    local mark = side:CreateTexture(nil, "BACKGROUND", nil, -5)
+    mark:SetTexture(MARK)
+    mark:SetSize(SIDE - 20, SIDE - 20)
+    mark:SetPoint("BOTTOM", 0, 18)
+    mark:SetVertexColor(1, 0.86, 0.66, 0.06)
+    side.mark = mark
     local edge = line(side, LINE)
     edge:SetWidth(1)
     edge:SetPoint("TOPRIGHT")

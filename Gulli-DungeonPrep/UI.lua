@@ -44,11 +44,9 @@ local function setFile(t, path)
     return t:SetTexture(path) ~= false
 end
 
--- The dungeon finder's portrait of a dungeon, else its game icon.
+-- The dungeon's game icon. The dungeon finder's portraits (ns.Portraits) are missing from some
+-- clients, and SetTexture does not say so: the ring stayed empty.
 local function setPortrait(box, key)
-    for _, p in ipairs(ns.Portraits(key)) do
-        if setFile(box.tex, p) then return end
-    end
     box:SetIcon(ns.Icon(key))
 end
 
@@ -662,14 +660,17 @@ end
 local function makeBoss(r)
     S.NavRow(r)
     r.line:Hide()
-    r.num = S.Text(r, 12, S.Accent())
-    r.num:SetPoint("LEFT", 8, 0)
-    r.num:SetWidth(16)
+    -- The boss's picture in a round ring: the journal's, else its portrait, else its number.
+    r.pic = S.IconBox(r, 30)
+    r.pic:SetPoint("LEFT", 6, 0)
+    r.num = S.Text(r, 13, S.Accent(), nil, "bold")
+    r.num:SetPoint("CENTER", r.pic, "CENTER", 0, 0)
+    r.num:SetJustifyH("CENTER")
     r.lv = S.Text(r, 12)
     r.lv:SetPoint("TOPRIGHT", -8, -6)
     r.lv:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", 28, -5)
+    r.name:SetPoint("TOPLEFT", 44, -5)
     r.name:SetPoint("RIGHT", r.lv, "LEFT", -4, 0)
     r.name:SetWordWrap(false)
     r.sub = S.Text(r, 12, S.FAINT)
@@ -698,7 +699,18 @@ end
 
 local function fillBoss(r, b)
     r.b = b
-    r.num:SetText(b.rare and "R" or tostring(b.n))
+    local icon = ns.selected and ns.BossIcon(ns.selected, b)
+    local portrait = not icon and b.display > 0 and SetPortraitTextureFromCreatureDisplayID
+    if icon then
+        r.pic.tex:SetTexture(icon)
+    elseif portrait then
+        r.pic.tex:SetTexture(nil)
+        portrait(r.pic.tex, b.display)
+    else
+        r.pic.tex:SetTexture(nil)
+    end
+    r.pic:SetGlow(b.rare and S.WARN or S.RING)
+    r.num:SetText((icon or portrait) and "" or (b.rare and "R" or tostring(b.n)))
     r.num:SetTextColor(unpack(b.rare and S.WARN or S.Accent()))
     r.name:SetText(b.name)
     r.lv:SetText(bossLevel(b))

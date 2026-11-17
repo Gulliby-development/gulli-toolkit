@@ -422,6 +422,27 @@ test("bosses in order with the rare last, loot best first, runs from the chance"
     eq(ns.NpcOf("Player-1-0ABC"), nil)
 end)
 
+test("boss pictures come from the Encounter Journal by display id, then by name", function()
+    Fake({})
+    local ns = Load()
+    journal(ns)
+    EJ_GetEncounterInfoByIndex = function(i, instance)
+        if instance ~= 63 or i > 2 then return nil end
+        return "Boss " .. i, "", 100 + i
+    end
+    EJ_GetCreatureInfo = function(j, encounter)
+        if j > 1 then return nil end
+        if encounter == 101 then return 1, "Someone else", "", 2029, 5001 end
+        return 2, "Rhahk'Zor", "", 9999, 5002
+    end
+    local b = ns.Bosses("DM")
+    eq(ns.BossIcon("DM", b[1]), 5001, "VanCleef by his display id")
+    eq(ns.BossIcon("DM", b[2]), 5002, "Rhahk'Zor by his name")
+    eq(ns.BossIcon("DM", b[3]), nil, "the rare has no picture")
+    eq(next(ns.BossIcons("THANES")), nil, "a Forever dungeon has no journal")
+    EJ_GetEncounterInfoByIndex, EJ_GetCreatureInfo = nil, nil
+end)
+
 test("the wishlist: the Loot list puts it first, the filter shows only it", function()
     Fake({})
     local ns = Load()
