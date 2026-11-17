@@ -91,6 +91,18 @@ S.SURFACE = { 0.137, 0.106, 0.082, 1 }
 S.SCRIM = { 0, 0, 0, 0 }
 S.RAISED = { 0.180, 0.141, 0.106, 1 }
 S.RAISED_HOVER = { 0.227, 0.180, 0.133, 1 }
+-- Depth: cards, tiles and chips let the window's paper show through. "bevel" lights their top
+-- like a WoW panel and fades them out downwards; "flat" is a faint light veil with a thin edge.
+S.DEPTH = rawget(_G, "GULLI_DEPTH") or "flat"
+if S.DEPTH == "flat" then
+    S.SURFACE = { 1, 0.90, 0.75, 0.045 }
+    S.RAISED = { 1, 0.90, 0.75, 0.075 }
+    S.RAISED_HOVER = { 1, 0.90, 0.75, 0.12 }
+elseif S.DEPTH == "bevel" then
+    S.SURFACE = { 0.200, 0.153, 0.110, 0.50 }
+    S.RAISED = { 0.247, 0.192, 0.141, 0.55 }
+    S.RAISED_HOVER = { 0.310, 0.243, 0.176, 0.62 }
+end
 S.PRESSED = { 0.110, 0.086, 0.063, 1 }
 S.INPUT = { 0.055, 0.043, 0.031, 1 }
 S.EDGE = { 1, 0.925, 0.784, 0.16 }
@@ -133,7 +145,7 @@ S.GLASS = S.BG
 S.HUD_GLASS = { 0.090, 0.071, 0.055, 0.96 }
 S.GLASS_EDGE = S.EDGE
 S.GLASS_HI = S.CLEAR
-S.CARD_EDGE = S.CLEAR
+S.CARD_EDGE = S.DEPTH == "flat" and { 1, 0.90, 0.75, 0.10 } or S.CLEAR
 S.SOLID = { 0.090, 0.071, 0.055, 1 }
 -- The one gold line under a window's header.
 S.HEAD_LINE = { 1, 0.82, 0, 0.28 }
@@ -443,6 +455,63 @@ function S.Glass(f, r)
     t:SetVertexColor(1, 0.86, 0.66, S.GRAIN_ALPHA)
     g[1] = t
     rawset(f, "glass", g)
+    return g
+end
+
+-- The relief of a card, tile or chip with corners of radius r (S.DEPTH): with "bevel" a sheen
+-- from the top, a light line along the top and a dark one along the bottom, kept clear of the
+-- corners; with "flat" only the thin edge (S.CARD_EDGE). f.depth holds the textures.
+function S.Depth(f, r)
+    r = math.max(1, tonumber(r) or 0)
+    local d = {}
+    if S.DEPTH == "flat" then
+        if f.edges then S.SetBorder(f, S.CARD_EDGE) end
+    elseif S.DEPTH == "bevel" then
+        local sh = f:CreateTexture(nil, "BACKGROUND", nil, -5)
+        sh:SetTexture(S.SHEEN)
+        sh:SetPoint("TOPLEFT", 1, -1)
+        sh:SetPoint("BOTTOMRIGHT", -1, 1)
+        sh:SetVertexColor(1, 0.86, 0.62, 0.10)
+        d[1] = sh
+        local hi = tex(f, "BORDER", 6, { 1, 0.90, 0.72, 0.16 })
+        hi:SetPoint("TOPLEFT", r, -1)
+        hi:SetPoint("TOPRIGHT", -r, -1)
+        hi:SetHeight(1)
+        d[2] = hi
+        local lo = tex(f, "BORDER", 6, { 0, 0, 0, 0.40 })
+        lo:SetPoint("BOTTOMLEFT", r, 1)
+        lo:SetPoint("BOTTOMRIGHT", -r, 1)
+        lo:SetHeight(1)
+        d[3] = lo
+    end
+    rawset(f, "depth", d)
+    return d
+end
+
+-- A window header of its own: darker than the body, a warm bronze light from the left and a
+-- sheen from the top, so it reads as a band of leather and not as a black bar.
+function S.HeadArt(bar, r)
+    local g = {}
+    local glow = bar:CreateTexture(nil, "BACKGROUND", nil, -5)
+    glow:SetTexture(S.RADIAL)
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("BOTTOMRIGHT", bar, "BOTTOM", 0, 1)
+    glow:SetVertexColor(0.78, 0.55, 0.26, 0.20)
+    g[1] = glow
+    local grain = bar:CreateTexture(nil, "BACKGROUND", nil, -6)
+    grain:SetTexture(S.GRAIN, "REPEAT", "REPEAT")
+    if grain.SetHorizTile then grain:SetHorizTile(true); grain:SetVertTile(true) end
+    grain:SetPoint("TOPLEFT", r or 1, -1)
+    grain:SetPoint("BOTTOMRIGHT", -(r or 1), 1)
+    grain:SetVertexColor(1, 0.86, 0.66, 0.12)
+    g[2] = grain
+    local sh = bar:CreateTexture(nil, "BACKGROUND", nil, -4)
+    sh:SetTexture(S.SHEEN)
+    sh:SetPoint("TOPLEFT", r or 1, -1)
+    sh:SetPoint("BOTTOMRIGHT", -(r or 1), 1)
+    sh:SetVertexColor(1, 0.86, 0.62, 0.06)
+    g[3] = sh
+    rawset(bar, "glass", g)
     return g
 end
 
@@ -1010,6 +1079,24 @@ function S.Scroll(parent)
     return sf
 end
 
+-- A page that scrolls when what it holds is taller than the window (settings in a language
+-- with long texts, a short hub). Build into page.inner, as wide as `width` until the page has
+-- its own width, then call page:SetContent(height).
+function S.ScrollPage(parent, width)
+    local page = CreateFrame("Frame", nil, parent)
+    local sf = S.Scroll(page)
+    sf:SetPoint("TOPLEFT")
+    sf:SetPoint("BOTTOMRIGHT", -10, 0)
+    page.inner, page.scroll = sf.child, sf
+    sf.child:SetWidth(math.max(1, (width or 400) - 10))
+    sf.onResize = function(_, w) if w and w > 0 then sf.child:SetWidth(w) end end
+    function page:SetContent(h)
+        self.inner:SetHeight(math.max(1, h))
+        self.scroll:Update(h)
+    end
+    return page
+end
+
 -- A multi-line text box that scrolls, for lists typed one entry per line.
 function S.Memo(parent, width, height)
     local box = CreateFrame("Frame", nil, parent)
@@ -1247,7 +1334,7 @@ end
 function S.Card(parent, title, hint, icon)
     local c = CreateFrame("Frame", nil, parent)
     S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(c, S.R_LG, 0.35)
+    S.Depth(c, S.R_LG)
     c.body = CreateFrame("Frame", nil, c)
     c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     if title then
@@ -1290,6 +1377,19 @@ function S.Card(parent, title, hint, icon)
     return c
 end
 
+-- The width a frame will likely get: its own, else the nearest parent's that has one, less a
+-- window's and a card's padding for each step that had none.
+function S.GuessWidth(f)
+    local steps = 0
+    while f and steps < 12 do
+        local w = tonumber((f.GetWidth and f:GetWidth())) or 0
+        if w > 100 then return math.max(200, w - 2 * (S.PAD + S.INSET) * math.min(steps, 1)) end
+        steps = steps + 1
+        f = f.GetParent and f:GetParent() or nil
+    end
+    return 400
+end
+
 -- A settings row: the label and an optional grey line under it on the left, a control on the
 -- right (a switch, an edit box, a button...). row.control is that control.
 function S.SettingRow(parent, label, desc, control, controlWidth, icon)
@@ -1312,10 +1412,11 @@ function S.SettingRow(parent, label, desc, control, controlWidth, icon)
         row.desc:SetPoint("TOPRIGHT", row.label, "BOTTOMRIGHT", 0, -3)
         row.desc:SetMaxLines(2)
         row.desc:SetText(desc)
-        -- The card is placed after its rows, so its width may be a guess; a second line that the
-        -- guess misses still fits the row, only tightly.
+        -- The card is placed after its rows, so its width may be a guess: the nearest frame up
+        -- the chain that has a width, less the paddings. A second line that the guess misses
+        -- still fits the row, only tightly.
         local pw = tonumber((parent:GetWidth())) or 0
-        if pw <= 100 then pw = S.rowWidth or 400 end
+        if pw <= 100 then pw = S.rowWidth or S.GuessWidth(parent) end
         local avail = pw - left + right
         local two = (tonumber((row.desc:GetStringWidth())) or 0) > avail
         row.height = S.ROW_DESC_H + (two and 14 or 0)
@@ -1368,8 +1469,7 @@ function S.SettingsCard(parent, title, rows, hint, icon)
     local card = S.Card(parent, title, hint, icon)
     card.rows = {}
     local st = S.Stack(card.body, 0)
-    local pw = tonumber((parent:GetWidth())) or 0
-    S.rowWidth = pw > 100 and pw - 2 * S.INSET or nil
+    S.rowWidth = S.GuessWidth(parent) - 2 * S.INSET
     for i, r in ipairs(rows) do
         local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control, nil, r.icon)
             or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra, r.icon)
@@ -1484,7 +1584,7 @@ end
 function S.InfoTile(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(t, S.R_LG, 0.35)
+    S.Depth(t, S.R_LG)
     -- The icon and the label share the top line, so the value and the sub line get the
     -- tile's whole width: a narrow tile still fits "33g 49s" and a long place name.
     t.icon = S.IconBox(t, 22, icon)
@@ -1529,7 +1629,7 @@ S.STAT_SIZE, S.STAT_MIN = 20, 11
 function S.Stat(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(t, S.R_LG, 0.35)
+    S.Depth(t, S.R_LG)
     local right = -S.INSET
     if icon then
         t.icon = S.IconBox(t, 30, icon)
@@ -1861,6 +1961,7 @@ local function dock(f, host, opts)
     S.SetBorder(f, S.CLEAR)
     S.ShowGlass(f, false)
     S.Fill(f.bar, S.CLEAR)
+    S.ShowGlass(f.bar, false)
     -- The hub's header has the gold line; a page inside it gets a plain one.
     if rawget(f, "headLine") then f.headLine:SetVertexColor(S.LINE[1], S.LINE[2], S.LINE[3], S.LINE[4]) end
     f.close:Hide()
@@ -1914,6 +2015,7 @@ local function undock(f)
     S.SetBorder(f, S.GLASS_EDGE)
     S.ShowGlass(f, true)
     S.Fill(f.bar, S.HEAD)
+    S.ShowGlass(f.bar, true)
     if rawget(f, "headLine") then
         local c = S.HEAD_LINE
         f.headLine:SetVertexColor(c[1], c[2], c[3], c[4])
@@ -1953,6 +2055,7 @@ function S.Window(name, title, width, height, opts)
     bar:SetPoint("TOPRIGHT", -1, -1)
     bar:SetHeight(S.HEADER_H)
     S.Box(bar, S.HEAD, S.CLEAR, S.R_XL - 1, "top")
+    S.HeadArt(bar, S.R_XL)
     -- The one gold line of the look, under the header.
     local line = S.Divider(bar, S.HEAD_LINE)
     line:SetPoint("BOTTOMLEFT")

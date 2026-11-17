@@ -75,7 +75,8 @@ local function mainPage(body)
 end
 
 local function rulesPage(body)
-    local p = CreateFrame("Frame", nil, body)
+    local page = S.ScrollPage(body, frame.inner[1])
+    local p = page.inner
     local st = S.Stack(p)
     local free = S.Stepper(p, function() return ns.db.minFree end, function(v) ns.db.minFree = v end, 1, 0, 10,
         function(v) return v == 0 and L.OFF or tostring(v) end)
@@ -88,9 +89,10 @@ local function rulesPage(body)
         row("chat", L.OPT_CHAT),
     })
     st:Add(card, h)
-    local tip, th = S.Paragraph(p, L.NOTE, frame.inner[1])
+    local tip, th = S.Paragraph(p, L.NOTE, frame.inner[1] - 10)
     st:Add(tip, th)
-    return p
+    page:SetContent(st:Height())
+    return page
 end
 
 local function makeIgnored(r)

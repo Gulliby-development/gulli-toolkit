@@ -539,8 +539,11 @@ local function texHtml(t, rect, prect)
         local rad = side and ("border-" .. side .. "-radius:100%;") or "border-radius:50%;"
         local blend = t.__blend == "ADD" and "mix-blend-mode:screen;" or ""
         if media == "Grain" then
-            -- the paper grain is too faint to matter in a preview
-            return ""
+            -- the paper grain, from a PNG copy of Media/Grain when there is one (GULLI_GRAIN)
+            local png = os.getenv("GULLI_GRAIN")
+            if not png then return "" end
+            return string.format('<div class="tx" style="%sbackground-image:url(\'file://%s\');background-repeat:repeat;filter:sepia(1);opacity:%.3f"></div>',
+                box(rect, prect), png, c[4] or 1)
         elseif media == "Sheen" then
             return string.format('<div class="tx" style="%s%sbackground:linear-gradient(180deg,%s,transparent)"></div>',
                 box(rect, prect), blend, css(c))
@@ -726,6 +729,27 @@ function R.Overlaps(root)
             end
         end
     end
+    return found
+end
+
+-- Every shown text that runs out of the window at the bottom or the top (not inside a scroll
+-- frame, which clips it): content that spills under the window.
+function R.Outside(root)
+    local box, found = R.Rect(root), {}
+    local function walk(f, clipped)
+        if not f.__shown then return end
+        clipped = clipped or f.__kind == "ScrollFrame"
+        if not clipped then
+            for _, r in ipairs(f.__regions) do
+                if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" then
+                    local c = R.Rect(r)
+                    if c.b < box.b - 1 or c.t > box.t + 1 then found[#found + 1] = r.__text end
+                end
+            end
+        end
+        for _, c in ipairs(f.__children) do walk(c, clipped) end
+    end
+    walk(root)
     return found
 end
 
