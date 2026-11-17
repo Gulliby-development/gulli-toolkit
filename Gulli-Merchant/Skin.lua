@@ -105,6 +105,67 @@ function S.Accent()
     return { 0.60, 0.82, 1, 1 }
 end
 
+-- Scale. At a small UI scale one unit is one pixel and text came out tiny, so windows and
+-- notices grow with the screen: 1 on a 768 unit high screen, at most 1.6 times. A window also
+-- takes the player's hub scale (-/+, GulliToolkitDB.scale) and always fits the screen.
+local function screen()
+    local w = UIParent and tonumber((UIParent:GetWidth())) or 1366
+    local h = UIParent and tonumber((UIParent:GetHeight())) or 768
+    if not w or w <= 0 then w = 1366 end
+    if not h or h <= 0 then h = 768 end
+    return w, h
+end
+function S.BaseScale()
+    local _, h = screen()
+    return math.max(1, math.min(1.6, h / 768))
+end
+function S.UIScale()
+    local user = GulliToolkitDB and tonumber(GulliToolkitDB.scale) or 1
+    return S.BaseScale() * math.max(0.7, math.min(1.3, user))
+end
+-- The scale for a window w by h units: S.UIScale(), made smaller when it would not fit.
+function S.FitScale(w, h)
+    local sw, sh = screen()
+    w, h = tonumber(w) or 0, tonumber(h) or 0
+    local k = S.UIScale()
+    if w > 0 then k = math.min(k, sw * 0.96 / w) end
+    if h > 0 then k = math.min(k, sh * 0.9 / h) end
+    return k
+end
+-- Sets a frame's scale, never on a protected frame in combat (the game refuses it).
+local scaled = setmetatable({}, { __mode = "k" })
+local function canScale(f)
+    if not (InCombatLockdown and InCombatLockdown()) then return true end
+    return not (f.IsProtected and f:IsProtected())
+end
+function S.ApplyScale(f, k)
+    if canScale(f) then f:SetScale(k) end
+end
+-- A window that stands alone gets S.FitScale on each show and when the screen changes.
+local function scaleWindow(f)
+    if f.docked then return end
+    local own = rawget(f, "rescale")
+    if own then return own(f) end
+    S.ApplyScale(f, S.FitScale(f:GetWidth(), f:GetHeight()))
+end
+S.ScaleWindow = scaleWindow
+do
+    local ok, ev = pcall(CreateFrame, "Frame")
+    if ok and ev and ev.RegisterEvent then
+        pcall(ev.RegisterEvent, ev, "UI_SCALE_CHANGED")
+        pcall(ev.RegisterEvent, ev, "DISPLAY_SIZE_CHANGED")
+        ev:SetScript("OnEvent", function()
+            for f in pairs(scaled) do
+                if f.IsShown and f:IsShown() then scaleWindow(f) end
+            end
+        end)
+    end
+end
+function S.TrackScale(f, fn)
+    scaled[f] = true
+    if fn then rawset(f, "rescale", fn) end
+end
+
 -- Capital letters for a label in every language of the addons: string.upper only knows A-Z,
 -- so Cyrillic, the Latin-1 letters (e, a, o with accents) and the Polish ones are mapped here.
 local UPPER = { ["\209\145"] = "\208\129", ["\196\133"] = "\196\132", ["\196\135"] = "\196\134",
@@ -1748,6 +1809,8 @@ local function dock(f, host, opts)
     f.docked = true
     f:StopMovingOrSizing()
     f:SetParent(host)
+    -- The hub is scaled already: a page inside it at its own scale would be scaled twice.
+    S.ApplyScale(f, 1)
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
     f:SetWidth(opts.width or f.size[1])
@@ -1884,8 +1947,10 @@ function S.Window(name, title, width, height, opts)
 
     f.close = closeButton(bar, function() S.MotionOut(f, function() f:Hide() end) end)
     -- Opening: it grows in from 96.5% and fades in, and one pass of light runs over the glass.
+    S.TrackScale(f)
     f:HookScript("OnShow", function(self)
         if self.docked then return end
+        scaleWindow(self)
         S.MotionIn(self, 8, S.SLOW, 0.965)
         sweep(self)
     end)
@@ -2434,13 +2499,17 @@ local function restack()
     for _, t in ipairs(H.toasts) do
         if t:IsShown() then
             keep[#keep + 1] = t
+            -- y counts in screen units; each card has its own scale.
+            local k = tonumber((t:GetScale())) or 1
+            if k <= 0 then k = 1 end
+            local at = y / k
             local was = rawget(t, "stackY")
             t:ClearAllPoints()
-            t:SetPoint("TOP", UIParent, "TOP", 0, y)
-            t.stackY = y
+            t:SetPoint("TOP", UIParent, "TOP", 0, at)
+            t.stackY = at
             -- A card that moves in the stack slides there.
-            if was and was ~= y then S.MotionSlide(t, 0, y - was, S.SLOW) end
-            y = y - (t:GetHeight() or S.TOAST_H) - 8
+            if was and was ~= at then S.MotionSlide(t, 0, at - was, S.SLOW) end
+            y = y - ((t:GetHeight() or S.TOAST_H) + 8) * k
         end
     end
     H.toasts = keep
@@ -2462,6 +2531,7 @@ function S.Toast(o)
     local onClose = o.onClose
     local fresh = not t:IsShown()
     if fresh then rawset(t, "stackY", nil) end
+    S.ApplyScale(t, S.BaseScale())
     t:Set(o)
     t.onClose = onClose
     local found = false

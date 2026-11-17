@@ -386,11 +386,15 @@ function ns.Filter(rows, category, state, query)
     return out
 end
 
--- The hub's scale: the player's own (0.7 to 1.3), made smaller when the window would not fit.
+-- The hub's scale. The window grows with the screen (at most 1.6 times, up to 90% of its
+-- height), so its text stays readable at a small UI scale; the player's own -/+ (0.7 to 1.3)
+-- multiplies that, and the result always fits the screen.
 function ns.HubScale(user, screenW, screenH, w, h)
     user = math.max(0.7, math.min(1.3, tonumber(user) or 1))
-    local fit = math.min(1, (screenW or w) * 0.96 / w, (screenH or h) * 0.9 / h)
-    return user * fit
+    local sw, sh = screenW or w, screenH or h
+    local base = math.max(1, math.min(1.6, sh / 768))
+    local auto = math.min(base, sw * 0.96 / w, sh * 0.9 / h)
+    return math.min(auto * user, sw * 0.98 / w, sh * 0.98 / h)
 end
 
 -- The game's own name for why it did not load an addon (ADDON_INTERFACE_VERSION is "Out of
@@ -1017,6 +1021,9 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
     ns.firstRun = GulliToolkitDB == nil
     GulliToolkitDB = GulliToolkitDB or {}
     GulliToolkitDB.seen = GulliToolkitDB.seen or {}
+    -- The hub sizes itself to the screen since Gulli Hearth: a scale saved before would now
+    -- push it past the screen, so it starts from 100% once.
+    if (GulliToolkitDB.scaleV or 0) < 1 then GulliToolkitDB.scale, GulliToolkitDB.scaleV = nil, 1 end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ns.VERSION_PREFIX)
     end

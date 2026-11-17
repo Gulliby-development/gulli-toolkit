@@ -694,7 +694,7 @@ local function applyScale()
     local sw = tonumber(UIParent:GetWidth()) or W
     local sh = tonumber(UIParent:GetHeight()) or H
     local user = (GulliToolkitDB and GulliToolkitDB.scale) or 1
-    frame:SetScale(ns.HubScale(user, sw, sh, W, H))
+    S.ApplyScale(frame, ns.HubScale(user, sw, sh, W, H))
     scaleText:SetText(math.floor(user * 100 + 0.5) .. "%")
 end
 
@@ -1340,6 +1340,8 @@ end
 
 local function build()
     frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true, pill = true })
+    -- The hub sizes itself by ns.HubScale, also when the screen or the UI scale changes.
+    S.TrackScale(frame, applyScale)
 
     buildHeader()
     buildSide()
