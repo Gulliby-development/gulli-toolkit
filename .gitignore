@@ -2,3 +2,4 @@ Gulli-*.zip
 release.json
 __pycache__/
 tools/preview/.cache/
+tools/craftprofit/.wowhead-cache/

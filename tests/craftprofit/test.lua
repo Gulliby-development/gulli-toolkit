@@ -177,10 +177,10 @@ test("thresholds come from the data and follow the colours the game shows", func
     eq(c.Thresholds(nil, {}, nil, true), nil)
 end)
 
-test("Data.lua knows the Classic recipes by spell and by item", function()
+test("Data.lua knows the recipes by spell and by item", function()
     local c = core()
-    eq(c.Data.spell[8764][3], 220, "Earthen Vest turns grey at 220")
-    eq(c.Data.item[4238][1], 45, "Linen Bag is learned at 45")
+    eq(c.Data.spell[8764][3], 185, "Earthen Vest turns grey at 185 in WoW Forever")
+    eq(c.Data.item[4238][1], 5, "Linen Bag is learned at 5 in WoW Forever")
     local n = 0
     for _ in pairs(c.Data.spell) do n = n + 1 end
     assert(n > 1000)
@@ -188,10 +188,29 @@ test("Data.lua knows the Classic recipes by spell and by item", function()
     eq(c.Data.gone[435841], true, "Invoker's Cord")
     eq(c.Data.spell[435841], nil); eq(c.Data.src[435841], nil)
     -- one stays only when a Forever pattern teaches it
-    for sid in pairs(c.Data.spell) do assert(sid < 400000 or c.Data.src[sid], "SoD recipe " .. sid .. " has no Forever pattern") end
+    for sid in pairs(c.Data.spell) do
+        assert(sid < 400000 or sid >= 1000000 or c.Data.src[sid], "SoD recipe " .. sid .. " has no Forever pattern")
+    end
     assert(c.Data.src[1213622][2] > 245000, "Enchant Gloves - Holy Power from the Forever formula")
     for sid in pairs(c.Data.src) do assert(not c.Data.gone[sid], "gone recipe " .. sid .. " has a source") end
     eq(c.Data.gone[8764], nil, "Earthen Vest stays")
+end)
+
+test("Data.lua takes the WoW Forever skill levels, recipes and trainer prices from Wowhead", function()
+    local c = core()
+    -- Forever moved Bolt of Mageweave down: grey at 150, not Classic's 185
+    eq(c.Data.spell[3865][3], 150); eq(c.Data.item[4339][1], 140); eq(c.Data.item[4339][4], 150)
+    eq(c.Data.train[3865], 1000, "its trainer price")
+    -- Forever's own Greater Healing Potion replaces the Classic recipe
+    eq(c.Data.gone[7181], true); eq(c.Data.spell[7181], nil)
+    eq(c.Data.spell[1244434][1], 175); eq(c.Data.src[1244434][2], 255723, "Manual: Greater Healing Potion")
+    -- a recipe Wowhead marks unavailable is gone
+    eq(c.Data.gone[16960], true, "Thorium Greatsword")
+    -- the engineering trainers teach these despite the pattern
+    eq(c.Data.gone[11454], nil)
+    for sid in pairs(c.Data.train) do
+        assert(not c.Data.src[sid] and not c.Data.gone[sid] and c.Data.spell[sid], "trainer price of " .. sid)
+    end
 end)
 
 -- ---------- the plan and the route ----------
@@ -655,6 +674,23 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     src = n.State().recipes[104].src
     eq(src.cost, 777); eq(src.est, false)
     n.db.trainer[r.name] = nil
+    -- Wowhead's trainer price, until a trainer was seen
+    n.Data.train[104] = 4500
+    src = n.State().recipes[104].src
+    eq(src.cost, 4500); eq(src.est, false)
+    n.db.trainer[r.name] = 777
+    eq(n.State().recipes[104].src.cost, 777, "the price seen at a trainer wins")
+    n.db.trainer[r.name] = nil
+    n.Data.train[104] = nil
+    -- a vendor Wowhead names without a faction, or none at all, sells to both
+    n.db.vendor[6] = nil
+    n.Data.src[104] = { "v", 6, "Somebody|AH" }
+    src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.who[1], "Somebody")
+    n.Data.src[104] = { "v", 6 }
+    src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.who, nil); eq(src.cost, 520 * 4)
+    n.Data.src[104] = nil
     n.Data.spell[104] = nil
     eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
     -- a recipe WoW Forever does not give is left out until the character knows it

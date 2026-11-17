@@ -19,7 +19,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 ## Features
 
 - **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. A craft stop names the recipe, the skill it covers and how many crafts it takes. Tap a stop to see the list.
-- **The real skill-up chances.** CraftProfit knows when each Classic recipe turns yellow, green and grey, so it knows how often a craft raises your skill. When the game shows another colour, it trusts the game.
+- **The real skill-up chances.** CraftProfit knows when each recipe turns yellow, green and grey in WoW Forever (Forever changed many of them, and added its own recipes), so it knows how often a craft raises your skill. When the game shows another colour, it trusts the game.
 - **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. Below the route you still see how far the whole way is.
 - **The whole way, run by run.** Small tabs over the route show every run up to your target skill: 150-155, 155-185 and so on, each with the gold it gains or loses. Tap one to see that run. A red tab with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on.
 - **The route fits on the screen.** You always see two rows of stops. When there are more, **All stops** opens the rest.
@@ -65,7 +65,7 @@ No, but without it only vendor prices count, and the route never buys or sells a
 <details>
 <summary><b>How does it know how many crafts a skill point takes?</b></summary>
 
-An orange recipe always gives a point. A yellow or green one gives it less often, the closer it is to grey. CraftProfit knows the levels of every Classic recipe, so it knows the chance. Only a recipe it does not know (marked as an estimate) is guessed from the colours the game showed.
+An orange recipe always gives a point. A yellow or green one gives it less often, the closer it is to grey. CraftProfit knows the levels of every WoW Forever recipe, so it knows the chance. Only a recipe it does not know (marked as an estimate) is guessed from the colours the game showed.
 </details>
 
 <details>
@@ -83,7 +83,7 @@ Green and yellow recipes do not raise your skill every time, so one skill point 
 <details>
 <summary><b>Where do the recipe levels come from?</b></summary>
 
-The skill levels come from the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3), made from the game's own data. Where a pattern comes from (vendor, quest, drop) comes from the WoW Forever data of [QuestieDB](https://github.com/Questie/QuestieDB) (GPLv3). A vendor's price is four times what a vendor pays for the pattern until you see the vendor; a trainer recipe counts at the most a recipe of its skill costs (50 silver below 75, 1 gold below 150, 2 gold below 225, 2.5 gold above; marked ~) until you open a trainer window once. The prices seen there are kept for good, for all your characters. `tools/craftprofit/build_data.py` turns both into `Data.lua`. It also lists the recipes WoW Forever does not give: the Season of Discovery recipes (unless a Forever pattern teaches one) and patterns with no vendor, quest or drop in Forever. CraftProfit never plans those.
+The skill levels, the recipes and the trainer prices come from the WoW Forever profession pages of Wowhead, collected by hand into `tools/craftprofit/wowhead-professions.json`; the Classic recipe tables of the [Skillet-Classic](https://github.com/b-morgan/Skillet-Classic) addon (GPLv3) fill in what Wowhead lacks. Where a pattern comes from (vendor, quest, drop) comes from the WoW Forever data of [QuestieDB](https://github.com/Questie/QuestieDB) (GPLv3), and from Wowhead where QuestieDB lacks it. A vendor's price is four times what a vendor pays for the pattern until you see the vendor. A trainer recipe costs what Wowhead says; when Wowhead does not know, it counts at the most a recipe of its skill costs (50 silver below 75, 1 gold below 150, 2 gold below 225, 2.5 gold above; marked ~). The prices you see at a trainer win and are kept for good, for all your characters. `tools/craftprofit/build_data.py` turns them into `Data.lua`. It also lists the recipes WoW Forever does not give: the Season of Discovery recipes (unless a Forever pattern teaches one) patterns with no vendor, quest or drop in Forever, and recipes Wowhead marks as not in the game. CraftProfit never plans those.
 </details>
 
 <details>
