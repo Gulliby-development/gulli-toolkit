@@ -866,9 +866,34 @@ test("the settings window builds for every class and its buttons cycle", functio
     who.scripts.OnClick(who, "RightButton")
     eq(ns.DB().who, "target", "right-click goes back")
     eq(who.text._text, "Group and target")
-    eq(ns.DB().locked, true, "a new bar starts locked")
+    eq(ns.DB().locked, nil, "no lock of its own")
+    local unlocked = false
+    GulliToolkit = { Unlock = function() unlocked = true end }
     SlashCmdList.GULLIGROUPBUFFS("lock")
-    eq(ns.DB().locked, false)
+    eq(unlocked, true, "/ggb lock opens the hub's Unlock mode")
+    GulliToolkit = nil
+end)
+
+test("the bar starts hidden, once also for older saves, and the hub's switch keeps the choice", function()
+    Fake { fresh = true }
+    local ns = Load()
+    eq(ns.DB().show, "never", "a new bar starts hidden")
+    Fake { fresh = true, db = { show = "always", locked = false, hud = 1 } }
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    ns = Load()
+    GulliToolkit = nil
+    eq(ns.DB().show, "never", "hidden once"); eq(ns.DB().locked, nil)
+    local fr = got.frames[1]
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.DB().show, "always", "back to the old choice")
+    fr.set(false)
+    eq(ns.DB().show, "never")
+    assert(fr.frame(), "the hub gets the bar")
+    ns.Move(true)
+    eq(rawget(fr.frame(), "mover"):IsShown(), true, "Unlock mode shows the mover")
+    ns.Move(false)
 end)
 
 test("every language has every key with the same placeholders", function()
