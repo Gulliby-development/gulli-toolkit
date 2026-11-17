@@ -85,7 +85,8 @@ function Region:SetScale(s) self.__scale = s; changed() end
 function Region:GetScale() return self.__scale or 1 end
 function Region:GetEffectiveScale() return self.__scale or 1 end
 
--- Text width in the game's font, close enough for layout: Friz Quadrata is about half an em.
+-- Text width, close enough for layout: Fira Sans (body and bold) is about half an em over
+-- English, German and Russian text, the game's Friz Quadrata (titles) a little wider.
 local function plain(s)
     s = tostring(s or "")
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "WW"):gsub("|n", "\n")
@@ -93,10 +94,11 @@ local function plain(s)
     return s
 end
 local function ulen(s) local _, n = s:gsub("[^\128-\191]", ""); return n end
-local function textWidth(s, size)
-    local w = 0
+local EM = { body = 0.5, bold = 0.51, title = 0.58 }
+local function textWidth(s, size, face)
+    local w, em = 0, EM[face or "body"] or 0.5
     for line in (plain(s) .. "\n"):gmatch("(.-)\n") do
-        w = math.max(w, ulen(line) * size * 0.55)
+        w = math.max(w, ulen(line) * size * em)
     end
     return math.floor(w + 0.5)
 end
@@ -114,7 +116,7 @@ local function natural(r)
         local size = r.__fontSize or 12
         local lines = 1
         for _ in plain(r.__text):gmatch("\n") do lines = lines + 1 end
-        return textWidth(r.__text, size), lines * (size + 2)
+        return textWidth(r.__text, size, r.__face), lines * (size + 2)
     end
     return 0, 0
 end
@@ -146,7 +148,7 @@ function R.Rect(r)
     if r.__kind == "FontString" and r.__wrap ~= false and r.__h == nil and r.__text and not (T and B) then
         local size, lines = r.__fontSize or 12, 0
         for line in (plain(r.__text) .. "\n"):gmatch("(.-)\n") do
-            lines = lines + math.max(1, math.ceil(textWidth(line, size) / math.max(w, 1)))
+            lines = lines + math.max(1, math.ceil(textWidth(line, size, r.__face) / math.max(w, 1)))
         end
         if r.__maxLines and r.__maxLines > 0 then lines = math.min(lines, r.__maxLines) end
         h = lines * (size + 2)
@@ -316,7 +318,18 @@ function Region:SetThickness(t) self.__thick = t end
 
 -- Text -----------------------------------------------------------------------------------------
 
-function Region:SetFont(_, size, flags) self.__fontSize, self.__flags = size, flags; changed(); return true end
+-- The face from the file: Fira Sans Bold, Fira Sans (body) or the game's font (titles).
+local function faceOf(file)
+    file = tostring(file or "")
+    if file:find("FiraSans%-Bold") then return "bold" end
+    if file:find("FiraSans") then return "body" end
+    return "title"
+end
+function Region:SetFont(file, size, flags)
+    self.__fontSize, self.__flags, self.__face = size, flags, faceOf(file)
+    changed()
+    return true
+end
 function Region:GetFont() return "font", self.__fontSize or 12, self.__flags end
 function Region:SetFontObject(o)
     if type(o) == "table" and o.__fontSize then self.__fontSize = o.__fontSize end
@@ -339,12 +352,12 @@ function Region:SetWordWrap(v) self.__wrap = v; changed() end
 function Region:SetNonSpaceWrap() end
 function Region:SetMaxLines(n) self.__maxLines = n end
 function Region:SetSpacing() end
-function Region:GetStringWidth() return textWidth(self.__text or "", self.__fontSize or 12) end
+function Region:GetStringWidth() return textWidth(self.__text or "", self.__fontSize or 12, self.__face) end
 function Region:GetStringHeight()
     if self.__w and self.__wrap ~= false and self.__text then
         local size, lines = self.__fontSize or 12, 0
         for line in (plain(self.__text) .. "\n"):gmatch("(.-)\n") do
-            lines = lines + math.max(1, math.ceil(textWidth(line, size) / math.max(self.__w, 1)))
+            lines = lines + math.max(1, math.ceil(textWidth(line, size, self.__face) / math.max(self.__w, 1)))
         end
         if self.__maxLines and self.__maxLines > 0 then lines = math.min(lines, self.__maxLines) end
         return lines * (size + 2)
@@ -483,9 +496,9 @@ local function textHtml(r, rect, prect)
     local c = r.__tcolor or { 1, 0.82, 0, 1 }
     local w = rect.r - rect.l
     return string.format(
-        '<div class="fs" style="%sfont-size:%dpx;line-height:%dpx;color:%s;align-items:%s;%s">' ..
+        '<div class="fs %s" style="%sfont-size:%dpx;line-height:%dpx;color:%s;align-items:%s;%s">' ..
         '<div style="width:%s;text-align:%s;%s%s">%s</div></div>',
-        box(rect, prect), size, size + 2, css(c), align, outline,
+        r.__face or "body", box(rect, prect), size, size + 2, css(c), align, outline,
         w > 0 and "100%" or "auto", jh == "center" and "center" or (jh == "right" and "right" or "left"), wrap,
         (r.__shadow == false) and "text-shadow:none;" or "",
         richText(r.__text))
@@ -632,11 +645,16 @@ local function frameHtml(f, prect, out)
 end
 
 local STYLE = [[
+@font-face{font-family:"Fira Sans";font-weight:500;src:url("ROOT/Gulli-Toolkit/Media/Fonts/FiraSans-Medium.ttf")}
+@font-face{font-family:"Fira Sans";font-weight:700;src:url("ROOT/Gulli-Toolkit/Media/Fonts/FiraSans-Bold.ttf")}
+@font-face{font-family:"Title";font-weight:700;src:url("ROOT/tools/preview/.cache/fonts/Philosopher-Bold.ttf")}
 body{margin:0;background:#1d2229;background-image:radial-gradient(circle at 30%% 20%%,#3a4a3c 0,#1b2027 60%%);
-  font-family:"Friz Quadrata","Liberation Sans","DejaVu Sans",sans-serif;}
+  font-family:"Fira Sans","Liberation Sans","DejaVu Sans",sans-serif;font-weight:500}
+.fs.bold{font-weight:700}
+.fs.title{font-family:"Title","Fira Sans",serif;font-weight:700}
 .ui{position:relative;width:%dpx;height:%dpx;overflow:hidden}
 .fr,.tx,.ic,.fs{position:absolute;box-sizing:border-box}
-.fs{display:flex;text-shadow:1px -1px 0 rgba(0,0,0,.8);font-stretch:semi-condensed}
+.fs{display:flex;text-shadow:1px -1px 0 rgba(0,0,0,.8)}
 .ic{background:linear-gradient(135deg,#6b5a3a,#2b2418);border:1px solid #000;border-radius:2px}
 .ic.ok{background:radial-gradient(#4ccf5a 55%%,transparent 60%%);border:0}
 .ic.no{background:radial-gradient(#d9483f 55%%,transparent 60%%);border:0}
@@ -674,7 +692,7 @@ function R.Html(crop, margin)
     return string.format('<!doctype html><html><head><meta charset="utf-8"><style>%s</style></head><body>' ..
         '<div class="ui" style="width:%dpx;height:%dpx"><div style="position:absolute;left:%dpx;top:%dpx;' ..
         'width:%dpx;height:%dpx">%s</div></div></body></html>',
-        STYLE:format(w, h), w, h, -ox, -oy, UI_W, UI_H, body)
+        (STYLE:gsub("ROOT", "file://" .. (os.getenv("PWD") or "."))):format(w, h), w, h, -ox, -oy, UI_W, UI_H, body)
 end
 
 -- Every pair of shown, non-empty texts that overlap inside one window: the "glued" look.
@@ -694,8 +712,8 @@ function R.Overlaps(root)
     for i = 1, #texts do
         for j = i + 1, #texts do
             local a, b = R.Rect(texts[i]), R.Rect(texts[j])
-            local ax = math.min(a.r, a.l + textWidth(texts[i].__text, texts[i].__fontSize or 12))
-            local bx = math.min(b.r, b.l + textWidth(texts[j].__text, texts[j].__fontSize or 12))
+            local ax = math.min(a.r, a.l + textWidth(texts[i].__text, texts[i].__fontSize or 12, texts[i].__face))
+            local bx = math.min(b.r, b.l + textWidth(texts[j].__text, texts[j].__fontSize or 12, texts[j].__face))
             if a.l < bx - 1 and b.l < ax - 1 and a.b < b.t - 1 and b.b < a.t - 1 then
                 found[#found + 1] = { texts[i].__text, texts[j].__text }
             end

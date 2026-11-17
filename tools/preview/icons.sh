@@ -35,3 +35,7 @@ for t in glob.glob("Gulli-*/icon.tga"):
     name = t.split("/")[0].lower()
     Image.open(t).save(os.path.join(sys.argv[1], name + ".png"))
 P
+# A stand-in for the game's Friz Quadrata in the title texts (it may not be embedded).
+mkdir -p "$dir/fonts"
+[ -s "$dir/fonts/Philosopher-Bold.ttf" ] || curl -fsS -o "$dir/fonts/Philosopher-Bold.ttf" \
+  "https://raw.githubusercontent.com/google/fonts/main/ofl/philosopher/Philosopher-Bold.ttf" || echo "no title font" >&2
