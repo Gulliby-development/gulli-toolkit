@@ -583,6 +583,23 @@ test("the guide pins the first stop, then the next after a quest is taken, and e
     eq(ns.guide, nil, "done at the entrance")
 end)
 
+test("Lead me with only quests in the log: who takes back a finished one, then the entrance", function()
+    local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
+        map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },
+                                      [1436] = { "Westfall", 3, 1415 } }, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    for _, q in ipairs(ns.Quests("DM", 18).take) do W.active[q.id] = true end
+    local c = ns.Counts("DM", 18)
+    eq(c.take, 0); assert(c.log > 0, "quests in the log")
+    W.complete[167] = true
+    eq(ns.StartGuide("DM"), true, "nothing to take, still something to lead to")
+    assert(ns.guide and ns.guide.stop.turnin, "the first pin is a hand-in")
+    eq(ns.guide.stop.who, "Wilder Thistlenettle")
+    W.active[167], W.complete[167], W.done[167] = nil, nil, true
+    W.Fire("QUEST_TURNED_IN")
+    eq(ns.guide, nil, "then the entrance, and the guide is done")
+end)
+
 test("notes on a boss and a quest are kept, trimmed and short", function()
     Fake({})
     local ns = Load()

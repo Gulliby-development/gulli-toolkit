@@ -310,7 +310,8 @@ function ns.CheckEnter()
 end
 
 -- The guide: pins the first stop of the dungeon's quest route and, as quests are taken, the
--- next one, up to the entrance. ns.guide = { key, last }.
+-- next one; with nothing left to take, who takes back a finished quest, one after another as
+-- they are handed in; then the entrance. ns.guide = { key, last }.
 function ns.StartGuide(key)
     ns.guide = { key = key }
     if ns.ShowTracker then ns.ShowTracker(key) end
@@ -335,11 +336,20 @@ function ns.StepGuide()
         if not s.inside then stop = s break end
     end
     if not stop then ns.guide = nil return false end
+    if stop.entrance then
+        for _, it in ipairs(ns.TrackerItems(g.key, UnitLevel("player") or 1)) do
+            local p = it.pin
+            if it.state == "ready" and p then
+                stop = { who = p.who, area = p.area, x = p.x, y = p.y, turnin = true }
+                break
+            end
+        end
+    end
     local id = (stop.who or "") .. "@" .. (stop.area or 0)
     if id ~= g.last then
         g.last = id
         g.stop = stop
-        ns.SetPin(stop)
+        if stop.turnin then ns.PinAt(stop.who, stop.area, stop.x, stop.y) else ns.SetPin(stop) end
     end
     -- At the entrance the guide is done.
     if stop.entrance then ns.guide = nil end
