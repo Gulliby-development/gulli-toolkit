@@ -342,7 +342,7 @@ end
 
 ---- Setup --------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { wheelKey = nil, wheelHold = true, panelShow = false, panelLocked = false, panelCount = 6,
+ns.DEFAULTS = { wheelKey = nil, wheelHold = true, panelShow = false, panelCount = 6,
                 panelScale = 100, panelRow = false }
 
 -- Saves of 1.x had one channel for the window (AUTO = raid, party or say) and one per phrase.
@@ -358,6 +358,10 @@ end
 function ns.Defaults()
     local db = ns.db
     for k, v in pairs(ns.DEFAULTS) do if db[k] == nil then db[k] = v end end
+    -- Frames on the screen start hidden (owner's decision): a panel shown before is hidden once;
+    -- the hub's Unlock mode or the switch shows it again. The panel has no lock of its own.
+    if not db.hudHidden then db.panelShow, db.hudHidden = false, true end
+    db.panelLocked = nil
     db.fav = db.fav or {}
     db.orderOf = db.orderOf or {}
     if not db.order then
@@ -422,7 +426,6 @@ function GulliQuickChat_Toggle() ns.Toggle() end
 
 ns.OPT_ICON = {
     panelShow = "Interface\\Icons\\INV_Misc_Note_05",
-    panelLocked = "Interface\\Icons\\INV_Misc_Key_14",
     wheelHold = "Interface\\Icons\\INV_Misc_EngGizmos_20",
 }
 
@@ -445,10 +448,13 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         options = {
             option("panelShow", L.OPT_PANEL, L.TIP_PANEL),
-            option("panelLocked", L.PANEL_LOCK),
             option("wheelHold", L.WHEEL_HOLD, L.WHEEL_HOLD_D),
         },
         move = function(on) if ns.MovePanel then ns.MovePanel(on) end end,
+        frames = { { key = "panel", label = L.TITLE, icon = ns.OPT_ICON.panelShow,
+                     get = function() return ns.db ~= nil and ns.db.panelShow == true end,
+                     set = function(on) if ns.db then ns.db.panelShow = on and true or false; if ns.Panel then ns.Panel() end end end,
+                     frame = function() return ns.PanelFrame and ns.PanelFrame() end } },
         reset = function() ns.ResetSettings() end,
     })
 end

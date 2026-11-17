@@ -584,8 +584,6 @@ local function buildSetup(page, width)
     local panelCard, h2 = S.SettingsCard(c, L.SEC_PANEL, {
         { L.OPT_PANEL, L.TIP_PANEL, function() return ns.db.panelShow end,
           function(v) ns.db.panelShow = v; ns.Panel() end, icon = ns.OPT_ICON.panelShow },
-        { L.PANEL_LOCK, nil, function() return ns.db.panelLocked end,
-          function(v) ns.db.panelLocked = v; ns.Panel() end, icon = ns.OPT_ICON.panelLocked },
         { L.PANEL_COUNT, nil, control = count, icon = I .. "INV_Misc_Note_06" },
         { L.PANEL_SIZE, nil, control = size, icon = I .. "INV_Misc_Spyglass_03" },
         { L.PANEL_ROW, nil, function() return ns.db.panelRow end,
@@ -893,26 +891,15 @@ local function buildPanel()
     panel:SetFrameStrata("MEDIUM")
     panel:SetClampedToScreen(true)
     panel:SetMovable(true)
-    panel:RegisterForDrag("LeftButton")
-    panel:SetScript("OnDragStart", function(self) if not ns.db.panelLocked or ns.movingPanel then self:StartMoving() end end)
-    panel:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, rel, x, y = self:GetPoint()
-        ns.db.panelPoint = { point, rel, x, y }
-    end)
     S.HudPanel(panel)
     panel.buttons = {}
     for i = 1, ns.PANEL_MAX do
         local b = phraseButton(panel)
-        b:RegisterForDrag("LeftButton")
-        b:SetScript("OnDragStart", function() panel:GetScript("OnDragStart")(panel) end)
-        b:SetScript("OnDragStop", function() panel:GetScript("OnDragStop")(panel) end)
         b:SetScript("OnClick", function(self) ns.Say(self.phrase) end)
         panel.buttons[i] = b
     end
     S.Mover(panel, { label = L.TITLE, save = function(point, rel, x, y) ns.db.panelPoint = { point, rel, x, y } end,
-        reset = function() ns.db.panelPoint = nil; ns.Panel() end,
-        lock = function() ns.db.panelLocked = true; ns.Panel(); ns.Refresh() end, lockTip = L.PANEL_LOCK })
+        reset = function() ns.db.panelPoint = nil; ns.Panel() end })
 end
 
 function ns.Panel()
@@ -936,17 +923,21 @@ function ns.Panel()
     if row then panel:SetSize(n * (PANEL_W - 4) + 4, 38) else panel:SetSize(PANEL_W, n * 32 + 8) end
     panel:SetScale((ns.db.panelScale or 100) / 100)
     panel:SetMoving(ns.movingPanel)
-    panel:EnableMouse(not ns.db.panelLocked or ns.movingPanel)
     panel:ClearAllPoints()
     local p = ns.db.panelPoint
     if p then panel:SetPoint(p[1], UIParent, p[2] or p[1], p[3] or 0, p[4] or 0) else panel:SetPoint("LEFT", 40, 0) end
     panel:Show()
 end
 
--- /gulli move: the panel shows and can be dragged even when it is locked or off.
+-- The hub's Unlock mode: the panel shows and can be placed even when it is off.
 function ns.MovePanel(on)
     ns.movingPanel = on and true or nil
     ns.Panel()
+end
+
+function ns.PanelFrame()
+    if not panel and ns.db then buildPanel() end
+    return panel
 end
 
 function ns.Setup()
