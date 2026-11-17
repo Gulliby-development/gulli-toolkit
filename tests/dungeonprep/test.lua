@@ -786,11 +786,29 @@ test("the tracker: ready quests first, objectives, quests to take; Lead me shows
     ns.HideTracker()
     eq(GulliDungeonPrepDB.tracker, nil)
     assert(not ns.TrackerFrame():IsShown(), "the cross hides it")
-    -- Unlocked, it shows to be placed even with nothing tracked; locked again, it hides.
-    ns.Set("trackerLocked", false)
-    assert(ns.TrackerFrame():IsShown(), "unlocked, it shows")
-    ns.Set("trackerLocked", true)
-    assert(not ns.TrackerFrame():IsShown(), "locked with nothing tracked, it hides")
+    -- In the Unlock mode it shows to be placed even with nothing tracked; after it, it hides.
+    ns.MoveTracker(true)
+    assert(ns.TrackerFrame():IsShown(), "in the Unlock mode, it shows")
+    ns.MoveTracker(false)
+    assert(not ns.TrackerFrame():IsShown(), "with nothing tracked, it hides")
+end)
+
+test("the tracker starts hidden, once also for older saves; the hub's switch shows it", function()
+    Fake({ level = 33, db = { tracker = "GNOMER", trackerLocked = false } })
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    local ns = Load()
+    GulliToolkit = nil
+    eq(GulliDungeonPrepDB.tracker, nil, "hidden once"); eq(GulliDungeonPrepDB.trackerLocked, nil)
+    local fr = got.frames[1]
+    eq(fr.get(), false)
+    assert(fr.frame(), "the hub gets the tracker")
+    assert(not fr.frame():IsShown(), "built hidden")
+    fr.set(true)
+    eq(fr.get(), true)
+    assert(fr.frame():IsShown(), "the switch shows it")
+    fr.set(false)
+    eq(GulliDungeonPrepDB.tracker, nil)
 end)
 
 test("chains: one card per chain, at the step to do now; the tracker opens one to show its steps", function()

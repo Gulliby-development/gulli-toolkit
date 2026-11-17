@@ -1327,8 +1327,7 @@ local function buildSettings(parent)
     for _, o in ipairs({ { "warnEnter", L.OPT_ENTER, L.OPT_ENTER_D }, { "remind", L.OPT_REMIND, L.OPT_REMIND_D },
                          { "wishAlert", L.OPT_WISH, L.OPT_WISH_D }, { "learn", L.OPT_LEARN, L.OPT_LEARN_D },
                          { "keys", L.OPT_KEYS, L.OPT_KEYS_D }, { "tomtom", L.OPT_TOMTOM, L.OPT_TOMTOM_D },
-                         { "hideLater", L.OPT_LATER, L.OPT_LATER_D },
-                         { "trackerLocked", L.OPT_TRACK_LOCK, L.OPT_TRACK_LOCK_D } }) do
+                         { "hideLater", L.OPT_LATER, L.OPT_LATER_D } }) do
         local key = o[1]
         sw[#sw + 1] = { o[2], o[3], function() return ns.Get(key) end, function(v) ns.Set(key, v) end,
                         icon = ns.OPT_ICON[key] }

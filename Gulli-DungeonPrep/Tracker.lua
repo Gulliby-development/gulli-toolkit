@@ -193,8 +193,8 @@ local function build()
     for i = 1, ns.TRACK_MAX do tracker.rows[i] = makeRow(tracker) end
     S.Mover(tracker, { label = L.TR_TITLE,
         save = function(p, rp, x, y) if ns.db then ns.db.trackerPoint = { p, rp, x, y } end end,
-        reset = function() if ns.db then ns.db.trackerPoint = nil end; place() end,
-        lock = function() ns.Set("trackerLocked", true) end, lockTip = L.OPT_TRACK_LOCK })
+        reset = function() if ns.db then ns.db.trackerPoint = nil end; place() end })
+    tracker:Hide()
 end
 
 -- Shows the tracker for a dungeon (kept over a reload) or, with nil, the one shown before.
@@ -208,6 +208,17 @@ function ns.HideTracker()
     ns.RefreshTracker()
 end
 
+-- The hub's switch: on shows the dungeon the player chose last, or the one for the level.
+function ns.SetTrackerShown(on)
+    if not on then ns.HideTracker(); return end
+    local key = ns.selected
+    if not key then
+        local s = ns.Suggest(UnitLevel("player") or 1)
+        key = s and s.key
+    end
+    ns.ShowTracker(key)
+end
+
 function ns.MoveTracker(on)
     ns.movingTracker = on and true or nil
     ns.RefreshTracker()
@@ -215,9 +226,9 @@ end
 
 function ns.RefreshTracker()
     if not ns.db then return end
-    local moving = ns.movingTracker or not ns.Get("trackerLocked")
+    local moving = ns.movingTracker
     local key = ns.db.tracker
-    -- Unlocked with nothing to track, it shows the dungeon for the level, to be placed.
+    -- In the Unlock mode with nothing to track, it shows the dungeon for the level, to be placed.
     if not key and moving then
         local s = ns.Suggest(UnitLevel("player") or 1)
         key = s and s.key
@@ -255,5 +266,8 @@ function ns.RefreshTracker()
     tracker:Show()
 end
 
--- The panel, for the tests.
-function ns.TrackerFrame() return tracker end
+-- The panel, for the hub's Unlock mode (built when it is asked for) and the tests.
+function ns.TrackerFrame()
+    if not tracker and ns.db then build() end
+    return tracker
+end
