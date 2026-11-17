@@ -260,10 +260,16 @@ local function buyStatus(plan, how)
         .. itemLine(ns.Current().id, ns.Current().n)
 end
 
+-- Footer buttons keep their whole label: the width follows the text.
+local function label(b, text, min)
+    b:SetText(text)
+    b:SetWidth(math.max(min, math.floor((b.text:GetStringWidth() or 0) + 28)))
+end
+
 local function setBuyButton(plan, mine)
     local b, queue = ns.buy, ns.buy.queue
     local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning()
-    buyBtn:SetText(mine and buyText() or (ns.CanBuy() and L.BUY_ASK or L.LIST))
+    label(buyBtn, mine and buyText() or (ns.CanBuy() and L.BUY_ASK or L.LIST), 160)
     buyBtn:SetEnabled(mine and plan ~= nil and #queue > 0 and b.phase ~= "done" and not busy
         and (not ns.CanBuy() and ns.HasAuctionator() or ns.atAH))
     skipBtn:SetShown(mine and plan ~= nil and ns.CanBuy() and ns.Current() ~= nil and b.phase ~= "done")
@@ -287,7 +293,7 @@ local function refreshTokens()
     tokEmpty:SetShown(not plan or #plan.crates == 0)
     if plan and #plan.crates == 0 then tokEmpty:Set(L.TOK_NONE, L.TOK_NONE_SUB) else tokEmpty:Set(L.TOK_EMPTY, L.TOK_EMPTY_SUB) end
     tokCard:SetTitle(L.TOK_PLAN, plan and #plan.crates > 0 and L.TOK_FAVOR:format(plan.favor) or "")
-    calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
+    label(calcBtn, plan and L.RECALC or L.CALCULATE, 110)
     calcBtn:SetEnabled(not ns.Scanning())
     setBuyButton(plan, mine)
     local status, color
@@ -326,7 +332,7 @@ function ns.Refresh()
     planEmpty:SetShown(not plan or #plan.crates == 0)
     planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and ((plan.estimate and "~" or "") .. S.MoneyText(plan.total)) or "")
 
-    calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
+    label(calcBtn, plan and L.RECALC or L.CALCULATE, 110)
     calcBtn:SetEnabled(#ns.Picks(crates) > 0 and not ns.Scanning())
     local mine = ns.source == "fill"
     setBuyButton(plan, mine)
@@ -351,12 +357,30 @@ local function build()
     end)
     calcBtn = S.Button(ft, 120, 32)
     ft:Add(calcBtn)
-    calcBtn:SetText(L.CALCULATE)
+    label(calcBtn, L.CALCULATE, 110)
     calcBtn:SetScript("OnClick", function() if tab == 2 then ns.TokenCalculate() else ns.Calculate() end end)
     skipBtn = S.Ghost(S.Button(ft, 80, 32))
     ft:Add(skipBtn)
-    skipBtn:SetText(L.SKIP)
+    label(skipBtn, L.SKIP, 72)
     skipBtn:SetScript("OnClick", function() ns.Skip() end)
+    -- Two rows: the status line takes the whole width above the buttons, so its long
+    -- texts (the estimate, the how-to) are never cut.
+    local extra = 38
+    ft:SetHeight(S.FOOTER_H + extra)
+    ft.status:ClearAllPoints()
+    ft.status:SetPoint("TOPLEFT", S.PAD, -8)
+    ft.status:SetPoint("TOPRIGHT", -S.PAD, -8)
+    ft.status:SetHeight(extra)
+    ft.status:SetJustifyV("TOP")
+    buyBtn:ClearAllPoints()
+    buyBtn:SetPoint("BOTTOMRIGHT", -S.PAD, 12)
+    local function fit(self)
+        frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, (self:IsShown() and S.FOOTER_H + extra or 0) + S.PAD)
+    end
+    ft:HookScript("OnShow", fit)
+    ft:HookScript("OnHide", fit)
+    fit(ft)
+    frame.inner[2] = frame.inner[2] - extra
 
     refreshBtn = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
     S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
