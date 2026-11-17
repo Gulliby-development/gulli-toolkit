@@ -201,6 +201,8 @@ test("Data.lua takes the WoW Forever skill levels, recipes and trainer prices fr
     -- Forever moved Bolt of Mageweave down: grey at 150, not Classic's 185
     eq(c.Data.spell[3865][3], 150); eq(c.Data.item[4339][1], 140); eq(c.Data.item[4339][4], 150)
     eq(c.Data.train[3865], 1000, "its trainer price")
+    -- the trainer teaches Transmute: Iron to Gold, though a vendor sells its recipe too
+    eq(c.Data.train[11479], 2500); eq(c.Data.src[11479], nil)
     -- Forever's own Greater Healing Potion replaces the Classic recipe
     eq(c.Data.gone[7181], true); eq(c.Data.spell[7181], nil)
     eq(c.Data.spell[1244434][1], 175); eq(c.Data.src[1244434][2], 255723, "Manual: Greater Healing Potion")
@@ -690,6 +692,14 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     n.Data.src[104] = { "v", 6 }
     src = n.State().recipes[104].src
     eq(src.t, "vendor"); eq(src.who, nil); eq(src.cost, 520 * 4)
+    -- the trainer teaches it too: learn it there, do not buy the pattern
+    n.Data.train[104] = 4500
+    src = n.State().recipes[104].src
+    eq(src.t, "trainer"); eq(src.cost, 4500)
+    n.Data.train[104] = nil
+    n.db.trainer[r.name] = 900
+    eq(n.State().recipes[104].src.t, "trainer", "a price seen at the trainer wins over the pattern")
+    n.db.trainer[r.name] = nil
     n.Data.src[104] = nil
     n.Data.spell[104] = nil
     eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
