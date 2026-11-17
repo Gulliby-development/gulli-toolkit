@@ -59,6 +59,9 @@ local function core()
     return ns
 end
 local function prefs(t)
+    t = t or {}
+    -- the route tests compare whole frontiers; the crafts limit has its own test
+    if t.maxCrafts == nil then t.maxCrafts = -1 end
     local P = core().Prefs(t)
     return P
 end
@@ -424,6 +427,31 @@ test("the levelling routes run from the cheapest to the fastest", function()
         assert(f[i].crafts < f[i - 1].crafts, "and takes fewer crafts")
         eq(f[i].reached, f[1].reached)
     end
+end)
+
+test("the crafts limit: auto follows the target, routes over it go", function()
+    local c, st = core(), state()
+    local target = c.Target(st, prefs({}))
+    eq(c.CraftCap(st, c.Prefs({})), target - st.skill + c.CRAFTS_SPARE, "auto: the points plus a spare")
+    eq(c.CraftCap(st, c.Prefs({ target = st.skill + 10 })), 10 + c.CRAFTS_SPARE, "it follows the target")
+    eq(c.CraftCap(st, c.Prefs({ maxCrafts = 40 })), 40)
+    eq(c.CraftCap(st, c.Prefs({ maxCrafts = -1 })), nil)
+    local all = c.Frontier(st, prefs({ maxSell = 5 }))
+    local cheap, fast = all[1].crafts, all[#all].crafts
+    assert(cheap > fast + 2)
+    -- a limit between them: every route keeps within it, and the cheapest one within it is found
+    local cap = math.floor((cheap + fast) / 2)
+    local f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = cap }))
+    assert(#f >= 1)
+    for _, p in ipairs(f) do assert(p.crafts <= cap + 0.5, "crafts " .. p.crafts .. " over " .. cap); assert(not p.many) end
+    for _, p in ipairs(all) do
+        if p.crafts <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
+    end
+    -- a limit nobody keeps: only the route with the fewest crafts, marked
+    f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
+    eq(#f, 1); assert(f[1].many); eq(f[1].crafts, fast)
+    local v = c.Variants(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
+    assert(v[1].many and v[1].best, "still shown, marked")
 end)
 
 test("the loss budget: routes over it are marked, the fastest within it is the best", function()
@@ -793,6 +821,7 @@ end)
 
 test("a levelling tile shows the target and the crafts of the whole way, not of the next run", function()
     local n = game()
+    n.db.prefs.maxCrafts = -1
     n.Toggle(); n.Calculate()
     for i, x in ipairs(n.view.variants) do
         local p = x.plan
@@ -811,6 +840,24 @@ test("a levelling tile shows the target and the crafts of the whole way, not of 
     x.plan = run
     n.Refresh()
     eq(n.ui.varTiles[1].sub:GetText(), n.L.VAR_RUN:format(run.full.target, 69))
+end)
+
+test("the crafts stepper starts on auto and binds to it again", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local st = n.ui.steppers.maxCrafts
+    local auto = n.CraftCap(n.view.state, n.Prefs({}))
+    eq(st.value:GetText(), n.L.CRAFTS_AUTO:format(auto))
+    W.Click(st.plus)
+    eq(n.db.prefs.maxCrafts, auto + 5, "a number of its own")
+    eq(st.value:GetText(), tostring(auto + 5))
+    W.Click(st.minus)
+    eq(n.db.prefs.maxCrafts, 0, "back on the auto value: auto again")
+    n.db.prefs.maxCrafts = 500
+    st:Refresh()
+    W.Click(st.plus)
+    eq(n.db.prefs.maxCrafts, -1)
+    eq(st.value:GetText(), n.L.NO_LIMIT)
 end)
 
 test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()
