@@ -41,6 +41,21 @@ S.toolkit = { default = {
     end,
 } }
 
+-- The Unlock mode: the panel of every frame on the screen, with the grid behind it.
+S.toolkit.unlock = { spec = S.toolkit.default.spec, crop = "GulliToolkitUnlock",
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        local shown = { XP = true, Bulletin = false, Attune = true }
+        for k, label in pairs({ XP = "XP bar", Bulletin = "Group feed" }) do
+            GulliToolkit.modules[k].frames = { { key = k, label = label,
+                get = function() return shown[k] end, set = function(v) shown[k] = v end } }
+        end
+        GulliToolkit.modules.MobFinder = nil
+        GulliToolkit.modules.Attune.frames = { { key = "card", label = "Rare card" } }
+        ns.SetMoving(true)
+    end,
+}
+
 -- A narrow module open inside the hub, with the card beside it.
 S.toolkit.inside = { spec = S.toolkit.default.spec,
     open = function(ns, W, R)
@@ -577,8 +592,8 @@ S.reminders = {
               before = remStage, open = function(ns) ns.db.point = { "CENTER", 0, 20 }; ns.Refresh() end,
               crop = "GulliRemindersStage" },
     unlocked = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, auras = { "Spell13165" }, ammo = 120,
-                          db = { locked = false, vertical = true } },
-                 before = remStage, open = function(ns) ns.db.point = { "CENTER", -60, 0 }; ns.Refresh() end,
+                          db = { vertical = true } },
+                 before = remStage, open = function(ns) ns.db.point = { "CENTER", -60, 0 }; ns.Move(true) end,
                  crop = "GulliRemindersStage" },
     hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
