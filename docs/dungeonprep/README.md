@@ -41,7 +41,7 @@ You are about to run a dungeon. Who is inside, what can drop for you, and did yo
 - **Quest colours.** Each quest shows its level in the same colours, and says if it is hard or easy for you.
 - **Three lists of quest cards.** Quests in your log, quests to pick up on the way, and quests for later. Each card shows the quest's level, the level it opens at, its step in the chain, a clear tag (**In log**, **Can take**, **Later**, **Done**) and what comes next: the earlier quest you need first and where it starts, or who takes it back.
 - **Ready to go?** Repairs, free bag slots, food, water, the hearthstone, ammo and reagents moved to the **Ready** card on the home page of `/gulli`, so you see them without opening the journal.
-- **Data built in.** The quests come from the QuestieDB data for WoW Forever, the bosses and drop chances from Wowhead's WoW Forever pages.
+- **Data built in.** The quests come from the QuestieDB data for WoW Forever, checked against the AllTheThings list of every dungeon's quests, the bosses and drop chances from Wowhead's WoW Forever pages.
 
 ## Install
 

@@ -638,6 +638,21 @@ test("a quest started by an item that drops in the dungeon belongs to it (Krol'd
     eq(table.concat(ns.Data.chain[94973], ","), "94973,94974")
 end)
 
+test("AllTheThings fills the gaps: its dungeon quests join, its faction wins for Forever quests", function()
+    Fake({ level = 15, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    local q = ns.Quests("THANES", 15)
+    eq(ids(q.take), "96395,96403", "a Horde player gets An Ancient Grudge and Important Heirlooms")
+    eq(ns.Data.quest[96403][11], "", "Important Heirlooms is for both factions")
+    eq(ns.Data.quest[96403][4], 0)
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    assert(has("KROLDOK", 94969), "Krol'dok No More!, which only ATT ties to the dungeon")
+    assert(has("ALCAZ", 96376), "State Secrets")
+    assert(not has("GNOMER", 2951), "a Sparklematic exchange stays out")
+end)
+
 test("the tracker: ready quests first, objectives, quests to take; Lead me shows it, the cross hides it", function()
     Fake({ level = 33, raceID = 2, faction = "Horde", className = "HUNTER", areas = AREAS,
            map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } },
