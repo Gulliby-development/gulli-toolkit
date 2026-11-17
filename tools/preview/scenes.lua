@@ -529,7 +529,25 @@ S.dungeonprep = {
                 open = function(ns)
                     ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
                     ns.ShowTracker("GNOMER")
-                end },
+                end },    -- The tracker on the Drowned City, with one chain opened to show its steps.
+    trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
+                            areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
+                   crop = "GulliDungeonPrepTrackerStage",
+                   before = function()
+                       local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                       stage:SetSize(360, 420)
+                       stage:SetPoint("CENTER")
+                       local bg = stage:CreateTexture(nil, "BACKGROUND")
+                       bg:SetAllPoints()
+                       bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                   end,
+                   open = function(ns)
+                       ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                       ns.ShowTracker("DROWNED")
+                       for _, it in ipairs(ns.TrackerItems("DROWNED", 40)) do
+                           if it.steps then ns.ToggleTracked(it.key) break end
+                       end
+                   end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).

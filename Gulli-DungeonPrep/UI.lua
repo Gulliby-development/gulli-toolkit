@@ -255,6 +255,52 @@ local function onRowClick(self, button)
     ns.OpenQuest(q.id)
 end
 
+-- A pin button targets and marks who it is for when they are near. Only a secure click may
+-- target, so while the mouse is on a pin button out of combat one secure button lies over it:
+-- its click runs /targetexact, then the pin button's own click and ns.MarkTarget. In combat it
+-- never shows, and the pin button works alone.
+local overlay
+local function buildOverlay()
+    overlay = CreateFrame("Button", "GulliDungeonPrepTarget", UIParent, "SecureActionButtonTemplate")
+    overlay:SetFrameStrata("TOOLTIP")
+    overlay:RegisterForClicks("AnyUp", "AnyDown")
+    overlay:SetAttribute("type", "macro")
+    overlay:SetScript("PostClick", function(self, button, down)
+        if down then return end
+        local owner = self.owner
+        local click = owner and owner:GetScript("OnClick")
+        if click then click(owner, button) end
+        ns.MarkTarget(self.who)
+    end)
+    overlay:SetScript("OnEnter", function(self) if self.tip then self.tip(self) end end)
+    overlay:SetScript("OnLeave", function(self)
+        if GameTooltip then GameTooltip:Hide() end
+        if not (InCombatLockdown and InCombatLockdown()) then self:Hide() end
+    end)
+    overlay:SetScript("OnUpdate", function(self)
+        if self.owner and not self.owner:IsVisible() and not (InCombatLockdown and InCombatLockdown()) then self:Hide() end
+    end)
+    overlay:SetScript("OnEvent", function(self) self:Hide() end)
+    overlay:RegisterEvent("PLAYER_REGEN_DISABLED")
+    overlay:Hide()
+end
+
+function ns.TargetOver(btn, who, tip)
+    if not who or who == "" or who == "?" or (InCombatLockdown and InCombatLockdown()) then return false end
+    if not overlay then buildOverlay() end
+    local x, y = btn:GetCenter()
+    if not x then return false end
+    overlay:SetScale(btn:GetEffectiveScale() / UIParent:GetEffectiveScale())
+    overlay:ClearAllPoints()
+    overlay:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+    overlay:SetSize(btn:GetWidth(), btn:GetHeight())
+    overlay:SetAttribute("macrotext", "/targetexact " .. who)
+    overlay.owner, overlay.who, overlay.tip = btn, who, tip
+    overlay:Show()
+    return true
+end
+function ns.TargetOverlay() return overlay end
+
 -- Quests are cards: a status icon, the name, a status tag, the levels and the chain, and what
 -- comes next (the earlier quest to do first, where to hand in). Headers and route stops stay short.
 local HEAD_H, STOP_H, CARD_H, STEP_H, STEPS_MAX = 28, 40, 64, 16, 8
@@ -435,7 +481,8 @@ local function fillRow(r, item)
     r.text:SetPoint("RIGHT", r.tag, "LEFT", -8, 0)
     local diff = ns.Difficulty(q.level, ns.level or 1)
     r.text:SetTextColor(unpack(faded and S.MUTED or S.TEXT))
-    r.text:SetText(q.name)
+    -- A chain is named by its last step in the dungeon; its steps under it show where it is.
+    r.text:SetText(q.head and q.head.name or q.name)
     r.sub:ClearAllPoints()
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -4)
     r.sub:SetPoint("RIGHT", -12 - icons * 24, 0)
@@ -1071,6 +1118,23 @@ local function buildDetail(parent)
         local t = d.q and d.q.turnin
         if t then ns.PinAt(t.who, t.area, t.x, t.y) end
     end)
+    -- Near by, the map buttons also target and mark the giver (ns.TargetOver).
+    local function targets(btn, whoOf)
+        local function tip(owner)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L.SHOW_ON_MAP, 1, 1, 1)
+            GameTooltip:AddLine(L.TR_TARGET, 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end
+        btn:HookScript("OnEnter", function(self)
+            local who = whoOf()
+            if who and who ~= "" then tip(self); ns.TargetOver(self, who, tip) end
+        end)
+        btn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end
+    targets(d.startMap, function() return d.q and d.q.who end)
+    targets(d.turninMap, function() return d.q and d.q.turnin and d.q.turnin.who end)
     d.need = S.Text(b, 12, S.BAD)
     d.need:SetPoint("TOP", d.turninMap, "BOTTOM", 0, -10)
     d.need:SetPoint("LEFT", b, "LEFT")
