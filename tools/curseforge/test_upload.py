@@ -59,6 +59,10 @@ class Upload(unittest.TestCase):
         self.assertEqual(m["relations"]["projects"][0], {"slug": "gulli-toolkit", "type": "optionalDependency"})
         self.assertNotIn("relations", U.metadata("Gulli Toolkit 1.17.0", "notes", 2))
 
+    def test_metadata_adds_the_other_optional_projects(self):
+        m = U.metadata("Gulli-Crates 1.0.0", "notes", 2, "gulli-toolkit", ["auctionator"])
+        self.assertEqual([p["slug"] for p in m["relations"]["projects"]], ["gulli-toolkit", "auctionator"])
+
     def test_multipart_holds_the_metadata_and_the_file(self):
         body, ctype = U.multipart({"metadata": "{}"}, "a.zip", b"ZIPDATA")
         self.assertTrue(ctype.startswith("multipart/form-data; boundary="))
