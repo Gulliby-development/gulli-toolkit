@@ -539,8 +539,11 @@ local function texHtml(t, rect, prect)
         local rad = side and ("border-" .. side .. "-radius:100%;") or "border-radius:50%;"
         local blend = t.__blend == "ADD" and "mix-blend-mode:screen;" or ""
         if media == "Grain" then
-            -- the paper grain is too faint to matter in a preview
-            return ""
+            -- the paper grain, from a PNG copy of Media/Grain when there is one (GULLI_GRAIN)
+            local png = os.getenv("GULLI_GRAIN")
+            if not png then return "" end
+            return string.format('<div class="tx" style="%sbackground-image:url(\'file://%s\');background-repeat:repeat;filter:sepia(1);opacity:%.3f"></div>',
+                box(rect, prect), png, c[4] or 1)
         elseif media == "Sheen" then
             return string.format('<div class="tx" style="%s%sbackground:linear-gradient(180deg,%s,transparent)"></div>',
                 box(rect, prect), blend, css(c))
