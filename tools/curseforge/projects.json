@@ -5,7 +5,7 @@
   "separate": {
     "CraftProfit": { "id": 1813366, "optional": ["auctionator"] },
     "Crates": { "id": null, "optional": ["auctionator"] },
-    "DungeonPrep": { "id": null },
-    "GroupBuffs": { "id": null }
+    "DungeonPrep": { "id": 1813371 },
+    "GroupBuffs": { "id": 1813373 }
   }
 }
