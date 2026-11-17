@@ -299,7 +299,8 @@ end
 -- vendors; a pattern sells to a vendor for a quarter of what the vendor asks, so the price is
 -- four times its sell price until the vendor was seen. A pattern on the auction costs its
 -- Auctionator price. A recipe with no pattern comes from the trainer, whose price is known
--- once a trainer window was open, and guessed from the skill until then.
+-- once a trainer window was open, else from Wowhead (Data.train), and guessed from the skill
+-- until then.
 local function recipeSource(state, rid, rec, skill)
     local D = ns.Data and ns.Data.src
     local d = D and rid ~= rec.out and D[rid]
@@ -314,9 +315,10 @@ local function recipeSource(state, rid, rec, skill)
             if name and f:find(fac, 1, true) then who[#who + 1] = name end
         end
         local src
-        if d[1] == "v" and #who > 0 then
+        -- a vendor Wowhead names without a faction ("|AH") or with no name at all sells to both
+        if d[1] == "v" and (#who > 0 or #d == 2) then
             local seen = ns.db.vendor[item]
-            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = who }
+            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = #who > 0 and who or nil }
         end
         if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
         src = src or { t = d[1] == "q" and "quest" or "drop" }
@@ -325,6 +327,8 @@ local function recipeSource(state, rid, rec, skill)
     end
     local cost = rec.name and ns.db.trainer[rec.name]
     if cost then return { t = "trainer", cost = cost, est = false } end
+    local train = ns.Data and ns.Data.train and rid ~= rec.out and ns.Data.train[rid]
+    if train then return { t = "trainer", cost = train, est = false } end
     if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then
         return { t = "trainer", cost = ns.TrainerGuess(skill and skill[1]), est = true }
     end
