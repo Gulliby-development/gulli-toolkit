@@ -18,7 +18,7 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 ## Features
 
-- **One ring of phrases.** Hold your key (or a gamepad button): a ring of up to eight phrases opens at the mouse. Point at one and let go of the key, or click, to send it. The middle shows what it says and where it goes. Say, yell and channels such as Trade take a message only on a press or a click, so for them the phrase stays lit when you let go: click, or press the key again.
+- **One ring of phrases.** Hold your key (or a gamepad button): a ring of up to eight phrases opens at the mouse. Point at one and let go of the key, or click, to send it. The middle shows what it says and where it goes. The game does not let an addon write to say and yell outside a dungeon, or to channels such as Trade, so for them the phrase opens in the chat box with its channel set: press Enter to send it. Raid, party, guild and whispers go out at once.
 
   <img src="wheel.png" alt="The phrase ring" width="320">
 - **Set up the ring by hand.** The **Phrases** page shows the ring on the left and all phrases on the right. Click a phrase, then a place on the ring, or drag it there. A right-click empties a place.

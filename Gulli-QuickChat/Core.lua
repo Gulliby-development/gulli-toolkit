@@ -238,9 +238,29 @@ function ns.CanUse(key)
     end
 end
 
--- Say, yell and the numbered channels take a message only inside a key press or a click; the
--- release of a held key is not one.
+-- The game refuses say and yell from an addon outside an instance, and the numbered channels
+-- whenever it does not count the call as the player's own press (ADDON_ACTION_BLOCKED): a phrase
+-- for them goes into the chat box and the player sends it with Enter. Party, raid, guild and
+-- whispers always go out at once.
 ns.NEEDS_PRESS = { SAY = true, YELL = true, CHANNEL = true }
+local function inInstance()
+    local inside = IsInInstance and IsInInstance()
+    return inside and true or false
+end
+function ns.ToBox(kind)
+    if not ns.NEEDS_PRESS[kind] then return false end
+    if (kind == "SAY" or kind == "YELL") and inInstance() then return false end
+    return true
+end
+local SLASH = { SAY = "/s ", YELL = "/y " }
+
+-- Opens the chat box with the message and the command of its channel (/s, /y, /2).
+function ns.ToChatBox(msg, kind, to)
+    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
+    if not open then return false end
+    open((SLASH[kind] or ("/" .. tostring(to) .. " ")) .. msg)
+    return true
+end
 
 -- The first channel of the phrase's order that works now: key, kind, target.
 function ns.Route(text)
@@ -300,10 +320,10 @@ local function tooSoon(key)
 end
 
 -- Sends a phrase to the first channel of its order that works now. Returns the channel key.
--- True when the phrase would go to a channel that needs a key press or a click right now.
+-- True when the phrase would go into the chat box (say, yell, a numbered channel) right now.
 function ns.NeedsPress(text)
     local _, kind = ns.Route(text)
-    return kind ~= nil and ns.NEEDS_PRESS[kind] == true
+    return kind ~= nil and ns.ToBox(kind)
 end
 
 function ns.Say(text)
@@ -314,6 +334,7 @@ function ns.Say(text)
         print("|cff9ad0ffGulli Quick Chat|r: " .. L.NO_CHANNEL)
         return false
     end
+    if ns.ToBox(kind) then return ns.ToChatBox(msg, kind, to) and key or false end
     if tooSoon(kind .. "|" .. tostring(to) .. "|" .. msg) then return false end
     SendChatMessage(msg, kind, nil, to)
     return key
