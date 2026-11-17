@@ -806,9 +806,22 @@ test("text uses a font family with Cyrillic and CJK glyphs when the game has one
     local t = stubText()
     ns.Skin.SetFont(t, 13)
     CreateFontFamily = nil
-    assert(made.GulliFont13, "family made")
-    assert(made.GulliFont13.russian and made.GulliFont13.korean and made.GulliFont13.simplifiedchinese)
-    eq(t.object and t.object.name, "GulliFont13", "the text uses the family")
+    local f = made.GulliHearthbody13
+    assert(f, "family made")
+    assert(f.russian and f.korean and f.simplifiedchinese)
+    assert(f.roman:find("FiraSans%-Medium"), "body text in Fira Sans")
+    eq(f.korean, "Fonts\\2002.TTF", "Korean keeps the game's font")
+    eq(t.object and t.object.name, "GulliHearthbody13", "the text uses the family")
+    CreateFontFamily = function(name, members)
+        local alphabets = {}
+        for _, m in ipairs(members) do alphabets[m.alphabet] = m.file end
+        made[name] = alphabets
+        return { name = name }
+    end
+    ns.Skin.SetFont(t, 20, nil, "title")
+    CreateFontFamily = nil
+    eq(made.GulliHearthtitle20.roman, "Fonts\\FRIZQT__.TTF", "titles in Friz Quadrata by path")
+    eq(made.GulliHearthtitle20.russian, "Fonts\\FRIZQT___CYR.TTF")
 end)
 
 test("tabs take an icon per label, and an empty label shows the icon alone with a tooltip", function()
@@ -1117,6 +1130,26 @@ test("first setup: the window opens by itself only when the toolkit has no setti
     Fake({})
     ns = Load()
     eq(ns.OpenSetup(true), nil, "no module installed: nothing to ask")
+end)
+
+test("Gulli Hearth: S.Emph whitens numbers in plain text only; no text under 12", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    eq(S.Emph("Level 24 in 1 h"), "Level |cffffffff24|r in |cffffffff1|r h", "plain")
+    eq(S.Emph("|cffff0000red 12|r x 3"), "|cffff0000red 12|r x |cffffffff3|r", "a colour code")
+    eq(S.Emph("|Hitem:1234:0|h[Thing]|h 2"), "|Hitem:1234:0|h[Thing]|h |cffffffff2|r", "an item link")
+    eq(S.Emph("|TInterface\\Icons\\X:14|t 5"), "|TInterface\\Icons\\X:14|t |cffffffff5|r", "a texture")
+    eq(S.Emph(""), "", "empty")
+    eq(S.Emph(nil), nil)
+    local size
+    local fs = { SetFontObject = function() end, SetFont = function(_, _, s) size = s end }
+    local keep = CreateFontFamily
+    CreateFontFamily = nil
+    S.SetFont(fs, 9)
+    eq(size, 12, "a 9 unit text becomes 12")
+    S.SetFont(fs, 14.7)
+    eq(size, 14, "whole units")
+    CreateFontFamily = keep
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))
