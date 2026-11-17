@@ -660,7 +660,7 @@ function ns.Frames()
                 if type(fr) == "table" then
                     local own = ns.T.en["FR_" .. row.key] and L["FR_" .. row.key]
                     out[#out + 1] = { module = row.key, key = fr.key or row.key, title = row.title,
-                                      label = own or fr.label or row.title, icon = fr.icon or row.icon,
+                                      label = own or fr.label or row.title, icon = row.icon or fr.icon,
                                       get = type(fr.get) == "function" and fr.get or nil,
                                       set = type(fr.set) == "function" and fr.set or nil }
                 end
@@ -709,11 +709,16 @@ end
 -- shows with its mover over a grid, a panel lists them with their switches, and the mode ends
 -- with Save (keep) or Cancel (every place and switch as before). Frames are locked outside it.
 -- ns.SetMoving(true) starts it, ns.SetMoving(false) saves, ns.SetMoving(false, true) cancels.
--- Returns how many modules have frames to move.
+-- Returns how many modules have frames to move, or nil when a fight refuses the start: the
+-- modules' secure buttons cannot change in combat (ADDON_ACTION_BLOCKED).
 ns.moving = false
 function ns.SetMoving(on, cancel)
     on = on and true or false
     local S = ns.Skin
+    if on and not ns.moving and InCombatLockdown and InCombatLockdown() then
+        ns.Print(L.UNLOCK_COMBAT)
+        return nil
+    end
     if on and not ns.moving then
         ns.toastBefore = GulliToolkitDB and GulliToolkitDB.toastAt or false
         ns.before = {}
@@ -1147,8 +1152,7 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         ns.SetMinimap("hide", (not on) or nil)
         ns.Print(on and L.MINIMAP_ON or L.MINIMAP_OFF)
     elseif msg:lower() == "move" or msg:lower() == "unlock" then
-        ns.SetMoving(not ns.moving)
-        ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF)
+        if ns.SetMoving(not ns.moving) then ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF) end
     elseif msg:lower():match("^debug%s") then
         if not ns.Debug(msg:match("^%S+%s+(.+)$")) then ns.Print(L.UNKNOWN:format(msg)) end
     elseif msg:lower() == "errors" then

@@ -315,6 +315,24 @@ test("registers with Gulli Toolkit when the core is loaded", function()
     eq(got.open, ns.Toggle)
 end)
 
+test("the Unlock mode in a fight never shows or hides the card", function()
+    local got
+    Fake { toolkit = { Register = function(m) got = m end } }
+    local ns = Load()
+    local card = got.frames[1].frame()
+    assert(card, "the hub gets the card")
+    local calls = 0
+    for _, k in ipairs({ "Show", "Hide", "SetShown" }) do rawset(card, k, function() calls = calls + 1 end) end
+    W.combat = true
+    got.move(true)
+    got.move(false)
+    eq(calls, 0, "the card holds a secure button: nothing in combat lockdown")
+    W.combat = false
+    got.move(true)
+    assert(calls > 0, "out of a fight the card shows")
+    got.move(false)
+end)
+
 test("every sound has a name and a fallback id", function()
     Fake {}
     local ns = Load()

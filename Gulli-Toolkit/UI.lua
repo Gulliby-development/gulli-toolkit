@@ -1337,8 +1337,7 @@ local function buildHome()
     end
     local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
     home.move = toolRow(q, L.MOVE, QUICK_ICON.move, function()
-        ns.SetMoving(not ns.moving)
-        ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF)
+        if ns.SetMoving(not ns.moving) then ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF) end
     end)
     home.move:SetPoint("TOPLEFT", 0, -y)
     local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
@@ -2009,6 +2008,11 @@ function ns.RefreshUnlock()
     local on, total = ns.FrameCount(frames)
     panel.head.label:SetText(S.Upper(L.UNLOCK_LIST:format(on, total)))
     panel.head.hideAll:SetEnabled(on > 0)
+    -- A frame switched off stays placeable, darkened and marked on the screen.
+    for _, fr in ipairs(frames) do
+        local m = moverOf(fr)
+        if m and m.SetOff then m:SetOff(fr.get ~= nil and not ns.FrameShown(fr), L.UNLOCK_OFF) end
+    end
     panel.list:SetData(frames)
     local sel = GulliHUD and GulliHUD.selected
     local name = sel and sel.opts and sel.opts.label

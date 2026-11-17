@@ -2808,10 +2808,25 @@ function S.Mover(f, opts)
         self.coords:SetWidth(math.floor(strw(self.coords.text) + 12))
         self.coords:Show()
     end
+    local function paint(self)
+        if self.off then S.Fill(self, { 0, 0, 0, self.selected and 0.5 or 0.62 })
+        else S.Fill(self, { a[1], a[2], a[3], self.selected and 0.3 or 0.12 }) end
+    end
     function m:SetSelected(on)
         self.selected = on and true or false
-        S.Fill(self, { a[1], a[2], a[3], self.selected and 0.3 or 0.12 })
+        paint(self)
         self:ShowCoords()
+    end
+    -- A frame switched off in the Unlock panel stays placeable, but darkened and with `word`
+    -- ("hidden") after its name, so the switch shows at once.
+    function m:SetOff(off, word)
+        off = off and true or false
+        if self.off == off and self.offWord == word then return end
+        self.off, self.offWord = off, word
+        paint(self)
+        local name = shortTitle(opts.label)
+        self.name.text:SetText(off and word and (name .. "  |cff8a8a8a" .. word .. "|r") or name)
+        self.name:SetWidth(math.floor(strw(self.name.text) + 10))
     end
     m:RegisterForDrag("LeftButton")
     m:RegisterForClicks("LeftButtonUp", "RightButtonUp")

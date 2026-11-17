@@ -801,6 +801,37 @@ test("the Unlock mode lists every frame with its switch; Cancel puts the switche
     ns.SetMoving(false)
 end)
 
+test("the Unlock mode never starts in a fight, lists module icons and darkens a frame switched off", function()
+    local XPA = { name = "Gulli-XP", enabled = true, loaded = true,
+                  meta = { ["X-Gulli-Module"] = "XP", Title = "Gulli-XP", IconTexture = "Interface\\AddOns\\Gulli-XP\\icon" } }
+    Fake({ addons = { XPA } })
+    local ns = Load()
+    local S = ns.Skin
+    local on, moved = true, nil
+    local bar = CreateFrame("Frame")
+    S.Mover(bar, { label = "XP bar" })
+    GulliToolkit.Register({ key = "XP", open = function() end, move = function(v) moved = v end,
+        frames = { { key = "bar", icon = "Interface\\Icons\\Spell_Holy_Heal", get = function() return on end,
+                     set = function(v) on = v end, frame = function() return bar end } } })
+    local row
+    for _, r in ipairs(ns.List()) do if r.key == "XP" then row = r end end
+    eq(ns.Frames()[1].icon, row.icon, "a module frame shows the module's own icon")
+    _G.InCombatLockdown = function() return true end
+    eq(ns.SetMoving(true), nil, "a fight refuses the start")
+    eq(ns.moving, false); eq(moved, nil, "no module is asked to move in a fight")
+    GulliToolkit.Unlock()
+    eq(ns.moving, false)
+    _G.InCombatLockdown = nil
+    ns.SetMoving(true)
+    eq(bar.mover.off, false)
+    ns.SetFrameShown(ns.Frames()[1], false)
+    eq(bar.mover.off, true, "the switched off frame is darkened")
+    assert(bar.mover.name.text:GetText():find(ns.L.UNLOCK_OFF, 1, true), "and marked hidden")
+    ns.SetFrameShown(ns.Frames()[1], true)
+    eq(bar.mover.off, false)
+    ns.SetMoving(false)
+end)
+
 test("an edit box hint hides while there is text, even after the module sets OnTextChanged", function()
     Fake({ addons = { QC } })
     local ns = Load()
