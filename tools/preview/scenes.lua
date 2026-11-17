@@ -851,6 +851,13 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
         ns.Window():Show()
         ns.ShowTab(3)
     end } }
+-- Away from the auction house: the longest footer line (the estimate) in German.
+S.crates.estimate_de = { spec = crSpec("deDE"), open = function(ns, W)
+    crIcons(W)
+    ns.Window():Show()
+    ns.Calculate()
+    ns.Refresh()
+end }
 -- The Favor tab: 30 Merchant's Favor from the crates in the bags and the auction house.
 local function crFavor(locale)
     local sp = crSpec(locale)
