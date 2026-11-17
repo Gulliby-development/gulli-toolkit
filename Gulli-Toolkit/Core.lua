@@ -475,7 +475,8 @@ function ns.SetEnabled(row, on)
     if not row.addon then return end
     setEnabled(row.addon, on)
     local took = isOn(row.addon) == on
-    if not took then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
+    -- The first setup switches many at once and reports them in one line (ns.ApplySetup).
+    if not took and not ns.quietSwitch then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
     if ns.Refresh then ns.Refresh() end
     return took
 end

@@ -38,12 +38,16 @@ test("Deadmines for a level 18 human: in the log, can take, needs an earlier que
     local ns = Load()
     local q = ns.Quests("DM", 18)
     eq(ids(q.log), "168")
-    eq(ids(q.take), "65,167,373,2040,92742,92744",
-       "the Westfall chains, Oh Brother, The Unsent Letter and Underground Assault")
-    local later = {}
+    eq(ids(q.take), "65,167,373,2040,92744",
+       "the Westfall chains (one card each), Oh Brother, The Unsent Letter and Underground Assault")
+    local later, take = {}, {}
     for _, x in ipairs(q.later) do later[x.id] = x.why end
+    for _, x in ipairs(q.take) do take[x.id] = x end
     eq(later[214], "WHY_EARLIER", "Red Silk Bandanas needs Westfall Stew first")
-    eq(later[166], "WHY_EARLIER")
+    eq(take[65].head.id, 166, "the Defias chain is one card, named by its last step")
+    eq(take[65].head.name, "The Defias Brotherhood")
+    eq(take[92744].head.id, 92819, "two quests that lead to one end share its card")
+    eq(later[166], nil, "a later step is no card of its own")
     eq(later[1654], nil, "a paladin quest is not for a warrior")
 end)
 
@@ -51,10 +55,10 @@ test("done quests are counted; an earlier quest in the log is enough for one-of 
     Fake({ done = { [167] = true, [155] = true } })
     local ns = Load()
     local q = ns.Quests("DM", 14)
-    eq(q.done, 2)
-    eq(ids(q.finished), "155,167", "the done quests are listed for the Done filter")
+    eq(q.done, 1, "a chain counts once, when its last step is done")
+    eq(ids(q.finished), "167", "the done quests are listed for the Done filter")
     local c = ns.Counts("DM", 14)
-    eq(c.done, 2)
+    eq(c.done, 1)
     eq(c.log + c.take + c.later, #q.log + #q.take + #q.later, "counts match the lists")
     local take, later = {}, {}
     for _, x in ipairs(q.take) do take[x.id] = true end
@@ -221,7 +225,7 @@ test("quests carry who takes them back, their chain step, mobs and the missing e
     assert(stew and stew.need, "Red Silk Bandanas names what is missing")
     eq(stew.need.id, 155)
     eq(ns.NeedText(stew.need), "Needs The Defias Brotherhood (The Defias Traitor, Westfall)")
-    local vc = later[166]
+    local vc = ns.Quest(166, 22)
     eq(vc.turnin.who, "Gryan Stoutmantle")
     assert(vc.steps > 1 and vc.step == vc.steps, "the last step of the Defias chain")
     eq(vc.targets[1], "Edwin VanCleef")
@@ -253,7 +257,9 @@ test("hidden quests and the search", function()
     eq(#ns.Quests("DM", 18).hidden, 0)
     local found = ns.Quests("DM", 18, "oh brother")
     eq(#found.take, 1); eq(found.take[1].id, 167)
-    eq(#ns.Quests("DM", 18, "VanCleef").later, 1, "found by the mob it needs")
+    local vc = ns.Quests("DM", 18, "VanCleef")
+    eq(#vc.take, 1, "a chain is found by the mob its last step needs")
+    eq(vc.take[1].head.id, 166)
 end)
 
 test("the dungeon key in the header follows its switch", function()
@@ -311,7 +317,7 @@ test("hub: a summary line, reset and the switches", function()
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     local line = reg.summary()
-    eq(line, "The Deadmines: 1 in log, 6 to pick up")
+    eq(line, "The Deadmines: 1 in log, 5 to pick up")
     eq(#reg.options, 5)
     for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
     reg.options[1].set(false)
@@ -717,7 +723,10 @@ test("levelling chains: only the guide's chains while mainOnly is on, every ques
     local function all(q)
         local t = {}
         for _, l in ipairs({ q.log, q.take, q.later, q.hidden }) do
-            for _, x in ipairs(l) do t[x.id] = x end
+            for _, x in ipairs(l) do
+                t[x.id] = x
+                for _, m in ipairs(x.members or {}) do t[m] = t[m] or x end
+            end
         end
         return t
     end
@@ -782,6 +791,83 @@ test("the tracker: ready quests first, objectives, quests to take; Lead me shows
     assert(ns.TrackerFrame():IsShown(), "unlocked, it shows")
     ns.Set("trackerLocked", true)
     assert(not ns.TrackerFrame():IsShown(), "locked with nothing tracked, it hides")
+end)
+
+test("chains: one card per chain, at the step to do now; the tracker opens one to show its steps", function()
+    Fake({ level = 18, done = { [65] = true, [132] = true, [135] = true }, active = { [141] = true } })
+    local ns = Load()
+    local q = ns.Quests("DM", 18)
+    local card
+    for _, x in ipairs(q.log) do if x.head and x.head.id == 166 then card = x end end
+    assert(card, "the Defias chain is in the log at its step in the log")
+    eq(card.id, 141)
+    eq(#card.members, 7)
+    for _, l in ipairs({ q.take, q.later, q.finished }) do
+        for _, x in ipairs(l) do assert(not (x.head and x.head.id == 166), "the chain shows once") end
+    end
+    local items = ns.TrackerItems("DM", 18)
+    local row
+    for _, it in ipairs(items) do if it.key == 166 then row = it end end
+    assert(row, "the chain is one tracker row")
+    eq(row.id, 141, "a click on the map or the journal goes to the step to do now")
+    eq(row.name, "The Defias Brotherhood")
+    eq(row.lines[1].text, "Step 4 of 7:  " .. card.name, "which step the chain is at")
+    eq(#row.steps, 7)
+    ns.StartGuide("DM")
+    eq(ns.TrackerOpen(166), false)
+    ns.ToggleTracked(166)
+    eq(ns.TrackerOpen(166), true, "a click opens the row to show every step")
+    ns.ToggleTracked(166)
+    eq(ns.TrackerOpen(166), false)
+    -- The whole chain done: one done chain.
+    W.done = { [65] = true, [132] = true, [135] = true, [141] = true, [142] = true, [155] = true, [166] = true }
+    W.active = {}
+    local finished = 0
+    for _, x in ipairs(ns.Quests("DM", 18).finished) do if x.head and x.head.id == 166 then finished = finished + 1 end end
+    eq(finished, 1)
+end)
+
+test("a pin button near the giver targets and marks them, out of combat only", function()
+    Fake({})
+    local ns = Load()
+    local target, mark = nil, nil
+    UnitExists = function(u) return u == "target" and target ~= nil end
+    local name = UnitName
+    UnitName = function(u) if u == "target" then return target end return name(u) end
+    GetRaidTargetIndex = function() return mark end
+    SetRaidTarget = function(_, i) mark = (mark ~= i) and i or nil end
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "nobody targeted")
+    target = "Defias Pillager"
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "another target is not marked")
+    eq(mark, nil)
+    target = "Gryan Stoutmantle"
+    eq(ns.MarkTarget("Gryan Stoutmantle"), true)
+    eq(mark, 3, "a diamond")
+    ns.MarkTarget("Gryan Stoutmantle")
+    eq(mark, 3, "a second click keeps the mark")
+    issecretvalue = function() return true end
+    mark = nil
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "a secret name is not compared")
+    issecretvalue = nil
+    -- The secure button over the pin: its macro targets by name, its click pins and marks.
+    local pinned
+    local btn = W.stub()
+    btn.GetCenter = function() return 100, 200 end
+    btn.GetEffectiveScale = function() return 1 end
+    btn:SetScript("OnClick", function() pinned = true end)
+    UIParent.GetEffectiveScale = function() return 1 end
+    W.combat = true
+    eq(ns.TargetOver(btn, "Gryan Stoutmantle"), false, "never in combat")
+    W.combat = false
+    eq(ns.TargetOver(btn, "Gryan Stoutmantle"), true)
+    local o = ns.TargetOverlay()
+    eq(o.who, "Gryan Stoutmantle", "the macro targets by name")
+    mark = nil
+    o:GetScript("PostClick")(o, "LeftButton", true)
+    eq(pinned, nil, "nothing on the press")
+    o:GetScript("PostClick")(o, "LeftButton", false)
+    eq(pinned, true, "the pin's own click runs")
+    eq(mark, 3)
 end)
 
 W.finish()

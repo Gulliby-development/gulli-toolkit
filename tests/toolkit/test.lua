@@ -1105,6 +1105,42 @@ test("first setup: Apply switches as picked, a module that cannot pause asks for
     eq(W.reloaded, false, "nothing that needs a reload was picked")
 end)
 
+test("first setup: the reload gets its own click, and a failed module never stops the rest", function()
+    Fake({ addons = { mod("XP"), mod("Mail"), mod("Bulletin") } })
+    local ns = Load()
+    local win, plan = ns.OpenSetup()
+    for _, p in ipairs(plan) do p.on = false end
+    eq(ns.SetupNeedsReload(plan), true)
+    local real = ns.Switch
+    ns.Switch = function(row, on)
+        if row.key == "Mail" then error("boom") end
+        return real(row, on)
+    end
+    win.apply:GetScript("OnClick")(win.apply)
+    ns.Switch = real
+    eq(W.reloaded, false, "the click that switches does not reload")
+    eq(win:IsShown(), true, "the window stays for the reload")
+    eq(win.apply:GetText(), ns.L.SETUP_RELOAD)
+    eq(GulliToolkitDB.setup, true)
+    for _, row in ipairs(ns.List()) do
+        if row.key ~= "Mail" then eq(row.on, false, row.key .. " was switched off") end
+    end
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(W.reloaded, true, "the second click reloads")
+end)
+
+test("first setup: a switch changed after Apply applies again before the reload", function()
+    Fake({ addons = { mod("XP"), mod("Mail") } })
+    local ns = Load()
+    local win, plan = ns.OpenSetup()
+    planBy(plan).XP.on = false
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(win.apply:GetText(), ns.L.SETUP_RELOAD)
+    planBy(plan).XP.on = true
+    eq(ns.SetupNeedsReload(plan), true, "XP is off in the game now")
+    eq(ns.ApplySetup(plan), 1, "XP goes back on")
+end)
+
 test("first setup: the window opens by itself only when the toolkit has no settings yet", function()
     Fake({ addons = { mod("Merchant") } })
     local ns = Load()

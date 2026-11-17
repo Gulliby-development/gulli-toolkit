@@ -335,30 +335,74 @@ function ns.ShownSet(key)
     if ns.Get("mainOnly") then return ns.MainSet(key) end
 end
 
--- The quests of a dungeon for this character, split in three lists and a done count:
--- log (in the quest log), take (can take now), later (level too low or an earlier quest missing).
--- Quests the player hid go to `hidden` instead; `filter` is a text to find in the name, the
--- quest givers or the mobs. Only the levelling chains count while ns.ShownSet gives them;
--- `more` is how many other quests of the dungeon are for this character then.
+-- The quests of a dungeon for this character, one entry per chain: the quests of a chain show
+-- as one card, named by its last step in the dungeon (`head`), whose state is the state of the
+-- step to do now (the first of its dungeon steps that is not done). Lists: log (in the quest
+-- log), take (can take now), later (level too low or an earlier quest missing), and a done
+-- count of whole chains. A chain with a step the player hid goes to `hidden` instead;
+-- `filter` is a text to find in the name, the quest givers or the mobs of any of its steps.
+-- Only the levelling chains count while ns.ShownSet gives them; `more` is how many other
+-- quests of the dungeon are for this character then.
+local NOW = { log = 1, take = 2, later = 3 }
 function ns.Quests(key, level, filter)
     local D = data()
     local out = { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0, more = 0 }
     local main, shown = ns.MainSet(key), ns.ShownSet(key)
+    local mine, order = {}, {}
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
         if q and forMe(q) and shown and not shown[id] then
             out.more = out.more + 1
-        elseif q and forMe(q) then
+        elseif q and forMe(q) and not mine[id] then
             local entry = entryOf(id, q)
             entry.main = main ~= nil and main[id] == true
-            local state = stateOf(entry, q, level)
-            if state == "done" then
-                out.done = out.done + 1
-                if matches(entry, filter) then out.finished[#out.finished + 1] = entry end
-            elseif state ~= "closed" and matches(entry, filter) then
-                local list = out[state]
-                list[#list + 1] = entry
-            end
+            entry.state = stateOf(entry, q, level)
+            mine[id] = entry
+            order[#order + 1] = id
+        end
+    end
+    -- The head of a quest: the last step of its chain that is a quest of this list (two
+    -- quests that both lead to it, such as Testing the Wells and Murloc Gills, share it).
+    local chainOf = function(id) return (D.chain and D.chain[id]) or { id } end
+    local groups, heads = {}, {}
+    for _, id in ipairs(order) do
+        local chain, head = chainOf(id), id
+        for i = #chain, 1, -1 do
+            if mine[chain[i]] then head = chain[i] break end
+        end
+        if not groups[head] then groups[head] = {}; heads[#heads + 1] = head end
+        local g = groups[head]
+        g[#g + 1] = id
+    end
+    for _, head in ipairs(heads) do
+        local ids, chain = groups[head], chainOf(head)
+        local pos = function(id) for i, c in ipairs(chain) do if c == id then return i end end return 0 end
+        table.sort(ids, function(a, b) return pos(a) < pos(b) end)
+        -- A step before a done one counts as done too (the game may not flag every old step).
+        local last = 0
+        for i, id in ipairs(ids) do if mine[id].state == "done" then last = i end end
+        -- The step to do now: one in the log first, then one to take, then one for later.
+        local cur, hidden, found = nil, nil, false
+        for i, id in ipairs(ids) do
+            local e = mine[id]
+            if e.state == "hidden" then hidden = hidden or e end
+            if i > last and NOW[e.state] and (not cur or NOW[e.state] < NOW[cur.state]) then cur = e end
+            if filter and filter ~= "" and matches(e, filter) then found = true end
+        end
+        local h = mine[head]
+        local entry = hidden or cur or h
+        if #ids > 1 then
+            entry.head = { id = head, name = h.name, level = h.level }
+            entry.members = ids
+        end
+        if not filter or filter == "" then found = true end
+        local state = hidden and "hidden" or (cur and cur.state) or h.state
+        if state == "done" then
+            out.done = out.done + 1
+            if found then out.finished[#out.finished + 1] = entry end
+        elseif state ~= "closed" and found then
+            local list = out[state]
+            list[#list + 1] = entry
         end
     end
     local byLevel = function(a, b) if a.level ~= b.level then return a.level < b.level end return a.name < b.name end
@@ -441,10 +485,12 @@ function ns.Track(id)
     return ns.Tracked(id)
 end
 
--- The tracker's rows for a dungeon, at most ns.TRACK_MAX: quests ready to hand in, the rest of
--- the log with their objectives, the ones to take, then chain quests that wait for an earlier
--- step. { id, name, level, state = ready|log|take|chain, lines = { { text, done } },
--- pin = { who, area, x, y } or nil }, then how many are ready and how many there are.
+-- The tracker's rows for a dungeon, at most ns.TRACK_MAX, one per chain (ns.Quests): ready to
+-- hand in, the rest of the log with their objectives, the ones to take, then chains that wait
+-- for an earlier step. { id (the step to do now), key (the chain's head), name (the head's),
+-- level, state = ready|log|take|chain, lines = { { text, done } }, steps (ns.Chain of the step,
+-- for a row opened by a click) or nil, pin = { who, area, x, y } or nil }, then how many are
+-- ready and how many there are. A chain's first line says which step it is at.
 ns.TRACK_MAX = 8
 local TRACK_ORDER = { ready = 1, log = 2, take = 3, chain = 4 }
 function ns.TrackerItems(key, level)
@@ -456,7 +502,7 @@ function ns.TrackerItems(key, level)
         end
     end
     for _, e in ipairs(q.log) do
-        local it = { id = e.id, name = e.name, level = e.level, state = "log", lines = {} }
+        local it = { id = e.id, name = e.name, level = e.level, state = "log", lines = {}, entry = e }
         local t = e.turnin
         if Q.IsComplete and Q.IsComplete(e.id) then
             it.state, ready = "ready", ready + 1
@@ -474,16 +520,32 @@ function ns.TrackerItems(key, level)
         local where = ns.Where(e)
         all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
                           lines = { { text = where ~= "" and L.TR_TAKE:format(where) or L.Q_TAKE } },
-                          pin = pinOf(e.who, e.area, e.x, e.y) }
+                          pin = pinOf(e.who, e.area, e.x, e.y), entry = e }
     end
     for _, e in ipairs(q.later) do
         if e.why == "WHY_EARLIER" and e.need and e.need.name then
             local n = e.need
             all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "chain",
-                              lines = { { text = "» " .. ns.NeedText(n) } }, pin = pinOf(n.who, n.area, n.x, n.y) }
+                              lines = { { text = "» " .. ns.NeedText(n) } }, pin = pinOf(n.who, n.area, n.x, n.y),
+                              entry = e }
         end
     end
     local total = #all
+    for _, it in ipairs(all) do
+        local e = it.entry
+        it.entry = nil
+        it.key = e.head and e.head.id or e.id
+        if e.head and e.head.id ~= e.id then it.name = e.head.name end
+        local chain = ns.Chain(e.id)
+        if #chain > 1 then
+            it.steps = chain
+            local at
+            for _, st in ipairs(chain) do if st.this then at = st.n end end
+            if at then
+                table.insert(it.lines, 1, { text = L.STEP:format(at, #chain) .. ":  " .. e.name, step = true })
+            end
+        end
+    end
     table.sort(all, function(a, b)
         if a.state ~= b.state then return TRACK_ORDER[a.state] < TRACK_ORDER[b.state] end
         if a.level ~= b.level then return a.level < b.level end
@@ -937,6 +999,22 @@ end
 
 -- A map pin on someone the data places on a zone map (a quest giver, a turn-in, a chain step).
 -- Returns false when the spot is not on an outdoor map (inside a dungeon, an item).
+-- The raid mark a quest giver gets when a pin button targets them (3, the diamond).
+ns.MARK = 3
+
+-- After a pin button's secure click targeted who: marks the target when it is them. The game
+-- may hand back a secret name; then nothing is marked. A mark the target already has stays
+-- (setting the same one again would take it off).
+function ns.MarkTarget(who)
+    if not who or who == "" or not (UnitExists and UnitExists("target")) then return false end
+    local name = UnitName("target")
+    if issecretvalue and issecretvalue(name) then return false end
+    if name ~= who then return false end
+    if GetRaidTargetIndex and GetRaidTargetIndex("target") == ns.MARK then return true end
+    if SetRaidTarget then SetRaidTarget("target", ns.MARK) end
+    return true
+end
+
 function ns.PinAt(who, area, x, y, open)
     if not area or area == 0 or not x or (x == 0 and y == 0) then return false end
     return ns.SetPin({ who = who ~= "" and who or "?", zone = areaName(area), x = x, y = y }, open)

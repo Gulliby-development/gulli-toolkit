@@ -1,8 +1,9 @@
 -- The dungeon tracker: a small Gulli HUD panel on the right of the screen for the dungeon of
 -- Lead me (ns.ShowTracker). It lists the dungeon's quests (ns.TrackerItems): ready to hand in,
 -- in the log with their objectives, to take, and chain quests that wait for an earlier step.
--- A click on a row opens the quest in the journal; the map button pins who to go to. The cross
--- closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
+-- A chain is one row with the step it is at; a click opens it to show every step, a right-click
+-- opens the quest in the journal; the map button pins who to go to (and targets and marks them
+-- when they are near, ns.TargetOver). The cross closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
 
 local _, ns = ...
 local L = ns.L
@@ -18,6 +19,30 @@ local STATE_ICON = {
 local PIN_ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
 local tracker
+local opened = {}
+local STEP_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", missing = "Interface\\RaidFrame\\ReadyCheck-NotReady",
+                    active = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
+
+-- Whether a chain's row shows its steps, and a switch for it.
+function ns.TrackerOpen(key) return opened[key] == true end
+function ns.ToggleTracked(key)
+    opened[key] = not opened[key] or nil
+    ns.RefreshTracker()
+end
+
+-- The lines of a row: its own, then its chain's steps while it is open.
+local function rowLines(it)
+    local lines = {}
+    for _, l in ipairs(it.lines) do lines[#lines + 1] = l end
+    if it.steps and opened[it.key] then
+        for _, st in ipairs(it.steps) do
+            local k = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
+            local mark = k and ("|T" .. STEP_ICON[k] .. ":12|t ") or "|cff666666·|r  "
+            lines[#lines + 1] = { text = mark .. st.n .. ".  " .. st.name, stepOf = st }
+        end
+    end
+    return lines
+end
 
 -- Opens the journal on the quest's page.
 function ns.OpenTracked(key, id)
@@ -36,7 +61,19 @@ local function place()
 end
 
 local function rowHeight(it)
-    return PAD + NAME_H + #it.lines * LINE_H + PAD
+    return PAD + NAME_H + #rowLines(it) * LINE_H + PAD
+end
+
+local function lineOf(r, i)
+    if not r.lines[i] then
+        local t = S.Text(r, 12, S.MUTED)
+        t:SetPoint("TOPLEFT", 30, -(PAD + NAME_H + (i - 1) * LINE_H))
+        t:SetPoint("RIGHT", -32, 0)
+        t:SetJustifyH("LEFT")
+        t:SetWordWrap(false)
+        r.lines[i] = t
+    end
+    return r.lines[i]
 end
 
 local function makeRow(parent)
@@ -51,14 +88,6 @@ local function makeRow(parent)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
     r.lines = {}
-    for i = 1, 3 do
-        local t = S.Text(r, 12, S.MUTED)
-        t:SetPoint("TOPLEFT", 30, -(PAD + NAME_H + (i - 1) * LINE_H))
-        t:SetPoint("RIGHT", -32, 0)
-        t:SetJustifyH("LEFT")
-        t:SetWordWrap(false)
-        r.lines[i] = t
-    end
     r.pin = CreateFrame("Button", nil, r)
     r.pin:SetSize(22, 22)
     r.pin:SetPoint("TOPRIGHT", -6, -PAD + 2)
@@ -68,22 +97,37 @@ local function makeRow(parent)
         local it = self:GetParent().item
         if it and it.pin then ns.PinAt(it.pin.who, it.pin.area, it.pin.x, it.pin.y, true) end
     end)
+    local function pinTip(owner, it)
+        if not (GameTooltip and it and it.pin) then return end
+        GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+        GameTooltip:AddLine(L.TR_PIN:format(it.pin.who), 1, 1, 1)
+        GameTooltip:AddLine(L.TR_TARGET, 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+    end
     r.pin:SetScript("OnEnter", function(self)
         local it = self:GetParent().item
-        if not (GameTooltip and it and it.pin) then return end
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine(L.TR_PIN:format(it.pin.who), 1, 1, 1)
-        GameTooltip:Show()
+        if not (it and it.pin) then return end
+        pinTip(self, it)
+        if ns.TargetOver then ns.TargetOver(self, it.pin.who, function(o) pinTip(o, it) end) end
     end)
     r.pin:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    r:SetScript("OnClick", function(self)
-        if self.item and tracker.key then ns.OpenTracked(tracker.key, self.item.id) end
+    if r.RegisterForClicks then r:RegisterForClicks("LeftButtonUp", "RightButtonUp") end
+    r:SetScript("OnClick", function(self, button)
+        local it = self.item
+        if not (it and tracker.key) then return end
+        if it.steps and button ~= "RightButton" then ns.ToggleTracked(it.key) return end
+        ns.OpenTracked(tracker.key, it.id)
     end)
     r:SetScript("OnEnter", function(self)
         if not (GameTooltip and self.item) then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine(self.item.name, 1, 0.82, 0)
-        GameTooltip:AddLine(L.TR_OPEN, 1, 1, 1)
+        if self.item.steps then
+            GameTooltip:AddLine(opened[self.item.key] and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
+            GameTooltip:AddLine(L.TR_OPEN_RIGHT, 1, 1, 1)
+        else
+            GameTooltip:AddLine(L.TR_OPEN, 1, 1, 1)
+        end
         GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -97,13 +141,18 @@ local function fillRow(r, it)
     r.name:SetText(it.name)
     local diff = ns.Difficulty(it.level or 1, ns.level or UnitLevel("player") or 1)
     r.name:SetTextColor(unpack(ns.DiffColor(diff)))
+    local lines = rowLines(it)
+    for i = 1, #lines do lineOf(r, i) end
     for i, t in ipairs(r.lines) do
-        local line = it.lines[i]
+        local line = lines[i]
         t:SetShown(line ~= nil)
         if line then
             t:SetText(line.text)
-            local c = S.MUTED
-            if it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.WARN
+            local c, st = S.MUTED, line.stepOf
+            if st then
+                c = (st.this and S.Accent()) or (st.missing and S.BAD) or (st.done and S.FAINT) or S.MUTED
+            elseif line.step then c = S.Accent()
+            elseif it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.WARN
             elseif line.done then c = S.FAINT end
             t:SetTextColor(unpack(c))
         end

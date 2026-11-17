@@ -10,7 +10,7 @@
 ## Notes-zhCN: 地下城手册：首领、掉落及几率、心愿单，以及每个副本的任务和接取路线。 /gdj
 ## Notes-zhTW: 地下城手册：首领、掉落及几率、心愿单，以及每个副本的任务和接取路线。 /gdj
 ## Author: Gulliby
-## Version: 2.8.0
+## Version: 2.9.0
 ## IconTexture: Interface\AddOns\Gulli-DungeonPrep\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: DungeonPrep
