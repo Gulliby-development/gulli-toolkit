@@ -94,7 +94,7 @@ local function plain(s)
     return s
 end
 local function ulen(s) local _, n = s:gsub("[^\128-\191]", ""); return n end
-local EM = { body = 0.5, bold = 0.51, title = 0.58 }
+local EM = { body = 0.53, bold = 0.55, title = 0.6 }
 local function textWidth(s, size, face)
     local w, em = 0, EM[face or "body"] or 0.5
     for line in (plain(s) .. "\n"):gmatch("(.-)\n") do

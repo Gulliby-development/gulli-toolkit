@@ -225,10 +225,29 @@ local UPPER = { ["\209\145"] = "\208\129", ["\196\133"] = "\196\132", ["\196\135
 for b = 176, 191 do UPPER["\208" .. string.char(b)] = "\208" .. string.char(b - 32) end -- а..п
 for b = 128, 143 do UPPER["\209" .. string.char(b)] = "\208" .. string.char(b + 32) end -- р..я
 for b = 160, 190 do if b ~= 183 then UPPER["\195" .. string.char(b)] = "\195" .. string.char(b - 32) end end
+local function upperPlain(text)
+    text = text:upper()
+    return (text:gsub("[\195-\209][\128-\191]", function(c) return UPPER[c] end))
+end
+-- Colour codes (|cff..., |r), links (|H...|h) and textures (|T...|t) keep their case.
 function S.Upper(text)
     if text == nil then return nil end
-    text = tostring(text):upper()
-    return (text:gsub("[\195-\209][\128-\191]", function(c) return UPPER[c] end))
+    text = tostring(text)
+    if not text:find("|", 1, true) then return upperPlain(text) end
+    local out, i, n = {}, 1, #text
+    while i <= n do
+        local a = text:find("|", i, true)
+        if not a then out[#out + 1] = upperPlain(text:sub(i)); break end
+        out[#out + 1] = upperPlain(text:sub(i, a - 1))
+        local k = text:sub(a + 1, a + 1)
+        local stop = a + 1
+        if k == "c" then stop = a + 9
+        elseif k == "H" then stop = (text:find("|h", a + 2, true) or n) + 1
+        elseif k == "T" or k == "A" then stop = (text:find("|" .. k:lower(), a + 2, true) or n) + 1 end
+        out[#out + 1] = text:sub(a, stop)
+        i = stop + 1
+    end
+    return table.concat(out)
 end
 
 function S.Hex(c)
@@ -1821,6 +1840,8 @@ local function dock(f, host, opts)
     S.SetBorder(f, S.CLEAR)
     S.ShowGlass(f, false)
     S.Fill(f.bar, S.CLEAR)
+    -- The hub's header has the gold line; a page inside it gets a plain one.
+    if rawget(f, "headLine") then f.headLine:SetVertexColor(S.LINE[1], S.LINE[2], S.LINE[3], S.LINE[4]) end
     f.close:Hide()
     if not f.back then
         f.back = backButton(f.bar, function() if f.dockOpts and f.dockOpts.back then f.dockOpts.back(f) end end)
@@ -1872,6 +1893,10 @@ local function undock(f)
     S.SetBorder(f, S.GLASS_EDGE)
     S.ShowGlass(f, true)
     S.Fill(f.bar, S.HEAD)
+    if rawget(f, "headLine") then
+        local c = S.HEAD_LINE
+        f.headLine:SetVertexColor(c[1], c[2], c[3], c[4])
+    end
     if f.back then f.back:Hide() end
     f.close:Show()
     f.iconBox:ClearAllPoints()
@@ -1912,6 +1937,7 @@ function S.Window(name, title, width, height, opts)
     line:SetPoint("BOTTOMLEFT")
     line:SetPoint("BOTTOMRIGHT")
     line:SetHeight(1)
+    f.headLine = line
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
     bar:SetScript("OnDragStart", function() if not f.docked then f:StartMoving() end end)
