@@ -179,8 +179,11 @@ end
 -- bar is built here when it was not yet (a login in a fight), so the first Unlock places it too.
 function ns.Move(on)
     moving = on and true or false
-    if not built and not InCombatLockdown() then build(); ns.ApplyKey() end
-    if built then layout() end
+    -- The bar's buttons are secure: in a fight layout() would change their attributes, so the
+    -- bar waits for PLAYER_REGEN_ENABLED, which lays it out again.
+    if InCombatLockdown() then return end
+    if not built then build(); ns.ApplyKey() end
+    layout()
 end
 
 -- The bar for the hub's Unlock mode.

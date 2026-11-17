@@ -108,8 +108,10 @@ end
 function ns.MoveCard(on)
     if not ns.db then return end
     ns.movingCard = on and true or nil
+    -- The card holds the secure Target button: the game refuses to show or hide it in a fight.
+    if InCombatLockdown and InCombatLockdown() then return end
     if not card then buildCard() end
-    card:SetMoving(on and not (InCombatLockdown and InCombatLockdown()))
+    card:SetMoving(on)
     if on then
         card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", title = L.TITLE, text = L.CARD_D,
                    kind = "bad" })

@@ -896,6 +896,26 @@ test("the bar starts hidden, once also for older saves, and the hub's switch kee
     ns.Move(false)
 end)
 
+test("the Unlock mode in a fight never touches the secure buttons", function()
+    Fake { db = { show = "always" } }
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    local ns = Load()
+    GulliToolkit = nil
+    assert(got.frames[1].frame(), "the bar is built out of combat")
+    local sets = 0
+    for name, f in pairs(_G) do
+        if type(name) == "string" and name:find("^GulliGroupBuffsButton") and type(f) == "table" then
+            rawset(f, "SetAttribute", function() sets = sets + 1 end)
+        end
+    end
+    W.combat = true
+    ns.Move(true)
+    ns.Move(false)
+    eq(sets, 0, "no SetAttribute in combat lockdown")
+    W.combat = false
+end)
+
 test("every language has every key with the same placeholders", function()
     Fake {}
     local ns = Load()

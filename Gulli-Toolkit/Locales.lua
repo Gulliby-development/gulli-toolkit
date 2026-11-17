@@ -236,6 +236,8 @@ T.en = {
     FR_QuickChat = "Phrase panel",
     FR_MobFinder = "Rare card",
     FR_FarmTrack = "Farm panel",
+    UNLOCK_OFF = "hidden",
+    UNLOCK_COMBAT = "Frames can be placed only out of combat.",
 }
 
 T.de = {
@@ -465,6 +467,8 @@ T.de = {
     FR_QuickChat = "Phrasenleiste",
     FR_MobFinder = "Rare-Karte",
     FR_FarmTrack = "Farm-Leiste",
+    UNLOCK_OFF = "versteckt",
+    UNLOCK_COMBAT = "Rahmen lassen sich nur außerhalb des Kampfes platzieren.",
 }
 
 T.es = {
@@ -694,6 +698,8 @@ T.es = {
     FR_QuickChat = "Panel de frases",
     FR_MobFinder = "Tarjeta de raro",
     FR_FarmTrack = "Panel de farmeo",
+    UNLOCK_OFF = "oculto",
+    UNLOCK_COMBAT = "Los marcos solo se pueden colocar fuera de combate.",
 }
 
 T.fr = {
@@ -923,6 +929,8 @@ T.fr = {
     FR_QuickChat = "Panneau de phrases",
     FR_MobFinder = "Carte de rare",
     FR_FarmTrack = "Panneau de farm",
+    UNLOCK_OFF = "masqué",
+    UNLOCK_COMBAT = "Les cadres ne se placent qu'hors combat.",
 }
 
 T.pl = {
@@ -1152,6 +1160,8 @@ T.pl = {
     FR_QuickChat = "Panel fraz",
     FR_MobFinder = "Karta rzadkiego",
     FR_FarmTrack = "Panel farmienia",
+    UNLOCK_OFF = "ukryte",
+    UNLOCK_COMBAT = "Ramki można ustawiać tylko poza walką.",
 }
 
 T.pt = {
@@ -1381,6 +1391,8 @@ T.pt = {
     FR_QuickChat = "Painel de frases",
     FR_MobFinder = "Cartão de raro",
     FR_FarmTrack = "Painel de farm",
+    UNLOCK_OFF = "oculto",
+    UNLOCK_COMBAT = "Os quadros só podem ser posicionados fora de combate.",
 }
 
 T.ru = {
@@ -1610,6 +1622,8 @@ T.ru = {
     FR_QuickChat = "Панель фраз",
     FR_MobFinder = "Карточка редкого",
     FR_FarmTrack = "Панель фарма",
+    UNLOCK_OFF = "скрыто",
+    UNLOCK_COMBAT = "Окна можно расставлять только вне боя.",
 }
 
 T.zh = {
@@ -1839,6 +1853,8 @@ T.zh = {
     FR_QuickChat = "短语面板",
     FR_MobFinder = "稀有卡片",
     FR_FarmTrack = "刷取面板",
+    UNLOCK_OFF = "已隐藏",
+    UNLOCK_COMBAT = "只能在脱离战斗时摆放框体。",
 }
 
 ns.T = T
