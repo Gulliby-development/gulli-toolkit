@@ -146,15 +146,27 @@ function ns.SetupDone()
     GulliToolkitDB.setup = true
 end
 
--- Switches every module as picked. Returns how many switches changed.
+-- Reads each module's row again after a switch, so a second Apply compares with the game's state.
+function ns.SetupRows(plan)
+    local by = {}
+    for _, row in ipairs(ns.List()) do by[row.key] = row end
+    for _, p in ipairs(plan) do p.row = by[p.row.key] or p.row end
+end
+
+-- Switches every module as picked. Returns how many switches changed and the titles of the
+-- modules the game did not switch. One module that fails never stops the rest.
 function ns.ApplySetup(plan)
-    local n = 0
+    local n, failed = 0, {}
+    ns.quietSwitch = true
     for _, p in ipairs(plan) do
         if p.row.addon and p.row.on ~= p.on then
-            ns.Switch(p.row, p.on)
-            n = n + 1
+            local ok, took = pcall(ns.Switch, p.row, p.on)
+            if ok and took ~= false then n = n + 1
+            else failed[#failed + 1] = p.row.title or p.row.key end
         end
     end
+    ns.quietSwitch = nil
+    if #failed > 0 then ns.Print(L.SWITCH_FAILED:format(table.concat(failed, ", "))) end
     ns.SetupDone()
-    return n
+    return n, failed
 end

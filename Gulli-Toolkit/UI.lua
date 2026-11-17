@@ -1566,6 +1566,7 @@ local function makeSetupRow(r)
         if not r.item then return end
         r.item.on = not r.item.on
         self:SetChecked(r.item.on)
+        rawset(setupWin, "reloadNext", nil)
         setupStatus()
     end)
 end
@@ -1608,12 +1609,23 @@ local function buildSetup()
     setupWin.list = S.List(listCard.body, SETUP_ROW, makeSetupRow, fillSetupRow)
     setupWin.list:SetPoint("TOPLEFT")
     setupWin.list:SetPoint("BOTTOMRIGHT")
+    -- The reload gets a click of its own: in the same click as the switches the game may refuse
+    -- it ("Interface action failed because of an AddOn"), and then nothing seemed to happen.
     setupWin.apply:SetScript("OnClick", function()
+        if rawget(setupWin, "reloadNext") then ReloadUI(); return end
         local reload = ns.SetupNeedsReload(setupPlan)
         local n = ns.ApplySetup(setupPlan)
-        setupWin:Hide()
-        if reload then ReloadUI()
-        elseif n > 0 then ns.Print(L.SETUP_DONE:format(n)) end
+        if not reload then
+            setupWin:Hide()
+            if n > 0 then ns.Print(L.SETUP_DONE:format(n)) end
+            return
+        end
+        rawset(setupWin, "reloadNext", true)
+        ns.SetupRows(setupPlan)
+        setupWin.footer:SetStatus(L.SETUP_SAVED)
+        setupWin.apply:SetText(L.SETUP_RELOAD)
+        setupWin.apply:SetWidth(math.max(120, math.floor((tonumber(setupWin.apply.text:GetStringWidth()) or 100) + 28)))
+        ns.Print(L.SETUP_SAVED)
     end)
     setupWin.later:SetScript("OnClick", function() setupWin:Hide() end)
     -- Closing it any way counts: it does not open by itself again.
@@ -1625,6 +1637,7 @@ function ns.OpenSetup(auto)
     setupPlan = ns.SetupPlan()
     if auto and #setupPlan == 0 then ns.SetupDone(); return nil end
     if not setupWin then buildSetup() end
+    rawset(setupWin, "reloadNext", nil)
     if frame and frame:IsShown() then frame:Hide() end
     setupWin:Show()
     setupWin.list:SetData(setupItems())
