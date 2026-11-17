@@ -677,7 +677,7 @@ local function wheelSelect(i)
             math.floor(math.sin(slot.angle) * 104))
         wheel.say:SetText(ns.Fill(slot.phrase))
         local where = goesText(slot.phrase)
-        if wheel.clickOnly then where = where .. "\n" .. S.Hex(S.WARN) .. L.CLICK_SEND .. "|r" end
+        if ns.NeedsPress(slot.phrase) then where = where .. "\n" .. S.Hex(S.WARN) .. L.CLICK_SEND .. "|r" end
         wheel.where:SetText(where)
     else
         wheel.say:SetText(L.WHEEL_PICK)
@@ -723,8 +723,7 @@ end
 
 local function buildWheel()
     local size = 2 * (ns.WHEEL_R + 80)
-    -- A Button, not a Frame: the game counts only a button's click as the key press or click that
-    -- say, yell and channels need (a plain frame's OnMouseDown is blocked).
+    -- A button over the whole screen takes every click while the ring shows.
     wheel = CreateFrame("Button", "GulliQuickChatWheel", UIParent)
     wheel:SetAllPoints(UIParent)
     wheel:SetFrameStrata("DIALOG")
@@ -800,7 +799,6 @@ function ns.OpenWheel(hold)
     end
     if not any then return false end
     wheel.hold = hold and true or false
-    wheel.clickOnly = nil
     wheelSelect(nil)
     wheel.ring:ClearAllPoints()
     local x, y
@@ -819,17 +817,10 @@ function ns.OpenWheel(hold)
     return true
 end
 
--- The key let go (keyUp), or a click: sends the lit phrase, or just closes. A release is not a
--- key press for the game, so a phrase bound for say, yell or a numbered channel stays lit and
--- waits for a click instead of being blocked.
-function ns.WheelRelease(keyUp)
+-- The key let go, or a click: sends the lit phrase (say, yell and channels into the chat box),
+-- or just closes.
+function ns.WheelRelease()
     if not wheel or not wheel:IsShown() then return false end
-    if hovered and keyUp and ns.NeedsPress(wheel.slots[hovered].phrase) then
-        wheel.hold = false
-        wheel.clickOnly = true
-        wheelSelect(hovered)
-        return false
-    end
     if hovered then return ns.WheelSend(hovered) end
     wheel:Hide()
     return false
@@ -851,10 +842,9 @@ function ns.WheelKey(down)
         return
     end
     if down then
-        if not (wheel and wheel:IsShown()) then ns.OpenWheel(true)
-        elseif wheel.clickOnly then ns.WheelRelease() end -- a press is a key press for the game
+        if not (wheel and wheel:IsShown()) then ns.OpenWheel(true) end
     elseif wheel and wheel.hold then
-        ns.WheelRelease(true)
+        ns.WheelRelease()
     end
 end
 
