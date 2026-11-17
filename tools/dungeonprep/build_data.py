@@ -1,6 +1,10 @@
 """Builds Gulli-DungeonPrep/Data.lua from the QuestieDB Forever data.
 
-    python3 tools/dungeonprep/build_data.py <questiedb-checkout>
+    python3 tools/dungeonprep/build_data.py <questiedb-checkout> [<allthethings-checkout>]
+
+With an AllTheThings checkout (MIT, its `.contrib/.db/forever` folder is enough), every quest
+ATT lists under a dungeon belongs to it too, and ATT's faction wins over QuestieDB's race mask
+for WoW Forever's own quests (see att.py).
 
 For each dungeon: the quests that belong to it (the quest's zone is the dungeon, or a mob,
 object or drop it asks for is there), with who can take them, their faction, and who starts
@@ -14,6 +18,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "questcleaner"))
 import questie  # noqa: E402
+sys.path.insert(0, HERE)
+import att  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "..", "Gulli-DungeonPrep", "Data.lua")
 
@@ -84,6 +90,19 @@ WORDS = {
     "ALCAZ": ["Alcaz Prison"], "BLACKMAW": ["Blackmaw Hold"], "SHAPERS": ["Shaper's Terrace"],
 }
 
+# Each dungeon's file in AllTheThings' `.contrib/.db/forever/dungeons & raids/`.
+ATT_FILES = {
+    "RFC": "ragefire chasm", "WC": "wailing caverns", "DM": "the deadmines", "SFK": "shadowfang keep",
+    "BFD": "blackfathom deeps", "STOCKS": "the stockade", "GNOMER": "gnomeregan", "RFK": "razorfen kraul",
+    "SM": "scarlet monastery", "RFD": "razorfen downs", "ULDA": "uldaman", "ZF": "zul'farrak",
+    "MARA": "maraudon", "ST": "the temple of atal'hakkar", "BRD": "blackrock depths",
+    "BRS": "blackrock spire", "DIREMAUL": "dire maul", "SCHOLO": "scholomance", "STRAT": "stratholme",
+    "THANES": "hall of thanes", "LORDAERON": "ruins of lordaeron", "EXCAVATION": "excavation site - wetlands",
+    "DALARAN": "city of dalaran", "DROWNED": "the drowned city", "KROLDOK": "krol'dok stronghold",
+    "ALCAZ": "alcaz prison", "BLACKMAW": "blackmaw hold", "SHAPERS": "the shaper's terrace",
+}
+FOREVER_QUESTS = 90000
+
 # The way in of each dungeon: the zone's area id and the spot on its map in percent. Read
 # off the game's maps by hand (QuestieDB has no entrances); check one in the game when moved.
 ENTRANCES = {
@@ -130,9 +149,28 @@ def lua_list(values):
     return "{" + ",".join(str(v) for v in values) + "}"
 
 
-def main(root):
+def load_att(root):
+    """Dungeon key -> {quest id: "A" | "H" | ""} from an AllTheThings checkout, or {}."""
+    if not root:
+        return {}
+    folder = os.path.join(root, ".contrib", ".db", "forever", "dungeons & raids")
+    out = {}
+    for key, name in ATT_FILES.items():
+        path = os.path.join(folder, name + ".lua")
+        if os.path.exists(path):
+            out[key] = att.quests(path)
+        else:
+            print("no AllTheThings file for %s: %s" % (key, path))
+    return out
+
+
+def main(root, att_root=None):
     # The data files and the Forever corrections, where everything Forever added lives.
     quests, npcs, objects, items = questie.load_forever(root)
+    att_quests = load_att(att_root)
+    att_side = {}
+    for listed in att_quests.values():
+        att_side.update(listed)
 
     area_to_key = {}
     for key, areas, _, _, _ in DUNGEONS:
@@ -231,6 +269,10 @@ def main(root):
             # Cloth and leather turn-ins are level 60 everywhere; keep quests near the dungeon.
             if lo - 6 <= level <= hi + 4:
                 by_dungeon[k].append(qid)
+        # ATT lists the quest under the dungeon (checked in the game): it belongs there too.
+        for k, listed in att_quests.items():
+            if qid in listed and qid not in by_dungeon[k]:
+                by_dungeon[k].append(qid)
 
     # The first spawn in the zone, in map percent; 0, 0 when it is not on a map (inside).
     def spot(rec, spawns_key, zone):
@@ -261,7 +303,15 @@ def main(root):
     # NPCs that give and take it (QuestieDB leaves the race mask 0 on many such quests).
     ALLIANCE, HORDE = 1 + 4 + 8 + 64, 2 + 16 + 32 + 128
 
-    def faction(q):
+    def att_says(qid):
+        """ATT's faction for a Forever quest, or None: QuestieDB's race masks are sometimes
+        wrong there (Important Heirlooms is for both factions, QuestieDB says Alliance)."""
+        if qid >= FOREVER_QUESTS and qid in att_side:
+            return att_side[qid]
+
+    def faction(q, qid=None):
+        if qid is not None and att_says(qid) is not None:
+            return att_says(qid)
         races = q.get(Q_RACES) or 0
         low = races % 2 ** 32
         if races:
@@ -337,7 +387,7 @@ def main(root):
     # The whole chain a quest is in, first step first: back along the longest way, then on
     # along the longest way of quests for the same faction.
     def chain(qid):
-        side = faction(quests[qid])
+        side = faction(quests[qid], qid)
         path, cur = [qid], qid
         while len(path) < 15:
             back = [p for p in pres(cur) if p in quests and p not in path]
@@ -347,7 +397,7 @@ def main(root):
             path.insert(0, cur)
         cur = qid
         while len(path) < 15:
-            nxt = [n for n in after.get(cur, []) if n not in path and faction(quests[n]) in ("", side)]
+            nxt = [n for n in after.get(cur, []) if n not in path and faction(quests[n], n) in ("", side)]
             if not nxt:
                 break
             cur = max(nxt, key=lambda n: (rest(n), -n))
@@ -397,10 +447,11 @@ def main(root):
         fwho, farea, fx, fy = finisher(q)
         before, later = depth(qid), rest(qid)
         lines.append("[%d]={%s,%d,%d,%d,%d,%s,%d,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%d,%d}," % (
-            qid, lua_str(q.get(Q_NAME)), q.get(Q_LEVEL) or 0, q.get(Q_REQ_LEVEL) or 0, q.get(Q_RACES) or 0,
+            qid, lua_str(q.get(Q_NAME)), q.get(Q_LEVEL) or 0, q.get(Q_REQ_LEVEL) or 0,
+            0 if att_says(qid) == "" else q.get(Q_RACES) or 0,
             q.get(Q_CLASSES) or 0, lua_str(who), area or 0, lua_list(seq(q.get(Q_PRE_GROUP) or {})),
             lua_list(seq(q.get(Q_PRE_SINGLE) or {})), lua_list(seq(q.get(Q_EXCLUSIVE) or {})),
-            lua_str(faction(q)), num(x), num(y), lua_str(fwho), farea or 0, num(fx), num(fy),
+            lua_str(faction(q, qid)), num(x), num(y), lua_str(fwho), farea or 0, num(fx), num(fy),
             before + 1 if before + later else 0, before + later + 1 if before + later else 0))
     lines.append("}")
     # Quests before the dungeon quests that are not dungeon quests themselves, for their names.
@@ -454,4 +505,4 @@ def main(root):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else ".")
+    main(sys.argv[1] if len(sys.argv) > 1 else ".", sys.argv[2] if len(sys.argv) > 2 else None)
