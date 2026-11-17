@@ -302,6 +302,11 @@ end
 -- once a trainer window was open, else from Wowhead (Data.train), and guessed from the skill
 -- until then.
 local function recipeSource(state, rid, rec, skill)
+    -- a recipe the trainer teaches is learned there, even when a vendor also sells its pattern
+    local cost = rec.name and ns.db.trainer[rec.name]
+    if cost then return { t = "trainer", cost = cost, est = false } end
+    local train = ns.Data and ns.Data.train and rid ~= rec.out and ns.Data.train[rid]
+    if train then return { t = "trainer", cost = train, est = false } end
     local D = ns.Data and ns.Data.src
     local d = D and rid ~= rec.out and D[rid]
     if d then
@@ -325,10 +330,6 @@ local function recipeSource(state, rid, rec, skill)
         src.item, src.text = item, rec.source
         return src
     end
-    local cost = rec.name and ns.db.trainer[rec.name]
-    if cost then return { t = "trainer", cost = cost, est = false } end
-    local train = ns.Data and ns.Data.train and rid ~= rec.out and ns.Data.train[rid]
-    if train then return { t = "trainer", cost = train, est = false } end
     if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then
         return { t = "trainer", cost = ns.TrainerGuess(skill and skill[1]), est = true }
     end

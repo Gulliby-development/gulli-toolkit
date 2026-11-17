@@ -36,7 +36,8 @@ of its own (spell ids from FOREVER_SPELL up). Its profession pages on Wowhead, c
 wowhead-professions.json on a player's computer (Wowhead refuses servers), win over Skillet:
 
 - their colours replace the Skillet levels, and Forever's own recipes are added;
-- ns.Data.train[recipe spell id] = the trainer's price in copper, for a recipe a trainer teaches;
+- ns.Data.train[recipe spell id] = the trainer's price in copper, for a recipe a trainer teaches
+  (such a recipe gets no pattern source, even when a vendor sells its pattern too);
 - a pattern the Questie data does not tie to the recipe gets its source from Wowhead
   (vendors without a faction, "Name|AH");
 - a recipe Wowhead marks unavailable is gone (unless a Forever pattern teaches it), and so is a
@@ -206,7 +207,9 @@ def wowhead(path, spell, item, src, out_gone, by_item, by_name):
                 out_gone.add(sid)
                 continue
         if r.get("trainingcost") and WH_TRAINER in (r.get("source") or []):
+            # the trainer teaches it: learning there wins over buying its pattern
             train[sid] = r["trainingcost"]
+            src.pop(sid, None)
     # a Classic recipe that WoW Forever replaced with its own spell (Greater Healing Potion)
     for name, sid in sorted(by_name.items()):
         if sid < SOD_SPELL and sid in spell and sid not in known and name in forever_names:
@@ -281,7 +284,7 @@ def main():
     train = wowhead(sys.argv[3] if len(sys.argv) == 4 else WOWHEAD, spell, item, src, out_gone, by_item, by_name)
     spell = {k: v for k, v in spell.items() if k not in out_gone}
     src = {k: v for k, v in src.items() if k not in out_gone}
-    train = {k: v for k, v in train.items() if k not in out_gone and k not in src}
+    train = {k: v for k, v in train.items() if k not in out_gone}
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write(lua(spell, item, src, out_gone, train))
     print("%d spells, %d items, %d pattern sources, %d trainer prices, %d not in Forever -> %s"
