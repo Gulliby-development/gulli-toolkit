@@ -30,6 +30,7 @@ one that is dead. Links are where releases or changelogs are read.
 | CraftProfit | CraftSim, Skillet-Classic (github.com/b-morgan/Skillet-Classic), Classic Profession Guide, CheapSkill, LazyProf, TradeSkillMaster |
 | Legacy | Wowhead Forever guides, Questie |
 | Crates | wowforever.ninja crate guides, Auctionator shopping lists |
+| FarmTrack | FarmHud, Farmer (Retail), Lootamatic, Gold Tracker (curseforge) |
 
 ## Runeloader
 
