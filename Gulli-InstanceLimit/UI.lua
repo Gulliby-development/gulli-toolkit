@@ -87,7 +87,7 @@ end
 ---- The badge -------------------------------------------------------------------
 
 -- Whether the counter shows: always, never, or in a group, in a dungeon or when entries are short.
-local function unlocked() return ns.moving or ns.db.badgeLocked == false end
+local function unlocked() return ns.moving end
 
 function ns.BadgeShown(s)
     if unlocked() then return true end
@@ -234,7 +234,6 @@ local function buildSettings(body, width)
         { L.BADGE_MODE, nil, control = modeHolder, icon = I .. "INV_Misc_Spyglass_03" },
         { L.BADGE_SIZE, nil, control = scale, icon = I .. "INV_Misc_Spyglass_02" },
         { L.BADGE_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
-        switch("badgeLocked", L.OPT_LOCK, L.OPT_LOCK_D, I .. "INV_Misc_Key_04"),
     })
     st:Add(counter, h4)
     c:SetHeight(st:Height())
@@ -304,8 +303,7 @@ local function buildBadge()
     badge = S.Chip(UIParent, "GulliInstanceLimitBadge")
     badgePlace()
     S.Mover(badge, { label = L.TITLE, save = function(point, rel, x, y) ns.db.badgePoint = { point, rel, x, y } end,
-        reset = function() ns.db.badgePoint = nil; badgePlace() end,
-        lock = function() ns.db.badgeLocked = true; ns.Refresh() end, lockTip = L.OPT_LOCK })
+        reset = function() ns.db.badgePoint = nil; badgePlace() end })
     badge:SetScript("OnClick", function() ns.Toggle() end)
     local elapsed = 0
     badge:SetScript("OnUpdate", function(_, dt)
@@ -314,7 +312,7 @@ local function buildBadge()
     end)
 end
 
--- /gulli move: the counter shows even when its mode hides it, so it can be placed.
+-- The hub's Unlock mode: the counter shows even when its mode hides it, so it can be placed.
 function ns.MoveBadge(on)
     ns.moving = on and true or nil
     ns.Refresh()
@@ -328,6 +326,11 @@ end
 function ns.Window()
     if not frame then build() end
     return frame
+end
+
+function ns.BadgeFrame()
+    if not badge and ns.db then buildBadge() end
+    return badge
 end
 
 function ns.SetupBadge()

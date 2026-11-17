@@ -214,7 +214,7 @@ end
 
 -- Every setting back to its default; the counted entries stay.
 function ns.ResetSettings()
-    for _, k in ipairs({ "badgeMode", "badgeScale", "badgeAlpha", "badgePoint", "badgeLocked", "warnAt", "warnDayAt", "freeAlert",
+    for _, k in ipairs({ "badgeMode", "badgeWas", "badgeScale", "badgeAlpha", "badgePoint", "warnAt", "warnDayAt", "freeAlert",
                          "sound", "summary", "tellGroup", "sync", "fromExit" }) do ns.db[k] = nil end
     ns.Defaults()
     ns.DefaultLimits()
@@ -350,11 +350,30 @@ function ns.System(msg)
     if msg == refusedText then ns.Refused() end
 end
 
-ns.DEFAULTS = { badgeMode = "ALWAYS", badgeScale = 100, badgeAlpha = 100, badgeLocked = true, warnAt = 1, warnDayAt = 3,
+ns.DEFAULTS = { badgeMode = "HIDDEN", badgeScale = 100, badgeAlpha = 100, warnAt = 1, warnDayAt = 3,
                 freeAlert = true, sound = true, summary = true, tellGroup = true, sync = true, fromExit = false,
                 confirmed = false }
 function ns.Defaults()
     for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+    -- Frames on the screen start hidden (owner's decision): a counter shown before is hidden
+    -- once; the hub's Unlock mode or the Show choice brings it back. The per-frame lock is gone.
+    if not ns.db.hudHidden then
+        if ns.db.badgeMode ~= "HIDDEN" then ns.db.badgeWas, ns.db.badgeMode = ns.db.badgeMode, "HIDDEN" end
+        ns.db.hudHidden = true
+    end
+    ns.db.badgeLocked = nil
+end
+
+-- The counter on or off for the hub's Unlock mode; on brings back the last Show choice.
+function ns.BadgeOn() return ns.db ~= nil and ns.db.badgeMode ~= "HIDDEN" end
+function ns.SetBadgeOn(on)
+    if not ns.db or on == ns.BadgeOn() then return end
+    if on then
+        ns.db.badgeMode, ns.db.badgeWas = ns.db.badgeWas or "ALWAYS", nil
+    else
+        ns.db.badgeWas, ns.db.badgeMode = ns.db.badgeMode, "HIDDEN"
+    end
+    if ns.Refresh then ns.Refresh() end
 end
 
 local f = CreateFrame("Frame")
@@ -447,6 +466,9 @@ if GulliToolkit and GulliToolkit.Register then
             return L.SUM_LEFT:format(s.leftHour, ns.db.limit), "Interface\\Icons\\INV_Misc_PocketWatch_01"
         end,
         move = function(on) if ns.MoveBadge then ns.MoveBadge(on) end end,
+        frames = { { key = "badge", label = ns.L.TITLE, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+                     get = function() return ns.BadgeOn() end, set = function(v) ns.SetBadgeOn(v) end,
+                     frame = function() return ns.BadgeFrame and ns.BadgeFrame() end } },
         reset = function() ns.ResetSettings() end,
     })
 end

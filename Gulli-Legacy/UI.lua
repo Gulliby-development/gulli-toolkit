@@ -604,8 +604,7 @@ local function buildTracker()
     tracker:SetFrameStrata("MEDIUM")
     tracker:SetScript("OnClick", function() ns.Toggle() end)
     S.Mover(tracker, { label = L.TITLE, save = function(point, rel, x, y) ns.db.point = { point, rel, x, y } end,
-        reset = function() ns.db.point = nil; placeTracker() end,
-        lock = function() ns.SetPref("locked", true) end, lockTip = L.OPT_LOCK })
+        reset = function() ns.db.point = nil; placeTracker() end })
 end
 
 function ns.TrackerFrame() return tracker end
@@ -613,8 +612,8 @@ function ns.TrackerFrame() return tracker end
 function ns.Tracker(steps, p)
     local d = ns.db
     if not d then return end
-    -- Unlocked (its switch or /gulli move), the tracker shows even when it is off, to be placed.
-    local moving = ns.moving or d.locked == false
+    -- In the hub's Unlock mode the tracker shows even when it is off, to be placed.
+    local moving = ns.moving
     if (not d.tracker or ns.paused or not ns.list or #ns.list == 0) and not moving then
         if tracker then tracker:SetMoving(false); tracker:Hide() end
         return
@@ -783,7 +782,7 @@ local function build()
     local suggest = rows({ { "dungeon", L.OPT_DUNGEON, L.OPT_DUNGEON_D }, { "raid", L.OPT_RAID, L.OPT_RAID_D },
                            { "pvp", L.OPT_PVP, L.OPT_PVP_D }, { "alts", L.OPT_ALTS, L.OPT_ALTS_D },
                            { "newClass", L.OPT_NEW, L.OPT_NEW_D } })
-    local screen = rows({ { "beside", L.OPT_BESIDE, L.OPT_BESIDE_D }, { "tracker", L.OPT_TRACKER, L.OPT_TRACKER_D }, { "locked", L.OPT_LOCK, L.OPT_LOCK_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
+    local screen = rows({ { "beside", L.OPT_BESIDE, L.OPT_BESIDE_D }, { "tracker", L.OPT_TRACKER, L.OPT_TRACKER_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
     local alpha = S.Stepper(p4, function() return ns.db.alpha end, function(v) ns.SetPref("alpha", v) end,
         10, 20, 100, function(v) return v .. "%" end)
     screen[#screen + 1] = { L.OPT_ALPHA, L.OPT_ALPHA_D, control = alpha, icon = ns.OPT_ICON.alpha }

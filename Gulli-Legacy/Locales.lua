@@ -11,8 +11,6 @@ local T = {}
 
 T.en = {
     G_TIME = "It takes about %s.",
-    OPT_LOCK = "Lock in place",
-    OPT_LOCK_D = "Off: drag it on the screen. A right click puts it back.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Characters",
@@ -169,8 +167,6 @@ T.en = {
 
 T.de = {
     G_TIME = "Das dauert etwa %s.",
-    OPT_LOCK = "Position sperren",
-    OPT_LOCK_D = "Aus: auf dem Bildschirm ziehen. Ein Rechtsklick setzt es zurück.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Charaktere",
@@ -327,8 +323,6 @@ T.de = {
 
 T.es = {
     G_TIME = "Lleva unos %s.",
-    OPT_LOCK = "Fijar la posición",
-    OPT_LOCK_D = "Desactivado: arrástralo por la pantalla. Un clic derecho lo devuelve a su sitio.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Personajes",
@@ -485,8 +479,6 @@ T.es = {
 
 T.fr = {
     G_TIME = "Cela prend environ %s.",
-    OPT_LOCK = "Verrouiller la position",
-    OPT_LOCK_D = "Désactivé : faites-le glisser à l'écran. Un clic droit le remet en place.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Personnages",
@@ -643,8 +635,6 @@ T.fr = {
 
 T.pl = {
     G_TIME = "To zajmie około %s.",
-    OPT_LOCK = "Zablokuj położenie",
-    OPT_LOCK_D = "Wyłączone: przeciągnij na ekranie. Prawy klik przywraca miejsce.",
     TITLE = "Legacy",
     TAB_PLAN = "Plan",
     TAB_CHARS = "Postacie",
@@ -801,8 +791,6 @@ T.pl = {
 
 T.pt = {
     G_TIME = "Leva cerca de %s.",
-    OPT_LOCK = "Travar a posição",
-    OPT_LOCK_D = "Desligado: arraste pela tela. Um clique direito o devolve ao lugar.",
     TITLE = "Legacy",
     TAB_PLAN = "Plano",
     TAB_CHARS = "Personagens",
@@ -959,8 +947,6 @@ T.pt = {
 
 T.ru = {
     G_TIME = "Это займёт около %s.",
-    OPT_LOCK = "Закрепить на месте",
-    OPT_LOCK_D = "Выкл.: перетащите по экрану. Правый клик вернёт на место.",
     TITLE = "Legacy",
     TAB_PLAN = "План",
     TAB_CHARS = "Персонажи",
@@ -1117,8 +1103,6 @@ T.ru = {
 
 T.zh = {
     G_TIME = "大约需要%s。",
-    OPT_LOCK = "锁定位置",
-    OPT_LOCK_D = "关闭时可在屏幕上拖动，右键恢复原位。",
     TITLE = "Legacy",
     TAB_PLAN = "计划",
     TAB_CHARS = "角色",

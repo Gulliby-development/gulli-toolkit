@@ -419,11 +419,24 @@ test("the small feed shows the watched posts (every group without words) and fol
     assert(GulliBulletinFeed == nil or true)
     ns.db.feed.show = false
     ns.Feed()
-    -- Unlocked in Settings, the feed shows with its mover even when it is off.
-    ns.db.feed.locked = false
-    ns.Feed()
-    ns.db.feed.locked = true
-    ns.Feed()
+    -- In the hub's Unlock mode the feed shows with its mover even when it is off.
+    ns.MoveFeed(true)
+    local f = ns.FeedFrame()
+    eq(f:IsShown(), true, "shown to be placed")
+    ns.MoveFeed(false)
+    eq(f:IsShown(), false, "off again after the mode")
+    eq(ns.db.feed.locked, nil, "no lock of its own")
+end)
+
+test("the feed starts hidden, and a feed shown before is hidden once", function()
+    Fake({})
+    GulliBulletinDB = { feed = { show = true, locked = false } }
+    local ns = Load()
+    eq(ns.db.feed.show, false)
+    eq(ns.db.feed.locked, nil)
+    ns.db.feed.show = true
+    W.Fire("ADDON_LOADED", "Gulli-Bulletin")
+    eq(ns.db.feed.show, true, "only once")
 end)
 
 test("it registers with the toolkit", function()
