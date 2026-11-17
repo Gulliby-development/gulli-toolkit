@@ -128,7 +128,7 @@ end
 function Fake(spec)
     W.Base(spec)
     W.done, W.active = spec.done or {}, spec.active or {}
-    GulliDungeonPrepDB = nil
+    GulliDungeonPrepDB = spec.db
     UnitRace = function() return "Human", "Human", spec.raceID or 1 end
     UnitClass = function() return "Warrior", spec.className or "WARRIOR", spec.classID or 1 end
     W.complete, W.instance, W.shared = spec.complete or {}, spec.instance or "none", {}

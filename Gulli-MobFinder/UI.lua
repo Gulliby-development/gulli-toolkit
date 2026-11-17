@@ -75,7 +75,7 @@ local CARD_POINT = { "TOP", 0, -76 }
 local function placeCard()
     local p = ns.db.cardPoint or CARD_POINT
     card:ClearAllPoints()
-    card:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+    card:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
 end
 
 local function buildCard()
@@ -83,10 +83,8 @@ local function buildCard()
     card = S.ToastFrame("GulliMobFinderCard")
     card:SetFrameStrata("HIGH")
     placeCard()
-    S.Mover(card, { label = L.TITLE, save = function(p, _, x, y) ns.db.cardPoint = { p, x, y } end,
-        reset = function() ns.db.cardPoint = nil; placeCard() end,
-        lock = function() ns.db.cardLocked = true; ns.MoveCard(false); if ns.Refresh then ns.Refresh() end end,
-        lockTip = L.OPT_LOCK })
+    S.Mover(card, { label = L.TITLE, save = function(p, rp, x, y) ns.db.cardPoint = { p, x, y, rp } end,
+        reset = function() ns.db.cardPoint = nil; placeCard() end })
     card:HookScript("OnHide", function() stopRepeat(); showTarget(false) end)
 
     -- The secure Target button, drawn like S.Primary, with the key on it.
@@ -106,11 +104,10 @@ local function buildCard()
     card.target = t
 end
 
--- The card while /gulli move places it, or while its Lock switch is off.
+-- The card while the hub's Unlock mode places it: a sample find with its mover.
 function ns.MoveCard(on)
     if not ns.db then return end
     ns.movingCard = on and true or nil
-    on = on or ns.db.cardLocked == false
     if not card then buildCard() end
     card:SetMoving(on and not (InCombatLockdown and InCombatLockdown()))
     if on then
@@ -119,6 +116,11 @@ function ns.MoveCard(on)
     else
         card:Hide()
     end
+end
+
+function ns.CardFrame()
+    if not card and ns.db then buildCard() end
+    return card
 end
 
 -- The edges of the screen flash red for a moment.
@@ -373,8 +375,6 @@ local function buildSearch(page, width)
 
     local found, fh = S.SettingsCard(page, L.SEC_FIND, {
         switch("card", L.CARD, L.CARD_D, "Interface\\Icons\\INV_Misc_Note_01"),
-        switch("cardLocked", L.OPT_LOCK, L.OPT_LOCK_D, "Interface\\Icons\\INV_Misc_Key_04",
-            function() ns.MoveCard(ns.movingCard) end),
         { L.CARD_FOR, nil, control = cardFor, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
         { L.KEY, L.KEY_D, control = keyButton, icon = "Interface\\Icons\\INV_Gizmo_01" },
         switch("mark", L.MARK, nil, "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"),
@@ -605,6 +605,9 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         slash = "/gmf",
         move = function(on) if ns.MoveCard then ns.MoveCard(on) end end,
+        -- The card shows by itself on a find; the Unlock mode only places it.
+        frames = { { key = "card", label = L.TITLE, icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
+                     frame = function() return ns.CardFrame and ns.CardFrame() end } },
         options = {
             { label = L.ENABLE, tip = L.DESC, icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
               get = function() return ns.db ~= nil and ns.db.enabled end,

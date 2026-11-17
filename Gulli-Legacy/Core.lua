@@ -348,7 +348,7 @@ end
 
 -- Settings; a new one gets its default here and a row in the window.
 ns.DEFAULTS = { dungeon = true, raid = false, pvp = false, alts = true, newClass = true, beside = true,
-                tracker = true, locked = true, announce = true, alpha = 80, goal = 0, sort = "progress" }
+                tracker = false, announce = true, alpha = 80, goal = 0, sort = "progress" }
 ns.OPT_ICON = {
     dungeon = "Interface\\Icons\\INV_Misc_Key_14",
     raid = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
@@ -357,7 +357,6 @@ ns.OPT_ICON = {
     newClass = "Interface\\Icons\\Spell_Holy_Resurrection",
     tracker = "Interface\\Icons\\INV_Misc_Spyglass_02",
     beside = "Interface\\Icons\\INV_Misc_Book_09",
-    locked = "Interface\\Icons\\INV_Misc_Key_04",
     announce = "Interface\\Icons\\INV_Misc_Note_02",
     alpha = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
 }
@@ -888,7 +887,7 @@ function ns.SetPref(key, value)
 end
 
 function ns.Reset()
-    local keep = { chars = ns.db.chars, pins = ns.db.pins, skillNames = ns.db.skillNames }
+    local keep = { chars = ns.db.chars, pins = ns.db.pins, skillNames = ns.db.skillNames, hudHidden = true }
     for k in pairs(ns.db) do ns.db[k] = nil end
     for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
     for k, v in pairs(keep) do ns.db[k] = v end
@@ -952,6 +951,10 @@ f:SetScript("OnEvent", function(self, event, a1)
         GulliLegacyDB = GulliLegacyDB or {}
         ns.db = GulliLegacyDB
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+        -- Frames on the screen start hidden (owner's decision): a tracker shown before is hidden
+        -- once; the hub's Unlock mode or the switch shows it again. The per-frame lock is gone.
+        if not ns.db.hudHidden then ns.db.tracker, ns.db.hudHidden = false, true end
+        ns.db.locked = nil
         ns.db.chars = ns.db.chars or {}
         ns.db.pins = ns.db.pins or {}
         ns.db.skillNames = ns.db.skillNames or {}
@@ -995,6 +998,10 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
         move = function(on) ns.Move(on) end,
+        frames = { { key = "tracker", label = ns.L.TITLE, icon = ns.OPT_ICON.tracker,
+                     get = function() return ns.db ~= nil and ns.db.tracker == true end,
+                     set = function(v) ns.SetPref("tracker", v) end,
+                     frame = function() return ns.TrackerFrame and ns.TrackerFrame() end } },
         reset = function() ns.Reset() end,
         pause = function(on) ns.Pause(on) end,
         options = {

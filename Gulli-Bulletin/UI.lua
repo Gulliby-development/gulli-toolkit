@@ -323,8 +323,6 @@ local function buildSetup(body, width)
           function(v) ns.db.feed.show = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Scroll_03" },
         { L.OPT_THROUGH, nil, function() return ns.db.feed.through end,
           function(v) ns.db.feed.through = v; if ns.Feed then ns.Feed() end end, icon = I .. "Spell_Nature_Invisibilty" },
-        { L.OPT_LOCK, nil, function() return ns.db.feed.locked ~= false end,
-          function(v) ns.db.feed.locked = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Misc_Key_04" },
         { L.FEED_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },
     })
     st:Add(feedCard, h3)
@@ -488,9 +486,7 @@ local function buildFeed()
     feed.title:SetText(L.TITLE)
     feed:SetScript("OnClick", function() ns.Toggle() end)
     S.Mover(feed, { label = L.TITLE, save = function(point, rel, x, y) ns.db.feed.point = { point, rel, x, y } end,
-        reset = function() ns.db.feed.point = nil; placeFeed() end,
-        lock = function() ns.db.feed.locked = true; ns.Feed(); if ns.Refresh then ns.Refresh() end end,
-        lockTip = L.OPT_LOCK })
+        reset = function() ns.db.feed.point = nil; placeFeed() end })
 end
 
 local function feedRow(item)
@@ -510,8 +506,8 @@ end
 function ns.Feed()
     local o = ns.db and ns.db.feed
     if not o then return end
-    -- Unlocked (its switch or /gulli move), the feed shows even when it is off, to be placed.
-    local moving = ns.movingFeed or o.locked == false
+    -- In the hub's Unlock mode the feed shows even when it is off, to be placed.
+    local moving = ns.movingFeed
     if not o.show and not moving then
         if feed then feed:SetMoving(false); feed:Hide() end
         return
@@ -543,10 +539,14 @@ function ns.ShowAlert(post, word)
         title = L.WATCHED:format(post.short, word), text = post.text, seconds = 20, buttons = buttons })
 end
 
--- /gulli move: the feed shows and can be placed even when it is off.
+-- The hub's Unlock mode: the feed shows and can be placed even when it is off.
 function ns.MoveFeed(on)
     ns.movingFeed = on and true or nil
     ns.Feed()
 end
 
 function ns.SetupFeed() ns.Feed() end
+function ns.FeedFrame()
+    if not feed and ns.db then buildFeed(); placeFeed(); feed:Hide() end
+    return feed
+end

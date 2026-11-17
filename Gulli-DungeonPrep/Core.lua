@@ -12,7 +12,7 @@ end
 -- Settings: the switches. Each change goes through ns.Set.
 ns.DEFAULTS = {
     keys = true, remind = true, tomtom = true, hideLater = false,
-    warnEnter = true, wishAlert = true, learn = true, trackerLocked = true, mainOnly = true,
+    warnEnter = true, wishAlert = true, learn = true, mainOnly = true,
 }
 
 function ns.Get(key)
@@ -914,6 +914,10 @@ f:SetScript("OnEvent", function(self, event, a1)
         GulliDungeonPrepDB = GulliDungeonPrepDB or {}
         ns.db = GulliDungeonPrepDB
         ns.db.hidden = ns.db.hidden or {}
+        -- Frames on the screen start hidden: older saves hide the tracker once. The hub's
+        -- Unlock mode places it, so it has no lock of its own.
+        if not ns.db.hudHidden then ns.db.tracker, ns.db.hudHidden = nil, true end
+        ns.db.trackerLocked = nil
         self:RegisterEvent("QUEST_LOG_UPDATE")
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
         self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
@@ -969,7 +973,7 @@ ns.OPT_ICON = {
     remind = "Interface\\Icons\\INV_Letter_15", keys = "Interface\\Icons\\INV_Misc_Key_04",
     tomtom = "Interface\\Icons\\INV_Misc_Map_01", hideLater = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     warnEnter = "Interface\\Icons\\Ability_Warrior_BattleShout", wishAlert = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
-    learn = "Interface\\Icons\\INV_Misc_Book_09", trackerLocked = "Interface\\Icons\\INV_Misc_Key_03",
+    learn = "Interface\\Icons\\INV_Misc_Book_09",
 }
 
 if GulliToolkit and GulliToolkit.Register then
@@ -981,6 +985,10 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
         move = function(on) if ns.MoveTracker then ns.MoveTracker(on) end end,
+        frames = { { key = "tracker", icon = "Interface\\Icons\\INV_Misc_Map_02",
+                     get = function() return ns.db ~= nil and ns.db.tracker ~= nil end,
+                     set = function(on) if ns.SetTrackerShown then ns.SetTrackerShown(on) end end,
+                     frame = function() return ns.TrackerFrame and ns.TrackerFrame() end } },
         reset = function() ns.Reset() end,
         options = {
             { label = L.OPT_REMIND, tip = L.OPT_REMIND_D, icon = ns.OPT_ICON.remind,

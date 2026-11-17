@@ -410,7 +410,7 @@ test("versions: a newer one in the group is told once, New marks an updated modu
     eq(byKey(ns.List()).XP.new, nil)
     SlashCmdList.GULLITOOLKIT("help")
     local all = table.concat(W.printed, "\n")
-    assert(all:find("/gulli move", 1, true), "help names the toolkit's commands")
+    assert(all:find("/gulli unlock", 1, true), "help names the toolkit's commands")
 end)
 
 test("protected items: by id or link, saved, listed, switched off again", function()
@@ -766,6 +766,39 @@ test("move mode shows the grid and the bar, and a fight ends it", function()
     eq(ns.moving, false)
     eq(moved, false)
     eq(ns.MoveGrid().bar:IsShown(), false)
+end)
+
+test("the Unlock mode lists every frame with its switch; Cancel puts the switches back, Save keeps them", function()
+    local XPA = { name = "Gulli-XP", enabled = true, loaded = true,
+                  meta = { ["X-Gulli-Module"] = "XP", Title = "Gulli-XP" } }
+    Fake({ addons = { XPA } })
+    local ns = Load()
+    local on, built = true, 0
+    local bar = CreateFrame("Frame")
+    GulliToolkit.Register({ key = "XP", open = function() end, move = function() end,
+        frames = { { key = "bar", get = function() return on end, set = function(v) on = v end,
+                     frame = function() built = built + 1; return bar end } } })
+    local frames = ns.Frames()
+    eq(#frames, 2, "the bar and the notices")
+    eq(frames[1].module, "XP"); eq(frames[1].key, "bar")
+    eq(frames[1].label, "XP bar", "the hub's own name for the frame")
+    eq(frames[2].key, "toasts"); eq(frames[2].get, nil, "notices only get a place")
+    eq(select(2, ns.FrameCount(frames)), 1)
+    ns.SetMoving(true)
+    assert(ns.UnlockPanel():IsShown(), "the panel shows")
+    assert(built > 0, "the hub asks the module for its frame")
+    ns.SetFrameShown(ns.Frames()[1], false)
+    eq(on, false)
+    ns.SetMoving(false, true)
+    eq(on, true, "Cancel shows it again")
+    eq(ns.moving, false)
+    ns.SetMoving(true)
+    ns.SetFrameShown(ns.Frames()[1], false)
+    ns.SetMoving(false)
+    eq(on, false, "Save keeps it hidden")
+    eq(GulliToolkit.Unlock(), true)
+    eq(ns.moving, true, "a module's button opens the Unlock mode")
+    ns.SetMoving(false)
 end)
 
 test("an edit box hint hides while there is text, even after the module sets OnTextChanged", function()

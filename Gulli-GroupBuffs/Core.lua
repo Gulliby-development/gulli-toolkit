@@ -6,12 +6,11 @@ local B = ns.Buffs
 
 ns.DEFAULTS = {
     who = "target",      -- off | group | target (the group and a friendly player you target)
-    show = "missing",    -- missing | always | never
+    show = "never",      -- missing | always | never (frames on the screen start hidden)
     combat = true,       -- keep buffing in combat from the list made before it
     low = 60,            -- seconds left at which a buff counts as running low (0: only when gone)
     groupMin = 3,        -- party members missing a buff before the group spell is used (0: never)
     thorns = "tanks",    -- self | tanks | all
-    locked = true,       -- false shows the mover over the bar, to place it
     pets = true,         -- buff hunter and warlock pets too
     mana = 0,            -- below this share of mana (percent) only buff yourself (0: off)
     where = "always",    -- always | norest (not in cities and inns) | instance
@@ -45,8 +44,13 @@ function ns.DB()
         for k, v in pairs(ns.DEFAULTS) do
             if db[k] == nil then db[k] = v end
         end
-        -- Gulli HUD: an unlocked bar now shows a mover that takes the clicks, so start locked.
-        if not db.hud then db.hud, db.locked = 1, true end
+        -- Frames on the screen start hidden: older saves hide the bar once and keep their
+        -- choice for the hub's switch. The hub's Unlock mode places it, so no lock of its own.
+        if not db.hudHidden then
+            db.showWas = db.show ~= "never" and db.show or nil
+            db.show, db.hudHidden = "never", true
+        end
+        db.locked, db.hud = nil, nil
         -- The owner wants a targeted friendly player offered by default: move the old default once.
         if not db.whoTarget then
             db.whoTarget = true
@@ -793,12 +797,22 @@ end
 
 ---- Toolkit and slash commands -------------------------------------------------
 
+-- The hub's show switch: "never", or back to what the player chose before.
+function ns.SetShown(on)
+    local d = ns.DB()
+    if on then
+        if d.show == "never" then d.show = d.showWas or "missing" end
+    elseif d.show ~= "never" then
+        d.showWas, d.show = d.show, "never"
+    end
+    if ns.Refresh then ns.Refresh() end
+end
+
 SLASH_GULLIGROUPBUFFS1 = "/ggb"
 SlashCmdList.GULLIGROUPBUFFS = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-    if msg == "lock" then
-        ns.DB().locked = not ns.DB().locked
-        if ns.Refresh then ns.Refresh() end
+    if msg == "lock" or msg == "unlock" or msg == "move" then
+        if GulliToolkit and GulliToolkit.Unlock then GulliToolkit.Unlock() end
     elseif msg == "status" then
         local plan, far = ns.Plan()
         local lines = {}
@@ -828,6 +842,10 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         slash = "/ggb",
         move = function(on) if ns.Move then ns.Move(on) end end,
+        frames = { { key = "bar", icon = "Interface\\AddOns\\Gulli-GroupBuffs\\icon",
+                     get = function() return ns.DB().show ~= "never" end,
+                     set = function(on) ns.SetShown(on) end,
+                     frame = function() return ns.BarFrame and ns.BarFrame() end } },
         summary = function()
             local plan, far = ns.Plan()
             if #plan + #far == 0 then return ns.L.ALL_DONE end

@@ -27,7 +27,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 - **Your last levels:** how long each one took in play time, and the XP from kills and quests. The Gulli Toolkit shows a line when you level up.
 - **Where the XP came from:** kills, quests, the rest (exploring and so on) and the rested bonus, each in its own colour, next to your **pace** (play time, XP per kill, kills and quests to level), plus a small graph of XP per 10 minutes.
 - **A /reload keeps the session.** A new one starts when you log in again or after a long break.
-- **Lock** the bar, or unlock it and drag it. **Across the whole screen** makes it as wide as the screen. Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
+- **Place** the bar in **Frames on screen** in `/gulli`. **Across the whole screen** makes it as wide as the screen. Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
 - At the top level the bar shows the **reputation** you watch, or hides.
 
 <p align="center"><img src="bar.png" alt="The bar" width="300"></p>
@@ -40,7 +40,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 
 ## How to use it
 
-1. The bar appears on the screen. Drag it to move it. In the window, under **Bar**, **Lock the bar** keeps it in place and **Place: Reset** puts it back at the top. `/gulli move` unlocks it together with the other Gulli frames.
+1. Turn on **Show the bar on screen** in the window (under **Bar**). Place it in **Frames on screen** in `/gulli` (`/gulli unlock`) with the other Gulli frames; **Place: Reset** puts it back at the top.
 2. Tap the bar, or type `/gxp`, for all numbers: **Session**, **Levels** and **Bar**. **Start again** (or `/gxp reset`) starts a new session.
 
 ## FAQ

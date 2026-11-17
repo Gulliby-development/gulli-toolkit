@@ -305,22 +305,36 @@ test("the navigator stands to the right of the game's Legacy window and goes bac
     LegacySystemFrame = nil
 end)
 
-test("the tracker unlocks from Settings and locks again from its key", function()
+test("the tracker starts hidden, shows to be placed in the Unlock mode, and the hub can switch it", function()
     Fake(world())
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     ns.Scan()
     ns.Snapshot()
-    ns.SetPref("tracker", false)
-    ns.SetPref("locked", false)
+    eq(ns.db.tracker, false, "hidden by default")
+    eq(ns.db.locked, nil, "no lock of its own")
+    ns.Move(true)
     local t = ns.TrackerFrame()
-    assert(t and t:IsShown(), "unlocked, the tracker shows to be placed even when it is off")
+    assert(t and t:IsShown(), "in the Unlock mode the tracker shows to be placed even when it is off")
     assert(t.mover:IsShown(), "and the mover lies over it")
-    t.mover.lock:GetScript("OnClick")(t.mover.lock)
-    eq(ns.db.locked, true)
-    eq(t.mover:IsShown(), false)
-    eq(t:IsShown(), false, "locked and off: hidden again")
-    ns.Reset()
-    eq(ns.db.locked, true, "the default is locked")
+    ns.Move(false)
+    eq(t:IsShown(), false, "off again when the mode ends")
+    local fr = reg.frames[1]
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.db.tracker, true)
+    eq(fr.frame(), t)
+end)
+
+test("a tracker shown before is hidden once by the update", function()
+    Fake(world())
+    GulliLegacyDB = { tracker = true, locked = false }
+    local ns = Load()
+    eq(ns.db.tracker, false)
+    eq(ns.db.locked, nil)
+    ns.SetPref("tracker", true)
+    eq(ns.db.tracker, true, "the player can show it again")
 end)
 
 test("the detail page: what is left, part by part, and how to do it", function()

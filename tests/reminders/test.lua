@@ -147,13 +147,16 @@ test("the panel shows the missing icons, every icon while unlocked, and hides wh
     local ns = Load()
     eq(#ns.Refresh(), 1)
     local panel = _G.GulliRemindersPanel or W.panel
-    ns.SetPref("locked", false)
+    ns.Move(true)
     eq(#ns.Sample(), 3, "Fortitude, Inner Fire and Well Fed to place")
     W.auras = { "Spell1243", "Spell588" }
     eq(#ns.Refresh(), 0)
-    ns.SetPref("locked", true)
+    ns.Move(false)
+    local unlocked = false
+    GulliToolkit = { Unlock = function() unlocked = true; return true end }
     SlashCmdList.GULLIREMINDERS("unlock")
-    eq(ns.db.locked, false)
+    eq(unlocked, true, "/grm unlock opens the hub's Unlock mode")
+    GulliToolkit = nil
     SlashCmdList.GULLIREMINDERS("reset")
     eq(ns.db.point, nil)
     ns.Toggle()
@@ -195,11 +198,26 @@ test("a click casts the missing buff on you, applies poison, summons the picked 
     eq(ns.Missing()[1].act.spell, "Spell697")
 end)
 
-test("while unlocked the icons are samples and cast nothing", function()
+test("in the Unlock mode the icons are samples and cast nothing", function()
     Fake({ class = "PRIEST", known = { 1243 } })
     local ns = Load()
-    ns.SetPref("locked", false)
+    ns.Move(true)
     eq(_G.GulliRemindersIcon1:GetAttribute("type1"), nil)
+    eq(rawget(_G.GulliRemindersIcon1, "_OnDragStart"), nil, "the icons are never dragged themselves")
+end)
+
+test("the panel starts hidden, once also for older saves, and has no lock of its own", function()
+    Fake({ class = "PRIEST", known = { 588 }, fresh = true })
+    local ns = Load()
+    eq(ns.db.show, false)
+    local _, why = ns.Missing()
+    eq(why, "off")
+    Fake({ class = "PRIEST", known = { 588 }, db = { show = true, locked = true } })
+    ns = Load()
+    eq(ns.db.show, false, "hidden once"); eq(ns.db.locked, nil)
+    ns.SetPref("show", true)
+    W.Fire("ADDON_LOADED", "Gulli-Reminders")
+    eq(ns.db.show, true, "a later choice stays")
 end)
 
 test("Well Fed and oils: shown where asked, a click eats or applies the best item in the bags", function()
@@ -351,10 +369,16 @@ test("the hub gets a summary, move and reset", function()
     local ns = Load()
     eq(got.summary(), "Missing: 1")
     got.move(true)
-    eq(ns.db.locked, false)
+    eq(ns.moving, true)
+    got.move(false)
+    local fr = got.frames[1]
+    eq(fr.key, "panel"); eq(fr.get(), true)
+    fr.set(false)
+    eq(ns.db.show, false)
+    assert(fr.frame(), "the hub gets the panel")
     ns.db.size = 60
     got.reset()
-    eq(ns.db.size, 40); eq(ns.db.locked, true)
+    eq(ns.db.size, 40); eq(ns.db.show, false); eq(ns.db.hudHidden, true)
     GulliToolkit = nil
 end)
 

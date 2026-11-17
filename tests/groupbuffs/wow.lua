@@ -186,7 +186,13 @@ function Fake(spec)
     STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
     print = function(...) W.printed[#W.printed + 1] = table.concat({ ... }, " ") end
     GulliToolkit = spec.toolkit
+    -- The bar starts hidden; the tests show it unless the spec says otherwise.
     GulliGroupBuffsCharDB = spec.db
+    if not spec.fresh then
+        GulliGroupBuffsCharDB = GulliGroupBuffsCharDB or {}
+        if GulliGroupBuffsCharDB.hudHidden == nil then GulliGroupBuffsCharDB.hudHidden = true end
+        if GulliGroupBuffsCharDB.show == nil then GulliGroupBuffsCharDB.show = "missing" end
+    end
     return W
 end
 

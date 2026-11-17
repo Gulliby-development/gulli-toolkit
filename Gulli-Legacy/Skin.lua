@@ -2643,7 +2643,9 @@ end
 
 local function restack()
     local H = stack()
-    local y = -150
+    -- The hub's Unlock mode can move the stack (GulliHUD.toastAt, from S.ToastPlace).
+    local at = H.toastAt
+    local x0, y = tonumber(at and at[1]) or 0, tonumber(at and at[2]) or -150
     local keep = {}
     for _, t in ipairs(H.toasts) do
         if t:IsShown() then
@@ -2651,18 +2653,19 @@ local function restack()
             -- y counts in screen units; each card has its own scale.
             local k = tonumber((t:GetScale())) or 1
             if k <= 0 then k = 1 end
-            local at = y / k
+            local ty = y / k
             local was = rawget(t, "stackY")
             t:ClearAllPoints()
-            t:SetPoint("TOP", UIParent, "TOP", 0, at)
-            t.stackY = at
+            t:SetPoint("TOP", UIParent, "TOP", x0 / k, ty)
+            t.stackY = ty
             -- A card that moves in the stack slides there.
-            if was and was ~= at then S.MotionSlide(t, 0, at - was, S.SLOW) end
+            if was and was ~= ty then S.MotionSlide(t, 0, ty - was, S.SLOW) end
             y = y - ((t:GetHeight() or S.TOAST_H) + 8) * k
         end
     end
     H.toasts = keep
 end
+S.RestackToasts = restack
 
 -- Shows a notice in the shared stack; the same key replaces its card. Returns the card.
 -- o as in ToastFrame:Set, plus key.
@@ -2694,11 +2697,82 @@ end
 
 -- Moving ------------------------------------------------------------------------------------
 
--- Makes a frame placeable for /gulli move and for its module's Lock switch: f:SetMoving(true)
--- puts an accent frame with the name over it, and dragging it moves f; a right click puts it
--- back (opts.reset). With opts.lock the name tab gets a key button that locks the frame again.
--- opts: { label, hint, save = function(point, relPoint, x, y), reset = function(),
---         lock = function(), lockTip }. Nothing moves in combat.
+-- Every placeable frame of every Gulli addon goes into one list that all copies of this file
+-- share, so the hub's Unlock mode can select, nudge, snap and put back any of them.
+local function hud()
+    GulliHUD = GulliHUD or {}
+    GulliHUD.movers = GulliHUD.movers or {}
+    GulliHUD.touched = GulliHUD.touched or {}
+    return GulliHUD
+end
+
+-- f's scale against UIParent's: the offsets of f's points count in f's own units.
+local function ratio(f)
+    local k = tonumber((f.GetEffectiveScale and f:GetEffectiveScale()))
+    local u = tonumber((UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()))
+    if not (k and u) or k <= 0 or u <= 0 then return 1 end
+    return k / u
+end
+
+local function pointOf(f)
+    local p, rel, rp, x, y = f:GetPoint()
+    return { p or "CENTER", rel or UIParent, rp or p or "CENTER", tonumber(x) or 0, tonumber(y) or 0 }
+end
+
+local function setPoint(f, at)
+    f:ClearAllPoints()
+    f:SetPoint(at[1], at[2], at[3], at[4], at[5])
+end
+
+-- Keeps where the frame stood before its first change in this Unlock session, for Cancel.
+local function touch(m)
+    local H = hud()
+    if not H.touched[m] then H.touched[m] = pointOf(m.frame) end
+end
+
+local function saveMover(m)
+    local at = pointOf(m.frame)
+    if m.opts.save then m.opts.save(at[1], at[3], at[4], at[5]) end
+    m:ShowCoords()
+end
+
+-- Moves f by dx, dy screen units.
+local function shift(f, dx, dy)
+    local at = pointOf(f)
+    local k = ratio(f)
+    at[4], at[5] = at[4] + dx / k, at[5] + dy / k
+    setPoint(f, at)
+end
+
+-- Puts f's top left corner on the nearest line of a grid whose lines run every step units out
+-- from the middle of the screen, like the one the hub draws.
+local function snap(f, step)
+    local l, t = tonumber((f:GetLeft())), tonumber((f:GetTop()))
+    local w, h = tonumber((UIParent:GetWidth())), tonumber((UIParent:GetHeight()))
+    if not (l and t and w and h and step and step > 0) then return end
+    local k = ratio(f)
+    l, t = l * k, t * k
+    local nl = w / 2 + math.floor((l - w / 2) / step + 0.5) * step
+    local nt = h / 2 + math.floor((t - h / 2) / step + 0.5) * step
+    shift(f, nl - l, nt - t)
+end
+
+-- Where f's middle is, in screen units from the middle of the screen (x right, y up).
+function S.MoverOffset(f)
+    local x, y = f:GetCenter()
+    local w, h = tonumber((UIParent:GetWidth())), tonumber((UIParent:GetHeight()))
+    x, y = tonumber(x), tonumber(y)
+    if not (x and y and w and h) then return 0, 0 end
+    local k = ratio(f)
+    return math.floor(x * k - w / 2 + 0.5), math.floor(y * k - h / 2 + 0.5)
+end
+
+-- Makes a frame placeable in the hub's Unlock mode: f:SetMoving(true) lays an accent frame with
+-- the name over it. Dragging it moves f (onto the grid while GulliHUD.snap is on), a left click
+-- selects it (the arrow keys then move it), a right click puts it back (opts.reset). Each change
+-- is saved at once, and the place before the first one is kept, so Cancel can put it back
+-- (S.MoversRestore). opts: { label, hint, save = function(point, relPoint, x, y),
+-- reset = function() }. Nothing moves in combat.
 function S.Mover(f, opts)
     opts = opts or {}
     f:SetMovable(true)
@@ -2717,38 +2791,49 @@ function S.Mover(f, opts)
     m.name.text:SetShadowColor(0, 0, 0, 0)
     m.name.text:SetPoint("LEFT", 5, 0)
     m.name.text:SetText(shortTitle(opts.label))
-    local tabW = math.floor(strw(m.name.text) + 10)
-    if opts.lock then
-        local k = CreateFrame("Button", nil, m.name)
-        k:SetSize(16, 16)
-        k:SetPoint("LEFT", m.name.text, "RIGHT", 4, 0)
-        k.tex = k:CreateTexture(nil, "ARTWORK")
-        k.tex:SetAllPoints()
-        k.tex:SetTexture("Interface\\Icons\\INV_Misc_Key_04")
-        k.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        k:SetScript("OnClick", function() opts.lock() end)
-        k:SetScript("OnEnter", function(self)
-            if not GameTooltip then return end
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText(opts.lockTip or opts.label or "")
-            GameTooltip:Show()
-        end)
-        k:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        m.lock = k
-        tabW = tabW + 20
+    m.name:SetWidth(math.floor(strw(m.name.text) + 10))
+    -- The selected frame shows where it stands, under its bottom right corner.
+    m.coords = CreateFrame("Frame", nil, m)
+    m.coords:SetPoint("TOPRIGHT", m, "BOTTOMRIGHT", 0, -2)
+    m.coords:SetHeight(18)
+    S.Box(m.coords, S.SOLID, S.EDGE, S.R_SM)
+    m.coords.text = S.Text(m.coords, 12, S.TEXT)
+    m.coords.text:SetPoint("CENTER")
+    m.coords:Hide()
+    m.frame, m.opts = f, opts
+    function m:ShowCoords()
+        if not self.selected then self.coords:Hide() return end
+        local x, y = S.MoverOffset(self.frame)
+        self.coords.text:SetText("X " .. x .. "  Y " .. y)
+        self.coords:SetWidth(math.floor(strw(self.coords.text) + 12))
+        self.coords:Show()
     end
-    m.name:SetWidth(tabW)
+    function m:SetSelected(on)
+        self.selected = on and true or false
+        S.Fill(self, { a[1], a[2], a[3], self.selected and 0.3 or 0.12 })
+        self:ShowCoords()
+    end
     m:RegisterForDrag("LeftButton")
-    m:RegisterForClicks("RightButtonUp")
-    m:SetScript("OnDragStart", function()
-        if not (InCombatLockdown and InCombatLockdown()) then f:StartMoving() end
+    m:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    m:SetScript("OnDragStart", function(self)
+        if InCombatLockdown and InCombatLockdown() then return end
+        S.SelectMover(self)
+        touch(self)
+        f:StartMoving()
     end)
-    m:SetScript("OnDragStop", function()
+    m:SetScript("OnDragStop", function(self)
         f:StopMovingOrSizing()
-        local p, _, rp, x, y = f:GetPoint()
-        if opts.save then opts.save(p, rp, x, y) end
+        local H = hud()
+        if H.snap then snap(f, H.step or 32) end
+        saveMover(self)
     end)
-    m:SetScript("OnClick", function() if opts.reset then opts.reset() end end)
+    m:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            S.ResetMover(self)
+        else
+            S.SelectMover(self)
+        end
+    end)
     m:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -2761,6 +2846,63 @@ function S.Mover(f, opts)
     f.mover = m
     function f:SetMoving(on)
         self.mover:SetShown(on and true or false)
+        if not on and self.mover.selected then S.SelectMover(nil) end
     end
+    local H = hud()
+    H.movers[#H.movers + 1] = m
     return m
+end
+
+-- The mover the arrow keys move (nil for none); GulliHUD.onSelect hears about it.
+function S.SelectMover(m)
+    local H = hud()
+    for _, x in ipairs(H.movers) do
+        if x ~= m and x.selected then x:SetSelected(false) end
+    end
+    if m then m:SetSelected(true) end
+    H.selected = m
+    if H.onSelect then H.onSelect(m) end
+end
+
+-- Moves a mover's frame by dx, dy screen units and saves the place.
+function S.NudgeMover(m, dx, dy)
+    if not m or (InCombatLockdown and InCombatLockdown()) then return end
+    touch(m)
+    shift(m.frame, dx, dy)
+    saveMover(m)
+end
+
+-- Puts a mover's frame back to its module's default place (opts.reset).
+function S.ResetMover(m)
+    if not (m and m.opts.reset) or (InCombatLockdown and InCombatLockdown()) then return end
+    touch(m)
+    m.opts.reset()
+    m:ShowCoords()
+end
+
+-- Cancel: every frame moved in this Unlock session goes back where it stood, and that place is
+-- saved again. Commit forgets those places. Both clear the selection.
+function S.MoversRestore()
+    local H = hud()
+    for m, at in pairs(H.touched) do
+        setPoint(m.frame, at)
+        if m.opts.save then m.opts.save(at[1], at[3], at[4], at[5]) end
+    end
+    H.touched = {}
+    S.SelectMover(nil)
+end
+
+function S.MoversCommit()
+    hud().touched = {}
+    S.SelectMover(nil)
+end
+
+-- The notices' place for the stack: { x, y } of the first card's top middle, in screen units from
+-- the top middle of the screen, read from a frame placed there (the hub's sample notice).
+function S.ToastPlace(f)
+    local l, r, t = tonumber((f:GetLeft())), tonumber((f:GetRight())), tonumber((f:GetTop()))
+    local w, h = tonumber((UIParent:GetWidth())), tonumber((UIParent:GetHeight()))
+    if not (l and r and t and w and h) then return nil end
+    local k = ratio(f)
+    return { math.floor((l + r) / 2 * k - w / 2 + 0.5), math.floor(t * k - h + 0.5) }
 end

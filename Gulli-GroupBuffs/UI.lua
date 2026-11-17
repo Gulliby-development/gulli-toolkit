@@ -123,8 +123,8 @@ end
 
 local function savePoint()
     if not bar then return end
-    local p, _, _, x, y = bar:GetPoint()
-    ns.DB().point = { p, x, y }
+    local p, _, rel, x, y = bar:GetPoint()
+    ns.DB().point = { p, x, y, rel }
 end
 
 local function build()
@@ -132,7 +132,7 @@ local function build()
     bar = CreateFrame("Frame", "GulliGroupBuffsBar", UIParent)
     bar:SetSize(MAIN + 160, MAIN)
     local p = d.point or { "CENTER", 0, -180 }
-    bar:SetPoint(p[1], UIParent, p[1], p[2], p[3])
+    bar:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
     S.Mover(bar, { label = L.TITLE, hint = L.DRAG,
         save = function() savePoint() end,
         reset = function()
@@ -140,12 +140,7 @@ local function build()
             ns.DB().point = nil
             bar:ClearAllPoints()
             bar:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
-        end,
-        lock = function()
-            if InCombatLockdown() then return end
-            ns.DB().locked = true
-            ns.Refresh()
-        end, lockTip = L.LOCK })
+        end })
 
     header = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
     main = CreateFrame("Button", BUTTON, bar, "SecureActionButtonTemplate")
@@ -180,10 +175,18 @@ local function build()
     built = true
 end
 
--- /gulli move: the mover over the bar, and the bar shows so it can be placed.
+-- The hub's Unlock mode: the mover over the bar, and the bar shows so it can be placed. The
+-- bar is built here when it was not yet (a login in a fight), so the first Unlock places it too.
 function ns.Move(on)
     moving = on and true or false
+    if not built and not InCombatLockdown() then build(); ns.ApplyKey() end
     if built then layout() end
+end
+
+-- The bar for the hub's Unlock mode.
+function ns.BarFrame()
+    if not built and not InCombatLockdown() then build(); ns.ApplyKey() end
+    return bar
 end
 
 ---- Keybind ---------------------------------------------------------------------
@@ -317,7 +320,7 @@ function layout()
     local cap = label:IsShown() and (label:GetWidth() or 120) - 1 or 0
     bar:SetWidth(math.max(MAIN + cap, shown * (MINI + GAP)))
     bar:SetHeight(MAIN + (shown > 0 and (GAP + 1 + MINI) or 0))
-    local move = moving or not d.locked
+    local move = moving
     bar:SetMoving(move and not InCombatLockdown())
     local show = move
     if not show and d.who ~= "off" and d.show ~= "never" then
@@ -635,7 +638,6 @@ local function rowList()
         toggle(L.COMBAT, dbValue("combat"), I .. "Ability_Warrior_OffensiveStance"),
         toggle(L.FADE_ALERT, dbValue("fadeAlert"), I .. "Spell_Shadow_DeadofNight"),
         { kind = "key", label = L.KEY, icon = I .. "INV_Gizmo_01" },
-        toggle(L.LOCK, dbValue("locked"), I .. "INV_Misc_Key_04"),
         option(L.WHERE, dbValue("where"), ns.WHERE, function(v) return L["WHERE_" .. v] end,
             I .. "INV_Misc_Map_01"),
         toggle(L.READY, dbValue("readyCheck"), I .. "INV_Misc_Bell_01"),

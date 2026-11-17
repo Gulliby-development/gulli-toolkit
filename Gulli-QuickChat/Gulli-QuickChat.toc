@@ -10,7 +10,7 @@
 ## Notes-zhCN: 无需键盘聊天：按住按键弹出常用语轮盘、常用语面板、自定频道顺序。 /gqk
 ## Notes-zhTW: 无需键盘聊天：按住按键弹出常用语轮盘、常用语面板、自定频道顺序。 /gqk
 ## Author: Gulliby
-## Version: 2.3.0
+## Version: 2.4.0
 ## IconTexture: Interface\AddOns\Gulli-QuickChat\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: QuickChat

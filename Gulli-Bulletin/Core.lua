@@ -546,6 +546,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _,
         ns.db.feed = ns.db.feed or {}
         local feed = ns.db.feed
         if feed.alpha == nil then feed.alpha = 80 end
+        -- Frames on the screen start hidden (owner's decision): hidden once by this update; the
+        -- hub's Unlock mode or the switch shows it again. The per-frame lock is gone.
+        if not feed.hudHidden then feed.show, feed.hudHidden = false, true end
+        feed.locked = nil
         ns.db.posts = ns.db.posts or {}
         ns.posts = ns.db.posts
         ns.Expire()
@@ -604,6 +608,10 @@ if GulliToolkit and GulliToolkit.Register then
         icon = "Interface\\AddOns\\Gulli-Bulletin\\icon",
         slash = "/gbul",
         move = function(on) if ns.MoveFeed then ns.MoveFeed(on) end end,
+        frames = { { key = "feed", label = ns.L.TITLE, icon = "Interface\\Icons\\INV_Scroll_03",
+                     get = function() return ns.db ~= nil and ns.db.feed ~= nil and ns.db.feed.show == true end,
+                     set = function(v) if ns.db then ns.db.feed.show = v; if ns.Feed then ns.Feed() end end end,
+                     frame = function() return ns.FeedFrame and ns.FeedFrame() end } },
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.HubSummary() end,

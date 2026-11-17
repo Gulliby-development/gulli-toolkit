@@ -307,10 +307,9 @@ end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = true, locked = true, sales = true, alert = true, alpha = 100, scale = 100 }
+ns.DEFAULTS = { panel = false, sales = true, alert = true, alpha = 100, scale = 100 }
 ns.OPT_ICON = {
     panel = "Interface\\Icons\\INV_Misc_Spyglass_02",
-    locked = "Interface\\Icons\\INV_Misc_Key_04",
     sales = "Interface\\Icons\\INV_Misc_Coin_02",
     alert = "Interface\\Icons\\INV_Misc_Bell_01",
 }
@@ -324,11 +323,12 @@ end
 function ns.Reset()
     for k in pairs(ns.db) do ns.db[k] = nil end
     for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
+    ns.db.hudHidden = true
     if ns.Place then ns.Place() end
     if ns.Refresh then ns.Refresh() end
 end
 
--- /gulli move shows the panel to place it.
+-- The hub's Unlock mode shows the panel to place it; the panel has no lock of its own.
 ns.moving = false
 function ns.Move(on)
     ns.moving = on and true or false
@@ -336,7 +336,7 @@ function ns.Move(on)
 end
 
 function ns.Unlocked()
-    return ns.moving or ns.db.locked == false
+    return ns.moving
 end
 
 -- Slash command ----------------------------------------------------------------------------------
@@ -390,6 +390,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
+        -- Frames on the screen start hidden: older saves hide the panel once.
+        if not ns.db.hudHidden then ns.db.panel, ns.db.hudHidden = false, true end
+        ns.db.locked = nil
         ns.cdb.targets = ns.cdb.targets or {}
         local events = { "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED" }
         for e in pairs(BUSY) do events[#events + 1] = e end
@@ -425,12 +428,14 @@ if GulliToolkit and GulliToolkit.Register then
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
         move = function(on) ns.Move(on) end,
+        frames = { { key = "panel", icon = ns.OPT_ICON.panel,
+                     get = function() return ns.db ~= nil and ns.db.panel == true end,
+                     set = function(v) ns.SetPref("panel", v) end,
+                     frame = function() return ns.PanelFrame and ns.PanelFrame() end } },
         reset = function() ns.Reset() end,
         options = {
             { label = L.OPT_PANEL, icon = ns.OPT_ICON.panel, tip = L.OPT_PANEL_TIP,
               get = function() return ns.db ~= nil and ns.db.panel == true end, set = function(v) ns.SetPref("panel", v) end },
-            { label = L.OPT_LOCK, icon = ns.OPT_ICON.locked, tip = L.OPT_LOCK_D,
-              get = function() return ns.db ~= nil and ns.db.locked == true end, set = function(v) ns.SetPref("locked", v) end },
             { label = L.OPT_SALES, icon = ns.OPT_ICON.sales, tip = L.OPT_SALES_TIP,
               get = function() return ns.db ~= nil and ns.db.sales == true end, set = function(v) ns.SetPref("sales", v) end },
         },
