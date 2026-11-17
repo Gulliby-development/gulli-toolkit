@@ -732,4 +732,25 @@ function R.Overlaps(root)
     return found
 end
 
+-- Every shown text that runs out of the window at the bottom or the top (not inside a scroll
+-- frame, which clips it): content that spills under the window.
+function R.Outside(root)
+    local box, found = R.Rect(root), {}
+    local function walk(f, clipped)
+        if not f.__shown then return end
+        clipped = clipped or f.__kind == "ScrollFrame"
+        if not clipped then
+            for _, r in ipairs(f.__regions) do
+                if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" then
+                    local c = R.Rect(r)
+                    if c.b < box.b - 1 or c.t > box.t + 1 then found[#found + 1] = r.__text end
+                end
+            end
+        end
+        for _, c in ipairs(f.__children) do walk(c, clipped) end
+    end
+    walk(root)
+    return found
+end
+
 return R

@@ -93,7 +93,7 @@ S.RAISED = { 0.180, 0.141, 0.106, 1 }
 S.RAISED_HOVER = { 0.227, 0.180, 0.133, 1 }
 -- Depth: cards, tiles and chips let the window's paper show through. "bevel" lights their top
 -- like a WoW panel and fades them out downwards; "flat" is a faint light veil with a thin edge.
-S.DEPTH = rawget(_G, "GULLI_DEPTH") or "bevel"
+S.DEPTH = rawget(_G, "GULLI_DEPTH") or "flat"
 if S.DEPTH == "flat" then
     S.SURFACE = { 1, 0.90, 0.75, 0.045 }
     S.RAISED = { 1, 0.90, 0.75, 0.075 }
@@ -1079,6 +1079,24 @@ function S.Scroll(parent)
     return sf
 end
 
+-- A page that scrolls when what it holds is taller than the window (settings in a language
+-- with long texts, a short hub). Build into page.inner, as wide as `width` until the page has
+-- its own width, then call page:SetContent(height).
+function S.ScrollPage(parent, width)
+    local page = CreateFrame("Frame", nil, parent)
+    local sf = S.Scroll(page)
+    sf:SetPoint("TOPLEFT")
+    sf:SetPoint("BOTTOMRIGHT", -10, 0)
+    page.inner, page.scroll = sf.child, sf
+    sf.child:SetWidth(math.max(1, (width or 400) - 10))
+    sf.onResize = function(_, w) if w and w > 0 then sf.child:SetWidth(w) end end
+    function page:SetContent(h)
+        self.inner:SetHeight(math.max(1, h))
+        self.scroll:Update(h)
+    end
+    return page
+end
+
 -- A multi-line text box that scrolls, for lists typed one entry per line.
 function S.Memo(parent, width, height)
     local box = CreateFrame("Frame", nil, parent)
@@ -1359,6 +1377,19 @@ function S.Card(parent, title, hint, icon)
     return c
 end
 
+-- The width a frame will likely get: its own, else the nearest parent's that has one, less a
+-- window's and a card's padding for each step that had none.
+function S.GuessWidth(f)
+    local steps = 0
+    while f and steps < 12 do
+        local w = tonumber((f.GetWidth and f:GetWidth())) or 0
+        if w > 100 then return math.max(200, w - 2 * (S.PAD + S.INSET) * math.min(steps, 1)) end
+        steps = steps + 1
+        f = f.GetParent and f:GetParent() or nil
+    end
+    return 400
+end
+
 -- A settings row: the label and an optional grey line under it on the left, a control on the
 -- right (a switch, an edit box, a button...). row.control is that control.
 function S.SettingRow(parent, label, desc, control, controlWidth, icon)
@@ -1381,10 +1412,11 @@ function S.SettingRow(parent, label, desc, control, controlWidth, icon)
         row.desc:SetPoint("TOPRIGHT", row.label, "BOTTOMRIGHT", 0, -3)
         row.desc:SetMaxLines(2)
         row.desc:SetText(desc)
-        -- The card is placed after its rows, so its width may be a guess; a second line that the
-        -- guess misses still fits the row, only tightly.
+        -- The card is placed after its rows, so its width may be a guess: the nearest frame up
+        -- the chain that has a width, less the paddings. A second line that the guess misses
+        -- still fits the row, only tightly.
         local pw = tonumber((parent:GetWidth())) or 0
-        if pw <= 100 then pw = S.rowWidth or 400 end
+        if pw <= 100 then pw = S.rowWidth or S.GuessWidth(parent) end
         local avail = pw - left + right
         local two = (tonumber((row.desc:GetStringWidth())) or 0) > avail
         row.height = S.ROW_DESC_H + (two and 14 or 0)
@@ -1437,8 +1469,7 @@ function S.SettingsCard(parent, title, rows, hint, icon)
     local card = S.Card(parent, title, hint, icon)
     card.rows = {}
     local st = S.Stack(card.body, 0)
-    local pw = tonumber((parent:GetWidth())) or 0
-    S.rowWidth = pw > 100 and pw - 2 * S.INSET or nil
+    S.rowWidth = S.GuessWidth(parent) - 2 * S.INSET
     for i, r in ipairs(rows) do
         local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control, nil, r.icon)
             or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra, r.icon)

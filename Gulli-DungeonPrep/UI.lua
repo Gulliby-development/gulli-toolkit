@@ -1256,7 +1256,9 @@ function ns.FillDetail(level)
 end
 
 local function buildSettings(parent)
-    local page = CreateFrame("Frame", nil, parent)
+    -- It scrolls: long texts in some languages take two lines and the hub may be short.
+    local page = S.ScrollPage(parent, S.WIDE_W - 2 * S.PAD)
+    local inner = page.inner
     local sw = {}
     for _, o in ipairs({ { "warnEnter", L.OPT_ENTER, L.OPT_ENTER_D }, { "remind", L.OPT_REMIND, L.OPT_REMIND_D },
                          { "wishAlert", L.OPT_WISH, L.OPT_WISH_D }, { "learn", L.OPT_LEARN, L.OPT_LEARN_D },
@@ -1267,16 +1269,17 @@ local function buildSettings(parent)
         sw[#sw + 1] = { o[2], o[3], function() return ns.Get(key) end, function(v) ns.Set(key, v) end,
                         icon = ns.OPT_ICON[key] }
     end
-    local card, h = S.SettingsCard(page, L.SET_SWITCHES, sw)
+    local card, h = S.SettingsCard(inner, L.SET_SWITCHES, sw)
     settings = {}
     for i, row in ipairs(card.rows) do settings[#settings + 1] = { row = row, get = sw[i][3] } end
     card:SetPoint("TOPLEFT")
     card:SetPoint("TOPRIGHT")
     card:SetHeight(h)
-    local note = S.Note(page, 12)
+    local note = S.Note(inner, 12)
     note:SetPoint("TOPLEFT", card, "BOTTOMLEFT", S.INSET, -S.GAP)
     note:SetPoint("RIGHT", -S.INSET, 0)
     note:SetText(L.READY_MOVED)
+    page:SetContent(h + S.GAP + 34)
     return page
 end
 

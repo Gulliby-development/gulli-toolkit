@@ -63,3 +63,6 @@ for _, o in ipairs(R.Overlaps(_G.GulliToolkitFrame)) do
     io.stderr:write(name .. ": overlap: " .. o[1]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. " / " ..
         o[2]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
 end
+for _, t in ipairs(R.Outside(_G.GulliToolkitFrame)) do
+    io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
+end
