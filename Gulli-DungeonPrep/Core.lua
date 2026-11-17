@@ -925,6 +925,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         self:RegisterEvent("LOOT_READY")
         self:RegisterEvent("QUEST_ACCEPTED")
+        self:RegisterEvent("QUEST_TURNED_IN")
         return
     end
     if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
@@ -935,7 +936,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         if ns.OnLoot then ns.OnLoot() end
         return
     end
-    if event == "QUEST_ACCEPTED" and ns.guide and ns.StepGuide then ns.StepGuide() end
+    if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns.guide and ns.StepGuide then ns.StepGuide() end
     -- A big dungeon asks for hundreds of loot items at once and each answer is an event:
     -- one refresh for the whole burst, not one per item.
     if event == "GET_ITEM_INFO_RECEIVED" and C_Timer and C_Timer.After then

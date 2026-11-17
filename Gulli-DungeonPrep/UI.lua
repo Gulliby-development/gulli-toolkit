@@ -894,7 +894,8 @@ function ns.Refresh()
     mainSwitch:SetChecked(ns.Get("mainOnly"))
     local guiding = ns.guide ~= nil and ns.guide.key == ns.selected
     fitIcon(guideBtn, guiding and L.GUIDE_STOP or L.GUIDE, 90)
-    guideBtn:SetEnabled(guiding or c.take > 0)
+    -- Something to lead to: a quest to take, or one in the log (who takes it back, the entrance).
+    guideBtn:SetEnabled(guiding or c.take > 0 or c.log > 0)
     -- The list is computed even on a quest's page, so its arrows follow the list.
     local items = ns.selected and listItems(current, level) or {}
     if open then

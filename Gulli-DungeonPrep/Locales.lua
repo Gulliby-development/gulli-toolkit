@@ -176,7 +176,7 @@ T.en = {
     OPT_LEARN_D = "After 10 kills of a boss, your own drop chances show, and loot missing from the table is added.",
     GUIDE = "Lead me",
     GUIDE_STOP = "Stop leading",
-    GUIDE_TT = "Puts a map pin (and a TomTom arrow) on the first stop of the route. Each quest you take moves it to the next stop, up to the entrance.",
+    GUIDE_TT = "Puts a map pin (and a TomTom arrow) on the first stop of the route. Each quest you take moves it to the next stop, up to the entrance. With nothing left to take, it leads to who takes back your finished quests, then to the entrance.",
     READY_MOVED = "Repairs, bag space, food, drink and the hearthstone are now on the Ready card of the Gulli home page (/gulli).",
 }
 
@@ -347,7 +347,7 @@ T.de = {
     OPT_LEARN_D = "Nach 10 Kills eines Bosses zeigen sich deine eigenen Chancen, fehlende Beute kommt dazu.",
     GUIDE = "Führ mich",
     GUIDE_STOP = "Führung beenden",
-    GUIDE_TT = "Setzt eine Kartenmarkierung (und einen TomTom-Pfeil) auf den ersten Halt. Jede angenommene Quest springt zum nächsten, bis zum Eingang.",
+    GUIDE_TT = "Setzt eine Kartenmarkierung (und einen TomTom-Pfeil) auf den ersten Halt. Jede angenommene Quest springt zum nächsten, bis zum Eingang. Gibt es nichts mehr anzunehmen, führt es zu den Abgabestellen deiner fertigen Quests, dann zum Eingang.",
     READY_MOVED = "Reparatur, Taschenplatz, Essen, Trinken und Ruhestein stehen jetzt auf der Karte Bereit der Gulli-Startseite (/gulli).",
 }
 
@@ -518,7 +518,7 @@ T.es = {
     OPT_LEARN_D = "Tras 10 muertes de un jefe se ven tus propias probabilidades y se añade el botín que falte.",
     GUIDE = "Guíame",
     GUIDE_STOP = "Dejar de guiar",
-    GUIDE_TT = "Pone una marca en el mapa (y una flecha de TomTom) en la primera parada. Cada misión que coges la pasa a la siguiente, hasta la entrada.",
+    GUIDE_TT = "Pone una marca en el mapa (y una flecha de TomTom) en la primera parada. Cada misión que coges la pasa a la siguiente, hasta la entrada. Si no queda nada por coger, te lleva a quien recibe tus misiones terminadas y luego a la entrada.",
     READY_MOVED = "Reparaciones, espacio, comida, bebida y la piedra de hogar están ahora en la tarjeta Listo de la página de inicio de Gulli (/gulli).",
 }
 
@@ -689,7 +689,7 @@ T.fr = {
     OPT_LEARN_D = "Après 10 victoires sur un boss, vos propres chances s'affichent et le butin manquant est ajouté.",
     GUIDE = "Guidez-moi",
     GUIDE_STOP = "Arrêter",
-    GUIDE_TT = "Place un repère (et une flèche TomTom) sur le premier arrêt. Chaque quête prise le déplace au suivant, jusqu'à l'entrée.",
+    GUIDE_TT = "Place un repère (et une flèche TomTom) sur le premier arrêt. Chaque quête prise le déplace au suivant, jusqu'à l'entrée. S'il n'y a plus rien à prendre, il mène à qui reprend vos quêtes finies, puis à l'entrée.",
     READY_MOVED = "Réparations, place, nourriture, boisson et pierre de foyer sont maintenant sur la carte Prêt de l'accueil Gulli (/gulli).",
 }
 
@@ -860,7 +860,7 @@ T.pl = {
     OPT_LEARN_D = "Po 10 zabiciach bossa widać twoje własne szanse, a brakujące łupy są dodawane.",
     GUIDE = "Prowadź mnie",
     GUIDE_STOP = "Przestań prowadzić",
-    GUIDE_TT = "Stawia znacznik na mapie (i strzałkę TomTom) na pierwszym przystanku. Każde wzięte zadanie przenosi go dalej, aż do wejścia.",
+    GUIDE_TT = "Stawia znacznik na mapie (i strzałkę TomTom) na pierwszym przystanku. Każde wzięte zadanie przenosi go dalej, aż do wejścia. Gdy nie ma nic do wzięcia, prowadzi do oddania ukończonych zadań, a potem do wejścia.",
     READY_MOVED = "Naprawy, miejsce w torbach, jedzenie, picie i kamień powrotu są teraz na karcie Gotowość strony głównej Gulli (/gulli).",
 }
 
@@ -1031,7 +1031,7 @@ T.pt = {
     OPT_LEARN_D = "Após 10 mortes de um chefe, suas próprias chances aparecem e o saque que falta é adicionado.",
     GUIDE = "Me guie",
     GUIDE_STOP = "Parar",
-    GUIDE_TT = "Põe uma marca no mapa (e uma seta do TomTom) na primeira parada. Cada missão pega a leva à próxima, até a entrada.",
+    GUIDE_TT = "Põe uma marca no mapa (e uma seta do TomTom) na primeira parada. Cada missão pega a leva à próxima, até a entrada. Sem nada para pegar, leva a quem recebe suas missões concluídas e depois à entrada.",
     READY_MOVED = "Reparos, espaço, comida, bebida e a pedra de regresso estão agora no cartão Pronto da página inicial do Gulli (/gulli).",
 }
 
@@ -1202,7 +1202,7 @@ T.ru = {
     OPT_LEARN_D = "После 10 убийств босса видны твои собственные шансы, а недостающая добыча добавляется.",
     GUIDE = "Вести по маршруту",
     GUIDE_STOP = "Остановить",
-    GUIDE_TT = "Ставит метку на карте (и стрелку TomTom) на первую остановку. Каждый взятый квест переносит её на следующую, до входа.",
+    GUIDE_TT = "Ставит метку на карте (и стрелку TomTom) на первую остановку. Каждый взятый квест переносит её на следующую, до входа. Если брать больше нечего, ведёт к тем, кому сдавать готовые квесты, потом ко входу.",
     READY_MOVED = "Ремонт, место в сумках, еда, вода и камень теперь на карточке «Готовность» на главной Gulli (/gulli).",
 }
 
@@ -1373,7 +1373,7 @@ T.zh = {
     OPT_LEARN_D = "击杀首领 10 次后显示你自己的掉率，并补上表中没有的掉落。",
     GUIDE = "带我去",
     GUIDE_STOP = "停止",
-    GUIDE_TT = "在第一站放地图标记（和 TomTom 箭头）。每接一个任务就移到下一站，直到入口。",
+    GUIDE_TT = "在第一站放地图标记（和 TomTom 箭头）。每接一个任务就移到下一站，直到入口。没有可接的任务时，先带你去交已完成的任务，再到入口。",
     READY_MOVED = "修理、背包空间、食物、饮料和炉石现在在 Gulli 首页（/gulli）的“准备”卡片上。",
 }
 
