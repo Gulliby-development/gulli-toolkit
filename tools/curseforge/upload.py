@@ -53,11 +53,12 @@ def pick_version(versions, name, fixed=None):
     return hits[0]["id"]
 
 
-def metadata(display, changelog, version_id, toolkit_slug=None):
+def metadata(display, changelog, version_id, toolkit_slug=None, optional=()):
     meta = {"changelog": changelog, "changelogType": "markdown", "displayName": display,
             "gameVersions": [version_id], "releaseType": "release"}
-    if toolkit_slug:
-        meta["relations"] = {"projects": [{"slug": toolkit_slug, "type": "optionalDependency"}]}
+    slugs = ([toolkit_slug] if toolkit_slug else []) + list(optional)
+    if slugs:
+        meta["relations"] = {"projects": [{"slug": s, "type": "optionalDependency"} for s in slugs]}
     return meta
 
 
@@ -154,7 +155,8 @@ def main(repo, tag):
             file_name, data = B.zip_of(rel, gh_token)
             ver = B.TAG.match(rel["tag_name"]).group(2)
             body = rel.get("body") or "Gulli-%s %s" % (t, ver)
-            meta = metadata("Gulli-%s %s" % (t, ver), body, version_id, config["toolkit"].get("slug"))
+            meta = metadata("Gulli-%s %s" % (t, ver), body, version_id, config["toolkit"].get("slug"),
+                            config["separate"][t].get("optional", []))
         payload, ctype = multipart({"metadata": json.dumps(meta)}, file_name, data)
         res = cf("/api/projects/%s/upload-file" % pid, cf_token, payload, ctype)
         print("Uploaded %s to project %s as file %s (%s)" % (file_name, pid, res.get("id"), meta["displayName"]))
