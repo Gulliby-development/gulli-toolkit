@@ -20,13 +20,29 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: curseforge
-  cancel-in-progress: false
-
 jobs:
-  upload:
+  # One queue per CurseForge project (upload.py --route): a batch of releases never drops a
+  # module's upload, and toolkit uploads that wait fold into the newest, which zips the newest
+  # releases anyway. A folded run shows as cancelled.
+  route:
     runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.route.outputs.project }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: route
+        env:
+          TAG: ${{ inputs.tag }}
+        run: echo "project=$(python3 tools/curseforge/upload.py --route "$TAG")" >> "$GITHUB_OUTPUT"
+
+  upload:
+    needs: route
+    runs-on: ubuntu-latest
+    concurrency:
+      group: curseforge-${{ needs.route.outputs.project }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

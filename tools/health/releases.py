@@ -7,7 +7,9 @@ For each Gulli-<Name> folder it compares the TOC version on main with
    RELEASE_HOURS ago and not released is a forgotten release;
 2. the bundle (the `bundle` pre-release lists the tag of every addon in its notes);
 3. the index (runeloader-index index.json): a release older than INDEX_HOURS that the index
-   does not show yet means the nightly index missed it.
+   does not show yet means the nightly index missed it;
+4. CurseForge: a Release (or CurseForge) run of the last UPLOAD_HOURS whose upload to CurseForge
+   failed. Re-running its failed jobs clears it.
 Exits 1 and writes the problems as Markdown when there are any.
 """
 import argparse
@@ -24,6 +26,7 @@ INDEX_URL = "https://raw.githubusercontent.com/Gulliby-development/runeloader-in
 RELEASE_HOURS = 24
 INDEX_HOURS = 30
 BUNDLE_HOURS = 3
+UPLOAD_HOURS = 48
 
 
 def vkey(v):
@@ -49,6 +52,30 @@ def releases_of(repo):
         if len(got) < 100:
             break
     return out
+
+
+def gh_json(path):
+    return json.loads(subprocess.run(["gh", "api", path], capture_output=True, text=True, check=True).stdout)
+
+
+def failed_uploads(repo, since):
+    """Runs since `since` whose CurseForge upload job failed, as (run url, created)."""
+    out = []
+    for wf in ("release.yml", "curseforge.yml"):
+        runs = gh_json("repos/%s/actions/workflows/%s/runs?per_page=100&created=>=%s"
+                       % (repo, wf, since.strftime("%Y-%m-%dT%H:%M:%SZ"))).get("workflow_runs", [])
+        for run in runs:
+            if run.get("status") != "completed" or run.get("conclusion") == "success":
+                continue
+            jobs = gh_json("repos/%s/actions/runs/%d/jobs?per_page=100" % (repo, run["id"])).get("jobs", [])
+            if any(is_upload_failure(j) for j in jobs):
+                out.append((run["html_url"], run["created_at"]))
+    return out
+
+
+def is_upload_failure(job):
+    name = job.get("name") or ""
+    return (name == "upload" or name.startswith("curseforge")) and job.get("conclusion") == "failure"
 
 
 def folders():
@@ -127,13 +154,17 @@ def main():
                 problems.append("**%s**: the index shows %s, the release is %s since %s."
                                 % (folder, idx, rel["version"], rel["at"].strftime("%Y-%m-%d %H:%M UTC")))
 
+    for url, at in failed_uploads(args.repo, t - datetime.timedelta(hours=UPLOAD_HOURS)):
+        problems.append("The CurseForge upload failed in %s (%s): read its log, fix it, then **Re-run failed jobs**."
+                        % (url, at))
+
     report = ["Checked %s: %d addons, %d releases, index of %s, bundle of %s." % (
         t.strftime("%Y-%m-%d %H:%M UTC"), len(rows), len(releases), index["generated"],
         bundle_at.strftime("%Y-%m-%d %H:%M UTC") if bundle_at else "-"), ""]
     if problems:
         report += ["## Problems", ""] + ["- " + p for p in problems] + [""]
     else:
-        report += ["Everything on main is released, in the all-in-one zip and in the index.", ""]
+        report += ["Everything on main is released, in the all-in-one zip, in the index and uploaded to CurseForge.", ""]
     report += ["<details><summary>Every addon</summary>", "", "| Folder | main | Released | In zip | In index |",
                "|---|---|---|---|---|"] + rows + ["", "</details>"]
     text = "\n".join(report)

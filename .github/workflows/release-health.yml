@@ -1,7 +1,7 @@
 name: Release health
 
 # Every night after the index run: is every version on main released, in the all-in-one zip
-# and in the index? Problems go into one open issue labelled release-health; it closes itself
+# in the index and uploaded to CurseForge? Problems go into one open issue labelled release-health; it closes itself
 # when everything is fine again.
 on:
   schedule:
@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 jobs:
