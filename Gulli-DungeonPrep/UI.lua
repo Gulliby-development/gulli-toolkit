@@ -476,7 +476,9 @@ local function fillHead(current, level)
     if current then head.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(current, level)))) end
     local parts = { L.HEAD_COUNTS:format(c.log, c.take, c.later, c.done) }
     local n = 0
-    for _, b in ipairs(bossCache) do if not b.rare then n = n + 1 end end
+    for _, b in ipairs((ns.Data and ns.Data.boss and ns.Data.boss[ns.selected]) or {}) do
+        if b[7] ~= 1 then n = n + 1 end
+    end
     if n > 0 then table.insert(parts, 1, L.HEAD_BOSSES:format(n)) end
     if ns.Get("keys") then
         for _, k in ipairs(ns.KeyState(ns.selected)) do
@@ -678,6 +680,7 @@ local function makeBoss(r)
     r.click:SetAllPoints()
     r.click:SetScript("OnClick", function(self)
         ns.boss = self:GetParent().b.npc
+        ns.modelBoss = ns.boss
         ns.Refresh()
     end)
 end
@@ -721,12 +724,17 @@ local function fillBossPage()
     if not b then b = list[1]; ns.boss = b.npc end
     bossPage.list:SetData(list)
     local p = bossPage
-    if p.model.SetDisplayInfo and b.display > 0 and p.model.shown ~= b.display then
-        p.model.shown = b.display
+    -- The model loads only for a boss the player clicked: loading one stalls the game.
+    local want = ns.modelBoss == b.npc and b.display > 0 and b.display or 0
+    if p.model.SetDisplayInfo and p.model.shown ~= want then
+        p.model.shown = want
         if p.model.ClearModel then p.model:ClearModel() end
-        p.model:SetDisplayInfo(b.display)
-        if p.model.SetFacing then p.model:SetFacing(0) end
+        if want > 0 then
+            p.model:SetDisplayInfo(want)
+            if p.model.SetFacing then p.model:SetFacing(0) end
+        end
     end
+    p.modelHint:SetShown(want == 0 and b.display > 0)
     p.name:SetText(b.name)
     p.name:SetTextColor(unpack(b.rare and S.WARN or S.TEXT))
     local parts = { S.Hex(bossColor(b)) .. L.LEVEL:format(bossLevel(b)) .. "|r" }
@@ -771,7 +779,7 @@ local function fillLootPage()
     local items = {}
     for _, l in ipairs(ns.Loot(ns.selected, filter, search:GetText())) do items[#items + 1] = { loot = l, showBoss = true } end
     if #items == 0 then
-        items[1] = { header = true, text = (#bossCache == 0 and L.NO_BOSSES) or (filter == "wish" and L.NO_WISH) or L.NO_LOOT }
+        items[1] = { header = true, text = (#((ns.Data and ns.Data.boss and ns.Data.boss[ns.selected]) or {}) == 0 and L.NO_BOSSES) or (filter == "wish" and L.NO_WISH) or L.NO_LOOT }
     end
     lootPage.list:SetData(items)
 end
@@ -796,7 +804,8 @@ function ns.Refresh()
     if ns.home then return fillGrid(all) end
     local current
     for _, d in ipairs(all) do if d.key == ns.selected then current = d end end
-    bossCache = ns.Bosses(ns.selected)
+    -- The bosses and their loot only for the pages that show them (big dungeons have hundreds of items).
+    bossCache = tabs.selected == 1 and ns.Bosses(ns.selected) or {}
     if settings then for _, x in ipairs(settings) do x.row:SetChecked(x.get()) end end
     local tab = tabs.selected
     head:SetShown(tab ~= 4)
@@ -1317,6 +1326,11 @@ local function buildBossPage(parent)
     end)
     m:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     p.model = m
+    p.modelHint = S.Text(holder, 11, S.FAINT)
+    p.modelHint:SetPoint("LEFT", 10, 0)
+    p.modelHint:SetPoint("RIGHT", -10, 0)
+    p.modelHint:SetJustifyH("CENTER")
+    p.modelHint:SetText(L.MODEL_HINT)
     p.name = S.Text(b, 15)
     p.name:SetPoint("TOPLEFT", holder, "TOPRIGHT", 14, -2)
     p.name:SetPoint("RIGHT", b, "RIGHT")
