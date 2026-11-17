@@ -6,6 +6,8 @@ local function stub()
         if k == "GetWidth" then return function() return 400 end end
         if k == "GetHeight" then return function() return 300 end end
         if k == "GetStringWidth" or k == "GetValue" then return function() return 0 end end
+        if k == "GetFrameLevel" then return function() return rawget(t, "_level") or 1 end end
+        if k == "SetFrameLevel" then return function(_, v) rawset(t, "_level", v) end end
         if k == "IsShown" then return function() return rawget(t, "_shown") == true end end
         if k == "Show" then return function() rawset(t, "_shown", true) end end
         if k == "Hide" then return function() rawset(t, "_shown", false) end end
@@ -130,6 +132,10 @@ function Fake(spec)
     UnitIsAFK = function() return W.afk end
     IsInRaid = function() return W.raid end
     IsInGroup = function() return W.group end
+    W.instance = false
+    IsInInstance = function() return W.instance end
+    W.guild = spec.guild or false
+    IsInGuild = function() return W.guild end
     GetZoneText = function() return spec.zone or "Westfall" end
     SendChatMessage = function(m, kind, _, to) W.chat[#W.chat + 1] = { m, kind, to } end
     ChatFrame_OpenChat = function(t) W.opened[#W.opened + 1] = t end

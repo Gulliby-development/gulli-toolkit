@@ -46,7 +46,7 @@ C_AddOns = {
 local savedSlash = SlashCmdList
 SlashCmdList = SlashCmdList or {}
 local hub = { }
-for _, f in ipairs({ "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" }) do
+for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Skin.lua", "UI.lua" }) do
     assert(loadfile("Gulli-Toolkit/" .. f))("Gulli-Toolkit", hub)
 end
 SlashCmdList = savedSlash or SlashCmdList
@@ -62,4 +62,7 @@ fh:close()
 for _, o in ipairs(R.Overlaps(_G.GulliToolkitFrame)) do
     io.stderr:write(name .. ": overlap: " .. o[1]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. " / " ..
         o[2]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
+end
+for _, t in ipairs(R.Outside(_G.GulliToolkitFrame)) do
+    io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
 end

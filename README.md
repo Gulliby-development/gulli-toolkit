@@ -24,13 +24,13 @@
 | [Quest Cleaner](docs/questcleaner/README.md) | Abandons low-level quests and deletes leftover quest items from your bags. You see a list before anything goes. | `/gqc` |
 | [Mob Finder](docs/mobfinder/README.md) | Finds the mobs and rares you look for, with a sound and a Target button. | `/gmf` |
 | [Group Buffs](docs/groupbuffs/README.md) | Casts the buffs your group is missing, one press at a time, also in combat. | `/ggb` |
-| [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds. | `/gbul` |
+| [Bulletin Board](docs/bulletin/README.md) | Sorts trade and group chat into a board: groups by dungeon, selling, buying, crafting, guilds; alerts on your words. | `/gbul` |
 | [Party Quests](docs/partyquests/README.md) | Shows which quests your group shares and who still needs one. Share in one tap. | `/gpq` |
 | [Instance Limit](docs/instancelimit/README.md) | Counts your dungeon entries this hour and today, and shows when the next one is free. | `/gil` |
 | [Attunements](docs/attune/README.md) | Raid attunements and dungeon keys for all your characters, with the next step and where it starts. | `/gat` |
 | [Bag Space](docs/bagspace/README.md) | Frees the bag slots you ask for: merges stacks, sells or deletes the cheapest junk. | `/gbs` |
-| [Dungeon Prep](docs/dungeonprep/README.md) | A dungeon's quests for your faction, a way to pick them up from where you stand, and a checklist before you go. | `/gdp` |
-| [Quick Chat](docs/quickchat/README.md) | Phrases on big buttons and a phrase wheel, group messages for quests and dungeons, whispers you missed. | `/gqk` |
+| [Dungeon Journal](docs/dungeonprep/README.md) | Every dungeon's bosses with their loot and drop chances, a wishlist, its quests for your faction and a way to pick them up from where you stand. | `/gdj` |
+| [Quick Chat](docs/quickchat/README.md) | A ring of ready phrases on a held key, a favourites panel, and your own order of chat channels. | `/gqk` |
 | [Chores](docs/chores/README.md) | A to-do list for each character: mail that runs out, cooldowns, trainer, rested XP, repairs; all characters in one table. | `/gch` |
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
 | [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
@@ -39,11 +39,11 @@
 | [Tooltip](docs/tooltip/README.md) | Stack and auction prices, the quests that need an item, what your other characters hold, ids. | `/gtt` |
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |
-| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites. | `/gso` |
+| [Social](docs/social/README.md) | Invite on a whispered word, accept friends, turn away strangers, duels and guild invites, a busy auto-reply. | `/gso` |
 | [Reminders](docs/reminders/README.md) | A movable panel of icons for missing class buffs, poisons, pet, ammo and soul shards. | `/grm` |
 | [Craft Profit](docs/craftprofit/README.md) | Profitable crafts and the cheapest way to level a profession, drawn as a route: where to buy, what to craft, where to sell. | `/gcp` |
 | [Legacy](docs/legacy/README.md) | The fastest next steps to your Legacy points and the next reward of the Progress Track, on every character. | `/glg` |
-| [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, and a history of the crates you filled. | `/gcr` |
+| [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, a history of the crates you filled, and the cheapest crates to reach a Merchant's Favor goal. | `/gcr` |
 | [Farm Tracker](docs/farmtrack/README.md) | A small panel that counts what you farm this session (cloth, ore, herbs or gold), the rate per hour and the time to your goal. | `/gft` |
 
 ## Features
@@ -51,9 +51,11 @@
 - **One window for all.** Type `/gulli`, or click the toolkit's own button on the edge of the minimap (or in the addon button there). On the left is a short list of the modules you have installed, sorted into groups (Quests, Group & Dungeons, Bags & Vendors, Chat & Social, Info & Alerts). A grey name means the module is off or paused. A module you have not installed is not in the list; it shows up once you install it.
 - **Click a module, see it.** The module's own window opens in the middle of `/gulli` at once. Next to a small window you see what the module does, its command, its version and **Reset to defaults**. **<** goes back to **Home**, **Open in its own window** takes it out. The toolkit opens again where you left it.
 - **Home: everything at a glance.** Short news from every module that runs (XP to the next level, dungeon entries left, groups on the board, what waits on your other characters), a **Modules** card (how many are on, which wait for a reload, which the game does not load, which were updated, and which use the most memory), the **Recent** messages with how long ago they came (click one to open its module), **Quick setup** and the commands of your modules.
+- **Ready to go?** The **Ready** card on the home page checks repairs, free bag slots, food, water, the hearthstone, ammo and class reagents (and your Gulli Restock list). Each one turns red under its limit; **Settings** sets the limits.
+- **Ready on the first start.** The first time the toolkit runs, a small window in the middle of the screen asks which modules you want. It looks at the addons you already have: when another addon does the same job (Scrap or Leatrix Plus sell your junk, SilverDragon finds rares, Postal empties the mail), that module starts off, with a grey line under it such as "Because you have Scrap". A module that works with one of your addons (Craft Profit and Waylaid Crates with Auctionator) stays on. Change any switch, then press **Apply**. **First setup** in **Quick setup** (or `/gulli setup`) opens it again.
 - **Quick setup.** One click switches on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off.
 - **One look on the screen.** Buff buttons, reminders, counters and notices of every module share one look: game icons with a coloured ring (red pulses: do it now, yellow: runs out soon), and notice cards that stack at the top of the screen instead of covering each other.
-- **Glass look, calm when you want.** Every window is dark glass with soft light, and opens, switches tabs and moves its selection with short animations. Nothing moves in combat. Turn on **Reduce motion** in **Quick setup** (or under Options, AddOns) to stop the animations everywhere.
+- **Easy to read, in WoW colours.** Every window is dark brown like the game's own panels, with gold names, blue for what you can click and clear text that is never smaller than the game's chat. The hub grows with your screen, so it stays readable at a small UI scale; **-** and **+** in its header make it smaller or bigger. Turn on **Reduce motion** in **Quick setup** (or under Options, AddOns) to stop the short animations everywhere. Nothing moves in combat.
 - **Move frames.** **Move frames** on the home page (or `/gulli move`) unlocks the bars and panels of every module at once, such as the XP bar and the buff button, so you can drag them. A grid and a **Lock frames** bar show while it is on; right click puts a frame back. Press it again to lock them.
 - **Take your settings along.** **Export / import** gives one line of text with every Gulli setting. Paste it on another computer, phone or handheld and press **Import**.
 - **A button on the minimap.** The toolkit icon sits on the edge of the minimap: click it to open `/gulli`, drag it to move it around the minimap. Turn off **Minimap button** in `/gulli` (or type `/gulli minimap`) to hide it.
@@ -82,14 +84,16 @@
 
 ## How to use it
 
-1. Type `/gulli`, or click the toolkit icon on the minimap.
-2. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
-3. To switch a module off, open it and flip the switch at the top right.
+1. On the first start, pick your modules in the window that opens, and press **Apply**. When a module needs a reload, the button turns into **Reload now**: press it once more.
+2. Type `/gulli`, or click the toolkit icon on the minimap.
+3. Click a module in the list on the left, or type in **Search modules**. Its window opens in the middle; **<** or **Home** brings you back to the home page. Or use the module's own command, such as `/gqc`, for a window of its own.
+4. To switch a module off, open it and flip the switch at the top right.
 
 `/gulli help` lists every command of the toolkit and of the modules you have.
 
 `/gulli questcleaner` opens a module directly, in its own window.
 
+<p align="center"><img src="docs/toolkit/setup.png" alt="The first setup window of Gulli Toolkit" width="540"></p>
 <p align="center"><img src="docs/toolkit/home.png" alt="The home page of Gulli Toolkit" width="860"></p>
 <p align="center"><img src="docs/toolkit/inside.png" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
 
@@ -99,6 +103,12 @@
 <summary><b>Do I need the toolkit?</b></summary>
 
 No. Each module is a normal addon and works alone. The toolkit only puts them in one window.
+</details>
+
+<details>
+<summary><b>Why did a module start off?</b></summary>
+
+On the first start the toolkit switches off a module when another addon you have does the same job, and says which one under it. Two addons that both sell junk or both take your mail get in each other's way. If you want ours anyway, switch it on in the first setup window, or later in `/gulli`.
 </details>
 
 <details>

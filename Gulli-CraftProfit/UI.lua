@@ -8,7 +8,7 @@ local S = ns.Skin
 
 local W, H = S.WIDE_W, S.DOCK_H
 local SIDE = 264
-local NODE_W, NODE_H, COL_W, ROW_H = 112, 66, 120, 74
+local NODE_W, NODE_H, COL_W, ROW_H = 112, 70, 120, 76
 -- Rows of stops the graph shows before **All stops** opens the rest.
 local SHOWN_ROWS = 2
 local STRIP = 3 -- item icons along the bottom of a stop
@@ -17,7 +17,7 @@ local MAIN = W - 2 * S.PAD - SIDE - S.GAP
 local TILE_MIN, ARROW_W = 130, 24
 -- the route tiles and the strip under the graph (skill bar and its line), kept tight so the
 -- stop card below fits two of its rows without a scroll bar
-local TILE_H, GRAPH_FOOT = 56, 28
+local TILE_H, GRAPH_FOOT = 58, 28
 local GRAPH_W = MAIN - 2 * S.INSET - 10
 -- As many stops in a row as the graph is wide.
 local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
@@ -31,7 +31,7 @@ ns.STOP_ICONS = {
 }
 local PATTERN_ICON = "Interface\\Icons\\INV_Scroll_03"
 local RANK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
-local GOLD = { 1, 0.82, 0.25, 1 }
+local GOLD = S.WARN -- warnings (stale prices, no Auctionator); gold is for names only
 local GOOD, BAD = S.GOOD, S.BAD
 local NODE_EDGE = S.EDGE
 
@@ -115,6 +115,27 @@ local function stepRow(parent, key, step, min, max, fmt)
             return at
         end
         set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+    elseif key == "maxCrafts" then
+        -- auto (0) shows and steps from the limit it stands for; stepping back onto that value
+        -- binds it to the target again; one step past the top is "no limit" (-1)
+        local top = max
+        local function auto()
+            local st = ns.view.state or (ns.State and ns.State())
+            local P = ns.Prefs(ns.db and ns.db.prefs)
+            P.maxCrafts = 0
+            return st and ns.CraftCap(st, P) or ns.CRAFTS_SPARE
+        end
+        get = function()
+            local v = pref(key) or 0
+            if v < 0 then return top + step end
+            return v == 0 and auto() or v
+        end
+        set = function(v) ns.SetPref(key, (v > top and -1) or (v == auto() and 0) or v) end
+        fmt = function(v)
+            if v > top then return L.NO_LIMIT end
+            return (pref(key) or 0) == 0 and L.CRAFTS_AUTO:format(v) or tostring(v)
+        end
+        max = top + step
     elseif UNLIMITED[key] then
         -- one step past the top is "no limit", saved as 0
         local top, show = max, fmt
@@ -168,7 +189,8 @@ local function buildSide(scroll)
     local lv = sw("level")
     local target = stepRow(col, "target", 5, 1, 300)
     local budget = stepRow(col, "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end)
-    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, budget })
+    local crafts = stepRow(col, "maxCrafts", 5, 5, 500)
+    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, crafts, budget })
     st:Add(c0, h0)
 
     local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
@@ -194,7 +216,7 @@ local function buildSide(scroll)
         end
         ns.Refresh()
     end)
-    ui.logText = S.Text(log.body, 11, S.MUTED)
+    ui.logText = S.Text(log.body, 12, S.MUTED)
     ui.logText:SetPoint("TOPLEFT", 0, -38)
     ui.logText:SetPoint("RIGHT", 0, 0)
     ui.logText:SetJustifyH("LEFT")
@@ -208,7 +230,7 @@ end
 local function refreshSide()
     local P = ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    for _, key in ipairs({ "target", "budget" }) do
+    for _, key in ipairs({ "target", "maxCrafts", "budget" }) do
         ui[key].minus:SetEnabled(P.level and true or false)
         ui[key].plus:SetEnabled(P.level and true or false)
     end
@@ -285,11 +307,11 @@ local function makeNode(parent, i)
     b.stripe:SetWidth(3)
     b.icon = S.ItemIcon(b, 28)
     b.icon:SetPoint("TOPLEFT", 10, -7)
-    b.kind = S.Text(b, 9, S.MUTED, "")
+    b.kind = S.Text(b, 12, S.MUTED, "")
     b.kind:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 6, 0)
     b.kind:SetPoint("RIGHT", -4, 0)
     b.kind:SetWordWrap(false)
-    b.title = S.Text(b, 11)
+    b.title = S.Text(b, 12)
     b.title:SetPoint("TOPLEFT", b.kind, "BOTTOMLEFT", 0, -3)
     b.title:SetPoint("RIGHT", -4, 0)
     b.title:SetJustifyV("TOP")
@@ -300,10 +322,10 @@ local function makeNode(parent, i)
         ic:SetPoint("BOTTOMLEFT", 10 + (k - 1) * 18, 8)
         b.strip[k] = ic
     end
-    b.more = S.Text(b, 9, S.MUTED)
+    b.more = S.Text(b, 12, S.MUTED)
     b.more:SetPoint("BOTTOMLEFT", 10 + STRIP * 18, 11)
-    b.money = S.Text(b, 10, S.MUTED)
-    b.money:SetPoint("BOTTOMRIGHT", -6, 7)
+    b.money = S.Text(b, 12, S.MUTED)
+    b.money:SetPoint("BOTTOMRIGHT", -6, 4)
     b.bar = {}
     b:SetScript("OnClick", function() selected = i; ns.Refresh() end)
     return b
@@ -326,7 +348,7 @@ local function fillNode(b, n)
     b.kind:SetText(color(kc) .. kind .. "|r")
     b.title:SetWordWrap(n.segs and true or false)
     b.title:SetMaxLines(n.segs and 2 or 1)
-    b.title:SetHeight(n.segs and 26 or 13)
+    b.title:SetHeight(n.segs and 28 or 14)
     b.title:SetText(n.segs and runName(n) or stopTitle(n))
     local icons = {}
     if not n.segs then
@@ -491,10 +513,10 @@ local function makeLine(r)
     r.entry = false
     r.icon = S.ItemIcon(r, 20)
     r.icon:SetPoint("LEFT", 4, 0)
-    r.right = S.Text(r, 11)
+    r.right = S.Text(r, 12)
     r.right:SetPoint("RIGHT", -6, 0)
     r.right:SetJustifyH("RIGHT")
-    r.mid = S.Text(r, 11, S.MUTED)
+    r.mid = S.Text(r, 12, S.MUTED)
     r.mid:SetPoint("RIGHT", -170, 0)
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
@@ -632,7 +654,7 @@ local function makeListRow(r)
     r.icon:SetPoint("LEFT", 4, 0)
     r.cols = {}
     for k = 2, 6 do
-        local t = S.Text(r, 11)
+        local t = S.Text(r, 12)
         t:SetJustifyH("RIGHT")
         t:SetWordWrap(false)
         r.cols[k - 1] = t
@@ -704,7 +726,7 @@ local function build()
     local st = S.Stack(route)
     -- the routes side by side: pick one, compare the result and the crafts
     local vars = CreateFrame("Frame", nil, route)
-    st:Add(vars, TILE_H, 8)
+    st:Add(vars, TILE_H, 6)
     local nv = #ns.MODES
     local vw = math.floor((MAIN - (nv - 1) * 8) / nv)
     ui.varTiles = {}
@@ -733,15 +755,15 @@ local function build()
         b.mark:SetHeight(2)
         b.icon = S.IconBox(b, 18, ns.EARN[m] and "Interface\\Icons\\INV_Misc_Coin_02" or ns.OPT_ICON.level)
         b.icon:SetPoint("TOPRIGHT", -6, -5)
-        b.label = S.Text(b, 10, S.MUTED)
-        b.label:SetPoint("TOPLEFT", 8, -6)
+        b.label = S.Text(b, 12, S.MUTED)
+        b.label:SetPoint("TOPLEFT", 8, -5)
         b.label:SetPoint("RIGHT", b.icon, "LEFT", -4, 0)
         b.label:SetWordWrap(false)
-        b.value = S.Text(b, 15)
-        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -3)
+        b.value = S.Text(b, 14)
+        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -2)
         b.value:SetPoint("RIGHT", -6, 0)
         b.value:SetWordWrap(false)
-        b.sub = S.Text(b, 10, S.MUTED)
+        b.sub = S.Text(b, 12, S.MUTED)
         b.sub:SetPoint("BOTTOMLEFT", 8, 5)
         b.sub:SetPoint("RIGHT", -6, 0)
         b.sub:SetWordWrap(false)
@@ -757,9 +779,9 @@ local function build()
     end
     -- the whole way to the target as runs: one chip per run, the chosen one shown below
     local chips = CreateFrame("Frame", nil, route)
-    st:Add(chips, 28, 8)
+    st:Add(chips, 28, 6)
     ui.chipBox, ui.chips = chips, {}
-    ui.chipNote = S.Text(chips, 11, S.MUTED)
+    ui.chipNote = S.Text(chips, 12, S.MUTED)
     ui.chipNote:SetPoint("LEFT", 2, 0)
     ui.chipNote:SetPoint("RIGHT", 0, 0)
     ui.chipNote:SetWordWrap(false)
@@ -795,9 +817,9 @@ local function build()
     bar:SetHeight(8)
     S.Box(bar, S.INPUT, S.EDGE)
     ui.bar, ui.barParts = bar, {}
-    ui.skillFrom = S.Text(gcard.body, 10, S.MUTED)
+    ui.skillFrom = S.Text(gcard.body, 12, S.MUTED)
     ui.skillFrom:SetPoint("BOTTOMLEFT", 0, 0)
-    ui.skillTo = S.Text(gcard.body, 10, S.MUTED)
+    ui.skillTo = S.Text(gcard.body, 12, S.MUTED)
     ui.skillTo:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.skillTo:SetPoint("LEFT", ui.skillFrom, "RIGHT", 12, 0)
     ui.skillTo:SetWordWrap(false)
@@ -829,7 +851,7 @@ local function build()
     for k = 1, 6 do
         local h = CreateFrame("Button", nil, list.body)
         h:SetHeight(18)
-        h.text = S.Text(h, 10, S.MUTED)
+        h.text = S.Text(h, 12, S.MUTED)
         h.text:SetPoint("LEFT")
         h.text:SetPoint("RIGHT")
         h.text:SetWordWrap(false)
@@ -1004,15 +1026,16 @@ local function refreshRoute()
         b.mark:SetShown(on)
         b.label:SetText(j .. ". " .. routeName(x.mode, levels))
         if p then
-            -- the money of the whole way, so the tiles compare routes; the crafts of the next run
+            -- the whole way, so the tiles compare routes: its money, its target and all its crafts
             local full = p.full or p
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
-                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(p.reached, ns.Ceil(p.crafts)))
-            if x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
+                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(full.target, ns.Ceil(full.crafts)))
+            if x.many then sub = color(BAD) .. L.VAR_MANY .. "|r"
+            elseif x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
             b.sub:SetText(sub)
-            b:SetAlpha(x.over and 0.55 or 1)
+            b:SetAlpha((x.over or x.many) and 0.55 or 1)
         else
             b.label:SetText(j .. ". " .. L.TILE_cheap)
             b.value:SetText(color(S.FAINT) .. "-|r")

@@ -18,6 +18,7 @@ local L = ns.L
 ns.DEFAULTS = {
     mode = "auto", -- levelling: auto (the fastest within the budget) or l1..l4; profit only: own or earn
     budget = 0, -- copper the levelling may lose; 0: no limit
+    maxCrafts = 0, -- crafts the whole way may take; 0: auto (the skill points + 5), -1: no limit
     level = true, -- off: no levelling routes, only the profit one
     target = 0,       -- 0: the rank cap
     useBags = true, useBank = true, buyAH = true, buyVendor = true,
@@ -48,6 +49,17 @@ ns.SWITCH = 600
 ns.EARN_MAX = 200
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
+
+-- What a trainer asks for a recipe before any trainer window was open: the most a recipe of
+-- that skill costs (skill below -> copper). The price seen at a trainer is kept for good and
+-- replaces it.
+ns.TRAINER_GUESS = { { 75, 5000 }, { 150, 10000 }, { 225, 20000 }, { math.huge, 25000 } }
+function ns.TrainerGuess(skill)
+    skill = skill or 0
+    for _, t in ipairs(ns.TRAINER_GUESS) do
+        if skill < t[1] then return t[2] end
+    end
+end
 
 -- Kinds of stops on the route, in walking order. A new kind gets a colour and a test.
 ns.STOPS = {
@@ -318,6 +330,16 @@ function ns.Target(state, P)
     return ns.Cap(state)
 end
 
+-- The most crafts a levelling route may take, or nil for no limit. Auto follows the target:
+-- the skill points to go plus ns.CRAFTS_SPARE.
+ns.CRAFTS_SPARE = 5
+function ns.CraftCap(state, P)
+    local m = P.maxCrafts or 0
+    if m < 0 then return nil end
+    if m > 0 then return m end
+    return math.max(0, ns.Target(state, P) - state.skill) + ns.CRAFTS_SPARE
+end
+
 -- One pass: at each skill point the recipe with the lowest expected cost per point (plus time
 -- by mode). `allowed`: the recipes it may use.
 local function planWith(state, P, allowed)
@@ -515,17 +537,53 @@ end
 -- ns.LEVEL_ROUTES, always with the cheapest and the fastest.
 function ns.Frontier(state, P)
     local plans = {}
-    for i, w in ipairs(ns.SWEEP) do
+    local function at(w)
         local Q = {}
         for k, v in pairs(P) do Q[k] = v end
         Q.w = w
         local p = ns.Plan(state, Q)
         p.w = w
         plans[#plans + 1] = p
+        return p
+    end
+    for i, w in ipairs(ns.SWEEP) do
+        at(w)
         ns.Part(i / #ns.SWEEP)
     end
     local top = 0
     for _, p in ipairs(plans) do top = math.max(top, p.reached) end
+    -- the crafts limit: only routes within it, and the cheapest of them found between the
+    -- weights of the sweep; when none fits, the one with the fewest crafts, marked `many`
+    local cap = ns.CraftCap(state, P)
+    if cap then
+        local fits = function(p) return p.reached == top and p.crafts <= cap + 0.5 end
+        local lo, hi
+        for _, p in ipairs(plans) do
+            if fits(p) then hi = (not hi or p.w < hi) and p.w or hi end
+        end
+        if hi then
+            for _, p in ipairs(plans) do if p.w < hi and not fits(p) then lo = math.max(lo or 0, p.w) end end
+        end
+        if lo then
+            local a, b = math.max(lo, 1), hi
+            for _ = 1, 5 do
+                local m = math.sqrt(a * b)
+                if fits(at(m)) then b = m else a = m end
+            end
+        end
+        local kept = {}
+        for _, p in ipairs(plans) do if fits(p) then kept[#kept + 1] = p end end
+        if #kept == 0 then
+            local few
+            for _, p in ipairs(plans) do
+                if p.reached == top and (not few or p.crafts < few.crafts) then few = p end
+            end
+            few = few or plans[#plans]
+            few.many = true
+            return { few }
+        end
+        plans = kept
+    end
     table.sort(plans, function(a, b)
         if (a.reached == top) ~= (b.reached == top) then return a.reached == top end
         if math.abs(a.net - b.net) > 1 then return a.net > b.net end
@@ -688,8 +746,9 @@ function ns.Variants(state, P)
         local p = front[i]
         -- the budget is for the whole way; the tile and the route show the next run
         local over = p and P.budget > 0 and -p.full.net > P.budget or false
-        out[i] = { mode = "l" .. i, plan = p, over = over }
-        if p and not over then best = i end
+        local many = p and p.full.many or false
+        out[i] = { mode = "l" .. i, plan = p, over = over, many = many }
+        if p and not over and not many then best = i end
     end
     if front[1] and not best then best = 1 end
     if best then out[best].best = true end
@@ -1229,7 +1288,7 @@ ns.OPT_ICON = {
     freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", level = "Interface\\Icons\\Spell_ChargePositive", target = "Interface\\Icons\\INV_Misc_Note_01",
     budget = "Interface\\Icons\\INV_Misc_Coin_01",
     chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
-    maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop",
+    maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop", maxCrafts = "Interface\\Icons\\Spell_Nature_TimeStop",
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
 }
 

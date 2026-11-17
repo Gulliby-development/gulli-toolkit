@@ -17,6 +17,12 @@ test("the data lists the dungeons in level order, each with its quests", functio
     eq(#d, 28, "19 classic and 9 Forever dungeons")
     for _, x in ipairs(d) do assert(ns.Data.byDungeon[x.key], "no quests for " .. x.key) end
     for i = 2, #d do assert(d[i].min >= d[i - 1].min, "level order") end
+    -- Quests filed under a dungeon's second zone id (Uldaman 1517, Razorfen Kraul 1717).
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    for _, id in ipairs({ 2342, 709, 2418, 2279, 17 }) do assert(has("ULDA", id), "Uldaman quest " .. id) end
+    assert(has("RFK", 1221), "Razorfen Kraul quest 1221")
 end)
 
 test("the suggestion is the highest dungeon that fits the level", function()
@@ -32,11 +38,16 @@ test("Deadmines for a level 18 human: in the log, can take, needs an earlier que
     local ns = Load()
     local q = ns.Quests("DM", 18)
     eq(ids(q.log), "168")
-    eq(ids(q.take), "167,373,2040", "Oh Brother, The Unsent Letter and Underground Assault")
-    local later = {}
+    eq(ids(q.take), "65,167,373,2040,92744",
+       "the Westfall chains (one card each), Oh Brother, The Unsent Letter and Underground Assault")
+    local later, take = {}, {}
     for _, x in ipairs(q.later) do later[x.id] = x.why end
+    for _, x in ipairs(q.take) do take[x.id] = x end
     eq(later[214], "WHY_EARLIER", "Red Silk Bandanas needs Westfall Stew first")
-    eq(later[166], "WHY_EARLIER")
+    eq(take[65].head.id, 166, "the Defias chain is one card, named by its last step")
+    eq(take[65].head.name, "The Defias Brotherhood")
+    eq(take[92744].head.id, 92819, "two quests that lead to one end share its card")
+    eq(later[166], nil, "a later step is no card of its own")
     eq(later[1654], nil, "a paladin quest is not for a warrior")
 end)
 
@@ -44,8 +55,8 @@ test("done quests are counted; an earlier quest in the log is enough for one-of 
     Fake({ done = { [167] = true, [155] = true } })
     local ns = Load()
     local q = ns.Quests("DM", 14)
-    eq(q.done, 1)
-    eq(ids(q.finished), "167", "the done quest is listed for the Done filter")
+    eq(q.done, 1, "a chain counts once, when its last step is done")
+    eq(ids(q.finished), "167", "the done quests are listed for the Done filter")
     local c = ns.Counts("DM", 14)
     eq(c.done, 1)
     eq(c.log + c.take + c.later, #q.log + #q.take + #q.later, "counts match the lists")
@@ -149,30 +160,39 @@ test("a click on a stop sets a map pin in its zone", function()
     eq(ns.SetPin({ inside = true, quests = {} }), false)
 end)
 
-test("checklist: gear, bags, food and drink, hearthstone", function()
-    Fake({ durability = { [1] = { 30, 100 }, [5] = { 90, 100 } },
-           bags = { [0] = { size = 16, slots = { [1] = { 4540, 12 }, [2] = { 25, 1 } } } },
-           hearth = { 99000, 3600 }, now = 100000 })
+test("the tracker's map button pins and opens the world map on the pin's zone", function()
+    local W = Fake({ areas = AREAS, map = { maps = MAPS } })
+    local opened
+    OpenWorldMap = function(id) opened = id end
     local ns = Load()
-    local c = ns.Checklist()
-    eq(c[1].key, "REPAIR"); eq(c[1].ok, false); eq(c[1].text, "Gear at 30%")
-    eq(c[2].ok, true); eq(c[2].text, "14 free bag slots")
-    eq(c[3].ok, true); eq(c[3].text, "12 food and drink")
-    eq(c[4].ok, false); eq(c[4].text, "Hearthstone in 44 min")
+    eq(ns.PinAt("Nogg", 1637, 76, 25), true)
+    eq(opened, nil, "a pin alone leaves the map closed")
+    eq(ns.PinAt("Nogg", 1637, 76, 25, true), true)
+    eq(opened, 1454, "the map opens on Orgrimmar")
+    opened, W.combat = nil, true
+    ns.PinAt("Nogg", 1637, 76, 25, true)
+    eq(opened, nil, "never in combat")
+    OpenWorldMap = nil
 end)
 
-test("checklist: what Gulli Restock misses", function()
-    Fake({})
+test("big dungeons: one refresh for a burst of item answers, bosses only on their page", function()
+    local W = Fake({ level = 50, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
     local ns = Load()
-    eq(#ns.Checklist(), 4, "no line without Restock")
-    GulliRestock = { Missing = function() return { { name = "Water", have = 5, want = 20 } } end }
-    local c = ns.Checklist()
-    eq(c[5].key, "RESTOCK"); eq(c[5].ok, false); eq(c[5].text, "Short: Water 5/20")
-    GulliRestock.Missing = function() return {} end
-    eq(ns.Checklist()[5].ok, true)
-    ns.Toggle()
-    ns.Refresh()
-    GulliRestock = nil
+    SlashCmdList.GULLIDUNGEONPREP("brd")
+    local refreshes, bosses = 0, 0
+    local refresh, getBosses = ns.Refresh, ns.Bosses
+    ns.Refresh = function() refreshes = refreshes + 1; return refresh() end
+    ns.Bosses = function(k) bosses = bosses + 1; return getBosses(k) end
+    W.timers = {}
+    for _ = 1, 200 do W.Fire("GET_ITEM_INFO_RECEIVED", 1, true) end
+    eq(refreshes, 0, "no refresh per item")
+    eq(#W.timers, 1, "one waiting refresh")
+    W.RunTimers()
+    eq(refreshes, 1)
+    ns.ShowTab(3); bosses = 0; refresh()
+    eq(bosses, 0, "the quest page builds no boss loot")
+    ns.ShowTab(1); bosses = 0; refresh()
+    eq(bosses, 1)
 end)
 
 test("rewards: which fit the class and which beat what is worn", function()
@@ -205,7 +225,7 @@ test("quests carry who takes them back, their chain step, mobs and the missing e
     assert(stew and stew.need, "Red Silk Bandanas names what is missing")
     eq(stew.need.id, 155)
     eq(ns.NeedText(stew.need), "Needs The Defias Brotherhood (The Defias Traitor, Westfall)")
-    local vc = later[166]
+    local vc = ns.Quest(166, 22)
     eq(vc.turnin.who, "Gryan Stoutmantle")
     assert(vc.steps > 1 and vc.step == vc.steps, "the last step of the Defias chain")
     eq(vc.targets[1], "Edwin VanCleef")
@@ -235,36 +255,22 @@ test("hidden quests and the search", function()
     for _, x in ipairs(q.take) do assert(x.id ~= 2040, "hidden is not in take") end
     ns.SetHidden(2040, false)
     eq(#ns.Quests("DM", 18).hidden, 0)
-    local found = ns.Quests("DM", 18, "brother")
+    local found = ns.Quests("DM", 18, "oh brother")
     eq(#found.take, 1); eq(found.take[1].id, 167)
-    eq(#ns.Quests("DM", 18, "VanCleef").later, 1, "found by the mob it needs")
+    local vc = ns.Quests("DM", 18, "VanCleef")
+    eq(#vc.take, 1, "a chain is found by the mob its last step needs")
+    eq(vc.take[1].head.id, 166)
 end)
 
-test("checklist: the dungeon key and class supplies follow their switches and thresholds", function()
-    Fake({ className = "HUNTER", level = 40, ammo = 250, counts = { [7146] = 1 },
-           items = { [7146] = { "The Scarlet Key", 1, 1, "", 13, 0 } } })
+test("the dungeon key in the header follows its switch", function()
+    Fake({ counts = { [7146] = 1 }, items = { [7146] = { "The Scarlet Key", 1, 1, "", 13, 0 } } })
     local ns = Load()
-    local by = {}
-    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
-    eq(by.KEY.ok, true); eq(by.KEY.text, "The Scarlet Key in your bags")
-    eq(by.AMMO.ok, false, "250 is below 400")
-    ns.Set("ammoMin", 200)
-    for _, c in ipairs(ns.Checklist("SM")) do by[c.key] = c end
-    eq(by.AMMO.ok, true)
-    ns.Set("keys", false); ns.Set("classCheck", false)
-    eq(#ns.Checklist("SM"), 4, "only the four basic checks")
-    Fake({ className = "WARLOCK", level = 30, counts = { [6265] = 2 } })
+    local k = ns.KeyState("SM")[1]
+    eq(k.have, true); eq(k.name, "The Scarlet Key")
+    eq(#ns.KeyState("DM"), 0, "the Deadmines need no key")
+    Fake({})
     ns = Load()
-    local last = ns.Checklist("DM")[5]
-    eq(last.key, "SHARDS"); eq(last.ok, false); eq(last.text, "2 item:6265")
-    eq(#ns.Checklist("DM"), 5, "the Deadmines need no key")
-    ns.Set("durMin", 20)
-    Fake({ durability = { [1] = { 30, 100 } } })
-    ns = Load()
-    ns.Set("durMin", 20)
-    eq(ns.Checklist()[1].ok, true, "30% passes a 20% threshold")
-    ns.Reset()
-    eq(ns.Get("durMin"), 50)
+    eq(ns.KeyState("SM")[1].have, false)
 end)
 
 test("leaving a dungeon: finished quests and where to hand them in, unless switched off", function()
@@ -311,8 +317,8 @@ test("hub: a summary line, reset and the switches", function()
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     local line = reg.summary()
-    eq(line, "The Deadmines: 1 in log, 3 to pick up")
-    eq(#reg.options, 4)
+    eq(line, "The Deadmines: 1 in log, 5 to pick up")
+    eq(#reg.options, 5)
     for _, o in ipairs(reg.options) do assert(o.tip and o.icon and o.label, "option fields") end
     reg.options[1].set(false)
     eq(ns.Get("remind"), false)
@@ -387,6 +393,481 @@ end)
 test("every language has every key, with the same placeholders", function()
     Fake({})
     W.CheckLocales(Load())
+end)
+
+-- A small journal: the Deadmines with two bosses and a rare.
+local function journal(ns)
+    ns.Data.boss = { DM = {
+        { 639, "Edwin VanCleef", "", 21, 21, 2029, 0, { 5200 }, { { 5193, 3, 18.2 }, { 5191, 3, 9.5 }, { 2874, 1, 100 } } },
+        { 644, "Rhahk'Zor", "The Foreman", 19, 19, 1234, 0, {}, { { 872, 3, 25 } } },
+        { 596, "Brainwashed Noble", "", 18, 18, 0, 1, {}, { { 3902, 3, 40 } } },
+    } }
+end
+strsplit = function(sep, s)
+    local out = {}
+    for part in (s .. sep):gmatch("(.-)" .. sep:gsub("%-", "%%-")) do out[#out + 1] = part end
+    return unpack(out)
+end
+
+test("bosses in order with the rare last, loot best first, runs from the chance", function()
+    Fake({ items = { [5193] = { "Cape of the Brotherhood", 3, 24, "INVTYPE_CLOAK", 4, 1 } } })
+    local ns = Load()
+    journal(ns)
+    local b = ns.Bosses("DM")
+    eq(#b, 3)
+    eq(b[1].name, "Edwin VanCleef"); eq(b[1].n, 1)
+    eq(b[3].rare, true, "the rare comes last")
+    eq(b[1].loot[1].item, 5193, "blue before white, the best chance first")
+    eq(b[1].loot[1].name, "Cape of the Brotherhood")
+    eq(b[1].loot[1].fits, true, "a cloak fits everyone")
+    eq(b[1].loot[1].runs, 5, "18.2% is about 5 runs")
+    eq(ns.Runs(100), nil, "a sure drop needs no count")
+    eq(ns.Runs(0), nil)
+    eq(#ns.Bosses("RFC"), 0, "no data yet")
+    eq(ns.NpcOf("Creature-0-1-2-3-639-0000AB"), 639)
+    eq(ns.NpcOf("Player-1-0ABC"), nil)
+end)
+
+test("boss pictures come from the Encounter Journal by display id, then by name", function()
+    Fake({})
+    local ns = Load()
+    journal(ns)
+    EJ_GetEncounterInfoByIndex = function(i, instance)
+        if instance ~= 63 or i > 2 then return nil end
+        return "Boss " .. i, "", 100 + i
+    end
+    EJ_GetCreatureInfo = function(j, encounter)
+        if j > 1 then return nil end
+        if encounter == 101 then return 1, "Someone else", "", 2029, 5001 end
+        return 2, "Rhahk'Zor", "", 9999, 5002
+    end
+    local b = ns.Bosses("DM")
+    eq(ns.BossIcon("DM", b[1]), 5001, "VanCleef by his display id")
+    eq(ns.BossIcon("DM", b[2]), 5002, "Rhahk'Zor by his name")
+    eq(ns.BossIcon("DM", b[3]), nil, "the rare has no picture")
+    eq(next(ns.BossIcons("THANES")), nil, "a Forever dungeon has no journal")
+    EJ_GetEncounterInfoByIndex, EJ_GetCreatureInfo = nil, nil
+end)
+
+test("the wishlist: the Loot list puts it first, the filter shows only it", function()
+    Fake({})
+    local ns = Load()
+    journal(ns)
+    ns.SetWish(872, true)
+    local all = ns.Loot("DM", "all")
+    eq(all[1].item, 872, "wished first")
+    eq(#ns.Loot("DM", "wish"), 1)
+    eq(#ns.Loot("DM", "all", "rhahk"), 1, "found by the boss")
+    eq(ns.WishCount(), 1)
+    ns.SetWish(872, false)
+    eq(#ns.Loot("DM", "wish"), 0)
+    local where = ns.DropsOf(5193)
+    eq(where[1].boss, "Edwin VanCleef"); eq(where[1].pct, 18.2)
+    eq(GulliDungeonJournal.DropsOf(5193)[1].key, "DM", "for Gulli Tooltip")
+end)
+
+test("the journal data: bosses by level, the skull boss at level 0, no world drops", function()
+    Fake({})
+    local ns = Load()
+    local dm = ns.Data.boss.DM
+    assert(dm and #dm >= 8, "the Deadmines has its bosses")
+    eq(dm[1][2], "Rhahk'Zor", "the first boss first")
+    local names = {}
+    for _, b in ipairs(ns.Bosses("DM")) do names[#names + 1] = b.name end
+    eq(names[#names], "Miner Johnson", "the rare comes last")
+    eq(ns.Bosses("DM")[#names - 1].name, "Edwin VanCleef", "the last boss before the rares")
+    for key, list in pairs(ns.Data.boss) do
+        local known = false
+        for _, d in ipairs(ns.Data.dungeons) do if d[1] == key then known = true end end
+        assert(known, key .. " is a DungeonPrep dungeon")
+        local seen = {}
+        for _, b in ipairs(list) do
+            assert(not seen[b[2]], key .. ": " .. b[2] .. " is listed twice")
+            seen[b[2]] = true
+            for _, l in ipairs(b[9]) do
+                assert(l[1] ~= 1210 and l[1] ~= 7909, key .. ": " .. b[2] .. " has a world drop")
+                assert(l[3] >= 1 and l[3] <= 100, key .. ": a chance out of range")
+            end
+            for _, s in ipairs(b[8]) do assert(s ~= 1604, "Dazed is no boss spell") end
+        end
+    end
+    eq(ns.Data.boss.THANES[1][4], 0, "a Forever boss of skull level")
+end)
+
+-- A corpse with these items: { { link, quality } }, from one creature GUID.
+local function corpse(guid, loot)
+    GetNumLootItems = function() return #loot end
+    GetLootSlotLink = function(i) return loot[i][1] end
+    GetLootSlotInfo = function(i) return "icon", "name", 1, nil, loot[i][2] end
+    GetLootSourceInfo = function() return guid, 1 end
+end
+
+test("own drops: kills count once per corpse, chances take over after 10, unknown loot is added", function()
+    local W = Fake({})
+    local ns = Load()
+    journal(ns)
+    for i = 1, 10 do
+        corpse("Creature-0-1-2-3-639-" .. i, { { "|Hitem:5193::|h", 3 }, { "|Hitem:9999::|h", 2 } })
+        W.Fire("LOOT_READY")
+        if i == 1 then W.Fire("LOOT_READY") end
+    end
+    eq(ns.Kills(639), 10, "the same corpse twice counts once")
+    local b = ns.Bosses("DM")[1]
+    local by = {}
+    for _, l in ipairs(b.loot) do by[l.item] = l end
+    eq(by[5193].pct, 100); eq(by[5193].own, true, "your own chance after 10 kills")
+    eq(by[9999].seen, true, "loot the table lacks is added")
+    corpse("Creature-0-1-2-3-12345-1", { { "|Hitem:5193::|h", 3 } })
+    W.Fire("LOOT_READY")
+    eq(ns.Kills(12345), 0, "a mob that is no boss is not counted")
+    ns.Set("learn", false)
+    corpse("Creature-0-1-2-3-644-1", { { "|Hitem:872::|h", 3 } })
+    W.Fire("LOOT_READY")
+    eq(ns.Kills(644), 0, "the switch stops the counting")
+end)
+
+test("a wished item that drops: chat, a sound and the hub's feed, unless switched off", function()
+    local W = Fake({})
+    local ns = Load()
+    journal(ns)
+    local notes = {}
+    GulliToolkit = { Notify = function(_, text) notes[#notes + 1] = text end }
+    ns.SetWish(872, true)
+    corpse("Creature-0-1-2-3-644-1", { { "|Hitem:872::|h[Rockslicer]", 3 } })
+    W.Fire("LOOT_READY")
+    eq(#notes, 1)
+    assert(W.printed[1]:find("Rockslicer", 1, true), W.printed[1])
+    ns.Set("wishAlert", false)
+    corpse("Creature-0-1-2-3-644-2", { { "|Hitem:872::|h[Rockslicer]", 3 } })
+    W.Fire("LOOT_READY")
+    eq(#notes, 1, "the switch stops the alert")
+    GulliToolkit = nil
+end)
+
+test("entering a dungeon with quests not taken: one warning per entry, and the journal opens on it", function()
+    local W = Fake({ level = 18, active = { [168] = true }, instance = "party" })
+    GetInstanceInfo = function() return "The Deadmines" end
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    eq(ns.selected, "DM")
+    local n = #W.printed
+    assert(n >= 1 and W.printed[n]:find("The Deadmines", 1, true), "warned")
+    W.Fire("ZONE_CHANGED_NEW_AREA")
+    eq(#W.printed, n, "only once per entry")
+    W.instance = "none"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    W.printed = {}
+    ns.Set("warnEnter", false)
+    W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
+    for _, l in ipairs(W.printed) do assert(not l:find("did not take", 1, true), "the switch stops the warning") end
+    GetInstanceInfo = nil
+end)
+
+test("the guide pins the first stop, then the next after a quest is taken, and ends at the entrance", function()
+    local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
+        map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },
+                                      [1436] = { "Westfall", 3, 1415 } }, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    eq(ns.StartGuide("DM"), true)
+    eq(#W.pins, 1, "the first stop")
+    local first = ns.guide.last
+    local take = ns.Quests("DM", 18).take
+    for _, q in ipairs(take) do
+        if (q.who .. "@" .. q.area) == first then W.active[q.id] = true end
+    end
+    W.Fire("QUEST_ACCEPTED")
+    assert(#W.pins >= 2, "the pin moved on")
+    for _ = 1, 10 do
+        for _, q in ipairs(ns.Quests("DM", 18).take) do W.active[q.id] = true end
+        W.Fire("QUEST_ACCEPTED")
+    end
+    eq(ns.guide, nil, "done at the entrance")
+end)
+
+test("notes on a boss and a quest are kept, trimmed and short", function()
+    Fake({})
+    local ns = Load()
+    ns.SetNote("n639", "  kill adds first  ")
+    eq(ns.Note("n639"), "kill adds first")
+    ns.SetNote("q168", string.rep("x", 400))
+    eq(#ns.Note("q168"), 300)
+    ns.SetNote("n639", "")
+    eq(ns.Note("n639"), "")
+end)
+
+test("the journal window: every tab with and without boss data", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    for i = 1, 4 do ns.ShowTab(i); ns.Refresh() end
+    ns.boss = 644
+    ns.ShowTab(1); ns.Refresh()
+    ns.selected = "RFC"
+    ns.ShowTab(1); ns.Refresh()
+    ns.ShowTab(2); ns.Refresh()
+    ns.lootFilter = "wish"; ns.Refresh()
+end)
+
+test("dungeon pictures: the loading screen, then the journal banner, then ours", function()
+    Fake({})
+    local ns = Load()
+    local b = ns.Banners("RFC", 2.6)
+    eq(b[1][1], 131862)
+    eq(b[2][1], "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-RagefireChasm")
+    _G.EJ_GetInstanceInfo = function(id) if id == 226 then return "Ragefire Chasm", "", 1, 4242 end end
+    eq(ns.Banners("RFC")[2][1], 4242)
+    _G.EJ_GetInstanceInfo = function() error("no journal") end
+    eq(ns.Banners("SFK")[2][1], "Interface\\EncounterJournal\\UI-EJ-DUNGEONBUTTON-ShadowfangKeep")
+    _G.EJ_GetInstanceInfo = nil
+    local own = ns.Banners("THANES", 2.6)
+    eq(own[1][1], 7963781)
+    eq(#own, 2)
+    eq(own[2][1], "Interface\\AddOns\\Gulli-DungeonPrep\\Banners\\THANES")
+    -- The band keeps the screen's shape and stays inside its picture.
+    local function inside(key, aspect, top, bottom, ratio)
+        local tc = ns.LoadingCoords(key, aspect)
+        eq(tc[1], 0); eq(tc[2], 1)
+        assert(tc[3] >= top - 1e-9 and tc[4] <= bottom + 1e-9, key .. " inside the picture")
+        assert(math.abs(ratio / (tc[4] - tc[3]) - aspect) < 0.01, key .. " keeps the aspect")
+    end
+    inside("ZF", 2.6, 0.17, 0.80, 4 / 3)
+    inside("BFD", 2.8, 0.17, 0.80, 4 / 3)
+    inside("KROLDOK", 2.6, 266 / 1684, 1418 / 1684, 2992 / 1684)
+    -- A band wider than the picture shows the whole picture.
+    local tall = ns.LoadingCoords("ALCAZ", 1.5)
+    assert(math.abs(tall[3] - 266 / 1684) < 1e-9 and math.abs(tall[4] - 1418 / 1684) < 1e-9)
+    -- Every dungeon has its loading screen, and ours ships with the addon for Forever's own.
+    for _, d in ipairs(ns.Data.dungeons) do
+        local key = d[1]
+        assert(ns.LOADING[key], "a loading screen for " .. key)
+        assert(ns.ART[key] or ns.OWN_BANNERS[key], "a second picture for " .. key)
+        if ns.OWN_BANNERS[key] then
+            local f = io.open("Gulli-DungeonPrep/Banners/" .. key .. ".tga", "rb")
+            assert(f, "Banners/" .. key .. ".tga is there")
+            local head = f:read(18)
+            f:close()
+            eq(head:byte(3), 2, "an uncompressed TGA")
+            eq(head:byte(13) + head:byte(14) * 256, 512)
+            eq(head:byte(15) + head:byte(16) * 256, 256)
+        end
+    end
+    eq(#ns.Portraits("THANES"), 0)
+    eq(ns.Portraits("ZF")[2], "Interface\\LFGFrame\\LFGIcon-ZulFarak")
+    for key in pairs(ns.ART) do assert(ns.ICONS[key], "an icon behind the picture of " .. key) end
+end)
+
+test("the journal opens on the dungeon grid, those for the level first; a tile opens the dungeon", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    ns.Toggle()
+    eq(ns.home, true, "the grid first")
+    local order = ns.GridOrder(ns.Dungeons(20))
+    assert(order[1].fits, "a dungeon for the level comes first")
+    local seenOther = false
+    for _, d in ipairs(order) do
+        if not d.fits then seenOther = true end
+        assert(not (seenOther and d.fits), "every fitting dungeon before the others")
+    end
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    eq(ns.home, false, "a slash key opens the dungeon")
+    eq(ns.selected, "DM")
+end)
+
+test("a quest card lists its chain's steps under each other; a single quest has none", function()
+    Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    ns.Toggle()
+    local steps = ns.CardSteps({ quest = { id = 166 } })
+    assert(steps and #steps == 7, "The Defias Brotherhood has seven steps")
+    eq(steps[1].n, 1)
+    assert(steps[7].this, "the card's own quest is marked")
+    eq(ns.CardSteps({ quest = { id = 999999 } }), nil, "no chain, no steps")
+    -- The quest list draws the cards with their steps.
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    ns.filter = "all"
+    ns.Refresh()
+end)
+
+test("a quest started by an item that drops in the dungeon belongs to it (Krol'dok Moulding)", function()
+    Fake({})
+    local ns = Load()
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    assert(has("KROLDOK", 94973), "the Horde Krol'dok Moulding, from Tunk's drop")
+    assert(has("KROLDOK", 94980), "the Alliance one")
+    eq(table.concat(ns.Data.chain[94973], ","), "94973,94974")
+end)
+
+test("AllTheThings fills the gaps: its dungeon quests join, its faction wins for Forever quests", function()
+    Fake({ level = 15, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    local q = ns.Quests("THANES", 15)
+    eq(ids(q.take), "96395,96403", "a Horde player gets An Ancient Grudge and Important Heirlooms")
+    eq(ns.Data.quest[96403][11], "", "Important Heirlooms is for both factions")
+    eq(ns.Data.quest[96403][4], 0)
+    local function has(key, id)
+        for _, x in ipairs(ns.Data.byDungeon[key]) do if x == id then return true end end
+    end
+    assert(has("KROLDOK", 94969), "Krol'dok No More!, which only ATT ties to the dungeon")
+    assert(has("ALCAZ", 96376), "State Secrets")
+    assert(not has("GNOMER", 2951), "a Sparklematic exchange stays out")
+end)
+
+test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
+    Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    eq(ns.Get("mainOnly"), true, "on by default")
+    local function all(q)
+        local t = {}
+        for _, l in ipairs({ q.log, q.take, q.later, q.hidden }) do
+            for _, x in ipairs(l) do
+                t[x.id] = x
+                for _, m in ipairs(x.members or {}) do t[m] = t[m] or x end
+            end
+        end
+        return t
+    end
+    local q = ns.Quests("SCHOLO", 58)
+    local shown = all(q)
+    for _, id in ipairs({ 5096, 5341, 5466, 5529, 4771 }) do
+        assert(shown[id], "a Horde chain step: " .. id)
+        eq(shown[id].main, true)
+    end
+    assert(not shown[5343], "the Alliance Barov Family Fortune is not for the Horde")
+    assert(q.more > 0, "other dungeon quests are left out")
+    local main = ns.MainSet("SCHOLO")
+    for id in pairs(shown) do assert(main[id], "only chain quests: " .. id) end
+    ns.Set("mainOnly", false)
+    local every = ns.Quests("SCHOLO", 58)
+    eq(every.more, 0)
+    local n = 0
+    for _ in pairs(all(every)) do n = n + 1 end
+    local m = 0
+    for _ in pairs(shown) do m = m + 1 end
+    eq(n, m + q.more, "every quest once the switch is off")
+    eq(ns.Counts("SCHOLO", 58).take, #every.take, "the counts follow the switch")
+    -- A dungeon whose guide the data lacks shows every quest.
+    ns.Set("mainOnly", true)
+    ns.Data.main.SHAPERS = nil
+    eq(ns.Quests("SHAPERS", 60).more, 0)
+end)
+
+test("the tracker: ready quests first, objectives, quests to take; Lead me shows it, the cross hides it", function()
+    Fake({ level = 33, raceID = 2, faction = "Horde", className = "HUNTER", areas = AREAS,
+           map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } },
+           active = { [2841] = true }, complete = { [2841] = true } })
+    local ns = Load()
+    local items, ready, total = ns.TrackerItems("GNOMER", 33)
+    eq(items[1].id, 2841)
+    eq(items[1].state, "ready")
+    eq(ready, 1)
+    assert(total >= #items and #items <= ns.TRACK_MAX, "at most TRACK_MAX rows")
+    local states = {}
+    for _, it in ipairs(items) do states[it.state] = true end
+    assert(states.take, "quests to take are listed")
+    for i = 2, #items do
+        local order = { ready = 1, log = 2, take = 3, chain = 4 }
+        assert(order[items[i - 1].state] <= order[items[i].state], "ready, log, take, chain")
+    end
+    -- An unfinished quest lists its objectives.
+    W.complete[2841] = nil
+    items = ns.TrackerItems("GNOMER", 33)
+    eq(items[1].state, "log")
+    -- Lead me shows the tracker and keeps it over a reload; the cross hides it.
+    ns.StartGuide("GNOMER")
+    eq(GulliDungeonPrepDB.tracker, "GNOMER")
+    assert(ns.TrackerFrame():IsShown(), "the tracker shows")
+    ns.OpenTracked("GNOMER", 2841)
+    eq(ns.selected, "GNOMER")
+    eq(ns.openQuest, 2841)
+    ns.HideTracker()
+    eq(GulliDungeonPrepDB.tracker, nil)
+    assert(not ns.TrackerFrame():IsShown(), "the cross hides it")
+    -- Unlocked, it shows to be placed even with nothing tracked; locked again, it hides.
+    ns.Set("trackerLocked", false)
+    assert(ns.TrackerFrame():IsShown(), "unlocked, it shows")
+    ns.Set("trackerLocked", true)
+    assert(not ns.TrackerFrame():IsShown(), "locked with nothing tracked, it hides")
+end)
+
+test("chains: one card per chain, at the step to do now; the tracker opens one to show its steps", function()
+    Fake({ level = 18, done = { [65] = true, [132] = true, [135] = true }, active = { [141] = true } })
+    local ns = Load()
+    local q = ns.Quests("DM", 18)
+    local card
+    for _, x in ipairs(q.log) do if x.head and x.head.id == 166 then card = x end end
+    assert(card, "the Defias chain is in the log at its step in the log")
+    eq(card.id, 141)
+    eq(#card.members, 7)
+    for _, l in ipairs({ q.take, q.later, q.finished }) do
+        for _, x in ipairs(l) do assert(not (x.head and x.head.id == 166), "the chain shows once") end
+    end
+    local items = ns.TrackerItems("DM", 18)
+    local row
+    for _, it in ipairs(items) do if it.key == 166 then row = it end end
+    assert(row, "the chain is one tracker row")
+    eq(row.id, 141, "a click on the map or the journal goes to the step to do now")
+    eq(row.name, "The Defias Brotherhood")
+    eq(row.lines[1].text, "Step 4 of 7:  " .. card.name, "which step the chain is at")
+    eq(#row.steps, 7)
+    ns.StartGuide("DM")
+    eq(ns.TrackerOpen(166), false)
+    ns.ToggleTracked(166)
+    eq(ns.TrackerOpen(166), true, "a click opens the row to show every step")
+    ns.ToggleTracked(166)
+    eq(ns.TrackerOpen(166), false)
+    -- The whole chain done: one done chain.
+    W.done = { [65] = true, [132] = true, [135] = true, [141] = true, [142] = true, [155] = true, [166] = true }
+    W.active = {}
+    local finished = 0
+    for _, x in ipairs(ns.Quests("DM", 18).finished) do if x.head and x.head.id == 166 then finished = finished + 1 end end
+    eq(finished, 1)
+end)
+
+test("a pin button near the giver targets and marks them, out of combat only", function()
+    Fake({})
+    local ns = Load()
+    local target, mark = nil, nil
+    UnitExists = function(u) return u == "target" and target ~= nil end
+    local name = UnitName
+    UnitName = function(u) if u == "target" then return target end return name(u) end
+    GetRaidTargetIndex = function() return mark end
+    SetRaidTarget = function(_, i) mark = (mark ~= i) and i or nil end
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "nobody targeted")
+    target = "Defias Pillager"
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "another target is not marked")
+    eq(mark, nil)
+    target = "Gryan Stoutmantle"
+    eq(ns.MarkTarget("Gryan Stoutmantle"), true)
+    eq(mark, 3, "a diamond")
+    ns.MarkTarget("Gryan Stoutmantle")
+    eq(mark, 3, "a second click keeps the mark")
+    issecretvalue = function() return true end
+    mark = nil
+    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "a secret name is not compared")
+    issecretvalue = nil
+    -- The secure button over the pin: its macro targets by name, its click pins and marks.
+    local pinned
+    local btn = W.stub()
+    btn.GetCenter = function() return 100, 200 end
+    btn.GetEffectiveScale = function() return 1 end
+    btn:SetScript("OnClick", function() pinned = true end)
+    UIParent.GetEffectiveScale = function() return 1 end
+    W.combat = true
+    eq(ns.TargetOver(btn, "Gryan Stoutmantle"), false, "never in combat")
+    W.combat = false
+    eq(ns.TargetOver(btn, "Gryan Stoutmantle"), true)
+    local o = ns.TargetOverlay()
+    eq(o.who, "Gryan Stoutmantle", "the macro targets by name")
+    mark = nil
+    o:GetScript("PostClick")(o, "LeftButton", true)
+    eq(pinned, nil, "nothing on the press")
+    o:GetScript("PostClick")(o, "LeftButton", false)
+    eq(pinned, true, "the pin's own click runs")
+    eq(mark, 3)
 end)
 
 W.finish()

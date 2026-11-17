@@ -94,6 +94,24 @@ local function isOn(name)
     return enableState(name) > 0 and reason ~= "DISABLED"
 end
 
+-- Whether another addon runs or is switched on for this character (the first-run window reads it).
+function ns.AddonActive(name)
+    local ok, loaded = pcall(isLoaded, name)
+    if ok and loaded then return true end
+    local okOn, on = pcall(isOn, name)
+    return okOn and on == true
+end
+
+-- Folder names of every addon on disk, for the first-run window.
+function ns.AddonNames()
+    local out = {}
+    for i = 1, numAddOns() do
+        local name = addOnInfo(i)
+        if name then out[#out + 1] = name end
+    end
+    return out
+end
+
 function ns.Print(msg)
     print("|cff9ad0ffGulli Toolkit|r: " .. msg)
 end
@@ -368,11 +386,15 @@ function ns.Filter(rows, category, state, query)
     return out
 end
 
--- The hub's scale: the player's own (0.7 to 1.3), made smaller when the window would not fit.
+-- The hub's scale. The window grows with the screen (at most 1.6 times, up to 90% of its
+-- height), so its text stays readable at a small UI scale; the player's own -/+ (0.7 to 1.3)
+-- multiplies that, and the result always fits the screen.
 function ns.HubScale(user, screenW, screenH, w, h)
     user = math.max(0.7, math.min(1.3, tonumber(user) or 1))
-    local fit = math.min(1, (screenW or w) * 0.96 / w, (screenH or h) * 0.9 / h)
-    return user * fit
+    local sw, sh = screenW or w, screenH or h
+    local base = math.max(1, math.min(1.6, sh / 768))
+    local auto = math.min(base, sw * 0.96 / w, sh * 0.9 / h)
+    return math.min(auto * user, sw * 0.98 / w, sh * 0.98 / h)
 end
 
 -- The game's own name for why it did not load an addon (ADDON_INTERFACE_VERSION is "Out of
@@ -453,7 +475,8 @@ function ns.SetEnabled(row, on)
     if not row.addon then return end
     setEnabled(row.addon, on)
     local took = isOn(row.addon) == on
-    if not took then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
+    -- The first setup switches many at once and reports them in one line (ns.ApplySetup).
+    if not took and not ns.quietSwitch then ns.Print(L.SWITCH_FAILED:format(row.title or row.key)) end
     if ns.Refresh then ns.Refresh() end
     return took
 end
@@ -947,7 +970,7 @@ end
 ns.HookErrors()
 
 function ns.HelpLines()
-    local lines = { L.HELP, L.HELP_MORE }
+    local lines = { L.HELP, L.HELP_MORE, L.SETUP_HELP }
     for _, row in ipairs(ns.List()) do
         if row.slash and row.state == "ready" then lines[#lines + 1] = row.slash .. "  " .. row.title end
     end
@@ -980,6 +1003,14 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
         if a == ns.VERSION_PREFIX and who and who ~= player() then ns.OnVersions(b) end
         return
     end
+    if event == "PLAYER_ENTERING_WORLD" and ns.firstRun then
+        -- Every addon is loaded now, so the window sees what else the player runs.
+        ns.firstRun = false
+        if ns.OpenSetup then
+            if C_Timer and C_Timer.After then C_Timer.After(2, function() ns.OpenSetup(true) end)
+            else ns.OpenSetup(true) end
+        end
+    end
     if event ~= "ADDON_LOADED" then
         -- At most once a minute, so a busy raid roster does not flood the channel.
         if time() - lastSent >= 60 then lastSent = time(); sendVersions() end
@@ -987,8 +1018,13 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
     end
     if a ~= ADDON then return end
     self:UnregisterEvent("ADDON_LOADED")
+    -- No saved settings yet: the toolkit runs for the first time, so the setup window opens.
+    ns.firstRun = GulliToolkitDB == nil
     GulliToolkitDB = GulliToolkitDB or {}
     GulliToolkitDB.seen = GulliToolkitDB.seen or {}
+    -- The hub sizes itself to the screen since Gulli Hearth: a scale saved before would now
+    -- push it past the screen, so it starts from 100% once.
+    if (GulliToolkitDB.scaleV or 0) < 1 then GulliToolkitDB.scale, GulliToolkitDB.scaleV = nil, 1 end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ns.VERSION_PREFIX)
     end
@@ -1024,6 +1060,8 @@ SlashCmdList.GULLITOOLKIT = function(msg)
     elseif msg:lower() == "errors" then
         ns.Print(L.ERRORS_COUNT:format(#ns.Errors()))
         if ns.OpenErrors then ns.OpenErrors() end
+    elseif msg:lower() == "setup" then
+        if ns.OpenSetup then ns.OpenSetup() end
     elseif msg:lower() == "help" then
         for _, l in ipairs(ns.HelpLines()) do ns.Print(l) end
     elseif not ns.OpenModule(msg) then

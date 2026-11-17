@@ -247,37 +247,27 @@ S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "
     end,
 }, setup = { spec = { level = 56, channels = { 1, "General", false, 2, "Trade", false } },
     open = function(ns)
-        ns.db.only.STRAT, ns.db.only.SCHOLO, ns.db.alert.STRAT, ns.db.alert.HYJAL = true, true, true, true
+        ns.AddWord("Arcanite Bar"); ns.AddWord("Strat"); ns.AddWord("enchanter")
+        ns.Add("LFM Strat UD need heals", "Ann"); ns.Add("WTS [Arcanite Bar] 20g", "Bob")
         ns.ShowTab(7)
     end,
 } }
 
 S.quickchat = {
     default = {},
-    edit = { open = function(ns)
-        ns.ToggleFav("Ready!"); ns.ToggleFav("brb"); ns.db.chan["Need a heal!"] = "PARTY"
-        ns.ShowPage(1, { editing = true })
+    picked = { open = function(ns)
+        ns.AddPhrase("Pull in 5, ready?"); ns.ToggleFav("Ready!"); ns.db.orderOf["Need a heal!"] = { "PARTY" }
+        ns.Toggle(); ns.PickPhrase("Pull in 5, ready?")
     end },
-    group = { spec = { level = 12 }, open = function(ns) ns.Toggle() end },
-    dungeon = { spec = { level = 57, areas = { [2017] = "Stratholme" } }, open = function(ns)
-        ns.ShowPage(2, { mode = 2 })
+    order = { spec = { channels = { 1, "General - Elwynn", false, 2, "Trade - City", false } }, open = function(ns)
+        ns.db.orderOf["WTS {item}, pst"] = { "TRADE", "GENERAL", "SAY" }
+        ns.Toggle(); ns.EditOrder("WTS {item}, pst")
     end },
-    whispers = { open = function(ns, W)
-        W.combat = true
-        W.Fire("CHAT_MSG_WHISPER", "can you craft a bag?", "Ann-Realm")
-        W.Fire("CHAT_MSG_WHISPER", "inv for ST?", "Bob")
-        W.combat = false
-        ns.ShowPage(3)
+    setup = { spec = { channels = { 1, "General - Elwynn", false, 4, "LookingForGroup", false } }, open = function(ns)
+        ns.db.wheelKey = "F5"; ns.db.order = { "RAID", "PARTY", "LFG", "SAY" }; ns.ShowPage(2)
     end },
-    more = { open = function(ns)
-        ns.Say("Ready!"); ns.Say("brb", "GUILD")
-        ns.ShowPage(4)
-    end },
-    setup = { open = function(ns) ns.db.wheelKey = "F5"; ns.ShowPage(5) end },
-    wheel = { crop = "GulliQuickChatWheel", open = function(ns)
-        for _, p in ipairs({ "inv please", "Ready!", "brb", "Back", "Thanks for the group!", "On my way",
-                             "Need a heal!", "WTS {item}, pst" }) do ns.ToggleFav(p) end
-        ns.ToggleWheel()
+    wheel = { crop = "GulliQuickChatRing", open = function(ns)
+        ns.OpenWheel(true)
         ns.WheelHover(2)
     end },
 }
@@ -464,8 +454,26 @@ S.mail = { panel = {
 
 -- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.
 local dpIcons = { "INV_Pants_03", "INV_Weapon_Rifle_05", "INV_Chest_Chain_05", "INV_Gauntlets_04", "INV_Boots_05" }
+-- The Gnomeregan boss loot by name, for the journal pages.
+local DP_LOOT = { [9445] = { "Grubbis Paws", "INVTYPE_HAND", "INV_Gauntlets_04" },
+    [9446] = { "Electrocutioner Leg", "INVTYPE_2HWEAPON", "INV_Mace_04" },
+    [9454] = { "Acidic Walkers", "INVTYPE_FEET", "INV_Boots_05" }, [9452] = { "Hydrocane", "INVTYPE_2HWEAPON", "INV_Staff_08" },
+    [9453] = { "Toxic Revenger", "INVTYPE_WEAPON", "INV_Weapon_ShortBlade_05" },
+    [9447] = { "Electrocutioner Lagnut", "INVTYPE_FINGER", "INV_Jewelry_Ring_15" },
+    [9448] = { "Spidertank Oilrag", "INVTYPE_WRIST", "INV_Bracer_07" },
+    [9449] = { "Manual Crowd Pummeler", "INVTYPE_2HWEAPON", "INV_Hammer_05" },
+    [9450] = { "Gnomebot Operating Boots", "INVTYPE_FEET", "INV_Boots_02" },
+    [9492] = { "Electromagnetic Gigaflux Reactivator", "INVTYPE_HEAD", "INV_Helmet_49" },
+    [9459] = { "Thermaplugg's Left Arm", "INVTYPE_2HWEAPON", "INV_Axe_09" },
+    [9461] = { "Charged Gear", "INVTYPE_FINGER", "INV_Misc_Gear_01" },
+    [9458] = { "Thermaplugg's Central Core", "INVTYPE_SHIELD", "INV_Shield_05" },
+    [4415] = { "Schematic: Craftsman's Monocle", "", "INV_Scroll_03" },
+    [9455] = { "Emissary Cuffs", "INVTYPE_WRIST", "INV_Bracer_04" },
+    [9457] = { "Royal Diplomatic Scepter", "INVTYPE_WEAPON", "INV_Mace_06" } }
 local dpItems = setmetatable({ [6893] = { "Workshop Key", 1, 1, "", 13, 0, "Interface\\Icons\\INV_Misc_Key_06" } },
     { __index = function(_, id)
+        local l = DP_LOOT[id]
+        if l then return { l[1], 3, 34, l[2], l[2] == "" and 9 or 4, id % 3, "Interface\\Icons\\" .. l[3] } end
         return { "Reward " .. id, 2, 34 + id % 4, ({ "INVTYPE_LEGS", "INVTYPE_RANGEDRIGHT", "INVTYPE_CHEST" })[id % 3 + 1],
                  id % 3 == 1 and 2 or 4, id % 3 == 1 and 3 or (id % 2 == 0 and 3 or 1),
                  "Interface\\Icons\\" .. dpIcons[id % #dpIcons + 1] }
@@ -479,12 +487,67 @@ local dpSpec = { level = 33, raceID = 6, faction = "Horde", className = "HUNTER"
     map = { best = 1454, pos = { 0.70, 0.30 },
             maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } },
     bags = { [0] = { size = 16, slots = { [1] = { 4540, 4 } } } } }
+-- Sample bosses for the journal pages (the real ones come from JournalData.lua).
+local function dpBosses(ns)
+    ns.Data.boss = ns.Data.boss or {}
+    ns.Data.boss.GNOMER = {
+        { 7361, "Grubbis", "", 32, 32, 6533, 0, { 9143 }, { { 9445, 3, 21.4 }, { 9446, 3, 18.9 } } },
+        { 7079, "Viscous Fallout", "", 30, 30, 6531, 0, { 9459 }, { { 9454, 3, 34.2 }, { 9452, 3, 29.8 }, { 9453, 3, 27.1 } } },
+        { 6235, "Electrocutioner 6000", "", 32, 32, 6942, 0, { 11085 }, { { 9447, 3, 31.5 }, { 9446, 3, 24.6 }, { 9448, 3, 22 } } },
+        { 6229, "Crowd Pummeler 9-60", "", 32, 32, 6774, 0, { 10887 }, { { 9449, 3, 41.3 }, { 9450, 3, 37 } } },
+        { 7800, "Mekgineer Thermaplugg", "Leper Gnome King", 34, 34, 6980, 0, { 10101, 11518 },
+          { { 9492, 3, 18.7 }, { 9459, 3, 17.2 }, { 9461, 3, 16.4 }, { 9458, 3, 15.3 }, { 4415, 3, 4.1 } } },
+        { 6228, "Dark Iron Ambassador", "", 33, 33, 6669, 1, {}, { { 9455, 3, 33.3 }, { 9457, 3, 30.6 } } },
+    }
+    ns.db.kills = { [7800] = 3 }
+    ns.SetWish(9492, true)
+end
 S.dungeonprep = {
-    default = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle() end },
-    settings = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
-    quest = { spec = dpSpec, open = function(ns) ns.selected = "GNOMER"; ns.Toggle(); ns.OpenQuest(2841) end },
-    forever = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle() end },
-    chain = { spec = dpSpec, open = function(ns) ns.selected = "DROWNED"; ns.Toggle(); ns.OpenQuest(95775) end },
+    home = { spec = dpSpec, open = function(ns) ns.Toggle() end },
+    default = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle() end },
+    loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
+    quests = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
+    settings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
+    real = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "THANES"; ns.Toggle() end },
+    levels = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "SM"; ns.Toggle() end },
+    empty = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DALARAN"; ns.Toggle() end },
+    quest = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
+    forever = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
+    scholo = { spec = { level = 58, raceID = 2, faction = "Horde", className = "WARRIOR", areas = { [28] = "Western Plaguelands", [85] = "Tirisfal Glades" } },
+               open = function(ns) ns.home = false; ns.selected = "SCHOLO"; ns.Toggle(); ns.ShowTab(3) end },
+    chain = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
+    -- The tracker of Lead me on its own, on a dark stand-in screen.
+    tracker = { spec = dpSpec, crop = "GulliDungeonPrepTrackerStage",
+                before = function()
+                    local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                    stage:SetSize(360, 420)
+                    stage:SetPoint("CENTER")
+                    local bg = stage:CreateTexture(nil, "BACKGROUND")
+                    bg:SetAllPoints()
+                    bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                end,
+                open = function(ns)
+                    ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                    ns.ShowTracker("GNOMER")
+                end },    -- The tracker on the Drowned City, with one chain opened to show its steps.
+    trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
+                            areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
+                   crop = "GulliDungeonPrepTrackerStage",
+                   before = function()
+                       local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                       stage:SetSize(360, 420)
+                       stage:SetPoint("CENTER")
+                       local bg = stage:CreateTexture(nil, "BACKGROUND")
+                       bg:SetAllPoints()
+                       bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                   end,
+                   open = function(ns)
+                       ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                       ns.ShowTracker("DROWNED")
+                       for _, it in ipairs(ns.TrackerItems("DROWNED", 40)) do
+                           if it.steps then ns.ToggleTracked(it.key) break end
+                       end
+                   end },
 }
 
 -- Spell icons by id for the Reminders previews (the fake client has none).
@@ -718,7 +781,6 @@ end
 S.legacy.zones = lgExplore(80000)
 S.legacy.valthalak = lgExplore(80010)
 -- The settings pages with the Lock switch of their frame on the screen.
-S.bulletin.setup = { spec = S.bulletin.default.spec, open = function(ns) ns.ShowTab(7) end }
 S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
 S.mobfinder.search = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(1) end }
 -- Crates: two Flowering crates, Apprentice Herbs and Expert Ore at the auction house, with some
@@ -772,8 +834,56 @@ S.crates = { default = { spec = crSpec(), open = crOpen(true) },
     end)(), open = function(ns, W)
         crIcons(W)
         ns.Window():Show()
-        ns.ShowTab(2)
+        ns.ShowTab(3)
     end } }
+-- The Favor tab: 30 Merchant's Favor from the crates in the bags and the auction house.
+local function crFavor(locale)
+    local sp = crSpec(locale)
+    sp.level = 40
+    for id, p in pairs({ [248682] = 9000, [248686] = 12000, [248690] = 15000, [248691] = 14000, [248692] = 11000,
+                         [248683] = 8000, [2770] = 60, [2771] = 90, [2775] = 300, [2772] = 140 }) do sp.prices[id] = p end
+    sp.names[248683], sp.names[2770], sp.names[2771] = "Waylaid Crate: Apprentice Ore", "Copper Ore", "Tin Ore"
+    sp.db = { goal = 30 }
+    return sp
+end
+local function crFavorOpen(ns, W)
+    crIcons(W)
+    AuctionHouseFrame = nil
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Window():Show()
+    ns.ShowTab(2)
+    ns.TokenCalculate()
+    ns.Refresh()
+end
+S.crates.favor = { spec = crFavor(), open = crFavorOpen }
+S.crates.favor_ru = { spec = crFavor("ruRU"), open = crFavorOpen }
+local function crSettings(ns, W)
+    crIcons(W)
+    ns.Window():Show()
+    ns.ShowTab(4)
+end
+S.crates.settings = { spec = crSpec(), open = crSettings }
+S.crates.settings_ru = { spec = crSpec("ruRU"), open = crSettings }
+-- The first-run window: Leatrix Plus sells junk, SilverDragon finds rares, Auctionator is on.
+S.toolkit.setup = {
+    spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.20.0" } },
+        mod("QuestCleaner"), mod("AutoQuest"), mod("PartyQuests"), mod("GroupBuffs"), mod("DungeonPrep"),
+        mod("InstanceLimit"), mod("Loot"), mod("BagSpace"), mod("Merchant"), mod("Mail"), mod("Crates"),
+        mod("CraftProfit"), mod("Bulletin"), mod("Social"), mod("XP"), mod("MobFinder"), mod("Tooltip"),
+        { name = "Leatrix_Plus", enabled = true, loaded = true }, { name = "SilverDragon", enabled = true, loaded = true },
+        { name = "Auctionator", enabled = true, loaded = true } } },
+    crop = "GulliToolkitSetup",
+    open = function(ns)
+        LeaPlusDB = { AutoSellJunk = "On", AutoRepairGear = "On" }
+        for _, k in ipairs({ "QuestCleaner", "AutoQuest", "PartyQuests", "GroupBuffs", "DungeonPrep", "InstanceLimit",
+                             "Loot", "BagSpace", "Merchant", "Mail", "Crates", "CraftProfit", "Bulletin", "Social",
+                             "XP", "MobFinder", "Tooltip" }) do
+            GulliToolkit.Register({ key = k, open = function() end, pause = function() end,
+                icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon" })
+        end
+        ns.OpenSetup()
+    end,
+}
 -- FarmTrack: an hour of farming Mageweave and gold, with a goal for each, plus other loot.
 local function ftItems()
     local names = { [4338] = "Mageweave Cloth", [4306] = "Silk Cloth", [3858] = "Mithril Ore", [4304] = "Thick Leather",

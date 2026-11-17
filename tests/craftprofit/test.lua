@@ -59,6 +59,9 @@ local function core()
     return ns
 end
 local function prefs(t)
+    t = t or {}
+    -- the route tests compare whole frontiers; the crafts limit has its own test
+    if t.maxCrafts == nil then t.maxCrafts = -1 end
     local P = core().Prefs(t)
     return P
 end
@@ -174,10 +177,10 @@ test("thresholds come from the data and follow the colours the game shows", func
     eq(c.Thresholds(nil, {}, nil, true), nil)
 end)
 
-test("Data.lua knows the Classic recipes by spell and by item", function()
+test("Data.lua knows the recipes by spell and by item", function()
     local c = core()
-    eq(c.Data.spell[8764][3], 220, "Earthen Vest turns grey at 220")
-    eq(c.Data.item[4238][1], 45, "Linen Bag is learned at 45")
+    eq(c.Data.spell[8764][3], 185, "Earthen Vest turns grey at 185 in WoW Forever")
+    eq(c.Data.item[4238][1], 5, "Linen Bag is learned at 5 in WoW Forever")
     local n = 0
     for _ in pairs(c.Data.spell) do n = n + 1 end
     assert(n > 1000)
@@ -185,10 +188,31 @@ test("Data.lua knows the Classic recipes by spell and by item", function()
     eq(c.Data.gone[435841], true, "Invoker's Cord")
     eq(c.Data.spell[435841], nil); eq(c.Data.src[435841], nil)
     -- one stays only when a Forever pattern teaches it
-    for sid in pairs(c.Data.spell) do assert(sid < 400000 or c.Data.src[sid], "SoD recipe " .. sid .. " has no Forever pattern") end
+    for sid in pairs(c.Data.spell) do
+        assert(sid < 400000 or sid >= 1000000 or c.Data.src[sid], "SoD recipe " .. sid .. " has no Forever pattern")
+    end
     assert(c.Data.src[1213622][2] > 245000, "Enchant Gloves - Holy Power from the Forever formula")
     for sid in pairs(c.Data.src) do assert(not c.Data.gone[sid], "gone recipe " .. sid .. " has a source") end
     eq(c.Data.gone[8764], nil, "Earthen Vest stays")
+end)
+
+test("Data.lua takes the WoW Forever skill levels, recipes and trainer prices from Wowhead", function()
+    local c = core()
+    -- Forever moved Bolt of Mageweave down: grey at 150, not Classic's 185
+    eq(c.Data.spell[3865][3], 150); eq(c.Data.item[4339][1], 140); eq(c.Data.item[4339][4], 150)
+    eq(c.Data.train[3865], 1000, "its trainer price")
+    -- the trainer teaches Transmute: Iron to Gold, though a vendor sells its recipe too
+    eq(c.Data.train[11479], 2500); eq(c.Data.src[11479], nil)
+    -- Forever's own Greater Healing Potion replaces the Classic recipe
+    eq(c.Data.gone[7181], true); eq(c.Data.spell[7181], nil)
+    eq(c.Data.spell[1244434][1], 175); eq(c.Data.src[1244434][2], 255723, "Manual: Greater Healing Potion")
+    -- a recipe Wowhead marks unavailable is gone
+    eq(c.Data.gone[16960], true, "Thorium Greatsword")
+    -- the engineering trainers teach these despite the pattern
+    eq(c.Data.gone[11454], nil)
+    for sid in pairs(c.Data.train) do
+        assert(not c.Data.src[sid] and not c.Data.gone[sid] and c.Data.spell[sid], "trainer price of " .. sid)
+    end
 end)
 
 -- ---------- the plan and the route ----------
@@ -426,6 +450,31 @@ test("the levelling routes run from the cheapest to the fastest", function()
     end
 end)
 
+test("the crafts limit: auto follows the target, routes over it go", function()
+    local c, st = core(), state()
+    local target = c.Target(st, prefs({}))
+    eq(c.CraftCap(st, c.Prefs({})), target - st.skill + c.CRAFTS_SPARE, "auto: the points plus a spare")
+    eq(c.CraftCap(st, c.Prefs({ target = st.skill + 10 })), 10 + c.CRAFTS_SPARE, "it follows the target")
+    eq(c.CraftCap(st, c.Prefs({ maxCrafts = 40 })), 40)
+    eq(c.CraftCap(st, c.Prefs({ maxCrafts = -1 })), nil)
+    local all = c.Frontier(st, prefs({ maxSell = 5 }))
+    local cheap, fast = all[1].crafts, all[#all].crafts
+    assert(cheap > fast + 2)
+    -- a limit between them: every route keeps within it, and the cheapest one within it is found
+    local cap = math.floor((cheap + fast) / 2)
+    local f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = cap }))
+    assert(#f >= 1)
+    for _, p in ipairs(f) do assert(p.crafts <= cap + 0.5, "crafts " .. p.crafts .. " over " .. cap); assert(not p.many) end
+    for _, p in ipairs(all) do
+        if p.crafts <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
+    end
+    -- a limit nobody keeps: only the route with the fewest crafts, marked
+    f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
+    eq(#f, 1); assert(f[1].many); eq(f[1].crafts, fast)
+    local v = c.Variants(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
+    assert(v[1].many and v[1].best, "still shown, marked")
+end)
+
 test("the loss budget: routes over it are marked, the fastest within it is the best", function()
     local c, st = core(), state()
     local f = c.Frontier(st, prefs({ maxSell = 5 }))
@@ -613,11 +662,45 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     n.Data.src[104] = { "d", 7 }
     src = n.State().recipes[104].src
     eq(src.t, "drop"); eq(n.CanGet({ src = src }, n.Prefs({})), false)
-    -- no pattern, but a known recipe: the trainer, at no known price yet
+    -- no pattern, but a known recipe: the trainer, at a guessed price until a trainer was seen,
+    -- so the plan can already use it
     n.Data.src[104] = nil
     n.Data.spell[104] = { 160, 170, 180 }
+    local r = n.State().recipes[104]
+    src = r.src
+    eq(src.t, "trainer"); eq(src.cost, n.TrainerGuess(r.skill[1])); eq(src.est, true)
+    assert(src.cost > 0)
+    eq(n.CanGet({ src = src }, n.Prefs({})), true)
+    eq(n.CanGet({ src = src }, n.Prefs({ trainer = false })), false, "the trainer switch still stops it")
+    n.db.trainer[r.name] = 777
     src = n.State().recipes[104].src
-    eq(src.t, "trainer"); eq(src.cost, nil)
+    eq(src.cost, 777); eq(src.est, false)
+    n.db.trainer[r.name] = nil
+    -- Wowhead's trainer price, until a trainer was seen
+    n.Data.train[104] = 4500
+    src = n.State().recipes[104].src
+    eq(src.cost, 4500); eq(src.est, false)
+    n.db.trainer[r.name] = 777
+    eq(n.State().recipes[104].src.cost, 777, "the price seen at a trainer wins")
+    n.db.trainer[r.name] = nil
+    n.Data.train[104] = nil
+    -- a vendor Wowhead names without a faction, or none at all, sells to both
+    n.db.vendor[6] = nil
+    n.Data.src[104] = { "v", 6, "Somebody|AH" }
+    src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.who[1], "Somebody")
+    n.Data.src[104] = { "v", 6 }
+    src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.who, nil); eq(src.cost, 520 * 4)
+    -- the trainer teaches it too: learn it there, do not buy the pattern
+    n.Data.train[104] = 4500
+    src = n.State().recipes[104].src
+    eq(src.t, "trainer"); eq(src.cost, 4500)
+    n.Data.train[104] = nil
+    n.db.trainer[r.name] = 900
+    eq(n.State().recipes[104].src.t, "trainer", "a price seen at the trainer wins over the pattern")
+    n.db.trainer[r.name] = nil
+    n.Data.src[104] = nil
     n.Data.spell[104] = nil
     eq(n.State().recipes[104].src.t, "text", "no data at all: the game's own text")
     -- a recipe WoW Forever does not give is left out until the character knows it
@@ -648,6 +731,14 @@ test("the classic API works too", function()
     eq(p.recipes[4].name, "Azure Silk Hood")
     eq(p.recipes[4].r[2], 2)
     eq(p.recipes[4].obs[SKILL], 0)
+end)
+
+test("an unknown trainer price is the most a recipe of that skill costs", function()
+    local n = game()
+    eq(n.TrainerGuess(1), 5000); eq(n.TrainerGuess(74), 5000)
+    eq(n.TrainerGuess(75), 10000); eq(n.TrainerGuess(149), 10000)
+    eq(n.TrainerGuess(150), 20000); eq(n.TrainerGuess(224), 20000)
+    eq(n.TrainerGuess(225), 25000); eq(n.TrainerGuess(300), 25000)
 end)
 
 test("trainer prices are learned", function()
@@ -772,6 +863,47 @@ test("the levelling switch and the route tiles", function()
     eq(n.view.mode, "l1")
     eq(n.ui.graphCard.title:GetText(), n.Skin.Upper(n.L.VAR_cheap), "card titles are capitals")
     assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
+end)
+
+test("a levelling tile shows the target and the crafts of the whole way, not of the next run", function()
+    local n = game()
+    n.db.prefs.maxCrafts = -1
+    n.Toggle(); n.Calculate()
+    for i, x in ipairs(n.view.variants) do
+        local p = x.plan
+        if p and not p.earn and not x.over and not (x.best and n.view.prefs.budget > 0) then
+            local full = p.full or p
+            if full.reached >= full.target then
+                eq(n.ui.varTiles[i].sub:GetText(), n.L.VAR_RUN:format(full.target, n.Ceil(full.crafts)))
+            end
+        end
+    end
+    -- a route of several runs: the tile still names the end of the way
+    local x = n.view.variants[1]
+    local run = { segs = {}, reached = x.plan.reached, target = x.plan.target, crafts = 2, net = -200, spend = 200, own = 0, income = 0 }
+    run.full = { segs = {}, reached = run.target + 14, target = run.target + 14, crafts = 69, net = -2900 }
+    run.reached = run.target; run.target = run.full.target
+    x.plan = run
+    n.Refresh()
+    eq(n.ui.varTiles[1].sub:GetText(), n.L.VAR_RUN:format(run.full.target, 69))
+end)
+
+test("the crafts stepper starts on auto and binds to it again", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local st = n.ui.steppers.maxCrafts
+    local auto = n.CraftCap(n.view.state, n.Prefs({}))
+    eq(st.value:GetText(), n.L.CRAFTS_AUTO:format(auto))
+    W.Click(st.plus)
+    eq(n.db.prefs.maxCrafts, auto + 5, "a number of its own")
+    eq(st.value:GetText(), tostring(auto + 5))
+    W.Click(st.minus)
+    eq(n.db.prefs.maxCrafts, 0, "back on the auto value: auto again")
+    n.db.prefs.maxCrafts = 500
+    st:Refresh()
+    W.Click(st.plus)
+    eq(n.db.prefs.maxCrafts, -1)
+    eq(st.value:GetText(), n.L.NO_LIMIT)
 end)
 
 test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()

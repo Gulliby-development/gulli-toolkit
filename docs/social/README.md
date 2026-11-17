@@ -24,6 +24,7 @@ Running a group or just tired of duel requests? Gulli Social handles the small s
 - **Your own lists.** **Always allow** names count as friends. **Always turn away** names are never invited and always declined. Add a player from **Recent** with one tap.
 - **Turn away strangers.** Group invites, duels, guild invites, trades and guild charters from players you do not know, each with its own switch. Off by default.
 - **Hide spam.** Whispers from strangers with links or gold offers are hidden (off by default).
+- **Busy auto-reply.** In a fight or while away (or always, if you like), a whisper gets a short "busy" answer, once per player every few minutes. Write your own text or keep the default one. Off by default.
 - **Summons and resurrections** are accepted out of combat, if you turn them on.
 - **Recent.** The window shows whether you can invite now, what was turned away today, and the last 20 things the addon did. What it turned away also shows in the hub's Recent feed.
 

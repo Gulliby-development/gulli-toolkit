@@ -1,7 +1,8 @@
--- The Gulli look (Gulli Glass), shared by every Gulli addon: see-through dark glass with a light
--- edge for windows and HUD panels, thin white layers for cards and buttons, the blue accent,
--- short calm motion and a fixed spacing scale. Built from plain textures (the game cannot blur),
--- so it needs no template and no library. This file is the same in every addon folder: edit
+-- The Gulli look (Gulli Hearth), shared by every Gulli addon: dense dark-brown windows in the
+-- classic WoW palette (gold for names and titles, blue for what can be clicked, red for what
+-- removes), soft 3 to 6 pixel corners, the game's Friz Quadrata for titles and Fira Sans for
+-- text, and a scale that grows with the screen. Built from plain textures, so it needs no
+-- template and no library. This file is the same in every addon folder: edit
 -- Gulli-Toolkit/Skin.lua and run tools/skin/sync.sh (CI checks that the copies match).
 
 local addon, ns = ...
@@ -10,25 +11,58 @@ local S = {}
 ns.Skin = S
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local FONT = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
-
--- The English game font has no Cyrillic or CJK glyphs, so Russian names and chat came out
--- blank. Text goes through a font family with the game's font for each alphabet.
-local ALPHABETS = {
-    { "roman", FONT }, { "russian", "Fonts\\FRIZQT___CYR.TTF" }, { "korean", "Fonts\\2002.TTF" },
-    { "simplifiedchinese", "Fonts\\ARKai_T.ttf" }, { "traditionalchinese", "Fonts\\blei00d.TTF" },
+-- Fonts by face: "body" (Fira Sans Medium), "bold" (Fira Sans Bold) and "title" (the game's
+-- Friz Quadrata). Paths are explicit: STANDARD_TEXT_FONT is replaced by other UI addons. Fira
+-- Sans (OFL 1.1, Media/Fonts) has Latin, Polish and Cyrillic; Korean and Chinese keep the
+-- game's fonts. A font file the client cannot load falls back to the game's font.
+local GAME_FONT = "Fonts\\FRIZQT__.TTF"
+local GAME_CYR = "Fonts\\FRIZQT___CYR.TTF"
+local FONT_DIR = "Interface\\AddOns\\" .. tostring(addon) .. "\\Media\\Fonts\\"
+local FACES = {
+    body = { roman = FONT_DIR .. "FiraSans-Medium.ttf", russian = FONT_DIR .. "FiraSans-Medium.ttf" },
+    bold = { roman = FONT_DIR .. "FiraSans-Bold.ttf", russian = FONT_DIR .. "FiraSans-Bold.ttf" },
+    title = { roman = GAME_FONT, russian = GAME_CYR },
 }
+local ALPHABETS = { "roman", "russian", "korean", "simplifiedchinese", "traditionalchinese" }
+local OTHER = { korean = "Fonts\\2002.TTF", simplifiedchinese = "Fonts\\ARKai_T.ttf",
+    traditionalchinese = "Fonts\\blei00d.TTF" }
+local FALLBACK = { roman = GAME_FONT, russian = GAME_CYR }
+-- The smallest text size of the look.
+S.MIN_TEXT = 12
+
+-- Whether the client loads a font file (SetFont answers false when it cannot).
+local loads = {}
+local function canLoad(file)
+    if loads[file] == nil then
+        loads[file] = true
+        if CreateFrame then
+            local ok, probe = pcall(function() return CreateFrame("Frame"):CreateFontString(nil, "OVERLAY") end)
+            if ok and probe and probe.SetFont then
+                local fine, answer = pcall(probe.SetFont, probe, file, 12, "")
+                if not fine or answer == false then loads[file] = false end
+            end
+        end
+    end
+    return loads[file]
+end
+local function fileFor(face, alphabet)
+    local f = (FACES[face] or FACES.body)[alphabet] or OTHER[alphabet]
+    if f and not canLoad(f) then f = FALLBACK[alphabet] or GAME_FONT end
+    return f or GAME_FONT
+end
+S.FontFile = fileFor
+
 local families = {}
-local function family(size, flags)
+local function family(size, flags, face)
     if not CreateFontFamily then return nil end
     flags = flags or ""
-    local key = "GulliFont" .. size .. flags:gsub("%W", "")
+    local key = "GulliHearth" .. face .. size .. flags:gsub("%W", "")
     if families[key] == nil then
         local f = _G[key]
         if not f then
             local members = {}
             for _, a in ipairs(ALPHABETS) do
-                members[#members + 1] = { alphabet = a[1], file = a[2], height = size, flags = flags }
+                members[#members + 1] = { alphabet = a, file = fileFor(face, a), height = size, flags = flags }
             end
             local ok, made = pcall(CreateFontFamily, key, members)
             f = ok and made or false
@@ -37,34 +71,65 @@ local function family(size, flags)
     end
     return families[key] or nil
 end
-function S.SetFont(region, size, flags)
-    size = math.floor(size or 12)
-    local f = family(size, flags)
-    if f then region:SetFontObject(f) else region:SetFont(FONT, size, flags or "") end
+-- S.SetFont(region, size, flags, face): face is "body" (the default), "bold" or "title". Text is
+-- never smaller than S.MIN_TEXT, in whole units.
+function S.SetFont(region, size, flags, face)
+    size = math.max(S.MIN_TEXT, math.floor(size or 13))
+    face = FACES[face] and face or "body"
+    local f = family(size, flags, face)
+    if f then region:SetFontObject(f) else region:SetFont(fileFor(face, "roman"), size, flags or "") end
 end
 
--- Colours. A window is the darkest layer, a card sits on it, a button sits on a card.
-S.BG = { 0.067, 0.071, 0.082, 0.97 }
-S.HEAD = { 1, 1, 1, 0.025 }
--- Cards, tiles and list panels hold the text: a dense dark layer (S.SCRIM) with a faint white
--- sheet on it, so text reads on any background while the window around them stays glass.
-S.SURFACE = { 0.080, 0.084, 0.099, 0.59 }
-S.SCRIM = { 0.031, 0.035, 0.051, 0.55 }
-S.RAISED = { 1, 1, 1, 0.065 }
-S.INPUT = { 0.016, 0.020, 0.031, 0.55 }
-S.EDGE = { 1, 1, 1, 0.10 }
-S.LINE = { 1, 1, 1, 0.07 }
-S.HOVER = { 1, 1, 1, 0.05 }
+-- Colours (Gulli Hearth). The window is the darkest warm brown, the module list and headers
+-- darker still, cards and tiles a step lighter (no edge), buttons and chips lighter again.
+-- Roles never mix: S.GOLD for names and titles only, the accent (S.Accent, S.FILL) for what can
+-- be clicked or is chosen, S.BAD/S.Danger red for what removes or hurts, S.GOOD/S.WARN for state.
+S.BG = { 0.090, 0.071, 0.055, 0.98 }
+S.SIDE = { 0.063, 0.047, 0.035, 1 }
+S.HEAD = S.SIDE
+S.SURFACE = { 0.137, 0.106, 0.082, 1 }
+S.SCRIM = { 0, 0, 0, 0 }
+S.RAISED = { 0.180, 0.141, 0.106, 1 }
+S.RAISED_HOVER = { 0.227, 0.180, 0.133, 1 }
+-- Depth: cards, tiles and chips let the window's paper show through. "bevel" lights their top
+-- like a WoW panel and fades them out downwards; "flat" is a faint light veil with a thin edge.
+S.DEPTH = rawget(_G, "GULLI_DEPTH") or "flat"
+if S.DEPTH == "flat" then
+    S.SURFACE = { 1, 0.90, 0.75, 0.045 }
+    S.RAISED = { 1, 0.90, 0.75, 0.075 }
+    S.RAISED_HOVER = { 1, 0.90, 0.75, 0.12 }
+elseif S.DEPTH == "bevel" then
+    S.SURFACE = { 0.200, 0.153, 0.110, 0.50 }
+    S.RAISED = { 0.247, 0.192, 0.141, 0.55 }
+    S.RAISED_HOVER = { 0.310, 0.243, 0.176, 0.62 }
+end
+S.PRESSED = { 0.110, 0.086, 0.063, 1 }
+S.INPUT = { 0.055, 0.043, 0.031, 1 }
+S.EDGE = { 1, 0.925, 0.784, 0.16 }
+S.LINE = { 1, 0.925, 0.784, 0.09 }
+S.HOVER = { 1, 0.925, 0.784, 0.06 }
 S.BORDER = { 0, 0, 0, 1 }
-S.TEXT = { 0.93, 0.93, 0.94, 1 }
-S.MUTED = { 0.69, 0.70, 0.75, 1 }
-S.FAINT = { 0.53, 0.54, 0.59, 1 }
-S.GOOD = { 0.42, 0.84, 0.50, 1 }
-S.WARN = { 1.00, 0.72, 0.30, 1 }
-S.BAD = { 0.93, 0.42, 0.40, 1 }
+S.TEXT = { 0.957, 0.929, 0.886, 1 }
+S.MUTED = { 0.769, 0.722, 0.651, 1 }
+S.FAINT = { 0.612, 0.561, 0.486, 1 }
+S.GOOD = { 0.404, 0.831, 0.486, 1 }
+S.WARN = { 1, 0.624, 0.251, 1 }
+S.BAD = { 1, 0.416, 0.361, 1 }
 S.CLEAR = { 0, 0, 0, 0 }
--- Coin colours: money as coloured text, "28g 42s 5c", empty parts left out.
+-- The game's own gold (NORMAL_FONT_COLOR): names and titles. GOLD_DIM: section labels.
 S.GOLD = { 1, 0.82, 0, 1 }
+S.GOLD_DIM = { 0.788, 0.651, 0.275, 1 }
+-- The accent fill: the main button, a switch that is on, the chosen row (at 0.34). A muted
+-- bronze in tone with the brown, so what can be clicked stands out without shouting.
+S.FILL = { 0.416, 0.318, 0.180, 1 }
+S.FILL_EDGE = { 0.643, 0.514, 0.310, 1 }
+S.DANGER_FILL = { 0.557, 0.133, 0.094, 1 }
+S.DANGER_EDGE = { 0.851, 0.345, 0.298, 1 }
+-- The thin dark gold ring around round icons, and the off state of a switch.
+S.RING = { 0.561, 0.455, 0.125, 1 }
+S.OFF = { 0.290, 0.239, 0.188, 1 }
+S.OFF_KNOB = { 0.725, 0.671, 0.588, 1 }
+-- Coin colours: money as coloured text, "28g 42s 5c", empty parts left out.
 -- Silver is a cool blue-grey, so it does not read as plain text (S.TEXT).
 S.SILVER = { 0.72, 0.82, 0.97, 1 }
 S.COPPER = { 0.93, 0.65, 0.37, 1 }
@@ -73,20 +138,20 @@ S.COPPER = { 0.93, 0.65, 0.37, 1 }
 S.TIME = { 0.45, 0.85, 0.80, 1 }
 S.XP = { 0.79, 0.63, 1.00, 1 }
 S.KILLS = { 0.95, 0.55, 0.50, 1 }
-S.DOT = "  |cff878a96·|r  "
--- Glass: the see-through dark of a window or HUD panel, its light edge and the brighter line
--- along its top. Cards and tiles are thin white layers on it with a fainter edge (CARD_EDGE).
--- A frame that must hide what is behind it (a menu over a list) uses S.SOLID.
-S.GLASS = { 0.051, 0.059, 0.082, 0.74 }
--- HUD panels and notices sit on the game world with nothing under their text: denser glass.
-S.HUD_GLASS = { 0.051, 0.059, 0.082, 0.86 }
-S.GLASS_EDGE = { 1, 1, 1, 0.10 }
-S.GLASS_HI = { 1, 1, 1, 0.16 }
-S.CARD_EDGE = { 1, 1, 1, 0.06 }
-S.SOLID = { 0.075, 0.082, 0.102, 0.98 }
+S.DOT = "  |cff9c8f7c·|r  "
+-- A window, a HUD panel or a notice: the dense brown of S.BG (the names stay from Gulli Glass,
+-- so older calls keep working). A frame that must hide what is behind it uses S.SOLID.
+S.GLASS = S.BG
+S.HUD_GLASS = { 0.090, 0.071, 0.055, 0.96 }
+S.GLASS_EDGE = S.EDGE
+S.GLASS_HI = S.CLEAR
+S.CARD_EDGE = S.DEPTH == "flat" and { 1, 0.90, 0.75, 0.10 } or S.CLEAR
+S.SOLID = { 0.090, 0.071, 0.055, 1 }
+-- The one gold line under a window's header.
+S.HEAD_LINE = { 1, 0.82, 0, 0.28 }
 -- Older names, still used by some windows.
 S.PANEL = S.RAISED
-S.ROW = { 1, 1, 1, 0.025 }
+S.ROW = { 1, 0.925, 0.784, 0.03 }
 
 -- Spacing: 4, 8, 12, 16, 24. Window padding, gap between cards, padding inside a card.
 S.PAD, S.GAP, S.INSET = 16, 12, 12
@@ -95,14 +160,74 @@ S.HEADER_H, S.FOOTER_H, S.ROW_H, S.ROW_DESC_H = 44, 56, 40, 56
 -- leaves the module card beside it, a wide one takes both. No window is taller than DOCK_H.
 S.NARROW_W, S.WIDE_W, S.DOCK_H = 540, 832, 624
 -- Corner radii: small controls (check boxes), buttons and inputs, cards and tiles, windows.
-S.R_SM, S.R_MD, S.R_LG, S.R_XL = 4, 6, 8, 10
--- The soft blue around round icons.
-S.GLOW = { 0.36, 0.72, 1, 1 }
+S.R_SM, S.R_MD, S.R_LG, S.R_XL = 3, 4, 4, 6
+-- The ring around round icons (the name stays from the blue glow of Gulli Glass).
+S.GLOW = S.RING
 
--- The accent: the blue every window has shown so far. The class colour was meant here, but
--- `a, b = f and f()` keeps one value, so it never applied; the blue is what the owner saw.
+-- The accent text: a light warm parchment for links and the chosen thing.
 function S.Accent()
-    return { 0.60, 0.82, 1, 1 }
+    return { 0.937, 0.808, 0.588, 1 }
+end
+
+-- Scale. At a small UI scale one unit is one pixel and text came out tiny, so windows and
+-- notices grow with the screen: 1 on a 768 unit high screen, at most 1.6 times. A window also
+-- takes the player's hub scale (-/+, GulliToolkitDB.scale) and always fits the screen.
+local function screen()
+    local w = UIParent and tonumber((UIParent:GetWidth())) or 1366
+    local h = UIParent and tonumber((UIParent:GetHeight())) or 768
+    if not w or w <= 0 then w = 1366 end
+    if not h or h <= 0 then h = 768 end
+    return w, h
+end
+function S.BaseScale()
+    local _, h = screen()
+    return math.max(1, math.min(1.6, h / 768))
+end
+function S.UIScale()
+    local user = GulliToolkitDB and tonumber(GulliToolkitDB.scale) or 1
+    return S.BaseScale() * math.max(0.7, math.min(1.3, user))
+end
+-- The scale for a window w by h units: S.UIScale(), made smaller when it would not fit.
+function S.FitScale(w, h)
+    local sw, sh = screen()
+    w, h = tonumber(w) or 0, tonumber(h) or 0
+    local k = S.UIScale()
+    if w > 0 then k = math.min(k, sw * 0.96 / w) end
+    if h > 0 then k = math.min(k, sh * 0.9 / h) end
+    return k
+end
+-- Sets a frame's scale, never on a protected frame in combat (the game refuses it).
+local scaled = setmetatable({}, { __mode = "k" })
+local function canScale(f)
+    if not (InCombatLockdown and InCombatLockdown()) then return true end
+    return not (f.IsProtected and f:IsProtected())
+end
+function S.ApplyScale(f, k)
+    if canScale(f) then f:SetScale(k) end
+end
+-- A window that stands alone gets S.FitScale on each show and when the screen changes.
+local function scaleWindow(f)
+    if f.docked then return end
+    local own = rawget(f, "rescale")
+    if own then return own(f) end
+    S.ApplyScale(f, S.FitScale(f:GetWidth(), f:GetHeight()))
+end
+S.ScaleWindow = scaleWindow
+do
+    local ok, ev = pcall(CreateFrame, "Frame")
+    if ok and ev and ev.RegisterEvent then
+        pcall(ev.RegisterEvent, ev, "UI_SCALE_CHANGED")
+        pcall(ev.RegisterEvent, ev, "DISPLAY_SIZE_CHANGED")
+        ev:SetScript("OnEvent", function()
+            for f in pairs(scaled) do
+                if f.IsShown and f:IsShown() then scaleWindow(f) end
+            end
+        end)
+    end
+end
+function S.TrackScale(f, fn)
+    scaled[f] = true
+    if fn then rawset(f, "rescale", fn) end
 end
 
 -- Capital letters for a label in every language of the addons: string.upper only knows A-Z,
@@ -113,14 +238,63 @@ local UPPER = { ["\209\145"] = "\208\129", ["\196\133"] = "\196\132", ["\196\135
 for b = 176, 191 do UPPER["\208" .. string.char(b)] = "\208" .. string.char(b - 32) end -- а..п
 for b = 128, 143 do UPPER["\209" .. string.char(b)] = "\208" .. string.char(b + 32) end -- р..я
 for b = 160, 190 do if b ~= 183 then UPPER["\195" .. string.char(b)] = "\195" .. string.char(b - 32) end end
+local function upperPlain(text)
+    text = text:upper()
+    return (text:gsub("[\195-\209][\128-\191]", function(c) return UPPER[c] end))
+end
+-- Colour codes (|cff..., |r), links (|H...|h) and textures (|T...|t) keep their case.
 function S.Upper(text)
     if text == nil then return nil end
-    text = tostring(text):upper()
-    return (text:gsub("[\195-\209][\128-\191]", function(c) return UPPER[c] end))
+    text = tostring(text)
+    if not text:find("|", 1, true) then return upperPlain(text) end
+    local out, i, n = {}, 1, #text
+    while i <= n do
+        local a = text:find("|", i, true)
+        if not a then out[#out + 1] = upperPlain(text:sub(i)); break end
+        out[#out + 1] = upperPlain(text:sub(i, a - 1))
+        local k = text:sub(a + 1, a + 1)
+        local stop = a + 1
+        if k == "c" then stop = a + 9
+        elseif k == "H" then stop = (text:find("|h", a + 2, true) or n) + 1
+        elseif k == "T" or k == "A" then stop = (text:find("|" .. k:lower(), a + 2, true) or n) + 1 end
+        out[#out + 1] = text:sub(a, stop)
+        i = stop + 1
+    end
+    return table.concat(out)
 end
 
 function S.Hex(c)
     return string.format("|cff%02x%02x%02x", c[1] * 255, c[2] * 255, c[3] * 255)
+end
+
+-- The numbers of a muted line in white, so the key figure reads first: "Level |cffffffff24|r
+-- in 1 h". Colour codes (|c..|r), links (|H..|h) and textures (|T..|t) stay as they are, and
+-- digits are only coloured in plain text outside a colour code.
+function S.Emph(text, color)
+    if text == nil then return nil end
+    text = tostring(text)
+    local open = color and S.Hex(color) or "|cffffffff"
+    local out, i, n, depth = {}, 1, #text, 0
+    local function plain(s)
+        if depth > 0 then return s end
+        return (s:gsub("%d[%d.,:]*", function(d) return open .. d .. "|r" end))
+    end
+    while i <= n do
+        local a = text:find("|", i, true)
+        if not a then out[#out + 1] = plain(text:sub(i)); break end
+        out[#out + 1] = plain(text:sub(i, a - 1))
+        local k = text:sub(a + 1, a + 1)
+        local stop
+        if k == "c" then stop = a + 9; depth = depth + 1
+        elseif k == "r" then stop = a + 1; depth = math.max(0, depth - 1)
+        elseif k == "H" then stop = (text:find("|h", a + 2, true) or n) + 1
+        elseif k == "h" then stop = a + 1
+        elseif k == "T" or k == "A" then stop = (text:find("|" .. k:lower(), a + 2, true) or n) + 1
+        else stop = a + 1 end
+        out[#out + 1] = text:sub(a, stop)
+        i = stop + 1
+    end
+    return table.concat(out)
 end
 
 -- The width of a text, or 0 where the game cannot tell yet.
@@ -265,66 +439,79 @@ end
 
 -- Glass ---------------------------------------------------------------------------------------
 
--- The light on a glass surface, over its S.Box fill: a white sheen fading down the top 40%, a
--- soft accent light in the top left corner and a brighter line along the top edge. r is the
--- corner radius of the box, k the strength (1 for windows, less for cards). f.glass holds the
--- textures (S.ShowGlass hides them, as a window docked in the hub does).
-function S.Glass(f, r, k)
-    r = r or f.radius or 0
-    k = k or 1
+-- The paper of Gulli Hearth: a faint warm grain over a window, card, tile or HUD panel
+-- (Media/Grain, drawn by tools/skin/hearth_art.py), kept clear of the rounded corners. The name
+-- stays from Gulli Glass, so every older call draws it.
+S.GRAIN = MEDIA .. "Grain"
+S.GRAIN_ALPHA = 0.07
+function S.Glass(f, r)
     local g = {}
-    local function sheen(a, b, c, d)
-        local t = f:CreateTexture(nil, "BACKGROUND", nil, -5)
-        t:SetTexture(S.SHEEN)
-        t:SetVertexColor(1, 1, 1, 0.075 * k)
-        t:SetPoint("TOPLEFT", a, b)
-        t:SetPoint("TOPRIGHT", c, d)
-        g[#g + 1] = t
-        return t
-    end
-    -- The middle band under the top edge, and a band under each round corner.
-    local mid = sheen(math.max(r, 1), -1, -math.max(r, 1), -1)
-    local left, right
-    if r > 1 then
-        left = f:CreateTexture(nil, "BACKGROUND", nil, -5)
-        right = f:CreateTexture(nil, "BACKGROUND", nil, -5)
-        for i, t in ipairs({ left, right }) do
-            t:SetTexture(S.SHEEN)
-            t:SetVertexColor(1, 1, 1, 0.075 * k)
-            t:SetWidth(r - 1)
-            if i == 1 then t:SetPoint("TOPLEFT", 1, -r) else t:SetPoint("TOPRIGHT", -1, -r) end
-            g[#g + 1] = t
-        end
-        for _, p in ipairs(CORNERS) do
-            if p:find("TOP") then
-                local c = corner(f, "BACKGROUND", -5, { 1, 1, 1, 0.075 * k }, p, r - 1, 1, S.ROUND)
-                g[#g + 1] = c
-            end
-        end
-    end
-    local light = f:CreateTexture(nil, "BACKGROUND", nil, -4)
-    light:SetTexture(S.RADIAL)
-    if light.SetBlendMode then light:SetBlendMode("ADD") end
-    local a = S.Accent()
-    light:SetVertexColor(a[1], a[2], a[3], 0.13 * k)
-    light:SetPoint("TOPLEFT", 1, -1)
-    g[#g + 1] = light
-    local hi = tex(f, "BORDER", 6, { S.GLASS_HI[1], S.GLASS_HI[2], S.GLASS_HI[3], S.GLASS_HI[4] * math.min(1, k * 1.5) })
-    hi:SetPoint("TOPLEFT", math.max(r, 1), -1)
-    hi:SetPoint("TOPRIGHT", -math.max(r, 1), -1)
-    hi:SetHeight(1)
-    g[#g + 1] = hi
-    local function size(_, w, h)
-        w, h = tonumber(w) or 0, tonumber(h) or 0
-        if h <= 0 then return end
-        local sh = math.max(r + 2, math.floor(h * 0.4))
-        mid:SetHeight(sh)
-        if left then left:SetHeight(math.max(1, sh - r + 1)); right:SetHeight(math.max(1, sh - r + 1)) end
-        light:SetSize(math.max(8, math.floor(w * 0.66)), math.max(8, math.floor(h * 0.44)))
-    end
-    size(f, f:GetWidth(), f:GetHeight())
-    if f.HookScript then f:HookScript("OnSizeChanged", size) end
+    local t = f:CreateTexture(nil, "BACKGROUND", nil, -6)
+    t:SetTexture(S.GRAIN, "REPEAT", "REPEAT")
+    if t.SetHorizTile then t:SetHorizTile(true); t:SetVertTile(true) end
+    local i = math.max(1, tonumber(r) or 0)
+    t:SetPoint("TOPLEFT", i, -i)
+    t:SetPoint("BOTTOMRIGHT", -i, i)
+    t:SetVertexColor(1, 0.86, 0.66, S.GRAIN_ALPHA)
+    g[1] = t
     rawset(f, "glass", g)
+    return g
+end
+
+-- The relief of a card, tile or chip with corners of radius r (S.DEPTH): with "bevel" a sheen
+-- from the top, a light line along the top and a dark one along the bottom, kept clear of the
+-- corners; with "flat" only the thin edge (S.CARD_EDGE). f.depth holds the textures.
+function S.Depth(f, r)
+    r = math.max(1, tonumber(r) or 0)
+    local d = {}
+    if S.DEPTH == "flat" then
+        if f.edges then S.SetBorder(f, S.CARD_EDGE) end
+    elseif S.DEPTH == "bevel" then
+        local sh = f:CreateTexture(nil, "BACKGROUND", nil, -5)
+        sh:SetTexture(S.SHEEN)
+        sh:SetPoint("TOPLEFT", 1, -1)
+        sh:SetPoint("BOTTOMRIGHT", -1, 1)
+        sh:SetVertexColor(1, 0.86, 0.62, 0.10)
+        d[1] = sh
+        local hi = tex(f, "BORDER", 6, { 1, 0.90, 0.72, 0.16 })
+        hi:SetPoint("TOPLEFT", r, -1)
+        hi:SetPoint("TOPRIGHT", -r, -1)
+        hi:SetHeight(1)
+        d[2] = hi
+        local lo = tex(f, "BORDER", 6, { 0, 0, 0, 0.40 })
+        lo:SetPoint("BOTTOMLEFT", r, 1)
+        lo:SetPoint("BOTTOMRIGHT", -r, 1)
+        lo:SetHeight(1)
+        d[3] = lo
+    end
+    rawset(f, "depth", d)
+    return d
+end
+
+-- A window header of its own: darker than the body, a warm bronze light from the left and a
+-- sheen from the top, so it reads as a band of leather and not as a black bar.
+function S.HeadArt(bar, r)
+    local g = {}
+    local glow = bar:CreateTexture(nil, "BACKGROUND", nil, -5)
+    glow:SetTexture(S.RADIAL)
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("BOTTOMRIGHT", bar, "BOTTOM", 0, 1)
+    glow:SetVertexColor(0.78, 0.55, 0.26, 0.20)
+    g[1] = glow
+    local grain = bar:CreateTexture(nil, "BACKGROUND", nil, -6)
+    grain:SetTexture(S.GRAIN, "REPEAT", "REPEAT")
+    if grain.SetHorizTile then grain:SetHorizTile(true); grain:SetVertTile(true) end
+    grain:SetPoint("TOPLEFT", r or 1, -1)
+    grain:SetPoint("BOTTOMRIGHT", -(r or 1), 1)
+    grain:SetVertexColor(1, 0.86, 0.66, 0.12)
+    g[2] = grain
+    local sh = bar:CreateTexture(nil, "BACKGROUND", nil, -4)
+    sh:SetTexture(S.SHEEN)
+    sh:SetPoint("TOPLEFT", r or 1, -1)
+    sh:SetPoint("BOTTOMRIGHT", -(r or 1), 1)
+    sh:SetVertexColor(1, 0.86, 0.62, 0.06)
+    g[3] = sh
+    rawset(bar, "glass", g)
     return g
 end
 
@@ -438,37 +625,8 @@ function S.MotionPop(r, from, dur)
     end)
 end
 
--- One pass of light over a window as it opens (once, 0.9 s).
-local function sweep(f)
-    if S.Calm() then return end
-    if not rawget(f, "sweep") then
-        local t = f:CreateTexture(nil, "OVERLAY", nil, 7)
-        t:SetTexture(S.GLOW_TEX)
-        if t.SetBlendMode then t:SetBlendMode("ADD") end
-        local a = S.Accent()
-        t:SetVertexColor((1 + a[1]) / 2, (1 + a[2]) / 2, (1 + a[3]) / 2, 0.10)
-        t:SetPoint("TOPLEFT", 0, 0)
-        t:SetPoint("BOTTOMLEFT", 0, 0)
-        t:SetAlpha(0)
-        f.sweep = t
-    end
-    local w = tonumber(f:GetWidth()) or 0
-    f.sweep:SetWidth(math.max(40, math.floor(w * 0.38)))
-    play(f.sweep, "sweep" .. w, function(g)
-        local wait = step(g, "Alpha", 1, 0.12)
-        if wait and wait.SetFromAlpha then wait:SetFromAlpha(0); wait:SetToAlpha(0) end
-        local go = step(g, "Translation", 2, 0.9, "OUT")
-        if go then go:SetOffset(w * 0.62, 0) end
-        local up = step(g, "Alpha", 2, 0.3, "IN")
-        if up and up.SetFromAlpha then up:SetFromAlpha(0); up:SetToAlpha(1) end
-        local down = step(g, "Alpha", 3, 0.6, "OUT")
-        if down then
-            if down.SetStartDelay then down:SetStartDelay(0) end
-            if down.SetFromAlpha then down:SetFromAlpha(1); down:SetToAlpha(0) end
-        end
-        if g.SetToFinalAlpha then g:SetToFinalAlpha(true) end
-    end)
-end
+-- Gulli Glass ran one pass of light over a window as it opened; Gulli Hearth does not.
+local function sweep() end
 S.Sweep = sweep
 
 -- A value that moves to its target over dur seconds: S.Tween(owner, key, from, to, dur, apply).
@@ -493,9 +651,10 @@ function S.Tween(owner, key, from, to, dur, apply)
     end)
 end
 
-function S.Text(parent, size, color, flags)
+-- S.Text(parent, size, color, flags, face): face as in S.SetFont ("body", "bold", "title").
+function S.Text(parent, size, color, flags, face)
     local t = parent:CreateFontString(nil, "OVERLAY")
-    S.SetFont(t, size or 12, flags)
+    S.SetFont(t, size or 13, flags, face)
     t:SetShadowOffset(1, -1)
     t:SetShadowColor(0, 0, 0, 1)
     local c = color or S.TEXT
@@ -506,14 +665,14 @@ end
 
 -- A muted line of text; anchor it on both sides and it wraps.
 function S.Note(parent, size)
-    local t = S.Text(parent, size or 11, S.MUTED)
+    local t = S.Text(parent, size or 12, S.MUTED)
     t:SetJustifyV("TOP")
     return t
 end
 
 -- A grey paragraph of a known width; returns it and its height, for S.Stack.
 function S.Paragraph(parent, text, width, size)
-    local t = S.Note(parent, size or 11)
+    local t = S.Note(parent, size or 12)
     t:SetWidth(width)
     t:SetText(text or "")
     return t, math.ceil(tonumber(t:GetStringHeight()) or 14)
@@ -537,21 +696,22 @@ local function paint(b)
     if (b.kind == "primary" or b.kind == "danger") and not b:IsEnabled() then
         -- a main action that cannot run now looks like a plain dim button, not a lit one
         S.Fill(b, S.RAISED)
-        S.SetBorder(b, S.EDGE)
+        S.SetBorder(b, S.LINE)
         b.text:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
     elseif b.kind == "primary" or b.kind == "danger" then
-        local c = b.kind == "danger" and S.BAD or S.Accent()
-        local k = hover and 1 or 0.86
-        S.Fill(b, { c[1] * k, c[2] * k, c[3] * k, 1 })
-        S.SetBorder(b, hover and { 1, 1, 1, 0.9 } or c)
-        b.text:SetTextColor(0.05, 0.05, 0.06, 1)
-        b.text:SetShadowColor(0, 0, 0, 0)
+        local c = b.kind == "danger" and S.DANGER_FILL or S.FILL
+        local e = b.kind == "danger" and S.DANGER_EDGE or S.FILL_EDGE
+        local k = hover and 1.18 or 1
+        S.Fill(b, { math.min(1, c[1] * k), math.min(1, c[2] * k), math.min(1, c[3] * k), 1 })
+        S.SetBorder(b, e)
+        b.text:SetTextColor(1, 1, 1, 1)
+        b.text:SetShadowColor(0, 0, 0, 1)
     elseif b.kind == "ghost" then
         S.Fill(b, hover and S.HOVER or S.CLEAR)
         S.SetBorder(b, S.CLEAR)
     else
-        S.Fill(b, hover and { 1, 1, 1, 0.11 } or S.RAISED)
-        S.SetBorder(b, hover and { 1, 1, 1, 0.16 } or S.EDGE)
+        S.Fill(b, hover and S.RAISED_HOVER or S.RAISED)
+        S.SetBorder(b, hover and S.EDGE or S.LINE)
     end
 end
 
@@ -559,13 +719,14 @@ end
 function S.Button(parent, width, height)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 110, height or 30)
-    S.Box(b, S.RAISED, S.EDGE, S.R_MD)
-    -- The light along the top of a button.
-    b.hi = tex(b, "BORDER", 6, { 1, 1, 1, 0.08 })
+    S.Box(b, S.RAISED, S.LINE, S.R_MD)
+    -- Gulli Glass had a light along the top of a button; b.hi stays for older code, hidden.
+    b.hi = tex(b, "BORDER", 6, S.CLEAR)
     b.hi:SetPoint("TOPLEFT", S.R_MD, -1)
     b.hi:SetPoint("TOPRIGHT", -S.R_MD, -1)
     b.hi:SetHeight(1)
-    b.text = S.Text(b, 12)
+    b.hi:Hide()
+    b.text = S.Text(b, 13)
     b.text:SetPoint("LEFT", 6, 0)
     b.text:SetPoint("RIGHT", -6, 0)
     b.text:SetJustifyH("CENTER")
@@ -646,9 +807,9 @@ function S.IconTile(parent, width, height, vertical)
     b:SetSize(width or 110, height)
     S.Box(b, S.RAISED, S.EDGE, S.R_MD)
     b.kind = "normal"
-    b.title = S.Text(b, vertical and 10 or 11)
+    b.title = S.Text(b, 12)
     b.title:SetWordWrap(false)
-    b.sub = S.Text(b, 9, S.MUTED)
+    b.sub = S.Text(b, 12, S.MUTED)
     b.sub:SetWordWrap(false)
     if vertical then
         b.item = S.ItemIcon(b, height - 24)
@@ -751,7 +912,7 @@ function S.Check(parent, size)
     box:SetPoint("CENTER")
     S.Box(box, S.INPUT, S.EDGE, S.R_SM)
     c.box = box
-    local ink = { 0.05, 0.05, 0.06, 1 }
+    local ink = { 1, 1, 1, 1 }
     local function line(x1, y1, x2, y2)
         local l = box:CreateLine(nil, "OVERLAY")
         l:SetThickness(2)
@@ -769,16 +930,15 @@ function S.Check(parent, size)
             S.MotionPop(self.box, 0.7)
         end
         self.state = state
-        local a = S.Accent()
         local on = state and true or false
-        S.Fill(self.box, on and a or S.INPUT)
-        S.SetBorder(self.box, on and a or S.EDGE)
+        S.Fill(self.box, on and S.FILL or S.INPUT)
+        S.SetBorder(self.box, on and S.FILL_EDGE or S.EDGE)
         for _, l in ipairs(self.tick) do l:SetShown(state == true) end
         self.dash:SetShown(state == "some")
     end
     function c:GetChecked() return self.state == true end
     c:SetScript("OnEnter", function(self) S.SetBorder(self.box, S.Accent()) end)
-    c:SetScript("OnLeave", function(self) S.SetBorder(self.box, self.state and S.Accent() or S.EDGE) end)
+    c:SetScript("OnLeave", function(self) S.SetBorder(self.box, self.state and S.FILL_EDGE or S.EDGE) end)
     c:SetChecked(false)
     return c
 end
@@ -791,7 +951,7 @@ function S.Switch(parent)
     local track = CreateFrame("Frame", nil, s)
     track:SetSize(38, 22)
     track:SetPoint("CENTER")
-    S.Box(track, S.INPUT, S.EDGE, 11)
+    S.Box(track, S.OFF, S.CLEAR, 11)
     s.track = track
     s.shade = track:CreateTexture(nil, "ARTWORK", nil, 0)
     s.shade:SetTexture(S.GLOW_TEX)
@@ -802,23 +962,21 @@ function S.Switch(parent)
     s.knob:SetSize(18, 18)
     s.shade:SetPoint("CENTER", s.knob, "CENTER", 0, -1)
     local function edge(self)
-        local a = S.Accent()
-        if self.on then S.SetBorder(self.track, a)
-        else S.SetBorder(self.track, self.hover and a or S.EDGE) end
+        if self.on then S.SetBorder(self.track, S.FILL_EDGE)
+        else S.SetBorder(self.track, self.hover and S.Accent() or S.CLEAR) end
     end
     function s:SetChecked(on)
         local was = rawget(self, "on")
         self.on = on and true or false
-        local a = S.Accent()
         self.knob:ClearAllPoints()
         if self.on then
             self.knob:SetPoint("RIGHT", -2, 0)
             self.knob:SetVertexColor(1, 1, 1, 1)
-            S.Fill(self.track, a)
+            S.Fill(self.track, S.FILL)
         else
             self.knob:SetPoint("LEFT", 2, 0)
-            self.knob:SetVertexColor(0.58, 0.59, 0.63, 1)
-            S.Fill(self.track, S.INPUT)
+            self.knob:SetVertexColor(S.OFF_KNOB[1], S.OFF_KNOB[2], S.OFF_KNOB[3], 1)
+            S.Fill(self.track, S.OFF)
         end
         edge(self)
         -- A change the player can see slides the knob over (16 pixels).
@@ -921,6 +1079,24 @@ function S.Scroll(parent)
     return sf
 end
 
+-- A page that scrolls when what it holds is taller than the window (settings in a language
+-- with long texts, a short hub). Build into page.inner, as wide as `width` until the page has
+-- its own width, then call page:SetContent(height).
+function S.ScrollPage(parent, width)
+    local page = CreateFrame("Frame", nil, parent)
+    local sf = S.Scroll(page)
+    sf:SetPoint("TOPLEFT")
+    sf:SetPoint("BOTTOMRIGHT", -10, 0)
+    page.inner, page.scroll = sf.child, sf
+    sf.child:SetWidth(math.max(1, (width or 400) - 10))
+    sf.onResize = function(_, w) if w and w > 0 then sf.child:SetWidth(w) end end
+    function page:SetContent(h)
+        self.inner:SetHeight(math.max(1, h))
+        self.scroll:Update(h)
+    end
+    return page
+end
+
 -- A multi-line text box that scrolls, for lists typed one entry per line.
 function S.Memo(parent, width, height)
     local box = CreateFrame("Frame", nil, parent)
@@ -1010,7 +1186,7 @@ function S.Tabs(parent, labels, width, onSelect, height, icons, style)
         rule:SetHeight(1)
         track.rule = rule
     else
-        S.Box(track, S.INPUT, S.CARD_EDGE, S.R_LG)
+        S.Box(track, S.INPUT, S.LINE, S.R_LG)
     end
     t.frame = track
     -- The plate (or line) under the chosen part, one for the whole control so it can slide.
@@ -1030,8 +1206,8 @@ function S.Tabs(parent, labels, width, onSelect, height, icons, style)
         ind.glow:SetPoint("BOTTOMRIGHT", 4, -3)
         ind.glow:SetHeight(8)
     else
-        S.Box(ind, { 1, 1, 1, 0.11 }, { 1, 1, 1, 0.14 }, S.R_MD)
-        ind.hi = tex(ind, "BORDER", 6, { 1, 1, 1, 0.14 })
+        S.Box(ind, { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 }, { S.FILL_EDGE[1], S.FILL_EDGE[2], S.FILL_EDGE[3], 0.6 }, S.R_MD)
+        ind.hi = tex(ind, "BORDER", 6, S.CLEAR)
         ind.hi:SetPoint("TOPLEFT", S.R_MD, -1)
         ind.hi:SetPoint("TOPRIGHT", -S.R_MD, -1)
         ind.hi:SetHeight(1)
@@ -1158,11 +1334,11 @@ end
 function S.Card(parent, title, hint, icon)
     local c = CreateFrame("Frame", nil, parent)
     S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(c, S.R_LG, 0.35)
+    S.Depth(c, S.R_LG)
     c.body = CreateFrame("Frame", nil, c)
     c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     if title then
-        c.title = S.Text(c, 12, S.MUTED)
+        c.title = S.Text(c, 12, S.GOLD_DIM, nil, "bold")
         if icon then
             c.icon = S.IconBox(c, 18, icon)
             c.icon:SetPoint("TOPLEFT", S.INSET, -10)
@@ -1172,7 +1348,7 @@ function S.Card(parent, title, hint, icon)
         end
         c.title:SetWordWrap(false)
         c.title:SetText(title)
-        c.hint = S.Text(c, 11, S.FAINT)
+        c.hint = S.Text(c, 12, S.FAINT)
         c.hint:SetPoint("TOPRIGHT", -S.INSET, -13)
         c.hint:SetJustifyH("RIGHT")
         c.hint:SetWordWrap(false)
@@ -1182,7 +1358,7 @@ function S.Card(parent, title, hint, icon)
     else
         c.body:SetPoint("TOPLEFT", S.INSET, -S.INSET)
     end
-    -- Card titles are small grey capitals, like the labels of the glass design.
+    -- Card titles are dim gold bold capitals: section labels.
     if title then
         local set = c.title.SetText
         c.title.SetText = function(self, t) set(self, S.Upper(t)) end
@@ -1201,6 +1377,19 @@ function S.Card(parent, title, hint, icon)
     return c
 end
 
+-- The width a frame will likely get: its own, else the nearest parent's that has one, less a
+-- window's and a card's padding for each step that had none.
+function S.GuessWidth(f)
+    local steps = 0
+    while f and steps < 12 do
+        local w = tonumber((f.GetWidth and f:GetWidth())) or 0
+        if w > 100 then return math.max(200, w - 2 * (S.PAD + S.INSET) * math.min(steps, 1)) end
+        steps = steps + 1
+        f = f.GetParent and f:GetParent() or nil
+    end
+    return 400
+end
+
 -- A settings row: the label and an optional grey line under it on the left, a control on the
 -- right (a switch, an edit box, a button...). row.control is that control.
 function S.SettingRow(parent, label, desc, control, controlWidth, icon)
@@ -1216,14 +1405,21 @@ function S.SettingRow(parent, label, desc, control, controlWidth, icon)
     row.label:SetText(label)
     local right = -((controlWidth or (control and control:GetWidth()) or 0) + 12)
     if desc and desc ~= "" then
-        row.label:SetPoint("TOPLEFT", left, -10)
-        row.label:SetPoint("TOPRIGHT", right, -10)
-        row.desc = S.Note(row, 11)
-        row.desc:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -4)
-        row.desc:SetPoint("TOPRIGHT", row.label, "BOTTOMRIGHT", 0, -4)
+        row.label:SetPoint("TOPLEFT", left, -9)
+        row.label:SetPoint("TOPRIGHT", right, -9)
+        row.desc = S.Note(row, 12)
+        row.desc:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -3)
+        row.desc:SetPoint("TOPRIGHT", row.label, "BOTTOMRIGHT", 0, -3)
         row.desc:SetMaxLines(2)
         row.desc:SetText(desc)
-        row.height = S.ROW_DESC_H
+        -- The card is placed after its rows, so its width may be a guess: the nearest frame up
+        -- the chain that has a width, less the paddings. A second line that the guess misses
+        -- still fits the row, only tightly.
+        local pw = tonumber((parent:GetWidth())) or 0
+        if pw <= 100 then pw = S.rowWidth or S.GuessWidth(parent) end
+        local avail = pw - left + right
+        local two = (tonumber((row.desc:GetStringWidth())) or 0) > avail
+        row.height = S.ROW_DESC_H + (two and 14 or 0)
     else
         row.label:SetPoint("LEFT", left, 0)
         row.label:SetPoint("RIGHT", right, 0)
@@ -1273,6 +1469,7 @@ function S.SettingsCard(parent, title, rows, hint, icon)
     local card = S.Card(parent, title, hint, icon)
     card.rows = {}
     local st = S.Stack(card.body, 0)
+    S.rowWidth = S.GuessWidth(parent) - 2 * S.INSET
     for i, r in ipairs(rows) do
         local row = r.control and S.SettingRow(card.body, r[1], r[2], r.control, nil, r.icon)
             or S.SwitchRow(card.body, r[1], r[2], r[3], r[4], r.extra, r.icon)
@@ -1280,6 +1477,7 @@ function S.SettingsCard(parent, title, rows, hint, icon)
         row.line:SetShown(i < #rows)
         card.rows[i] = row
     end
+    S.rowWidth = nil
     return card, card:Fit(st:Height() - (title and 6 or 0))
 end
 
@@ -1319,7 +1517,7 @@ function S.Banner(parent, icon, color)
     b.icon:SetPoint("LEFT", S.INSET, 0)
     b.close = S.Close(b, function() b:Hide(); if b.onClose then b.onClose() end end)
     b.close:SetPoint("RIGHT", -6, 0)
-    b.text = S.Text(b, 11, color)
+    b.text = S.Text(b, 12, color)
     b.text:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
     b.text:SetPoint("RIGHT", b.close, "LEFT", -6, 0)
     b.text:SetJustifyH("LEFT")
@@ -1335,7 +1533,7 @@ function S.Empty(parent)
     e.title:SetPoint("BOTTOMLEFT", e, "LEFT", 24, 4)
     e.title:SetPoint("BOTTOMRIGHT", e, "RIGHT", -24, 4)
     e.title:SetJustifyH("CENTER")
-    e.sub = S.Note(e, 11)
+    e.sub = S.Note(e, 12)
     e.sub:SetTextColor(S.FAINT[1], S.FAINT[2], S.FAINT[3], 1)
     e.sub:SetPoint("TOPLEFT", e, "LEFT", 24, -4)
     e.sub:SetPoint("TOPRIGHT", e, "RIGHT", -24, -4)
@@ -1386,12 +1584,12 @@ end
 function S.InfoTile(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(t, S.R_LG, 0.35)
+    S.Depth(t, S.R_LG)
     -- The icon and the label share the top line, so the value and the sub line get the
     -- tile's whole width: a narrow tile still fits "33g 49s" and a long place name.
     t.icon = S.IconBox(t, 22, icon)
     t.icon:SetPoint("TOPLEFT", 8, -8)
-    t.label = S.Text(t, 10, S.MUTED)
+    t.label = S.Text(t, 12, S.MUTED)
     t.label:SetPoint("LEFT", t.icon, "RIGHT", 7, 0)
     t.label:SetPoint("RIGHT", -8, 0)
     t.label:SetWordWrap(false)
@@ -1403,7 +1601,7 @@ function S.InfoTile(parent, label, icon)
     t.bar = S.Progress(t, 5)
     t.bar:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -4)
     t.bar:SetPoint("RIGHT", -8, 0)
-    t.sub = S.Text(t, 11, S.MUTED)
+    t.sub = S.Text(t, 12, S.MUTED)
     t.sub:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -4)
     t.sub:SetPoint("RIGHT", -8, 0)
     t.sub:SetWordWrap(false)
@@ -1431,7 +1629,7 @@ S.STAT_SIZE, S.STAT_MIN = 20, 11
 function S.Stat(parent, label, icon)
     local t = CreateFrame("Frame", nil, parent)
     S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(t, S.R_LG, 0.35)
+    S.Depth(t, S.R_LG)
     local right = -S.INSET
     if icon then
         t.icon = S.IconBox(t, 30, icon)
@@ -1442,7 +1640,7 @@ function S.Stat(parent, label, icon)
     t.value:SetPoint("TOPLEFT", S.INSET, -12)
     t.value:SetPoint("TOPRIGHT", right, -12)
     t.value:SetWordWrap(false)
-    t.label = S.Text(t, 11, S.MUTED)
+    t.label = S.Text(t, 12, S.MUTED)
     t.label:SetPoint("TOPLEFT", t.value, "BOTTOMLEFT", 0, -6)
     t.label:SetPoint("TOPRIGHT", t.value, "BOTTOMRIGHT", 0, -6)
     t.label:SetWordWrap(false)
@@ -1549,7 +1747,7 @@ end
 function S.Badge(parent, text, color)
     local b = CreateFrame("Frame", nil, parent)
     S.Box(b, S.CLEAR, S.CLEAR, 9)
-    b.text = S.Text(b, 10)
+    b.text = S.Text(b, 12)
     b.text:SetPoint("CENTER")
     function b:Set(s, c)
         c = c or S.MUTED
@@ -1615,8 +1813,8 @@ function S.IconBox(parent, size, path)
     b.glow:SetTexture(S.GLOW_TEX)
     b.glow:SetSize(size + math.max(8, math.floor(size * 0.4)), size + math.max(8, math.floor(size * 0.4)))
     b.glow:SetPoint("CENTER")
-    b.glow:SetVertexColor(g[1], g[2], g[3], 0.42)
-    b.ring = S.Circle(b, size, { g[1], g[2], g[3], 0.9 }, "BACKGROUND", -7)
+    b.glow:SetVertexColor(g[1], g[2], g[3], 0)
+    b.ring = S.Circle(b, size, { g[1], g[2], g[3], 1 }, "BACKGROUND", -7)
     b.ring:SetPoint("CENTER")
     b.bg = S.Circle(b, size - 2, S.INPUT, "BACKGROUND", -6)
     b.bg:SetPoint("CENTER")
@@ -1626,9 +1824,10 @@ function S.IconBox(parent, size, path)
     b.tex:SetPoint("CENTER")
     b.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     S.RoundMask(b, b.tex)
-    function b:SetGlow(c, a)
+    -- Gulli Hearth has no glow; a state colour (c) shows on the ring instead.
+    function b:SetGlow(c)
         c = c or S.GLOW
-        self.glow:SetVertexColor(c[1], c[2], c[3], a or 0.42)
+        self.ring:SetVertexColor(c[1], c[2], c[3], 1)
     end
     function b:SetIcon(p) self.tex:SetTexture(p or "Interface\\Icons\\INV_Misc_QuestionMark") end
     b:SetIcon(path)
@@ -1748,6 +1947,8 @@ local function dock(f, host, opts)
     f.docked = true
     f:StopMovingOrSizing()
     f:SetParent(host)
+    -- The hub is scaled already: a page inside it at its own scale would be scaled twice.
+    S.ApplyScale(f, 1)
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
     f:SetWidth(opts.width or f.size[1])
@@ -1760,6 +1961,9 @@ local function dock(f, host, opts)
     S.SetBorder(f, S.CLEAR)
     S.ShowGlass(f, false)
     S.Fill(f.bar, S.CLEAR)
+    S.ShowGlass(f.bar, false)
+    -- The hub's header has the gold line; a page inside it gets a plain one.
+    if rawget(f, "headLine") then f.headLine:SetVertexColor(S.LINE[1], S.LINE[2], S.LINE[3], S.LINE[4]) end
     f.close:Hide()
     if not f.back then
         f.back = backButton(f.bar, function() if f.dockOpts and f.dockOpts.back then f.dockOpts.back(f) end end)
@@ -1811,6 +2015,11 @@ local function undock(f)
     S.SetBorder(f, S.GLASS_EDGE)
     S.ShowGlass(f, true)
     S.Fill(f.bar, S.HEAD)
+    S.ShowGlass(f.bar, true)
+    if rawget(f, "headLine") then
+        local c = S.HEAD_LINE
+        f.headLine:SetVertexColor(c[1], c[2], c[3], c[4])
+    end
     if f.back then f.back:Hide() end
     f.close:Show()
     f.iconBox:ClearAllPoints()
@@ -1846,10 +2055,13 @@ function S.Window(name, title, width, height, opts)
     bar:SetPoint("TOPRIGHT", -1, -1)
     bar:SetHeight(S.HEADER_H)
     S.Box(bar, S.HEAD, S.CLEAR, S.R_XL - 1, "top")
-    local line = S.Divider(bar, S.LINE)
+    S.HeadArt(bar, S.R_XL)
+    -- The one gold line of the look, under the header.
+    local line = S.Divider(bar, S.HEAD_LINE)
     line:SetPoint("BOTTOMLEFT")
     line:SetPoint("BOTTOMRIGHT")
     line:SetHeight(1)
+    f.headLine = line
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
     bar:SetScript("OnDragStart", function() if not f.docked then f:StartMoving() end end)
@@ -1861,11 +2073,11 @@ function S.Window(name, title, width, height, opts)
     f.iconBox:SetPoint("LEFT", 14, 0)
     f.icon = f.iconBox.tex
     f.icon:SetTexture(opts.icon or ("Interface\\AddOns\\" .. tostring(addon) .. "\\icon"))
-    f.title = S.Text(bar, 14)
+    f.title = S.Text(bar, 16, S.GOLD, nil, "title")
     f.title:SetPoint("LEFT", f.iconBox, "RIGHT", 10, 0)
     f.title:SetWordWrap(false)
     f.title:SetText(opts.fullTitle and title or shortTitle(title))
-    f.sub = S.Text(bar, 11, S.FAINT)
+    f.sub = S.Text(bar, 12, S.FAINT)
     f.sub:SetPoint("LEFT", f.title, "RIGHT", 8, -1)
     f.sub:SetWordWrap(false)
     local slash = _G["SLASH_" .. tostring(addon):gsub("%-", ""):upper() .. "1"]
@@ -1873,7 +2085,7 @@ function S.Window(name, title, width, height, opts)
     -- opts.pill: the sub text (a version) sits in a small rounded pill.
     if opts.pill and opts.sub then
         local p = CreateFrame("Frame", nil, bar)
-        S.Box(p, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.08 }, S.R_SM)
+        S.Box(p, S.RAISED, S.LINE, S.R_SM)
         p:SetHeight(18)
         p:SetWidth(math.floor(strw(f.sub) + 14))
         p:SetPoint("LEFT", f.title, "RIGHT", 8, 0)
@@ -1884,8 +2096,10 @@ function S.Window(name, title, width, height, opts)
 
     f.close = closeButton(bar, function() S.MotionOut(f, function() f:Hide() end) end)
     -- Opening: it grows in from 96.5% and fades in, and one pass of light runs over the glass.
+    S.TrackScale(f)
     f:HookScript("OnShow", function(self)
         if self.docked then return end
+        scaleWindow(self)
         S.MotionIn(self, 8, S.SLOW, 0.965)
         sweep(self)
     end)
@@ -1952,7 +2166,7 @@ function S.Footer(f)
     line:SetPoint("TOPLEFT")
     line:SetPoint("TOPRIGHT")
     line:SetHeight(1)
-    ft.status = S.Note(ft, 11)
+    ft.status = S.Note(ft, 12)
     ft.status:SetJustifyV("MIDDLE")
     ft.status:SetPoint("TOPLEFT", S.PAD, -8)
     ft.status:SetPoint("BOTTOMLEFT", S.PAD, 8)
@@ -1991,11 +2205,11 @@ function S.NavRow(r)
     r.mark = tex(r, "ARTWORK", 0, S.Accent())
     r.mark:SetPoint("TOPLEFT", 1, -8)
     r.mark:SetPoint("BOTTOMLEFT", 1, 8)
-    r.mark:SetWidth(3)
+    r.mark:SetWidth(2)
     r.mark:Hide()
     function r:SetSelected(on)
         self.selected = on
-        S.Fill(self, on and S.RAISED or S.CLEAR)
+        S.Fill(self, on and { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 } or S.CLEAR)
         self.mark:SetShown(on)
     end
     return r
@@ -2003,7 +2217,8 @@ end
 
 -- A scrolling list of rows that are made once and reused. make(row) builds a row frame,
 -- fill(row, item, i) shows one item in it. list:SetData(items) redraws. Rows are separated by
--- a hairline and light up under the cursor when they are buttons.
+-- a hairline and light up under the cursor when they are buttons. list.heightOf(item), when
+-- set, gives a row its own height (cards between short headers).
 function S.List(parent, rowHeight, make, fill, gap)
     gap = gap or 0
     local sf = S.Scroll(parent)
@@ -2013,13 +2228,11 @@ function S.List(parent, rowHeight, make, fill, gap)
     function sf:SetData(items)
         local width = self:GetWidth()
         self.child:SetWidth(width > 1 and width or 400)
+        local y = 0
         for i, item in ipairs(items) do
             local r = rows[i]
             if not r then
                 r = CreateFrame("Frame", nil, self.child)
-                r:SetHeight(rowHeight)
-                r:SetPoint("TOPLEFT", 0, -(i - 1) * (rowHeight + gap))
-                r:SetPoint("TOPRIGHT", 0, -(i - 1) * (rowHeight + gap))
                 S.Box(r, S.CLEAR, S.CLEAR, S.R_MD)
                 r.line = S.Divider(r)
                 r.line:SetPoint("BOTTOMLEFT")
@@ -2028,11 +2241,18 @@ function S.List(parent, rowHeight, make, fill, gap)
                 make(r)
                 rows[i] = r
             end
+            local heightOf = rawget(self, "heightOf")
+            local rh = heightOf and heightOf(item) or rowHeight
+            r:SetHeight(rh)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, -y)
+            r:SetPoint("TOPRIGHT", 0, -y)
+            y = y + rh + gap
             fill(r, item, i)
             r:Show()
         end
         for i = #items + 1, #rows do rows[i]:Hide() end
-        local h = #items * (rowHeight + gap)
+        local h = y
         self.child:SetHeight(math.max(h, 1))
         self:Update(h)
     end
@@ -2121,11 +2341,11 @@ function S.HudIcon(b, size)
     b.glow = roundRect(b, "BACKGROUND", -7, S.BAD, r + 3, -3,
         { TOPLEFT = true, TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true })
     showLines(b.glow, false)
-    b.key = S.Text(b, math.max(9, math.floor(size * 0.22)), S.TEXT, "OUTLINE")
+    b.key = S.Text(b, math.max(12, math.floor(size * 0.22)), S.TEXT, "OUTLINE")
     b.key:SetPoint("TOPLEFT", 3, -3)
-    b.count = S.Text(b, math.max(10, math.floor(size * 0.27)), S.TEXT, "OUTLINE")
+    b.count = S.Text(b, math.max(12, math.floor(size * 0.27)), S.TEXT, "OUTLINE")
     b.count:SetPoint("BOTTOMRIGHT", -2, 3)
-    b.mid = S.Text(b, math.max(11, math.floor(size * 0.32)), S.WARN, "OUTLINE")
+    b.mid = S.Text(b, math.max(12, math.floor(size * 0.32)), S.WARN, "OUTLINE")
     b.mid:SetPoint("CENTER", 0, 0)
     b.mid:SetJustifyH("CENTER")
     -- The pulse runs on a child frame, so a secure button keeps its own scripts.
@@ -2178,7 +2398,7 @@ function S.HudCaption(parent, height)
     f.title = S.Text(f, 13)
     f.title:SetPoint("TOPLEFT", 10, -((height or 40) / 2 - 13))
     f.title:SetWordWrap(false)
-    f.sub = S.Text(f, 11, S.MUTED)
+    f.sub = S.Text(f, 12, S.MUTED)
     f.sub:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
     f.sub:SetWordWrap(false)
     function f:Set(title, sub)
@@ -2252,7 +2472,7 @@ function S.HudList(name, width, rows, parent)
     f.ico:SetTexture("Interface\\AddOns\\" .. tostring(addon) .. "\\icon")
     f.title = S.Text(f, 12)
     f.title:SetPoint("LEFT", f.ico, "RIGHT", 6, 0)
-    f.right = S.Text(f, 11, S.FAINT)
+    f.right = S.Text(f, 12, S.FAINT)
     f.right:SetPoint("TOPRIGHT", -8, -7)
     f.right:SetJustifyH("RIGHT")
     local line = S.Divider(f)
@@ -2267,9 +2487,9 @@ function S.HudList(name, width, rows, parent)
         r:SetPoint("TOPRIGHT", -1, -26 - (i - 1) * 22)
         r.tag = S.Badge(r)
         r.tag:SetPoint("LEFT", 7, 0)
-        r.text = S.Text(r, 11)
+        r.text = S.Text(r, 12)
         r.text:SetWordWrap(false)
-        r.right = S.Text(r, 10, S.FAINT)
+        r.right = S.Text(r, 12, S.FAINT)
         r.right:SetPoint("RIGHT", -7, 0)
         r.right:SetJustifyH("RIGHT")
         f.rows[i] = r
@@ -2328,7 +2548,7 @@ function S.ToastFrame(name, parent)
     t.ico:SetPoint("LEFT", 13, 0)
     t.title = S.Text(t, 13)
     t.title:SetWordWrap(false)
-    t.text = S.Note(t, 11)
+    t.text = S.Note(t, 12)
     t.text:SetMaxLines(2)
     t.close = closeButton(t, function() t:Dismiss() end)
     t.close:SetPoint("TOPRIGHT", 0, 0)
@@ -2357,7 +2577,7 @@ function S.ToastFrame(name, parent)
         local c = o.kind and S[KIND[o.kind] or ""] or S.Accent()
         self.stripe:SetVertexColor(c[1], c[2], c[3], 1)
         self.timer:SetVertexColor(c[1], c[2], c[3], 0.8)
-        if o.kind then S.SetBorder(self.ico, c) else S.SetBorder(self.ico, { S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.9 }) end
+        if o.kind then S.SetBorder(self.ico, c) else S.SetBorder(self.ico, S.RING) end
         if o.portrait and SetPortraitTexture and UnitExists and UnitExists(o.portrait) then
             SetPortraitTexture(self.ico.tex, o.portrait)
             self.ico.tex:SetTexCoord(0.1, 0.9, 0.1, 0.9)
@@ -2428,13 +2648,17 @@ local function restack()
     for _, t in ipairs(H.toasts) do
         if t:IsShown() then
             keep[#keep + 1] = t
+            -- y counts in screen units; each card has its own scale.
+            local k = tonumber((t:GetScale())) or 1
+            if k <= 0 then k = 1 end
+            local at = y / k
             local was = rawget(t, "stackY")
             t:ClearAllPoints()
-            t:SetPoint("TOP", UIParent, "TOP", 0, y)
-            t.stackY = y
+            t:SetPoint("TOP", UIParent, "TOP", 0, at)
+            t.stackY = at
             -- A card that moves in the stack slides there.
-            if was and was ~= y then S.MotionSlide(t, 0, y - was, S.SLOW) end
-            y = y - (t:GetHeight() or S.TOAST_H) - 8
+            if was and was ~= at then S.MotionSlide(t, 0, at - was, S.SLOW) end
+            y = y - ((t:GetHeight() or S.TOAST_H) + 8) * k
         end
     end
     H.toasts = keep
@@ -2456,6 +2680,7 @@ function S.Toast(o)
     local onClose = o.onClose
     local fresh = not t:IsShown()
     if fresh then rawset(t, "stackY", nil) end
+    S.ApplyScale(t, S.BaseScale())
     t:Set(o)
     t.onClose = onClose
     local found = false
@@ -2488,7 +2713,7 @@ function S.Mover(f, opts)
     m.name:SetPoint("BOTTOMLEFT", m, "TOPLEFT", 0, 2)
     m.name:SetHeight(18)
     S.Box(m.name, a, a, S.R_SM)
-    m.name.text = S.Text(m.name, 10, { 0.05, 0.05, 0.06, 1 })
+    m.name.text = S.Text(m.name, 12, { 0.05, 0.05, 0.06, 1 })
     m.name.text:SetShadowColor(0, 0, 0, 0)
     m.name.text:SetPoint("LEFT", 5, 0)
     m.name.text:SetText(shortTitle(opts.label))

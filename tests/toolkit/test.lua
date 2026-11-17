@@ -177,12 +177,19 @@ end)
 test("the hub fits the screen: it shrinks on a small one, the module list scrolls", function()
     Fake({})
     local ns = Load()
-    eq(ns.HubScale(1, 1920, 1080, 940, 580), 1, "full size on a big screen")
-    local s = ns.HubScale(1, 800, 480, 940, 580)
-    assert(940 * s <= 800 * 0.96 + 0.01 and 580 * s <= 480 * 0.9 + 0.01, "fits a handheld: " .. s)
-    eq(ns.HubScale(5, 1920, 1080, 940, 580), 1.3, "the player's scale is capped")
-    eq(ns.HubScale(nil, 1920, 1080, 940, 580), 1)
-    assert(580 * ns.HubScale(1, 1024, 768, 940, 580) <= 768 * 0.85 + 1, "fits 85% of a 768 high screen")
+    local function near(a, b, msg) assert(math.abs(a - b) < 0.001, (msg or "") .. ": " .. a .. " ~= " .. b) end
+    near(ns.HubScale(1, 1920, 1080, 1086, 700), 1080 * 0.9 / 700, "a 0.71 UI scale: 90% of the height")
+    near(ns.HubScale(1, 1366, 768, 1086, 700), 768 * 0.9 / 700, "a 768 high screen: as before")
+    near(ns.HubScale(1, 1024, 768, 1086, 700), 1024 * 0.96 / 1086, "a narrow screen: by its width")
+    near(ns.HubScale(1, 2560, 1440, 1086, 700), 1.6, "a big screen: at most 1.6 times")
+    near(ns.HubScale(nil, 1920, 1080, 1086, 700), ns.HubScale(1, 1920, 1080, 1086, 700))
+    near(ns.HubScale(1.3, 1920, 1080, 1086, 700), 1080 * 0.98 / 700, "the player's + stops at the screen")
+    near(ns.HubScale(0.7, 1366, 768, 1086, 700), 0.7 * 768 * 0.9 / 700, "the player's - makes it smaller")
+    near(ns.HubScale(5, 2560, 1440, 1086, 700), 1440 * 0.98 / 700, "the player's scale is capped")
+    for _, sz in ipairs({ { 1920, 1080 }, { 1366, 768 }, { 1024, 768 }, { 2560, 1440 }, { 800, 480 } }) do
+        local k = ns.HubScale(1.3, sz[1], sz[2], 1086, 700)
+        assert(1086 * k <= sz[1] * 0.98 + 0.01 and 700 * k <= sz[2] * 0.98 + 0.01, "fits " .. sz[1] .. "x" .. sz[2])
+    end
 end)
 
 test("categories: known modules have one, others name one, the rest are Other", function()
@@ -799,9 +806,22 @@ test("text uses a font family with Cyrillic and CJK glyphs when the game has one
     local t = stubText()
     ns.Skin.SetFont(t, 13)
     CreateFontFamily = nil
-    assert(made.GulliFont13, "family made")
-    assert(made.GulliFont13.russian and made.GulliFont13.korean and made.GulliFont13.simplifiedchinese)
-    eq(t.object and t.object.name, "GulliFont13", "the text uses the family")
+    local f = made.GulliHearthbody13
+    assert(f, "family made")
+    assert(f.russian and f.korean and f.simplifiedchinese)
+    assert(f.roman:find("FiraSans%-Medium"), "body text in Fira Sans")
+    eq(f.korean, "Fonts\\2002.TTF", "Korean keeps the game's font")
+    eq(t.object and t.object.name, "GulliHearthbody13", "the text uses the family")
+    CreateFontFamily = function(name, members)
+        local alphabets = {}
+        for _, m in ipairs(members) do alphabets[m.alphabet] = m.file end
+        made[name] = alphabets
+        return { name = name }
+    end
+    ns.Skin.SetFont(t, 20, nil, "title")
+    CreateFontFamily = nil
+    eq(made.GulliHearthtitle20.roman, "Fonts\\FRIZQT__.TTF", "titles in Friz Quadrata by path")
+    eq(made.GulliHearthtitle20.russian, "Fonts\\FRIZQT___CYR.TTF")
 end)
 
 test("tabs take an icon per label, and an empty label shows the icon alone with a tooltip", function()
@@ -926,6 +946,246 @@ test("the hub builds the side list with its selection plate and opens on Home", 
     ns.Refresh()
     local view = ns.View()
     eq(view.page, "home")
+end)
+
+test("Ready: repairs, bags, food and drink apart, the hearthstone and class supplies, each against its limit", function()
+    Fake({ addons = { QC } })
+    -- Bag 0: 3 bread, 4 water; 5 free slots. Gear at 40%.
+    local items = { [1] = { itemID = 4540, stackCount = 3 }, [2] = { itemID = 159, stackCount = 4 } }
+    C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 0 and 8 or 0 end,
+        GetContainerNumFreeSlots = function(bag) return bag == 0 and 5 or 0, 0 end,
+        GetContainerItemInfo = function(bag, slot) return bag == 0 and items[slot] or nil end,
+        GetItemCooldown = function() return 100, 1800 end,
+    }
+    C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, "", "", "", 0, 0, 5 end,
+               GetItemSpell = function(id) return id == 159 and "Drink" or "Food" end,
+               GetItemCount = function() return 0 end }
+    C_Spell = { GetSpellName = function(id) return id == 430 and "Drink" or "?" end }
+    GetInventoryItemDurability = function(slot) if slot == 1 then return 40, 100 end end
+    GetTime = function() return 400 end
+    UnitLevel = function() return 50 end
+    local ns = Load()
+    local by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.REPAIR.ok, false, "40% is under 50%")
+    eq(by.REPAIR.value, "40%")
+    eq(by.BAGS.value, "5")
+    eq(by.BAGS.ok, false, "5 free slots is under 6")
+    eq(by.FOOD.value, "3", "only the bread")
+    eq(by.DRINK.value, "4", "only the water")
+    eq(by.HEARTH.ok, false, "the hearthstone waits")
+    eq(by.HEARTH.text, "Hearthstone in 25 min")
+    eq(by.REAGENT.ok, false, "a priest of 50 has no candles")
+    ns.ReadySet("durMin", 30)
+    ns.ReadySet("bagsMin", 5)
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.REPAIR.ok, true, "the limit is a setting")
+    eq(by.BAGS.ok, true)
+    eq(GulliToolkitDB.ready.durMin, 30, "saved in the hub's own settings")
+    UnitClass = function() return "Warrior", "WARRIOR" end
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.DRINK, nil, "a warrior does not drink")
+    ns.ReadyReset()
+    eq(ns.ReadyGet("durMin"), 50, "back to the default")
+    GulliRestock = { Missing = function() return { { name = "Ice Cold Milk", have = 5, want = 20 },
+        { name = "Arrow", have = 0, want = 1000 }, { name = "Light Feather", have = 2, want = 10 } } end }
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.RESTOCK.ok, false, "Restock's list misses three")
+    eq(by.RESTOCK.value, "3")
+    assert(by.RESTOCK.text:find("Ice Cold Milk 5/20, Arrow 0/1000, ...", 1, true), by.RESTOCK.text)
+    GulliRestock.Missing = function() return {} end
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.RESTOCK.ok, true, "nothing missing")
+    ns.ReadySet("show", false)
+    eq(ns.ReadyGet("show"), false, "the card can be hidden")
+    GulliRestock = nil
+end)
+
+local function mod(name, key, extra)
+    local a = { name = "Gulli-" .. name, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = key or name } }
+    for k, v in pairs(extra or {}) do a[k] = v end
+    return a
+end
+
+local function planBy(plan)
+    local t = {}
+    for _, p in ipairs(plan) do t[p.row.key] = p end
+    return t
+end
+
+local function fire(event, ...)
+    for _, f in ipairs(W.frames) do
+        local h = rawget(f, "_OnEvent")
+        if h then h(f, event, ...) end
+    end
+end
+
+test("first setup: a module whose job another addon does starts off and says why", function()
+    Fake({ addons = { mod("Merchant"), mod("Crates"), mod("XP"), mod("Mail"), mod("Social"),
+                      { name = "Scrap", enabled = true, loaded = true }, { name = "Auctionator", enabled = true },
+                      { name = "Postal", enabled = false } } })
+    local ns = Load()
+    local by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on, false, "Scrap sells junk")
+    eq(by.Merchant.why, "Because you have Scrap")
+    eq(by.Crates.on, true, "Crates reads Auctionator's prices")
+    eq(by.Crates.why, "Works with Auctionator")
+    eq(by.XP.on, true)
+    eq(by.XP.why, nil, "nothing to say: no grey reason")
+    eq(by.Mail.on, true, "Postal is installed but switched off: it does not count")
+    eq(by.Social.on, true)
+end)
+
+test("first setup: Leatrix Plus counts only for the settings it has on", function()
+    Fake({ addons = { mod("Merchant"), mod("AutoQuest"), mod("Social"), { name = "Leatrix_Plus", enabled = true, loaded = true } } })
+    local ns = Load()
+    LeaPlusDB = { AutoSellJunk = "Off", AutoRepairGear = "Off", AutomateQuests = "On" }
+    local by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on, true, "Leatrix Plus neither sells nor repairs")
+    eq(by.AutoQuest.on, false)
+    eq(by.AutoQuest.why, "Because you have Leatrix Plus")
+    eq(by.Social.on, true)
+    LeaPlusDB.AutoRepairGear = "On"
+    eq(planBy(ns.SetupPlan()).Merchant.on, false, "it repairs now")
+    LeaPlusDB = nil
+    by = planBy(ns.SetupPlan())
+    eq(by.Merchant.on and by.AutoQuest.on, true, "settings it cannot read count as off")
+end)
+
+test("first setup: several addons are named together, the class can switch a module off", function()
+    Fake({ addons = { mod("GroupBuffs"), mod("Reminders"), mod("MobFinder") } })
+    local ns = Load()
+    UnitClass = function() return "Rogue", "ROGUE" end
+    local by = planBy(ns.SetupPlan({ SilverDragon = true, RareScanner = true, SmartBuff = true }))
+    eq(by.MobFinder.on, false)
+    assert(by.MobFinder.why:find("SilverDragon", 1, true) and by.MobFinder.why:find("RareScanner", 1, true), by.MobFinder.why)
+    eq(by.Reminders.why, "Because you have SmartBuff")
+    eq(planBy(ns.SetupPlan({})).GroupBuffs.why, "Because you play a Rogue")
+    UnitClass = function() return "Priest", "PRIEST" end
+    eq(planBy(ns.SetupPlan({})).GroupBuffs.on, true)
+end)
+
+test("first setup: every rule names a known module and a folder", function()
+    Fake({})
+    local ns = Load()
+    for _, e in ipairs(ns.OTHERS) do
+        assert(type(e.name) == "string" and e.name ~= "", "an entry without a name")
+        assert(type(e.addons) == "table" and #e.addons > 0, e.name .. ": no folder")
+        for _, part in ipairs({ "same", "with" }) do
+            for key, v in pairs(e[part] or {}) do
+                assert(ns.CATEGORY_OF[key], e.name .. ": unknown module " .. key)
+                if type(v) == "table" then assert(e.db, e.name .. ": settings without a saved variable") end
+            end
+        end
+    end
+    for key in pairs(ns.CLASS_OFF) do assert(ns.CATEGORY_OF[key], "unknown module " .. key) end
+end)
+
+test("first setup: Apply switches as picked, a module that cannot pause asks for a reload", function()
+    Fake({ addons = { mod("Merchant"), mod("XP"), mod("Mail") } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "Merchant", open = function() end, pause = function() end })
+    GulliToolkit.Register({ key = "XP", open = function() end })
+    local plan = ns.SetupPlan({ Scrap = true })
+    eq(ns.SetupNeedsReload(plan), false, "Merchant pauses at once")
+    eq(ns.ApplySetup(plan), 1)
+    eq(GulliToolkit.IsPaused("Merchant"), true)
+    eq(GulliToolkitDB.setup, true)
+    plan = ns.SetupPlan({})
+    planBy(plan).XP.on = false
+    eq(ns.SetupNeedsReload(plan), true, "XP has no pause")
+    local win = ns.OpenSetup()
+    assert(win, "the window opens from /gulli setup and Quick setup")
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(W.reloaded, false, "nothing that needs a reload was picked")
+end)
+
+test("first setup: the reload gets its own click, and a failed module never stops the rest", function()
+    Fake({ addons = { mod("XP"), mod("Mail"), mod("Bulletin") } })
+    local ns = Load()
+    local win, plan = ns.OpenSetup()
+    for _, p in ipairs(plan) do p.on = false end
+    eq(ns.SetupNeedsReload(plan), true)
+    local real = ns.Switch
+    ns.Switch = function(row, on)
+        if row.key == "Mail" then error("boom") end
+        return real(row, on)
+    end
+    win.apply:GetScript("OnClick")(win.apply)
+    ns.Switch = real
+    eq(W.reloaded, false, "the click that switches does not reload")
+    eq(win:IsShown(), true, "the window stays for the reload")
+    eq(win.apply:GetText(), ns.L.SETUP_RELOAD)
+    eq(GulliToolkitDB.setup, true)
+    for _, row in ipairs(ns.List()) do
+        if row.key ~= "Mail" then eq(row.on, false, row.key .. " was switched off") end
+    end
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(W.reloaded, true, "the second click reloads")
+end)
+
+test("first setup: a switch changed after Apply applies again before the reload", function()
+    Fake({ addons = { mod("XP"), mod("Mail") } })
+    local ns = Load()
+    local win, plan = ns.OpenSetup()
+    planBy(plan).XP.on = false
+    win.apply:GetScript("OnClick")(win.apply)
+    eq(win.apply:GetText(), ns.L.SETUP_RELOAD)
+    planBy(plan).XP.on = true
+    eq(ns.SetupNeedsReload(plan), true, "XP is off in the game now")
+    eq(ns.ApplySetup(plan), 1, "XP goes back on")
+end)
+
+test("first setup: the window opens by itself only when the toolkit has no settings yet", function()
+    Fake({ addons = { mod("Merchant") } })
+    local ns = Load()
+    local opened = 0
+    local real = ns.OpenSetup
+    ns.OpenSetup = function(auto) opened = opened + 1; return real(auto) end
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(opened, 1, "first run")
+    fire("PLAYER_ENTERING_WORLD", false, true)
+    eq(opened, 1, "only once")
+
+    Fake({ addons = { mod("Merchant") } })
+    GulliToolkitDB = { feed = {} }
+    ns = Load()
+    opened = 0
+    real = ns.OpenSetup
+    ns.OpenSetup = function(auto) opened = opened + 1; return real(auto) end
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(opened, 0, "a player with settings is not asked")
+    SlashCmdList.GULLITOOLKIT("setup")
+    eq(opened, 1, "/gulli setup opens it")
+
+    Fake({})
+    ns = Load()
+    eq(ns.OpenSetup(true), nil, "no module installed: nothing to ask")
+end)
+
+test("Gulli Hearth: S.Emph whitens numbers in plain text only; no text under 12", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    eq(S.Emph("Level 24 in 1 h"), "Level |cffffffff24|r in |cffffffff1|r h", "plain")
+    eq(S.Emph("|cffff0000red 12|r x 3"), "|cffff0000red 12|r x |cffffffff3|r", "a colour code")
+    eq(S.Emph("|Hitem:1234:0|h[Thing]|h 2"), "|Hitem:1234:0|h[Thing]|h |cffffffff2|r", "an item link")
+    eq(S.Emph("|TInterface\\Icons\\X:14|t 5"), "|TInterface\\Icons\\X:14|t |cffffffff5|r", "a texture")
+    eq(S.Emph(""), "", "empty")
+    eq(S.Emph(nil), nil)
+    local size
+    local fs = { SetFontObject = function() end, SetFont = function(_, _, s) size = s end }
+    local keep = CreateFontFamily
+    CreateFontFamily = nil
+    S.SetFont(fs, 9)
+    eq(size, 12, "a 9 unit text becomes 12")
+    S.SetFont(fs, 14.7)
+    eq(size, 14, "whole units")
+    CreateFontFamily = keep
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))

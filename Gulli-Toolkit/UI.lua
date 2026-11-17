@@ -14,28 +14,34 @@ local MID = S.NARROW_W
 local HOST_W = MID + GAP + CARD
 local HOST_H = S.DOCK_H
 local W = 2 * S.PAD + SIDE + GAP + HOST_W
-local H = S.HEADER_H + 2 * S.PAD + HOST_H
+-- The hub's header is taller than a module window's, with less room above and below the
+-- centre, so the window stays 1086 by 700.
+local HUB_HEAD, VPAD = 56, 10
+local H = HUB_HEAD + 2 * VPAD + HOST_H
 -- The side column runs from the window's edge to a hairline, SIDE_IN pixels of room inside.
 local SIDE_IN = 10
 local LIST_W = SIDE + S.PAD - 1 - 2 * SIDE_IN - 10
-local ROW_H, HEAD_H = 30, 30
-local TILE_COLS, TILE_MAX, TILE_H = 3, 12, 58
+local ROW_H, HEAD_H = 30, 26
+local TILE_COLS, TILE_MAX, TILE_H = 3, 9, 58
+local LABEL_H = 20
 local QUICK_W, LINE_H = 320, 24
 -- The Quick setup buttons that are not presets (a preset names its own icon in ns.PRESETS).
 local QUICK_ICON = {
     move = "Interface\\Icons\\Ability_Hunter_Pathfinding",
     transfer = "Interface\\Icons\\INV_Misc_Note_01",
     protect = "Interface\\Icons\\Spell_Holy_SealOfProtection",
+    setup = "Interface\\Icons\\INV_Misc_Gear_02",
 }
 
 local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
 local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
+local MARK = "Interface\\AddOns\\Gulli-Toolkit\\Art\\Mark"
 
 -- page: "home", "module", "protect", "transfer" or "errors"; inside: the key of the docked module.
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
-local scaleText, protectBtn, protectFrame, transfer, errorsFrame
+local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
 local host, hubSwitch, offWin, insideWin, card, home, homeRow
 local rows, heads = {}, {}
 
@@ -133,6 +139,7 @@ local function hidePanels()
     if protectFrame then protectFrame:Hide() end
     if transfer then transfer:Hide() end
     if errorsFrame then errorsFrame:Hide() end
+    if readyFrame then readyFrame:Hide() end
 end
 
 -- Takes the docked module out, without choosing another page.
@@ -205,6 +212,7 @@ local function showPanel(name)
     view.page = name
     if name == "protect" then protectFrame:Show()
     elseif name == "errors" then errorsFrame:Show()
+    elseif name == "ready" then readyFrame:Show()
     else transfer:Show() end
     ns.Refresh()
 end
@@ -241,23 +249,11 @@ local function makeSelPlate()
     local p = CreateFrame("Frame", nil, list)
     p:SetHeight(ROW_H)
     local a = S.Accent()
-    S.Box(p, { a[1], a[2], a[3], 0.11 }, { a[1], a[2], a[3], 0.25 }, S.R_MD)
-    local glow = p:CreateTexture(nil, "BACKGROUND", nil, -6)
-    glow:SetTexture(S.RADIAL)
-    if glow.SetBlendMode then glow:SetBlendMode("ADD") end
-    glow:SetVertexColor(a[1], a[2], a[3], 0.16)
-    glow:SetPoint("TOPLEFT", 1, -1)
-    glow:SetPoint("BOTTOMRIGHT", p, "BOTTOM", 0, 1)
+    S.Box(p, { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 }, S.CLEAR, S.R_MD)
     p.bar = S.Tex(p, "ARTWORK", 2, a)
-    p.bar:SetWidth(3)
-    p.bar:SetPoint("TOPLEFT", 1, -8)
-    p.bar:SetPoint("BOTTOMLEFT", 1, 8)
-    local halo = p:CreateTexture(nil, "ARTWORK", nil, 1)
-    halo:SetTexture(S.GLOW_TEX)
-    if halo.SetBlendMode then halo:SetBlendMode("ADD") end
-    halo:SetVertexColor(a[1], a[2], a[3], 0.55)
-    halo:SetSize(14, ROW_H)
-    halo:SetPoint("CENTER", p.bar, "CENTER")
+    p.bar:SetWidth(2)
+    p.bar:SetPoint("TOPLEFT", 0, -5)
+    p.bar:SetPoint("BOTTOMLEFT", 0, 5)
     selPlate = p
     return p
 end
@@ -277,21 +273,20 @@ local function makeRow(i)
     r:SetHeight(ROW_H)
     selectable(r)
     r.box = S.IconBox(r, 20)
-    r.box:SetPoint("LEFT", 9, 0)
+    r.box:SetPoint("LEFT", 8, 0)
     r.icon = r.box.tex
-    -- A dot at the end of the row: updated since the player last opened it.
-    r.dot = S.Circle(r, 6, S.Accent(), "OVERLAY")
+    -- A mark at the end of the row, so a state never shows by colour alone: an empty ring when
+    -- the module is off or paused, an orange dot while it waits for a reload, a red one when
+    -- the game refuses it, a gold one when it was updated since the player last opened it.
+    r.ring = S.Circle(r, 8, S.FAINT, "ARTWORK")
+    r.ring:SetPoint("RIGHT", -10, 0)
+    r.hole = S.Circle(r, 6, S.SIDE, "OVERLAY")
+    r.hole:SetPoint("CENTER", r.ring, "CENTER")
+    r.dot = S.Circle(r, 8, S.GOLD, "OVERLAY", 1)
     r.dot:SetPoint("RIGHT", -10, 0)
-    local dg = r:CreateTexture(nil, "ARTWORK")
-    dg:SetTexture(S.GLOW_TEX)
-    dg:SetSize(16, 16)
-    dg:SetPoint("CENTER", r.dot, "CENTER")
-    local a = S.Accent()
-    dg:SetVertexColor(a[1], a[2], a[3], 0.7)
-    r.dotGlow = dg
-    r.title = S.Text(r, 12)
+    r.title = S.Text(r, 13)
     r.title:SetPoint("LEFT", r.box, "RIGHT", 9, 0)
-    r.title:SetPoint("RIGHT", -20, 0)
+    r.title:SetPoint("RIGHT", -22, 0)
     r.title:SetWordWrap(false)
     r:SetScript("OnClick", function(self) enter(self.row) end)
     r:SetScript("OnEnter", function(self)
@@ -307,17 +302,21 @@ local function fillRow(r, row)
     r.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     local live = row.state == "ready" and not row.paused
     r.icon:SetDesaturated(not live)
-    r.box:SetAlpha(live and 1 or 0.5)
+    r.box:SetAlpha(live and 1 or 0.6)
     r.title:SetText(row.title)
-    -- The state shows in the colour of the name; the tooltip and the page say why. The switch
-    -- itself is in the header of the module's page.
-    local tc = S.TEXT
-    if row.state == "reload" then tc = WAIT
-    elseif row.state == "blocked" then tc = BAD
-    elseif not live then tc = S.FAINT end
+    -- The state shows in the name's colour and the mark at the end; the tooltip and the page
+    -- say why. The switch itself is in the header of the module's page.
+    local tc, dot = S.TEXT, nil
+    if row.state == "reload" then tc, dot = WAIT, WAIT
+    elseif row.state == "blocked" then tc, dot = BAD, BAD
+    elseif not live then tc = S.FAINT
+    elseif row.new then dot = S.GOLD end
     r.title:SetTextColor(tc[1], tc[2], tc[3], 1)
-    r.dot:SetShown(row.new == true)
-    r.dotGlow:SetShown(row.new == true)
+    if dot then r.dot:SetVertexColor(dot[1], dot[2], dot[3], 1) end
+    r.dot:SetShown(dot ~= nil)
+    local ring = not live and dot == nil
+    r.ring:SetShown(ring)
+    r.hole:SetShown(ring)
     r:SetSelected(view.page == "module" and view.inside == row.key)
     r:Show()
 end
@@ -325,12 +324,12 @@ end
 local function makeHead(i)
     local h = CreateFrame("Frame", nil, list)
     h:SetHeight(HEAD_H)
-    -- A small label in capitals with the count at the right, like the cards' titles.
-    h.count = S.Text(h, 10, S.FAINT)
-    h.count:SetPoint("BOTTOMRIGHT", -8, 7)
+    -- A section label in bold dim gold capitals with the count at the right, like the cards'.
+    h.count = S.Text(h, 12, S.FAINT)
+    h.count:SetPoint("BOTTOMRIGHT", -8, 5)
     h.count:SetJustifyH("RIGHT")
-    h.text = S.Text(h, 10, S.FAINT)
-    h.text:SetPoint("BOTTOMLEFT", 8, 7)
+    h.text = S.Text(h, 12, S.GOLD_DIM, nil, "bold")
+    h.text:SetPoint("BOTTOMLEFT", 8, 5)
     h.text:SetPoint("RIGHT", h.count, "LEFT", -6, 0)
     h.text:SetWordWrap(false)
     heads[i] = h
@@ -421,26 +420,32 @@ end
 -- The home page ---------------------------------------------------------------------------------
 
 local tiles, feedLines, ovLines, cmdLines = {}, {}, {}, {}
+local fillReady
 
 local function makeTile(i)
     local t = CreateFrame("Button", nil, home.summary)
     t:SetSize(10, TILE_H)
-    S.Box(t, S.SURFACE, S.CARD_EDGE, S.R_LG)
-    S.Glass(t, S.R_LG, 0.35)
-    t.icon = S.IconBox(t, 28)
-    t.icon:SetPoint("LEFT", 10, 0)
-    t.name = S.Text(t, 10, S.FAINT)
-    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 2)
+    -- No edge: a tile stands out from the window by its shade only.
+    S.Box(t, S.SURFACE, S.CLEAR, S.R_LG)
+    S.Depth(t, S.R_LG)
+    t.icon = S.IconBox(t, 32)
+    t.icon:SetPoint("LEFT", 12, 0)
+    t.name = S.Text(t, 12, S.GOLD, nil, "bold")
+    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 3)
     t.name:SetPoint("RIGHT", -10, 0)
     t.name:SetWordWrap(false)
-    t.text = S.Text(t, 12)
-    t.text:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -4)
+    t.text = S.Text(t, 13, S.MUTED)
+    t.text:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -2)
     t.text:SetPoint("RIGHT", -10, 0)
     t.text:SetJustifyV("TOP")
     t.text:SetMaxLines(2)
     t:SetScript("OnClick", function(self) enter(self.row) end)
-    t:SetScript("OnEnter", function(self) S.SetBorder(self, S.Accent()) end)
-    t:SetScript("OnLeave", function(self) S.SetBorder(self, S.CARD_EDGE) end)
+    -- The whole line in a tooltip, in case two lines do not hold it.
+    t:SetScript("OnEnter", function(self)
+        S.Fill(self, S.RAISED)
+        if self.row then tip(self, self.row.title, { self.full }, "ANCHOR_TOP") end
+    end)
+    t:SetScript("OnLeave", function(self) S.Fill(self, S.SURFACE); hideTip() end)
     tiles[i] = t
     return t
 end
@@ -449,11 +454,11 @@ local function makeFeedLine(i)
     local b = CreateFrame("Button", nil, home.recent.body)
     b:SetHeight(LINE_H)
     S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
-    b.ago = S.Text(b, 11, S.FAINT)
+    b.ago = S.Text(b, 12, S.FAINT)
     b.ago:SetPoint("LEFT", 4, 0)
-    b.ago:SetWidth(52)
+    b.ago:SetWidth(48)
     b.ago:SetWordWrap(false)
-    b.text = S.Text(b, 12, S.MUTED)
+    b.text = S.Text(b, 13, S.MUTED)
     b.text:SetPoint("LEFT", b.ago, "RIGHT", 6, 0)
     b.text:SetPoint("RIGHT", -4, 0)
     b.text:SetWordWrap(false)
@@ -473,7 +478,7 @@ local function makeLine(parent, list, i, size)
     local b = CreateFrame("Button", nil, parent)
     b:SetHeight(LINE_H)
     S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
-    b.text = S.Text(b, size or 12, S.MUTED)
+    b.text = S.Text(b, size or 13, S.MUTED)
     b.text:SetPoint("LEFT", 4, 0)
     b.text:SetPoint("RIGHT", -4, 0)
     b.text:SetWordWrap(false)
@@ -526,24 +531,70 @@ local function overviewLines(o)
     return out
 end
 
-local function fillOverview(data)
+-- One pip per module: green runs, dark is off or paused, orange waits for a reload, red is
+-- refused by the game. The number of modules that are on stands above them.
+local pips = {}
+local PIP_W, PIP_GAP = 6, 2
+local function fillPips(data)
+    local n = 0
+    for _, r in ipairs(data) do
+        n = n + 1
+        local p = pips[n]
+        if not p then
+            p = S.Tex(home.ovPips, "ARTWORK", 0, S.GOOD)
+            p:SetSize(PIP_W, 10)
+            pips[n] = p
+        end
+        local c = S.OFF
+        if r.state == "blocked" then c = S.BAD
+        elseif r.state == "reload" then c = S.WARN
+        elseif r.state == "ready" and not r.paused then c = S.GOOD end
+        p:SetVertexColor(c[1], c[2], c[3], 1)
+        p:ClearAllPoints()
+        p:SetPoint("TOPLEFT", ((n - 1) % 24) * (PIP_W + PIP_GAP), -math.floor((n - 1) / 24) * 14)
+        p:Show()
+    end
+    for i = n + 1, #pips do pips[i]:Hide() end
+end
+
+local function fillOverview(data, height)
     local o = ns.Overview(data)
-    local hex = S.Hex(S.TEXT)
-    local parts = { hex .. L.OV_ON:format(o.on, o.total) .. "|r", L.OV_RUNNING:format(o.running) }
-    if o.kb > 0 then parts[#parts + 1] = L.OV_MEMORY:format(ns.Size(o.kb)) end
-    home.ovHead:SetText(table.concat(parts, S.Hex(S.FAINT) .. "   ·   |r"))
     home.ovCount:SetText(o.on)
+    home.ovTotal:SetText("/ " .. o.total)
+    home.ovTotal:ClearAllPoints()
+    home.ovTotal:SetPoint("BOTTOMLEFT", home.ovCount, "BOTTOMRIGHT", 6, 3)
+    local parts = { L.OV_RUNNING:format(o.running) }
+    if o.kb > 0 then parts[#parts + 1] = L.OV_MEMORY:format(ns.Size(o.kb)) end
+    home.ovHead:SetText(S.Emph(table.concat(parts, S.DOT), S.TEXT))
+    fillPips(data)
     home.ovReload:SetShown(#o.reload > 0)
+    -- The lines wrap (never cut); as many as the card holds, each with its whole text in the
+    -- tooltip and a click that opens the module it names.
     local lines = overviewLines(o)
+    local width = math.max(1, (tonumber(home.ovBox:GetWidth()) or 0) - 8)
+    local y, room = 0, (height or 999) - 36 - S.INSET
+    local shown = 0
     for i, e in ipairs(lines) do
         local b = ovLines[i] or makeLine(home.ovBox, ovLines, i)
+        b.text:SetWordWrap(true)
+        b.text:SetMaxLines(2)
+        b.text:SetJustifyV("TOP")
         b.head, b.full, b.row, b.open = e[1], e[3] ~= "" and e[3] or nil, e[4], e[5]
         b.text:SetText(S.Hex(e[2]) .. e[1] .. "|r" .. (e[3] ~= "" and ("  " .. e[3]) or ""))
-        place(b, 24 + (i - 1) * LINE_H)
-        b:Show()
+        b.text:SetWidth(width)
+        local h = math.min(2, math.max(1, math.ceil((tonumber(b.text:GetStringWidth()) or 0) / width))) * 16 + 4
+        if 20 + y + h > room then b:Hide() else
+            b:SetHeight(h)
+            b.text:ClearAllPoints()
+            b.text:SetPoint("TOPLEFT", 4, -2)
+            b.text:SetPoint("BOTTOMRIGHT", -4, 2)
+            place(b, 20 + y)
+            b:Show()
+            shown = i
+            y = y + h
+        end
     end
-    for i = #lines + 1, #ovLines do ovLines[i]:Hide() end
-    return home.overview:Fit(math.max(64, 24 + #lines * LINE_H))
+    for i = math.max(shown, #lines) + 1, #ovLines do ovLines[i]:Hide() end
 end
 
 -- The height the command lines may fill in a Quick setup card of height h whose commands title
@@ -581,17 +632,82 @@ local function fillCommands(data)
     for i = n + 1, #cmdLines do cmdLines[i]:Hide() end
 end
 
+-- The Ready card: one chip per check of ns.Readiness, two per row, the ones not met first:
+-- a red edge and dot while a check is not met, a green dot when it is. Returns its height, 0
+-- when it is switched off.
+local readyChips = {}
+local CHIP_H = 28
+local function makeChip(i)
+    local c = CreateFrame("Frame", nil, home.ready.body)
+    c:SetHeight(CHIP_H)
+    S.Box(c, S.RAISED, S.CLEAR, S.R_MD)
+    S.Depth(c, S.R_MD)
+    c.icon = S.IconBox(c, 18)
+    c.icon:SetPoint("LEFT", 6, 0)
+    c.dot = S.Circle(c, 8, S.GOOD, "OVERLAY")
+    c.dot:SetPoint("RIGHT", -8, 0)
+    c.value = S.Text(c, 13)
+    c.value:SetPoint("LEFT", c.icon, "RIGHT", 7, 0)
+    c.value:SetPoint("RIGHT", c.dot, "LEFT", -6, 0)
+    c.value:SetWordWrap(false)
+    c:EnableMouse(true)
+    c:SetScript("OnEnter", function(self) if self.text then tip(self, self.text, {}) end end)
+    c:SetScript("OnLeave", hideTip)
+    readyChips[i] = c
+    return c
+end
+
+function fillReady()
+    local card = home.ready
+    if not ns.ReadyGet("show") then
+        card:Hide()
+        home.overview:SetPoint("TOPLEFT", home.summaryCard, "BOTTOMLEFT", 0, -GAP)
+        return 0
+    end
+    card:Show()
+    home.overview:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -GAP)
+    local list = {}
+    for _, r in ipairs(ns.Readiness()) do if not r.ok then list[#list + 1] = r end end
+    for _, r in ipairs(ns.Readiness()) do if r.ok then list[#list + 1] = r end end
+    local ok, n = ns.ReadyCount(list)
+    card:SetTitle(L.READY .. "  " .. S.Hex(ok == n and S.GOOD or S.WARN) .. ok .. "/" .. n .. "|r", "")
+    local width = HOST_W - QUICK_W - GAP - 2 * S.INSET
+    local cols = 2
+    local w = math.floor((width - (cols - 1) * 6) / cols)
+    for i, r in ipairs(list) do
+        local c = readyChips[i] or makeChip(i)
+        c.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        c.value:SetText(r.text)
+        local tc = r.ok and S.TEXT or { 1, 1, 1, 1 }
+        c.value:SetTextColor(tc[1], tc[2], tc[3], 1)
+        local dc = r.ok and S.GOOD or S.BAD
+        c.dot:SetVertexColor(dc[1], dc[2], dc[3], 1)
+        S.SetBorder(c, r.ok and S.CLEAR or { S.BAD[1], S.BAD[2], S.BAD[3], 0.55 })
+        c.text = r.text
+        c:SetWidth(w)
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", ((i - 1) % cols) * (w + 6), -math.floor((i - 1) / cols) * (CHIP_H + 6))
+        c:Show()
+    end
+    for i = #list + 1, #readyChips do readyChips[i]:Hide() end
+    local rows = math.max(1, math.ceil(#list / cols))
+    return card:Fit(rows * (CHIP_H + 6) - 6)
+end
+
+local OV_H = 112
+
 local function fillHome(data)
     local list2 = ns.Summaries(data)
     local n = math.min(#list2, TILE_MAX)
-    local w = math.floor((HOST_W - 2 * S.INSET - (TILE_COLS - 1) * 8) / TILE_COLS)
+    local w = math.floor((HOST_W - (TILE_COLS - 1) * 8) / TILE_COLS)
     for i = 1, n do
         local t = tiles[i] or makeTile(i)
         local s = list2[i]
         t.row = s.row
         t.icon:SetIcon(s.icon or s.row.icon)
         t.name:SetText(S.Upper(s.row.title))
-        t.text:SetText(s.text)
+        t.full = s.text
+        t.text:SetText(S.Emph(s.text, S.TEXT))
         t:ClearAllPoints()
         t:SetPoint("TOPLEFT", ((i - 1) % TILE_COLS) * (w + 8), -math.floor((i - 1) / TILE_COLS) * (TILE_H + 8))
         t:SetSize(w, TILE_H)
@@ -601,12 +717,18 @@ local function fillHome(data)
     home.noSummary:SetShown(n == 0)
     local lines = math.max(1, math.ceil(n / TILE_COLS))
     local inner = n == 0 and 36 or (lines * (TILE_H + 8) - 8)
-    local sh = 36 + inner + S.INSET
+    local sh = LABEL_H + inner
     home.summaryCard:SetHeight(sh)
     local lower = HOST_H - sh - GAP
     home.quick:SetHeight(lower)
-    local oh = fillOverview(data)
-    local rh = lower - oh - GAP
+    local rdh = fillReady()
+    local rest = lower - (rdh > 0 and (rdh + GAP) or 0)
+    -- The Modules card keeps its height; the Recent feed takes what is left (at least 3 lines).
+    local oh = math.max(OV_H, rest - GAP - (36 + S.INSET + 3 * LINE_H))
+    oh = math.min(oh, OV_H + 40)
+    home.overview:SetHeight(oh)
+    fillOverview(data, oh)
+    local rh = rest - oh - GAP
     home.recent:SetHeight(rh)
     fillCommands(data)
 
@@ -621,7 +743,7 @@ local function fillHome(data)
         if ns.T.en["M_" .. who] then who = L["M_" .. who] end
         b.key, b.who, b.full = e.key, who, e.text
         b.ago:SetText(ns.Ago(e.t, now))
-        b.text:SetText(S.Hex(S.Accent()) .. who .. "|r  " .. e.text)
+        b.text:SetText(S.Hex(S.TEXT) .. who .. "|r  " .. e.text)
         place(b, (i - 1) * LINE_H)
         b:Show()
     end
@@ -637,7 +759,7 @@ local function applyScale()
     local sw = tonumber(UIParent:GetWidth()) or W
     local sh = tonumber(UIParent:GetHeight()) or H
     local user = (GulliToolkitDB and GulliToolkitDB.scale) or 1
-    frame:SetScale(ns.HubScale(user, sw, sh, W, H))
+    S.ApplyScale(frame, ns.HubScale(user, sw, sh, W, H))
     scaleText:SetText(math.floor(user * 100 + 0.5) .. "%")
 end
 
@@ -663,7 +785,8 @@ function ns.Refresh()
     end
     if view.page == "home" then fillHome(data) end
 
-    protectBtn:SetText(L.PROTECTED_N:format(#ns.Protected()))
+    protectBtn:SetText(L.PROTECTED)
+    protectBtn.value:SetText(#ns.Protected())
     if protectFrame and protectFrame:IsShown() then ns.RefreshProtected() end
 end
 
@@ -732,7 +855,7 @@ local function centrePage(name, title)
     p.title:SetText(title)
     local close = S.Close(p, function() showHome() end)
     close:SetPoint("TOPRIGHT", -6, -6)
-    p.hint = S.Note(p, 11)
+    p.hint = S.Note(p, 12)
     p.hint:SetPoint("TOPLEFT", p.title, "BOTTOMLEFT", 0, -8)
     p.hint:SetPoint("RIGHT", -S.INSET - 30, 0)
     p.hint:SetMaxLines(3)
@@ -754,6 +877,53 @@ local function buildProtected()
     protectFrame:SetScript("OnShow", ns.RefreshProtected)
 end
 
+-- The Ready page: the thresholds of the checks and the switches.
+function ns.BuildReady()
+    readyFrame = centrePage("GulliToolkitReady", L.READY)
+    readyFrame.hint:SetText(L.READY_HINT)
+    local function stepper(key, step, min, max, fmt)
+        return S.Stepper(readyFrame, function() return ns.ReadyGet(key) end,
+            function(v) ns.ReadySet(key, v) end, step, min, max, fmt)
+    end
+    local pct = function(v) return v .. "%" end
+    local I = "Interface\\Icons\\"
+    local rows = {}
+    for _, x in ipairs({ { "durMin", L.RD_SET_DUR, 10, 10, 100, pct, ns.READY_ICON.REPAIR },
+                         { "bagsMin", L.RD_SET_BAGS, 1, 0, 30, nil, ns.READY_ICON.BAGS },
+                         { "foodMin", L.RD_SET_FOOD, 5, 0, 100, nil, ns.READY_ICON.FOOD },
+                         { "drinkMin", L.RD_SET_DRINK, 5, 0, 100, nil, ns.READY_ICON.DRINK },
+                         { "ammoMin", L.RD_SET_AMMO, 100, 0, 3000, nil, ns.READY_ICON.AMMO },
+                         { "shardsMin", L.RD_SET_SHARDS, 1, 0, 30, nil, ns.READY_ICON.SHARDS },
+                         { "reagentMin", L.RD_SET_REAGENT, 1, 0, 40, nil, ns.READY_ICON.REAGENT } }) do
+        rows[#rows + 1] = { x[2], nil, control = stepper(x[1], x[3], x[4], x[5], x[6]), icon = x[7] }
+    end
+    local w = math.floor((HOST_W - 2 * S.INSET - GAP) / 2)
+    local left, lh = S.SettingsCard(readyFrame, L.RD_THRESHOLDS, rows)
+    left:SetPoint("TOPLEFT", S.INSET, -84)
+    left:SetWidth(w)
+    left:SetHeight(lh)
+    local sw = {
+        { L.RD_SHOW, L.RD_SHOW_D, function() return ns.ReadyGet("show") end, function(v) ns.ReadySet("show", v) end,
+          icon = I .. "INV_Misc_Note_01" },
+        { L.RD_CLASS, L.RD_CLASS_D, function() return ns.ReadyGet("classCheck") end,
+          function(v) ns.ReadySet("classCheck", v) end, icon = I .. "INV_Misc_Bag_10" },
+    }
+    local right, rh = S.SettingsCard(readyFrame, L.RD_SWITCHES, sw)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", GAP, 0)
+    right:SetWidth(w)
+    right:SetHeight(rh)
+    readyFrame.steppers = rows
+    readyFrame:SetScript("OnShow", function()
+        for _, r in ipairs(rows) do if r.control.Refresh then r.control:Refresh() end end
+    end)
+    local reset = S.Ghost(S.FitButton(readyFrame, L.RD_RESET, 28, 120))
+    reset:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    reset:SetScript("OnClick", function()
+        ns.ReadyReset()
+        for _, r in ipairs(rows) do if r.control.Refresh then r.control:Refresh() end end
+    end)
+end
+
 -- Export / import: one line of text with every Gulli setting.
 local function buildTransfer()
     transfer = centrePage("GulliToolkitTransfer", L.TRANSFER)
@@ -769,7 +939,7 @@ local function buildTransfer()
     reload:SetPoint("RIGHT", export, "LEFT", -8, 0)
     reload:SetScript("OnClick", function() ReloadUI() end)
     reload:Hide()
-    transfer.status = S.Note(transfer, 11)
+    transfer.status = S.Note(transfer, 12)
     transfer.status:SetPoint("BOTTOMLEFT", S.INSET, S.INSET + 8)
     transfer.status:SetPoint("RIGHT", reload, "LEFT", -12, 0)
     transfer.status:SetMaxLines(2)
@@ -814,7 +984,7 @@ local function buildErrors()
     copy:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
     local clear = S.FitButton(errorsFrame, L.CLEAR, 32, 120)
     clear:SetPoint("RIGHT", copy, "LEFT", -8, 0)
-    errorsFrame.status = S.Note(errorsFrame, 11)
+    errorsFrame.status = S.Note(errorsFrame, 12)
     errorsFrame.status:SetPoint("BOTTOMLEFT", S.INSET, S.INSET + 8)
     errorsFrame.status:SetPoint("RIGHT", clear, "LEFT", -12, 0)
     errorsFrame.status:SetMaxLines(2)
@@ -851,7 +1021,7 @@ local function buildHeader()
     local plus = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
     plus:SetText("+")
     plus:SetScript("OnClick", function() nudgeScale(0.1) end)
-    scaleText = S.Text(frame.bar, 11, S.FAINT)
+    scaleText = S.Text(frame.bar, 12, S.FAINT)
     scaleText:SetWidth(40)
     scaleText:SetJustifyH("CENTER")
     scaleText:SetPoint("RIGHT", plus, "LEFT", 0, 0)
@@ -904,15 +1074,23 @@ local function buildSide()
     -- No card: a darker strip from the header to the window's bottom edge, a hairline at its right.
     side = CreateFrame("Frame", nil, frame.body)
     side:SetWidth(SIDE + S.PAD - 1)
-    side:SetPoint("TOPLEFT", -(S.PAD - 1), S.PAD)
-    side:SetPoint("BOTTOMLEFT", -(S.PAD - 1), -(S.PAD - 1))
-    S.Box(side, { 0, 0, 0, 0.14 }, S.CLEAR, S.R_XL - 1, "bottomleft")
+    side:SetPoint("TOPLEFT", -(S.PAD - 1), VPAD)
+    side:SetPoint("BOTTOMLEFT", -(S.PAD - 1), -(VPAD - 1))
+    S.Box(side, S.SIDE, S.CLEAR, S.R_XL - 1, "bottomleft")
+    S.Glass(side, S.R_XL)
+    -- The dim emblem of the toolkit behind the lower end of the module list.
+    local mark = side:CreateTexture(nil, "BACKGROUND", nil, -5)
+    mark:SetTexture(MARK)
+    mark:SetSize(SIDE - 20, SIDE - 20)
+    mark:SetPoint("BOTTOM", 0, 18)
+    mark:SetVertexColor(1, 0.86, 0.66, 0.06)
+    side.mark = mark
     local edge = line(side, LINE)
     edge:SetWidth(1)
     edge:SetPoint("TOPRIGHT")
     edge:SetPoint("BOTTOMRIGHT")
     local body = CreateFrame("Frame", nil, side)
-    body:SetPoint("TOPLEFT", SIDE_IN, -12)
+    body:SetPoint("TOPLEFT", SIDE_IN, -10)
     body:SetPoint("BOTTOMRIGHT", -SIDE_IN, SIDE_IN)
     side.body = body
 
@@ -925,8 +1103,8 @@ local function buildSide()
     glass:SetSize(14, 14)
     glass:SetPoint("LEFT", 8, 0)
     glass:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
-    glass:SetVertexColor(0.6, 0.6, 0.64, 1)
-    placeholder = S.Text(search, 12, S.FAINT)
+    glass:SetVertexColor(S.FAINT[1], S.FAINT[2], S.FAINT[3], 1)
+    placeholder = S.Text(search, 13, S.FAINT)
     placeholder:SetPoint("LEFT", 28, 0)
     placeholder:SetPoint("RIGHT", -8, 0)
     placeholder:SetWordWrap(false)
@@ -963,8 +1141,8 @@ local function buildSide()
     homeRow:SetHeight(ROW_H)
     selectable(homeRow)
     local hi = S.IconBox(homeRow, 20, TOOLKIT_ICON)
-    hi:SetPoint("LEFT", 9, 0)
-    local ht = S.Text(homeRow, 12)
+    hi:SetPoint("LEFT", 8, 0)
+    local ht = S.Text(homeRow, 13)
     ht:SetPoint("LEFT", hi, "RIGHT", 9, 0)
     ht:SetText(L.HOME)
     homeRow:SetScript("OnClick", goHome)
@@ -978,14 +1156,14 @@ end
 local function pill(parent)
     local p = CreateFrame("Frame", nil, parent)
     p:SetHeight(20)
-    S.Box(p, { 1, 1, 1, 0.06 }, S.CLEAR, S.R_MD)
-    p.text = S.Text(p, 11, S.MUTED)
+    S.Box(p, S.RAISED, S.CLEAR, S.R_MD)
+    p.text = S.Text(p, 12, S.MUTED)
     p.text:SetPoint("CENTER")
     function p:Set(text, c)
         self.text:SetText(text or "")
         c = c or S.MUTED
         self.text:SetTextColor(c[1], c[2], c[3], 1)
-        S.Fill(self, c == S.MUTED and { 1, 1, 1, 0.06 } or { c[1], c[2], c[3], 0.14 })
+        S.Fill(self, c == S.MUTED and S.RAISED or { c[1] * 0.3, c[2] * 0.3, c[3] * 0.3, 1 })
         self:SetWidth(math.floor((tonumber((self.text:GetStringWidth())) or 0) + 18))
     end
     return p
@@ -999,8 +1177,8 @@ local function buildCard()
     card:SetPoint("BOTTOMRIGHT")
     local edge = line(card, LINE)
     edge:SetWidth(1)
-    edge:SetPoint("TOPLEFT", 0, S.PAD)
-    edge:SetPoint("BOTTOMLEFT", 0, -(S.PAD - 1))
+    edge:SetPoint("TOPLEFT", 0, VPAD)
+    edge:SetPoint("BOTTOMLEFT", 0, -(VPAD - 1))
     local d = card
     d.body = CreateFrame("Frame", nil, card)
     d.body:SetPoint("TOPLEFT", S.INSET, 0)
@@ -1013,12 +1191,7 @@ local function buildCard()
     local ring = CreateFrame("Frame", nil, banner)
     ring:SetSize(70, 70)
     ring:SetPoint("CENTER", 0, -4)
-    local halo = ring:CreateTexture(nil, "BACKGROUND", nil, -8)
-    halo:SetTexture(S.GLOW_TEX)
-    halo:SetSize(104, 104)
-    halo:SetPoint("CENTER")
-    halo:SetVertexColor(S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.45)
-    S.Circle(ring, 70, { S.GLOW[1], S.GLOW[2], S.GLOW[3], 0.9 }, "BACKGROUND", -7):SetPoint("CENTER")
+    S.Circle(ring, 70, S.RING, "BACKGROUND", -7):SetPoint("CENTER")
     S.Circle(ring, 68, S.INPUT, "BACKGROUND", -6):SetPoint("CENTER")
     d.icon = ring:CreateTexture(nil, "ARTWORK")
     d.icon:SetSize(66, 66)
@@ -1026,7 +1199,7 @@ local function buildCard()
     d.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
     S.RoundMask(ring, d.icon)
 
-    d.title = S.Text(d.body, 16)
+    d.title = S.Text(d.body, 16, S.GOLD, nil, "title")
     d.title:SetPoint("TOPLEFT", banner, "BOTTOMLEFT", 4, -6)
     d.title:SetPoint("RIGHT", -S.INSET, 0)
     d.title:SetWordWrap(false)
@@ -1034,16 +1207,16 @@ local function buildCard()
     d.cat:SetPoint("TOPLEFT", d.title, "BOTTOMLEFT", 0, -8)
     d.state = pill(d.body)
     d.state:SetPoint("LEFT", d.cat, "RIGHT", 6, 0)
-    d.desc = S.Text(d.body, 12, S.MUTED)
+    d.desc = S.Text(d.body, 13, S.MUTED)
     d.desc:SetPoint("TOPLEFT", d.cat, "BOTTOMLEFT", 0, -12)
     d.desc:SetPoint("RIGHT", -S.INSET, 0)
     d.desc:SetJustifyV("TOP")
     d.desc:SetHeight(74)
     d.desc:SetMaxLines(5)
-    d.slash = S.Text(d.body, 11, S.FAINT)
+    d.slash = S.Text(d.body, 12, S.FAINT)
     d.slash:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -6)
     d.slash:SetPoint("RIGHT", -S.INSET, 0)
-    d.facts = S.Text(d.body, 11, S.FAINT)
+    d.facts = S.Text(d.body, 12, S.FAINT)
     d.facts:SetPoint("TOPLEFT", d.slash, "BOTTOMLEFT", 0, -6)
     d.facts:SetPoint("RIGHT", -S.INSET, 0)
     d.facts:SetWordWrap(false)
@@ -1083,17 +1256,55 @@ local function buildCard()
     card:Hide()
 end
 
+-- A section label in bold dim gold capitals, as on the cards.
+local function label(parent, text)
+    local t = S.Text(parent, 12, S.GOLD_DIM, nil, "bold")
+    t:SetText(S.Upper(text))
+    t:SetWordWrap(false)
+    return t
+end
+
+-- A link-like action in a card's title line: accent text, no box.
+local function link(parent, text)
+    local b = S.Ghost(S.FitButton(parent, text, 22, 40))
+    b.text:SetTextColor(S.Accent()[1], S.Accent()[2], S.Accent()[3], 1)
+    b:SetWidth(math.floor((tonumber((b.text:GetStringWidth())) or 0) * 1.1 + 24))
+    return b
+end
+
+-- A full-width tool row of Quick setup: icon, label, an optional value on the right.
+local function toolRow(parent, text, icon, onClick)
+    local b = S.Button(parent, QUICK_W - 2 * S.INSET, 28)
+    S.SetButtonIcon(b, icon, 18)
+    b.text:ClearAllPoints()
+    b.text:SetPoint("LEFT", b.btnIcon, "RIGHT", 8, 0)
+    b.text:SetPoint("RIGHT", -40, 0)
+    b.text:SetJustifyH("LEFT")
+    b:SetText(text)
+    b.value = S.Text(b, 13, S.MUTED)
+    b.value:SetPoint("RIGHT", -10, 0)
+    b.value:SetJustifyH("RIGHT")
+    b:SetScript("OnClick", onClick)
+    return b
+end
+
 local function buildHome()
     home = CreateFrame("Frame", nil, host)
     home:SetAllPoints(host)
     home:Show()
 
-    local sc = S.Card(home, L.SUMMARY)
+    -- At a glance: a label and the tiles, no card around them.
+    local sc = CreateFrame("Frame", nil, home)
     sc:SetPoint("TOPLEFT")
     sc:SetPoint("TOPRIGHT")
     sc:SetHeight(120)
-    home.summaryCard, home.summary = sc, sc.body
-    home.noSummary = S.Note(sc.body, 12)
+    local sl = label(sc, L.SUMMARY)
+    sl:SetPoint("TOPLEFT", 0, 0)
+    local body = CreateFrame("Frame", nil, sc)
+    body:SetPoint("TOPLEFT", 0, -LABEL_H)
+    body:SetPoint("BOTTOMRIGHT")
+    home.summaryCard, home.summary = sc, body
+    home.noSummary = S.Note(body, 13)
     home.noSummary:SetPoint("TOPLEFT")
     home.noSummary:SetPoint("RIGHT")
     home.noSummary:SetMaxLines(2)
@@ -1104,12 +1315,12 @@ local function buildHome()
     quick:SetPoint("TOPRIGHT", sc, "BOTTOMRIGHT", 0, -GAP)
     home.quick = quick
     local q = quick.body
-    local bw = math.floor((QUICK_W - 2 * S.INSET - 8) / 2)
+    local bw = math.floor((QUICK_W - 2 * S.INSET - 6) / 2)
     for i, p in ipairs(ns.PRESETS) do
         local b = S.Button(q, bw, 30)
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 8), -math.floor((i - 1) / 2) * 38)
+        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 6), -math.floor((i - 1) / 2) * 36)
         b:SetText(L["PRESET_" .. p.key])
-        S.SetButtonIcon(b, p.icon)
+        S.SetButtonIcon(b, p.icon, 18)
         b:SetScript("OnClick", function()
             local n = ns.ApplyPreset(p.key)
             ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
@@ -1121,71 +1332,77 @@ local function buildHome()
         end)
         b:HookScript("OnLeave", hideTip)
     end
-    local y = math.ceil(#ns.PRESETS / 2) * 38 + 8
-    home.move = S.Button(q, bw, 30)
-    home.move:SetPoint("TOPLEFT", 0, -y)
-    S.SetButtonIcon(home.move, QUICK_ICON.move)
-    home.move:SetScript("OnClick", function()
+    local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
+    home.move = toolRow(q, L.MOVE, QUICK_ICON.move, function()
         local n = ns.SetMoving(not ns.moving)
         ns.Print(n == 0 and L.MOVE_NONE or (ns.moving and L.MOVE_ON or L.MOVE_OFF))
     end)
-    local tr = S.Button(q, bw, 30)
-    tr:SetPoint("TOPLEFT", bw + 8, -y)
-    tr:SetText(L.TRANSFER)
-    S.SetButtonIcon(tr, QUICK_ICON.transfer)
-    tr:SetScript("OnClick", function()
+    home.move:SetPoint("TOPLEFT", 0, -y)
+    local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
         if not transfer then buildTransfer() end
         showPanel("transfer")
     end)
-    protectBtn = S.Button(q, QUICK_W - 2 * S.INSET, 30)
-    protectBtn:SetPoint("TOPLEFT", 0, -(y + 38))
-    S.SetButtonIcon(protectBtn, QUICK_ICON.protect)
-    protectBtn:SetScript("OnClick", function()
+    tr:SetPoint("TOPLEFT", 0, -(y + 32))
+    protectBtn = toolRow(q, L.PROTECTED, QUICK_ICON.protect, function()
         if not protectFrame then buildProtected() end
         if protectFrame:IsShown() then showHome() else showPanel("protect") end
     end)
+    protectBtn:SetPoint("TOPLEFT", 0, -(y + 64))
+    local setup = toolRow(q, L.SETUP, QUICK_ICON.setup, function() ns.OpenSetup() end)
+    setup:SetPoint("TOPLEFT", 0, -(y + 96))
+    home.setup = setup
+    y = y + 128
+    local l1 = S.Tex(q, "ARTWORK", 0, LINE)
+    l1:SetHeight(1)
+    l1:SetPoint("TOPLEFT", 0, -(y + 2))
+    l1:SetPoint("TOPRIGHT", 0, -(y + 2))
     local map = minimapRow(q)
-    map:SetPoint("TOPLEFT", 0, -(y + 84))
-    map:SetPoint("TOPRIGHT", 0, -(y + 84))
+    map:SetPoint("TOPLEFT", 0, -(y + 8))
+    map:SetPoint("TOPRIGHT", 0, -(y + 8))
     local calm = calmRow(q)
-    calm:SetPoint("TOPLEFT", 0, -(y + 118))
-    calm:SetPoint("TOPRIGHT", 0, -(y + 118))
+    calm:SetPoint("TOPLEFT", 0, -(y + 38))
+    calm:SetPoint("TOPRIGHT", 0, -(y + 38))
     home.calm = calm
-    home.cmdTop = y + 118 + 40
-    home.cmdTitle = S.Text(q, 13)
-    home.cmdTitle:SetPoint("TOPLEFT", 0, -home.cmdTop)
-    home.cmdTitle:SetText(L.COMMANDS)
-    local line = S.Tex(q, "ARTWORK", 0, LINE)
-    line:SetHeight(1)
-    line:SetPoint("TOPLEFT", 0, -(home.cmdTop - 10))
-    line:SetPoint("TOPRIGHT", 0, -(home.cmdTop - 10))
+    -- Under a hairline, the slash commands (accent: they can be clicked); no label, as the
+    -- accent already says what they are. The lines start 24 under cmdTop.
+    local line2 = S.Tex(q, "ARTWORK", 0, LINE)
+    line2:SetHeight(1)
+    line2:SetPoint("TOPLEFT", 0, -(y + 74))
+    line2:SetPoint("TOPRIGHT", 0, -(y + 74))
+    home.cmdTop = y + 78 - 24
+    home.cmdTitle = { SetShown = function() end }
+
+    local ready = S.Card(home, L.READY, "")
+    ready:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    ready:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    ready:SetHeight(80)
+    home.ready = ready
+    ready.title:SetPoint("RIGHT", ready, "RIGHT", -100, 0)
+    local rs = link(ready, L.READY_SET)
+    rs:SetPoint("TOPRIGHT", -6, -7)
+    rs:SetScript("OnClick", function()
+        if not readyFrame then ns.BuildReady() end
+        if readyFrame:IsShown() then showHome() else showPanel("ready") end
+    end)
 
     local ov = S.Card(home, L.OV_TITLE)
-    ov:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    ov:SetPoint("TOPLEFT", ready, "BOTTOMLEFT", 0, -GAP)
     ov:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
     home.overview = ov
-    home.ovReload = S.Primary(S.FitButton(ov, L.RELOAD, 24, 90))
+    home.ovReload = S.Primary(S.FitButton(ov, L.RELOAD, 26, 90))
     home.ovReload:SetPoint("TOPRIGHT", -8, -6)
     home.ovReload:SetScript("OnClick", function() ReloadUI() end)
-    -- A ring with the number of modules on, the lines beside it.
-    local ring = CreateFrame("Frame", nil, ov.body)
-    ring:SetSize(60, 60)
-    ring:SetPoint("TOPLEFT", 2, -2)
-    local g = S.GLOW
-    local halo = ring:CreateTexture(nil, "BACKGROUND", nil, -8)
-    halo:SetTexture(S.GLOW_TEX)
-    halo:SetSize(84, 84)
-    halo:SetPoint("CENTER")
-    halo:SetVertexColor(g[1], g[2], g[3], 0.35)
-    S.Circle(ring, 60, { g[1], g[2], g[3], 0.9 }, "BACKGROUND", -7):SetPoint("CENTER")
-    S.Circle(ring, 52, S.GLASS, "BACKGROUND", -6):SetPoint("CENTER")
-    home.ovCount = S.Text(ring, 18)
-    home.ovCount:SetPoint("CENTER", 0, 0)
-    home.ovCount:SetJustifyH("CENTER")
-    home.ovRing = ring
+    -- The number of modules that are on, big, and a pip per module under it; the lines beside.
+    home.ovCount = S.Text(ov.body, 28, { 1, 1, 1, 1 }, nil, "title")
+    home.ovCount:SetPoint("TOPLEFT", 0, 2)
+    home.ovTotal = S.Text(ov.body, 13, S.MUTED)
+    home.ovPips = CreateFrame("Frame", nil, ov.body)
+    home.ovPips:SetPoint("TOPLEFT", 0, -38)
+    home.ovPips:SetSize(24 * (PIP_W + PIP_GAP), 24)
     local box = CreateFrame("Frame", nil, ov.body)
-    box:SetPoint("TOPLEFT", 76, 0)
+    box:SetPoint("TOPLEFT", 24 * (PIP_W + PIP_GAP) + 12, 0)
     box:SetPoint("BOTTOMRIGHT")
+    box:SetWidth(HOST_W - QUICK_W - GAP - 2 * S.INSET - (24 * (PIP_W + PIP_GAP) + 12))
     home.ovBox = box
     home.ovHead = S.Text(box, 13, S.MUTED)
     home.ovHead:SetPoint("TOPLEFT", 4, 0)
@@ -1196,10 +1413,10 @@ local function buildHome()
     recent:SetPoint("TOPLEFT", ov, "BOTTOMLEFT", 0, -GAP)
     recent:SetPoint("TOPRIGHT", ov, "BOTTOMRIGHT", 0, -GAP)
     home.recent = recent
-    home.clear = S.Ghost(S.FitButton(recent, L.CLEAR, 24, 70))
-    home.clear:SetPoint("TOPRIGHT", -8, -6)
+    home.clear = link(recent, L.CLEAR)
+    home.clear:SetPoint("TOPRIGHT", -6, -7)
     home.clear:SetScript("OnClick", function() GulliToolkit.ClearFeed() end)
-    home.noRecent = S.Note(recent.body, 12)
+    home.noRecent = S.Note(recent.body, 13)
     home.noRecent:SetPoint("TOPLEFT")
     home.noRecent:SetText(L.NO_RECENT)
 end
@@ -1215,13 +1432,42 @@ local function onOpen()
 end
 
 local function build()
-    frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true, pill = true })
+    frame = S.Window("GulliToolkitFrame", L.TITLE, W, H, { sub = ns.Version(), fullTitle = true })
+    -- The hub's own header: taller, a bigger icon and title, the version in grey beside it.
+    frame.bar:SetHeight(HUB_HEAD)
+    frame.iconBox:Hide()
+    local big = S.IconBox(frame.bar, 34, TOOLKIT_ICON)
+    big:SetPoint("LEFT", 16, 0)
+    frame.iconBox, frame.icon = big, big.tex
+    S.SetFont(frame.title, 20, nil, "title")
+    frame.title:ClearAllPoints()
+    frame.title:SetPoint("LEFT", big, "RIGHT", 10, 0)
+    frame.sub:ClearAllPoints()
+    frame.sub:SetPoint("LEFT", frame.title, "RIGHT", 8, -2)
+    frame.body:ClearAllPoints()
+    frame.body:SetPoint("TOPLEFT", S.PAD, -(HUB_HEAD + VPAD))
+    frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, VPAD)
+    -- The hub sizes itself by ns.HubScale, also when the screen or the UI scale changes.
+    S.TrackScale(frame, applyScale)
 
     buildHeader()
     buildSide()
     host = CreateFrame("Frame", nil, frame.body)
     host:SetPoint("TOPLEFT", frame.body, "TOPLEFT", SIDE + GAP, 0)
     host:SetPoint("BOTTOMRIGHT")
+    -- Behind the centre: a warm light from its top left and the emblem, very dim, low on the
+    -- right, so the see-through cards and tiles have something to show.
+    local light = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+    light:SetTexture(S.RADIAL)
+    light:SetPoint("TOPLEFT", host, "TOPLEFT", -GAP, 0)
+    light:SetPoint("BOTTOMRIGHT", host, "CENTER", 0, -40)
+    light:SetVertexColor(0.85, 0.62, 0.32, 0.07)
+    local mark = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+    mark:SetTexture(MARK)
+    mark:SetSize(360, 360)
+    mark:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 20, -20)
+    mark:SetVertexColor(1, 0.86, 0.66, 0.035)
+    frame.light, frame.mark = light, mark
     buildHome()
     buildCard()
 
@@ -1268,6 +1514,150 @@ function ns.ShowPanel(name)
     if name == "transfer" and not transfer then buildTransfer() end
     showPanel(name)
     return name == "protect" and protectFrame or transfer
+end
+
+-- The first-run window ---------------------------------------------------------------------------
+
+-- Which modules to use: a switch per installed module, grouped like the hub, with a grey line
+-- that says why a module starts off or on (ns.SetupPlan). Nothing changes before Apply.
+local setupWin, setupPlan
+local SETUP_H, SETUP_ROW = 600, 48
+
+local function setupItems()
+    -- The modules with a reason come first, so the player sees at once what was picked and why.
+    local by, items, found = {}, {}, {}
+    for _, p in ipairs(setupPlan) do
+        if p.why then
+            found[#found + 1] = p
+        else
+            by[p.row.category] = by[p.row.category] or {}
+            table.insert(by[p.row.category], p)
+        end
+    end
+    if #found > 0 then
+        items[#items + 1] = { head = L.SETUP_FOUND }
+        -- The ones that start off first, then the ones that stay on.
+        for _, p in ipairs(found) do if not p.on then items[#items + 1] = p end end
+        for _, p in ipairs(found) do if p.on then items[#items + 1] = p end end
+    end
+    local cats = {}
+    for _, c in ipairs(ns.CATEGORIES) do cats[#cats + 1] = c end
+    cats[#cats + 1] = "Other"
+    for _, c in ipairs(cats) do
+        if by[c] then
+            items[#items + 1] = { head = catName(c) or c }
+            for _, p in ipairs(by[c]) do items[#items + 1] = p end
+        end
+    end
+    return items
+end
+
+local function setupStatus()
+    local on = 0
+    for _, p in ipairs(setupPlan) do if p.on then on = on + 1 end end
+    setupWin.footer:SetStatus(L.SETUP_COUNT:format(on, #setupPlan))
+    setupWin.apply:SetText(ns.SetupNeedsReload(setupPlan) and L.SETUP_APPLY_RELOAD or L.SETUP_APPLY)
+    setupWin.apply:SetWidth(math.max(120, math.floor((tonumber(setupWin.apply.text:GetStringWidth()) or 100) + 28)))
+end
+
+local function makeSetupRow(r)
+    r.head = S.Text(r, 12, S.FAINT)
+    r.head:SetPoint("BOTTOMLEFT", 4, 8)
+    r.head:SetPoint("RIGHT", -4, 0)
+    r.head:SetWordWrap(false)
+    r.icon = S.IconBox(r, 28)
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.switch = S.Switch(r)
+    r.switch:SetPoint("RIGHT", -4, 0)
+    r.name = S.Text(r, 12)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 12, 2)
+    r.name:SetPoint("RIGHT", r.switch, "LEFT", -12, 0)
+    r.name:SetWordWrap(false)
+    r.why = S.Text(r, 12, S.FAINT)
+    r.why:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -4)
+    r.why:SetPoint("RIGHT", r.switch, "LEFT", -12, 0)
+    r.why:SetWordWrap(false)
+    r.switch:SetScript("OnClick", function(self)
+        if not r.item then return end
+        r.item.on = not r.item.on
+        self:SetChecked(r.item.on)
+        rawset(setupWin, "reloadNext", nil)
+        setupStatus()
+    end)
+end
+
+local function fillSetupRow(r, item)
+    r.item = not item.head and item or nil
+    r.head:SetShown(item.head ~= nil)
+    r.icon:SetShown(item.head == nil)
+    r.switch:SetShown(item.head == nil)
+    r.name:SetShown(item.head == nil)
+    r.why:SetShown(item.head == nil)
+    r.line:SetShown(item.head == nil)
+    if item.head then
+        r.head:SetText(S.Upper(item.head))
+        return
+    end
+    r.icon:SetIcon(item.row.icon or TOOLKIT_ICON)
+    r.name:SetText(item.row.title)
+    r.why:SetText(item.why or item.row.desc or "")
+    local c = item.why and S.MUTED or S.FAINT
+    r.why:SetTextColor(c[1], c[2], c[3], 1)
+    r.switch:SetChecked(item.on)
+end
+
+local function buildSetup()
+    setupWin = S.Window("GulliToolkitSetup", L.SETUP_TITLE, S.NARROW_W, SETUP_H,
+        { sub = "/gulli setup", icon = TOOLKIT_ICON, fullTitle = true })
+    local ft = S.Footer(setupWin)
+    setupWin.apply = ft:Add(S.Primary(S.FitButton(setupWin, L.SETUP_APPLY, 32, 120)))
+    setupWin.later = ft:Add(S.Ghost(S.FitButton(setupWin, L.SETUP_LATER, 32, 90)))
+    local body = setupWin.body
+    local st = S.Stack(body)
+    local intro = S.Card(body)
+    local w = S.NARROW_W - 2 * S.PAD - 2 * S.INSET
+    local text, th = S.Paragraph(intro.body, L.SETUP_HINT, w, 12)
+    text:SetPoint("TOPLEFT")
+    st:Add(intro, intro:Fit(th + 4))
+    local listCard = S.Card(body, L.SETUP_MODULES)
+    st:Add(listCard, setupWin.inner[2] - st.y)
+    setupWin.list = S.List(listCard.body, SETUP_ROW, makeSetupRow, fillSetupRow)
+    setupWin.list:SetPoint("TOPLEFT")
+    setupWin.list:SetPoint("BOTTOMRIGHT")
+    -- The reload gets a click of its own: in the same click as the switches the game may refuse
+    -- it ("Interface action failed because of an AddOn"), and then nothing seemed to happen.
+    setupWin.apply:SetScript("OnClick", function()
+        if rawget(setupWin, "reloadNext") then ReloadUI(); return end
+        local reload = ns.SetupNeedsReload(setupPlan)
+        local n = ns.ApplySetup(setupPlan)
+        if not reload then
+            setupWin:Hide()
+            if n > 0 then ns.Print(L.SETUP_DONE:format(n)) end
+            return
+        end
+        rawset(setupWin, "reloadNext", true)
+        ns.SetupRows(setupPlan)
+        setupWin.footer:SetStatus(L.SETUP_SAVED)
+        setupWin.apply:SetText(L.SETUP_RELOAD)
+        setupWin.apply:SetWidth(math.max(120, math.floor((tonumber(setupWin.apply.text:GetStringWidth()) or 100) + 28)))
+        ns.Print(L.SETUP_SAVED)
+    end)
+    setupWin.later:SetScript("OnClick", function() setupWin:Hide() end)
+    -- Closing it any way counts: it does not open by itself again.
+    setupWin:HookScript("OnHide", function() ns.SetupDone() end)
+end
+
+-- Opens the setup window. auto: opened by the first run, so only when there is a module to pick.
+function ns.OpenSetup(auto)
+    setupPlan = ns.SetupPlan()
+    if auto and #setupPlan == 0 then ns.SetupDone(); return nil end
+    if not setupWin then buildSetup() end
+    rawset(setupWin, "reloadNext", nil)
+    if frame and frame:IsShown() then frame:Hide() end
+    setupWin:Show()
+    setupWin.list:SetData(setupItems())
+    setupStatus()
+    return setupWin, setupPlan
 end
 
 -- A page under Options > AddOns with a button that opens the hub.

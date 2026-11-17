@@ -3,7 +3,7 @@
     python3 tools/health/forever_content.py <questiedb> [--out report.md] [--update-seen]
 
 1. Dungeons: the dungeons of DungeonPrep's generator (`DUNGEONS` in
-   tools/dungeonprep/build_data.py) are the list. Bulletin and QuickChat (`ns.DUNGEONS`)
+   tools/dungeonprep/build_data.py) are the list. Bulletin (`ns.DUNGEONS`)
    must name each one (by area id or by name), and DungeonPrep needs its icon (`ns.ICONS`)
    and entrance (`ENTRANCES`).
 2. New Forever areas: every area in a "Forever:" section of QuestieDB's zones.lua that is not
@@ -16,6 +16,9 @@
    items, with a vendor, quest or drop in the data) must teach a recipe that CraftProfit's
    Data.lua knows, so the planner has its skill levels and source. A pattern it lacks that is not
    in tools/health/recipes_seen.txt is news; `--update-seen` marks them all as looked at.
+   The same for a Forever pattern the Wowhead snapshot (tools/craftprofit/wowhead-professions.json)
+   lacks: Wowhead's profession pages changed since they were collected. Wowhead refuses servers,
+   so the snapshot is collected on a player's computer; one older than WOWHEAD_DAYS is news too.
 
 Prints the report (empty when all is well) and writes it to --out.
 """
@@ -29,6 +32,8 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 SEEN = os.path.join(HERE, "forever_seen.txt")
 RECIPES_SEEN = os.path.join(HERE, "recipes_seen.txt")
 CRAFT_DATA = os.path.join(ROOT, "Gulli-CraftProfit", "Data.lua")
+WOWHEAD = os.path.join(ROOT, "tools", "craftprofit", "wowhead-professions.json")
+WOWHEAD_DAYS = 60
 PATTERN = re.compile(r"^(Pattern|Plans|Recipe|Formula|Schematic|Manual): ")
 FOREVER_ITEMS = 245000  # SOD_ITEMS in tools/craftprofit/build_data.py ends here
 I_NAME, I_SOURCES = 1, (2, 3, 4, 6, 14)
@@ -114,7 +119,7 @@ def norm(name):
 def check_dungeons():
     dungeons, entrances = prep_dungeons()
     lines = []
-    for module in ("Bulletin", "QuickChat"):
+    for module in ("Bulletin",):
         rows = lua_dungeons(os.path.join(ROOT, "Gulli-" + module, "Core.lua"))
         areas = {a for a, _ in rows if a}
         names = {norm(n) for _, n in rows}
@@ -186,12 +191,36 @@ def forever_patterns(qdb):
     return out
 
 
-def check_recipes(qdb):
+def wowhead_patterns(path=WOWHEAD):
+    """The pattern items of the Wowhead snapshot and the day it was collected."""
+    import json
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    out = set()
+    for skill in data["skills"].values():
+        out |= {r["pattern"] for r in skill["recipes"] if r.get("pattern")}
+        out |= {u["item"] if isinstance(u, dict) else u for u in skill.get("unmatchedPatterns") or []}
+    return out, data.get("generated", "")
+
+
+def check_recipes(qdb, today=None):
+    import datetime
     text = open(CRAFT_DATA, encoding="utf-8").read()
     known = {int(m) for m in re.findall(r'^\[\d+\]=\{"[vqd]",(\d+)', text, re.M)}
+    wh, generated = wowhead_patterns()
     seen = read_seen(RECIPES_SEEN)
-    missing = [(iid, name) for iid, name in forever_patterns(qdb) if iid not in known]
-    lines = ["- **%s** (item %d)" % (name, iid) for iid, name in missing if iid not in seen]
+    patterns = forever_patterns(qdb)
+    missing = [(iid, name) for iid, name in patterns if iid not in known or iid not in wh]
+    lines = ["- **%s** (item %d)%s" % (name, iid, "" if iid in wh else ": not in the Wowhead snapshot")
+             for iid, name in missing if iid not in seen]
+    today = today or datetime.date.today()
+    try:
+        age = (today - datetime.date.fromisoformat(generated[:10])).days
+    except ValueError:
+        age = None
+    if age is None or age > WOWHEAD_DAYS:
+        lines.append("- The Wowhead profession snapshot is %s old: collect it again on a computer "
+                     "(Wowhead refuses servers)." % ("%d days" % age if age is not None else "of unknown age"))
     return lines, missing
 
 
@@ -223,7 +252,7 @@ def main(argv):
         report += ["### Dungeons a module lacks", ""] + dungeon_lines + [""]
     if area_lines:
         report += ["### Forever areas to look at", "",
-                   "Add what a module needs (a dungeon to DungeonPrep, Bulletin and QuickChat; rares to "
+                   "Add what a module needs (a dungeon to DungeonPrep and Bulletin; rares to "
                    "MobFinder; an attunement to Attune), then run "
                    "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + area_lines + [""]
     if recipe_lines:

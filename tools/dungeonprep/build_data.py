@@ -1,6 +1,14 @@
 """Builds Gulli-DungeonPrep/Data.lua from the QuestieDB Forever data.
 
-    python3 tools/dungeonprep/build_data.py <questiedb-checkout>
+    python3 tools/dungeonprep/build_data.py <questiedb-checkout> [<allthethings-checkout> [<guidelime-dungeonquests-checkout>]]
+
+With an AllTheThings checkout (MIT, its `.contrib/.db/forever` folder is enough), every quest
+ATT lists under a dungeon belongs to it too, and ATT's faction wins over QuestieDB's race mask
+for WoW Forever's own quests (see att.py).
+
+With a Guidelime_DungeonQuests checkout (GPLv3), the quests of each dungeon's levelling guide
+belong to it too, also the chain steps outside it, and `D.main` names them: the chains a player
+takes for the dungeon while levelling, not every quest that touches it (see guides.py).
 
 For each dungeon: the quests that belong to it (the quest's zone is the dungeon, or a mob,
 object or drop it asks for is there), with who can take them, their faction, and who starts
@@ -9,11 +17,15 @@ first, a rough boss order), and its place in a chain. Repeatable quests and item
 the same object, such as the Sparklematic 5200) give no experience and are left out.
 """
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "questcleaner"))
 import questie  # noqa: E402
+sys.path.insert(0, HERE)
+import att  # noqa: E402
+import guides  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "..", "Gulli-DungeonPrep", "Data.lua")
 
@@ -24,7 +36,7 @@ Q_SPECIAL, Q_TEXT = 24, 8
 REPEATABLE = 1
 N_NAME, N_MAX_LEVEL, N_SPAWNS, N_ZONE, N_FACTION = 1, 5, 7, 9, 13
 O_NAME, O_SPAWNS, O_ZONE = 1, 4, 5
-I_NAME, I_NPC_DROPS, I_OBJECT_DROPS, I_QUEST_REWARDS = 1, 2, 3, 6
+I_NAME, I_NPC_DROPS, I_OBJECT_DROPS, I_START_QUEST, I_QUEST_REWARDS = 1, 2, 3, 5, 6
 Q_SOURCE_ITEM = 11
 
 # key, area ids (the first names the dungeon; none for a Forever area the client data does not
@@ -37,10 +49,10 @@ DUNGEONS = [
     ("BFD", [719], "Blackfathom Deeps", 24, 32),
     ("STOCKS", [717], "The Stockade", 24, 32),
     ("GNOMER", [721, 133], "Gnomeregan", 29, 38),
-    ("RFK", [491], "Razorfen Kraul", 30, 40),
+    ("RFK", [491, 1717], "Razorfen Kraul", 30, 40),
     ("SM", [796], "Scarlet Monastery", 34, 45),
     ("RFD", [722], "Razorfen Downs", 37, 46),
-    ("ULDA", [1337], "Uldaman", 41, 51),
+    ("ULDA", [1337, 1517], "Uldaman", 41, 51),
     ("ZF", [1176], "Zul'Farrak", 44, 54),
     ("MARA", [2100], "Maraudon", 46, 55),
     ("ST", [1477, 1417], "Sunken Temple", 50, 56),
@@ -82,6 +94,36 @@ WORDS = {
     "THANES": ["Hall of Thanes"], "LORDAERON": ["Ruins of Lordaeron"], "EXCAVATION": ["Excavation Site"],
     "DALARAN": ["City of Dalaran"], "DROWNED": ["Drowned City"], "KROLDOK": ["Krol'dok Stronghold"],
     "ALCAZ": ["Alcaz Prison"], "BLACKMAW": ["Blackmaw Hold"], "SHAPERS": ["Shaper's Terrace"],
+}
+
+# Each dungeon's file in AllTheThings' `.contrib/.db/forever/dungeons & raids/`.
+ATT_FILES = {
+    "RFC": "ragefire chasm", "WC": "wailing caverns", "DM": "the deadmines", "SFK": "shadowfang keep",
+    "BFD": "blackfathom deeps", "STOCKS": "the stockade", "GNOMER": "gnomeregan", "RFK": "razorfen kraul",
+    "SM": "scarlet monastery", "RFD": "razorfen downs", "ULDA": "uldaman", "ZF": "zul'farrak",
+    "MARA": "maraudon", "ST": "the temple of atal'hakkar", "BRD": "blackrock depths",
+    "BRS": "blackrock spire", "DIREMAUL": "dire maul", "SCHOLO": "scholomance", "STRAT": "stratholme",
+    "THANES": "hall of thanes", "LORDAERON": "ruins of lordaeron", "EXCAVATION": "excavation site - wetlands",
+    "DALARAN": "city of dalaran", "DROWNED": "the drowned city", "KROLDOK": "krol'dok stronghold",
+    "ALCAZ": "alcaz prison", "BLACKMAW": "blackmaw hold", "SHAPERS": "the shaper's terrace",
+}
+FOREVER_QUESTS = 90000
+
+# Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
+# the levels): the quest chains a player takes for it while levelling, for each faction.
+GDQ_FILES = {
+    "THANES": ["The_Hall_of_Thanes"], "RFC": ["Ragefire_Chasm"], "LORDAERON": ["Ruins_of_Lordaeron"],
+    "DM": ["Deadmines"], "WC": ["Wailing_Caverns"], "SFK": ["Shadowfang_Keep"],
+    "EXCAVATION": ["Excavation_Site_Wetlands"], "BFD": ["Blackfathom_Deeps"], "STOCKS": ["The_Stockade"],
+    "DALARAN": ["City_of_Dalaran"], "RFK": ["Razorfen_Kraul"], "GNOMER": ["Gnomeregan"],
+    "SM": ["Scarlet_Monastery_Armory", "Scarlet_Monastery_Cathedral", "Scarlet_Monastery_Graveyard",
+           "Scarlet_Monastery_Library"],
+    "DROWNED": ["The_Drowned_City"], "RFD": ["Razorfen_Downs"], "KROLDOK": ["Krol_dok_Stronghold"],
+    "ULDA": ["Uldaman"], "ZF": ["Zul_Farrak"], "ALCAZ": ["Alcaz_Prison"], "MARA": ["Maraudon"],
+    "ST": ["The_Temple_of_Atal_Hakkar"], "BRD": ["Blackrock_Depths"], "BLACKMAW": ["Blackmaw_Hold"],
+    "DIREMAUL": ["Dire_Maul_East", "Dire_Maul_North", "Dire_Maul_West"],
+    "BRS": ["Lower_Blackrock_Spire", "Upper_Blackrock_Spire"], "SCHOLO": ["Scholomance"],
+    "SHAPERS": ["The_Shapers_Terrace"], "STRAT": ["Stratholme_Living", "Stratholme_Undead"],
 }
 
 # The way in of each dungeon: the zone's area id and the spot on its map in percent. Read
@@ -130,9 +172,45 @@ def lua_list(values):
     return "{" + ",".join(str(v) for v in values) + "}"
 
 
-def main(root):
+def load_att(root):
+    """Dungeon key -> {quest id: "A" | "H" | ""} from an AllTheThings checkout, or {}."""
+    if not root:
+        return {}
+    folder = os.path.join(root, ".contrib", ".db", "forever", "dungeons & raids")
+    out = {}
+    for key, name in ATT_FILES.items():
+        path = os.path.join(folder, name + ".lua")
+        if os.path.exists(path):
+            out[key] = att.quests(path)
+        else:
+            print("no AllTheThings file for %s: %s" % (key, path))
+    return out
+
+
+def load_guides(root):
+    """Dungeon key -> set of quest ids from a Guidelime_DungeonQuests checkout, or {}."""
+    if not root:
+        return {}
+    names = os.listdir(root)
+    out = {}
+    for key, files in GDQ_FILES.items():
+        for f in files:
+            found = [n for n in names if re.match(r"^\d+(-\d+)?_" + re.escape(f) + r"\.lua$", n)]
+            if len(found) != 1:
+                print("no Guidelime_DungeonQuests guide for %s: %s" % (key, f))
+                continue
+            out.setdefault(key, set()).update(guides.quests(os.path.join(root, found[0])))
+    return out
+
+
+def main(root, att_root=None, gdq_root=None):
     # The data files and the Forever corrections, where everything Forever added lives.
     quests, npcs, objects, items = questie.load_forever(root)
+    att_quests = load_att(att_root)
+    guide_quests = load_guides(gdq_root)
+    att_side = {}
+    for listed in att_quests.values():
+        att_side.update(listed)
 
     area_to_key = {}
     for key, areas, _, _, _ in DUNGEONS:
@@ -166,6 +244,33 @@ def main(root):
         if best and sources.count(best) * 3 >= len(sources) * 2:
             return best
 
+    # The items that start a quest: its startedBy items, the items whose startQuest names it,
+    # and its sourceItemId when no NPC or object gives it. An item without drops takes the drops
+    # of the item of the same name that has them: the Forever data often lists the drop only
+    # on one faction's copy (Krol'dok Moulding: Tunk drops 267138, the Horde quest names 267137).
+    starts_of = {}
+    for iid, it in items.items():
+        if it.get(I_START_QUEST):
+            starts_of.setdefault(it[I_START_QUEST], set()).add(iid)
+    twins = {}
+    for iid, it in items.items():
+        if it.get(I_NAME) and (seq(it.get(I_NPC_DROPS) or {}) or seq(it.get(I_OBJECT_DROPS) or {})):
+            twins.setdefault(it[I_NAME], []).append(iid)
+
+    def start_items(qid, q):
+        sb = q.get(Q_STARTED_BY) or {}
+        ids = set(seq(sb.get(3) or {})) | starts_of.get(qid, set())
+        if q.get(Q_SOURCE_ITEM) and not seq(sb.get(1) or {}) and not seq(sb.get(2) or {}):
+            ids.add(q[Q_SOURCE_ITEM])
+        out = set()
+        for i in ids:
+            it = items.get(i) or {}
+            if seq(it.get(I_NPC_DROPS) or {}) or seq(it.get(I_OBJECT_DROPS) or {}):
+                out.add(i)
+            else:
+                out.update(twins.get(it.get(I_NAME), [i]))
+        return sorted(out)
+
     ranges = {k: (lo, hi) for k, _, _, lo, hi in DUNGEONS}
     by_dungeon = {k: [] for k, *_ in DUNGEONS}
     def exchange(q):
@@ -190,7 +295,7 @@ def main(root):
         keys.update(obj_key(o.get(1)) for o in seq(obj.get(2) or {}))
         keys.update(item_key(o.get(1)) for o in seq(obj.get(3) or {}))
         # Started by an item that drops there (Krol'dok Moulding from Tunk).
-        keys.update(item_key(i) for i in seq((q.get(Q_STARTED_BY) or {}).get(3) or {}))
+        keys.update(item_key(i) for i in start_items(qid, q))
         text = " ".join(t for t in seq(q.get(Q_TEXT) or {}) if isinstance(t, str))
         for k, words in WORDS.items():
             if qid >= 90000 and any(w in text for w in words):
@@ -203,6 +308,14 @@ def main(root):
             lo, hi = ranges[k]
             # Cloth and leather turn-ins are level 60 everywhere; keep quests near the dungeon.
             if lo - 6 <= level <= hi + 4:
+                by_dungeon[k].append(qid)
+        # ATT lists the quest under the dungeon (checked in the game): it belongs there too.
+        for k, listed in att_quests.items():
+            if qid in listed and qid not in by_dungeon[k]:
+                by_dungeon[k].append(qid)
+        # A step of a levelling chain for the dungeon, also the ones outside it (the key quests).
+        for k, listed in guide_quests.items():
+            if qid in listed and qid not in by_dungeon[k]:
                 by_dungeon[k].append(qid)
 
     # The first spawn in the zone, in map percent; 0, 0 when it is not on a map (inside).
@@ -226,7 +339,7 @@ def main(root):
             zs = sorted(zones_of(o, O_SPAWNS, O_ZONE))
             zone = o.get(O_ZONE) or (zs[0] if zs else 0)
             return (o.get(O_NAME) or "", zone) + spot(o, O_SPAWNS, zone)
-        for iid in seq(sb.get(3) or {}):
+        for iid in seq(sb.get(3) or {}) or ([q[Q_SOURCE_ITEM]] if q.get(Q_SOURCE_ITEM) else []):
             return (items.get(iid) or {}).get(I_NAME) or "", 0, 0, 0
         return "", 0, 0, 0
 
@@ -234,7 +347,15 @@ def main(root):
     # NPCs that give and take it (QuestieDB leaves the race mask 0 on many such quests).
     ALLIANCE, HORDE = 1 + 4 + 8 + 64, 2 + 16 + 32 + 128
 
-    def faction(q):
+    def att_says(qid):
+        """ATT's faction for a Forever quest, or None: QuestieDB's race masks are sometimes
+        wrong there (Important Heirlooms is for both factions, QuestieDB says Alliance)."""
+        if qid >= FOREVER_QUESTS and qid in att_side:
+            return att_side[qid]
+
+    def faction(q, qid=None):
+        if qid is not None and att_says(qid) is not None:
+            return att_says(qid)
         races = q.get(Q_RACES) or 0
         low = races % 2 ** 32
         if races:
@@ -310,7 +431,7 @@ def main(root):
     # The whole chain a quest is in, first step first: back along the longest way, then on
     # along the longest way of quests for the same faction.
     def chain(qid):
-        side = faction(quests[qid])
+        side = faction(quests[qid], qid)
         path, cur = [qid], qid
         while len(path) < 15:
             back = [p for p in pres(cur) if p in quests and p not in path]
@@ -320,7 +441,7 @@ def main(root):
             path.insert(0, cur)
         cur = qid
         while len(path) < 15:
-            nxt = [n for n in after.get(cur, []) if n not in path and faction(quests[n]) in ("", side)]
+            nxt = [n for n in after.get(cur, []) if n not in path and faction(quests[n], n) in ("", side)]
             if not nxt:
                 break
             cur = max(nxt, key=lambda n: (rest(n), -n))
@@ -335,6 +456,8 @@ def main(root):
     lines = [
         "-- Generated by tools/dungeonprep/build_data.py from QuestieDB (Forever data). Do not edit.",
         "-- Quest data (c) the Questie team and contributors, GPLv3.",
+        "-- Dungeon quest lists checked against AllTheThings (MIT); levelling chains from",
+        "-- Guidelime_DungeonQuests (https://github.com/JanRK/Guidelime_DungeonQuests, GPLv3).",
         "local _, ns = ...",
         "local D = {}",
         "ns.Data = D",
@@ -355,6 +478,13 @@ def main(root):
         used.update(ids)
         lines.append("%s=%s," % (key, lua_list(ids)))
     lines.append("}")
+    lines.append("-- Dungeon -> the quests of its levelling chains (from Guidelime_DungeonQuests, GPLv3).")
+    lines.append("D.main = {")
+    for key, *_ in DUNGEONS:
+        ids = sorted(q for q in by_dungeon[key] if q in guide_quests.get(key, ()))
+        if ids:
+            lines.append("%s=%s," % (key, lua_list(ids)))
+    lines.append("}")
     lines.append("-- Quest -> { English name, level, required level, race mask, class mask,")
     lines.append("--   who starts it, the area id there, quests before it (all of them), quests before it (one of them),")
     lines.append("--   quests that close it, faction (A, H or \"\" for both), x, y on the zone map,")
@@ -370,10 +500,11 @@ def main(root):
         fwho, farea, fx, fy = finisher(q)
         before, later = depth(qid), rest(qid)
         lines.append("[%d]={%s,%d,%d,%d,%d,%s,%d,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%d,%d}," % (
-            qid, lua_str(q.get(Q_NAME)), q.get(Q_LEVEL) or 0, q.get(Q_REQ_LEVEL) or 0, q.get(Q_RACES) or 0,
+            qid, lua_str(q.get(Q_NAME)), q.get(Q_LEVEL) or 0, q.get(Q_REQ_LEVEL) or 0,
+            0 if att_says(qid) == "" else q.get(Q_RACES) or 0,
             q.get(Q_CLASSES) or 0, lua_str(who), area or 0, lua_list(seq(q.get(Q_PRE_GROUP) or {})),
             lua_list(seq(q.get(Q_PRE_SINGLE) or {})), lua_list(seq(q.get(Q_EXCLUSIVE) or {})),
-            lua_str(faction(q)), num(x), num(y), lua_str(fwho), farea or 0, num(fx), num(fy),
+            lua_str(faction(q, qid)), num(x), num(y), lua_str(fwho), farea or 0, num(fx), num(fy),
             before + 1 if before + later else 0, before + later + 1 if before + later else 0))
     lines.append("}")
     # Quests before the dungeon quests that are not dungeon quests themselves, for their names.
@@ -427,4 +558,5 @@ def main(root):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else ".")
+    main(sys.argv[1] if len(sys.argv) > 1 else ".", sys.argv[2] if len(sys.argv) > 2 else None,
+         sys.argv[3] if len(sys.argv) > 3 else None)

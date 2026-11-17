@@ -108,7 +108,7 @@ end
 function Load(dir)
     dir = dir or "Gulli-Toolkit/"
     local ns = {}
-    for _, f in ipairs({ "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" }) do
+    for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Skin.lua", "UI.lua" }) do
         assert(loadfile(dir .. f))("Gulli-Toolkit", ns)
     end
     for _, f in ipairs(W.frames) do

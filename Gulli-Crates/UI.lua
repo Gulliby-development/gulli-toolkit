@@ -1,7 +1,9 @@
--- The window, narrow, with two tabs. Fill: the crates in the bags to tick, the cheapest way to
--- fill each one (bags, bank, what to buy), and the two switches; Calculate and Buy are in the
--- footer. History: the crates filled, with what the auction house got for them. A round button
--- in the header looks at the bags again. At the auction house it opens beside the auction window.
+-- The window, narrow, with four tabs. Fill: the crates in the bags to tick and the cheapest way to
+-- fill each one (bags, bank, what to buy); Calculate and Buy are in the footer. Favor: a goal of
+-- Merchant's Favor and the cheapest crates and bundles that reach it, bought with the same Buy
+-- button. History: the crates filled, with what the auction house got for them. Settings: the
+-- switches every tab uses. A round button in the header looks at the bags again. At the auction
+-- house it opens beside the auction window.
 
 local _, ns = ...
 local L = ns.L
@@ -10,8 +12,10 @@ local S = ns.Skin
 local frame, crateCard, crateList, crateEmpty, planCard, planList, planEmpty, setCard
 local calcBtn, buyBtn, skipBtn, refreshBtn
 local tabs, pages, histStats, histList, histEmpty, periodTabs = nil, {}, nil, nil, nil, nil
+local goalTabs, goalCard, tokStats, tokCard, tokList, tokEmpty
 local CRATE_ROW, PLAN_ROW, HIST_ROW, CRATE_ROWS_MAX = 32, 30, 38, 4
 local tab, period = 1, "all"
+local FAVOR_ICON = "Interface\\Icons\\INV_Misc_Ribbon_01" -- until the game gives the currency's own
 local stale
 
 -- "Waylaid Crate: Flowering Expert Herbs" -> "Flowering Expert Herbs"
@@ -21,7 +25,7 @@ function ns.ShortName(name)
 end
 
 local function itemLine(id, n)
-    return n .. " × " .. (ns.ItemName(id) or ("item:" .. id))
+    return n .. " × " .. ns.ShortName(ns.ItemName(id) or ("item:" .. id))
 end
 
 -- ---------- crate rows ----------
@@ -35,7 +39,7 @@ local function makeCrateRow(r)
     end)
     r.icon = S.ItemIcon(r, 24)
     r.icon:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
-    r.value = S.Text(r, 11, S.MUTED)
+    r.value = S.Text(r, 12, S.MUTED)
     r.value:SetPoint("RIGHT", -4, 0)
     r.value:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
@@ -57,12 +61,12 @@ end
 
 local function makePlanRow(r)
     r.icon = S.ItemIcon(r, 22)
-    r.value = S.Text(r, 11)
+    r.value = S.Text(r, 12)
     r.value:SetPoint("RIGHT", -4, 0)
     r.value:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
     r.name:SetWordWrap(false)
-    r.note = S.Text(r, 11, S.FAINT)
+    r.note = S.Text(r, 12, S.FAINT)
     r.note:SetWordWrap(false)
 end
 
@@ -118,7 +122,7 @@ end
 -- A crate the bags already fill is left out: it waits in the History until it is used.
 function ns.PlanRows(plan)
     local rows, lines, ready = {}, {}, 0
-    for _, line in ipairs(ns.buy.queue) do lines[line.id] = line end
+    for _, line in ipairs(ns.source == "fill" and ns.buy.queue or {}) do lines[line.id] = line end
     for _, e in ipairs(plan and plan.crates or {}) do
         local owned = not e.none and e.cost == 0
         if owned then ready = ready + 1 else rows[#rows + 1] = { kind = "crate", e = e } end
@@ -135,6 +139,43 @@ function ns.PlanRows(plan)
     return rows
 end
 
+-- ---------- Favor rows ----------
+
+-- The Favor plan as list rows: each crate (how many, bought or from the bags) and its bundle.
+function ns.TokenRows(plan)
+    local rows, lines = {}, {}
+    for _, line in ipairs(ns.source == "tokens" and ns.buy.queue or {}) do lines[line.id] = line end
+    for _, g in ipairs(ns.TokenGroups(plan)) do
+        rows[#rows + 1] = { kind = "tcrate", g = g, line = g.buy > 0 and lines[g.crate] or nil }
+        rows[#rows + 1] = { kind = "item", r = g.item, line = g.item.buy > 0 and lines[g.item.id] or nil }
+    end
+    return rows
+end
+
+local function fillTokenRow(r, row)
+    if row.kind ~= "tcrate" then return fillPlanRow(r, row) end
+    local g = row.g
+    r.icon:ClearAllPoints()
+    r.name:ClearAllPoints()
+    r.note:ClearAllPoints()
+    r.icon:SetPoint("LEFT", 0, 0)
+    r.icon:Set(ns.ItemIcon(g.crate), g.n > 1 and g.n or nil, 1)
+    r.icon:Show()
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    local done = row.line and row.line.done
+    local current = row.line and row.line == ns.Current() and ns.buy.phase ~= "done"
+    local c = done and S.GOOD or (current and S.Accent() or S.TEXT)
+    r.name:SetText(S.Hex(c) .. ns.ShortName(ns.ItemName(g.crate) or ("item:" .. g.crate)) .. "|r")
+    local parts = {}
+    if g.favor then parts[#parts + 1] = L.TOK_EACH:format(g.favor) end
+    if g.own > 0 then parts[#parts + 1] = L.FROM_BAGS:format(g.own) end
+    if g.buy > 0 then parts[#parts + 1] = L.TO_BUY:format(g.buy) end
+    r.note:SetPoint("LEFT", r.name, "RIGHT", 8, 0)
+    r.note:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
+    r.note:SetText(table.concat(parts, S.DOT))
+    r.value:SetText(g.cost > 0 and S.MoneyText(g.cost) or (S.Hex(S.GOOD) .. L.FROM_STOCK .. "|r"))
+end
+
 -- ---------- history rows ----------
 
 local function makeHistRow(r)
@@ -143,15 +184,15 @@ local function makeHistRow(r)
     r.value = S.Text(r, 12)
     r.value:SetPoint("TOPRIGHT", -4, -4)
     r.value:SetJustifyH("RIGHT")
-    r.sub = S.Text(r, 10, S.FAINT)
+    r.sub = S.Text(r, 12, S.FAINT)
     r.sub:SetPoint("BOTTOMRIGHT", -4, 4)
     r.sub:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 2)
+    r.name:SetPoint("BOTTOMLEFT", r.icon, "RIGHT", 8, 1)
     r.name:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
     r.name:SetWordWrap(false)
-    r.note = S.Text(r, 11, S.MUTED)
-    r.note:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -2)
+    r.note = S.Text(r, 12, S.MUTED)
+    r.note:SetPoint("TOPLEFT", r.icon, "RIGHT", 8, -1)
     r.note:SetPoint("RIGHT", r.sub, "LEFT", -8, 0)
     r.note:SetWordWrap(false)
 end
@@ -198,11 +239,75 @@ local function refreshHistory()
     frame.footer:SetStatus("")
 end
 
+-- The footer's status line for the plan the Buy button works through.
+local function buyStatus(plan, how)
+    local b, queue = ns.buy, ns.buy.queue
+    if ns.Scanning() then return L.SCANNING:format(math.min(ns.scan.done + 1, ns.scan.n), ns.scan.n), S.Accent()
+    elseif not ns.HasAuctionator() then return L.NO_AUCTIONATOR, S.WARN
+    elseif not plan then return how
+    elseif #queue == 0 then return L.NOTHING_TO_BUY, S.GOOD
+    elseif b.phase == "done" then return L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD
+    elseif not ns.atAH and ns.CanBuy() then return plan.estimate and L.ESTIMATE or L.NOT_AT_AH, S.WARN
+    elseif b.err then return itemLine(ns.Current().id, ns.Current().n) .. ": " .. L[b.err], S.BAD
+    elseif b.phase == "ready" and ns.Dear() then return itemLine(ns.Current().id, ns.Current().n) .. ": " .. L.DEAR, S.WARN
+    elseif b.phase ~= "idle" or b.i > 1 then
+        return b.i .. " / " .. #queue -- the line being bought is lit in the list
+    end
+    local total = 0
+    for _, line in ipairs(queue) do total = total + line.cost end
+    return L.TOTAL:format(#queue, (plan.estimate and "~" or "") .. S.MoneyText(total)) .. S.DOT
+        .. itemLine(ns.Current().id, ns.Current().n)
+end
+
+local function setBuyButton(plan, mine)
+    local b, queue = ns.buy, ns.buy.queue
+    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning()
+    buyBtn:SetText(mine and buyText() or (ns.CanBuy() and L.BUY_ASK or L.LIST))
+    buyBtn:SetEnabled(mine and plan ~= nil and #queue > 0 and b.phase ~= "done" and not busy
+        and (not ns.CanBuy() and ns.HasAuctionator() or ns.atAH))
+    skipBtn:SetShown(mine and plan ~= nil and ns.CanBuy() and ns.Current() ~= nil and b.phase ~= "done")
+end
+
+local function refreshTokens()
+    local plan = ns.tokenPlan
+    local mine = ns.source == "tokens"
+    goalTabs.sync()
+    goalCard.rows[1].control:Refresh()
+    local held = ns.FavorHeld()
+    if goalCard.rows[1].desc then
+        goalCard.rows[1].desc:SetText(held and (L.TIP_goal .. " " .. L.TOK_HAVE:format(held)) or L.TIP_goal)
+    end
+    tokStats.tiles[1]:Set(plan and tostring(#plan.crates) or "-")
+    local approx = plan and plan.estimate and "~" or ""
+    tokStats.tiles[2]:Set(plan and (approx .. S.MoneyText(plan.total, true)) or "-")
+    local per = plan and plan.favor > 0 and math.floor(plan.total / plan.favor + 0.5) or nil
+    tokStats.tiles[3]:Set(per and (approx .. S.MoneyText(per, true)) or "-")
+    tokList:SetData(ns.TokenRows(plan))
+    tokEmpty:SetShown(not plan or #plan.crates == 0)
+    if plan and #plan.crates == 0 then tokEmpty:Set(L.TOK_NONE, L.TOK_NONE_SUB) else tokEmpty:Set(L.TOK_EMPTY, L.TOK_EMPTY_SUB) end
+    tokCard:SetTitle(L.TOK_PLAN, plan and #plan.crates > 0 and L.TOK_FAVOR:format(plan.favor) or "")
+    calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
+    calcBtn:SetEnabled(not ns.Scanning())
+    setBuyButton(plan, mine)
+    local status, color
+    if plan and plan.short > 0 then status, color = L.TOK_SHORT:format(plan.favor), S.WARN
+    elseif mine then status, color = buyStatus(plan, L.TOK_HOW)
+    else status = L.TOK_HOW end
+    frame.footer:SetStatus(status, color)
+end
+
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
-    local onFill = tab == 1
-    buyBtn:SetShown(onFill)
-    calcBtn:SetShown(onFill)
+    local onFill, onTokens = tab == 1, tab == 2
+    buyBtn:SetShown(onFill or onTokens)
+    calcBtn:SetShown(onFill or onTokens)
+    if onTokens then return refreshTokens() end
+    if tab == 4 then
+        skipBtn:Hide()
+        for _, row in ipairs(setCard.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+        frame.footer:SetStatus("")
+        return
+    end
     if not onFill then skipBtn:Hide(); refreshHistory(); return end
     local crates = ns.Crates()
     local hours = not ns.staleClosed and ns.HasAuctionator() and #crates > 0 and ns.StaleHours()
@@ -218,33 +323,14 @@ function ns.Refresh()
     local plan = ns.plan
     planList:SetData(ns.PlanRows(plan))
     planEmpty:SetShown(not plan or #plan.crates == 0)
-    local queue = ns.buy.queue
-    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and S.MoneyText(plan.total) or "")
+    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and ((plan.estimate and "~" or "") .. S.MoneyText(plan.total)) or "")
 
     calcBtn:SetText(plan and L.RECALC or L.CALCULATE)
-    calcBtn:SetEnabled(#ns.Picks(crates) > 0)
-    buyBtn:SetText(buyText())
-    local b = ns.buy
-    local busy = b.phase == "quote" or b.phase == "buying"
-    buyBtn:SetEnabled(plan ~= nil and #queue > 0 and b.phase ~= "done" and not busy
-        and (not ns.CanBuy() and ns.HasAuctionator() or ns.atAH))
-    skipBtn:SetShown(plan ~= nil and ns.CanBuy() and ns.Current() ~= nil and b.phase ~= "done")
-
+    calcBtn:SetEnabled(#ns.Picks(crates) > 0 and not ns.Scanning())
+    local mine = ns.source == "fill"
+    setBuyButton(plan, mine)
     local status, color
-    if not ns.HasAuctionator() then status, color = L.NO_AUCTIONATOR, S.WARN
-    elseif not plan then status = L.HOW
-    elseif #queue == 0 then status, color = L.NOTHING_TO_BUY, S.GOOD
-    elseif b.phase == "done" then status, color = L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD
-    elseif not ns.atAH and ns.CanBuy() then status, color = L.NOT_AT_AH, S.WARN
-    elseif b.err then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L[b.err], S.BAD
-    elseif b.phase == "ready" and ns.Dear() then status, color = itemLine(ns.Current().id, ns.Current().n) .. ": " .. L.DEAR, S.WARN
-    elseif b.phase ~= "idle" or b.i > 1 then
-        status = b.i .. " / " .. #queue -- the line being bought is lit in the list
-    else
-        local total = 0
-        for _, line in ipairs(queue) do total = total + line.cost end
-        status = L.TOTAL:format(#queue, S.MoneyText(total)) .. S.DOT .. itemLine(ns.Current().id, ns.Current().n)
-    end
+    if mine then status, color = buyStatus(plan, L.HOW) else status = L.HOW end
     frame.footer:SetStatus(status, color)
 end
 
@@ -265,7 +351,7 @@ local function build()
     calcBtn = S.Button(ft, 120, 32)
     ft:Add(calcBtn)
     calcBtn:SetText(L.CALCULATE)
-    calcBtn:SetScript("OnClick", function() ns.Calculate() end)
+    calcBtn:SetScript("OnClick", function() if tab == 2 then ns.TokenCalculate() else ns.Calculate() end end)
     skipBtn = S.Ghost(S.Button(ft, 80, 32))
     ft:Add(skipBtn)
     skipBtn:SetText(L.SKIP)
@@ -275,7 +361,7 @@ local function build()
     S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
     refreshBtn.btnIcon:ClearAllPoints()
     refreshBtn.btnIcon:SetPoint("CENTER")
-    refreshBtn:SetScript("OnClick", function() ns.Recheck() end)
+    refreshBtn:SetScript("OnClick", function() ns.Recheck(tab == 2 and "tokens" or nil) end)
     refreshBtn:HookScript("OnEnter", function(self)
         if GameTooltip and GameTooltip.SetOwner then
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
@@ -286,12 +372,14 @@ local function build()
     end)
     refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
-    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_HISTORY }, nil, function(i)
+    local _, favorIcon = ns.FavorHeld()
+    if favorIcon then FAVOR_ICON = favorIcon end
+    tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_FAVOR, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end, nil, { "Interface\\Icons\\INV_Crate_01", S.TAB.recent })
-    for i = 1, 2 do
+    end, nil, { "Interface\\Icons\\INV_Crate_01", FAVOR_ICON, S.TAB.recent, S.TAB.settings })
+    for i = 1, 4 do
         local p = CreateFrame("Frame", nil, frame.body)
         p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
         p:SetPoint("BOTTOMRIGHT")
@@ -300,7 +388,7 @@ local function build()
     end
 
     -- History
-    local hp = pages[2]
+    local hp = pages[3]
     local st = S.Stack(hp)
     periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
         period = ns.PERIODS[i]
@@ -323,6 +411,40 @@ local function build()
     histEmpty = S.Empty(histList)
     histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
 
+    -- Favor
+    local tp = pages[2]
+    local ts = S.Stack(tp)
+    local goalLabels = {}
+    for i, n in ipairs(ns.GOALS) do goalLabels[i] = tostring(n) end
+    goalTabs = S.Tabs(tp, goalLabels, nil, function(i) ns.SetGoal(ns.GOALS[i]) end, 28)
+    goalTabs.frame:ClearAllPoints()
+    goalTabs.frame:SetPoint("TOPLEFT")
+    -- the preset that matches the goal is lit; a goal set with the stepper keeps the last one lit
+    function goalTabs.sync()
+        for i, n in ipairs(ns.GOALS) do
+            if n == ns.db.goal and goalTabs.selected ~= i then goalTabs:Select(i, true) end
+        end
+    end
+    ts:Space(28 + S.GAP)
+    local h
+    goalCard, h = S.SettingsCard(tp, nil, {
+        { L.OPT_goal, L.TIP_goal, control = S.Stepper(tp, function() return ns.db.goal end, function(v) ns.SetGoal(v) end,
+            5, 5, ns.GOAL_MAX, nil, 120), icon = FAVOR_ICON },
+    })
+    ts:Add(goalCard, h)
+    tokStats = S.StatRow(tp, { L.ST_CRATES, L.ST_TOTAL, L.ST_PER_FAVOR }, 62,
+        { "Interface\\Icons\\INV_Crate_01", "Interface\\Minimap\\Tracking\\Auctioneer", FAVOR_ICON })
+    ts:Add(tokStats, 62)
+    tokStats:Layout(frame.inner[1])
+    tokCard = S.Card(tp, L.TOK_PLAN, "", "Interface\\Minimap\\Tracking\\Auctioneer")
+    tokCard:SetPoint("TOPLEFT", 0, -ts.y)
+    tokCard:SetPoint("BOTTOMRIGHT")
+    tokList = S.List(tokCard.body, PLAN_ROW, makePlanRow, fillTokenRow)
+    tokList:SetPoint("TOPLEFT")
+    tokList:SetPoint("BOTTOMRIGHT", -10, 0)
+    tokEmpty = S.Empty(tokList)
+    tokEmpty:Set(L.TOK_EMPTY, L.TOK_EMPTY_SUB)
+
     local body = pages[1]
     stale = S.Banner(body, "Interface\\Icons\\INV_Misc_PocketWatch_01")
     stale:SetPoint("TOPLEFT")
@@ -337,22 +459,23 @@ local function build()
     crateEmpty = S.Empty(crateList)
     crateEmpty:Set(L.NO_CRATES, "")
 
+    -- Settings: the switches of every tab; a change plans the shown plan again
     local rows = {}
-    for _, key in ipairs({ "auto", "bank" }) do
-        rows[#rows + 1] = { L["OPT_" .. key], nil, function() return ns.db[key] end,
-                            function(v) ns.db[key] = v; if key == "bank" and ns.plan then ns.Calculate() end end,
+    for _, key in ipairs({ "auto", "bank", "live" }) do
+        rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
+                            function(v) ns.db[key] = v; if key ~= "auto" then ns.Replan() end end,
                             icon = ns.OPT_ICON[key] }
     end
-    local h
-    setCard, h = S.SettingsCard(body, nil, rows)
-    setCard:SetPoint("BOTTOMLEFT")
-    setCard:SetPoint("BOTTOMRIGHT")
+    local sp = pages[4]
+    setCard, h = S.SettingsCard(sp, nil, rows)
+    setCard:SetPoint("TOPLEFT")
+    setCard:SetPoint("TOPRIGHT")
     setCard:SetHeight(h)
 
     planCard = S.Card(body, L.PLAN, "", "Interface\\Minimap\\Tracking\\Auctioneer")
     planCard:SetPoint("TOPLEFT", crateCard, "BOTTOMLEFT", 0, -S.GAP)
     planCard:SetPoint("TOPRIGHT", crateCard, "BOTTOMRIGHT", 0, -S.GAP)
-    planCard:SetPoint("BOTTOM", setCard, "TOP", 0, S.GAP)
+    planCard:SetPoint("BOTTOM")
     planList = S.List(planCard.body, PLAN_ROW, makePlanRow, fillPlanRow)
     planList:SetPoint("TOPLEFT")
     planList:SetPoint("BOTTOMRIGHT", -10, 0)
@@ -366,7 +489,7 @@ function ns.Toggle()
     S.ToggleWindow(ns.Window())
 end
 
--- Opens a tab: 1 fill, 2 history.
+-- Opens a tab: 1 fill, 2 Favor, 3 history, 4 settings.
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)

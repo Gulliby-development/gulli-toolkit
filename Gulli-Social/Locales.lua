@@ -91,6 +91,15 @@ T.en = {
     LOG_EMPTY = "Nothing yet. Invites, declines and hidden whispers show up here.",
     TAB_RULES = "Rules",
     TAB_RECENT = "Recent",
+    SEC_BUSY = "Busy auto-reply",
+    OPT_BUSY = "Answer whispers",
+    OPT_BUSY_D = "In a fight or away, answer a whisper once with the busy text.",
+    BUSY_ALWAYS = "Also when not fighting or away",
+    BUSY_EVERY = "Auto-reply at most every",
+    MIN_N = "%d min",
+    BUSY_MSG = "Reply text",
+    BUSY_TEXT = "Sorry, I am busy right now. I will answer soon.",
+    LOG_BUSY = "Busy reply sent",
 }
 
 T.de = {
@@ -175,6 +184,15 @@ T.de = {
     LOG_EMPTY = "Noch nichts. Einladungen, Ablehnungen und versteckte Flüsternachrichten erscheinen hier.",
     TAB_RULES = "Regeln",
     TAB_RECENT = "Neues",
+    SEC_BUSY = "Automatische Antwort",
+    OPT_BUSY = "Flüstern beantworten",
+    OPT_BUSY_D = "Im Kampf oder abwesend: einmal mit dem Beschäftigt-Text antworten.",
+    BUSY_ALWAYS = "Auch außerhalb von Kampf und Abwesenheit",
+    BUSY_EVERY = "Automatisch antworten höchstens alle",
+    MIN_N = "%d Min.",
+    BUSY_MSG = "Antworttext",
+    BUSY_TEXT = "Sorry, ich bin gerade beschäftigt. Ich antworte gleich.",
+    LOG_BUSY = "Beschäftigt-Antwort gesendet",
 }
 
 T.es = {
@@ -259,6 +277,15 @@ T.es = {
     LOG_EMPTY = "Nada aún. Aquí aparecen invitaciones, rechazos y susurros ocultos.",
     TAB_RULES = "Reglas",
     TAB_RECENT = "Reciente",
+    SEC_BUSY = "Respuesta automática",
+    OPT_BUSY = "Responder susurros",
+    OPT_BUSY_D = "En combate o ausente, responde una vez con el texto de ocupado.",
+    BUSY_ALWAYS = "También fuera de combate y sin estar ausente",
+    BUSY_EVERY = "Responder como mucho cada",
+    MIN_N = "%d min",
+    BUSY_MSG = "Texto de respuesta",
+    BUSY_TEXT = "Perdona, ahora estoy ocupado. Te contesto enseguida.",
+    LOG_BUSY = "Respuesta de ocupado enviada",
 }
 
 T.fr = {
@@ -343,6 +370,15 @@ T.fr = {
     LOG_EMPTY = "Rien pour l'instant. Invitations, refus et chuchotements masqués apparaissent ici.",
     TAB_RULES = "Règles",
     TAB_RECENT = "Récent",
+    SEC_BUSY = "Réponse automatique",
+    OPT_BUSY = "Répondre aux chuchotements",
+    OPT_BUSY_D = "En combat ou absent, répondre une fois avec le texte occupé.",
+    BUSY_ALWAYS = "Aussi hors combat et sans être absent",
+    BUSY_EVERY = "Répondre au plus toutes les",
+    MIN_N = "%d min",
+    BUSY_MSG = "Texte de réponse",
+    BUSY_TEXT = "Désolé, je suis occupé. Je réponds bientôt.",
+    LOG_BUSY = "Réponse occupé envoyée",
 }
 
 T.pl = {
@@ -427,6 +463,15 @@ T.pl = {
     LOG_EMPTY = "Na razie nic. Zaproszenia, odmowy i ukryte szepty pojawią się tutaj.",
     TAB_RULES = "Zasady",
     TAB_RECENT = "Ostatnie",
+    SEC_BUSY = "Automatyczna odpowiedź",
+    OPT_BUSY = "Odpowiadaj na szepty",
+    OPT_BUSY_D = "W walce lub z dala: odpowiedz raz tekstem zajętości.",
+    BUSY_ALWAYS = "Także poza walką i gdy nie jesteś z dala",
+    BUSY_EVERY = "Odpowiadaj najwyżej co",
+    MIN_N = "%d min",
+    BUSY_MSG = "Tekst odpowiedzi",
+    BUSY_TEXT = "Przepraszam, jestem teraz zajęty. Zaraz odpiszę.",
+    LOG_BUSY = "Wysłano odpowiedź o zajętości",
 }
 
 T.pt = {
@@ -511,6 +556,15 @@ T.pt = {
     LOG_EMPTY = "Nada ainda. Convites, recusas e sussurros ocultos aparecem aqui.",
     TAB_RULES = "Regras",
     TAB_RECENT = "Recentes",
+    SEC_BUSY = "Resposta automática",
+    OPT_BUSY = "Responder sussurros",
+    OPT_BUSY_D = "Em combate ou ausente, responder uma vez com o texto de ocupado.",
+    BUSY_ALWAYS = "Também fora de combate e sem estar ausente",
+    BUSY_EVERY = "Responder no máximo a cada",
+    MIN_N = "%d min",
+    BUSY_MSG = "Texto da resposta",
+    BUSY_TEXT = "Desculpe, estou ocupado agora. Já respondo.",
+    LOG_BUSY = "Resposta de ocupado enviada",
 }
 
 T.ru = {
@@ -595,6 +649,15 @@ T.ru = {
     LOG_EMPTY = "Пока пусто. Здесь будут приглашения, отказы и скрытые шёпоты.",
     TAB_RULES = "Правила",
     TAB_RECENT = "Недавнее",
+    SEC_BUSY = "Автоответ «занят»",
+    OPT_BUSY = "Отвечать на шёпот",
+    OPT_BUSY_D = "В бою или в отлучке один раз ответить текстом «занят».",
+    BUSY_ALWAYS = "И не в бою, и не в отлучке",
+    BUSY_EVERY = "Автоответ не чаще чем раз в",
+    MIN_N = "%d мин",
+    BUSY_MSG = "Текст ответа",
+    BUSY_TEXT = "Извините, сейчас занят. Скоро отвечу.",
+    LOG_BUSY = "Отправлен ответ «занят»",
 }
 
 T.zh = {
@@ -679,6 +742,15 @@ T.zh = {
     LOG_EMPTY = "暂时没有。邀请、拒绝和隐藏的密语会显示在这里。",
     TAB_RULES = "规则",
     TAB_RECENT = "最近",
+    SEC_BUSY = "忙碌自动回复",
+    OPT_BUSY = "回复密语",
+    OPT_BUSY_D = "战斗中或离开时，用忙碌文本回复一次。",
+    BUSY_ALWAYS = "不在战斗或离开时也回复",
+    BUSY_EVERY = "自动回复间隔至少",
+    MIN_N = "%d 分钟",
+    BUSY_MSG = "回复内容",
+    BUSY_TEXT = "抱歉，我现在有点忙，稍后回复。",
+    LOG_BUSY = "已发送忙碌回复",
 }
 
 ns.T = T

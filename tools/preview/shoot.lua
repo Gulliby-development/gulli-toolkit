@@ -37,3 +37,6 @@ for _, o in ipairs(R.Overlaps(crop or R.UIParent)) do
     io.stderr:write(name .. ": overlap: " .. o[1]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. " / " ..
         o[2]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
 end
+for _, t in ipairs(R.Outside(crop or R.UIParent)) do
+    io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
+end

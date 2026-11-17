@@ -9,7 +9,7 @@ local L = ns.L
 local CALLER = "Gulli-Crates"
 local QUOTE_WAIT = 6 -- seconds the auction house has to answer a price request
 
-ns.DEFAULTS = { auto = true, bank = true }
+ns.DEFAULTS = { auto = true, bank = true, live = true, goal = 30 }
 
 local function say(msg) print("|cff9ad0ffCrates|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Crates", msg) end end
@@ -115,6 +115,39 @@ function ns.StaleHours()
     return nil
 end
 
+-- ---------- auction lots ----------
+-- At the auction house, Calculate reads the listings of what the plan buys, so buying many of one
+-- item takes the dearer lots too. Away from it (or before an item is read) the price is
+-- Auctionator's lowest one, and the plan is marked as an estimate.
+
+ns.LOTS_FRESH = 10 * 60
+ns.lots = {} -- item id -> { t = time read, l = { { unit price, count } } cheapest first }
+ns.flat = {} -- the items the last plan priced from Auctionator's lowest price
+
+-- Mean unit price of n units after the first skip ones bought from lots (cheapest first), or nil
+-- when the lots hold fewer.
+function ns.LadderPrice(lots, n, skip)
+    n, skip = n or 1, skip or 0
+    local cost, pos, got = 0, 0, 0
+    for _, l in ipairs(lots or {}) do
+        local from, to = math.max(pos, skip), math.min(pos + l[2], skip + n)
+        if to > from then cost, got = cost + (to - from) * l[1], got + (to - from) end
+        pos = pos + l[2]
+        if got >= n then break end
+    end
+    if n <= 0 or got < n then return nil end
+    return cost / n
+end
+
+-- The price the plans use: mean unit price of n units after skip ones (see ns.Plan).
+function ns.Price(id, n, skip)
+    local lots = ns.lots[id]
+    if lots and time() - lots.t <= ns.LOTS_FRESH then return ns.LadderPrice(lots.l, n, skip) end
+    local unit = ns.AuctionPrice(id)
+    if unit then ns.flat[id] = true end
+    return unit
+end
+
 -- ---------- the crates and their bundles ----------
 
 -- Every item the table knows as a bundle item, by its name in the client's language, so a
@@ -201,13 +234,16 @@ end
 -- ---------- the plan (no game calls) ----------
 
 -- picks: { { id = crate id, count = n } }; bundles(id) -> list; stock(item) -> bags, bank;
--- price(item) -> copper or nil; useBank: bank items count too.
+-- price(item, n, skip) -> the mean unit price (copper) of n units after skip already bought, or
+-- nil (a plain price(item) works too); useBank: bank items count too.
 -- Each crate copy gets the bundle that costs least to complete; items the bags and the bank
 -- hold cost nothing and are used once. The cheapest crate-and-bundle pair of all is settled
 -- first, so a stock that completes one crate is not spent half on another.
 -- Returns { crates = { { crate, k, bundle, rows, cost, buy, others } }, total, unpriced }.
-function ns.Plan(picks, bundles, stock, price, useBank)
-    local pool = {}
+-- What the bags and the bank hold, used once each, and the cost of completing one bundle from
+-- what is left: rows and total (nil when an item to buy has no price).
+local function stockPool(stock, price, useBank)
+    local pool, bought = {}, {}
     local function have(id)
         if not pool[id] then
             local b, k = stock(id)
@@ -215,7 +251,6 @@ function ns.Plan(picks, bundles, stock, price, useBank)
         end
         return pool[id]
     end
-    -- the cost of filling with this bundle now: rows and total (nil when an item has no price)
     local function cost(bundle)
         local rows, total, buy = {}, 0, 0
         for _, b in ipairs(bundle) do
@@ -224,14 +259,28 @@ function ns.Plan(picks, bundles, stock, price, useBank)
             local fromBags = math.min(n, h[1])
             local fromBank = math.min(n - fromBags, h[2])
             local need = n - fromBags - fromBank
-            local unit = need > 0 and price(id) or nil
+            local unit = need > 0 and price(id, need, bought[id] or 0) or nil
             if need > 0 and not unit then return nil, rows end
-            local c = need * (unit or 0)
+            local c = math.floor(need * (unit or 0) + 0.5)
             rows[#rows + 1] = { id = id, n = n, bags = fromBags, bank = fromBank, buy = need, unit = unit, cost = c }
             total, buy = total + c, buy + need
         end
         return total, rows, buy
     end
+    local function use(rows)
+        for _, r in ipairs(rows) do
+            if not r.crate then
+                local h = have(r.id)
+                h[1], h[2] = h[1] - r.bags, h[2] - r.bank
+                bought[r.id] = (bought[r.id] or 0) + r.buy
+            end
+        end
+    end
+    return cost, use
+end
+
+function ns.Plan(picks, bundles, stock, price, useBank)
+    local cost, use = stockPool(stock, price, useBank)
 
     local open = {}
     for _, p in ipairs(picks) do
@@ -264,10 +313,7 @@ function ns.Plan(picks, bundles, stock, price, useBank)
         end
         local o = table.remove(open, bestI)
         local bundle = o.list[bestB]
-        for _, r in ipairs(best.rows) do
-            local h = have(r.id)
-            h[1], h[2] = h[1] - r.bags, h[2] - r.bank
-        end
+        use(best.rows)
         local e = { crate = o.crate, k = o.k, bundle = bundle, rows = best.rows, cost = best.cost, buy = best.buy, others = {} }
         result.total = result.total + best.cost
         order[#order + 1] = e
@@ -318,10 +364,166 @@ function ns.ShoppingList(plan)
     return out
 end
 
+-- ---------- Merchant's Favor goal (no game calls) ----------
+-- Each filled crate hands in for Merchant's Favor, by its tier and kind (ns.FAVOR). For a goal,
+-- every crate type gets the cost of its 1st, 2nd, ... copy (crates in the bags are free, then the
+-- auction house; each copy with its cheapest bundle from what is left), and a knapsack over the
+-- Favor picks the counts that reach the goal for the least gold. Then one pass settles the
+-- picked crates against the shared stock, cheapest first, for the rows and the real total.
+
+ns.GOALS = { 5, 15, 20, 30, 45, 50, 180 }
+ns.GOAL_MAX = 1000
+local UNIT = 5 -- every crate pays a multiple of 5
+
+-- ids: the crates that may be used; favorOf(id) -> Favor of one; crateStock(id) -> crates in bags.
+-- Returns { crates = { { crate, k, bundle, rows, cost, own, favor } }, total, favor, short }:
+-- rows start with the crate itself ({ crate = true, buy = 1 } when it is bought); short is the
+-- Favor the priced crates cannot reach.
+function ns.TokenPlan(goal, ids, favorOf, bundles, stock, price, useBank, crateStock)
+    local U = math.max(0, math.ceil((goal or 0) / UNIT))
+    local result = { crates = {}, total = 0, favor = 0, short = 0 }
+    if U == 0 then return result end
+
+    -- the cost of each further copy of one crate type, from its own view of the stock
+    local types = {}
+    for _, id in ipairs(ids) do
+        local f = favorOf(id)
+        local list = bundles(id)
+        if f and f > 0 and list then
+            local u = math.max(1, math.floor(f / UNIT))
+            local cost, use = stockPool(stock, price, useBank)
+            local own = crateStock and crateStock(id) or 0
+            local steps, got = {}, 0
+            for _ = 1, math.ceil(U / u) do
+                local unit = own <= 0 and price(id, 1, got) or nil
+                if own <= 0 and not unit then break end
+                local best, bestRows
+                for _, bundle in ipairs(list) do
+                    local total, rows = cost({ bundle })
+                    if total and (not best or total < best) then best, bestRows = total, rows end
+                end
+                if not best then break end
+                use(bestRows)
+                if own <= 0 then got = got + 1 end
+                own = own - 1
+                steps[#steps + 1] = best + (unit or 0)
+            end
+            if #steps > 0 then types[#types + 1] = { id = id, u = u, steps = steps } end
+        end
+    end
+
+    -- knapsack: dp[x] = least gold for at least x units of Favor (x capped at U)
+    local INF = math.huge
+    local dp, pick = { [0] = 0 }, {}
+    for x = 1, U do dp[x] = INF end
+    for t, ty in ipairs(types) do
+        local nd, np = {}, {}
+        for x = 0, U do nd[x], np[x] = dp[x], 0 end
+        for x = 0, U do
+            if dp[x] < INF then
+                local sum = 0
+                for k, c in ipairs(ty.steps) do
+                    sum = sum + c
+                    local y = math.min(U, x + k * ty.u)
+                    if dp[x] + sum < nd[y] then nd[y], np[y] = dp[x] + sum, k * 10000 + x end
+                    if y == U then break end
+                end
+            end
+        end
+        dp, pick[t] = nd, np
+    end
+    -- the best reachable amount: the goal, or the most Favor when the goal cannot be reached
+    local at = U
+    if dp[U] == INF then
+        at = 0
+        for x = U, 0, -1 do if dp[x] < INF then at = x; break end end
+        result.short = (U - at) * UNIT
+    end
+    local counts = {}
+    for t = #types, 1, -1 do
+        local p = pick[t][at]
+        if p and p > 0 then
+            counts[types[t].id] = math.floor(p / 10000)
+            at = p % 10000
+        end
+    end
+
+    -- settle the picked crates on the shared stock, the cheapest crate and bundle first
+    local cost, use = stockPool(stock, price, useBank)
+    local left, got = {}, {}
+    for _, id in ipairs(ids) do left[id] = crateStock and crateStock(id) or 0 end
+    local k = 0
+    while true do
+        local best
+        for _, id in ipairs(ids) do
+            if (counts[id] or 0) > 0 then
+                local own = left[id] > 0
+                local unit = not own and price(id, 1, got[id] or 0) or nil
+                for _, bundle in ipairs(bundles(id)) do
+                    local total, rows, buy = cost({ bundle })
+                    if total and (own or unit) then
+                        total, buy = total + (unit or 0), buy + (own and 0 or 1)
+                        if not best or total < best.cost or (total == best.cost and buy < best.buy) then
+                            best = { crate = id, bundle = bundle, rows = rows, cost = total, buy = buy, own = own, unit = unit }
+                        end
+                    end
+                end
+            end
+        end
+        if not best then break end
+        use(best.rows)
+        counts[best.crate] = counts[best.crate] - 1
+        if best.own then left[best.crate] = left[best.crate] - 1 else got[best.crate] = (got[best.crate] or 0) + 1 end
+        table.insert(best.rows, 1, { id = best.crate, n = 1, crate = true, bags = best.own and 1 or 0, bank = 0,
+                                     buy = best.own and 0 or 1, unit = best.unit, cost = math.floor((best.unit or 0) + 0.5) })
+        k = k + 1
+        local f = favorOf(best.crate)
+        result.crates[#result.crates + 1] = { crate = best.crate, k = k, bundle = best.bundle, rows = best.rows,
+                                              cost = best.cost, own = best.own, favor = f, others = {} }
+        result.total = result.total + best.cost
+        result.favor = result.favor + f
+    end
+    return result
+end
+
+-- The token plan grouped for the list: one group per crate and bundle with how many times,
+-- the crates bought and owned, and the bundle items added up.
+function ns.TokenGroups(plan)
+    local out, at = {}, {}
+    for _, e in ipairs(plan and plan.crates or {}) do
+        local key = e.crate .. ":" .. e.bundle[1]
+        local g = at[key]
+        if not g then
+            g = { crate = e.crate, bundle = e.bundle, n = 0, own = 0, buy = 0, crateCost = 0, cost = 0, favor = e.favor,
+                  item = { id = e.bundle[1], n = 0, bags = 0, bank = 0, buy = 0, cost = 0 } }
+            at[key] = g
+            out[#out + 1] = g
+        end
+        g.n, g.cost = g.n + 1, g.cost + e.cost
+        for _, r in ipairs(e.rows) do
+            if r.crate then
+                if r.buy > 0 then g.buy, g.crateCost = g.buy + 1, g.crateCost + r.cost else g.own = g.own + 1 end
+            else
+                local x = g.item
+                x.n, x.bags, x.bank, x.buy, x.cost = x.n + r.n, x.bags + r.bags, x.bank + r.bank, x.buy + r.buy, x.cost + r.cost
+            end
+        end
+    end
+    return out
+end
+
 -- ---------- calculating ----------
 
 ns.picked = {} -- crate id -> false when the player unticked it (ticked by default)
-ns.plan = nil
+ns.plan = nil       -- the Fill tab's plan
+ns.tokenPlan = nil  -- the Favor tab's plan
+ns.source = "fill"  -- which of the two the Buy button works through
+
+-- The plan the Buy button works through.
+function ns.ActivePlan()
+    if ns.source == "tokens" then return ns.tokenPlan end
+    return ns.plan
+end
 
 function ns.Picks(crates)
     local out = {}
@@ -339,7 +541,7 @@ function ns.SetPicked(id, on)
     if ns.plan and p ~= "quote" and p ~= "buying" then
         if #ns.Picks() > 0 then return ns.Calculate() end
         ns.plan = nil
-        ns.ResetBuy()
+        if ns.source == "fill" then ns.ResetBuy() end
     end
     if ns.Refresh then ns.Refresh() end
 end
@@ -347,14 +549,196 @@ end
 -- The check box of a crate row.
 function ns.TogglePick(id) return ns.SetPicked(id, ns.picked[id] == false) end
 
-function ns.Calculate()
+-- True when a plan buys something priced from Auctionator's lowest price, not from read lots.
+local function estimate(plan)
+    for _, line in ipairs(ns.ShoppingList(plan)) do if ns.flat[line.id] then return true end end
+    return false
+end
+
+local live -- reads the lots of what a plan buys, then plans again (defined below)
+
+local function planFill(round)
     ns.ClearCache()
+    ns.flat = {}
     local picks = ns.Picks()
-    ns.plan = ns.Plan(picks, ns.Bundles, ns.Stock, ns.AuctionPrice, ns.db.bank)
+    ns.plan = ns.Plan(picks, ns.Bundles, ns.Stock, ns.Price, ns.db.bank)
     ns.plan.at = time()
+    ns.plan.estimate = estimate(ns.plan)
+    ns.source = "fill"
     ns.ResetBuy()
+    live("fill", round)
     if ns.Refresh then ns.Refresh() end
     return ns.plan
+end
+
+function ns.Calculate()
+    ns.tried = {}
+    return planFill(1)
+end
+
+-- The crates the Favor goal may use: every crate the table knows up to the player's level, in
+-- id order so the plan does not change from one run to the next.
+function ns.TokenCrates()
+    local level = UnitLevel and UnitLevel("player") or nil
+    if type(level) ~= "number" then level = nil end
+    local ids = {}
+    for id, c in pairs(ns.CRATES) do
+        if not level or c[1] <= level then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    return ids
+end
+
+-- Merchant's Favor one crate pays.
+function ns.FavorOf(id) return ns.FAVOR[id] end
+
+-- How much Merchant's Favor the player holds, and its icon, or nil.
+function ns.FavorHeld()
+    local C = C_CurrencyInfo
+    local info = C and C.GetCurrencyInfo and C.GetCurrencyInfo(ns.CURRENCY)
+    if type(info) ~= "table" then return nil end
+    return info.quantity, info.iconFileID
+end
+
+-- After a setting changed: the plan on screen (the one the Buy button works through) anew.
+function ns.Replan()
+    if ns.Busy() or ns.Scanning() then if ns.Refresh then ns.Refresh() end return end
+    if ns.source == "tokens" and ns.tokenPlan then return ns.TokenCalculate() end
+    if ns.plan then return ns.Calculate() end
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.SetGoal(n)
+    if not ns.db then return end
+    ns.db.goal = math.max(1, math.min(ns.GOAL_MAX, math.floor(tonumber(n) or ns.DEFAULTS.goal)))
+    if ns.tokenPlan and not ns.Busy() and not ns.Scanning() then return ns.TokenCalculate() end
+    if ns.Refresh then ns.Refresh() end
+end
+
+local function planTokens(round)
+    ns.ClearCache()
+    ns.flat = {}
+    local function crateStock(id) return itemCount(id, false) end
+    ns.tokenPlan = ns.TokenPlan(ns.db.goal, ns.TokenCrates(), ns.FavorOf, ns.Bundles, ns.Stock,
+                                ns.Price, ns.db.bank, crateStock)
+    ns.tokenPlan.at = time()
+    ns.tokenPlan.estimate = estimate(ns.tokenPlan)
+    ns.source = "tokens"
+    ns.ResetBuy()
+    live("tokens", round)
+    if ns.Refresh then ns.Refresh() end
+    return ns.tokenPlan
+end
+
+function ns.TokenCalculate()
+    ns.tried = {}
+    return planTokens(1)
+end
+
+-- ---------- reading the lots at the auction house ----------
+-- One search at a time, the next one a moment after the answer (or after SEARCH_WAIT without
+-- one). After the lots of what a plan buys are read, it plans again; the new plan may buy other
+-- items, so this repeats up to LIVE_ROUNDS times.
+
+local SEARCH_WAIT, SEARCH_GAP, LIVE_ROUNDS = 5, 0.3, 4
+local scan = { queue = {}, busy = nil, n = 0, done = 0 }
+ns.scan = scan
+ns.tried = {}
+
+local function canSearch()
+    local a = C_AuctionHouse
+    return a and a.SendSearchQuery and a.MakeItemKey and true or false
+end
+ns.CanSearch = canSearch
+
+-- The answer to the search for id: { { unit price, count } }, cheapest first.
+local function readLots(id)
+    local a, lots = C_AuctionHouse, {}
+    if a.GetNumCommoditySearchResults then
+        for i = 1, a.GetNumCommoditySearchResults(id) or 0 do
+            local r = a.GetCommoditySearchResultInfo(id, i)
+            if r and r.unitPrice and (r.quantity or 0) > 0 then lots[#lots + 1] = { r.unitPrice, r.quantity } end
+        end
+    end
+    if #lots == 0 and a.GetNumItemSearchResults and a.GetItemSearchResultInfo then
+        local key = a.MakeItemKey(id)
+        for i = 1, a.GetNumItemSearchResults(key) or 0 do
+            local r = a.GetItemSearchResultInfo(key, i)
+            if r and r.buyoutAmount and r.buyoutAmount > 0 then
+                local n = math.max(1, r.quantity or 1)
+                lots[#lots + 1] = { r.buyoutAmount, n }
+            end
+        end
+    end
+    table.sort(lots, function(x, y) return x[1] < y[1] end)
+    return lots
+end
+
+local nextSearch
+nextSearch = function()
+    local id = table.remove(scan.queue, 1)
+    scan.busy = id
+    if not id or not ns.atAH then
+        scan.busy, scan.queue = nil, {}
+        local after = scan.after
+        scan.after = nil
+        if after and ns.atAH then after() elseif ns.Refresh then ns.Refresh() end
+        return
+    end
+    local a = C_AuctionHouse
+    if not pcall(a.SendSearchQuery, a.MakeItemKey(id), {}, false) then
+        scan.done = scan.done + 1
+        return nextSearch()
+    end
+    C_Timer.After(SEARCH_WAIT, function()
+        if scan.busy == id then scan.done = scan.done + 1; nextSearch() end
+    end)
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- An answer from the auction house: COMMODITY_SEARCH_RESULTS_UPDATED (item id) or
+-- ITEM_SEARCH_RESULTS_UPDATED (item key).
+function ns.OnSearch(arg)
+    local id = scan.busy
+    if not id then return end
+    local got = type(arg) == "table" and arg.itemID or arg
+    if got ~= nil and got ~= id then return end -- the player's own search
+    ns.lots[id] = { t = time(), l = readLots(id) }
+    scan.done = scan.done + 1
+    C_Timer.After(SEARCH_GAP, function() if scan.busy == id then nextSearch() end end)
+end
+
+-- Searches each of ids in turn, then runs after().
+function ns.ScanLots(ids, after)
+    if not ns.atAH or not canSearch() or #ids == 0 then return 0 end
+    for _, id in ipairs(ids) do scan.queue[#scan.queue + 1] = id end
+    scan.n = scan.busy and scan.n + #ids or #ids
+    if not scan.busy then scan.done = 0 end
+    scan.after = after
+    if not scan.busy then nextSearch() end
+    return #ids
+end
+
+function ns.StopScan()
+    scan.queue, scan.busy, scan.after, scan.n, scan.done = {}, nil, nil, 0, 0
+end
+
+function ns.Scanning() return scan.busy ~= nil end
+
+live = function(kind, round)
+    if not ns.db.live or not ns.atAH or not canSearch() or round > LIVE_ROUNDS then return end
+    local plan = kind == "tokens" and ns.tokenPlan or ns.plan
+    local ids = {}
+    for _, line in ipairs(ns.ShoppingList(plan)) do
+        if ns.flat[line.id] and not ns.tried[line.id] then
+            ns.tried[line.id] = true
+            ids[#ids + 1] = line.id
+        end
+    end
+    ns.ScanLots(ids, function()
+        if ns.Busy() then return end
+        if kind == "tokens" then planTokens(round + 1) else planFill(round + 1) end
+    end)
 end
 
 -- ---------- buying at the auction house ----------
@@ -375,7 +759,8 @@ ns.CanBuy = canBuy
 function ns.ResetBuy()
     local b = ns.buy
     if b.phase == "ready" and A() and A().CancelCommoditiesPurchase then pcall(A().CancelCommoditiesPurchase) end
-    b.queue = ns.plan and ns.ShoppingList(ns.plan) or {}
+    local plan = ns.ActivePlan()
+    b.queue = plan and ns.ShoppingList(plan) or {}
     b.i, b.phase, b.quote, b.err, b.spent, b.bought = 1, "idle", nil, nil, 0, 0
     b.failed = {}
 end
@@ -466,9 +851,10 @@ end
 -- goes to Auctionator as a shopping list with the amounts.
 function ns.ExportList()
     local api = auctionator()
-    if not api or not api.CreateShoppingList or not ns.plan then return nil end
+    local plan = ns.ActivePlan()
+    if not api or not api.CreateShoppingList or not plan then return nil end
     local terms = {}
-    for _, line in ipairs(ns.ShoppingList(ns.plan)) do
+    for _, line in ipairs(ns.ShoppingList(plan)) do
         local name = itemName(line.id)
         if name then
             local term = { searchString = name, isExact = true, quantity = line.n }
@@ -664,26 +1050,29 @@ local function busy()
     local p = ns.buy.phase
     return p == "quote" or p == "ready" or p == "buying"
 end
+ns.Busy = busy
 
 -- Drops a plan that has nothing left to do: no crate in the bags, or all bought and the auction
 -- house closed.
 function ns.Tidy()
-    if not ns.plan or busy() then return end
+    if ns.source ~= "fill" or not ns.plan or busy() then return end
     if #ns.Crates() == 0 or (ns.buy.phase == "done" and not ns.atAH) then
         ns.plan = nil
         ns.ResetBuy()
     end
 end
 
--- The refresh button: looks at the bags again and plans anew, or clears the plan.
-function ns.Recheck()
+-- The refresh button: looks at the bags again and plans anew, or clears the plan. On the Favor
+-- tab (what = "tokens") it plans the goal anew.
+function ns.Recheck(what)
     if ns.buy.phase == "buying" then return end
     ns.notCrate = {}
     ns.ClearCache()
-    if #ns.Picks() > 0 then ns.Calculate()
+    if what == "tokens" then ns.TokenCalculate()
+    elseif #ns.Picks() > 0 then ns.Calculate()
     else
         ns.plan = nil
-        ns.ResetBuy()
+        if ns.source == "fill" then ns.ResetBuy() end
         if ns.Refresh then ns.Refresh() end
     end
 end
@@ -705,6 +1094,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         GulliCratesDB = GulliCratesDB or {}
         ns.db = GulliCratesDB
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+        ns.db.favor = nil -- 1.4.0 asked for it; the table knows it now
         ns.db.picked = ns.db.picked or {}
         ns.picked = ns.db.picked
         ns.db.history = ns.db.history or {}
@@ -712,6 +1102,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         listen(self, { "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
                        "PLAYER_ENTERING_WORLD",
                        "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
+                       "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED",
                        "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED" })
         nameIndex() -- asks the client for the bundle names early
         return
@@ -722,14 +1113,20 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.staleClosed = false -- the price warning shows again on each visit
         ns.ClearCache()
         -- what was bought on an earlier visit is in the bags now: plan anew, so it is not offered again
-        if #ns.Picks() > 0 and ns.buy.phase ~= "quote" and ns.buy.phase ~= "buying" then ns.Calculate() end
+        if ns.buy.phase ~= "quote" and ns.buy.phase ~= "buying" then
+            if ns.source == "tokens" and ns.tokenPlan then ns.TokenCalculate()
+            elseif #ns.Picks() > 0 then ns.Calculate() end
+        end
         if ns.db.auto and #ns.Crates() > 0 and ns.ShowAtAH then ns.ShowAtAH() end
         if ns.Refresh then ns.Refresh() end
     elseif event == "AUCTION_HOUSE_CLOSED" then
         ns.atAH = false
+        ns.StopScan()
         if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
         ns.Tidy()
         if ns.HideAtAH then ns.HideAtAH() end
+    elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_UPDATED" then
+        ns.OnSearch(a1)
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         ns.notCrate = {}
     elseif event == "PLAYER_ENTERING_WORLD" then
@@ -756,6 +1153,7 @@ function GulliCrates_Toggle() if ns.Toggle then ns.Toggle() end end
 ns.OPT_ICON = {
     auto = "Interface\\Minimap\\Tracking\\Auctioneer",
     bank = "Interface\\Minimap\\Tracking\\Banker",
+    live = "Interface\\Icons\\INV_Misc_Spyglass_03",
 }
 
 local function option(key)
@@ -771,7 +1169,7 @@ if GulliToolkit and GulliToolkit.Register then
         slash = "/gcr",
         open = function() if ns.Toggle then ns.Toggle() end end,
         window = function() return ns.Window and ns.Window() end,
-        options = { option("auto"), option("bank") },
+        options = { option("auto"), option("bank"), option("live") },
         pause = function(on)
             ns.paused = on
             if on and ns.HideAtAH then ns.HideAtAH(true) end
@@ -787,6 +1185,7 @@ if GulliToolkit and GulliToolkit.Register then
             if not ns.db then return end
             for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
             for k in pairs(ns.picked) do ns.picked[k] = nil end
+            if ns.tokenPlan and not busy() then ns.TokenCalculate() end
             if ns.Refresh then ns.Refresh() end
         end,
     })

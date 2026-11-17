@@ -30,11 +30,11 @@ local function makeRow(r)
     end, 1, 0, 9999, nil, 110)
     r.step:SetPoint("RIGHT", r.remove, "LEFT", -8, 0)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 1)
+    r.text:SetPoint("BOTTOMLEFT", r.icon, "RIGHT", 10, 1)
     r.text:SetPoint("RIGHT", r.step, "LEFT", -8, 0)
     r.text:SetWordWrap(false)
-    r.have = S.Text(r, 10, S.MUTED)
-    r.have:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 10, -2)
+    r.have = S.Text(r, 12, S.MUTED)
+    r.have:SetPoint("TOPLEFT", r.icon, "RIGHT", 10, -1)
     r.have:SetPoint("RIGHT", r.step, "LEFT", -8, 0)
     r.have:SetWordWrap(false)
 end
@@ -71,7 +71,7 @@ local function makeOffer(r)
         local v = self:GetParent().offer
         ns.Set(v.id, math.max(v.stack, ns.StepOf(v.id)))
     end)
-    r.price = S.Text(r, 11, S.MUTED)
+    r.price = S.Text(r, 12, S.MUTED)
     r.price:SetPoint("RIGHT", r.add, "LEFT", -8, 0)
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
@@ -213,6 +213,8 @@ local function build()
           icon = ns.OPT_ICON.deposit },
         { L.OPT_FORECAST, nil, function() return ns.db.forecast end, function(v) ns.db.forecast = v; ns.Refresh() end,
           icon = ns.OPT_ICON.forecast },
+        { L.OPT_LOWER, nil, function() return ns.db.lower end, function(v) ns.db.lower = v; ns.Refresh() end,
+          icon = ns.OPT_ICON.lower },
         { L.OPT_RESERVE, nil, control = reserve, icon = ns.OPT_ICON.reserve },
     })
     st:Add(scard, h)
@@ -270,11 +272,11 @@ local function makePlanRow(r)
     r.step.minus:SetScript("OnClick", function() ns.SetPurchases(r.entry, r.entry.purchases - 1); refreshPlan() end)
     r.step.plus:SetScript("OnClick", function() ns.SetPurchases(r.entry, r.entry.purchases + 1); refreshPlan() end)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 6, 1)
+    r.text:SetPoint("BOTTOMLEFT", r.icon, "RIGHT", 6, 1)
     r.text:SetPoint("RIGHT", r.step, "LEFT", -6, 0)
     r.text:SetWordWrap(false)
-    r.cost = S.Text(r, 10, S.MUTED)
-    r.cost:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 6, -2)
+    r.cost = S.Text(r, 12, S.MUTED)
+    r.cost:SetPoint("TOPLEFT", r.icon, "RIGHT", 6, -1)
     r.cost:SetPoint("RIGHT", r.step, "LEFT", -6, 0)
     r.cost:SetWordWrap(false)
 end

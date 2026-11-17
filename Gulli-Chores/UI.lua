@@ -414,7 +414,7 @@ local function buildOver(page)
     for k, col in ipairs(COLS) do
         local h = CreateFrame("Button", nil, card.body)
         h:SetHeight(18)
-        h.text = S.Text(h, 10, S.MUTED)
+        h.text = S.Text(h, 12, S.MUTED)
         h.text:SetWordWrap(false)
         if k == 1 then
             h:SetPoint("TOPLEFT", 6, 0)

@@ -49,6 +49,7 @@ T.en = {
     OPEN_VENDOR = "Open a vendor to see what it sells.",
     OPT_DEPOSIT = "Put the surplus into the bank",
     OPT_FORECAST = "Warn early when the stock runs out soon",
+    OPT_LOWER = "Also buy water, food and ammo one level lower",
     OPT_RESERVE = "Gold to keep when buying",
     HELP = "At a vendor a preview shows what would be bought; untick a line or change it, then Buy. Hold Shift when you open a vendor or the bank to skip it once. At the bank, Move takes what the bags miss out of the bank. Alt+click an item at a vendor to buy a stack or as many as fit.",
     FOOT_HINT = "/grs add <link> [n] and /grs set work too.",
@@ -70,6 +71,7 @@ T.en = {
     TIP_auto = "Buy at once, without the preview.",
     TIP_deposit = "At the bank, put the surplus in.",
     TIP_forecast = "Warn when the stock lasts less than two hours.",
+    TIP_lower = "Without it, only the newest water, food and ammo for your level are bought and counted.",
 }
 
 T.de = {
@@ -112,6 +114,7 @@ T.de = {
     OPEN_VENDOR = "Öffne einen Händler, um sein Angebot zu sehen.",
     OPT_DEPOSIT = "Überschuss in die Bank legen",
     OPT_FORECAST = "Früh warnen, wenn der Vorrat bald ausgeht",
+    OPT_LOWER = "Auch Wasser, Essen und Munition eine Stufe tiefer kaufen",
     OPT_RESERVE = "Gold behalten beim Kaufen",
     HELP = "Beim Händler zeigt eine Vorschau, was gekauft würde; Zeile abwählen oder ändern, dann Kaufen. Halte Shift beim Öffnen eines Händlers oder der Bank, um ihn einmal zu überspringen. In der Bank holt Bewegen, was den Taschen fehlt. Alt+Klick auf einen Händlerartikel kauft einen Stapel oder so viele, wie passen.",
     FOOT_HINT = "/grs add <Link> [n] und /grs set gehen auch.",
@@ -133,6 +136,7 @@ T.de = {
     TIP_auto = "Kauft sofort, ohne Vorschau.",
     TIP_deposit = "Legt den Überschuss in die Bank.",
     TIP_forecast = "Warnt, wenn der Vorrat unter zwei Stunden reicht.",
+    TIP_lower = "Sonst werden nur das neueste Wasser, Essen und Munition für deine Stufe gekauft und gezählt.",
 }
 
 T.es = {
@@ -175,6 +179,7 @@ T.es = {
     OPEN_VENDOR = "Abre un vendedor para ver lo que vende.",
     OPT_DEPOSIT = "Guardar el sobrante en el banco",
     OPT_FORECAST = "Avisar pronto si se acaba la reserva",
+    OPT_LOWER = "Comprar también agua, comida y munición de un nivel menos",
     OPT_RESERVE = "Oro que conservar al comprar",
     HELP = "En el vendedor una vista previa muestra lo que se compraría; desmarca o cambia una línea y pulsa Comprar. Mantén Shift al abrir un vendedor o el banco para saltarlo una vez. En el banco, Mover saca lo que falta en las bolsas. Alt+clic en un objeto del vendedor compra una pila o todo lo que quepa.",
     FOOT_HINT = "/grs add <enlace> [n] y /grs set también sirven.",
@@ -196,6 +201,7 @@ T.es = {
     TIP_auto = "Compra al instante, sin vista previa.",
     TIP_deposit = "Deja el sobrante en el banco.",
     TIP_forecast = "Avisa si dura menos de dos horas.",
+    TIP_lower = "Si no, solo se compran y cuentan el agua, la comida y la munición más nuevas para tu nivel.",
 }
 
 T.fr = {
@@ -238,6 +244,7 @@ T.fr = {
     OPEN_VENDOR = "Ouvrez un marchand pour voir ce qu'il vend.",
     OPT_DEPOSIT = "Déposer le surplus à la banque",
     OPT_FORECAST = "Prévenir tôt quand le stock s'épuise",
+    OPT_LOWER = "Acheter aussi l'eau, la nourriture et les munitions d'un niveau en dessous",
     OPT_RESERVE = "Or à garder en achetant",
     HELP = "Chez un marchand, un aperçu montre ce qui serait acheté ; décochez ou modifiez une ligne, puis Acheter. Maintenez Maj en ouvrant un marchand ou la banque pour le passer une fois. À la banque, Déplacer sort ce qui manque aux sacs. Alt+clic sur un objet du marchand achète une pile ou autant que possible.",
     FOOT_HINT = "/grs add <lien> [n] et /grs set marchent aussi.",
@@ -259,6 +266,7 @@ T.fr = {
     TIP_auto = "Achète tout de suite, sans aperçu.",
     TIP_deposit = "Dépose le surplus à la banque.",
     TIP_forecast = "Avertit si le stock dure moins de deux heures.",
+    TIP_lower = "Sinon, seules l'eau, la nourriture et les munitions les plus récentes pour ton niveau sont achetées et comptées.",
 }
 
 T.pl = {
@@ -301,6 +309,7 @@ T.pl = {
     OPEN_VENDOR = "Otwórz handlarza, aby zobaczyć ofertę.",
     OPT_DEPOSIT = "Odkładaj nadmiar do banku",
     OPT_FORECAST = "Ostrzegaj wcześniej, gdy zapas się kończy",
+    OPT_LOWER = "Kupuj też wodę, jedzenie i amunicję o poziom niżej",
     OPT_RESERVE = "Złoto do zachowania przy zakupach",
     HELP = "U handlarza podgląd pokazuje, co zostanie kupione; odznacz lub zmień wiersz i kliknij Kup. Przytrzymaj Shift przy otwieraniu handlarza lub banku, by raz pominąć. W banku Przenieś bierze z banku to, czego brakuje w torbach. Alt+klik na towar handlarza kupuje stos lub tyle, ile się zmieści.",
     FOOT_HINT = "Działa też /grs add <link> [n] i /grs set.",
@@ -322,6 +331,7 @@ T.pl = {
     TIP_auto = "Kupuje od razu, bez podglądu.",
     TIP_deposit = "Odkłada nadwyżkę do banku.",
     TIP_forecast = "Ostrzega, gdy zapas starczy na mniej niż dwie godziny.",
+    TIP_lower = "Inaczej kupowane i liczone są tylko najnowsze woda, jedzenie i amunicja dla twojego poziomu.",
 }
 
 T.pt = {
@@ -364,6 +374,7 @@ T.pt = {
     OPEN_VENDOR = "Abra um vendedor para ver o que vende.",
     OPT_DEPOSIT = "Guardar o excesso no banco",
     OPT_FORECAST = "Avisar cedo quando o estoque acabar",
+    OPT_LOWER = "Comprar também água, comida e munição um nível abaixo",
     OPT_RESERVE = "Ouro a manter ao comprar",
     HELP = "No vendedor uma prévia mostra o que seria comprado; desmarque ou mude uma linha e Compre. Segure Shift ao abrir um vendedor ou o banco para pular uma vez. No banco, Mover tira do banco o que falta nas bolsas. Alt+clique num item do vendedor compra uma pilha ou o máximo que couber.",
     FOOT_HINT = "/grs add <link> [n] e /grs set também funcionam.",
@@ -385,6 +396,7 @@ T.pt = {
     TIP_auto = "Compra na hora, sem prévia.",
     TIP_deposit = "Deposita o excedente no banco.",
     TIP_forecast = "Avisa se durar menos de duas horas.",
+    TIP_lower = "Senão, só a água, a comida e a munição mais novas para o seu nível são compradas e contadas.",
 }
 
 T.ru = {
@@ -427,6 +439,7 @@ T.ru = {
     OPEN_VENDOR = "Откройте торговца, чтобы увидеть товары.",
     OPT_DEPOSIT = "Сдавать излишки в банк",
     OPT_FORECAST = "Предупреждать заранее, когда запас кончается",
+    OPT_LOWER = "Покупать воду, еду и патроны на уровень ниже",
     OPT_RESERVE = "Не тратить последнее золото",
     HELP = "У торговца превью показывает, что будет куплено: снимите галочку или измените строку, потом «Купить». Удерживайте Shift при открытии торговца или банка, чтобы пропустить его один раз. В банке «Переложить» достаёт из банка то, чего не хватает в сумках. Alt+клик по товару торговца — купить пачку или сколько влезет.",
     FOOT_HINT = "Работают и /grs add <ссылка> [n], /grs set.",
@@ -448,6 +461,7 @@ T.ru = {
     TIP_auto = "Покупать сразу, без предпросмотра.",
     TIP_deposit = "Излишки класть в банк.",
     TIP_forecast = "Предупреждать, если запаса меньше чем на два часа.",
+    TIP_lower = "Без этого покупаются и считаются только самые новые вода, еда и патроны для вашего уровня.",
 }
 
 T.zh = {
@@ -490,6 +504,7 @@ T.zh = {
     OPEN_VENDOR = "打开商人即可查看其商品。",
     OPT_DEPOSIT = "把多余的存入银行",
     OPT_FORECAST = "库存快用完时提前提醒",
+    OPT_LOWER = "也购买低一级的水、食物和弹药",
     OPT_RESERVE = "购买时保留的金币",
     HELP = "在商人处，预览会显示将要购买的物品；取消勾选或修改某行后点购买。打开商人或银行时按住 Shift 可跳过一次。在银行，移动会从银行取出背包缺少的物品。在商人物品上 Alt+点击可购买一组或能装下的最大数量。",
     FOOT_HINT = "也可以用 /grs add <链接> [n] 和 /grs set。",
@@ -511,6 +526,7 @@ T.zh = {
     TIP_auto = "直接购买,不预览。",
     TIP_deposit = "在银行存入多余的。",
     TIP_forecast = "库存不足两小时时提醒。",
+    TIP_lower = "关闭时只购买并计算适合你等级的最新的水、食物和弹药。",
 }
 
 ns.T = T

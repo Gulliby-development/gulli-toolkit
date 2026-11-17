@@ -18,17 +18,17 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 
 ## Features
 
-- **Phrases on big buttons.** "inv please", "Ready!", "brb", "Thanks for the group!", "WTS {item}" and more, in tabs: Group, Trade, Social and your own. Change them or add your own.
-- **Where it goes.** Group, Say, Party, Guild, a whisper to your target, or a whisper to the group leader. Each phrase can keep its own channel.
-- **Phrase wheel.** Pick a key (or a gamepad button) in **Setup**. A ring of your favourite phrases opens at the mouse, each with its own picture. Point at one and click (or press the key again, or 1-8) to send it; the middle shows what it says and where it goes.
+- **One ring of phrases.** Hold your key (or a gamepad button): a ring of up to eight phrases opens at the mouse. Point at one and let go of the key, or click, to send it. The middle shows what it says and where it goes. The game does not let an addon write to say and yell outside a dungeon, or to channels such as Trade, so for them the phrase opens in the chat box with its channel set: press Enter to send it. Raid, party, guild and whispers go out at once.
 
-  <img src="wheel.png" alt="The phrase wheel" width="320">
-- **Favourites panel.** A small panel of your favourite phrases on the screen. `/gulli move` places it.
-- **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader}, {item} (the last item you linked) and {quest}.
-- **Find a group.** From a quest, or for a WoW Forever dungeon (the ones near your level first): "LFM 2 for Stratholme, need healer". Or look for a group yourself: "LFG Stratholme, healer, level 58". After two minutes it reminds you to post again. Gulli Bulletin's **My LFM** opens this page.
-- **Whispers.** Whispers that came while you fought or were away are kept, with **Reply**, a ready phrase as the answer, and **Busy**. A sound when one comes, and an optional busy auto-reply (once per player every few minutes). A history of whispers by player.
-- **More.** Emotes and raid marks on buttons, and the last messages you sent with **Again**.
+  <img src="wheel.png" alt="The phrase ring" width="320">
+- **Set up the ring by hand.** The **Phrases** page shows the ring on the left and all phrases on the right. Click a phrase, then a place on the ring, or drag it there. A right-click empties a place.
+- **Your own phrases.** Type one in **Your phrase...** and press **Add**. "inv please", "Ready!", "brb", "Need a heal!", "WTS {item}" and more are there from the start. The **x** on a row removes the phrase. **Reset ring** puts the starting phrases back on the ring and keeps yours.
+- **Where it goes.** In **Setup**, put the channels in your order: raid, party, guild, say, yell, LookingForGroup, Trade, General, whisper. A phrase goes to the first one you can write in now. Each row shows where its phrase goes: **As in Setup** uses that order, a channel name in blue means the phrase has its own order. Click it to change it.
+- **Favourites panel.** A small panel on the screen with the phrases you marked with the star (or the ring's). Pick how many buttons, the size, a row or a column, and lock it. `/gulli move` places it.
+- **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader} and {item} (the last item you linked).
 - **No double posts.** Two taps on the same phrase send it once.
+
+The busy auto-reply is now in Gulli Social.
 
 ## Install
 
@@ -39,9 +39,9 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 ## How to use it
 
 1. Type `/gqk`, or open it from `/gulli`.
-2. Tap a phrase to send it.
-3. In **Find group**, pick a quest or a dungeon and tap **Post in LookingForGroup**.
-4. In **Setup**, set a key for the wheel. `/gqk wheel` opens it too.
+2. In **Setup**, pick the wheel key and the order of the channels.
+3. On **Phrases**, put the phrases you want on the ring.
+4. In the game, hold the key, point at a phrase and let go. `/gqk wheel` opens the ring too.
 
 ## FAQ
 
@@ -49,12 +49,6 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 <summary><b>Why can it not post on its own?</b></summary>
 
 The game lets an addon write in public channels only right after a tap. That is why every message needs your tap.
-</details>
-
-<details>
-<summary><b>Does it work with a gamepad keyboard?</b></summary>
-
-**Type...** opens the chat box. ConsolePort and other gamepad keyboards open with it when they are installed.
 </details>
 
 <details>
