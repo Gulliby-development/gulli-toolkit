@@ -4,8 +4,8 @@
   "toolkit": { "id": null, "slug": null },
   "separate": {
     "CraftProfit": { "id": null },
-    "Legacy": { "id": null },
+    "Crates": { "id": null },
     "DungeonPrep": { "id": null },
-    "QuestCleaner": { "id": null }
+    "GroupBuffs": { "id": null }
   }
 }
