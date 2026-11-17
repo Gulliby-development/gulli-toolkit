@@ -9,7 +9,7 @@ local L = ns.L
 local S = ns.Skin
 
 local frame, list, tabs, search, entranceBtn, settings, questPage, listCard
-local detail, head, filterRow, guideBtn, bossPage, lootPage
+local detail, head, filterRow, guideBtn, mainSwitch, bossPage, lootPage
 local grid, areaFrame, homeBtn
 local filters, lootFilters = {}, {}
 local counts = {}
@@ -820,6 +820,10 @@ function ns.Refresh()
         x = x + b:GetWidth() + 6
         b:SetSelected((ns.filter or "all") == f[1])
     end
+    mainSwitch:SetShown(ns.MainSet(ns.selected) ~= nil)
+    mainSwitch:ClearAllPoints()
+    mainSwitch:SetPoint("LEFT", filterRow, "LEFT", x + 6, 0)
+    mainSwitch:SetChecked(ns.Get("mainOnly"))
     local guiding = ns.guide ~= nil and ns.guide.key == ns.selected
     fitIcon(guideBtn, guiding and L.GUIDE_STOP or L.GUIDE, 90)
     guideBtn:SetEnabled(guiding or c.take > 0)
@@ -1397,6 +1401,13 @@ local function buildQuestPage(parent)
         b:SetScript("OnClick", function() ns.filter = f[1]; ns.Refresh() end)
         filters[f[1]] = b
     end
+    -- Only the levelling chains (D.main), or every quest that touches the dungeon.
+    mainSwitch = S.SwitchLabel(filterRow, L.F_MAIN, function() return ns.Get("mainOnly") end,
+                               function(v) ns.Set("mainOnly", v) end, 110)
+    mainSwitch:HookScript("OnEnter", function(self)
+        if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L.OPT_MAIN_D, 1, 1, 1, true); GameTooltip:Show() end
+    end)
+    mainSwitch:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     guideBtn = iconButton(filterRow, ACT_ICON.track, 28)
     guideBtn:SetPoint("RIGHT")
     guideBtn:SetScript("OnClick", function()
