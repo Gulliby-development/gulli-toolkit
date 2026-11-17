@@ -105,7 +105,7 @@ local function makeZoneRow()
     r.text:SetPoint("LEFT", r.check, "RIGHT", 2, 0)
     r.text:SetPoint("RIGHT", -40, 0)
     r.text:SetWordWrap(false)
-    r.count = S.Text(r, 11, S.MUTED)
+    r.count = S.Text(r, 12, S.MUTED)
     r.count:SetPoint("RIGHT", -6, 0)
     r.count:SetJustifyH("RIGHT")
     return r
@@ -139,7 +139,7 @@ local function makeItemRow()
     r.text:SetPoint("TOPLEFT", frameIcon, "TOPRIGHT", 6, 1)
     r.text:SetPoint("RIGHT", -4, 0)
     r.text:SetWordWrap(false)
-    r.sub = S.Text(r, 10, S.MUTED)
+    r.sub = S.Text(r, 12, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -3)
     r.sub:SetPoint("RIGHT", -4, 0)
     r.sub:SetWordWrap(false)
@@ -238,7 +238,6 @@ refresh = function()
 
     local y = 0
     local questRow, itemRow = {}, {}
-    local accent = S.Accent()
     for _, zone in ipairs(ns.Zones(plan.quests)) do
         band(y, ZONE_H, { 1, 1, 1, 0.06 })
         local z = take("zone", makeZoneRow)
@@ -248,7 +247,7 @@ refresh = function()
         local on = 0
         for _, q in ipairs(zone.quests) do if q.checked then on = on + 1 end end
         z.check:SetChecked(on == #zone.quests or (on > 0 and "some"))
-        z.text:SetText(S.Hex(accent) .. (zone.name ~= "" and zone.name or "?") .. "|r")
+        z.text:SetText(S.Hex(S.GOLD) .. (zone.name ~= "" and zone.name or "?") .. "|r")
         z.count:SetText(on .. "/" .. #zone.quests)
         focusList[#focusList + 1] = z
         y = y + ZONE_H + 2
@@ -300,8 +299,8 @@ refresh = function()
     local nq, ni = 0, 0
     for _, q in ipairs(plan.quests) do if q.checked then nq = nq + 1 end end
     for _, it in ipairs(plan.items) do if ns.ItemGoes(it) then ni = ni + 1 end end
-    questHead:SetText(L.QUESTS_N:format(nq, #plan.quests))
-    itemHead:SetText(L.ITEMS_N:format(ni, #plan.items))
+    questHead:SetText(S.Upper(L.QUESTS_N:format(nq, #plan.quests)))
+    itemHead:SetText(S.Upper(L.ITEMS_N:format(ni, #plan.items)))
     summary:SetText(L.SUMMARY:format(nq, ni))
     local inLog, freeNow = #ns.Quests(), ns.FreeSlots()
     frees:SetText(L.FREES:format(inLog, inLog - nq, ns.MaxQuests(), freeNow, freeNow + ni))
@@ -533,7 +532,7 @@ local function build()
     preview:SetAllPoints()
     preview:Hide()
 
-    frees = S.Text(preview, 11, S.MUTED)
+    frees = S.Text(preview, 12, S.MUTED)
     frees:SetPoint("BOTTOMLEFT", 0, 0)
     frees:SetPoint("RIGHT", 0, 0)
     frees:SetWordWrap(false)
@@ -547,10 +546,9 @@ local function build()
     card:SetPoint("TOPRIGHT")
     card:SetPoint("BOTTOM", summary, "TOP", 0, S.GAP)
     local cb = card.body
-    local accent = S.Accent()
-    questHead = S.Text(cb, 13, accent)
+    questHead = S.Text(cb, 12, S.GOLD_DIM, nil, "bold")
     questHead:SetPoint("TOPLEFT", 4, 0)
-    itemHead = S.Text(cb, 13, accent)
+    itemHead = S.Text(cb, 12, S.GOLD_DIM, nil, "bold")
     itemHead:SetPoint("TOPLEFT", 4 + LEFT_W + GAP, 0)
     local rule = S.Divider(cb, S.EDGE)
     rule:SetPoint("TOPLEFT", 0, -24)
