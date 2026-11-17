@@ -8,7 +8,7 @@ local S = ns.Skin
 
 local panel, frame, tabs, tiles, targetCard, lootList, lootEmpty, targetEmpty
 local pages, targetRows, steppers = {}, {}, {}
-local PANEL_W, HEAD_H, ROW_H = 230, 26, 40
+local PANEL_W, HEAD_H, ROW_H = 230, 26, 46
 ns.PANEL_POINT = { "RIGHT", "RIGHT", -40, 120 }
 
 local function amount(kind, n, colored)
@@ -45,21 +45,21 @@ local function panelRow(i)
     r:SetPoint("TOPLEFT", 6, -HEAD_H - (i - 1) * ROW_H)
     r:SetPoint("TOPRIGHT", -8, -HEAD_H - (i - 1) * ROW_H)
     r.icon = S.IconBox(r, 24)
-    r.icon:SetPoint("LEFT", 2, 1)
+    r.icon:SetPoint("LEFT", 2, 2)
     r.value = S.Text(r, 12, S.TEXT, "OUTLINE")
-    r.value:SetPoint("TOPRIGHT", 0, -4)
+    r.value:SetPoint("TOPRIGHT", 0, -3)
     r.value:SetJustifyH("RIGHT")
     r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, -1)
+    r.name:SetPoint("TOPLEFT", 34, -3)
     r.name:SetPoint("RIGHT", r.value, "LEFT", -6, 0)
     r.name:SetWordWrap(false)
-    r.pace = S.Text(r, 10, S.MUTED)
-    r.pace:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
+    r.pace = S.Text(r, 12, S.MUTED)
+    r.pace:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -2)
     r.pace:SetPoint("RIGHT", 0, 0)
     r.pace:SetWordWrap(false)
     r.bar = S.Progress(r, 3)
-    r.bar:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -4)
-    r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
+    r.bar:SetPoint("BOTTOMLEFT", 34, 2)
+    r.bar:SetPoint("BOTTOMRIGHT", 0, 2)
     r.bar:SetWidth(PANEL_W - 54)
     return r
 end
@@ -76,7 +76,7 @@ local function buildPanel()
     panel.title = S.Text(panel, 12)
     panel.title:SetPoint("LEFT", panel.ico, "RIGHT", 6, 0)
     panel.title:SetText(L.PANEL_TITLE)
-    panel.time = S.Text(panel, 11, S.TIME)
+    panel.time = S.Text(panel, 12, S.TIME)
     panel.time:SetPoint("TOPRIGHT", -8, -7)
     panel.time:SetJustifyH("RIGHT")
     local line = S.Divider(panel)
@@ -85,7 +85,7 @@ local function buildPanel()
     line:SetHeight(1)
     panel.rows = {}
     for i = 1, ns.MAX_TARGETS do panel.rows[i] = panelRow(i) end
-    panel.empty = S.Text(panel, 11, S.FAINT)
+    panel.empty = S.Text(panel, 12, S.FAINT)
     panel.empty:SetPoint("TOPLEFT", 10, -HEAD_H - 12)
     panel.empty:SetPoint("RIGHT", -10, 0)
     panel.empty:SetText(L.PANEL_EMPTY)
@@ -186,7 +186,7 @@ local function targetRow(parent, k)
     r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 0)
     r.name:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
     r.name:SetWordWrap(false)
-    r.pace = S.Text(r, 11, S.MUTED)
+    r.pace = S.Text(r, 12, S.MUTED)
     r.pace:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
     r.pace:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
     r.pace:SetWordWrap(false)
@@ -257,15 +257,17 @@ local function farmPage(body, width)
     return p
 end
 
-local function settingsPage(body)
-    local p = CreateFrame("Frame", nil, body)
+local function settingsPage(body, width)
+    local page = S.ScrollPage(body, width)
+    local p = page.inner
+    local st = S.Stack(p)
     local function pct(v) return v .. "%" end
     local alpha = S.Stepper(p, function() return ns.db.alpha end, function(v) ns.SetPref("alpha", v) end, 10, 30, 100, pct)
     local scale = S.Stepper(p, function() return ns.db.scale end, function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
     steppers = { alpha, scale }
     local place = S.FitButton(p, L.PLACE_RESET, 28, 100)
     place:SetScript("OnClick", function() ns.db.point = nil; ns.Place() end)
-    local card = S.SettingsCard(p, L.SEC_PANEL, {
+    local card, h = S.SettingsCard(p, L.SEC_PANEL, {
         { L.OPT_PANEL, L.OPT_PANEL_TIP, function() return ns.db.panel end, function(v) ns.SetPref("panel", v) end,
           icon = ns.OPT_ICON.panel },
         { L.OPT_LOCK, L.OPT_LOCK_D, function() return ns.db.locked end, function(v) ns.SetPref("locked", v) end,
@@ -274,17 +276,16 @@ local function settingsPage(body)
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
         { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
     })
-    card:SetPoint("TOPLEFT")
-    card:SetPoint("TOPRIGHT")
-    local count = S.SettingsCard(p, L.SEC_COUNT, {
+    st:Add(card, h)
+    local count, ch = S.SettingsCard(p, L.SEC_COUNT, {
         { L.OPT_SALES, L.OPT_SALES_TIP, function() return ns.db.sales end, function(v) ns.SetPref("sales", v) end,
           icon = ns.OPT_ICON.sales },
         { L.OPT_ALERT, L.OPT_ALERT_TIP, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
           icon = ns.OPT_ICON.alert },
     })
-    count:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -S.GAP)
-    count:SetPoint("TOPRIGHT", card, "BOTTOMRIGHT", 0, -S.GAP)
-    return p
+    st:Add(count, ch)
+    page:SetContent(st:Height())
+    return page
 end
 
 -- The rows of the loot list: gold first, then the items, the most first.
@@ -357,8 +358,6 @@ local function build()
     tiles:Layout(width)
     tabs = S.PageTabs(body, { L.TAB_FARM, L.TAB_SETTINGS }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
-        -- The settings take the footer's height; New session belongs to the farm page.
-        frame.footer:SetShown(i == 1)
         for _, x in ipairs(steppers) do x:Refresh() end
         ns.Refresh()
     end, nil, { S.TAB.list, S.TAB.settings })
@@ -366,7 +365,7 @@ local function build()
     tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
     st:Space(30 + S.GAP)
     pages[1] = farmPage(body, width)
-    pages[2] = settingsPage(body)
+    pages[2] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -st.y)
         p:SetPoint("BOTTOMRIGHT")
