@@ -107,9 +107,10 @@ S.CLEAR = { 0, 0, 0, 0 }
 -- The game's own gold (NORMAL_FONT_COLOR): names and titles. GOLD_DIM: section labels.
 S.GOLD = { 1, 0.82, 0, 1 }
 S.GOLD_DIM = { 0.788, 0.651, 0.275, 1 }
--- The accent fill: the main button, a switch that is on, the chosen row (at 0.34).
-S.FILL = { 0.114, 0.463, 0.722, 1 }
-S.FILL_EDGE = { 0.337, 0.702, 0.918, 1 }
+-- The accent fill: the main button, a switch that is on, the chosen row (at 0.34). A muted
+-- bronze in tone with the brown, so what can be clicked stands out without shouting.
+S.FILL = { 0.416, 0.318, 0.180, 1 }
+S.FILL_EDGE = { 0.643, 0.514, 0.310, 1 }
 S.DANGER_FILL = { 0.557, 0.133, 0.094, 1 }
 S.DANGER_EDGE = { 0.851, 0.345, 0.298, 1 }
 -- The thin dark gold ring around round icons, and the off state of a switch.
@@ -151,9 +152,9 @@ S.R_SM, S.R_MD, S.R_LG, S.R_XL = 3, 4, 4, 6
 -- The ring around round icons (the name stays from the blue glow of Gulli Glass).
 S.GLOW = S.RING
 
--- The accent: the light game blue of links and the chosen thing.
+-- The accent text: a light warm parchment for links and the chosen thing.
 function S.Accent()
-    return { 0.424, 0.812, 1, 1 }
+    return { 0.937, 0.808, 0.588, 1 }
 end
 
 -- Scale. At a small UI scale one unit is one pixel and text came out tiny, so windows and
@@ -426,10 +427,21 @@ end
 
 -- Glass ---------------------------------------------------------------------------------------
 
--- Gulli Glass drew a sheen and an accent light here. Gulli Hearth is dense and flat, so this
--- draws nothing; it stays so older calls keep working.
-function S.Glass(f)
+-- The paper of Gulli Hearth: a faint warm grain over a window, card, tile or HUD panel
+-- (Media/Grain, drawn by tools/skin/hearth_art.py), kept clear of the rounded corners. The name
+-- stays from Gulli Glass, so every older call draws it.
+S.GRAIN = MEDIA .. "Grain"
+S.GRAIN_ALPHA = 0.07
+function S.Glass(f, r)
     local g = {}
+    local t = f:CreateTexture(nil, "BACKGROUND", nil, -6)
+    t:SetTexture(S.GRAIN, "REPEAT", "REPEAT")
+    if t.SetHorizTile then t:SetHorizTile(true); t:SetVertTile(true) end
+    local i = math.max(1, tonumber(r) or 0)
+    t:SetPoint("TOPLEFT", i, -i)
+    t:SetPoint("BOTTOMRIGHT", -i, i)
+    t:SetVertexColor(1, 0.86, 0.66, S.GRAIN_ALPHA)
+    g[1] = t
     rawset(f, "glass", g)
     return g
 end

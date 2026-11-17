@@ -115,6 +115,37 @@ local function lootLine(npc, bossName, item, quality, pct, seen)
     return line
 end
 
+-- The Encounter Journal's round boss pictures of a classic dungeon (ns.ART), read once: creature
+-- display id -> icon, and the creature's name -> icon for a boss the data gives another display.
+local bossIcons = {}
+function ns.BossIcons(key)
+    if bossIcons[key] then return bossIcons[key] end
+    local map, a = {}, ns.ART and ns.ART[key]
+    if a and EJ_GetEncounterInfoByIndex and EJ_GetCreatureInfo then
+        for i = 1, 40 do
+            local ok, _, _, encounter = pcall(EJ_GetEncounterInfoByIndex, i, a[1])
+            if not ok or not encounter then break end
+            for j = 1, 8 do
+                local fine, _, name, _, display, icon = pcall(EJ_GetCreatureInfo, j, encounter)
+                if not fine or not name then break end
+                if icon and icon ~= 0 and icon ~= "" then
+                    if display and display ~= 0 then map[display] = map[display] or icon end
+                    map[name] = map[name] or icon
+                end
+            end
+        end
+    end
+    bossIcons[key] = map
+    return map
+end
+
+-- A boss's picture: the journal's when it has one, else nil (the window then draws the
+-- creature's portrait or its number).
+function ns.BossIcon(key, b)
+    local map = ns.BossIcons(key)
+    return map[b.display] or map[b.name]
+end
+
 -- A dungeon's bosses (then its rares) with their loot, best chance first:
 -- { npc, name, tag, min, max, display, rare, spells = { {id, name, icon} }, kills, loot = {...} }.
 function ns.Bosses(key)

@@ -538,7 +538,10 @@ local function texHtml(t, rect, prect)
         elseif tc[1] >= 0.5 and tc[3] >= 0.5 then side = "bottom-right" end
         local rad = side and ("border-" .. side .. "-radius:100%;") or "border-radius:50%;"
         local blend = t.__blend == "ADD" and "mix-blend-mode:screen;" or ""
-        if media == "Sheen" then
+        if media == "Grain" then
+            -- the paper grain is too faint to matter in a preview
+            return ""
+        elseif media == "Sheen" then
             return string.format('<div class="tx" style="%s%sbackground:linear-gradient(180deg,%s,transparent)"></div>',
                 box(rect, prect), blend, css(c))
         elseif media == "Radial" then
@@ -555,6 +558,10 @@ local function texHtml(t, rect, prect)
         else
             return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), rad, css(c))
         end
+    end
+    if tostring(tex):find("\\Art\\Mark$") then
+        return string.format('<div class="tx" style="%sbackground-image:url(\'file://' .. (os.getenv("PWD") or ".") .. '/docs/toolkit/icon.png\');background-size:100%% 100%%;filter:grayscale(1) sepia(1);opacity:%.3f"></div>',
+            box(rect, prect), c[4] or 1)
     end
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
         return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), round, css(c))
