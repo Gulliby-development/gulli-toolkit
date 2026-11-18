@@ -108,6 +108,11 @@ ATT_FILES = {
     "ALCAZ": "alcaz prison", "BLACKMAW": "blackmaw hold", "SHAPERS": "the shaper's terrace",
 }
 FOREVER_QUESTS = 90000
+# Quests the levelling guides leave out on purpose that still count as a chain for the dungeon
+# (owner's decision, each one by name): they join D.main.
+MAIN_EXTRA = {
+    "MARA": [93404],  # Rot and Regret, the Maraudon step of the Shen'dralas chain
+}
 
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
 # the levels): the quest chains a player takes for it while levelling, for each faction.
@@ -481,7 +486,8 @@ def main(root, att_root=None, gdq_root=None):
     lines.append("-- Dungeon -> the quests of its levelling chains (from Guidelime_DungeonQuests, GPLv3).")
     lines.append("D.main = {")
     for key, *_ in DUNGEONS:
-        ids = sorted(q for q in by_dungeon[key] if q in guide_quests.get(key, ()))
+        ids = sorted(q for q in by_dungeon[key]
+                     if q in guide_quests.get(key, ()) or q in MAIN_EXTRA.get(key, ()))
         if ids:
             lines.append("%s=%s," % (key, lua_list(ids)))
     lines.append("}")
