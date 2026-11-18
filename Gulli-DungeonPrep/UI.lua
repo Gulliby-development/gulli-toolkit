@@ -1276,7 +1276,10 @@ local function buildDetail(parent)
     info:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
     info:SetPoint("BOTTOMLEFT", foot, "TOPLEFT", 0, S.GAP)
     info:SetPoint("RIGHT", d, "CENTER", 20, 0)
-    local b = info.body
+    -- A long objective, a chain note and many rewards outgrow the card: its body scrolls.
+    d.infoPage = S.ScrollPage(info.body, 380)
+    d.infoPage:SetAllPoints()
+    local b = d.infoPage.inner
     d.infoBody = b
     d.objLabel = label(b, L.DETAIL_OBJECTIVE)
     d.objLabel:SetPoint("TOPLEFT")
@@ -1422,6 +1425,9 @@ function ns.FillDetail(level)
     if SIDE_ICON[q.side] then d.side:SetIcon(SIDE_ICON[q.side]) end
 
     local objs, last = q.objectives, nil
+    -- The height of the left column, added up as it is laid out, for its scroll.
+    local LABEL, LINE = 15, 15
+    local height = LABEL
     for i, r in ipairs(d.objRows) do
         local o = objs[i]
         local shown = o ~= nil or (i == 1)
@@ -1454,6 +1460,7 @@ function ns.FillDetail(level)
                 r.text:SetMaxLines(lines)
             end
             r.text:SetHeight(lines * 15)
+            height = height + 6 + lines * LINE
             last = r
         end
     end
@@ -1486,6 +1493,9 @@ function ns.FillDetail(level)
     else
         d.need:SetText("")
     end
+    -- start and turn-in: label, place, map button
+    height = height + 2 * (10 + LABEL + 5 + LINE + 4 + 28)
+    if d.need:GetText() ~= "" then height = height + 10 + LINE end
     d.rewLabel:ClearAllPoints()
     d.rewLabel:SetPoint("TOP", d.need:GetText() ~= "" and d.need or d.turninMap, "BOTTOM", 0, -12)
     d.rewLabel:SetPoint("LEFT", d.objLabel, "LEFT")
@@ -1513,6 +1523,14 @@ function ns.FillDetail(level)
     d.rewLabel:SetText(#rewards > 0 and L.DETAIL_REWARDS or "")
     d.mobLabel:SetText(q.targets and #q.targets > 0 and L.DETAIL_MOBS or "")
     d.mobs:SetText(q.targets and table.concat(q.targets, ", ") or "")
+    local shownRew = math.min(#rewards, #d.rewards)
+    height = height + 12 + LABEL + (shownRew > 0 and (6 + shownRew * 26) or 0) + 12 + LABEL + 4 + LINE
+    d.infoPage:SetContent(height + 8)
+    if d.shownId ~= q.id then
+        d.shownId = q.id
+        local bar = d.infoPage.scroll.bar
+        if bar then bar:SetValue(0) end
+    end
 
     d.chainCard:SetTitle(L.DETAIL_CHAIN, #q.chain > 0 and tostring(#q.chain) or "")
     d.chain:SetData(#q.chain > 0 and q.chain or { { n = 1, name = q.name, this = true, id = q.id, level = q.level,
