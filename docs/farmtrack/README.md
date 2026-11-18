@@ -27,7 +27,7 @@ You go out to farm Mageweave, Mithril or gold. Farm Tracker counts what comes in
 - **Goal reached.** A notice and a sound tell you, once. A switch turns it off. The toolkit's **Recent** list keeps it.
 - **One session.** A `/reload` keeps the count. Logging in again, or **New session**, starts from zero. Your targets and goals stay.
 - **Breaks do not count.** A long break between loots counts as 10 minutes at most, so the rate stays honest.
-- **Move it.** The panel starts hidden. Turn it on and drag it in **Frames on screen** in `/gulli` (`/gulli unlock`); a right-click there puts it back. Opacity and size are settings in the window.
+- **Move it.** The panel starts hidden. Turn it on and drag it in **Unlock frames** in `/gulli` (`/gulli unlock`); a right-click there puts it back. Opacity and size are settings in the window.
 
 ## Install
 

@@ -122,7 +122,9 @@ end
 -- { { label = "Sell gray items", get = function() return db.sell end, set = function(on) ... end,
 --     icon = "Interface\\Icons\\INV_Misc_Coin_02", tip = "Sells gray items at a vendor." } }
 -- (icon and tip optional). More optional fields: window (see AGENTS.md), summary = function()
--- return text[, icon] end (one short line for the hub's home page), move = function(on) end
+-- return text[, icon[, stat]] end (one short line for the hub's home page; stat is an optional
+-- table for its tile, see ns.TileOf), session = function() return { ... } end (the graph of the
+-- home page's session card, see ns.Session), move = function(on) end
 -- (show or hide the module's frames with their movers for the hub's Unlock mode; a frame that
 -- is off shows too, so it can be placed), frames = { { key, label, icon, get, set } } (the
 -- frames the Unlock mode lists, see ns.Frames) and reset = function() end (back to the defaults).
@@ -541,11 +543,128 @@ function ns.Summaries(rows)
     for _, r in ipairs(rows or ns.List()) do
         local fn = not r.paused and r.info and r.info.summary
         if type(fn) == "function" then
-            local ok, text, icon = pcall(fn)
+            local ok, text, icon, stat = pcall(fn)
             if ok and type(text) == "string" and text ~= "" then
-                out[#out + 1] = { row = r, text = text, icon = (type(icon) == "string" and icon) or r.icon }
+                out[#out + 1] = { row = r, text = text, icon = (type(icon) == "string" and icon) or r.icon,
+                                  stat = type(stat) == "table" and stat or nil }
             end
         end
+    end
+    return out
+end
+
+-- What a summary's tile shows: the key number big, a short label after it, and how it is
+-- toned. The number is the one the line starts with ("3 junk items" -> 3, "junk items"); a
+-- module may say more in the third value of its summary:
+-- { value = 8 (the number, when the line does not start with it), label = "to pick up",
+--   tone = "bad" | "warn" | "good", pips = { have, of } (small marks instead of the label),
+--   ready = "BAGS" (the Ready check that shows the same: the tile gives way to it),
+--   quiet = true (nothing to do: the first tile to go when there are too many) }.
+function ns.TileOf(s)
+    local stat = s.stat or {}
+    local first = (s.text:match("^[^\n]*")) or s.text
+    local value, label = first:match("^(%d[%d%.,/]*)%s+(.+)$")
+    if stat.value ~= nil then value, label = tostring(stat.value), first end
+    if type(stat.label) == "string" and stat.label ~= "" then label = stat.label end
+    local pips
+    if type(stat.pips) == "table" and tonumber(stat.pips[1]) and tonumber(stat.pips[2]) then
+        local of = math.max(1, math.min(ns.PIPS_MAX, math.floor(tonumber(stat.pips[2]))))
+        pips = { math.max(0, math.min(of, math.floor(tonumber(stat.pips[1])))), of }
+    end
+    local tone = stat.tone
+    if tone ~= "bad" and tone ~= "warn" and tone ~= "good" then tone = nil end
+    return { row = s.row, icon = s.icon, text = s.text, value = value, label = label or first,
+             tone = tone, pips = pips, quiet = stat.quiet and true or false,
+             ready = type(stat.ready) == "string" and stat.ready or nil }
+end
+ns.PIPS_MAX = 10
+ns.TILES_MAX = 6
+
+-- The tiles of the home page: what needs the player first (bad, then warn), the quiet ones
+-- last, at most ns.TILES_MAX. A tile gives way to the Ready check that shows the same
+-- (shown: check key -> true) and to the session card of its own module (skip: module key).
+local TONE_RANK = { bad = 1, warn = 2 }
+function ns.Tiles(rows, shown, skip, max)
+    local out = {}
+    for i, s in ipairs(ns.Summaries(rows)) do
+        local t = ns.TileOf(s)
+        if t.row.key ~= skip and not (t.ready and shown and shown[t.ready]) then
+            t.rank, t.i = t.quiet and 4 or TONE_RANK[t.tone or ""] or 3, i
+            out[#out + 1] = t
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.rank ~= b.rank then return a.rank < b.rank end
+        return a.i < b.i
+    end)
+    for i = #out, (max or ns.TILES_MAX) + 1, -1 do out[i] = nil end
+    return out
+end
+
+-- The session card of the home page: the first module of ns.SESSION_FIRST, then any other,
+-- whose `session` gives a table:
+-- { value = "19k", unit = "XP / h", line = "Level 48 in 1 h 30 min", span = "1 h 12 min",
+--   bars = { numbers, oldest first, at most ns.SESSION_BARS }, progress = { value = 0..1,
+--   extra = 0..1 (a lighter part after it), left = "47", right = "77%" } }.
+-- Only value is required. A new source (honor, gold, dungeons) is a module that gives `session`.
+ns.SESSION_FIRST = { "XP", "FarmTrack" }
+ns.SESSION_BARS = 12
+local function sessionOf(r)
+    local fn = r and r.running and not r.paused and r.info and r.info.session
+    if type(fn) ~= "function" then return nil end
+    local ok, d = pcall(fn)
+    if not ok or type(d) ~= "table" or d.value == nil then return nil end
+    local bars = {}
+    if type(d.bars) == "table" then
+        local from = math.max(1, #d.bars - ns.SESSION_BARS + 1)
+        for i = from, #d.bars do bars[#bars + 1] = math.max(0, tonumber(d.bars[i]) or 0) end
+    end
+    local pr
+    if type(d.progress) == "table" and tonumber(d.progress.value) then
+        local v = math.max(0, math.min(1, tonumber(d.progress.value)))
+        pr = { value = v, extra = math.max(0, math.min(1 - v, tonumber(d.progress.extra) or 0)),
+               left = tostring(d.progress.left or ""), right = tostring(d.progress.right or "") }
+    end
+    return { row = r, value = tostring(d.value), unit = tostring(d.unit or ""), line = tostring(d.line or ""),
+             span = tostring(d.span or ""), bars = bars, progress = pr }
+end
+function ns.Session(rows)
+    rows = rows or ns.List()
+    local by = {}
+    for _, r in ipairs(rows) do by[r.key] = r end
+    for _, k in ipairs(ns.SESSION_FIRST) do
+        local s = sessionOf(by[k])
+        if s then return s end
+    end
+    for _, r in ipairs(rows) do
+        local s = sessionOf(r)
+        if s then return s end
+    end
+end
+
+-- The Recent feed for the home page: lines of one module that follow each other are one row,
+-- the newest text with how many there were. { key, text, t, n }
+function ns.FeedRows()
+    local out = {}
+    for _, e in ipairs(ns.Feed()) do
+        local last = out[#out]
+        if last and last.key == e.key then
+            last.n = last.n + 1
+        else
+            out[#out + 1] = { key = e.key, text = e.text, t = e.t, n = 1 }
+        end
+    end
+    return out
+end
+
+-- The ring of the Ready card: `ticks` marks around a circle, a run per check (in the list's
+-- order) with one mark left dark between two checks. tick -> true (met), false (not), nil (gap).
+function ns.RingTicks(list, ticks)
+    local out, n = {}, #list
+    for i, c in ipairs(list) do
+        local from, to = math.floor((i - 1) * ticks / n) + 1, math.floor(i * ticks / n)
+        if n > 1 then to = to - 1 end
+        for k = from, to do out[k] = c.ok and true or false end
     end
     return out
 end

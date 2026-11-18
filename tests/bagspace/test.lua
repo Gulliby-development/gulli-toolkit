@@ -222,6 +222,8 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     reg.reset()
     eq(ns.db.popup, true)
     assert(reg.summary())
+    local _, _, stat = reg.summary()
+    eq(stat.ready, "BAGS", "the hub's Ready card shows the same: the tile gives way")
 end)
 
 -- Random bags: whatever space is asked for, quest items, keys, the hearthstone, protected items
