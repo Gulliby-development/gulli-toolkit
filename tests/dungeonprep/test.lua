@@ -160,6 +160,23 @@ test("a click on a stop sets a map pin in its zone", function()
     eq(ns.SetPin({ inside = true, quests = {} }), false)
 end)
 
+test("Show on map of a quest's page pins and opens the world map", function()
+    local W = Fake({ areas = AREAS, map = { maps = MAPS }, level = 33, raceID = 2, faction = "Horde" })
+    local opened
+    OpenWorldMap = function(id) opened = id end
+    local ns = Load()
+    ns.home, ns.selected = false, "GNOMER"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841)
+    local d = ns.DetailFrame()
+    d.startMap:GetScript("OnClick")(d.startMap)
+    eq(#W.pins, 1, "Nogg is pinned")
+    eq(opened, 1454, "and the map opens on Orgrimmar")
+    opened = nil
+    d.turninMap:GetScript("OnClick")(d.turninMap)
+    eq(opened, 1454, "the turn-in too")
+    OpenWorldMap = nil
+end)
+
 test("the tracker's map button pins and opens the world map on the pin's zone", function()
     local W = Fake({ areas = AREAS, map = { maps = MAPS } })
     local opened
