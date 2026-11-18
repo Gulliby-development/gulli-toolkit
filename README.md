@@ -96,6 +96,8 @@
 
 <p align="center"><img src="docs/toolkit/setup.png" alt="The first setup window of Gulli Toolkit" width="540"></p>
 <p align="center"><img src="docs/toolkit/home.png" alt="The home page of Gulli Toolkit" width="860"></p>
+
+<p align="center"><img src="docs/toolkit/setup-page.png" alt="The Setup page of Gulli Toolkit" width="860"></p>
 <p align="center"><img src="docs/toolkit/inside.png" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
 
 ## FAQ
