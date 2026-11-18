@@ -129,6 +129,8 @@ S.toolkit = { default = {
 S.toolkit.setuppage = { spec = S.toolkit.default.spec,
     open = function(ns, W, R)
         S.toolkit.default.open(ns, W, R)
+        ns.SetPinned("DungeonPrep", true)
+        ns.SetPinned("QuestCleaner", true)
         ns.OpenSetupPage()
     end,
 }

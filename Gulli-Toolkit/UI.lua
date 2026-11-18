@@ -49,7 +49,7 @@ local MARK_SIZE, MARK_CUT_X, MARK_CUT_Y = 430, 34, 46
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
 local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
-local host, hubSwitch, offWin, insideWin, card, home, homeRow, setupRow, setupFrame, unlockLink
+local host, hubSwitch, pinBox, offWin, insideWin, card, home, homeRow, setupRow, setupFrame, unlockLink
 local rows, heads = {}, {}
 local fillSetup
 
@@ -103,6 +103,7 @@ function ns.MinimapTip()
     return {
         { title = L.TITLE },
         { text = key .. L.MM_CLICK_KEY .. "|r " .. L.MM_CLICK },
+        { text = key .. L.MM_RIGHT_KEY .. "|r " .. L.MM_RIGHT },
         { text = key .. L.MM_DRAG_KEY .. "|r " .. L.MM_DRAG },
         { text = cmd .. "/gulli minimap|r " .. L.MM_HIDE },
     }
@@ -238,8 +239,9 @@ local function enter(row)
     ns.MarkSeen(row)
     card:SetShown(narrow)
     hubSwitch:SetChecked(row.on)
+    pinBox.switch:SetChecked(ns.Pinned(row.key))
     win:Dock(host, {
-        width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch },
+        width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch, pinBox },
         back = goHome, popOut = popOut, onHide = windowHidden,
     })
     S.MotionIn(win, 6, S.BASE)
@@ -1099,6 +1101,7 @@ function ns.Refresh()
         for _, r in ipairs(data) do if r.key == view.inside then row = r end end
         if row then
             hubSwitch:SetChecked(row.on)
+            pinBox.switch:SetChecked(ns.Pinned(row.key))
             if insideWin == offWin then offWindow(row) end
             if card:IsShown() then fillCard(row) end
         end
@@ -1875,6 +1878,77 @@ local function toolTile(parent, i, text, desc, icon, onClick)
     return b
 end
 
+-- The hub's own row among the minimap buttons.
+local HUB_PIN = { key = false, title = L.TITLE, icon = "Interface\\AddOns\\Gulli-Toolkit\\icon" }
+
+local function pinShown(row)
+    if row == HUB_PIN then return ns.MinimapShown() end
+    return ns.Pinned(row.key)
+end
+
+local function pinTip(self)
+    local row = self.row
+    if not row then return end
+    local a = S.Accent()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(row.title, S.GOLD[1], S.GOLD[2], S.GOLD[3], 1, true)
+    GameTooltip:AddLine(pinShown(row) and L.PIN_ON or L.PIN_OFF, a[1], a[2], a[3], true)
+    GameTooltip:Show()
+end
+
+local function pinClick(self)
+    local row = self.row
+    if not row then return end
+    if row == HUB_PIN then
+        ns.SetMinimap("hide", ns.MinimapShown() or nil)
+        ns.Refresh()
+    else
+        ns.SetPinned(row.key, not ns.Pinned(row.key))
+    end
+end
+
+-- Every button the minimap can have, as icons: bright with a gold dot is there, grey is not.
+-- The icons take the biggest size at which all of them fit the card.
+local PIN_GAP = 2
+
+local function fillPins(card, data)
+    local rows = { HUB_PIN }
+    for _, r in ipairs(data) do rows[#rows + 1] = r end
+    local size, cols = 22, 1
+    for _, s in ipairs({ 30, 28, 26, 24, 22 }) do
+        size, cols = s, math.max(1, math.floor((card.w + PIN_GAP) / (s + PIN_GAP)))
+        if math.ceil(#rows / cols) * (s + PIN_GAP) - PIN_GAP <= card.h then break end
+    end
+    local shown = 0
+    for i, row in ipairs(rows) do
+        local b = card.icons[i]
+        if not b or b.size ~= size then
+            if b then b:Hide() end
+            b = modIcon(card.body, size, true)
+            b.size = size
+            b:SetScript("OnEnter", pinTip)
+            b:SetScript("OnClick", pinClick)
+            card.icons[i] = b
+        end
+        b.row = row
+        b.icon:SetIcon(row.icon)
+        local on = pinShown(row)
+        if on then shown = shown + 1 end
+        if b.icon.tex.SetDesaturated then b.icon.tex:SetDesaturated(not on) end
+        b.icon.tex:SetAlpha(on and 1 or 0.5)
+        b.icon:SetGlow(not on and S.EDGE or nil)
+        b.dot:SetVertexColor(S.GOLD[1], S.GOLD[2], S.GOLD[3], 1)
+        b.dot:SetShown(on); b.dotBack:SetShown(on); b.dotIn:Hide()
+        b.on = on
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", ((i - 1) % cols) * (size + PIN_GAP), -math.floor((i - 1) / cols) * (size + PIN_GAP))
+        b:Show()
+    end
+    for i = #rows + 1, #card.icons do card.icons[i]:Hide() end
+    card.shown, card.size, card.count = #rows, size, shown
+    card.hint:SetText(L.PIN_N:format(shown, #rows))
+end
+
 function fillSetup(data)
     local p = setupFrame
     local byKey, on, waits = {}, 0, 0
@@ -1893,6 +1967,7 @@ function fillSetup(data)
     p.waits = waits
     for i, pr in ipairs(ns.PRESETS) do fillPreset(presetCards[i], pr, byKey) end
     fillBoard(p.board, data)
+    fillPins(p.pins, data)
     protectBtn.value:SetText(#ns.Protected())
     local o = ns.Overview(data)
     local foot = L.TITLE .. " " .. ns.Version() .. S.DOT .. L.MODULES_N:format(#data)
@@ -1946,18 +2021,15 @@ function buildSetupPage()
     win:SetPoint("TOPLEFT", board, "TOPRIGHT", S.GAP, 0)
     win:SetPoint("RIGHT")
     local w = win.body
-    local map = minimapRow(w)
-    map:SetPoint("TOPLEFT")
-    map:SetPoint("TOPRIGHT")
     local calm = calmRow(w)
-    calm:SetPoint("TOPLEFT", 0, -34)
-    calm:SetPoint("TOPRIGHT", 0, -34)
+    calm:SetPoint("TOPLEFT")
+    calm:SetPoint("TOPRIGHT")
     p.calm = calm
     -- The size of the hub window: the player's own factor on top of the fit to the screen.
     local size = CreateFrame("Frame", nil, w)
     size:SetHeight(30)
-    size:SetPoint("TOPLEFT", 0, -68)
-    size:SetPoint("TOPRIGHT", 0, -68)
+    size:SetPoint("TOPLEFT", 0, -34)
+    size:SetPoint("TOPRIGHT", 0, -34)
     local plus = S.Button(size, 28, 28)
     plus:SetPoint("RIGHT")
     plus:SetText("+")
@@ -1976,27 +2048,18 @@ function buildSetupPage()
     st:SetWordWrap(false)
     st:SetText(L.SETUP_SCALE)
     p.scale = { minus = minus, plus = plus }
-    local winH = win:Fit(98)
+    local winH = win:Fit(64)
 
-    -- The three commands worth knowing; /gulli help prints the rest.
-    local cmds = S.Card(p, L.CMD_TITLE)
-    cmds:SetPoint("TOPLEFT", win, "BOTTOMLEFT", 0, -TOOL_GAP)
-    cmds:SetPoint("RIGHT")
-    cmds:SetHeight(BOARD_H - winH - TOOL_GAP)
-    p.commands = {}
-    for i, c in ipairs({ { "/gulli", L.CMD_OPEN }, { "/gulli unlock", L.CMD_UNLOCK }, { "/gulli help", L.CMD_HELP } }) do
-        local cmd = S.Text(cmds.body, 12, S.Accent())
-        cmd:SetPoint("TOPLEFT", 0, -(i - 1) * 18)
-        cmd:SetWidth(88)
-        cmd:SetWordWrap(false)
-        cmd:SetText(c[1])
-        local what = S.Text(cmds.body, 12, S.MUTED)
-        what:SetPoint("TOPLEFT", 92, -(i - 1) * 18)
-        what:SetPoint("RIGHT")
-        what:SetWordWrap(false)
-        what:SetText(c[2])
-        p.commands[i] = { cmd = cmd, what = what }
-    end
+    -- The buttons at the minimap: the hub's own first, then every module. A click puts a
+    -- button there or takes it away.
+    local pins = S.Card(p, L.PIN_TITLE)
+    pins:SetPoint("TOPLEFT", win, "BOTTOMLEFT", 0, -TOOL_GAP)
+    pins:SetPoint("RIGHT")
+    pins:SetHeight(BOARD_H - winH - TOOL_GAP)
+    pins.w = HOST_W - BOARD_W - S.GAP - 2 * S.INSET
+    pins.h = BOARD_H - winH - TOOL_GAP - 36 - S.INSET
+    pins.icons = {}
+    p.pins = pins
 
     local tr = toolTile(p, 1, L.TRANSFER, L.TOOL_TRANSFER, QUICK_ICON.transfer, function()
         if not transfer then buildTransfer() end
@@ -2027,6 +2090,8 @@ function ns.OpenSetupPage()
     if not setupFrame then buildSetupPage() end
     showPanel("setup")
 end
+function ns.PinBox() return pinBox end
+
 function ns.SetupPage()
     if not setupFrame then buildSetupPage() end
     return setupFrame
@@ -2243,6 +2308,23 @@ local function build()
     end)
     hubSwitch:HookScript("OnEnter", function(self) tip(self, L.ON_TIP, nil, "ANCHOR_BOTTOM") end)
     hubSwitch:HookScript("OnLeave", hideTip)
+
+    -- Beside it: the module's own button at the minimap.
+    pinBox = CreateFrame("Frame", nil, frame)
+    pinBox:SetHeight(28)
+    pinBox:Hide()
+    pinBox.switch = S.Switch(pinBox)
+    pinBox.switch:SetPoint("RIGHT")
+    pinBox.label = S.Text(pinBox, 12, S.MUTED)
+    pinBox.label:SetPoint("RIGHT", pinBox.switch, "LEFT", -6, 0)
+    pinBox.label:SetWordWrap(false)
+    pinBox.label:SetText(L.PIN)
+    pinBox:SetWidth(math.ceil(tonumber(pinBox.label:GetStringWidth()) or 60) + 6 + (tonumber(pinBox.switch:GetWidth()) or 44))
+    pinBox.switch:SetScript("OnClick", function()
+        if view.inside then ns.SetPinned(view.inside, not ns.Pinned(view.inside)) end
+    end)
+    pinBox.switch:HookScript("OnEnter", function(self) tip(self, L.PIN_TITLE, { L.PIN_TIP }, "ANCHOR_BOTTOM") end)
+    pinBox.switch:HookScript("OnLeave", hideTip)
 
     frame:SetScript("OnShow", onOpen)
     -- Closing the hub leaves the module; it opens again from ns.Last().
@@ -2477,27 +2559,26 @@ function ns.PlaceMinimap()
     mapButton:SetShown(ns.MinimapShown())
 end
 
-local function followCursor(self)
+local function cursorAngle()
     local cx, cy = Minimap:GetCenter()
     local px, py = GetCursorPosition()
     local scale = Minimap:GetEffectiveScale()
-    if not cx or not px then return end
-    GulliToolkitDB.minimap = GulliToolkitDB.minimap or {}
-    GulliToolkitDB.minimap.angle = math.floor(ns.AngleTo(cx, cy, px / scale, py / scale) + 0.5)
-    ns.PlaceMinimap()
+    if not cx or not px then return nil end
+    return math.floor(ns.AngleTo(cx, cy, px / scale, py / scale) + 0.5)
 end
 
-function ns.BuildMinimap()
-    if mapButton or not Minimap then return mapButton end
-    local b = CreateFrame("Button", "GulliToolkitMinimapButton", Minimap)
+-- A round button on the minimap's edge. o: name, icon, click(self, mouseButton), drag(angle)
+-- while the player drags it around the minimap, and tip() for its tooltip lines.
+local function mapRound(o)
+    local b = CreateFrame("Button", o.name, Minimap)
     b:SetSize(32, 32)
     b:SetFrameStrata("MEDIUM")
     b:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 8)
-    b:RegisterForClicks("LeftButtonUp")
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b:RegisterForDrag("LeftButton")
     local icon = b:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
-    icon:SetTexture("Interface\\AddOns\\Gulli-Toolkit\\icon")
+    icon:SetTexture(o.icon)
     -- The icon is square with dark corners: a round mask fits it to the minimap.
     if not S.RoundMask(b, icon) and icon.SetMask then icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
     b.icon = icon
@@ -2507,10 +2588,14 @@ function ns.BuildMinimap()
     glow:SetBlendMode("ADD")
     b:SetScript("OnMouseDown", function() icon:SetPoint("TOPLEFT", 1, -1); icon:SetPoint("BOTTOMRIGHT", -1, 1) end)
     b:SetScript("OnMouseUp", function() icon:SetAllPoints() end)
-    b:SetScript("OnClick", function() ns.Toggle() end)
+    b:SetScript("OnClick", o.click)
+    local function follow()
+        local a = cursorAngle()
+        if a then o.drag(a) end
+    end
     b:SetScript("OnDragStart", function(self)
         self.dragging = true
-        self:SetScript("OnUpdate", followCursor)
+        self:SetScript("OnUpdate", follow)
         GameTooltip:Hide()
     end)
     b:SetScript("OnDragStop", function(self)
@@ -2521,7 +2606,7 @@ function ns.BuildMinimap()
     b:SetScript("OnEnter", function(self)
         if self.dragging then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        for _, l in ipairs(ns.MinimapTip()) do
+        for _, l in ipairs(o.tip()) do
             if l.title then GameTooltip:SetText(l.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
             else GameTooltip:AddLine(l.text, 1, 1, 1) end
         end
@@ -2529,9 +2614,86 @@ function ns.BuildMinimap()
         denseTip(true)
     end)
     b:SetScript("OnLeave", function() denseTip(false); GameTooltip:Hide() end)
-    mapButton = b
-    ns.PlaceMinimap()
     return b
+end
+
+-- A right-click on the hub's button starts the Unlock mode at once (and saves it again).
+function ns.MinimapClick(_, mouse)
+    if mouse == "RightButton" then
+        ns.SetMoving(not ns.moving)
+    else
+        ns.Toggle()
+    end
+end
+
+-- The tooltip of a module's own button: its name, its line of the home page, what a click does.
+function ns.PinTip(row)
+    local key = "|cffffd100"
+    local lines = { { title = row.title } }
+    local sum = ns.SummaryOf(row)
+    if sum then lines[#lines + 1] = { text = sum } end
+    lines[#lines + 1] = { text = key .. L.MM_CLICK_KEY .. "|r " .. L.MM_OPEN }
+    lines[#lines + 1] = { text = key .. L.MM_DRAG_KEY .. "|r " .. L.MM_DRAG }
+    return lines
+end
+
+-- The modules' own buttons: one per pinned module that runs, built when first needed.
+local pinButtons = {}
+
+local function pinButton(key)
+    local b = pinButtons[key]
+    if b then return b end
+    b = mapRound({
+        name = "GulliToolkitMinimap" .. key,
+        click = function(self) if self.row and self.row.info then self.row.info.open() end end,
+        drag = function(a)
+            ns.SetPinAngle(key, a)
+            ns.PlacePins(true)
+        end,
+        tip = function() return ns.PinTip(pinButtons[key].row) end,
+    })
+    pinButtons[key] = b
+    return b
+end
+
+-- Shows the buttons of ns.Pins and hides the others. moved: only the places changed (a drag).
+function ns.PlacePins(moved)
+    if not mapButton then return end
+    local radius, square = minimapRadius(), squareMinimap()
+    -- Two buttons side by side on this minimap are this many degrees apart.
+    ns.pinStep = math.ceil(math.deg(34 / radius))
+    local want = {}
+    for _, row in ipairs(moved and {} or ns.Pins()) do want[row.key] = row end
+    if moved then for key, b in pairs(pinButtons) do if b:IsShown() then want[key] = b.row end end end
+    for key, row in pairs(want) do
+        local b = pinButton(key)
+        b.row = row
+        b.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        local x, y = ns.MinimapOffset(ns.PinAngle(key) or ns.MinimapAngle(), radius, square)
+        b:ClearAllPoints()
+        b:SetPoint("CENTER", Minimap, "CENTER", x, y)
+        b:Show()
+    end
+    for key, b in pairs(pinButtons) do if not want[key] then b:Hide() end end
+end
+
+function ns.PinButton(key) return pinButtons[key] end
+
+function ns.BuildMinimap()
+    if mapButton or not Minimap then return mapButton end
+    mapButton = mapRound({
+        name = "GulliToolkitMinimapButton", icon = "Interface\\AddOns\\Gulli-Toolkit\\icon",
+        click = ns.MinimapClick,
+        drag = function(a)
+            GulliToolkitDB.minimap = GulliToolkitDB.minimap or {}
+            GulliToolkitDB.minimap.angle = a
+            ns.PlaceMinimap()
+        end,
+        tip = ns.MinimapTip,
+    })
+    ns.PlaceMinimap()
+    ns.PlacePins()
+    return mapButton
 end
 
 function ns.MinimapButton() return mapButton end
