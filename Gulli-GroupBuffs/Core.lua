@@ -25,6 +25,7 @@ ns.DEFAULTS = {
 for k, v in pairs(B.CHOICE_DEFAULT) do ns.DEFAULTS[k] = v end
 ns.WHO = { "group", "target", "off" }
 ns.SHOW = { "missing", "always", "never" }
+ns.SHOW_PICK = { "missing", "always" } -- the window's choice; "never" is the hub's switch
 ns.LOW = { 0, 60, 180, 300 }
 ns.GROUP_MIN = { 2, 3, 4, 5, 0 }
 ns.THORNS = { "self", "tanks", "all" }

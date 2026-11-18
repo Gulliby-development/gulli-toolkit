@@ -47,7 +47,6 @@ ns.BUFFS = {
         { key = "SHOUT", ids = { 6673 }, on = false }, -- two minutes: off unless asked
     },
 }
-ns.IMBUES = { SHAMAN = { 8017, 8024, 8033, 8232 } } -- a shaman who knows one should use one
 ns.PET_SPELL = { HUNTER = 883, WARLOCK = 688 } -- Call Pet, Summon Imp
 -- The pets a warlock can pick to be summoned by a click: Imp, Voidwalker, Succubus, Felhunter.
 ns.WARLOCK_PETS = { 688, 697, 712, 691 }
@@ -55,12 +54,45 @@ local REVIVE_PET = 982
 local WELL_FED = 19705 -- any Well Fed buff has this name
 -- Buff foods, best first; the food the player set comes before them.
 ns.FOOD = { 21023, 20452, 13928, 13931, 18254, 12218, 18045, 12216, 21217, 13929, 21072 }
--- Rogue poisons, best first (Instant, Deadly, Wound, Crippling, Mind-numbing).
+-- Weapon items, best first. Rogue poisons: Instant, Deadly, Wound, Crippling, Mind-numbing.
 ns.POISONS = { 8928, 8927, 8926, 6950, 6949, 6947, 20844, 8985, 8984, 2893, 2892,
                10922, 10921, 10920, 10918, 3776, 3775, 9186, 6951, 5237 }
--- Oils, sharpening stones and weightstones for any class, best first.
-ns.WEAPON_ITEMS = { 18262, 20749, 20748, 20750, 20747, 20746, 20745, 20744,
-                    12404, 7964, 2871, 2863, 2862, 12643, 7965, 3241, 3240, 3239 }
+ns.SHARP = { 18262, 12404, 7964, 2871, 2863, 2862 }  -- sharpening stones: blades
+ns.WEIGHT = { 12643, 7965, 3241, 3240, 3239 }        -- weightstones: maces and staves
+ns.WIZARD_OIL = { 20749, 20750, 20746, 20744 }
+ns.MANA_OIL = { 20748, 20747, 20745 }
+-- Shaman weapon imbues, best first: Windfury, Flametongue, Frostbrand, Rockbiter.
+ns.IMBUES = { 8232, 8024, 8033, 8017 }
+-- What each class puts on its weapons. kind names the texts and the icon; lists are the item
+-- lists in the order they are tried ("STONES" by the weapon's kind); spells are imbues the
+-- player casts instead; off: the off hand too, when it holds a weapon; on: the start value;
+-- level: the item lists start at this level (poisons); consumable: bought, so checked where the
+-- consumables are, else where the class buffs are. A new class item goes here with a test.
+ns.KITS = {
+    ROGUE = { kind = "POISON", lists = { "POISONS", "STONES" }, off = true, on = true, level = 20 },
+    WARRIOR = { kind = "STONE", lists = { "STONES" }, off = true, on = false, consumable = true },
+    PALADIN = { kind = "STONE_OIL", lists = { "STONES", "MANA_OIL", "WIZARD_OIL" }, on = false, consumable = true },
+    HUNTER = { kind = "STONE_OIL", lists = { "STONES", "MANA_OIL", "WIZARD_OIL" }, off = true, on = false, consumable = true },
+    SHAMAN = { kind = "IMBUE", spells = ns.IMBUES, on = true },
+    DRUID = { kind = "OIL", lists = { "MANA_OIL", "WIZARD_OIL", "STONES" }, on = false, consumable = true },
+    PRIEST = { kind = "OIL", lists = { "MANA_OIL", "WIZARD_OIL" }, on = false, consumable = true },
+    MAGE = { kind = "OIL", lists = { "WIZARD_OIL", "MANA_OIL" }, on = false, consumable = true },
+    WARLOCK = { kind = "OIL", lists = { "WIZARD_OIL", "MANA_OIL" }, on = false, consumable = true },
+}
+ns.KIT_ICON = {
+    POISON = "Interface\\Icons\\Trade_BrewPoison", STONE = "Interface\\Icons\\INV_Stone_02",
+    STONE_OIL = "Interface\\Icons\\INV_Stone_02", OIL = "Interface\\Icons\\INV_Potion_100",
+    IMBUE = "Interface\\Icons\\Spell_Nature_RockBiter",
+}
+-- Items a class makes for itself: missing from the bags, a click casts the best spell it knows.
+ns.CLASS_ITEMS = {
+    MAGE = { { key = "GEM", items = { 8008, 8007, 5513, 5514 },            -- Mana Ruby .. Agate
+               spells = { 10054, 10053, 3552, 759 } } },                   -- Conjure Mana Ruby .. Agate
+    WARLOCK = { { key = "HEALTHSTONE",
+                  items = { 9421, 19013, 19012, 5510, 19011, 19010, 5509, 19009, 19008,
+                            5511, 19007, 19006, 5512, 19005, 19004 },      -- Major .. Minor Healthstone
+                  spells = { 11730, 11729, 5699, 6202, 6201 } } },         -- Create Healthstone, best first
+}
 -- Group buffs other classes give: when one of them is in the group and you lack it, it is shown
 -- with their name (the "others" switch). mana: only worth asking for with a mana bar.
 ns.OTHERS = {
@@ -73,16 +105,15 @@ ns.OTHERS = {
 ns.PLACES = { "always", "group", "instance" }
 ns.ALERTS = { "off", "always", "instance" }
 local MAIN_HAND = 16
-local POISON_LEVEL = 20
 local SOUL_SHARD = 6265
 local AMMO_SLOT, OFF_HAND = 0, 17
 local ITEM_WEAPON = 2
 
 ns.DEFAULTS = {
-    show = false, inRest = true, track = {}, weapon = true, ammo = true, shards = true, pet = true,
+    show = false, inRest = true, track = {}, ammo = true, shards = true, pet = true,
     ammoMin = 200, shardsMin = 3, soonMin = 3,
-    size = 40, alpha = 100, labels = true, vertical = false,
-    anyWeapon = false, food = true, where = "always", whereItems = "instance", alert = "instance",
+    size = 40, alpha = 100, labels = true, vertical = false, classes = {},
+    food = true, where = "always", whereItems = "instance", alert = "instance",
     durability = true, durMin = 20, bags = true, bagsMin = 2, others = false, custom = {},
 }
 ns.PANEL_POINT = { "TOP", 0, -190 }
@@ -272,6 +303,90 @@ local function firstInBags(list, preferred)
     end
 end
 
+ns.FirstInBags = firstInBags
+
+-- The settings of the player's class (the saves are account-wide): weapon (on/off), main and off
+-- (the item set for each hand), imbue (the shaman's pick), and one switch per class item (gem,
+-- healthstone). Unset: the kit's start value, class items on.
+function ns.ClassPref(key, class)
+    class = class or playerClass()
+    local t = ns.db and ns.db.classes and ns.db.classes[class]
+    local v = t and t[key]
+    if v ~= nil then return v end
+    if key == "weapon" then
+        local kit = ns.KITS[class]
+        return kit and kit.on or false
+    end
+    if key == "main" or key == "off" or key == "imbue" then return nil end
+    return true
+end
+
+function ns.SetClassPref(key, value)
+    local class = playerClass()
+    ns.db.classes[class] = ns.db.classes[class] or {}
+    ns.db.classes[class][key] = value
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Sharpening stones for a blade, weightstones for a mace or staff, both for anything else.
+local BLADE = { [0] = true, [1] = true, [6] = true, [7] = true, [8] = true, [15] = true }
+local BLUNT = { [4] = true, [5] = true, [10] = true }
+local function stonesFor(slot)
+    local id = GetInventoryItemID("player", slot)
+    local sub = id and select(13, ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id))
+    if BLADE[sub] then return ns.SHARP end
+    if BLUNT[sub] then return ns.WEIGHT end
+    local both = {}
+    for _, id2 in ipairs(ns.SHARP) do both[#both + 1] = id2 end
+    for _, id2 in ipairs(ns.WEIGHT) do both[#both + 1] = id2 end
+    return both
+end
+
+-- What a hand ("main" or "off") gets: an item id, or as the second value an imbue spell. The
+-- player's own pick comes first while it is in the bags (or known); auto = true skips it.
+function ns.WeaponPick(hand, auto, class)
+    class = class or playerClass()
+    local kit = ns.KITS[class]
+    if not kit then return nil end
+    if kit.spells then
+        local want = not auto and ns.ClassPref("imbue", class)
+        if want and knows(want) then return nil, want end
+        for _, id in ipairs(kit.spells) do
+            if knows(id) then return nil, id end
+        end
+        return nil
+    end
+    local want = not auto and ns.ClassPref(hand, class)
+    if want and itemCount(want) > 0 then return want end
+    local level = UnitLevel("player") or 60
+    for i, name in ipairs(kit.lists) do
+        -- The first list waits for the kit's level (poisons at 20); stones are there before.
+        if not (i == 1 and kit.level and level < kit.level) then
+            local list = name == "STONES" and stonesFor(hand == "off" and OFF_HAND or MAIN_HAND) or ns[name]
+            local id = firstInBags(list)
+            if id then return id end
+        end
+    end
+end
+
+-- The food a click eats: the one the player set while it is in the bags, else the best one.
+function ns.FoodPick(auto)
+    return firstInBags(ns.FOOD, not auto and ns.db.foodItem or nil)
+end
+
+-- The class item reminders this character can use: { key, items, spells, spell (best known) }.
+function ns.ClassItems(class)
+    local out = {}
+    for _, c in ipairs(ns.CLASS_ITEMS[class or playerClass()] or {}) do
+        local spell
+        for _, id in ipairs(c.spells) do
+            if knows(id) then spell = id; break end
+        end
+        out[#out + 1] = { key = c.key, items = c.items, spells = c.spells, spell = spell }
+    end
+    return out
+end
+
 local function role()
     return UnitGroupRolesAssigned and UnitGroupRolesAssigned("player") or "NONE"
 end
@@ -359,7 +474,8 @@ end
 function ns.Extras(class)
     class = class or playerClass()
     local e = {}
-    if class == "ROGUE" or ns.IMBUES[class] then e.weapon = true end
+    if ns.KITS[class] then e.weapon = ns.KITS[class] end
+    if ns.CLASS_ITEMS[class] then e.items = true end
     if class == "HUNTER" then e.ammo = true end
     if class == "WARLOCK" then e.shards = true end
     if ns.PET_SPELL[class] then e.pet = true end
@@ -404,35 +520,30 @@ function ns.Missing()
     local hasMain, mainLeft, _, _, hasOff, offLeft = GetWeaponEnchantInfo()
     local limit = math.max(60, soon) * 1000
     local function weak(has, left) return not has or (left or 0) < limit end
-    if db.weapon and here then
-        local need, act
-        if class == "ROGUE" and level >= POISON_LEVEL then
-            need = weak(hasMain, mainLeft) or (offHandWeapon() and weak(hasOff, offLeft))
-            local id = firstInBags(ns.POISONS)
-            if id then
-                -- The main hand first; when it is fine, the off hand.
-                act = weak(hasMain, mainLeft) and weaponMacro(id)
-                    or { type = "macro", macrotext = "/use item:" .. id .. "\n/use " .. OFF_HAND }
+    local kit = ns.KITS[class]
+    if kit and ns.ClassPref("weapon", class) and (kit.consumable and items or not kit.consumable and here) then
+        local hands = { { "main", MAIN_HAND, hasMain, mainLeft, "WEAPON" } }
+        if kit.off and offHandWeapon() then hands[2] = { "off", OFF_HAND, hasOff, offLeft, "WEAPON_OFF" } end
+        for _, h in ipairs(hands) do
+            local hand, slot, has, msLeft, key = h[1], h[2], h[3], h[4], h[5]
+            if GetInventoryItemID("player", slot) and weak(has, msLeft) then
+                local item, spell = ns.WeaponPick(hand, false, class)
+                -- Nothing to ask for: an imbue not learned yet, poisons before their level.
+                local fits = item or spell or not (kit.spells or (kit.level and level < kit.level))
+                if fits then
+                    local act = spell and cast(spell)
+                        or item and { type = "macro", macrotext = "/use item:" .. item .. "\n/use " .. slot } or nil
+                    out[#out + 1] = { key = key, text = L[key], left = has and msLeft and msLeft > 0 and msLeft / 1000 or nil,
+                                      icon = spell and spellIcon(spell) or item and itemIcon(item) or ns.KIT_ICON[kit.kind],
+                                      act = act, none = not (item or spell) }
+                end
             end
-        elseif ns.IMBUES[class] then
-            local best
-            for _, id in ipairs(ns.IMBUES[class]) do
-                if knows(id) then best = db.imbue and knows(db.imbue) and db.imbue or id end
-            end
-            if best then need = weak(hasMain, mainLeft); act = cast(best) end
-        end
-        if need then
-            local left = hasMain and mainLeft and mainLeft > 0 and mainLeft / 1000 or nil
-            out[#out + 1] = { key = "WEAPON", text = L.WEAPON, icon = "Interface\\Icons\\Trade_BrewPoison", left = left, act = act }
         end
     end
-    -- Oils and stones for any class, with the consumables.
-    if db.anyWeapon and items and not (db.weapon and (class == "ROGUE" or ns.IMBUES[class]))
-        and GetInventoryItemID("player", MAIN_HAND) and weak(hasMain, mainLeft) then
-        local id = firstInBags(ns.WEAPON_ITEMS)
-        local left = hasMain and mainLeft and mainLeft > 0 and mainLeft / 1000 or nil
-        out[#out + 1] = { key = "WEAPON_ITEM", text = L.WEAPON_ITEM, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Stone_02",
-                          left = left, act = id and weaponMacro(id) or nil, none = not id }
+    for _, c in ipairs(here and ns.ClassItems(class) or {}) do
+        if c.spell and ns.ClassPref(c.key:lower(), class) and not firstInBags(c.items) then
+            out[#out + 1] = { key = c.key, text = L[c.key], icon = spellIcon(c.spell), act = cast(c.spell) }
+        end
     end
     local pet = ns.PET_SPELL[class]
     if db.pet and here and pet and knows(pet) and not (IsMounted and IsMounted())
@@ -456,7 +567,7 @@ function ns.Missing()
     if db.food and items then
         local left = have[spellName(WELL_FED) or ""]
         if left == nil or (left and left < soon) then
-            local id = firstInBags(ns.FOOD, db.foodItem)
+            local id = ns.FoodPick()
             out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Misc_Food_14",
                               left = left or nil, act = id and { type = "item", item = "item:" .. id } or nil, none = not id }
         end
@@ -625,11 +736,28 @@ function ns.Sample()
         if b.known and ns.Tracked(b) then out[#out + 1] = { key = b.key, text = b.name, icon = b.icon, sample = true } end
     end
     local e = ns.Extras(class)
-    if e.weapon and ns.db.weapon then out[#out + 1] = { key = "WEAPON", text = L.WEAPON, icon = "Interface\\Icons\\Trade_BrewPoison", sample = true } end
+    if e.weapon and ns.ClassPref("weapon", class) then
+        local item, spell = ns.WeaponPick("main", false, class)
+        out[#out + 1] = { key = "WEAPON", text = L.WEAPON, sample = true,
+                          icon = spell and spellIcon(spell) or item and itemIcon(item) or ns.KIT_ICON[e.weapon.kind] }
+        if e.weapon.off and offHandWeapon() then
+            item = ns.WeaponPick("off", false, class)
+            out[#out + 1] = { key = "WEAPON_OFF", text = L.WEAPON_OFF, sample = true,
+                              icon = item and itemIcon(item) or ns.KIT_ICON[e.weapon.kind] }
+        end
+    end
+    for _, c in ipairs(ns.ClassItems(class)) do
+        if c.spell and ns.ClassPref(c.key:lower(), class) then
+            out[#out + 1] = { key = c.key, text = L[c.key], icon = spellIcon(c.spell), sample = true }
+        end
+    end
     if e.pet and ns.db.pet then out[#out + 1] = { key = "PET", text = L.PET, icon = spellIcon(ns.PET_SPELL[class]), sample = true } end
     if e.ammo and ns.db.ammo then out[#out + 1] = { key = "AMMO", text = L.OPT_AMMO, icon = "Interface\\Icons\\INV_Ammo_Arrow_02", sample = true } end
     if e.shards and ns.db.shards then out[#out + 1] = { key = "SHARDS", text = L.OPT_SHARDS, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02", sample = true } end
-    if ns.db.food then out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = "Interface\\Icons\\INV_Misc_Food_14", sample = true } end
+    if ns.db.food then
+        local id = ns.FoodPick()
+        out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Misc_Food_14", sample = true }
+    end
     for i, c in ipairs(ns.db.custom) do
         out[#out + 1] = { key = "CUSTOM" .. i, text = c.spell and spellName(c.spell) or itemName(c.id) or "?",
                           icon = c.spell and spellIcon(c.spell) or itemIcon(c.id), sample = true }
@@ -688,6 +816,22 @@ local function migrate(db)
     -- mode places it now, so the panel has no lock of its own.
     if not db.hudHidden then db.show, db.hudHidden = false, true end
     db.locked = nil
+    -- The weapon switches became class settings: poisons and imbues kept their switch, the
+    -- old "oils and stones for any class" switch turns the other classes' weapon check on.
+    if db.weapon ~= nil or db.anyWeapon ~= nil or db.imbue ~= nil then
+        local function set(class, key, v)
+            db.classes[class] = db.classes[class] or {}
+            if db.classes[class][key] == nil then db.classes[class][key] = v end
+        end
+        if db.weapon == false then set("ROGUE", "weapon", false); set("SHAMAN", "weapon", false) end
+        if db.anyWeapon == true then
+            for class in pairs(ns.KITS) do
+                if class ~= "ROGUE" and class ~= "SHAMAN" then set(class, "weapon", true) end
+            end
+        end
+        if db.imbue then set("SHAMAN", "imbue", db.imbue) end
+        db.weapon, db.anyWeapon, db.imbue = nil, nil, nil
+    end
 end
 
 -- The hub's Unlock mode: the panel shows every icon it can show, to be placed.
@@ -762,8 +906,9 @@ function GulliReminders_Toggle() ns.Toggle() end
 ns.OPT_ICON = {
     show = "Interface\\Icons\\Spell_Holy_MindVision",
     inRest = "Interface\\Icons\\Spell_Nature_Sleep",
-    weapon = "Interface\\Icons\\INV_Stone_02",
-    anyWeapon = "Interface\\Icons\\INV_Potion_100",
+    mainHand = "Interface\\Icons\\INV_Sword_04",
+    offHand = "Interface\\Icons\\INV_Weapon_ShortBlade_05",
+    foodItem = "Interface\\Icons\\INV_Misc_Food_15",
     food = "Interface\\Icons\\INV_Misc_Food_14",
     durability = "Interface\\Icons\\Trade_BlackSmithing",
     bags = "Interface\\Icons\\INV_Misc_Bag_08",
@@ -778,7 +923,6 @@ ns.OPT_ICON = {
     alpha = "Interface\\Icons\\Spell_Magic_LesserInvisibilty",
     labels = "Interface\\Icons\\INV_Misc_Note_01",
     vertical = "Interface\\Icons\\Ability_Rogue_Sprint",
-    point = "Interface\\Icons\\INV_Misc_Map_01",
 }
 
 -- The same switches as in the window, so the Gulli Toolkit hub can show them.
@@ -795,7 +939,6 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         options = {
-            option("show", ns.L.OPT_SHOW),
             option("inRest", ns.L.OPT_REST),
             option("food", ns.L.OPT_FOOD),
         },

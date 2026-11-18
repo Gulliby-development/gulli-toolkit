@@ -234,6 +234,70 @@ local function cursorItem()
     end
 end
 
+-- A tile that shows what a setting uses: the item's icon and name, dimmed while it is only the
+-- best one in the bags. An item dropped on it (or clicked with on the cursor) becomes the pick;
+-- a right click clears it. get/set read and write the pick, auto() gives the automatic one.
+local function itemPick(parent, get, set, auto, fallback, tipText)
+    local t = S.IconTile(parent, 190, 38)
+    t:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    function t:Refresh()
+        local id = get()
+        local shown = id or auto()
+        self.shown, self.mine = shown, id ~= nil
+        self:Set({ icon = shown and ns.ItemIcon(shown) or fallback,
+                   title = shown and (ns.ItemName(shown) or ("#" .. shown)) or L.PICK_NONE,
+                   sub = id and L.PICK_MINE or L.PICK_AUTO })
+        self.item:SetAlpha(id and 1 or 0.65)
+    end
+    local function take()
+        local id = cursorItem()
+        if id then set(id) end
+        t:Refresh()
+    end
+    t:SetScript("OnClick", function(self, mouse)
+        if mouse == "RightButton" then set(nil); self:Refresh() else take() end
+    end)
+    t:SetScript("OnReceiveDrag", take)
+    t:HookScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(tipText)
+        if self.shown then GameTooltip:AddLine(ns.ItemName(self.shown) or ("#" .. self.shown), 1, 1, 1) end
+        GameTooltip:AddLine(L.PICK_TIP, 0.6, 0.61, 0.66, true)
+        GameTooltip:Show()
+    end)
+    t:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    t:SetScript("OnShow", function(self) self:Refresh() end)
+    t:Refresh()
+    return t
+end
+
+-- The shaman's imbue: a click steps through the imbues learned (right click: back).
+local function imbuePick(parent)
+    local t = S.IconTile(parent, 190, 38)
+    t:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    function t:Refresh()
+        local _, id = ns.WeaponPick("main")
+        local mine = ns.ClassPref("imbue")
+        self.shown, self.mine = id, mine ~= nil and mine == id
+        self:Set({ icon = id and ns.SpellIconOf(id) or ns.KIT_ICON.IMBUE,
+                   title = id and ns.SpellNameOf(id) or L.NOT_KNOWN, sub = self.mine and L.PICK_MINE or L.PICK_BEST })
+    end
+    t:SetScript("OnClick", function(self, mouse)
+        local known = {}
+        for _, id in ipairs(ns.IMBUES) do if ns.Knows(id) then known[#known + 1] = id end end
+        if #known == 0 then return end
+        local at = 1
+        for i, id in ipairs(known) do if id == self.shown then at = i end end
+        at = (at - 1 + (mouse == "RightButton" and -1 or 1)) % #known + 1
+        ns.SetClassPref("imbue", known[at])
+        self:Refresh()
+    end)
+    t:SetScript("OnShow", function(self) self:Refresh() end)
+    t:Refresh()
+    return t
+end
+
 -- A scrolling column; returns the column frame and its stack.
 local function column(body, width, anchor)
     local sf = S.Scroll(body)
@@ -248,11 +312,9 @@ local CUSTOM_ROWS = 5
 
 local function build()
     frame = S.Window("GulliRemindersFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
+    -- Showing and placing the panel is the hub's (Frames on screen), so the footer holds only the status.
     local ft = S.Footer(frame)
-    frame.move = ft:Add(S.Primary(S.FitButton(ft, L.MOVE, 32, 150)))
-    frame.move:SetScript("OnClick", function() ns.Unlock() end)
-    -- Without the hub there is no Unlock mode, so the panel stays where it is.
-    frame.move:SetShown(GulliToolkit ~= nil and GulliToolkit.Unlock ~= nil)
+    frame.tiles = {}
     local body, width = frame.body, frame.inner[1]
     local colW = math.floor((width - S.GAP) / 2)
     local leftScroll, left = column(body, colW, "LEFT")
@@ -289,25 +351,54 @@ local function build()
         p:SetPoint("TOPLEFT")
         left:Add(card, card:Fit(ph))
     end
+    -- The class's own supplies: what goes on the weapons, the items it makes, pet, ammo, shards.
     local e = ns.Extras()
-    local other = {}
-    if e.weapon then other[#other + 1] = switch("weapon", L.OPT_WEAPON) end
+    local mine = {}
+    local function classSwitch(key, label, desc, icon)
+        return { label, desc, function() return ns.ClassPref(key) end, function(v) ns.SetClassPref(key, v) end, icon = icon }
+    end
+    local kit = e.weapon
+    if kit then
+        mine[#mine + 1] = classSwitch("weapon", L["KIT_" .. kit.kind], L["KIT_" .. kit.kind .. "_D"], ns.KIT_ICON[kit.kind])
+        if kit.spells then
+            frame.tiles.main = imbuePick(body)
+            mine[#mine + 1] = { L.OPT_IMBUE, nil, icon = ns.OPT_ICON.mainHand, control = frame.tiles.main }
+        else
+            local function hand(key, label, icon)
+                frame.tiles[key] = itemPick(body, function() return ns.ClassPref(key) end,
+                    function(v) ns.SetClassPref(key, v) end, function() return ns.WeaponPick(key, true) end,
+                    ns.KIT_ICON[kit.kind], L["KIT_" .. kit.kind])
+                mine[#mine + 1] = { label, nil, icon = icon, control = frame.tiles[key] }
+            end
+            hand("main", L.HAND_MAIN, ns.OPT_ICON.mainHand)
+            if kit.off then hand("off", L.HAND_OFF, ns.OPT_ICON.offHand) end
+        end
+    end
+    for _, c in ipairs(ns.ClassItems()) do
+        local row = classSwitch(c.key:lower(), L["OPT_" .. c.key], not c.spell and L.NOT_KNOWN or nil,
+            ns.SpellIconOf(c.spell or c.spells[#c.spells]))
+        mine[#mine + 1] = row
+    end
     if e.pet then
         local r = switch("pet", L.OPT_PET)
         r.icon = ns.PetIcon()
-        other[#other + 1] = r
+        mine[#mine + 1] = r
         local _, class = UnitClass("player")
         if class == "WARLOCK" then
             local names = {}
             for _, id in ipairs(ns.WARLOCK_PETS) do names[id] = ns.SpellNameOf(id) end
-            other[#other + 1] = { L.OPT_LOCK_PET, nil, icon = ns.PetIcon(),
+            mine[#mine + 1] = { L.OPT_LOCK_PET, nil, icon = ns.PetIcon(),
                 control = cycleButton(body, function() return ns.db.lockPet or ns.WARLOCK_PETS[1] end,
                     function(v) ns.SetPref("lockPet", v) end, ns.WARLOCK_PETS,
                     function(v) return names[v] or "?" end) }
         end
     end
-    if e.ammo then other[#other + 1] = switch("ammo", L.OPT_AMMO, nil, numberEdit(body, "ammoMin")) end
-    if e.shards then other[#other + 1] = switch("shards", L.OPT_SHARDS, nil, numberEdit(body, "shardsMin")) end
+    if e.ammo then mine[#mine + 1] = switch("ammo", L.OPT_AMMO, nil, numberEdit(body, "ammoMin")) end
+    if e.shards then mine[#mine + 1] = switch("shards", L.OPT_SHARDS, nil, numberEdit(body, "shardsMin")) end
+    local kc, kh = S.SettingsCard(leftCol, L.SEC_CLASS, mine, className)
+    left:Add(kc, kh)
+
+    local other = {}
     other[#other + 1] = switch("durability", L.OPT_DURABILITY, nil, numberEdit(body, "durMin"))
     other[#other + 1] = switch("bags", L.OPT_BAGS, nil, numberEdit(body, "bagsMin"))
     other[#other + 1] = switch("others", L.OPT_OTHERS, L.OPT_OTHERS_D)
@@ -317,48 +408,30 @@ local function build()
     local oc, oh = S.SettingsCard(leftCol, L.SEC_OTHER, other)
     left:Add(oc, oh)
 
-    -- Consumables: food, oils and stones, and the items and spells the player adds.
-    local setFood = S.Button(body, 90, 28)
-    setFood:SetText(L.SET_FOOD)
-    setFood:SetScript("OnClick", function()
-        local id = cursorItem()
-        ns.SetPref("foodItem", id)
-    end)
-    setFood:SetScript("OnReceiveDrag", function() ns.SetPref("foodItem", cursorItem()) end)
-    setFood:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L.SET_FOOD_TIP)
-        local id = ns.db.foodItem
-        if id then GameTooltip:AddLine(ns.ItemName(id) or ("#" .. id), 1, 1, 1) end
-        GameTooltip:Show()
-    end)
-    setFood:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    -- Consumables: food (the tile shows the one a click eats), and where to check them.
+    frame.tiles.food = itemPick(body, function() return ns.db.foodItem end, function(v) ns.SetPref("foodItem", v) end,
+        function() return ns.FoodPick(true) end, ns.OPT_ICON.food, L.SET_FOOD_TIP)
     local cc, ch = S.SettingsCard(leftCol, L.SEC_ITEMS, {
-        switch("food", L.OPT_FOOD, nil, setFood),
-        switch("anyWeapon", L.OPT_ANY_WEAPON, L.OPT_ANY_WEAPON_D),
-        { L.OPT_WHERE_ITEMS, nil, icon = ns.OPT_ICON.whereItems, control = place("whereItems") },
+        switch("food", L.OPT_FOOD),
+        { L.SET_FOOD, nil, icon = ns.OPT_ICON.foodItem, control = frame.tiles.food },
+        { L.OPT_WHERE_ITEMS, L.OPT_WHERE_ITEMS_D, icon = ns.OPT_ICON.whereItems, control = place("whereItems") },
     })
     left:Add(cc, ch)
 
     -- Right: when and how the panel shows, then the player's own reminders.
     local wc, wh = S.SettingsCard(rightCol, L.SEC_WHEN, {
-        switch("show", L.OPT_SHOW),
         switch("inRest", L.OPT_REST, L.OPT_REST_D),
         { L.OPT_ALERT, nil, icon = ns.OPT_ICON.alert,
           control = cycleButton(body, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
               ns.ALERTS, function(v) return L["ALERT_" .. v] end) },
     })
     right:Add(wc, wh)
-    local reset = S.FitButton(body, L.PLACE_RESET, 28, 110)
-    reset:SetScript("OnClick", function() ns.SetPref("point", nil) end)
     local pc, ph = S.SettingsCard(rightCol, L.SEC_PANEL, {
         { L.OPT_SIZE, nil, icon = ns.OPT_ICON.size, control = stepper("size", 4, 24, 64) },
         { L.OPT_ALPHA, nil, icon = ns.OPT_ICON.alpha,
           control = stepper("alpha", 10, 20, 100, function(v) return v .. "%" end) },
         switch("labels", L.OPT_LABELS),
         switch("vertical", L.OPT_VERTICAL),
-        { L.OPT_PLACE, nil, icon = ns.OPT_ICON.point, control = reset },
     })
     right:Add(pc, ph)
 
@@ -424,6 +497,7 @@ local function build()
     refreshWindow = function(missing, why)
         if not frame:IsShown() then return end
         for _, st in ipairs(frame.steppers) do st:Refresh() end
+        for _, t in pairs(frame.tiles) do t:Refresh() end
         frame.custom:SetData(ns.db.custom)
         local reason = why and L["STATUS_" .. why:upper()]
         if reason then ft:SetStatus(reason, S.MUTED)
@@ -435,7 +509,7 @@ local function build()
         end
     end
     frame:HookScript("OnShow", function() ns.Refresh() end)
-    frame.cards = { oc, cc, wc, pc, left.items[1] }
+    frame.cards = { kc, oc, cc, wc, pc, left.items[1] }
 end
 
 -- After a reset: every switch and button shows the saved value again.

@@ -580,6 +580,17 @@ local function dbValue(key)
     end
 end
 
+-- When the bar shows: missing or always. Hiding it is the hub's switch (Frames on screen); while
+-- it is hidden the choice is kept for when it comes back.
+local function showValue(v)
+    local d = ns.DB()
+    if v ~= nil then
+        if d.show == "never" then d.showWas = v else d.show = v end
+    end
+    if d.show == "never" then return d.showWas or "missing" end
+    return d.show
+end
+
 local function blessValue(key)
     return function(v)
         local d = ns.DB()
@@ -636,7 +647,7 @@ local function rowList()
         { kind = "header", label = L.QUICK },
         option(L.WHO, dbValue("who"), ns.WHO, function(v) return L["WHO_" .. v] end,
             I .. "Spell_Holy_PrayerOfHealing02"),
-        option(L.SHOW, dbValue("show"), ns.SHOW, function(v) return L["SHOW_" .. v] end,
+        option(L.SHOW, showValue, ns.SHOW_PICK, function(v) return L["SHOW_" .. v] end,
             I .. "INV_Misc_Spyglass_02"),
         toggle(L.COMBAT, dbValue("combat"), I .. "Ability_Warrior_OffensiveStance"),
         toggle(L.FADE_ALERT, dbValue("fadeAlert"), I .. "Spell_Shadow_DeadofNight"),

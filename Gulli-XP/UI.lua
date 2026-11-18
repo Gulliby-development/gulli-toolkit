@@ -419,8 +419,6 @@ local function barPage(body)
         function(v) ns.SetPref("alpha", v) end, 10, 0, 100, pct)
     local scale = S.Stepper(p, function() return ns.db.scale end,
         function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
-    local place = S.FitButton(p, L.PLACE_RESET, 28, 110)
-    place:SetScript("OnClick", function() ns.SetPref("point", nil) end)
     -- The text cycles through the choices on each press.
     local text = S.Button(p, 130, 28)
     text:SetScript("OnClick", function()
@@ -439,15 +437,12 @@ local function barPage(body)
     end)
     frame.styleBtn = look
     local sw = S.SettingsCard(p, L.SEC_BAR, {
-        { L.OPT_BAR, nil, function() return ns.db.bar end, function(v) ns.SetPref("bar", v) end,
-          icon = ns.OPT_ICON.bar },
         { L.OPT_STYLE, nil, control = look, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02" },
         { L.OPT_TEXT, nil, control = text, icon = "Interface\\Icons\\INV_Misc_Note_01" },
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
         { L.OPT_WIDE, nil, function() return ns.db.wide end, function(v) ns.SetPref("wide", v) end,
           icon = "Interface\\Icons\\INV_Misc_Map_02" },
-        { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
         { L.OPT_REP, nil, function() return ns.db.rep end, function(v) ns.SetPref("rep", v) end,
           icon = ns.OPT_ICON.rep },
     })

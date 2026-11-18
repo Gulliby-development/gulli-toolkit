@@ -782,7 +782,7 @@ local function build()
     local suggest = rows({ { "dungeon", L.OPT_DUNGEON, L.OPT_DUNGEON_D }, { "raid", L.OPT_RAID, L.OPT_RAID_D },
                            { "pvp", L.OPT_PVP, L.OPT_PVP_D }, { "alts", L.OPT_ALTS, L.OPT_ALTS_D },
                            { "newClass", L.OPT_NEW, L.OPT_NEW_D } })
-    local screen = rows({ { "beside", L.OPT_BESIDE, L.OPT_BESIDE_D }, { "tracker", L.OPT_TRACKER, L.OPT_TRACKER_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
+    local screen = rows({ { "beside", L.OPT_BESIDE, L.OPT_BESIDE_D }, { "announce", L.OPT_ANNOUNCE, L.OPT_ANNOUNCE_D } })
     local alpha = S.Stepper(p4, function() return ns.db.alpha end, function(v) ns.SetPref("alpha", v) end,
         10, 20, 100, function(v) return v .. "%" end)
     screen[#screen + 1] = { L.OPT_ALPHA, L.OPT_ALPHA_D, control = alpha, icon = ns.OPT_ICON.alpha }
