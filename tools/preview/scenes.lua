@@ -212,26 +212,69 @@ S.loot = { default = {
     end,
 } }
 
-S.partyquests = { default = { spec = { level = 17,
-    quests = {
-        { title = "Westfall", isHeader = true },
-        { title = "The Defias Brotherhood", questID = 155, level = 18 },
-        { title = "Red Leather Bandanas", questID = 153, level = 15 },
-        { title = "Patrolling Westfall", questID = 102, level = 14 },
-        { title = "Redridge Mountains", isHeader = true },
-        { title = "Blackrock Menace", questID = 20, level = 21 },
-    },
-    party = { { name = "Ann", quests = { [155] = true, [20] = true } }, { name = "Bob", quests = { [155] = true, [153] = true } } },
-    objectives = { [155] = { { text = "Defias Pillager slain: 3/8", type = "monster", numFulfilled = 3, numRequired = 8 } },
-                   [153] = { { text = "Red Leather Bandana: 15/15", type = "item", numFulfilled = 15, numRequired = 15 } } },
-    items = { [10] = "Red Leather Bandana" }, bags = { { id = 10, count = 17 } },
-    zone = "Westfall",
-}, open = function(ns)
-    for _, p in ipairs({ "B", "Q155,20", "O155:6/8", "E" }) do ns.Receive(p, "Ann") end
-    ns.Toggle()
-end }, settings = { spec = { party = { { name = "Ann", quests = {} } } }, open = function(ns)
-    ns.ShowTab(3)
-end } }
+-- PartyQuests: a level 47 character with quests in several zones, and a group of three: Ann runs
+-- the module (progress and zones), Bob does not, Cid is offline.
+local function pqSpec(party)
+    return { level = 47,
+        quests = {
+            { title = "Tanaris", isHeader = true },
+            { title = "Overseas Delivery", questID = 301, level = 38 },
+            { title = "Screecher Spirits", questID = 302, level = 44 },
+            { title = "Gadgetzan Water Survey", questID = 303, level = 46 },
+            { title = "Dunemaul Dues", questID = 304, level = 47 },
+            { title = "The Dunemaul Compound", questID = 305, level = 49, suggestedGroup = 3 },
+            { title = "Thistleshrub Valley", questID = 306, level = 50 },
+            { title = "Riverglades", isHeader = true },
+            { title = "I Know a Guy", questID = 311, level = 40 },
+            { title = "On the Other Side", questID = 312, level = 41 },
+            { title = "The Hinterlands", isHeader = true },
+            { title = "A Sticky Situation", questID = 321, level = 48 },
+            { title = "Summoning Shadra", questID = 322, level = 55 },
+            { title = "Sunken Temple", isHeader = true },
+            { title = "Jammal'an the Prophet", questID = 331, level = 53 },
+        },
+        party = party or {},
+        complete = { [304] = true, [305] = true },
+        turned = { [402] = true },
+        titles = { [401] = "Super Sticky", [402] = "The Thirsty Goblin", [403] = "Rescue OOX-09/HL!", [404] = "Into the Temple" },
+        objectives = {
+            [302] = { { text = "Screecher Spirits collected: 0/3", type = "monster", numFulfilled = 0, numRequired = 3 } },
+            [303] = { { text = "Tapped Dowsing Widget: 0/1", type = "item", numFulfilled = 0, numRequired = 1 } },
+            [304] = { { text = "Dunemaul Ogres slain: 1/1", type = "monster", numFulfilled = 1, numRequired = 1 } },
+            [305] = { { text = "Dunemaul Brutes slain: 21/21", type = "monster", numFulfilled = 21, numRequired = 21 } },
+            [306] = { { text = "Thistleshrub Dew Collector slain: 4/16", type = "monster", numFulfilled = 4, numRequired = 16 } },
+            [321] = { { text = "Hinterlands Honey Ripple: 0/10", type = "item", numFulfilled = 0, numRequired = 10 } },
+            [322] = { { text = "Shadra's Venom: 0/1", type = "item", numFulfilled = 0, numRequired = 1 } },
+            [331] = { { text = "Head of Jammal'an: 0/1", type = "item", numFulfilled = 0, numRequired = 1 } },
+        },
+        zone = "Tanaris" }
+end
+local PQ_PARTY = {
+    { name = "Ann", quests = { [302] = true, [303] = true, [304] = true, [305] = true, [321] = true, [331] = true } },
+    { name = "Bob", quests = { [302] = true, [305] = true, [306] = true, [331] = true } },
+    { name = "Cid", quests = {}, offline = true },
+}
+local function pqOpen(tab, zoneOnly)
+    return function(ns)
+        RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, HUNTER = { r = 0.67, g = 0.83, b = 0.45 },
+                              PRIEST = { r = 1, g = 1, b = 1 } }
+        local classes = { party1 = "MAGE", party2 = "HUNTER", party3 = "PRIEST" }
+        UnitClass = function(u) return "", classes[u] or "MAGE" end
+        for _, p in ipairs({ "B", "Q302,303,304*,305,321,331,401,402,403,404", "O302:2/3,303:0/1,304:1/1,305:9/21,321:6/10,331:0/1",
+                             "C311,312", "ZTanaris|401:45,402:46", "ZThe Hinterlands|403:48", "ZSunken Temple|404:50", "E" }) do
+            ns.Receive(p, "Ann")
+        end
+        ns.Set("zoneOnly", zoneOnly and true or false)
+        ns.ShowTab(tab)
+    end
+end
+S.partyquests = {
+    default = { spec = pqSpec(PQ_PARTY), open = pqOpen(1) },
+    zone = { spec = pqSpec(PQ_PARTY), open = pqOpen(1, true) },
+    solo = { spec = pqSpec(), open = pqOpen(1) },
+    theirs = { spec = pqSpec(PQ_PARTY), open = pqOpen(2) },
+    settings = { spec = { party = { { name = "Ann", quests = {} } } }, open = function(ns) ns.ShowTab(3) end },
+}
 
 S.bulletin = { default = { spec = { level = 56, guids = { P1 = "WARRIOR", P2 = "PRIEST", P3 = "MAGE", P4 = "ROGUE" } },
     open = function(ns, W)

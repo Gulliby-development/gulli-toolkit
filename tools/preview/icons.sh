@@ -13,6 +13,14 @@ grep -ohE 'Interface\\\\+Minimap\\\\+Tracking\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua |
   curl -fsS -o "$dir/tracking/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/MINIMAP/TRACKING/$n.PNG" ||
     { rm -f "$dir/tracking/$low.png"; echo "no tracking icon: $n" >&2; }
 done
+# the quest marks of the gossip window (the "?" and "!" of a quest)
+mkdir -p "$dir/gossip"
+grep -ohE 'Interface\\\\+GossipFrame\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
+  low=$(echo "$n" | tr 'A-Z' 'a-z')
+  [ -s "$dir/gossip/$low.png" ] && continue
+  curl -fsS -o "$dir/gossip/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/GossipFrame/$n.PNG" ||
+    { rm -f "$dir/gossip/$low.png"; echo "no quest mark: $n" >&2; }
+done
 # the game's button pictures (the loot roll dice, coin and pass)
 mkdir -p "$dir/buttons"
 grep -ohE 'Interface\\\\+Buttons\\\\+UI-GroupLoot-[A-Za-z-]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
