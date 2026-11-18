@@ -10,12 +10,19 @@ local current = 1
 local selected -- quest id shown in the detail card
 local COL_W, COLS = 76, 5
 local DETAIL_H = 96
+local ROW_H, ZONE_H, THEIRS_H = 34, 30, 44
+local SHARE_W = 104 -- fits "Поделиться" and "Udostępnij"
+-- The cells speak the game's quest marks: a grey "?" is a quest in the log, a yellow "?" one
+-- ready to hand in, a yellow "!" one the member can still take.
 local ICON = {
-    has = "Interface\\RaidFrame\\ReadyCheck-Ready",
-    done = "Interface\\RaidFrame\\ReadyCheck-Ready",
-    no = "Interface\\RaidFrame\\ReadyCheck-NotReady",
-    turned = "Interface\\RaidFrame\\ReadyCheck-Waiting",
+    has = "Interface\\GossipFrame\\IncompleteQuestIcon",
+    done = "Interface\\GossipFrame\\ActiveQuestIcon",
+    no = "Interface\\GossipFrame\\AvailableQuestIcon",
+    turned = "Interface\\RaidFrame\\ReadyCheck-Ready",
+    unknown = "Interface\\CharacterFrame\\Disconnect-Icon",
 }
+local CELL_TEXT = { has = "CELL_HAS", done = "CELL_DONE", no = "CELL_NO", turned = "CELL_TURNED", unknown = "ST_OFFLINE" }
+local LEGEND = { "has", "done", "no", "turned", "unknown" }
 local LEADER = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t "
 local STATUS = { fresh = { "ST_FRESH", S.GOOD }, stale = { "ST_STALE", S.WARN }, none = { "ST_NONE", S.FAINT },
                  offline = { "ST_OFFLINE", S.BAD } }
@@ -31,88 +38,141 @@ local function filter()
              text = search and search:GetText() or nil }
 end
 
--- One cell: the ready-check icon, or "3/8" when the member's module sent the objectives.
-local function setCell(c, s)
+-- "5 Quest title" with the level and the title in the level's colour.
+local function levelTitle(level, title)
+    if not level or level <= 0 then return title end
+    return S.Hex(S.LevelColor(level)) .. level .. "  " .. title .. "|r"
+end
+
+-- One cell: "3/8" while the member's module sends the objectives, else the quest mark of its
+-- state. who is the member (nil for me), for the tooltip.
+local function setCell(c, s, who)
+    c.s, c.who = s, who
     c.icon:Hide(); c.text:SetText("")
     if not s then return end
-    if s.state == "unknown" then
-        c.text:SetText("?"); c.text:SetTextColor(S.FAINT[1], S.FAINT[2], S.FAINT[3], 1)
-    elseif (s.state == "has" or s.state == "done") and s.need then
-        local col = s.state == "done" and S.GOOD or S.TEXT
-        c.text:SetText(s.have .. "/" .. s.need); c.text:SetTextColor(col[1], col[2], col[3], 1)
+    if s.state == "has" and s.need then
+        c.text:SetText(s.have .. "/" .. s.need)
     else
         c.icon:Show()
         c.icon:SetTexture(ICON[s.state] or ICON.no)
-        if s.state == "done" then c.icon:SetVertexColor(1, 0.82, 0, 1) else c.icon:SetVertexColor(1, 1, 1, 1) end
+        c.icon:SetAlpha(s.state == "unknown" and 0.6 or 1)
     end
+end
+
+local function cellTip(self)
+    local s = self.s
+    if not s or not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    local who = self.who
+    GameTooltip:AddLine(who and (classHex(who.class) .. who.name .. "|r") or L.ME)
+    GameTooltip:AddLine(L[CELL_TEXT[s.state]] or s.state, 1, 1, 1)
+    if s.need then GameTooltip:AddLine(s.have .. "/" .. s.need, 0.77, 0.72, 0.65) end
+    GameTooltip:Show()
+end
+
+-- A list row is a zone header (item.head) or an entry: r.zone and r.c take turns.
+local function makeZone(r)
+    r.zone = CreateFrame("Frame", nil, r)
+    r.zone:SetAllPoints()
+    r.zone.text = S.Text(r.zone, 12, S.GOLD_DIM, nil, "bold")
+    r.zone.text:SetPoint("LEFT", 10, 0)
+    r.zone.text:SetPoint("RIGHT", -10, 0)
+    r.zone.text:SetJustifyH("LEFT")
+    r.zone.text:SetWordWrap(false)
+    r.c = CreateFrame("Frame", nil, r)
+    r.c:SetAllPoints()
+end
+
+local function fillZone(r, item)
+    r.zone:SetShown(item.head and true or false)
+    r.c:SetShown(not item.head)
+    if not item.head then return false end
+    S.Fill(r, S.SIDE)
+    r.zone.text:SetText(S.Upper(item.zone or L.ZONE_UNKNOWN) .. "  |r" .. S.Hex(S.FAINT) .. item.count .. "|r"
+        .. (item.here and (S.DOT .. S.Hex(S.Accent()) .. L.HERE .. "|r") or ""))
+    return true
 end
 
 local function makeOurs(r)
-    r:EnableMouse(true)
-    r:SetScript("OnMouseDown", function(self) selected = self.row.quest.id; ns.Refresh() end)
-    r.share = S.Button(r, 80, 28)
+    makeZone(r)
+    local c = r.c
+    local function pick() selected = r.row.quest.id; ns.Refresh() end
+    c:EnableMouse(true)
+    c:SetScript("OnMouseDown", pick)
+    r.share = S.Button(c, SHARE_W, 28)
     r.share:SetPoint("RIGHT", 0, 0)
     r.share:SetText(L.SHARE)
-    r.share:SetScript("OnClick", function(self) ns.Share(self:GetParent().row.quest.id); ns.Refresh() end)
+    r.share:SetScript("OnClick", function() ns.Share(r.row.quest.id); ns.Refresh() end)
     r.cells = {}
     for i = COLS, 1, -1 do
-        local c = CreateFrame("Frame", nil, r)
-        c:SetSize(COL_W - 4, 30)
-        c:SetPoint("RIGHT", r.share, "LEFT", -((COLS - i) * COL_W) - 2, 0)
-        c.icon = c:CreateTexture(nil, "ARTWORK")
-        c.icon:SetSize(18, 18)
-        c.icon:SetPoint("CENTER")
-        c.text = S.Text(c, 12)
-        c.text:SetPoint("CENTER")
-        r.cells[i] = c
+        local cell = CreateFrame("Frame", nil, c)
+        cell:SetSize(COL_W - 4, 30)
+        cell:SetPoint("RIGHT", r.share, "LEFT", -((COLS - i) * COL_W) - 2, 0)
+        cell.icon = cell:CreateTexture(nil, "ARTWORK")
+        cell.icon:SetSize(18, 18)
+        cell.icon:SetPoint("CENTER")
+        cell.text = S.Text(cell, 12)
+        cell.text:SetPoint("CENTER")
+        cell:EnableMouse(true)
+        cell:SetScript("OnMouseDown", pick)
+        cell:SetScript("OnEnter", cellTip)
+        cell:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        r.cells[i] = cell
     end
-    r.title = S.Text(r, 12)
-    r.title:SetPoint("TOPLEFT", 10, -6)
+    r.title = S.Text(c, 12)
+    r.title:SetPoint("LEFT", 10, 0)
     r.title:SetPoint("RIGHT", r.share, "LEFT", -(COLS * COL_W) - 6, 0)
+    r.title:SetJustifyH("LEFT")
     r.title:SetWordWrap(false)
-    r.sub = S.Text(r, 12, S.MUTED)
-    r.sub:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -4)
-    r.sub:SetPoint("RIGHT", r.title, "RIGHT")
-    r.sub:SetWordWrap(false)
 end
 
 local function fillOurs(r, row)
+    if fillZone(r, row) then return end
     r.row = row
     local q = row.quest
     S.Fill(r, q.id == selected and S.RAISED or S.CLEAR)
-    local title = q.level and q.level > 0 and (S.Hex(S.LevelColor(q.level)) .. q.title .. "|r") or q.title
-    r.title:SetText(title .. (q.group and (" " .. S.Hex(S.Accent()) .. L.GROUP .. "|r") or ""))
-    local sub = string.format("[%d] %s", q.level, q.zone or "")
-    if q.spare and q.spare > 0 then sub = sub .. "  ·  " .. L.SPARE:format(q.spare) end
-    r.sub:SetText(sub)
+    local title = levelTitle(q.level, q.title)
+    if q.group then title = title .. "  " .. S.Hex(S.Accent()) .. L.GROUP .. "|r" end
+    if q.spare and q.spare > 0 then title = title .. S.DOT .. S.Hex(S.MUTED) .. L.SPARE:format(q.spare) .. "|r" end
+    r.title:SetText(title)
     setCell(r.cells[1], row.mine)
-    for i = 2, COLS do setCell(r.cells[i], row.cells[i - 1]) end
+    for i = 2, COLS do setCell(r.cells[i], row.cells[i - 1], row.party and row.party[i - 1]) end
     r.share:SetShown(row.canShare)
 end
 
 local function makeTheirs(r)
-    r.ask = S.Button(r, 96, 28)
+    makeZone(r)
+    local c = r.c
+    r.ask = S.Button(c, 96, 28)
     r.ask:SetPoint("RIGHT", 0, 0)
     r.ask:SetText(L.REQUEST_BTN)
-    r.ask:SetScript("OnClick", function(self)
-        local item = self:GetParent().item
+    r.ask:SetScript("OnClick", function()
+        local item = r.item
         local how = ns.Request(item.id, item.title, item.who[1])
         footer:SetStatus((how == "addon" and L.REQUEST_SENT or L.REQUEST_WHISPER):format(item.who[1]), S.GOOD)
     end)
-    r.title = S.Text(r, 12)
+    r.title = S.Text(c, 12)
     r.title:SetPoint("TOPLEFT", 10, -6)
     r.title:SetPoint("RIGHT", r.ask, "LEFT", -6, 0)
+    r.title:SetJustifyH("LEFT")
     r.title:SetWordWrap(false)
-    r.sub = S.Text(r, 12, S.MUTED)
+    r.sub = S.Text(c, 12, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -4)
     r.sub:SetPoint("RIGHT", r.title, "RIGHT")
+    r.sub:SetJustifyH("LEFT")
     r.sub:SetWordWrap(false)
 end
 
+local classOf = {} -- member name -> class, for the names on the Their quests tab
+
 local function fillTheirs(r, item)
+    if fillZone(r, item) then return end
     r.item = item
-    r.title:SetText(item.title)
-    r.sub:SetText(table.concat(item.who, ", ") .. (item.turned and ("  ·  " .. S.Hex(S.WARN) .. L.YOU_DID .. "|r") or ""))
+    S.Fill(r, S.CLEAR)
+    r.title:SetText(levelTitle(item.level, item.title))
+    local who = {}
+    for i, name in ipairs(item.who) do who[i] = classHex(classOf[name]) .. name .. (classOf[name] and "|r" or "") end
+    r.sub:SetText(table.concat(who, ", ") .. (item.turned and (S.DOT .. S.Hex(S.WARN) .. L.YOU_DID .. "|r") or ""))
     r.ask:SetShown(not item.turned)
 end
 
@@ -123,6 +183,9 @@ local function fillHead(party)
         col.member = m
         if i == 1 then
             col.name:SetText(L.ME); col.status:SetText("")
+            col.name:ClearAllPoints()
+            if #party == 0 then col.name:SetPoint("LEFT"); col.name:SetPoint("RIGHT")
+            else col.name:SetPoint("TOPLEFT"); col.name:SetPoint("TOPRIGHT") end
         elseif m then
             col.name:SetText((m.leader and LEADER or "") .. classHex(m.class) .. m.name .. "|r")
             local st = STATUS[ns.Status(m)]
@@ -133,9 +196,10 @@ local function fillHead(party)
     end
 end
 
-local function fillDetail(rows)
+local function fillDetail(rows, inGroup)
     local row
     for _, r in ipairs(rows) do if r.quest.id == selected then row = r end end
+    detail.legend:SetShown(not row and inGroup)
     if not row then
         detail.title:SetText(L.PICK_QUEST)
         detail.lines:SetText("")
@@ -195,8 +259,10 @@ function ns.Refresh()
     shareAll:SetShown(current == 1)
     card:SetPoint("BOTTOMRIGHT", 0, current == 1 and (DETAIL_H + S.GAP) or 0)
     if current == 1 then
-        listOurs:SetData(rows)
-        fillDetail(rows)
+        for _, r in ipairs(rows) do r.party = party end
+        head.count:SetText(S.Upper(L.TAB_OURS) .. "  |r" .. S.Hex(S.FAINT) .. #rows .. "|r")
+        listOurs:SetData(ns.ByZone(rows, function(r) return r.quest.zone end, function(r) return r.order end))
+        fillDetail(rows, #party > 0)
         local canShare = false
         for _, r in ipairs(rows) do if r.canShare then canShare = true end end
         shareAll:SetEnabled(canShare)
@@ -208,7 +274,8 @@ function ns.Refresh()
         empty:SetShown(#rows == 0)
         footerStatus(rows, party)
     elseif current == 2 then
-        listTheirs:SetData(theirs)
+        for _, m in ipairs(party) do classOf[m.name] = m.class end
+        listTheirs:SetData(ns.ByZone(theirs, function(item) return item.zone end))
         empty:Set(L.NONE_THEIRS)
         empty:SetShown(#theirs == 0)
         footer:SetStatus(L.THEIRS_HINT, S.MUTED)
@@ -281,7 +348,7 @@ local function build()
     for i = COLS, 1, -1 do
         local col = CreateFrame("Frame", nil, head)
         col:SetSize(COL_W - 4, 32)
-        col:SetPoint("RIGHT", -80 - (COLS - i) * COL_W - 2, 0)
+        col:SetPoint("RIGHT", -SHARE_W - (COLS - i) * COL_W - 2, 0)
         col.name = S.Text(col, 12)
         col.name:SetPoint("TOPLEFT"); col.name:SetPoint("TOPRIGHT")
         col.name:SetJustifyH("CENTER"); col.name:SetWordWrap(false)
@@ -302,21 +369,19 @@ local function build()
         col:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         head.cols[i] = col
     end
-    local legend = S.Text(head, 12, S.FAINT)
-    legend:SetPoint("LEFT", 10, 0)
-    legend:SetPoint("RIGHT", head.cols[1], "LEFT", -8, 0)
-    legend:SetWordWrap(true)
-    legend:SetMaxLines(2)
-    legend:SetText(L.LEGEND)
+    head.count = S.Text(head, 12, S.GOLD_DIM, nil, "bold")
+    head.count:SetPoint("LEFT", 10, 0)
     local rule = S.Divider(head, S.EDGE)
     rule:SetPoint("BOTTOMLEFT", 0, -4)
     rule:SetPoint("BOTTOMRIGHT", 0, -4)
     rule:SetHeight(1)
 
-    listOurs = S.List(cb, 42, makeOurs, fillOurs)
+    listOurs = S.List(cb, ROW_H, makeOurs, fillOurs)
+    listOurs.heightOf = function(item) return item.head and ZONE_H or ROW_H end
     listOurs:SetPoint("TOPLEFT", 0, -40)
     listOurs:SetPoint("BOTTOMRIGHT", -10, 0)
-    listTheirs = S.List(cb, 42, makeTheirs, fillTheirs)
+    listTheirs = S.List(cb, THEIRS_H, makeTheirs, fillTheirs)
+    listTheirs.heightOf = function(item) return item.head and ZONE_H or THEIRS_H end
     listTheirs:SetPoint("TOPLEFT", 0, 0)
     listTheirs:SetPoint("BOTTOMRIGHT", -10, 0)
     empty = S.Empty(cb)
@@ -338,6 +403,15 @@ local function build()
     detail.lines:SetPoint("TOPLEFT", detail.title, "BOTTOMLEFT", 0, -10)
     detail.lines:SetPoint("RIGHT", detail.body, "RIGHT")
     detail.lines:SetMaxLines(3)
+    -- With nothing picked, the card explains the marks of the member columns.
+    local marks = {}
+    for i, state in ipairs(LEGEND) do marks[i] = "|T" .. ICON[state] .. ":16:16|t " .. L[CELL_TEXT[state]] end
+    detail.legend = S.Note(detail.body, 12)
+    detail.legend:SetPoint("TOPLEFT", detail.title, "BOTTOMLEFT", 0, -10)
+    detail.legend:SetPoint("RIGHT", detail.body, "RIGHT")
+    detail.legend:SetJustifyH("LEFT")
+    detail.legend:SetMaxLines(3)
+    detail.legend:SetText(table.concat(marks, S.DOT))
 
     buildSettings(body)
 
