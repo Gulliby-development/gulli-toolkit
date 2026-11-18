@@ -99,6 +99,63 @@ test("looted gold counts; vendor sales only with their switch; mail never", func
     eq(ns.s.money, 750, "mail is not farmed")
 end)
 
+test("the loot's worth: vendor, auction, disenchant, and the gold looted", function()
+    local GREY, TOOTH, CLOTH2, BLUE, BLUE_BOP, GREEN, QUEST, UNKNOWN = 1, 2, 3, 4, 5, 6, 7, 8
+    local items = {
+        [GREY] = { quality = 0, sell = 100, class = 4 },
+        [TOOTH] = { quality = 1, sell = 20, class = 15 },              -- plain white: vendor
+        [CLOTH2] = { quality = 1, sell = 50, class = 7 },              -- trade goods: auction
+        [BLUE] = { quality = 3, sell = 1000, class = 4, bind = 2 },    -- BoE blue: auction
+        [BLUE_BOP] = { quality = 3, sell = 900, class = 2, bind = 1 }, -- bound: vendor
+        [GREEN] = { quality = 2, sell = 300, class = 4, bind = 2, ilvl = 33 },
+        [QUEST] = { quality = 1, sell = 0, class = 12 },
+    }
+    Fake({ items = items, ah = { [CLOTH2] = 400, [BLUE] = 50000, [BLUE_BOP] = 99999, [TOOTH] = 9999,
+                                 [11137] = 2000, [11134] = 1500 } })
+    local ns = Load()
+    W.Loot(GREY, 2); W.Loot(TOOTH, 3); W.Loot(CLOTH2, 10); W.Loot(BLUE, 1); W.Loot(BLUE_BOP, 1)
+    W.Loot(GREEN, 1); W.Loot(QUEST, 1); W.Loot(UNKNOWN, 1)
+    W.Money(777)
+    eq(select(2, ns.ItemValue(TOOTH)), "vendor", "a white tooth goes to a vendor, not the auction")
+    eq(select(2, ns.ItemValue(CLOTH2)), "auction")
+    eq(select(2, ns.ItemValue(BLUE)), "auction")
+    eq(select(2, ns.ItemValue(BLUE_BOP)), "vendor")
+    eq(select(2, ns.ItemValue(GREEN)), "vendor", "no Enchanting: a vendor")
+    local total, unknown = ns.SessionValue()
+    eq(unknown, 1, "an item the client does not know yet")
+    eq(total, 777 + 200 + 60 + 4000 + 50000 + 900 + 300)
+    -- with Enchanting a green is worth its cheapest disenchant result, when that beats the vendor
+    Fake({ items = items, enchanter = true, ah = { [11137] = 2000, [11134] = 1500 } })
+    ns = Load()
+    eq(ns.ItemValue(GREEN, true), 1500)
+    eq(select(2, ns.ItemValue(GREEN, true)), "disenchant")
+    W.ah[11134] = 100; W.ah[11137] = 100
+    eq(ns.ItemValue(GREEN, true), 300, "the vendor when it pays more")
+    -- without Auctionator everything counts at the vendor
+    Fake({ items = items })
+    ns = Load()
+    eq(ns.ItemValue(BLUE), 1000)
+end)
+
+test("the worth line shows with its switch, and sales are not counted twice", function()
+    Fake({ items = { [9] = { quality = 0, sell = 100 } } })
+    local ns = Load()
+    ns.SetPref("panel", true)
+    ns.Refresh()
+    assert(not ns.Parts(), "no panel: no target and no worth line")
+    ns.SetPref("value", true)
+    local panel = ns.Parts()
+    assert(panel and panel:IsShown(), "the worth line alone shows the panel")
+    W.Loot(9, 2)
+    ns.Refresh()
+    assert(ns.WorthText():find("2s"), ns.WorthText())
+    W.Fire("MERCHANT_SHOW"); W.Loot(9, -2); W.Money(200); W.Fire("MERCHANT_CLOSED")
+    eq(ns.s.money, 200, "the sale counts as gold")
+    eq(ns.SessionValue(), 200, "but the worth counts the loot only once")
+    ns.SetPref("value", false)
+    eq(ns.WorthText(), nil)
+end)
+
 test("targets: at most three, one per item, gold once", function()
     Fake({})
     local ns = Load()
@@ -247,7 +304,7 @@ test("the hub gets the module's window and switches", function()
     local ns = Load()
     eq(got.key, "FarmTrack")
     assert(got.window() == ns.Window())
-    eq(#got.options, 1, "the panel's show switch is the hub's, in Frames on screen")
+    eq(#got.options, 2, "the panel's show switch is the hub's, in Frames on screen")
     got.options[1].set(false)
     eq(ns.db.sales, false)
     local fr = got.frames[1]

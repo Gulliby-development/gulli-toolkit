@@ -89,6 +89,15 @@ local function buildPanel()
     panel.empty:SetPoint("TOPLEFT", 10, -HEAD_H - 12)
     panel.empty:SetPoint("RIGHT", -10, 0)
     panel.empty:SetText(L.PANEL_EMPTY)
+    -- the worth of everything looted, under the rows (the value switch)
+    panel.worthLine = S.Divider(panel)
+    panel.worthLine:SetHeight(1)
+    panel.worth = S.Text(panel, 12, S.MUTED)
+    panel.worth:SetPoint("BOTTOMLEFT", 10, 6)
+    panel.worth:SetText(L.WORTH)
+    panel.worthValue = S.Text(panel, 12, S.TEXT, "OUTLINE")
+    panel.worthValue:SetPoint("BOTTOMRIGHT", -8, 6)
+    panel.worthValue:SetJustifyH("RIGHT")
     S.Mover(panel, { label = L.TITLE, hint = L.TIP_MOVE,
         save = function(p, rp, x, y) ns.db.point = { p, rp, x, y } end,
         reset = function() ns.db.point = nil; ns.Place() end })
@@ -102,6 +111,11 @@ local function buildPanel()
             local i = ns.Info(t)
             GameTooltip:AddDoubleLine(i.name, ns.ValueText(i, true), S.TEXT[1], S.TEXT[2], S.TEXT[3], 1, 1, 1)
             GameTooltip:AddLine(ns.PaceText(i), m[1], m[2], m[3])
+        end
+        local worth = ns.WorthText()
+        if worth then
+            GameTooltip:AddDoubleLine(L.WORTH, worth, m[1], m[2], m[3], 1, 1, 1)
+            GameTooltip:AddLine(L.WORTH_TIP, m[1], m[2], m[3], true)
         end
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(L.TIP_CLICK, S.FAINT[1], S.FAINT[2], S.FAINT[3], true)
@@ -119,7 +133,16 @@ end
 -- The panel shows while there is something to farm, or in the Unlock mode so it can be placed.
 function ns.PanelShown()
     if ns.Unlocked() then return true end
-    return ns.db.panel and #ns.Targets() > 0
+    return ns.db.panel and (#ns.Targets() > 0 or ns.db.value) and true or false
+end
+
+-- "~12g 34s" for the panel, nil while the switch is off.
+function ns.WorthText()
+    if not ns.db.value then return nil end
+    local total, unknown = ns.SessionValue()
+    local text = "~" .. S.MoneyText(total, true)
+    if unknown > 0 then text = text .. S.Hex(S.FAINT) .. " +" .. unknown .. "?|r" end
+    return text
 end
 
 local function paintPanel()
@@ -138,8 +161,21 @@ local function paintPanel()
         end
         r:SetShown(t ~= nil)
     end
-    panel.empty:SetShown(#list == 0)
-    panel:SetHeight(HEAD_H + math.max(1, #list) * ROW_H + 4)
+    local worth = ns.WorthText()
+    panel.empty:SetShown(#list == 0 and not worth)
+    local rows = (#list == 0 and worth) and 0 or math.max(1, #list)
+    local h = HEAD_H + rows * ROW_H + 4
+    panel.worth:SetShown(worth ~= nil)
+    panel.worthValue:SetShown(worth ~= nil)
+    panel.worthLine:SetShown(worth ~= nil and rows > 0)
+    if worth then
+        panel.worthValue:SetText(worth)
+        panel.worthLine:ClearAllPoints()
+        panel.worthLine:SetPoint("TOPLEFT", 1, -h + 2)
+        panel.worthLine:SetPoint("TOPRIGHT", -1, -h + 2)
+        h = h + 24
+    end
+    panel:SetHeight(h)
     panel:SetScale((ns.db.scale or 100) / 100)
     panel:SetAlpha((ns.db.alpha or 100) / 100)
 end
@@ -312,6 +348,8 @@ local function settingsPage(body, width)
           icon = ns.OPT_ICON.sales },
         { L.OPT_ALERT, L.OPT_ALERT_TIP, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
           icon = ns.OPT_ICON.alert },
+        { L.OPT_VALUE, L.OPT_VALUE_TIP, function() return ns.db.value end, function(v) ns.SetPref("value", v) end,
+          icon = ns.OPT_ICON.value },
     })
     st:Add(count, ch)
     page:SetContent(st:Height())
