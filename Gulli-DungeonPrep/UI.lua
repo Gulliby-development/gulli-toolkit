@@ -246,7 +246,7 @@ local function onRowClick(self, button)
         ns.Refresh()
         return
     end
-    if item.stop then ns.SetPin(item.stop) return end
+    if item.stop then ns.SetPin(item.stop, true) return end
     local q = item.quest
     if not q then return end
     if button == "RightButton" then
@@ -1156,7 +1156,7 @@ local function makeStep(r)
         local st = self:GetParent().step
         if not st then return end
         if st.dungeon and not st.this then ns.OpenQuest(st.id) return end
-        ns.PinAt(st.who, st.area, st.x, st.y)
+        ns.PinAt(st.who, st.area, st.x, st.y, true)
     end)
     r.click:SetScript("OnEnter", function(self)
         local st = self:GetParent().step
@@ -1325,14 +1325,14 @@ local function buildDetail(parent)
     place("start", L.DETAIL_START)
     d.startMap:SetScript("OnClick", function()
         local q = d.q
-        if q then ns.PinAt(q.who, q.area, q.x, q.y) end
+        if q then ns.PinAt(q.who, q.area, q.x, q.y, true) end
     end)
     place("turnin", L.DETAIL_TURNIN)
     d.turninLabel:SetPoint("TOP", d.startMap, "BOTTOM", 0, -10)
     d.turninLabel:SetPoint("LEFT", b, "LEFT")
     d.turninMap:SetScript("OnClick", function()
         local t = d.q and d.q.turnin
-        if t then ns.PinAt(t.who, t.area, t.x, t.y) end
+        if t then ns.PinAt(t.who, t.area, t.x, t.y, true) end
     end)
     -- Near by, the map buttons also target and mark the giver (ns.TargetOver).
     local function targets(btn, whoOf)
@@ -1398,6 +1398,9 @@ local function buildDetail(parent)
     d.chain:SetPoint("BOTTOMRIGHT", -10, 0)
     return d
 end
+
+-- The quest page, for the tests.
+function ns.DetailFrame() return detail end
 
 local function whereLine(who, area)
     return ns.Where({ who = who or "", area = area or 0 })
@@ -1857,7 +1860,7 @@ local function build()
         for _, d in ipairs(ns.Dungeons(ns.level or 1)) do
             if d.key == ns.selected and d.entrance then
                 ns.SetPin({ who = ns.DungeonName(d), zone = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.entrance.area),
-                            x = d.entrance.x, y = d.entrance.y })
+                            x = d.entrance.x, y = d.entrance.y }, true)
             end
         end
     end)
