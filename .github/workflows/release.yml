@@ -99,6 +99,9 @@ jobs:
   # have ids there and the CF_API_TOKEN secret is set.
   curseforge:
     needs: release
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/curseforge.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
