@@ -112,6 +112,11 @@ FOREVER_QUESTS = 90000
 # (owner's decision, each one by name): they join D.main.
 MAIN_EXTRA = {
     "MARA": [93404],  # Rot and Regret, the Maraudon step of the Shen'dralas chain
+    "RFD": [93604],  # Agamaggan's Blood, the end of that chain
+    "EXCAVATION": [95737],  # Seeking Caitlin
+    "KROLDOK": [94969],  # Krol'dok No More!
+    "BLACKMAW": [92065, 99187],  # Blackmaw Reclamation, The Reliquary of Tyr
+    "DALARAN": [92459, 97287],  # Friend of the Kirin Tor, Shrewd Negotiations
 }
 
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after

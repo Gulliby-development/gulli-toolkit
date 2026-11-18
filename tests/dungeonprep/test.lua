@@ -824,6 +824,10 @@ test("levelling chains: a quest the guides leave out comes in by hand (D.main, M
     local ns = Load()
     eq(ns.Get("mainOnly"), true, "on by default")
     assert(ns.MainSet("MARA")[93404], "Rot and Regret is shown with Chains only")
+    for key, ids in pairs({ RFD = { 93604 }, EXCAVATION = { 95737 }, KROLDOK = { 94969 },
+        BLACKMAW = { 92065, 99187 }, DALARAN = { 92459, 97287 } }) do
+        for _, id in ipairs(ids) do assert(ns.MainSet(key)[id], key .. ": " .. id .. " is a chain") end
+    end
     local seen
     for _, l in ipairs({ "log", "take", "later", "hidden" }) do
         for _, x in ipairs(ns.Quests("MARA", 50)[l]) do
