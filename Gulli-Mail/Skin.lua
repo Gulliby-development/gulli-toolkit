@@ -689,7 +689,13 @@ end
 local function paint(b)
     local hover = b.hover and b:IsEnabled()
     local down = b.down and b:IsEnabled()
-    if b.text then b.text:SetPoint("LEFT", 6, down and -1 or 0); b.text:SetPoint("RIGHT", -6, down and -1 or 0) end
+    -- A press moves the text one pixel down, from where the button keeps it (after an icon).
+    local pad = rawget(b, "textPad")
+    if b.text and pad then
+        local y = down and -1 or 0
+        b.text:SetPoint("LEFT", pad, y)
+        b.text:SetPoint("RIGHT", -6, y)
+    end
     if down then hover = false end
     if (b.kind == "primary" or b.kind == "danger") and not b:IsEnabled() then
         -- a main action that cannot run now looks like a plain dim button, not a lit one
@@ -729,6 +735,7 @@ function S.Button(parent, width, height)
     b.text:SetPoint("RIGHT", -6, 0)
     b.text:SetJustifyH("CENTER")
     b.text:SetWordWrap(false)
+    b.textPad = 6
     b.kind = "normal"
     b.SetText = function(self, s) self.text:SetText(s) end
     b.GetText = function(self) return self.text:GetText() end
@@ -783,6 +790,7 @@ function S.SetButtonIcon(b, path, size)
     b.text:ClearAllPoints()
     b.text:SetPoint("LEFT", path and size + 11 or 6, 0)
     b.text:SetPoint("RIGHT", -6, 0)
+    if rawget(b, "textPad") then b.textPad = path and size + 11 or 6 end
     return b
 end
 

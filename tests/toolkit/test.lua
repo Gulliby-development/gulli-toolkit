@@ -1480,6 +1480,27 @@ test("an icon tile shows its title and count and greys out when disabled", funct
     eq(texts.count, "", "no count on an empty kind")
 end)
 
+test("a button with an icon keeps its text after the icon when hovered or pressed", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local b = S.Button(CreateFrame("Frame"), 120, 30)
+    S.SetButtonIcon(b, "Interface\\Icons\\INV_Misc_Map_01")
+    local left = {}
+    rawset(b, "text", setmetatable({ SetPoint = function(_, p, x, y) if p == "LEFT" then left[#left + 1] = { x, y } end end },
+                                   { __index = function() return function() end end }))
+    b:GetScript("OnEnter")(b)
+    eq(left[#left][1], 27, "hover keeps the text after the icon")
+    b.down = true
+    b:GetScript("OnEnable")(b)
+    eq(left[#left][1], 27, "a press keeps it too")
+    eq(left[#left][2], -1, "a press moves it one pixel down")
+    local tile = S.IconTile(CreateFrame("Frame"), 120)
+    local before = #left
+    rawset(tile, "text", b.text)
+    tile:GetScript("OnEnter")(tile)
+    eq(#left, before, "a tile's title keeps its own place")
+end)
+
 test("money shows each coin in its colour, short drops copper from 1 gold, a loss keeps its minus", function()
     Fake({ addons = { QC } })
     local S = Load().Skin

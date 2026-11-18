@@ -152,7 +152,7 @@ end
 local function fillGridRow(r, row)
     r.title:SetText(row.title and S.Upper(row.title) or "")
     local w = r:GetWidth()
-    if not w or w <= 1 then w = (grid and grid:GetWidth()) or 800 end
+    if not w or w <= 1 then w = (grid and grid.list and grid.list:GetWidth()) or 800 end
     r:GetScript("OnSizeChanged")(r, w)
     for i = 1, GRID_COLS do fillTile(r.tiles[i], row[i]) end
 end
@@ -1796,7 +1796,10 @@ local function build()
     grid = CreateFrame("Frame", nil, body)
     grid:SetAllPoints()
     grid:Hide()
-    grid.list = S.List(grid, TILE_H, makeGridRow, fillGridRow, S.GAP)
+    -- The tiles scroll inside a card, so the edge where they leave the view shows.
+    grid.card = S.Card(grid, L.ALL_DUNGEONS, nil, TI .. "INV_Misc_Map_02")
+    grid.card:SetAllPoints()
+    grid.list = S.List(grid.card.body, TILE_H, makeGridRow, fillGridRow, S.GAP)
     grid.list:SetPoint("TOPLEFT")
     grid.list:SetPoint("BOTTOMRIGHT", -10, 0)
     grid.list.heightOf = function(row) return row.title and 24 or TILE_H end
