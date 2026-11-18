@@ -26,7 +26,9 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 - **All your characters.** Each character you log in is saved. A step can be faster on another character (three levels on your warlock), and a class you have no character of is a new point too.
 - **Help from other modules.** A button on a step opens the module that helps: Craft Profit for a profession, Bulletin Board to find a group for a dungeon, XP for your pace.
 - **How to do it.** Click a step or a challenge. Its page tells you what to do and where to go, lists what is left (the dungeons, the zones and areas still to explore, each zone with its levels, the ones for your level first), and gives a Wowhead link to copy.
-- **Beside the game's window.** When you open the game's Legacy window, the navigator opens on its right and closes with it. Turn off **Beside the Legacy window** in Settings if you do not want that.
+- **Beside the game's window.** When you open the game's Legacy window, a small window opens on its right and closes with it. It shows the track up to the next reward and your next five steps: the pinned ones first, then the fastest. A click on a step shows it in the game's window. **Full window** opens the whole navigator in the middle of the screen. Turn off **Beside the Legacy window** in Settings if you do not want that.
+
+<p align="center"><img src="compact.png" alt="The small window beside the game's Legacy window" width="416"></p>
 - **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli` (not in the module's window).
 - **A notice for each new point**, also in the Recent list of the toolkit.
 - **In game:** a step opens the game's own Legacy window at its challenge.
@@ -45,7 +47,7 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 ## How to use it
 
 1. Type `/glg`, or open **Legacy** in `/gulli`. **Plan** shows the track and your next steps.
-2. **Change goal** walks through the rewards of the track. **Pin** puts a step on the tracker. **In game** opens it in the game's Legacy window.
+2. **Change goal** walks through the rewards of the track. **Pin** puts a step on the tracker. **In game** opens it in the game's Legacy window, with the small window beside it.
 3. Click a step for its page: how to do it, what is left and a Wowhead link. **Back** returns.
 4. **Characters** shows the fastest step of each character. **Challenges** lists all of them, the most finished on top; sort them by **Progress**, **Type** or **Name**. **Settings** has the switches.
 5. `/glg game` opens the game's Legacy window.

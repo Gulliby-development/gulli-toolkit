@@ -2,12 +2,14 @@
 -- first. Characters: each saved character with its fastest step. Challenges: every Legacy
 -- challenge and how far it is. Settings: what the plan may suggest and the tracker.
 -- On screen: a Gulli HUD list of the pinned (or first) steps, and a notice for a new point.
+-- Beside the game's Legacy window: the compact window (the short track, five steps, settings).
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
 local frame, tabs, footer, gameBtn
+local compact
 local pages = {}
 local track, goalText, goalSub, goalBtn, stepList, stepsCard, emptySteps
 local charList, chalList, switchRows = nil, nil, {}
@@ -127,7 +129,7 @@ local function makeStep(r)
     r.helper:SetScript("OnClick", function(self) ns.OpenHelper(self:GetParent().helperKey or nil) end)
     r.game = S.Ghost(S.FitButton(r, L.IN_GAME, 26, 64))
     r.game:SetPoint("RIGHT", r.helper, "LEFT", -4, 0)
-    r.game:SetScript("OnClick", function(self) ns.OpenInGame(self:GetParent().step.ch.id) end)
+    r.game:SetScript("OnClick", function(self) ns.ToGame(self:GetParent().step.ch.id) end)
     r.pin = S.FitButton(r, L.PIN, 26, 64)
     r.pin:SetPoint("RIGHT", r.game, "LEFT", -4, 0)
     r.pin:SetScript("OnClick", function(self) ns.Pin(self:GetParent().step.ch.id) end)
@@ -405,7 +407,7 @@ local function buildDetail(p)
     d.back:SetScript("OnClick", function() ns.ShowTab(d.from or 1) end)
     d.game = S.Ghost(S.FitButton(hb, L.IN_GAME, 30, 80))
     d.game:SetPoint("RIGHT", d.back, "LEFT", -6, 0)
-    d.game:SetScript("OnClick", function() if detailID then ns.OpenInGame(detailID) end end)
+    d.game:SetScript("OnClick", function() if detailID then ns.ToGame(detailID) end end)
     d.pin = S.FitButton(hb, L.PIN, 30, 70)
     d.pin:SetPoint("RIGHT", d.game, "LEFT", -6, 0)
     d.pin:SetScript("OnClick", function() if detailID then ns.Pin(detailID) end end)
@@ -649,6 +651,7 @@ function ns.Refresh()
     local steps, hidden = ns.Steps()
     local p = ns.Points()
     ns.Tracker(steps, p)
+    if compact and compact:IsShown() then compact.Fill(steps, p, hidden) end
     if not frame or not frame:IsShown() then return end
     local ready = ns.list and #ns.list > 0
     local page = tabs.selected
@@ -711,7 +714,7 @@ local function build()
     frame = S.Window("GulliLegacyFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     footer = S.Footer(frame)
     gameBtn = footer:Add(S.FitButton(frame, L.OPEN_GAME, 30, 120))
-    gameBtn:SetScript("OnClick", function() ns.OpenInGame() end)
+    gameBtn:SetScript("OnClick", function() ns.ToGame() end)
     local body = frame.body
     tabs = S.PageTabs(body, { L.TAB_PLAN, L.TAB_CHARS, L.TAB_ALL, L.TAB_SETTINGS }, nil, showTab, nil,
         { S.TAB.overview, S.TAB.char, S.TAB.list, S.TAB.settings })
@@ -823,34 +826,295 @@ function ns.Window()
     return frame
 end
 
--- Beside the game's Legacy window: while it is open, the navigator stands to its right
--- (`beside`), and goes back where it was when the game's window closes. A window in the hub
--- stays there.
-local beside
-local function standBeside(game)
-    if ns.paused or not ns.db or not ns.db.beside then return end
-    local w = ns.Window()
-    if w.docked then return end
-    if not beside then
-        local point, rel, relPoint, x, y = w:GetPoint(1)
-        beside = { opened = not w:IsShown(), point = point, rel = rel, relPoint = relPoint, x = x, y = y }
+-- The compact window --------------------------------------------------------------------------
+-- Beside the game's Legacy window stands a narrow window as high as it: the track up to the
+-- next reward, the goal, five steps (pinned first) and the plan's switches. The full window
+-- opens from its footer, in the middle of the screen.
+
+local function makeShort(r)
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:SetScript("OnClick", function(self)
+        local id = self:GetParent().step.ch.id
+        ns.shownInGame = id
+        ns.OpenInGame(id)
+        ns.Refresh()
+    end)
+    r.icon = S.IconBox(r, 28)
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.pin = S.Button(r, 28, 28)
+    r.pin:SetPoint("RIGHT", -4, 0)
+    S.SetButtonIcon(r.pin, ns.OPT_ICON.tracker, 16)
+    r.pin:SetScript("OnClick", function(self) ns.Pin(self:GetParent().step.ch.id) end)
+    r.pin:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(ns.db.pins[self:GetParent().step.ch.id] and L.UNPIN or L.PIN)
+        GameTooltip:Show()
+    end)
+    r.pin:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r.pin:SetFrameLevel((tonumber((r:GetFrameLevel())) or 0) + 3)
+    r.eta = S.Text(r, 12)
+    r.eta:SetPoint("RIGHT", r.pin, "LEFT", -8, 0)
+    r.eta:SetJustifyH("RIGHT")
+    r.eta:SetWidth(78)
+    r.eta:SetWordWrap(false)
+    r.name = S.Text(r, 12, S.GOLD)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 3)
+    r.name:SetWordWrap(false)
+    r.tag = S.Badge(r)
+    r.tag:SetPoint("LEFT", r.name, "RIGHT", 6, 0)
+    r.sub = S.Text(r, 12, S.MUTED)
+    r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -2)
+    r.sub:SetPoint("RIGHT", r.eta, "LEFT", -8, 0)
+    r.sub:SetWordWrap(false)
+    r.bar = S.Progress(r, 4)
+    r.bar:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, -4)
+    r.bar:SetPoint("RIGHT", r.eta, "LEFT", -8, 0)
+end
+
+local function fillShort(r, s)
+    r.step = s
+    r.icon:SetIcon(stepIcon(s))
+    r.name:SetText(s.ch.name)
+    r.name:SetWidth(math.min(150, math.max(40, (tonumber(r.name:GetStringWidth()) or 0) + 4)))
+    r.tag:Set(ns.Tag(s), tagColor(s))
+    r.sub:SetText(ns.Detail(s))
+    r.bar:Set(stepFraction(s), S.Accent())
+    r.eta:SetText(s.eta and ("~" .. ns.Span(s.eta)) or ns.Span(nil))
+    local pinned = ns.db.pins[s.ch.id]
+    if pinned then S.Primary(r.pin) else S.Ghost(r.pin) end
+    -- The step the game's window shows now is the chosen row.
+    S.Fill(r, ns.shownInGame == s.ch.id and { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 } or S.CLEAR)
+end
+
+-- The compact window takes the game window's height and stands to its right, clear of the
+-- game's side tabs and inside the screen.
+local function placeCompact(w)
+    local game = LegacySystemFrame
+    if type(game) ~= "table" or not game.GetHeight then
+        S.ApplyScale(w, S.FitScale(ns.COMPACT_W, ns.COMPACT_H))
+        return
     end
+    local num = function(m) return tonumber((game[m] and game[m](game))) end
+    local sw = UIParent and tonumber((UIParent:GetWidth())) or 0
+    local sh = UIParent and tonumber((UIParent:GetHeight())) or 0
+    local gs = num("GetScale") or 1
+    local k, gap, fits = ns.BesidePlace(num("GetHeight"), gs, num("GetRight"), sw)
+    S.ApplyScale(w, k)
     w:ClearAllPoints()
-    w:SetPoint("TOPLEFT", game, "TOPRIGHT", S.GAP, 0)
+    local top = num("GetTop")
+    if fits or not top or sh <= 0 then
+        w:SetPoint("TOPLEFT", game, "TOPRIGHT", gap, 0)
+    else
+        w:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -4 / k, (top * gs - sh) / k)
+    end
+end
+
+local function buildCompact()
+    local w = S.Window("GulliLegacyCompact", L.TITLE, ns.COMPACT_W, ns.COMPACT_H)
+    S.TrackScale(w, placeCompact)
+    local ft = S.Footer(w)
+    local full = S.Primary(ft:Add(S.FitButton(w, L.FULL_WINDOW, 30, 110)))
+    full:SetScript("OnClick", function() ns.OpenFull() end)
+    local gear = w:AddHeaderButton(S.Button(w.bar, 28, 28))
+    S.SetButtonIcon(gear, S.TAB.settings, 16)
+    local plan = CreateFrame("Frame", nil, w.body)
+    plan:SetAllPoints()
+    local set = S.ScrollPage(w.body, ns.COMPACT_W - 2 * S.PAD)
+    set:SetAllPoints()
+    set:Hide()
+    w.plan, w.settings, w.gear, w.full, w.footer = plan, set, gear, full, ft
+    gear:SetScript("OnClick", function() w.ShowSettings(not set:IsShown()) end)
+    gear:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(set:IsShown() and L.TAB_PLAN or L.TAB_SETTINGS)
+        GameTooltip:Show()
+    end)
+    gear:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
+    -- The short track: the points now, a bar up to the next reward, that reward.
+    local st = S.Stack(plan, 8)
+    local tr = S.Card(plan, L.TRACK, "")
+    st:Add(tr, 118)
+    tr.now = S.Text(tr.body, 20, S.TEXT, nil, "title")
+    tr.now:SetPoint("TOPLEFT", 0, -3)
+    tr.now:SetWidth(34)
+    tr.now:SetJustifyH("CENTER")
+    tr.reward = CreateFrame("Frame", nil, tr.body)
+    tr.reward:SetSize(64, 28)
+    tr.reward:SetPoint("TOPRIGHT", 0, 0)
+    tr.icon = S.IconBox(tr.reward, 28)
+    tr.icon:SetPoint("LEFT", 0, 0)
+    tr.level = S.Text(tr.reward, 13, S.GOLD, nil, "bold")
+    tr.level:SetPoint("LEFT", tr.icon, "RIGHT", 6, 0)
+    tr.reward:EnableMouse(true)
+    tr.reward:SetScript("OnEnter", function(self)
+        if not GameTooltip or not self.reward then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.reward.name or "")
+        GameTooltip:AddLine(L.REWARD_AT:format(self.reward.level), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+        GameTooltip:Show()
+    end)
+    tr.reward:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    tr.bar = S.Progress(tr.body, 8)
+    tr.bar:SetPoint("LEFT", tr.now, "RIGHT", 8, 0)
+    tr.bar:SetPoint("RIGHT", tr.reward, "LEFT", -10, 0)
+    tr.next = S.Text(tr.body, 12)
+    tr.next:SetPoint("TOPLEFT", 0, -36)
+    tr.next:SetPoint("RIGHT", 0, 0)
+    tr.next:SetWordWrap(false)
+    tr.more = S.Text(tr.body, 12, S.FAINT)
+    tr.more:SetPoint("TOPLEFT", tr.next, "BOTTOMLEFT", 0, -4)
+    tr.more:SetPoint("RIGHT", 0, 0)
+    tr.more:SetWordWrap(false)
+
+    local goal = S.Card(plan)
+    st:Add(goal, 54)
+    goal.btn = S.FitButton(goal.body, L.CHANGE_GOAL, 28, 90)
+    goal.btn:SetPoint("RIGHT", 0, 0)
+    goal.btn:SetScript("OnClick", function() ns.SetGoal(ns.NextGoal()) end)
+    goal.text = S.Text(goal.body, 12)
+    goal.text:SetPoint("TOPLEFT", 0, 1)
+    goal.text:SetPoint("RIGHT", goal.btn, "LEFT", -10, 0)
+    goal.text:SetWordWrap(false)
+    goal.sub = S.Text(goal.body, 12, S.MUTED)
+    goal.sub:SetPoint("TOPLEFT", goal.text, "BOTTOMLEFT", 0, -3)
+    goal.sub:SetPoint("RIGHT", goal.btn, "LEFT", -10, 0)
+    goal.sub:SetWordWrap(false)
+
+    local sc = S.Card(plan, L.NEXT_STEPS, "")
+    sc:SetPoint("TOPLEFT", 0, -st.y)
+    sc:SetPoint("BOTTOMRIGHT")
+    local list = S.List(sc.body, 42, makeShort, fillShort)
+    list:SetPoint("TOPLEFT")
+    list:SetPoint("BOTTOMRIGHT")
+    local empty = S.Empty(sc.body)
+
+    -- Settings: only what the plan may suggest and the two switches of this window.
+    local function rows(keys)
+        local out = {}
+        for _, o in ipairs(keys) do
+            local key = o[1]
+            out[#out + 1] = { o[2], nil, function() return ns.db[key] == true end, function(v) ns.SetPref(key, v) end,
+                              icon = ns.OPT_ICON[key] }
+        end
+        return out
+    end
+    local sst = S.Stack(set.inner, 8)
+    local switches = {}
+    for _, g in ipairs({ { L.SUGGEST, rows({ { "dungeon", L.OPT_DUNGEON }, { "raid", L.OPT_RAID }, { "pvp", L.OPT_PVP },
+                                             { "alts", L.OPT_ALTS }, { "newClass", L.OPT_NEW } }) },
+                         { L.ON_SCREEN, rows({ { "beside", L.OPT_BESIDE }, { "announce", L.OPT_ANNOUNCE } }) } }) do
+        local card, h = S.SettingsCard(set.inner, g[1], g[2])
+        sst:Add(card, h)
+        for i, row in ipairs(card.rows) do switches[#switches + 1] = { row = row, get = g[2][i][3] } end
+    end
+    set:SetContent(sst:Height())
+
+    function w.ShowSettings(on)
+        set:SetShown(on)
+        plan:SetShown(not on)
+        if on then S.Primary(gear) else S.Ghost(gear) end
+        ns.Refresh()
+    end
+
+    function w.Fill(steps, p, hidden)
+        for _, x in ipairs(switches) do x.row:SetChecked(x.get()) end
+        local nextR, later = nil, {}
+        for _, r in ipairs(ns.Rewards(p.earned)) do
+            if not r.got then
+                if nextR then later[#later + 1] = tostring(r.level) else nextR = r end
+            end
+        end
+        tr:SetTitle(L.TRACK, L.EARNED_OF:format(p.earned, ns.TOTAL))
+        tr.now:SetText(p.earned)
+        tr.reward.reward = nextR
+        tr.reward:SetShown(nextR ~= nil)
+        if nextR then
+            tr.icon:SetIcon(nextR.icon)
+            tr.level:SetText(nextR.level)
+            tr.bar:Set(p.earned / nextR.level)
+        else
+            tr.bar:Set(1)
+        end
+        tr.next:SetText(nextR and S.Emph(L.TO_REWARD:format(nextR.level - p.earned, nextR.name)) or L.ALL_REWARDS)
+        local more = {}
+        if #later > 0 then more[1] = L.THEN:format(table.concat(later, ", ")) end
+        more[#more + 1] = p.spent and L.SPENT:format(p.spent, ns.MAX_SPEND) or nil
+        tr.more:SetText(table.concat(more, S.DOT))
+
+        local plan5, need, total = ns.GoalPlan(steps, p.earned)
+        local g = tonumber(ns.db.goal) or 0
+        local pool = steps
+        if g > 0 then
+            goal.text:SetText(S.Emph(L.GOAL_SHORT:format(g)))
+            if need == 0 then goal.sub:SetText(S.Hex(S.GOOD) .. L.GOAL_DONE .. "|r")
+            else goal.sub:SetText(S.Emph(L.GOAL_LEFT_SHORT:format(#plan5, ns.Span(total)))); pool = plan5 end
+        else
+            goal.text:SetText(L.NO_GOAL_SHORT)
+            goal.sub:SetText(L.NO_GOAL_SHORT_D)
+        end
+        local shown, pinned = ns.CompactSteps(steps, pool)
+        w.shown = shown
+        sc:SetTitle(L.NEXT_STEPS, pinned > 0 and L.PINNED_FASTEST:format(pinned, #shown - pinned) or L.BY_TIME)
+        list:SetData(shown)
+        local ready = ns.list and #ns.list > 0
+        empty:SetShown(#shown == 0)
+        if not ready then empty:Set(L.LOADING, L.LOADING_D)
+        else empty:Set(L.NO_STEPS, (hidden or 0) > 0 and L.NO_STEPS_HIDDEN or L.NO_STEPS_D) end
+        ft:SetStatus(not ready and L.LOADING or set:IsShown() and "" or #shown > 0 and L.STEPS_OF:format(#shown, #pool) or "")
+    end
+
+    w:HookScript("OnShow", function()
+        if not ns.paused then ns.Scan(); ns.Snapshot() end
+        ns.Refresh()
+    end)
+    S.Ghost(gear)
+    compact = w
+    return w
+end
+
+function ns.Compact()
+    return compact or buildCompact()
+end
+
+-- The full window in the middle of the screen, over the game's window.
+function ns.OpenFull()
+    local w = ns.Window()
+    if w.docked then S.ToggleWindow(w) end
+    if not w.docked then
+        w:ClearAllPoints()
+        w:SetPoint("CENTER")
+    end
+    w:Show()
+    if w.Raise then w:Raise() end
+    return w
+end
+
+-- The game's Legacy window from the full window: the full window steps aside for it, since the
+-- compact one stands beside the game's. In the hub, or with `beside` off, it stays.
+function ns.ToGame(id)
+    ns.shownInGame = id or ns.shownInGame
+    ns.OpenInGame(id)
+    local game = LegacySystemFrame
+    if frame and not frame.docked and ns.db.beside and type(game) == "table" and game.IsShown and game:IsShown() then
+        frame:Hide()
+    end
+end
+
+-- While the game's Legacy window is open the compact window stands to its right (`beside`),
+-- and it closes with it.
+local function standBeside()
+    if ns.paused or not ns.db or not ns.db.beside then return end
+    local w = ns.Compact()
+    placeCompact(w)
     w:Show()
 end
 
 local function leaveBeside()
-    local w, was = frame, beside
-    beside = nil
-    if not w or not was or w.docked then return end
-    if was.opened then w:Hide() end
-    w:ClearAllPoints()
-    if was.point then
-        w:SetPoint(was.point, was.rel or UIParent, was.relPoint or was.point, was.x or 0, was.y or 0)
-    else
-        w:SetPoint("CENTER")
-    end
+    if compact then compact:Hide() end
 end
 
 -- The game's window loads on demand: Core calls this when Blizzard_LegacySystem loads and
