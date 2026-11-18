@@ -88,6 +88,38 @@ end
 
 local function hideTip() GameTooltip:Hide() end
 
+-- The minimap button's tooltip: each action named in the game's yellow, the
+-- command in green, what it does in white, so it reads on any background.
+function ns.MinimapTip()
+    local key, cmd = "|cffffd100", "|cff4cff4c"
+    return {
+        { title = L.TITLE },
+        { text = key .. L.MM_CLICK_KEY .. "|r " .. L.MM_CLICK },
+        { text = key .. L.MM_DRAG_KEY .. "|r " .. L.MM_DRAG },
+        { text = cmd .. "/gulli minimap|r " .. L.MM_HIDE },
+    }
+end
+
+-- A see-through tooltip skin lets the minimap buttons behind show through, so
+-- ours gets a dense centre while it shows and gives the old one back after.
+local tipCenter
+local function denseTip(on)
+    local nine = rawget(GameTooltip, "NineSlice")
+    local c = nine and rawget(nine, "Center")
+    if not (c and c.GetVertexColor and c.SetVertexColor) then return end
+    if on and not tipCenter then
+        tipCenter = { c:GetVertexColor() }
+        c:SetVertexColor(S.SOLID[1], S.SOLID[2], S.SOLID[3], 0.97)
+        if not rawget(GameTooltip, "gulliDense") and GameTooltip.HookScript then
+            rawset(GameTooltip, "gulliDense", true)
+            GameTooltip:HookScript("OnHide", function() denseTip(false) end)
+        end
+    elseif not on and tipCenter then
+        c:SetVertexColor(tipCenter[1], tipCenter[2], tipCenter[3], tipCenter[4])
+        tipCenter = nil
+    end
+end
+
 local function place(f, y)
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", 0, -y)
@@ -1758,11 +1790,14 @@ function ns.BuildMinimap()
     b:SetScript("OnEnter", function(self)
         if self.dragging then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L.TITLE, 1, 1, 1)
-        GameTooltip:AddLine(L.MINIMAP_TIP, 0.6, 0.61, 0.66, true)
+        for _, l in ipairs(ns.MinimapTip()) do
+            if l.title then GameTooltip:SetText(l.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
+            else GameTooltip:AddLine(l.text, 1, 1, 1) end
+        end
         GameTooltip:Show()
+        denseTip(true)
     end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnLeave", function() denseTip(false); GameTooltip:Hide() end)
     mapButton = b
     ns.PlaceMinimap()
     return b
