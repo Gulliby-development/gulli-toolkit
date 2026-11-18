@@ -709,6 +709,12 @@ S.dungeonprep = {
     levels = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "SM"; ns.Toggle() end },
     empty = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DALARAN"; ns.Toggle() end },
     quest = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841) end },
+    -- A quest with many rewards: the left column scrolls instead of running over the buttons.
+    rewards = { spec = dpSpec, open = function(ns)
+        ns.Data.reward = ns.Data.reward or {}
+        ns.Data.reward[2841] = { 9492, 9445, 9450, 6893, 9446, 9447 }
+        ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841)
+    end },
     forever = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
     scholo = { spec = { level = 58, raceID = 2, faction = "Horde", className = "WARRIOR", areas = { [28] = "Western Plaguelands", [85] = "Tirisfal Glades" } },
                open = function(ns) ns.home = false; ns.selected = "SCHOLO"; ns.Toggle(); ns.ShowTab(3) end },
