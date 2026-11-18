@@ -2,6 +2,12 @@
 local W = dofile("tests/attune/wow.lua")
 local test, eq = W.test, W.eq
 
+local function def(ns, key, faction)
+    for _, r in ipairs(ns.RAIDS) do
+        if r.key == key and (not faction or not r.faction or r.faction == faction) then return r end
+    end
+end
+
 local function raid(ns, char, key)
     for _, r in ipairs(ns.RaidsFor(char)) do
         if r.key == key then return ns.Progress(char, r) end
@@ -59,7 +65,7 @@ end)
 test("names: the game's quest and zone names first, then English", function()
     Fake({ titles = { [4182] = "Угроза драконов" }, areas = { [46] = "Пылающие степи" } })
     local ns = Load()
-    local ony = ns.RAIDS[1]
+    local ony = def(ns, "ONY", "Alliance")
     local step = ony.steps[1]
     eq(ns.QuestName(step), "Угроза драконов")
     eq(ns.Where(step), "Helendis Riverhorn, Пылающие степи")
@@ -115,10 +121,18 @@ test("City of Dalaran (Forever): the sewer key chain per faction, or the key in 
     eq(d.ready, true, "the Dalaran Sewer Key in the bags")
 end)
 
-test("only what WoW Forever has: Onyxia first, no Molten Core, Blackwing Lair or Naxxramas", function()
+test("only what WoW Forever has, by level: Dalaran first, Onyxia last, no Molten Core, Blackwing Lair or Naxxramas", function()
     Fake({})
     local ns = Load()
-    eq(ns.RAIDS[1].key, "ONY")
+    eq(ns.RAIDS[1].key, "DALARAN")
+    eq(ns.RAIDS[#ns.RAIDS].key, "ONY")
+    local order = {}
+    for i, r in ipairs(ns.RAIDS) do
+        assert(type(r.level) == "number", "no level for " .. r.key)
+        if i > 1 then assert(r.level >= ns.RAIDS[i - 1].level, r.key .. " is out of level order") end
+        if order[#order] ~= r.key then order[#order + 1] = r.key end
+    end
+    eq(table.concat(order, ","), "DALARAN,MARA,BRD,SCHOLO,UBRS,ONY")
     for _, r in ipairs(ns.RAIDS) do
         assert(r.key ~= "MC" and r.key ~= "BWL" and r.key ~= "NAXX", r.key .. " is not in Forever")
         assert(ns.T.en["RAID_" .. r.key], "no name for " .. r.key)
@@ -149,7 +163,7 @@ test("what a step needs: level, kind and items, with the bag count", function()
     local n = ns.Needs(ony.steps[9])
     eq(n.level, 55); eq(n.tag, "elite"); eq(n.items[1].id, 16869)
     eq(ns.Needs(ony.steps[14]).tag, "raid")
-    eq(ns.Needs(ns.RAIDS[3].steps[1]).tag, "dungeon", "a step inside Blackrock Spire")
+    eq(ns.Needs(def(ns, "UBRS").steps[1]).tag, "dungeon", "a step inside Blackrock Spire")
     eq(ns.Needs(ony.steps[7]).items[1].id, 16786, "Oculus Illusions asks for the Black Dragonflight Molt")
     eq(ns.Have(16786), 1)
     for _, r in ipairs(ns.RAIDS) do
@@ -162,20 +176,20 @@ test("only reachable chains: a level 30 sees no Onyxia until it starts it", func
     local ns = Load()
     ns.Scan()
     local c = ns.db.chars["Tester-Realm"]
-    eq(ns.Available(c, ns.RAIDS[1]), false)
-    eq(ns.Available(c, ns.RAIDS[#ns.RAIDS]), false, "Maraudon from 41 is too far at 30")
+    eq(ns.Available(c, def(ns, "ONY", "Alliance")), false)
+    eq(ns.Available(c, def(ns, "MARA")), false, "Maraudon from 41 is too far at 30")
     c.level = 36
-    eq(ns.Available(c, ns.RAIDS[#ns.RAIDS]), true, "five levels away is near enough")
+    eq(ns.Available(c, def(ns, "MARA")), true, "five levels away is near enough")
     c.done[4182] = true
-    eq(ns.Available(c, ns.RAIDS[1]), true, "a started chain always shows")
+    eq(ns.Available(c, def(ns, "ONY", "Alliance")), true, "a started chain always shows")
 end)
 
 test("a map pin on the next step, in its zone", function()
     local W = Fake({ areas = { [46] = "Burning Steppes" }, maps = { [1428] = { "Burning Steppes", 1415 } } })
     local ns = Load()
-    eq(ns.SetPin(ns.RAIDS[1].steps[1]), true)
+    eq(ns.SetPin(def(ns, "ONY", "Alliance").steps[1]), true)
     eq(W.pins[1].map, 1428); eq(W.pins[1].x, 0.858)
-    eq(ns.SetPin(ns.RAIDS[1].steps[9]), false, "inside Blackrock Depths: no spot")
+    eq(ns.SetPin(def(ns, "ONY", "Alliance").steps[9]), false, "inside Blackrock Depths: no spot")
 end)
 
 test("group: state goes out on the prefix, comes back in, fills tooltips and who lacks access", function()
@@ -184,12 +198,12 @@ test("group: state goes out on the prefix, comes back in, fills tooltips and who
     ns.Scan()
     eq(ns.SendState("PARTY"), true)
     eq(W.addon[1].prefix, "GulliAT")
-    eq(W.addon[1].msg, "S\tONY=0/16,UBRS=R,BRD=0/2,SCHOLO=0/8,DALARAN=0/2,MARA=0/2")
+    eq(W.addon[1].msg, "S\tDALARAN=0/2,MARA=0/2,BRD=0/2,SCHOLO=0/8,UBRS=R,ONY=0/16")
     ns.Receive("GulliAT", "S\tONY=9/16,UBRS=R", "PARTY", "Bob-Realm")
     eq(ns.others.Bob.raids.ONY.done, 9)
     eq(ns.others.Bob.raids.UBRS.ready, true)
     local tt = ns.TooltipLines("Bob")
-    eq(tt[1], "Onyxia's Lair: 9 of 16 steps"); eq(tt[2], "Upper Blackrock Spire: Ready")
+    eq(tt[1], "Upper Blackrock Spire: Ready"); eq(tt[2], "Onyxia's Lair: 9 of 16 steps")
     eq(table.concat(ns.Missing("ONY"), ","), "Tester,Bob,Ann", "Ann did not answer: counted as without")
     eq(table.concat(ns.Missing("UBRS"), ","), "Ann")
     ns.TellGroup("ONY")
@@ -246,7 +260,7 @@ test("export and the hub: one text for every character, a summary line, reset", 
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     ns.Scan()
-    eq(ns.Export(), "GAT1;Tester-Realm:PRIEST:60:ONY=2/16,UBRS=0/2,BRD=0/2,SCHOLO=0/8,DALARAN=0/2,MARA=0/2")
+    eq(ns.Export(), "GAT1;Tester-Realm:PRIEST:60:DALARAN=0/2,MARA=0/2,BRD=0/2,SCHOLO=0/8,UBRS=0/2,ONY=2/16")
     eq(reg.summary(), "Onyxia's Lair: 2 of 16")
     eq(#reg.options, 4)
     reg.options[3].set(true)

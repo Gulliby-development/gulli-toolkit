@@ -2,7 +2,7 @@
 
 <h1 align="center">Gulli-Attune</h1>
 
-<p align="center"><b>Tracks raid attunements and dungeon keys for all your characters: Onyxia, Upper Blackrock Spire, Blackrock Depths, Scholomance, Maraudon, City of Dalaran.</b></p>
+<p align="center"><b>Tracks raid attunements and dungeon keys for all your characters: City of Dalaran, Maraudon, Blackrock Depths, Scholomance, Upper Blackrock Spire, Onyxia.</b></p>
 
 <p align="center">
   <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=Attune-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
@@ -18,7 +18,8 @@ Some raids and dungeon doors need a quest chain first. Gulli Attunements shows e
 
 ## Features
 
-- **Onyxia first.** In WoW Forever, Onyxia's Lair is the one raid that needs an attunement: every raider carries the Drakefire Amulet. Both the Alliance and the Horde chain are there. The Barrow Deeps and Hyjal Summit need nothing.
+- **By level.** The chains come in the order you meet them: City of Dalaran, Maraudon, Blackrock Depths, Scholomance, Upper Blackrock Spire, then Onyxia.
+- **Onyxia.** In WoW Forever, Onyxia's Lair is the one raid that needs an attunement: every raider carries the Drakefire Amulet. Both the Alliance and the Horde chain are there. The Barrow Deeps and Hyjal Summit need nothing.
 - **Dungeon keys.** The Seal of Ascension (Upper Blackrock Spire), the Shadowforge Key (Blackrock Depths), the Skeleton Key (Scholomance, both factions) the Scepter of Celebras (Maraudon) and the Dalaran Sewer Key (City of Dalaran, both factions).
 - **Only WoW Forever.** Raids that Forever does not have (Molten Core, Blackwing Lair, Naxxramas) are not listed. We update the list when Blizzard adds or changes an attunement.
 - **Every character.** Each character saves its progress when you play it. Pick a character on the left.
