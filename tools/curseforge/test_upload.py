@@ -26,6 +26,30 @@ class Targets(unittest.TestCase):
         self.assertEqual(U.route("XP-v1.2.0", CONFIG), "toolkit")
         self.assertEqual(U.route("all", CONFIG), "all")
 
+    def test_the_hourly_run_uploads_the_toolkit(self):
+        self.assertEqual(U.targets("hourly", CONFIG), ["toolkit"])
+        self.assertEqual(U.route("hourly", CONFIG), "toolkit")
+
+    def test_only_toolkit_releases_after_the_last_hourly_run_count(self):
+        groups = {"Core": {"tag_name": "Core-v1.33.0", "published_at": "2026-11-18T16:52:35Z"},
+                  "XP": {"tag_name": "XP-v1.15.0", "published_at": "2026-11-18T16:42:52Z"},
+                  "Mail": {"tag_name": "Mail-v1.10.3", "published_at": "2026-11-18T00:34:32Z"},
+                  "CraftProfit": {"tag_name": "CraftProfit-v1.15.0", "published_at": "2026-11-18T17:00:00Z"}}
+        self.assertEqual(U.changed_groups(groups, CONFIG["separate"], "2026-11-18T16:00:00Z"), ["Core", "XP"])
+        self.assertEqual(U.changed_groups(groups, CONFIG["separate"], "2026-11-18T17:00:00Z"), [])
+        self.assertEqual(U.changed_groups(groups, CONFIG["separate"], None), ["Core", "Mail", "XP"])
+        self.assertEqual(U.toolkit_display("1.33.0", ["Core", "XP"], groups), "Gulli Toolkit 1.33.0 (XP 1.15.0)")
+        self.assertEqual(U.toolkit_display("1.33.0", ["Core"], groups), "Gulli Toolkit 1.33.0")
+        self.assertEqual(U.toolkit_display("1.33.0", ["Mail", "XP"], groups, most=1),
+                         "Gulli Toolkit 1.33.0 (Mail 1.10.3 +1)")
+
+    def test_a_release_leaves_the_toolkit_to_the_hourly_run(self):
+        os.environ["FROM_RELEASE"] = "1"
+        try:
+            U.main("o/r", "XP-v1.15.0")   # returns before any network call
+        finally:
+            del os.environ["FROM_RELEASE"]
+
     def test_all_is_every_project(self):
         self.assertEqual(U.targets("all", CONFIG), ["toolkit", "CraftProfit", "Legacy"])
 
