@@ -201,6 +201,16 @@ local function dropItem()
     if not ns.AddTarget("item", id) then print(L.FULL:format(ns.MAX_TARGETS)) end
 end
 
+-- Adds the item typed into the box (an id, a link or a name).
+function ns.AddTyped(box)
+    local id = ns.ParseItem(box:GetText())
+    if not id then print(L.UNKNOWN_ITEM) return false end
+    if not ns.AddTarget("item", id) then print(L.FULL:format(ns.MAX_TARGETS)) return false end
+    box:SetText("")
+    box:ClearFocus()
+    return true
+end
+
 local function farmPage(body, width)
     local p = CreateFrame("Frame", nil, body)
     local st = S.Stack(p)
@@ -223,7 +233,35 @@ local function farmPage(body, width)
     local drop = S.DropZone(add, L.DROP, dropItem, 36)
     drop:SetPoint("LEFT")
     drop:SetPoint("RIGHT", targetCard.gold, "LEFT", -8, 0)
-    st:Add(targetCard, targetCard:Fit(ns.MAX_TARGETS * 38 + 44))
+    local typed = CreateFrame("Frame", nil, targetCard.body)
+    typed:SetHeight(32)
+    typed:SetPoint("BOTTOMLEFT", add, "TOPLEFT", 0, 8)
+    typed:SetPoint("BOTTOMRIGHT", add, "TOPRIGHT", 0, 8)
+    local addBtn = S.FitButton(typed, L.ADD, 32, 90)
+    addBtn:SetPoint("RIGHT")
+    local box = S.Edit(typed, 100, 32)
+    box:SetJustifyH("LEFT")
+    box:SetPoint("LEFT")
+    box:SetPoint("RIGHT", addBtn, "LEFT", -8, 0)
+    box.hint = S.Text(box, 12, S.FAINT)
+    box.hint:SetPoint("LEFT", 8, 0)
+    box.hint:SetPoint("RIGHT", -8, 0)
+    box.hint:SetWordWrap(false)
+    box.hint:SetText(L.ID_HINT)
+    local function hint() box.hint:SetShown(box:GetText() == "" and not box:HasFocus()) end
+    box:SetScript("OnTextChanged", hint)
+    box:HookScript("OnEditFocusGained", hint)
+    box:HookScript("OnEditFocusLost", hint)
+    box:SetScript("OnEnterPressed", function(self) ns.AddTyped(self) end)
+    addBtn:SetScript("OnClick", function() ns.AddTyped(box) end)
+    targetCard.box, targetCard.addBtn = box, addBtn
+    -- Shift+click on an item puts its link into the box while it has the focus.
+    if hooksecurefunc and ChatEdit_InsertLink then
+        hooksecurefunc("ChatEdit_InsertLink", function(link)
+            if box:HasFocus() and type(link) == "string" and link:find("item:") then box:SetText(link) end
+        end)
+    end
+    st:Add(targetCard, targetCard:Fit(ns.MAX_TARGETS * 38 + 84))
 
     local loot = S.Card(p, L.SEC_LOOT)
     loot:SetPoint("TOPLEFT", 0, -st.y)
@@ -267,8 +305,6 @@ local function settingsPage(body, width)
     local place = S.FitButton(p, L.PLACE_RESET, 28, 100)
     place:SetScript("OnClick", function() ns.db.point = nil; ns.Place() end)
     local card, h = S.SettingsCard(p, L.SEC_PANEL, {
-        { L.OPT_PANEL, L.OPT_PANEL_TIP, function() return ns.db.panel end, function(v) ns.SetPref("panel", v) end,
-          icon = ns.OPT_ICON.panel },
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
         { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },

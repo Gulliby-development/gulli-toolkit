@@ -80,6 +80,25 @@ function ns.CountBags()
     return out
 end
 
+-- An item from what the player typed: a link, an item id, or the name of an item in the bags,
+-- in this session's loot or known to the client.
+function ns.ParseItem(text)
+    text = strtrim(text or "")
+    if text == "" then return end
+    local id = tonumber(text:match("item:(%d+)") or text:match("^#?(%d+)$"))
+    if id then return id end
+    local want = text:lower()
+    local seen = ns.CountBags()
+    for i in pairs(ns.s and ns.s.items or {}) do seen[i] = true end
+    for i in pairs(seen) do
+        local n = CI.GetItemNameByID and CI.GetItemNameByID(i)
+        if n and n:lower() == want then return i end
+    end
+    local info = CI.GetItemInfo or GetItemInfo
+    local link = info and select(2, info(text))
+    return link and tonumber(link:match("item:(%d+)"))
+end
+
 -- The session -----------------------------------------------------------------------------------
 
 local function newSession(t)
@@ -348,8 +367,8 @@ function ns.Slash(msg)
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = (cmd or ""):lower()
     if cmd == "add" then
-        local id = tonumber(rest:match("item:(%d+)") or rest:match("^(%d+)"))
         local goal = tonumber(rest:match("|r%s+(%d+)%s*$") or rest:match("^%d+%s+(%d+)%s*$"))
+        local id = tonumber(rest:match("item:(%d+)") or rest:match("^(%d+)")) or ns.ParseItem(rest)
         if not id then say(L.UNKNOWN_ITEM) return end
         if ns.AddTarget("item", id, goal) then say(L.ADDED:format(ns.ItemName(id))) else say(L.FULL:format(ns.MAX_TARGETS)) end
     elseif cmd == "gold" then
@@ -434,8 +453,6 @@ if GulliToolkit and GulliToolkit.Register then
                      frame = function() return ns.PanelFrame and ns.PanelFrame() end } },
         reset = function() ns.Reset() end,
         options = {
-            { label = L.OPT_PANEL, icon = ns.OPT_ICON.panel, tip = L.OPT_PANEL_TIP,
-              get = function() return ns.db ~= nil and ns.db.panel == true end, set = function(v) ns.SetPref("panel", v) end },
             { label = L.OPT_SALES, icon = ns.OPT_ICON.sales, tip = L.OPT_SALES_TIP,
               get = function() return ns.db ~= nil and ns.db.sales == true end, set = function(v) ns.SetPref("sales", v) end },
         },
