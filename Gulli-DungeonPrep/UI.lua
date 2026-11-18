@@ -12,6 +12,7 @@ local S = ns.Skin
 local frame, list, tabs, search, entranceBtn, settings, questPage, listCard
 local detail, head, filterRow, guideBtn, mainSwitch, bossPage, lootPage
 local grid, areaFrame, homeBtn
+local EDGE_SHADE = 3 -- the height of one step of the shadow under the grid's title
 local filters, lootFilters = {}, {}
 local counts = {}
 local bossCache = {}
@@ -2001,6 +2002,29 @@ local function build()
     grid.list:SetPoint("TOPLEFT")
     grid.list:SetPoint("BOTTOMRIGHT", -10, 0)
     grid.list.heightOf = function(row) return row.title and 24 or TILE_H end
+    -- The edge the tiles scroll under: a line across the card below its title, and a short
+    -- shadow under it, drawn over the tiles.
+    local edge = CreateFrame("Frame", nil, grid.card)
+    edge:SetPoint("TOPLEFT", grid.card.body, "TOPLEFT", -S.INSET + 1, 0)
+    edge:SetPoint("TOPRIGHT", grid.card.body, "TOPRIGHT", S.INSET - 1, 0)
+    edge:SetHeight(EDGE_SHADE * 3 + 1)
+    edge:SetFrameLevel((tonumber(grid.list:GetFrameLevel()) or 1) + 10)
+    local line = S.Divider(edge, S.EDGE)
+    line:SetPoint("TOPLEFT")
+    line:SetPoint("TOPRIGHT")
+    line:SetHeight(1)
+    for i = 1, 3 do
+        local shade = S.Divider(edge, { 0, 0, 0, 0.36 - i * 0.1 })
+        shade:SetPoint("TOPLEFT", 0, -1 - (i - 1) * EDGE_SHADE)
+        shade:SetPoint("TOPRIGHT", 0, -1 - (i - 1) * EDGE_SHADE)
+        shade:SetHeight(EDGE_SHADE)
+    end
+    -- The same line where they leave the view at the bottom.
+    local foot = S.Divider(edge, S.EDGE)
+    foot:SetPoint("BOTTOMLEFT", grid.card.body, "BOTTOMLEFT", -S.INSET + 1, 0)
+    foot:SetPoint("BOTTOMRIGHT", grid.card.body, "BOTTOMRIGHT", S.INSET - 1, 0)
+    foot:SetHeight(1)
+    grid.edge = edge
 
     -- Inside a dungeon its pages take the whole width; « All dungeons goes back to the tiles.
 
