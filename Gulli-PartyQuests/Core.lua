@@ -272,6 +272,10 @@ function ns.Theirs(filter)
                         found[id] = { id = id, title = t or L.QUEST_N:format(id), who = {}, turned = turnedIn(id) }
                         list[#list + 1] = found[id]
                     end
+                    -- an older module sends no zones: the first member who names one wins
+                    if r.zone and not found[id].zone then
+                        found[id].zone, found[id].level = r.zone[id], r.level[id]
+                    end
                     table.insert(found[id].who, m.name)
                 end
             end
@@ -289,6 +293,39 @@ function ns.Theirs(filter)
 end
 
 -- Every member's objectives for one of my quests, for the detail line under the table.
+-- A list cut into zones for the window: a { head = true, zone, count, here } entry, then that
+-- zone's entries. The zone the player is in comes first, entries without a zone last; the rest
+-- by orderOf (the lowest of a zone's entries), else by name. zoneOf(item) names an entry's zone.
+function ns.ByZone(items, zoneOf, orderOf)
+    local here = zoneName()
+    local groups, by = {}, {}
+    for _, item in ipairs(items) do
+        local z = zoneOf(item)
+        if z == "" then z = nil end
+        local g = by[z or 0]
+        if not g then
+            g = { zone = z, items = {} }
+            by[z or 0] = g
+            groups[#groups + 1] = g
+        end
+        g.items[#g.items + 1] = item
+        local o = orderOf and orderOf(item)
+        if o and (not g.order or o < g.order) then g.order = o end
+    end
+    local function rank(g) return (g.zone and g.zone == here) and 0 or (g.zone and 1 or 2) end
+    table.sort(groups, function(a, b)
+        if rank(a) ~= rank(b) then return rank(a) < rank(b) end
+        if a.order and b.order and a.order ~= b.order then return a.order < b.order end
+        return (a.zone or "") < (b.zone or "")
+    end)
+    local out = {}
+    for _, g in ipairs(groups) do
+        out[#out + 1] = { head = true, zone = g.zone, count = #g.items, here = g.zone ~= nil and g.zone == here }
+        for _, item in ipairs(g.items) do out[#out + 1] = item end
+    end
+    return out
+end
+
 function ns.Detail(id)
     local out = {}
     for _, m in ipairs(members()) do
@@ -317,6 +354,8 @@ end
 -- ("id:have/need.have/need"), "C" quest ids of the others that I turned in before. Old
 -- versions read only "B", "Q" and "E" and skip the rest. Outside a list: "R<id>:<name>"
 -- asks <name> to share a quest, "T<id>" asks everyone to track it. Never change a type; add one.
+-- "Z<zone>|id:level,id:level" (since 1.13) names the zone and level of quests of the list.
+local ZONE_MAX = 60
 local function pack(parts, kind, tokens, sep)
     local cur = kind
     for _, token in ipairs(tokens) do
@@ -339,6 +378,16 @@ function ns.Encode(quests, turned)
     end
     pack(parts, "Q", ids, ",")
     pack(parts, "O", objs, ",")
+    -- The zone (the quest log header) and level of each quest, one zone per part.
+    local zones, byZone = {}, {}
+    for _, q in ipairs(quests) do
+        local z = q.zone
+        if z and z ~= "" and #z <= ZONE_MAX and not z:find("|", 1, true) then
+            if not byZone[z] then byZone[z] = {}; zones[#zones + 1] = z end
+            table.insert(byZone[z], q.id .. ":" .. (q.level or 0))
+        end
+    end
+    for _, z in ipairs(zones) do pack(parts, "Z" .. z .. "|", byZone[z], ",") end
     local c = {}
     for i, id in ipairs(turned or {}) do c[i] = tostring(id) end
     pack(parts, "C", c, ",")
@@ -412,7 +461,7 @@ function ns.Receive(msg, sender)
     local kind, rest = msg:sub(1, 1), msg:sub(2)
     local cur = incoming[who]
     if kind == "B" then
-        incoming[who] = { ids = {}, done = {}, obj = {}, turned = {} }
+        incoming[who] = { ids = {}, done = {}, obj = {}, turned = {}, zone = {}, level = {} }
     elseif kind == "Q" and cur then
         for token in rest:gmatch("[^,]+") do
             local id, star = token:match("^(%d+)(%*?)$")
@@ -434,6 +483,15 @@ function ns.Receive(msg, sender)
         end
     elseif kind == "C" and cur then
         for id in rest:gmatch("%d+") do cur.turned[tonumber(id)] = true end
+    elseif kind == "Z" and cur then
+        local zone, list = rest:match("^([^|]+)|(.*)$")
+        if zone and #zone <= ZONE_MAX then
+            for id, level in list:gmatch("(%d+):(%d+)") do
+                id = tonumber(id)
+                cur.zone[id] = zone
+                cur.level[id] = tonumber(level)
+            end
+        end
     elseif kind == "E" and cur then
         cur.t = time()
         local old = ns.remote[who]

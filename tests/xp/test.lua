@@ -133,7 +133,7 @@ test("the hub lists the bar in the Unlock mode", function()
     local got
     GulliToolkit = { Register = function(m) got = m end }
     local ns = Load()
-    eq(#got.options, 2)
+    eq(#got.options, 1, "the bar's switch is only in Frames on screen")
     local fr = got.frames[1]
     eq(fr.key, "bar"); eq(fr.get(), false)
     fr.set(true)

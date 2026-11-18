@@ -319,8 +319,6 @@ local function buildSetup(body, width)
         function(v) ns.db.feed.alpha = v; if ns.Feed then ns.Feed() end end, 10, 30, 100,
         function(v) return v .. "%" end, 110)
     local feedCard, h3 = S.SettingsCard(right, L.SEC_FEED, {
-        { L.OPT_FEED, nil, function() return ns.db.feed.show end,
-          function(v) ns.db.feed.show = v; if ns.Feed then ns.Feed() end end, icon = I .. "INV_Scroll_03" },
         { L.OPT_THROUGH, nil, function() return ns.db.feed.through end,
           function(v) ns.db.feed.through = v; if ns.Feed then ns.Feed() end end, icon = I .. "Spell_Nature_Invisibilty" },
         { L.FEED_ALPHA, nil, control = alpha, icon = I .. "Spell_Shadow_Twilight" },

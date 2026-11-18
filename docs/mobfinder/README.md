@@ -8,16 +8,16 @@ Type the mobs you look for. When one of them shows its nameplate, you hear a sou
 
 ## Features
 
-- **A list of mobs.** Type a name, take your target, or press **Zone rares** to add every rare of the zone you are in. A part of the name is enough, and the case does not matter (also in Russian). Each mob on the **Mobs** page has its own switch, **Exact** or **Part**, and shows how often and where it was found.
+- **A list of mobs.** Type a name, take your target, or press **Zone rares** to add every rare of the zone you are in. A part of the name is enough, and the case does not matter (also in Russian); a mob taken from your target is looked for by its whole name. Each mob on the **Mobs** page has its own switch and shows how often and where it was found.
 - **Zone rares in every language.** Rares are found by their game id, so the list works in any client language.
-- **A card when a mob is found.** It shows the portrait, name, level and rare or elite, with your Target key on the button. **Target** takes the mob as your target, **Tell group** writes where it is in the group chat, **Pin** puts a pin on the map. The card closes itself after the time you pick. Place it in **Unlock frames** in `/gulli`.
+- **A card when a mob is found.** It shows the portrait, name, level and rare or elite, with your Target key on the button. **Target** takes the mob as your target, **Tell group** writes where it is in the group chat, **Pin** puts a pin on the map. The card closes itself after 30 seconds. Place it in **Unlock frames** in `/gulli`.
 - **A key for Target.** Bind one key in the window; it targets the last mob found.
-- **Not only nameplates.** With **Also target, mouseover and the group's targets** on, it finds a mob even when its nameplate is hidden. Rare icons on the minimap count too.
-- **No false alarms.** Players' pets and mobs another player already tagged do not count. The same mob alerts again only after the time you pick.
-- **Pick a sound.** Raid warning, ready check, alarm clock and more. It plays even when game effects are muted. It can repeat until you look, or stay quiet in towns and in combat.
-- **A warning on the screen**, flashing screen edges, a line in the chat, and a skull on the mob if you want.
+- **Not only nameplates.** Your target, your mouseover and the group's targets count too, so it finds a mob even when its nameplate is hidden. Rare icons on the minimap count as well.
+- **No false alarms.** Players' pets and mobs another player already tagged do not count. The same mob alerts again only after a minute.
+- **Pick a sound.** Raid warning, ready check, alarm clock and more. It plays even when game effects are muted. It can repeat until you look, for waiting on a rare.
+- **Four settings, no more.** The sound, the Target key, repeating the sound, and flashing screen edges. Everything else just works.
 - **Found history.** The last 50 finds with the zone and the time. **Pin** shows the place on the map.
-- **Share with the group.** Group members with Mob Finder hear about your finds, and you about theirs.
+- **Shared with the group.** Group members with Mob Finder hear about your finds, and you about theirs. Nothing is written in the chat.
 - Works alone, or as a module of **Gulli Toolkit**. The Toolkit home page shows how many mobs it looks for.
 - Speaks English, Deutsch, Español, Français, Polski, Português, Русский and 中文 (it follows the game language).
 
@@ -52,6 +52,6 @@ Yes, with one click or key press: press **Target** on the card or your Target ke
 <details>
 <summary>How it works</summary>
 
-A timer (`C_Timer.NewTicker`) runs every N seconds and reads `C_NamePlate.GetNamePlates()`. For each plate it reads `UnitName` of the plate's unit and compares it with the list. `NAME_PLATE_UNIT_ADDED` runs the same check at once. Dead mobs do not count. On WoW 12 a creature's name can be a secret value (in instances): the addon checks `issecretvalue` first and skips such a plate instead of raising an error. The sound plays with `PlaySound(id, "Master")`. With the sources switch on it also reads `target`, `mouseover` and `partyNtarget`, and `C_VignetteInfo` for minimap rares. Zone rares come from `Data.lua`, built by `tools/mobfinder/build_data.py` from the QuestieDB Forever data; they are matched by the npc id in the unit GUID. The **Target** button is a `SecureActionButtonTemplate` button with a `/targetexact` macro, changed only out of combat. Shared finds go over the addon prefix `GulliMF`.
+A timer (`C_Timer.NewTicker`) runs every 2 seconds and reads `C_NamePlate.GetNamePlates()`. For each plate it reads `UnitName` of the plate's unit and compares it with the list. `NAME_PLATE_UNIT_ADDED` runs the same check at once. Dead mobs do not count. On WoW 12 a creature's name can be a secret value (in instances): the addon checks `issecretvalue` first and skips such a plate instead of raising an error. The sound plays with `PlaySound(id, "Master")`. It also reads `target`, `mouseover` and `partyNtarget`, and `C_VignetteInfo` for minimap rares. Zone rares come from `Data.lua`, built by `tools/mobfinder/build_data.py` from the QuestieDB Forever data; they are matched by the npc id in the unit GUID. The **Target** button is a `SecureActionButtonTemplate` button with a `/targetexact` macro, changed only out of combat. Shared finds go over the addon prefix `GulliMF`.
 
 </details>

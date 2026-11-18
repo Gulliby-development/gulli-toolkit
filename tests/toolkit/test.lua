@@ -1417,5 +1417,15 @@ test("Gulli Hearth: S.Emph whitens numbers in plain text only; no text under 12"
     CreateFontFamily = keep
 end)
 
+test("the minimap tooltip names each action in colour", function()
+    local ns = Load()
+    local lines = ns.MinimapTip()
+    eq(#lines, 4, "a title and three actions")
+    eq(lines[1].title, ns.L.TITLE, "the title")
+    assert(lines[2].text:find(ns.L.MM_CLICK_KEY, 1, true) and lines[2].text:find("|cffffd100", 1, true), "the click in yellow")
+    assert(lines[3].text:find(ns.L.MM_DRAG, 1, true), "the drag")
+    assert(lines[4].text:find("/gulli minimap", 1, true), "the command")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

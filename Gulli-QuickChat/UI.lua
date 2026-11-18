@@ -582,8 +582,6 @@ local function buildSetup(page, width)
     local size = S.Stepper(c, function() return ns.db.panelScale end,
         function(v) ns.db.panelScale = v; ns.Panel() end, 10, 60, 150, function(v) return v .. "%" end, 110)
     local panelCard, h2 = S.SettingsCard(c, L.SEC_PANEL, {
-        { L.OPT_PANEL, L.TIP_PANEL, function() return ns.db.panelShow end,
-          function(v) ns.db.panelShow = v; ns.Panel() end, icon = ns.OPT_ICON.panelShow },
         { L.PANEL_COUNT, nil, control = count, icon = I .. "INV_Misc_Note_06" },
         { L.PANEL_SIZE, nil, control = size, icon = I .. "INV_Misc_Spyglass_03" },
         { L.PANEL_ROW, nil, function() return ns.db.panelRow end,

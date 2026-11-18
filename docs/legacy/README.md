@@ -27,7 +27,7 @@ WoW Forever gives a Legacy point for each of its 65 Legacy challenges: class lev
 - **Help from other modules.** A button on a step opens the module that helps: Craft Profit for a profession, Bulletin Board to find a group for a dungeon, XP for your pace.
 - **How to do it.** Click a step or a challenge. Its page tells you what to do and where to go, lists what is left (the dungeons, the zones and areas still to explore, each zone with its levels, the ones for your level first), and gives a Wowhead link to copy.
 - **Beside the game's window.** When you open the game's Legacy window, the navigator opens on its right and closes with it. Turn off **Beside the Legacy window** in Settings if you do not want that.
-- **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli`.
+- **A tracker on the screen.** Pin the steps you work on. Without pins it shows the first three. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli` (not in the module's window).
 - **A notice for each new point**, also in the Recent list of the toolkit.
 - **In game:** a step opens the game's own Legacy window at its challenge.
 - **You choose** what it suggests: dungeons, raids, PvP, other characters, a new class.

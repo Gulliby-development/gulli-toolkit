@@ -302,12 +302,9 @@ local function settingsPage(body, width)
     local alpha = S.Stepper(p, function() return ns.db.alpha end, function(v) ns.SetPref("alpha", v) end, 10, 30, 100, pct)
     local scale = S.Stepper(p, function() return ns.db.scale end, function(v) ns.SetPref("scale", v) end, 10, 60, 200, pct)
     steppers = { alpha, scale }
-    local place = S.FitButton(p, L.PLACE_RESET, 28, 100)
-    place:SetScript("OnClick", function() ns.db.point = nil; ns.Place() end)
     local card, h = S.SettingsCard(p, L.SEC_PANEL, {
         { L.OPT_ALPHA, nil, control = alpha, icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty" },
         { L.OPT_SCALE, nil, control = scale, icon = "Interface\\Icons\\INV_Misc_Spyglass_03" },
-        { L.OPT_PLACE, nil, control = place, icon = "Interface\\Icons\\INV_Misc_Map_01" },
     })
     st:Add(card, h)
     local count, ch = S.SettingsCard(p, L.SEC_COUNT, {
