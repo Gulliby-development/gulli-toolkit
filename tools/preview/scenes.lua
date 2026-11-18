@@ -1168,6 +1168,11 @@ S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns
     settings = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(2) end },
     panel = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.AddTarget("item", 3858) ; ns.Refresh() end,
               crop = "GulliFarmTrackPanel" },
+    worth = { spec = { now = 0, ah = { [4338] = 1800, [4306] = 400, [10285] = 3500, [8838] = 900 },
+                       items = { [4338] = { class = 7 }, [4306] = { class = 7 }, [10285] = { class = 7 },
+                                 [8838] = { class = 7 } } },
+              open = function(ns, W) ftPlay(ns, W); ns.SetPref("panel", true); ns.SetPref("value", true) end,
+              crop = "GulliFarmTrackPanel" },
     empty = { spec = { now = 0 }, open = function(ns) ns.Toggle() end } }
 
 return S

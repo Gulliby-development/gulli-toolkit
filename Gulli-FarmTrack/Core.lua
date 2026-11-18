@@ -213,7 +213,11 @@ function ns.OnMoney(t)
     ns.Busy()
     local other = false
     for what in pairs(ns.busy) do if what ~= "merchant" then other = true end end
-    if not other and (not ns.busy.merchant or ns.db.sales) then ns.Gain("gold", d, t) end
+    if not other and (not ns.busy.merchant or ns.db.sales) then
+        -- a sale's money is already in the worth of the loot it sold
+        if ns.busy.merchant then ns.s.sold = (ns.s.sold or 0) + d end
+        ns.Gain("gold", d, t)
+    end
 end
 
 -- Targets ---------------------------------------------------------------------------------------
@@ -311,6 +315,94 @@ function ns.Tracked(kind, id)
     return false
 end
 
+-- What the session's loot is worth ------------------------------------------------------------
+-- An estimate of what everything looted would bring: grey and plain white things at a vendor,
+-- trade goods, reagents and recipes at the auction, bind-on-equip blue and purple gear at the
+-- auction, green gear disenchanted (with Enchanting, its cheapest result) or sold to a vendor,
+-- whichever brings more. Without an auction price an item counts at the vendor's price.
+
+local GEAR = { [2] = true, [4] = true }
+local AUCTION = { [5] = true, [7] = true, [9] = true }
+ns.QUEST_CLASS = 12
+
+-- Disenchanting green gear: the dust and the lesser essence for its item level (Vanilla tiers).
+ns.DE = {
+    { 15, 10940, 10938 }, { 20, 10940, 10939 }, { 25, 11083, 10998 }, { 30, 11083, 11082 },
+    { 35, 11137, 11134 }, { 40, 11137, 11135 }, { 45, 11176, 11174 }, { 50, 11176, 11175 },
+    { 55, 16204, 16202 }, { 999, 16204, 16203 },
+}
+
+-- id -> name, quality, item level, sell price, class, bind type; nil until the client knows it.
+function ns.ItemFacts(id)
+    local info = CI.GetItemInfo or GetItemInfo
+    if not info then return end
+    local name, _, quality, ilvl, _, _, _, _, _, _, sell, class, _, bind = info(id)
+    if not name then return end
+    return { quality = quality or 1, ilvl = ilvl or 0, sell = sell or 0, class = class, bind = bind }
+end
+
+function ns.AuctionPrice(id)
+    local api = Auctionator and Auctionator.API and Auctionator.API.v1
+    if not (api and api.GetAuctionPriceByItemID) then return nil end
+    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-FarmTrack", id)
+    return ok and type(price) == "number" and price > 0 and price or nil
+end
+
+-- The player knows Enchanting (skill line 333).
+function ns.CanDisenchant()
+    if not (GetProfessions and GetProfessionInfo) then return false end
+    for _, i in ipairs({ GetProfessions() }) do
+        if i then
+            local _, _, _, _, _, _, line = GetProfessionInfo(i)
+            if line == 333 then return true end
+        end
+    end
+    return false
+end
+
+-- The cheapest thing disenchanting a green item of this level gives, at the auction.
+function ns.DisenchantValue(ilvl)
+    for _, t in ipairs(ns.DE) do
+        if ilvl <= t[1] then
+            local a, b = ns.AuctionPrice(t[2]), ns.AuctionPrice(t[3])
+            if a and b then return math.min(a, b) end
+            return a or b
+        end
+    end
+end
+
+-- The worth of one item and how it was judged ("vendor", "auction", "disenchant"); nil, nil
+-- while the client has no data for it.
+function ns.ItemValue(id, enchanter)
+    local f = ns.ItemFacts(id)
+    if not f then return nil end
+    if f.class == ns.QUEST_CLASS then return 0, "vendor" end
+    local vendor = f.sell
+    if f.quality == 0 then return vendor, "vendor" end
+    if AUCTION[f.class] or (GEAR[f.class] and f.quality >= 3 and f.bind == 2) then
+        local ah = ns.AuctionPrice(id)
+        if ah then return ah, "auction" end
+        return vendor, "vendor"
+    end
+    if GEAR[f.class] and f.quality == 2 and enchanter then
+        local de = ns.DisenchantValue(f.ilvl)
+        if de and de > vendor then return de, "disenchant" end
+    end
+    return vendor, "vendor"
+end
+
+-- Everything the session looted at its worth, plus the gold looted. Second value: items the
+-- client does not know yet (they count as nothing until it does).
+function ns.SessionValue()
+    local total, unknown = ns.s.money - (ns.s.sold or 0), 0
+    local enchanter = ns.CanDisenchant()
+    for id, n in pairs(ns.s.items) do
+        local v = ns.ItemValue(id, enchanter)
+        if v then total = total + v * n else unknown = unknown + 1 end
+    end
+    return total, unknown
+end
+
 -- Text ------------------------------------------------------------------------------------------
 
 -- "1.2k" for 1234.
@@ -371,11 +463,12 @@ end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = false, sales = true, alert = true, alpha = 100, scale = 100 }
+ns.DEFAULTS = { panel = false, sales = true, alert = true, value = false, alpha = 100, scale = 100 }
 ns.OPT_ICON = {
     panel = "Interface\\Icons\\INV_Misc_Spyglass_02",
     sales = "Interface\\Icons\\INV_Misc_Coin_02",
     alert = "Interface\\Icons\\INV_Misc_Bell_01",
+    value = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
 }
 
 function ns.SetPref(key, value)
@@ -511,6 +604,8 @@ if GulliToolkit and GulliToolkit.Register then
         options = {
             { label = L.OPT_SALES, icon = ns.OPT_ICON.sales, tip = L.OPT_SALES_TIP,
               get = function() return ns.db ~= nil and ns.db.sales == true end, set = function(v) ns.SetPref("sales", v) end },
+            { label = L.OPT_VALUE, icon = ns.OPT_ICON.value, tip = L.OPT_VALUE_TIP,
+              get = function() return ns.db ~= nil and ns.db.value == true end, set = function(v) ns.SetPref("value", v) end },
         },
     })
 end
