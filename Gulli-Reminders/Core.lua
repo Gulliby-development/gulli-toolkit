@@ -21,7 +21,7 @@ ns.BUFFS = {
         { key = "TOUCH", ids = { 2652 }, race = "Scourge" },      -- Touch of Weakness (Undead)
         { key = "SHADOWGUARD", ids = { 18137 }, race = "Troll" },
         { key = "FEAR_WARD", ids = { 6346 }, race = "Dwarf", on = false },
-        { key = "SHADOWFORM", ids = { 15473 }, on = false },
+        { key = "SHADOWFORM", ids = { 15473 }, on = false, stance = true }, -- a form: readable in a fight
     },
     DRUID = {
         { key = "WILD", ids = { 1126, 21849 } },
@@ -33,7 +33,7 @@ ns.BUFFS = {
     },
     PALADIN = {
         { key = "BLESSING", ids = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25890, 25899, 25895 } },
-        { key = "AURA", ids = { 465, 7294, 19746, 19876, 19888, 19891, 20218 } },
+        { key = "AURA", ids = { 465, 7294, 19746, 19876, 19888, 19891, 20218 }, stance = true },
         { key = "FURY", ids = { 25780 }, on = false, tank = true }, -- on by default for a tank
     },
     HUNTER = {
@@ -158,15 +158,21 @@ local function knows(id)
 end
 ns.Knows = knows
 ns.SpellNameOf, ns.SpellIconOf = spellName, spellIcon
--- The player's buffs: name -> seconds left (false for a buff that does not run out).
+-- The player's buffs: name -> seconds left (false for a buff that does not run out), and
+-- whether the game hid some of them. In a fight the game may refuse an aura (a secret one
+-- raises an error for a tainted addon), so each read is its own pcall and one refused aura
+-- never stops the rest.
 local function buffs()
-    local have = {}
+    local have, hidden = {}, false
     local now = GetTime()
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return have, hidden end
     for i = 1, 40 do
-        local a = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
-        if not a then break end
-        local n = a.name
-        if n and not (issecretvalue and issecretvalue(n)) then
+        local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, "HELPFUL")
+        if ok and not a then break end
+        local n = ok and a.name
+        if not ok or not n or (issecretvalue and issecretvalue(n)) then
+            hidden = true
+        else
             local left = false
             local e = a.expirationTime
             if e and not (issecretvalue and issecretvalue(e)) and e > 0 then left = e - now end
@@ -174,10 +180,30 @@ local function buffs()
             if old == nil or (old ~= false and (left == false or left > old)) then have[n] = left end
         end
     end
-    return have
+    return have, hidden
 end
 local function secret(v) return issecretvalue and issecretvalue(v) or false end
 local function now() return GetTime and GetTime() or 0 end
+-- A buff the game would not show: neither there nor missing, so nothing is asked for.
+local UNSURE = "?"
+ns.UNSURE = UNSURE
+-- One buff of the player by name, as buffs() gives it; UNSURE when the game hid some auras
+-- and asking by name does not tell either (in a fight a miss by name proves nothing).
+local function lookup(have, hidden, name, fight)
+    if not name or name == "" then return nil end
+    local v = have[name]
+    if v ~= nil or not hidden then return v end
+    if C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
+        local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, "player", name, "HELPFUL")
+        if ok and a then
+            local e = a.expirationTime
+            if e and not secret(e) and e > 0 then return e - now() end
+            return false
+        end
+        if ok and not fight then return nil end
+    end
+    return UNSURE
+end
 
 ---- Camp Benefits and other auras that block a weaker buff ------------------------
 
@@ -517,16 +543,18 @@ function ns.Missing()
     local class = playerClass()
     local level = UnitLevel("player")
     local soon = (db.soonMin or 0) * 60
-    local have = buffs()
+    local have, hidden = buffs()
+    local function look(name) return lookup(have, hidden, name, fight) end
     local here, items = ns.PlaceOK(db.where), ns.PlaceOK(db.whereItems)
     local function cast(id) return { type = "spell", spell = spellName(id) } end
     for _, b in ipairs(here and ns.ClassBuffs(class) or {}) do
         if b.known and ns.Tracked(b) then
-            local best
+            local best, unsure
             for _, id in ipairs(b.ids) do
-                local left = have[spellName(id) or ""]
-                if left == false then best = false; break end
-                if left and (not best or left > best) then best = left end
+                local left = look(spellName(id))
+                if left == UNSURE then unsure = true
+                elseif left == false then best = false; break
+                elseif left and (not best or left > best) then best = left end
             end
             if b.stance then
                 -- A stance is a form, not always an aura: any form counts.
@@ -538,7 +566,7 @@ function ns.Missing()
                 best = false -- a stronger effect is on: nothing to cast
             end
             if best == nil then
-                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), act = cast(b.known) }
+                out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), act = cast(b.known), unsure = unsure }
             elseif best and best < soon then
                 out[#out + 1] = { key = b.key, text = b.name, icon = spellIcon(b.known), left = best, act = cast(b.known) }
             end
@@ -593,20 +621,26 @@ function ns.Missing()
         end
     end
     if db.food and items then
-        local left = have[spellName(WELL_FED) or ""]
+        local left = look(spellName(WELL_FED))
+        local unsure = left == UNSURE
+        if unsure then left = nil end
         if left == nil or (left and left < soon) then
             local id = ns.FoodPick()
             out[#out + 1] = { key = "FOOD", text = L.FOOD, icon = id and itemIcon(id) or "Interface\\Icons\\INV_Misc_Food_14",
-                              left = left or nil, act = id and { type = "item", item = "item:" .. id } or nil, none = not id }
+                              left = left or nil, act = id and { type = "item", item = "item:" .. id } or nil, none = not id,
+                              unsure = unsure }
         end
     end
     for i, c in ipairs(items and db.custom or {}) do
         local key = "CUSTOM" .. i
         if c.spell then
             local name = spellName(c.spell)
-            local left = name and have[name]
+            local left = look(name)
+            local unsure = left == UNSURE
+            if unsure then left = nil end
             if name and knows(c.spell) and (left == nil or (left and left < soon)) then
-                out[#out + 1] = { key = key, text = name, icon = spellIcon(c.spell), left = left or nil, act = cast(c.spell) }
+                out[#out + 1] = { key = key, text = name, icon = spellIcon(c.spell), left = left or nil, act = cast(c.spell),
+                                  unsure = unsure }
             end
         elseif c.kind == "count" then
             local n = itemCount(c.id)
@@ -617,11 +651,13 @@ function ns.Missing()
             end
         else
             local buff = itemSpell(c.id)
-            local left = buff and have[buff]
+            local left = look(buff)
+            local unsure = left == UNSURE
+            if unsure then left = nil end
             if left == nil or (left and left < soon) then
                 local n = itemCount(c.id)
                 out[#out + 1] = { key = key, text = itemName(c.id) or ("#" .. c.id), icon = itemIcon(c.id), left = left or nil,
-                                  act = n > 0 and { type = "item", item = "item:" .. c.id } or nil, none = n == 0 }
+                                  act = n > 0 and { type = "item", item = "item:" .. c.id } or nil, none = n == 0, unsure = unsure }
             end
         end
     end
@@ -645,7 +681,7 @@ function ns.Missing()
             if not mine and manaOK then
                 local got
                 for _, id in ipairs(o.ids) do
-                    if have[spellName(id) or ""] ~= nil then got = true; break end
+                    if look(spellName(id)) ~= nil then got = true; break end -- unsure: do not ask
                 end
                 if not got and (ns.IsBounced("ASK_" .. o.key) or ns.Covered("player", o.ids[1], soon)) then got = true end
                 local who = not got and ns.GroupMember(o.class)
@@ -655,6 +691,12 @@ function ns.Missing()
                 end
             end
         end
+    end
+    -- Out of a fight an unsure buff is never asked for; in a fight the panel keeps its icon as it was.
+    if not fight then
+        local sure = {}
+        for _, m in ipairs(out) do if not m.unsure then sure[#sure + 1] = m end end
+        out = sure
     end
     return out, fight
 end

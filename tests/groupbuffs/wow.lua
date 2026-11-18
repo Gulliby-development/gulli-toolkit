@@ -93,6 +93,7 @@ function Fake(spec)
             if not name then return nil end
             local left = x.auras[name]
             if x.secret and x.secret[name] then return { name = W.SECRET, expirationTime = W.SECRET } end
+            if x.refuse and x.refuse[name] then error("Auras cannot be accessed when secret while tainted") end
             local a = { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
             if name == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
             return a

@@ -190,8 +190,8 @@ function ns.CombatView(missing)
         if onPanel and b:IsShown() and b.m and not b.m.sample then
             shown = i
             local m = now[b.m.key]
-            b:SetAlpha(m and 1 or 0)
-            if m then
+            if not (m and m.unsure) then b:SetAlpha(m and 1 or 0) end -- unsure: left as it was
+            if m and not m.unsure then
                 b:SetMid(m.left and ns.Short(m.left) or "")
                 now[b.m.key] = nil
             end
@@ -199,7 +199,7 @@ function ns.CombatView(missing)
     end
     local extra = {}
     for _, m in ipairs(missing) do
-        if now[m.key] then extra[#extra + 1] = m end
+        if now[m.key] and not m.unsure then extra[#extra + 1] = m end
     end
     if #extra == 0 then
         if strip then strip:Hide() end
@@ -258,8 +258,10 @@ function ns.Refresh()
     local d = ns.db
     if InCombatLockdown() then
         if not ns.moving then ns.CombatView(missing) end
-        if refreshWindow then refreshWindow(missing) end
-        return missing
+        local sure = {}
+        for _, m in ipairs(missing) do if not m.unsure then sure[#sure + 1] = m end end
+        if refreshWindow then refreshWindow(sure) end
+        return sure
     end
     if strip then strip:Hide() end
     alert(missing)
