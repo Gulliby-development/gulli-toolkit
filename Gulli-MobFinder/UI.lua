@@ -2,8 +2,8 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
--- The window has three pages: Search (the switch and how to alert), Mobs (the list, one row
--- per mob, and the zone's rares) and History (the last finds, with a map pin). A find shows a
+-- The window has three pages: Mobs (the search switch and the list, one row per mob, and the
+-- zone's rares), Found (the last finds, with a map pin) and Settings. A find shows a
 -- card with the mob's model and a secure Target button, also on a key. Every change is saved
 -- at once; the search itself lives in Core.lua.
 local W = S.NARROW_W
@@ -13,17 +13,6 @@ local frame, pageTabs, pages, status
 local mobList, mobEmpty, histList, histEmpty, addEdit, keyButton
 local card, flash
 local pendingMacro, repeater
-
-local function soundIndex()
-    for i, s in ipairs(ns.SOUNDS) do
-        if s.key == ns.db.sound then return i end
-    end
-    return 1
-end
-
-local function intervalText(v)
-    return (v == math.floor(v)) and tostring(math.floor(v)) or tostring(v)
-end
 
 local function ago(t)
     local d = (time and time() or 0) - (t or 0)
@@ -164,7 +153,6 @@ function ns.ShowFind(hits)
     local h = hits and hits[1]
     if not h or not ns.db then return end
     if ns.db.flash then doFlash() end
-    if not ns.db.card then return end
     if not card then buildCard() end
     card.hit = h
     local parts = {}
@@ -194,11 +182,11 @@ function ns.ShowFind(hits)
     card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", portrait = portrait, title = h.name,
                text = table.concat(parts, " · "), kind = "bad", buttons = buttons,
                reserve = (card.target:GetWidth() or 96) + 6,
-               seconds = (ns.db.cardSeconds or 0) > 0 and ns.db.cardSeconds or nil })
+               seconds = ns.CARD_SECONDS })
     showTarget(true)
     stopRepeat()
     if ns.db.repeatSound and C_Timer and C_Timer.NewTicker then
-        repeater = C_Timer.NewTicker(3, function() if not ns.Quiet() then ns.PlayAlert() end end, 10)
+        repeater = C_Timer.NewTicker(3, function() ns.PlayAlert() end, 10)
     end
 end
 
@@ -271,16 +259,15 @@ function ns.Refresh()
     if not frame then return end
     local d = ns.db
     for _, r in ipairs(frame.switches) do if r.Refresh then r:Refresh() end end
-    local text = d.enabled and L.STATUS_ON:format(#d.names + (function()
-        local n = 0
-        for _ in pairs(d.ids) do n = n + 1 end
-        return n
-    end)(), intervalText(d.interval)) or L.STATUS_OFF
+    local n = #d.names
+    for _ in pairs(d.ids) do n = n + 1 end
+    local on = d.enabled and not ns.paused
+    local text = on and L.SUMMARY:format(n) or L.STATUS_OFF
     if ns.lastFound then
         text = text .. "\n" .. L.STATUS_LAST:format(table.concat(ns.lastFound.names, ", "))
     end
     status:SetText(text)
-    local c = d.enabled and S.GOOD or S.MUTED
+    local c = on and S.GOOD or S.MUTED
     status:SetTextColor(c[1], c[2], c[3], 1)
     local items = mobItems()
     mobList:SetData(items)
@@ -320,76 +307,25 @@ local function switch(key, label, desc, icon, onSet)
     end, icon = icon }
 end
 
-local function buildSearch(page, width)
+-- The settings: the sound, the Target key and the two ways an alert can be louder.
+local function buildSettings(page, width)
     local st = S.Stack(page)
-    local main, mh = S.SettingsCard(page, nil, {
-        { L.ENABLE, nil, function() return ns.db.enabled end, function(on) ns.SetEnabled(on) end,
-          icon = "Interface\\Icons\\Ability_Hunter_SniperShot" } })
-    frame.enable = main.rows[1]
-    S.SetFont(frame.enable.label, 14)
-    frame.switches[#frame.switches + 1] = { Refresh = function() frame.enable:SetChecked(ns.db.enabled) end }
-    st:Add(main, mh)
-
-    -- How often to look: [n] sec.
-    local every = CreateFrame("Frame", nil, page)
-    every:SetSize(96, 28)
-    local interval = S.Edit(every, 52, 28)
-    interval:SetPoint("LEFT")
-    interval:SetMaxLetters(4)
-    interval:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    interval:SetScript("OnEditFocusLost", function(self)
-        S.SetBorder(self, S.EDGE)
-        if not ns.SetInterval(self:GetText()) then
-            status:SetText(L.BAD_INTERVAL)
-            status:SetTextColor(S.BAD[1], S.BAD[2], S.BAD[3], 1)
-        end
-        self:SetText(intervalText(ns.db.interval))
-    end)
-    frame.switches[#frame.switches + 1] = { Refresh = function()
-        if not interval:HasFocus() then interval:SetText(intervalText(ns.db.interval)) end
-    end }
-    local sec = S.Text(every, 12, S.MUTED)
-    sec:SetPoint("LEFT", interval, "RIGHT", 8, 0)
-    sec:SetText(L.SECONDS)
-
     local keys = {}
     for i, snd in ipairs(ns.SOUNDS) do keys[i] = snd.key end
     local sound = cycle(page, function() return ns.db.sound end, function(v) ns.db.sound = v; ns.PlayAlert() end,
         keys, function(v) return L["SND_" .. v] end, 170)
-    local cooldown = cycle(page, function() return ns.db.cooldown end, function(v) ns.db.cooldown = v end,
-        ns.COOLDOWNS, function(v) return v == 0 and L.NONE or L.SEC_N:format(v) end)
-    local cardFor = cycle(page, function() return ns.db.cardSeconds end, function(v) ns.db.cardSeconds = v end,
-        ns.CARD_SECONDS, function(v) return v == 0 and L.STAYS or L.SEC_N:format(v) end)
     keyButton = makeKeyButton(page)
-
-    local opts, oh = S.SettingsCard(page, L.SEC_ALERT, {
-        { L.EVERY, nil, control = every, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
+    local opts, oh = S.SettingsCard(page, nil, {
         { L.SOUND, nil, control = sound, icon = "Interface\\Icons\\INV_Misc_Horn_01" },
-        { L.COOLDOWN, nil, control = cooldown, icon = "Interface\\Icons\\Spell_Nature_TimeStop" },
-        switch("again", L.AGAIN, nil, "Interface\\Icons\\Spell_Nature_TimeStop"),
-        switch("repeatSound", L.REPEAT, nil, "Interface\\Icons\\INV_Misc_Bell_01"),
-        switch("banner", L.BANNER, nil, "Interface\\Icons\\Ability_Warrior_BattleShout"),
-        switch("flash", L.FLASH, nil, "Interface\\Icons\\Spell_Fire_Flare"),
-        switch("quietRest", L.QUIET_REST, nil, "Interface\\Icons\\Spell_Nature_Sleep"),
-        switch("quietCombat", L.QUIET_COMBAT, nil, "Interface\\Icons\\Ability_Warrior_OffensiveStance"),
-    })
-    st:Add(opts, oh)
-
-    local found, fh = S.SettingsCard(page, L.SEC_FIND, {
-        switch("card", L.CARD, L.CARD_D, "Interface\\Icons\\INV_Misc_Note_01"),
-        { L.CARD_FOR, nil, control = cardFor, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
         { L.KEY, L.KEY_D, control = keyButton, icon = "Interface\\Icons\\INV_Gizmo_01" },
-        switch("mark", L.MARK, nil, "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"),
-        switch("share", L.SHARE, L.SHARE_D, "Interface\\Icons\\INV_Letter_01"),
+        switch("repeatSound", L.REPEAT, L.REPEAT_D, ns.OPT_ICON.repeatSound),
+        switch("flash", L.FLASH, nil, ns.OPT_ICON.flash),
     })
-    st:Add(found, fh)
-
-    local where, wh = S.SettingsCard(page, L.SEC_WHERE, {
-        switch("sources", L.SOURCES, L.SOURCES_D, "Interface\\Icons\\INV_Misc_Spyglass_02"),
-        switch("vignettes", L.VIGNETTES, nil, "Interface\\Icons\\INV_Misc_Map_01"),
-        switch("skipTapped", L.TAPPED, nil, "Interface\\Icons\\Ability_Rogue_Disguise"),
-    })
-    st:Add(where, wh)
+    for i = 3, 4 do
+        local row = opts.rows[i]
+        frame.switches[#frame.switches + 1] = row
+    end
+    st:Add(opts, oh)
     local note, nh = S.Paragraph(page, L.NOTE, width)
     st:Add(note, nh)
     return st:Height()
@@ -408,13 +344,6 @@ local function makeMobRow(r)
         ns.Refresh()
     end)
     r.remove:SetPoint("RIGHT", 0, 0)
-    r.exact = S.Button(r, 76, 28)
-    r.exact:SetPoint("RIGHT", r.remove, "LEFT", -6, 0)
-    r.exact:SetScript("OnClick", function(self)
-        local info = ns.Info(self:GetParent().entry.name)
-        info.exact = not info.exact or nil
-        ns.Refresh()
-    end)
     r.toggle:SetScript("OnClick", function(self)
         local e = self:GetParent().entry
         local info = ns.Info(e.name)
@@ -423,11 +352,11 @@ local function makeMobRow(r)
     end)
     r.text = S.Text(r, 12)
     r.text:SetPoint("TOPLEFT", r.toggle, "TOPRIGHT", 10, 0)
-    r.text:SetPoint("RIGHT", r.exact, "LEFT", -8, 0)
+    r.text:SetPoint("RIGHT", r.remove, "LEFT", -8, 0)
     r.text:SetWordWrap(false)
     r.sub = S.Note(r, 12)
     r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -2)
-    r.sub:SetPoint("RIGHT", r.exact, "LEFT", -8, 0)
+    r.sub:SetPoint("RIGHT", r.remove, "LEFT", -8, 0)
     r.sub:SetWordWrap(false)
 end
 
@@ -436,14 +365,11 @@ local function fillMobRow(r, e)
     r.text:SetText(e.name)
     if e.id then
         r.toggle:Hide()
-        r.exact:Hide()
         r.sub:SetText(L.RARE_ROW)
     else
         local info = ns.Info(e.name)
         r.toggle:Show()
         r.toggle:SetChecked(not info.off)
-        r.exact:Show()
-        r.exact:SetText(info.exact and L.EXACT or L.PART)
         r.sub:SetText(info.count and L.FOUND_N:format(info.count, info.zone or "?") or L.NOT_FOUND)
     end
 end
@@ -456,8 +382,18 @@ local function addNames(text)
 end
 
 local function buildMobs(page, width)
+    local main, mh = S.SettingsCard(page, nil, {
+        { L.ENABLE, nil, function() return ns.db.enabled end, function(on) ns.SetEnabled(on) end,
+          icon = "Interface\\Icons\\Ability_Hunter_SniperShot" } })
+    main:SetPoint("TOPLEFT")
+    main:SetPoint("TOPRIGHT")
+    main:SetHeight(mh)
+    frame.enable = main.rows[1]
+    S.SetFont(frame.enable.label, 14)
+    frame.switches[#frame.switches + 1] = { Refresh = function() frame.enable:SetChecked(ns.db.enabled) end }
+    local top = mh + S.GAP
     addEdit = S.Edit(page, width - 98, 30)
-    addEdit:SetPoint("TOPLEFT")
+    addEdit:SetPoint("TOPLEFT", 0, -top)
     S.Placeholder(addEdit, L.ADD_HINT)
     addEdit:SetScript("OnEnterPressed", function(self)
         addNames(self:GetText())
@@ -466,13 +402,13 @@ local function buildMobs(page, width)
     end)
     local add = S.Button(page, 90, 30)
     add:SetText(L.ADD)
-    add:SetPoint("TOPRIGHT")
+    add:SetPoint("TOPRIGHT", 0, -top)
     add:SetScript("OnClick", function()
         addNames(addEdit:GetText())
         addEdit:SetText("")
     end)
     local target = S.FitButton(page, L.ADD_TARGET, 30, 120)
-    target:SetPoint("TOPLEFT", 0, -38)
+    target:SetPoint("TOPLEFT", 0, -(top + 38))
     target:SetScript("OnClick", function()
         local name = ns.AddTarget()
         ns.Refresh()
@@ -486,7 +422,7 @@ local function buildMobs(page, width)
         status:SetText(L.RARES_ADDED:format(n))
     end)
     mobList = S.List(page, 40, makeMobRow, fillMobRow)
-    mobList:SetPoint("TOPLEFT", 0, -76)
+    mobList:SetPoint("TOPLEFT", 0, -(top + 76))
     mobList:SetPoint("BOTTOMRIGHT", -10, 0)
     mobEmpty = S.Empty(mobList)
     mobEmpty:Set(L.LIST_EMPTY, L.LIST_EMPTY_D)
@@ -529,37 +465,31 @@ end
 local function build()
     frame = S.Window("GulliMobFinderFrame", L.TITLE, W, S.DOCK_H, { sub = "/gmf" })
     frame.switches = {}
-    local ft = S.Footer(frame)
-    local play = ft:Add(S.FitButton(ft, L.PLAY, 30, 80))
-    play:SetScript("OnClick", function() ns.PlayAlert() end)
-    status = ft.status
+    status = S.Footer(frame).status
     local body, width = frame.body, frame.inner[1]
     local holder = CreateFrame("Frame", nil, body)
     holder:SetPoint("TOPLEFT")
     holder:SetSize(width, 30)
     pages = {}
-    pageTabs = S.PageTabs(holder, { L.PAGE_SEARCH, L.PAGE_MOBS, L.PAGE_HISTORY }, nil, function(i)
+    pageTabs = S.PageTabs(holder, { L.PAGE_MOBS, L.PAGE_HISTORY, L.PAGE_SETTINGS }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         ns.Refresh()
-    end, nil, { S.TAB.search, "Interface\\Icons\\Ability_Hunter_SniperShot", S.TAB.recent })
+    end, nil, { "Interface\\Icons\\Ability_Hunter_SniperShot", S.TAB.recent, S.TAB.settings })
     for i = 1, 3 do
-        local p = i == 1 and S.Scroll(body) or CreateFrame("Frame", nil, body)
+        local p = i == 3 and S.ScrollPage(body, width) or CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -38)
-        p:SetPoint("BOTTOMRIGHT", i == 1 and -12 or 0, 0)
+        p:SetPoint("BOTTOMRIGHT")
         pages[i] = p
     end
-    pages[1].child:SetWidth(width - 12)
-    local h = buildSearch(pages[1].child, width - 12)
-    pages[1].child:SetHeight(h)
-    pages[1]:Update(h)
-    buildMobs(pages[2], width)
-    buildHistory(pages[3])
+    buildMobs(pages[1], width)
+    buildHistory(pages[2])
+    pages[3]:SetContent(buildSettings(pages[3].inner, width - 10))
     pages[2]:Hide()
     pages[3]:Hide()
     frame:HookScript("OnShow", ns.Refresh)
 end
 
--- Opens one page of the window: 1 Search, 2 Mobs, 3 Found.
+-- Opens one page of the window: 1 Mobs, 2 Found, 3 Settings.
 function ns.ShowPage(i)
     ns.Window()
     pageTabs:Select(i)
@@ -606,6 +536,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = ns.Toggle,
         window = function() return ns.Window and ns.Window() end,
         slash = "/gmf",
+        pause = function(on) if ns.Pause then ns.Pause(on) end end,
         move = function(on) if ns.MoveCard then ns.MoveCard(on) end end,
         -- The card shows by itself on a find; the Unlock mode only places it.
         frames = { { key = "card", label = L.TITLE, icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
@@ -614,12 +545,15 @@ if GulliToolkit and GulliToolkit.Register then
             { label = L.ENABLE, tip = L.DESC, icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
               get = function() return ns.db ~= nil and ns.db.enabled end,
               set = function(on) if ns.db then ns.SetEnabled(on) end end },
-            { label = L.CARD, tip = L.CARD_D, icon = "Interface\\Icons\\INV_Misc_Note_01",
-              get = function() return ns.db ~= nil and ns.db.card end,
-              set = function(on) if ns.db then ns.db.card = on end end },
+            { label = L.REPEAT, tip = L.REPEAT_D, icon = ns.OPT_ICON.repeatSound,
+              get = function() return ns.db ~= nil and ns.db.repeatSound end,
+              set = function(on) if ns.db then ns.db.repeatSound = on; ns.Refresh() end end },
+            { label = L.FLASH, icon = ns.OPT_ICON.flash,
+              get = function() return ns.db ~= nil and ns.db.flash end,
+              set = function(on) if ns.db then ns.db.flash = on; ns.Refresh() end end },
         },
         summary = function()
-            if not ns.db or not ns.db.enabled then return nil end
+            if not ns.db or not ns.db.enabled or ns.paused then return nil end
             if ns.lastFound then return L.STATUS_LAST:format(table.concat(ns.lastFound.names, ", ")) end
             return L.SUMMARY:format(#ns.db.names)
         end,

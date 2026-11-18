@@ -4,7 +4,6 @@ local L = ns.L
 -- The rules and the game calls: which nameplates match the list, when to alert, the
 -- poll timer, the saved settings and the slash commands. UI.lua only shows them.
 
-ns.MIN_INTERVAL, ns.MAX_INTERVAL = 0.5, 60
 
 -- Sounds to pick from: a SOUNDKIT name with its id, for a client that lacks the name.
 ns.SOUNDS = {
@@ -16,25 +15,25 @@ ns.SOUNDS = {
     { key = "MAP_PING", kit = "MAP_PING", id = 3175 },
 }
 
-local DEFAULTS = { enabled = false, names = {}, interval = 2, sound = "RAID_WARNING",
-                   again = false, banner = true,
-                   cooldown = 60,      -- seconds before the same mob alerts again
-                   card = true,        -- the card with the model and the Target button
-                   cardSeconds = 30,   -- the card closes itself after this (0: stays)
-                   mark = false,       -- a skull on the found mob
-                   flash = true,       -- the screen edges flash
+-- Only what a player really picks is a setting. The rest is fixed: a look every INTERVAL
+-- seconds (a new nameplate alerts at once anyway), COOLDOWN before the same mob alerts again,
+-- the card for CARD_SECONDS; the target, the mouseover, the group's targets and the map's rare
+-- markers always count, a mob another player tagged never does, and a find always goes to the
+-- other Gulli users in the group.
+local DEFAULTS = { enabled = true, names = {}, sound = "RAID_WARNING",
+                   flash = true,        -- the screen edges flash
                    repeatSound = false, -- the sound repeats until the card is closed
-                   quietRest = false, quietCombat = false,
-                   skipTapped = true,  -- not a mob another player already tagged
-                   sources = true,     -- also mouseover, target and the group's targets
-                   vignettes = true,   -- also the map's rare markers
-                   share = false,      -- tell other Gulli users in the group
                    mobs = {},          -- lower-case name -> { off, exact, count, zone, at }
                    ids = {},           -- npc id -> English name (rares from the zone preset)
                    history = {} }
+-- Settings of older versions, dropped from the saved variables.
+local GONE = { "interval", "again", "banner", "cooldown", "card", "cardSeconds", "mark", "quietRest",
+               "quietCombat", "skipTapped", "sources", "vignettes", "share", "cardLocked" }
+ns.OPT_ICON = { repeatSound = "Interface\\Icons\\INV_Misc_Bell_01", flash = "Interface\\Icons\\Spell_Fire_Flare" }
+ns.INTERVAL = 2
+ns.COOLDOWN = 60
+ns.CARD_SECONDS = 30
 ns.HISTORY_MAX = 50
-ns.COOLDOWNS = { 0, 30, 60, 120, 300 }
-ns.CARD_SECONDS = { 10, 30, 60, 0 }
 ns.PREFIX = "GulliMF"
 
 ---- Text ----------------------------------------------------------------------
@@ -62,12 +61,6 @@ function ns.ParseNames(text)
         end
     end
     return list
-end
-
-function ns.Interval(value)
-    local n = tonumber((tostring(value or ""):gsub(",", ".")))
-    if not n then return nil end
-    return math.min(ns.MAX_INTERVAL, math.max(ns.MIN_INTERVAL, n))
 end
 
 -- The saved switches of one list entry: off, exact, count, zone, at.
@@ -124,15 +117,12 @@ local function plateUnits()
     return units
 end
 
--- The units to look at: the nameplates, and with "sources" on the mouseover, the target and
--- what the group targets.
+-- The units to look at: the nameplates, the mouseover, the target and what the group targets.
 local function units()
     local list = plateUnits()
-    if ns.db and ns.db.sources then
-        list[#list + 1] = "target"
-        list[#list + 1] = "mouseover"
-        for i = 1, 4 do list[#list + 1] = "party" .. i .. "target" end
-    end
+    list[#list + 1] = "target"
+    list[#list + 1] = "mouseover"
+    for i = 1, 4 do list[#list + 1] = "party" .. i .. "target" end
     return list
 end
 
@@ -140,7 +130,7 @@ end
 local function skip(unit)
     if UnitIsPlayer and UnitIsPlayer(unit) then return true end
     if UnitPlayerControlled and UnitPlayerControlled(unit) then return true end
-    if ns.db and ns.db.skipTapped and UnitIsTapDenied and UnitIsTapDenied(unit) then return true end
+    if UnitIsTapDenied and UnitIsTapDenied(unit) then return true end
     return false
 end
 
@@ -165,7 +155,7 @@ function ns.Scan(list)
         end
     end
     -- The map's markers for rares (vignettes), where the client has them.
-    if ns.db and ns.db.vignettes and C_VignetteInfo and C_VignetteInfo.GetVignettes then
+    if C_VignetteInfo and C_VignetteInfo.GetVignettes then
         local ok, vs = pcall(C_VignetteInfo.GetVignettes)
         for _, v in ipairs(ok and vs or {}) do
             local okInfo, info = pcall(C_VignetteInfo.GetVignetteInfo, v)
@@ -203,13 +193,6 @@ end
 
 local function now() return GetTime and GetTime() or 0 end
 
--- Quiet: no sound while resting or in combat, when the player asked so.
-function ns.Quiet()
-    if ns.db.quietRest and IsResting and IsResting() then return true end
-    if ns.db.quietCombat and InCombatLockdown and InCombatLockdown() then return true end
-    return false
-end
-
 -- Where the player stands: map id, x and y (0-1), and the zone name.
 function ns.Here()
     local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
@@ -234,21 +217,15 @@ local function alert(hits)
     local names = {}
     for _, h in ipairs(hits) do names[#names + 1] = h.name end
     local text = L.FOUND:format(table.concat(names, ", "))
-    if not ns.Quiet() then ns.PlayAlert() end
+    ns.PlayAlert()
     print("|cff9ad0ffGulli-MobFinder|r: " .. text)
-    if ns.db.banner and RaidNotice_AddMessage and RaidWarningFrame then
-        RaidNotice_AddMessage(RaidWarningFrame, text, ChatTypeInfo and ChatTypeInfo.RAID_WARNING or { r = 1, g = 0.3, b = 0.1 })
-    end
     local map, x, y, zone = ns.Here()
     for _, h in ipairs(hits) do
         local info = ns.Info(h.entry)
         info.count = (info.count or 0) + 1
         info.zone, info.at = zone, time and time() or 0
         ns.Remember(h.name, map, x, y, zone)
-        if ns.db.mark and h.unit and SetRaidTarget and GetRaidTargetIndex and not GetRaidTargetIndex(h.unit) then
-            SetRaidTarget(h.unit, 8)
-        end
-        if ns.db.share then ns.Share(h.name, map, x, y) end
+        ns.Share(h.name, map, x, y)
     end
     if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("MobFinder", text) end
     ns.lastFound = { names = names, at = now(), hit = hits[1] }
@@ -256,15 +233,15 @@ local function alert(hits)
 end
 
 -- One scan. A mob alerts when it comes into sight; it alerts again only after it was gone
--- for a scan and its cooldown passed, or on every scan with "again" on. Returns the mobs found.
+-- for a scan and COOLDOWN passed. Returns the mobs found.
 function ns.Tick()
     local found = ns.Scan(ns.db.names)
     local fresh, inSight = {}, {}
     local t = now()
     for _, h in ipairs(found) do
         inSight[h.key] = true
-        local cooled = not alerted[h.key] or t - alerted[h.key] >= (ns.db.cooldown or 0)
-        if ns.db.again or (not seen[h.key] and cooled) then
+        local cooled = not alerted[h.key] or t - alerted[h.key] >= ns.COOLDOWN
+        if not seen[h.key] and cooled then
             fresh[#fresh + 1] = h
             alerted[h.key] = t
         end
@@ -314,7 +291,7 @@ function ns.Share(name, map, x, y)
 end
 
 function ns.Receive(prefix, msg, sender)
-    if prefix ~= ns.PREFIX or type(msg) ~= "string" then return nil end
+    if ns.paused or prefix ~= ns.PREFIX or type(msg) ~= "string" then return nil end
     local me = UnitName and UnitName("player")
     local who = sender and sender:match("^[^%-]+") or sender
     if who == me then return nil end
@@ -381,10 +358,10 @@ end
 
 function ns.Start()
     ns.Stop()
-    if not ns.db.enabled then return end
+    if ns.paused or not ns.db.enabled then return end
     showEnemyPlates()
     seen = {}
-    ticker = C_Timer.NewTicker(ns.db.interval, ns.Tick)
+    ticker = C_Timer.NewTicker(ns.INTERVAL, ns.Tick)
     ns.Tick()
 end
 
@@ -396,19 +373,24 @@ function ns.SetEnabled(on)
     if ns.OnState then ns.OnState() end
 end
 
-function ns.SetInterval(value)
-    local n = ns.Interval(value)
-    if not n then return false end
-    ns.db.interval = n
-    if ticker then ns.Start() end
-    return true
+-- The hub's switch: a paused module looks for nothing and shows nothing, at once.
+function ns.Pause(on)
+    ns.paused = on and true or nil
+    if ns.paused then
+        ns.Stop()
+        if ns.HideCard then ns.HideCard() end
+    elseif ns.db then
+        ns.Start()
+    end
+    if ns.OnState then ns.OnState() end
 end
 
 function ns.SetNames(list)
     ns.db.names = list
 end
 
--- The current target's name, for the "Add target" button.
+-- The current target's name, for the "Add target" button. A mob taken from the target is
+-- looked for by its whole name; a typed name matches as a part.
 function ns.AddTarget()
     if not UnitExists("target") or UnitIsPlayer("target") then return nil end
     local name = UnitName("target")
@@ -417,6 +399,7 @@ function ns.AddTarget()
         if ns.Lower(n) == ns.Lower(name) then return name end
     end
     table.insert(ns.db.names, name)
+    ns.Info(name).exact = true
     return name
 end
 
@@ -428,8 +411,7 @@ local function loadDB()
     for k, v in pairs(DEFAULTS) do
         if d[k] == nil then d[k] = type(v) == "table" and {} or v end
     end
-    d.interval = ns.Interval(d.interval) or DEFAULTS.interval
-    d.cardLocked = nil  -- the hub's Unlock mode places the card now
+    for _, k in ipairs(GONE) do d[k] = nil end
     ns.db = d
 end
 
@@ -454,7 +436,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         -- A plate that appears between two polls alerts at once.
         if ticker then ns.Tick() end
-    elseif ticker and ns.db.sources then
+    elseif ticker then
         ns.Tick()
     end
 end)

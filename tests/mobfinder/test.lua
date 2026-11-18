@@ -41,16 +41,6 @@ test("a name matches by any part, in any case, also in Cyrillic", function()
     eq(ns.Match("Defias Thug", { "Murloc" }), nil, "no match")
 end)
 
-test("the interval is a number of seconds between 0.5 and 60, a comma works too", function()
-    Fake {}
-    local ns = Load()
-    eq(ns.Interval("2"), 2)
-    eq(ns.Interval("0,5"), 0.5)
-    eq(ns.Interval("0.1"), 0.5, "too short")
-    eq(ns.Interval("600"), 60, "too long")
-    eq(ns.Interval("abc"), nil, "not a number")
-end)
-
 test("scan finds the living mobs on the list, skips the dead and secret names", function()
     Fake { plates = {
         { name = "Defias Thug", guid = "1" },
@@ -73,7 +63,7 @@ test("a mob alerts once when it appears, and again after it was gone", function(
     eq(#W.sounds, 1, "first sight")
     eq(W.sounds[1].id, 8960, "the chosen sound")
     eq(W.sounds[1].channel, "Master", "plays even with effects muted")
-    eq(W.banners[1], "Found: Mor'Ladim", "screen warning")
+    eq(#W.banners, 0, "no screen warning any more")
     W.Ticker().fn()
     eq(#W.sounds, 1, "still in sight: no repeat")
     W.plates = {}
@@ -90,15 +80,57 @@ test("a mob alerts once when it appears, and again after it was gone", function(
     eq(ns.lastFound.names[1], "Mor'Ladim")
 end)
 
-test("with repeat on, every scan with the mob in sight alerts", function()
-    Fake { db = { names = { "Bob" }, enabled = true, again = true, banner = false },
-           plates = { { name = "Bob" } } }
-    Load()
+test("settings of older versions are dropped and no longer change the search", function()
+    Fake { resting = true, combat = false,
+           db = { names = { "Bob" }, enabled = true, again = true, banner = true, interval = 30, cooldown = 0,
+                  quietRest = true, card = false, mark = true, sources = false, vignettes = false,
+                  skipTapped = false, share = false },
+           plates = { { name = "Bob", guid = "G" } } }
+    local ns = Load()
     Fire("PLAYER_LOGIN")
+    for _, k in ipairs({ "again", "banner", "interval", "cooldown", "quietRest", "card", "mark", "sources",
+                         "vignettes", "skipTapped", "share" }) do
+        eq(GulliMobFinderDB[k], nil, k .. " is gone")
+    end
+    eq(W.Ticker().seconds, 2, "a look every 2 seconds")
+    eq(#W.sounds, 1, "the sound plays in a town too")
     W.Ticker().fn()
     W.Ticker().fn()
-    eq(#W.sounds, 3, "login scan and two polls")
-    eq(#W.banners, 0, "screen warning off")
+    eq(#W.sounds, 1, "a mob that stays in sight alerts once")
+    eq(W.marks.nameplate1, nil, "no skull")
+    assert(W.named.GulliMobFinderCard:IsShown(), "the card always shows")
+    eq(ns.db.enabled, true)
+end)
+
+test("a new player starts with the search on", function()
+    Fake {}
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(ns.db.enabled, true)
+    eq(ns.db.flash, true)
+    eq(ns.db.repeatSound, false)
+end)
+
+test("a paused module looks for nothing, hears no shared finds, and starts again at once", function()
+    local got
+    Fake { toolkit = { Register = function(m) got = m end },
+           db = { names = { "Bob" }, enabled = true }, plates = { { name = "Bob", guid = "G" } } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(#W.sounds, 1)
+    assert(got.pause, "the hub gets pause")
+    got.pause(true)
+    eq(W.Ticker(), nil, "the timer stopped")
+    assert(not W.named.GulliMobFinderCard:IsShown(), "the card is hidden")
+    W.plates = { { name = "Bob", guid = "H" } }
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#W.sounds, 1, "no alert while paused")
+    eq(ns.Receive("GulliMF", "F1\tAnn\t1431\t0.5\t0.25", "Ann-Realm"), nil, "no shared finds")
+    eq(got.summary(), nil)
+    got.pause(false)
+    eq(W.Ticker().seconds, 2, "running again")
+    eq(#W.sounds, 2, "the mob in sight alerts")
 end)
 
 test("a new plate between polls alerts at once", function()
@@ -110,16 +142,14 @@ test("a new plate between polls alerts at once", function()
     eq(#W.sounds, 1)
 end)
 
-test("the switch starts and stops the timer at the saved interval, and turns on enemy plates", function()
-    Fake { db = { names = { "Bob" }, interval = 5 } }
+test("the switch starts and stops the timer, and turns on enemy plates", function()
+    Fake { db = { names = { "Bob" }, enabled = false } }
     local ns = Load()
     Fire("PLAYER_LOGIN")
-    eq(W.Ticker(), nil, "off by default")
+    eq(W.Ticker(), nil, "a saved off stays off")
     ns.SetEnabled(true)
-    eq(W.Ticker().seconds, 5)
+    eq(W.Ticker().seconds, 2)
     eq(W.cvars.nameplateShowEnemies, "1", "enemy plates on")
-    ns.SetInterval("1,5")
-    eq(W.Ticker().seconds, 1.5, "restarted at the new interval")
     ns.SetEnabled(false)
     eq(W.Ticker(), nil, "stopped")
     eq(GulliMobFinderDB.enabled, false, "saved")
@@ -134,6 +164,8 @@ test("slash commands add names, the target, and switch the search", function()
     eq(table.concat(GulliMobFinderDB.names, ","), "Bob,Hogger")
     SlashCmdList.GULLIMOBFINDER("target")
     eq(#GulliMobFinderDB.names, 2, "the target is added once")
+    eq(ns.Info("Hogger").exact, true, "a mob from the target is looked for by its whole name")
+    eq(ns.Info("Bob").exact, nil, "a typed name matches as a part")
     SlashCmdList.GULLIMOBFINDER("on")
     eq(GulliMobFinderDB.enabled, true)
     SlashCmdList.GULLIMOBFINDER("clear")
@@ -150,10 +182,9 @@ test("players' pets, tagged mobs and switched-off entries do not alert; exact ne
     } }
     local ns = Load()
     eq(names(ns.Scan({ "Bob" })), "Bobby", "pet and tagged skipped")
-    ns.db.skipTapped = false
-    eq(names(ns.Scan({ "Bob" })), "Bob,Bobby", "tagged counts with the switch off")
     ns.Info("Bob").exact = true
-    eq(names(ns.Scan({ "Bob" })), "Bob", "exact")
+    eq(#ns.Scan({ "Bob" }), 0, "exact: Bobby is not Bob")
+    ns.Info("Bob").exact = nil
     ns.Info("Bob").off = true
     eq(#ns.Scan({ "Bob" }), 0, "off")
 end)
@@ -185,16 +216,14 @@ test("the generated data has rares with an id, a name and levels", function()
     assert(n > 100, "too few rares: " .. n)
 end)
 
-test("the minimap rare markers count when the switch is on", function()
+test("the minimap rare markers always count", function()
     Fake { vignettes = { { name = "Mor'Ladim", objectGUID = "Creature-0-1-2-3-522-01" } } }
     local ns = Load()
     eq(names(ns.Scan({ "Mor" })), "Mor'Ladim")
-    ns.db.vignettes = false
-    eq(#ns.Scan({ "Mor" }), 0)
 end)
 
-test("a find goes into the history and the mob row, marks a skull, and shares with the group", function()
-    Fake { group = true, db = { names = { "Bob" }, enabled = true, mark = true, share = true },
+test("a find goes into the history and the mob row, and is shared with the group", function()
+    Fake { group = true, db = { names = { "Bob" }, enabled = true },
            plates = { { name = "Bob", guid = "G" } } }
     local ns = Load()
     Fire("PLAYER_LOGIN")
@@ -203,7 +232,6 @@ test("a find goes into the history and the mob row, marks a skull, and shares wi
     eq(h.zone, "Duskwood")
     eq(h.x, 0.405)
     eq(ns.Info("Bob").count, 1)
-    eq(W.marks.nameplate1, 8, "skull")
     eq(W.addon[1][1], "GulliMF")
     eq(W.addon[1][2], "F1\tBob\t1431\t0.4050\t0.6025")
     eq(W.addon[1][3], "PARTY")
@@ -219,16 +247,6 @@ test("a find shared by another player lands in the history; our own message does
     eq(ns.db.history[1].zone, "Duskwood")
     eq(ns.Receive("GulliMF", "X9\tsomething", "Ann"), nil, "unknown type")
     eq(ns.Receive("Other", "F1\tBob\t1\t0\t0", "Ann"), nil, "other prefix")
-    eq(#ns.db.history, 1)
-end)
-
-test("quiet in towns and in combat: no sound, the rest still happens", function()
-    Fake { resting = true, db = { names = { "Bob" }, enabled = true, quietRest = true },
-           plates = { { name = "Bob" } } }
-    local ns = Load()
-    Fire("PLAYER_LOGIN")
-    eq(#W.sounds, 0, "no sound")
-    eq(#W.banners, 1, "the warning still shows")
     eq(#ns.db.history, 1)
 end)
 
@@ -270,15 +288,6 @@ test("a secret level in combat shows the card without an error", function()
     assert(W.named.GulliMobFinderCard:IsShown(), "the card shows")
 end)
 
-test("with the card off no card shows", function()
-    Fake { db = { names = { "Bob" }, enabled = true, card = false }, plates = { { name = "Bob" } } }
-    Load()
-    Fire("PLAYER_LOGIN")
-    local card = W.named.GulliMobFinderCard
-    assert(not (card and card:IsShown()), "card shown")
-    eq(#W.sounds, 1)
-end)
-
 test("the target key binds to the Target button", function()
     Fake { db = { key = "F6" } }
     local ns = Load()
@@ -299,6 +308,7 @@ end)
 test("the window builds and shows the saved settings", function()
     Fake { db = { names = { "Bob", "Hogger" }, enabled = true } }
     local ns = Load()
+    for _, k in ipairs({ "SetInterval", "Interval", "Quiet" }) do eq(ns[k], nil, k .. " is gone") end
     ns.Toggle()
     ns.Refresh()
     ns.db.history = { { name = "Bob", zone = "Duskwood", t = 1000000, map = 1431, x = 0.5, y = 0.5, who = "Ann" } }
