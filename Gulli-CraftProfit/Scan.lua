@@ -295,6 +295,69 @@ local function levels(rid, rec)
     return byItem
 end
 
+-- ---------- reputation ----------
+
+-- "Requires %s - %s" of the client's language as a Lua pattern that catches the faction and the standing.
+local function repPattern()
+    local f = (ITEM_REQ_REPUTATION or "Requires %s - %s"):gsub("%%%d?%$?s", "\1")
+    f = f:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"):gsub("\1", "(.+)")
+    return "^" .. f .. "$"
+end
+
+local function standingId(label)
+    for i = 1, 8 do
+        if label == _G["FACTION_STANDING_LABEL" .. i] or label == _G["FACTION_STANDING_LABEL" .. i .. "_FEMALE"] then return i end
+    end
+end
+
+-- The character's standing (1 Hated .. 8 Exalted) with a faction by name, or 0 when the list lacks it.
+local function standingOf(name)
+    local R = C_Reputation
+    if R and R.GetNumFactions and R.GetFactionDataByIndex then
+        for i = 1, R.GetNumFactions() or 0 do
+            local d = R.GetFactionDataByIndex(i)
+            if d and d.name == name then return d.reaction or 0 end
+        end
+    elseif GetNumFactions and GetFactionInfo then
+        for i = 1, GetNumFactions() or 0 do
+            local n, _, s = GetFactionInfo(i)
+            if n == name then return s or 0 end
+        end
+    end
+    return 0
+end
+
+-- Whether a pattern asks for a reputation the character does not have, and the tooltip line that
+-- says so. The game paints that line red when it is not met; without a colour, the standing from
+-- the reputation list decides. An item the client has not loaded yet counts as no requirement.
+function ns.RepMissing(item)
+    local T = C_TooltipInfo
+    if not item or not T or not T.GetItemByID then return false end
+    local ok, data = pcall(T.GetItemByID, item)
+    if not ok or type(data) ~= "table" or not data.lines then
+        if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, item) end
+        return false
+    end
+    local pat = repPattern()
+    for _, line in ipairs(data.lines) do
+        local text = line.leftText
+        if type(text) == "string" and not (issecretvalue and issecretvalue(text)) then
+            local fac, label = text:match(pat)
+            if fac then
+                local err = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ErrorLine
+                if err and line.type == err then return true, text end
+                local c = line.leftColor
+                if type(c) == "table" and type(c.r) == "number" then
+                    return c.r > 0.9 and c.g < 0.3 and c.b < 0.3, text
+                end
+                local need = standingId(label)
+                return need ~= nil and standingOf(fac) < need, text
+            end
+        end
+    end
+    return false
+end
+
 -- Where a recipe not learned yet comes from, and its price. Data.lua names the pattern and its
 -- vendors; a pattern sells to a vendor for a quarter of what the vendor asks, so the price is
 -- four times its sell price until the vendor was seen. A pattern on the auction costs its
@@ -328,6 +391,9 @@ local function recipeSource(state, rid, rec, skill)
         if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
         src = src or { t = d[1] == "q" and "quest" or "drop" }
         src.item, src.text = item, rec.source
+        -- a pattern this character cannot learn yet for want of reputation is no way to get it
+        local missing, line = ns.RepMissing(item)
+        if missing then src = { t = "rep", item = item, text = line } end
         return src
     end
     if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then

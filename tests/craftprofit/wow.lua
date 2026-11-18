@@ -144,6 +144,28 @@ function Fake(spec)
             return (it.bags or 0) + (bank and (it.bank or 0) or 0)
         end,
     }
+    -- W.tips: item id -> tooltip lines { text, r, g, b } (no r: the client gives no colour)
+    W.tips = spec.tips or {}
+    C_TooltipInfo = { GetItemByID = function(id)
+        local t = W.tips[id]
+        if not t then return { lines = { { leftText = W.items[id] and W.items[id].name or ("Item" .. id) } } } end
+        local lines = {}
+        for i, l in ipairs(t) do
+            lines[i] = { leftText = l[1], leftColor = l[2] and { r = l[2], g = l[3], b = l[4] } or nil }
+        end
+        return { lines = lines }
+    end }
+    -- W.factions: { { name, reaction } } in the reputation list
+    W.factions = spec.factions or {}
+    C_Reputation = {
+        GetNumFactions = function() return #W.factions end,
+        GetFactionDataByIndex = function(i)
+            local f = W.factions[i]
+            return f and { name = f[1], reaction = f[2] }
+        end,
+    }
+    ITEM_REQ_REPUTATION = "Requires %s - %s"
+    FACTION_STANDING_LABEL4, FACTION_STANDING_LABEL5, FACTION_STANDING_LABEL6 = "Neutral", "Friendly", "Honored"
     if spec.auctionator ~= false then
         W.dbUpdate = nil
         Auctionator = { API = { v1 = {
