@@ -167,6 +167,45 @@ test("forms and stances count in a fight: Shadowform, a warrior without a stance
     eq(W.Keys(ns.Missing()), "")
 end)
 
+test("an aura the game refuses in a fight never breaks the check and is never guessed", function()
+    Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243", "Spell588" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    W.combat = true
+    W.secret = { Spell588 = true }
+    eq(W.Keys(ns.Refresh()), "", "refused by index, found by name")
+    W.byName = false
+    local list = ns.Missing()
+    eq(W.Keys(list), "INNER_FIRE"); eq(list[1].unsure, true, "the game cannot tell")
+    eq(W.Keys(ns.Refresh()), "", "an unsure buff is not shown as missing")
+    eq(#ns.CombatView(list), 0, "and never goes on the strip")
+    W.auras = { "Spell1243" }
+    W.secret = { Spell1243 = true }
+    eq(W.Keys(ns.Refresh()), "", "Fortitude hidden too: nothing guessed")
+    W.combat, W.secret = false, { Spell588 = true }
+    W.auras = { "Spell1243", "Spell588" }
+    W.byName = true
+    eq(W.Keys(ns.Refresh()), "", "out of a fight: asked by name")
+    W.auras = { "Spell1243", "Spell999" }
+    W.secret = { Spell999 = true }
+    eq(W.Keys(ns.Refresh()), "INNER_FIRE", "out of a fight a miss by name is a miss")
+end)
+
+test("Shadowform and paladin auras count as forms when the auras are hidden", function()
+    Fake({ class = "PRIEST", known = { 15473 }, auras = { "Spell15473" } })
+    local ns = Load()
+    ns.SetTracked("SHADOWFORM", true)
+    W.combat, W.byName = true, false
+    W.secret = { Spell15473 = true }
+    W.form = 1
+    eq(W.Keys(ns.Missing()), "")
+    Fake({ class = "PALADIN", known = { 465 }, auras = {} })
+    ns = Load()
+    eq(W.Keys(ns.Missing()), "AURA")
+    W.form = 1
+    eq(W.Keys(ns.Missing()), "", "an aura is a form on the stance bar")
+end)
+
 test("in a fight the panel's secure icons only fade, and a new reminder goes on the plain strip", function()
     Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243" } })
     local ns = Load()

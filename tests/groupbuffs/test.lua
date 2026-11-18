@@ -109,6 +109,18 @@ test("dead and offline members are skipped, those out of range go to the second 
     eq(show(ns.CombatList(plan, far)), "Power Word: Fortitude@player,Power Word: Fortitude@party3")
 end)
 
+test("an aura the game refuses with an error counts as hidden, not as the whole unit", function()
+    local units = party()
+    units.party1.auras = { ["Some Secret Buff"] = 0 }
+    units.party1.refuse = { ["Some Secret Buff"] = true }
+    units.party2.auras = { ["Power Word: Fortitude"] = 600 }
+    units.party2.refuse = { ["Power Word: Fortitude"] = true }
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, byName = true }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@player,Power Word: Fortitude@party1,Power Word: Fortitude@party3",
+        "party1 misses it, party2 has it, both read past the refused aura")
+end)
+
 test("a unit whose buffs the game hides is left alone", function()
     local units = party()
     units.party1.hidden = true

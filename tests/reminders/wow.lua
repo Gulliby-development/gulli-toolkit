@@ -135,12 +135,22 @@ function Fake(spec)
     IsPlayerSpell = function(id) for _, k in ipairs(W.known) do if k == id then return true end end return false end
     C_Spell = { GetSpellName = function(id) return "Spell" .. id end, GetSpellTexture = function() return 1 end }
     W.left, W.pet, W.dead = spec.left or {}, spec.pet or false, false
-    C_UnitAuras = { GetAuraDataByIndex = function(_, i)
-        local n = W.auras[i]
-        if not n then return nil end
+    -- W.secret[name]: the game refuses that aura by index, as in a fight (an error, like the client);
+    -- W.byName = false: asking by name finds nothing either.
+    W.secret, W.byName = {}, true
+    local function aura(n)
         local a = { name = n, expirationTime = W.left[n] and (W.now + W.left[n]) or 0 }
         if n == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
         return a
+    end
+    C_UnitAuras = { GetAuraDataByIndex = function(_, i)
+        local n = W.auras[i]
+        if not n then return nil end
+        if W.secret[n] then error("Auras cannot be accessed when secret while tainted") end
+        return aura(n)
+    end, GetAuraDataBySpellName = function(_, name)
+        if not W.byName then return nil end
+        for _, n in ipairs(W.auras) do if n == name then return aura(n) end end
     end }
     -- The camp aura's tooltip lines: W.camp = { "First Aid Kit: Stamina increased by 34." }.
     W.camp = spec.camp or {}

@@ -153,11 +153,12 @@ end
 local function readAuras(unit)
     local out, hidden, t = {}, 0, now()
     for i = 1, 40 do
-        local name, expires
+        local name, expires, refused
         if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-            local a = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not a then break end
-            name, expires = a.name, a.expirationTime
+            -- A secret aura raises an error for a tainted addon in a fight: it counts as hidden.
+            local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
+            if ok and not a then break end
+            if ok then name, expires = a.name, a.expirationTime else refused = true end
         elseif UnitBuff then
             local n, _, _, _, _, e = UnitBuff(unit, i)
             if not n then break end
@@ -165,7 +166,7 @@ local function readAuras(unit)
         else
             break
         end
-        if secret(name) then
+        if refused or secret(name) then
             hidden = hidden + 1
         elseif name then
             local left = (secret(expires) or not expires or expires == 0) and math.huge or (expires - t)
