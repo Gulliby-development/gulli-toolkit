@@ -11,6 +11,7 @@ local selected -- quest id shown in the detail card
 local COL_W, COLS = 76, 5
 local DETAIL_H = 96
 local ROW_H, ZONE_H, THEIRS_H = 34, 30, 44
+local SIDE_H, SIDE_Y = 28, 3
 local SHARE_W = 104 -- fits "Поделиться" and "Udostępnij"
 -- The cells speak the game's quest marks: a grey "?" is a quest in the log, a yellow "?" one
 -- ready to hand in, a yellow "!" one the member can still take.
@@ -326,11 +327,12 @@ local function build()
 
     tabs = S.PageTabs(body, { L.TAB_OURS, L.TAB_THEIRS, L.TAB_SETTINGS }, 150, function(i) current = i; ns.Refresh() end, nil, { S.TAB.quests, S.TAB.group, S.TAB.settings })
 
-    zonePill = S.Pill(body, 110, 30)
+    -- beside the page tabs: lower than them and lifted, clear of the hairline under the tabs
+    zonePill = S.Pill(body, 110, SIDE_H)
     zonePill:SetText(L.THIS_ZONE)
-    zonePill:SetPoint("TOPRIGHT", 0, 0)
+    zonePill:SetPoint("TOPRIGHT", 0, SIDE_Y)
     zonePill:SetScript("OnClick", function() ns.Set("zoneOnly", not ns.Get("zoneOnly")) end)
-    search = S.Edit(body, 180, 30)
+    search = S.Edit(body, 180, SIDE_H)
     search:SetJustifyH("LEFT")
     search:SetPoint("RIGHT", zonePill, "LEFT", -8, 0)
     S.Placeholder(search, L.SEARCH)
