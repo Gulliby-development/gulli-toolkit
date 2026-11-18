@@ -343,6 +343,9 @@ test("the target's menu adds the mob, then offers to stop; not for players or se
     eq(items[1].text, "Look for this mob")
     items[1].fn()
     eq(ns.db.names[1], "Hogger")
+    W.plates = { { name = "Hogger", guid = W.target.guid } }
+    ns.Tick()
+    eq(#W.sounds, 0, "the mob added from the menu does not alert at once")
     items = W.OpenMenu("MENU_UNIT_FOCUS", "target")
     eq(items[1].text, "Stop looking for this mob")
     items[1].fn()

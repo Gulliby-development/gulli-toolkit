@@ -304,7 +304,8 @@ end
 function ns.UnitMenu(_, root, context)
     if ns.paused or not ns.db then return end
     local unit = context and context.unit
-    local name, guid = unit and ns.Addable(unit)
+    if not unit then return end
+    local name, guid = ns.Addable(unit)
     if not name then return end
     root:CreateDivider()
     if ns.OnList(name) then
