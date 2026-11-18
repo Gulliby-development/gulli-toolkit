@@ -692,6 +692,22 @@ test("a pattern's source and price come from the data; no pattern: the trainer",
     n.Data.src[104] = { "v", 6 }
     src = n.State().recipes[104].src
     eq(src.t, "vendor"); eq(src.who, nil); eq(src.cost, 520 * 4)
+    -- a pattern that needs a reputation the character lacks: the game paints that line red; no way to it
+    local red = { r = 1, g = 0.125, b = 0.125 }
+    C_TooltipInfo = { GetItemByID = function(id)
+        return id == 6 and { lines = { { leftText = "Pattern" }, { leftText = "Requires Thunder Bluff - Honored", leftColor = red } } } or nil
+    end }
+    src = n.State().recipes[104].src
+    eq(src.t, "rep"); eq(src.need, "Requires Thunder Bluff - Honored")
+    eq(n.CanGet({ src = src }, n.Prefs({})), false, "never in the plan")
+    local listed
+    for _, x in ipairs(n.Recipes(n.State(), n.Prefs({}))) do if x.recipe == 104 then listed = x end end
+    eq(listed and listed.src, "rep", "the Recipes tab still lists it, with why")
+    C_TooltipInfo = { GetItemByID = function()
+        return { lines = { { leftText = "Requires Thunder Bluff - Honored", leftColor = { r = 1, g = 0.82, b = 0 } } } }
+    end }
+    eq(n.State().recipes[104].src.t, "vendor", "the reputation is there: buy it")
+    C_TooltipInfo = nil
     -- the trainer teaches it too: learn it there, do not buy the pattern
     n.Data.train[104] = 4500
     src = n.State().recipes[104].src

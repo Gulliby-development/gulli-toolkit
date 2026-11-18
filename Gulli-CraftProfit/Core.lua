@@ -1034,7 +1034,7 @@ function ns.Recipes(state, P)
                 and (r.out and ns.SellValue(state, P, r.out, 0) or 0) * (r.count or 1) - cost or nil
             local pay = (profit and profit > 0 and r.src.cost and r.src.cost > 0) and math.max(1, math.ceil(r.src.cost / profit)) or nil
             rows[#rows + 1] = { recipe = rid, name = r.name, src = r.src.t, text = r.src.text, cost = r.src.cost,
-                                est = r.src.est, who = r.src.who,
+                                est = r.src.est, who = r.src.who, need = r.src.need,
                                 skill = r.skill and r.skill[1],
                                 profit = profit, pay = pay }
         end

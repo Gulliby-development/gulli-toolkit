@@ -295,6 +295,25 @@ local function levels(rid, rec)
     return byItem
 end
 
+-- The reputation a pattern asks for, when the character does not have it yet: the game paints that
+-- line of the pattern's tooltip red. nil while the item is not loaded or the client has no tooltip data.
+local REQ_REP = ITEM_REQ_REPUTATION or "Requires %s - %s"
+local REQ_PATTERN = "^" .. REQ_REP:gsub("([%^%$%(%)%.%[%]%*%+%-%?])", "%%%1"):gsub("%%s", "(.+)") .. "$"
+function ns.RepMissing(item)
+    local T = C_TooltipInfo
+    if not item or not T or not T.GetItemByID then return nil end
+    local ok, data = pcall(T.GetItemByID, item)
+    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return nil end
+    for _, line in ipairs(data.lines) do
+        local text, c = line.leftText, line.leftColor
+        if type(text) == "string" and text:match(REQ_PATTERN) and type(c) == "table"
+            and (c.r or 0) > 0.9 and (c.g or 1) < 0.4 and (c.b or 1) < 0.4 then
+            return text
+        end
+    end
+    return nil
+end
+
 -- Where a recipe not learned yet comes from, and its price. Data.lua names the pattern and its
 -- vendors; a pattern sells to a vendor for a quarter of what the vendor asks, so the price is
 -- four times its sell price until the vendor was seen. A pattern on the auction costs its
@@ -327,6 +346,9 @@ local function recipeSource(state, rid, rec, skill)
         end
         if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
         src = src or { t = d[1] == "q" and "quest" or "drop" }
+        -- a pattern this character cannot learn yet, wherever it is bought, is no way to the skill
+        local rep = ns.RepMissing(item)
+        if rep then src = { t = "rep", need = rep } end
         src.item, src.text = item, rec.source
         return src
     end

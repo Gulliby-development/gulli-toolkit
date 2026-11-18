@@ -609,6 +609,7 @@ local function listRows(which)
             local price = x.cost and ((x.est and "~" or "") .. ns.Money(x.cost)) or (x.src == "trainer" and "?" or "-")
             local tip = recipeTip(r)
             if x.who then tip[#tip + 1] = { L.TIP_VENDOR:format(table.concat(x.who, ", ")), nil, nil, nil, true } end
+            if x.need then tip[#tip + 1] = { L.TIP_REP:format(x.need), nil, nil, nil, true } end
             if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
             if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
