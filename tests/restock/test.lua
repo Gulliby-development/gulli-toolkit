@@ -309,6 +309,8 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     eq(reg.summary(), nil)
     ns.Set(3, 5)
     assert(reg.summary():find("1", 1, true))
+    local _, _, stat = reg.summary()
+    eq(stat.ready, "RESTOCK", "the hub's Ready card shows the same: the tile gives way")
 end)
 
 test("paused from the hub it buys nothing", function()

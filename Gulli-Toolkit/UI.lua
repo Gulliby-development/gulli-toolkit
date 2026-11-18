@@ -1,9 +1,11 @@
 -- The hub window. On the left a narrow list of the modules (their state in the colour of the name),
 -- grouped by category, with the search on top. In the centre always one page: the module the
 -- player clicked (its own window, docked; a narrow one keeps a card about the module beside
--- it), or the home page with the modules' summaries, the Recent feed and quick setup.
--- It only shows what Core.lua gives (ns.List, ns.Filter, ns.Groups, ns.Summaries, ns.Feed)
--- and calls ns.Switch, ns.SetLoaded, ns.ApplyPreset and the module's own window.
+-- it), the home page (a dashboard: the Ready card, the session, the modules' news as number
+-- tiles, the Recent feed and the Modules card) or the Setup page. Unlock frames is a link in
+-- the header. It only shows what Core.lua gives (ns.List, ns.Filter, ns.Groups, ns.Tiles,
+-- ns.Session, ns.Readiness, ns.FeedRows, ns.Overview) and calls ns.Switch, ns.SetLoaded,
+-- ns.ApplyPreset, ns.SetMoving and the module's own window.
 
 local _, ns = ...
 local L = ns.L
@@ -22,11 +24,14 @@ local H = HUB_HEAD + 2 * VPAD + HOST_H
 local SIDE_IN = 10
 local LIST_W = SIDE + S.PAD - 1 - 2 * SIDE_IN - 10
 local ROW_H, HEAD_H = 30, 26
-local TILE_COLS, TILE_MAX, TILE_H = 3, 9, 58
 local LABEL_H = 20
-local QUICK_W, LINE_H = 320, 24
--- The Quick setup buttons that are not presets (a preset names its own icon in ns.PRESETS).
+local LINE_H = 24
+-- The two cards of the Setup page, side by side.
+local SETUP_W = math.floor((HOST_W - 2 * S.INSET - GAP) / 2)
+-- The Setup page's buttons that are not presets (a preset names its own icon in ns.PRESETS),
+-- its own row in the list, and the Unlock link in the header.
 local QUICK_ICON = {
+    page = "Interface\Icons\INV_Misc_Gear_01",
     move = "Interface\\Icons\\Ability_Hunter_Pathfinding",
     transfer = "Interface\\Icons\\INV_Misc_Note_01",
     protect = "Interface\\Icons\\Spell_Holy_SealOfProtection",
@@ -38,11 +43,13 @@ local LINE, HOVER = S.LINE, S.HOVER
 local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
 local MARK = "Interface\\AddOns\\Gulli-Toolkit\\Art\\Mark"
 
--- page: "home", "module", "protect", "transfer" or "errors"; inside: the key of the docked module.
+-- page: "home", "module", "setup", "protect", "transfer", "ready" or "errors"; inside: the key of
+-- the docked module; from: the page a centre page was opened from ("setup"), where its close
+-- button goes back to.
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
 local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
-local host, hubSwitch, offWin, insideWin, card, home, homeRow
+local host, hubSwitch, offWin, insideWin, card, home, homeRow, setupRow, setupFrame, unlockLink
 local rows, heads = {}, {}
 
 local function catName(key)
@@ -172,6 +179,7 @@ local function hidePanels()
     if transfer then transfer:Hide() end
     if errorsFrame then errorsFrame:Hide() end
     if readyFrame then readyFrame:Hide() end
+    if setupFrame then setupFrame:Hide() end
 end
 
 -- Takes the docked module out, without choosing another page.
@@ -237,12 +245,13 @@ local function enter(row)
     ns.Refresh()
 end
 
-local function showPanel(name)
+local function showPanel(name, from)
     leave()
     hidePanels()
     home:Hide()
-    view.page = name
+    view.page, view.from = name, from
     if name == "protect" then protectFrame:Show()
+    elseif name == "setup" then setupFrame:Show()
     elseif name == "errors" then errorsFrame:Show()
     elseif name == "ready" then readyFrame:Show()
     else transfer:Show() end
@@ -375,10 +384,15 @@ local function fillSide(data)
     local y, ri, hi = 0, 0, 0
     local selY
     homeRow:SetShown(not searching)
+    setupRow:SetShown(not searching)
     if not searching then
         place(homeRow, y)
         homeRow:SetSelected(view.page == "home")
         if view.page == "home" then selY = y end
+        y = y + ROW_H
+        place(setupRow, y)
+        setupRow:SetSelected(view.page == "setup")
+        if view.page == "setup" then selY = y end
         y = y + ROW_H
     end
     for _, g in ipairs(ns.Groups(shown)) do
@@ -450,9 +464,204 @@ local function fillCard(row)
 end
 
 -- The home page ---------------------------------------------------------------------------------
+-- A dashboard: the Ready card (a ring and a bar per check) and the session card (a graph) on
+-- top, the modules' news as number tiles under them, then the Recent feed and the Modules card.
 
-local tiles, feedLines, ovLines, cmdLines = {}, {}, {}, {}
-local fillReady
+local tiles, feedLines, ovLines = {}, {}, {}
+local TOP_H, SIDE_W = 196, 320
+local RING, TICKS = 128, 72
+local ARC = "Interface\\AddOns\\Gulli-Toolkit\\Art\\Arc"
+local TRACK = { 0, 0, 0, 0.45 }
+local TONE = { bad = S.BAD, warn = S.WARN, good = S.GOOD }
+local WHITE = { 1, 1, 1, 1 }
+
+local function paint(t, c, a)
+    t:SetVertexColor(c[1], c[2], c[3], a or c[4] or 1)
+end
+
+-- A thin bar: a dark track, a fill and, when the value has a limit, a mark where it sits.
+local function makeBar(parent, h)
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetHeight(h)
+    local track = S.Tex(b, "BACKGROUND", 0, TRACK)
+    track:SetAllPoints()
+    b.fill = S.Tex(b, "ARTWORK", 0, S.GOOD)
+    b.fill:SetPoint("TOPLEFT")
+    b.fill:SetPoint("BOTTOMLEFT")
+    b.extra = S.Tex(b, "ARTWORK", 0, S.GOOD)
+    b.extra:SetPoint("TOPLEFT", b.fill, "TOPRIGHT")
+    b.extra:SetPoint("BOTTOMLEFT", b.fill, "BOTTOMRIGHT")
+    b.extra:Hide()
+    b.mark = S.Tex(b, "OVERLAY", 0, S.MUTED)
+    b.mark:SetSize(2, h + 6)
+    b.mark:Hide()
+    -- width: the bar's own, as its frame may not be laid out yet.
+    function b:Set(width, frac, color, mark, extra, extraColor)
+        self:SetWidth(width)
+        frac = math.max(0, math.min(1, frac or 0))
+        self.fill:SetWidth(math.max(1, math.floor(width * frac + 0.5)))
+        self.fill:SetShown(frac > 0)
+        paint(self.fill, color)
+        self.mark:SetShown(mark ~= nil)
+        if mark then
+            self.mark:ClearAllPoints()
+            self.mark:SetPoint("CENTER", self, "LEFT", math.floor(width * mark + 0.5), 0)
+        end
+        local ew = math.floor(width * math.max(0, math.min(1 - frac, extra or 0)) + 0.5)
+        self.extra:SetShown(ew > 0 and frac > 0)
+        if ew > 0 then
+            self.extra:SetWidth(ew)
+            paint(self.extra, extraColor or color)
+        end
+    end
+    return b
+end
+
+-- The Ready card: a ring with a run of marks per check and the count in its middle, and a
+-- bar per check beside it, the ones not met first. Returns false when it is switched off.
+local meters, ringTicks = {}, {}
+
+local function makeMeter(i)
+    local m = CreateFrame("Frame", nil, home.ready.body)
+    m:SetHeight(32)
+    m.icon = S.IconBox(m, 22)
+    m.icon:SetPoint("TOPLEFT")
+    m.value = S.Text(m, 13, S.TEXT, nil, "bold")
+    m.value:SetPoint("RIGHT", m, "TOPRIGHT", 0, -11)
+    m.value:SetJustifyH("RIGHT")
+    m.value:SetWordWrap(false)
+    m.label = S.Text(m, 13, S.MUTED)
+    m.label:SetPoint("LEFT", m.icon, "RIGHT", 8, 0)
+    m.label:SetPoint("RIGHT", m.value, "LEFT", -6, 0)
+    m.label:SetWordWrap(false)
+    m.bar = makeBar(m, 5)
+    m.bar:SetPoint("BOTTOMLEFT")
+    m:EnableMouse(true)
+    m:SetScript("OnEnter", function(self) if self.text then tip(self, self.text, {}) end end)
+    m:SetScript("OnLeave", hideTip)
+    meters[i] = m
+    return m
+end
+
+local function fillRing(list)
+    local marks = ns.RingTicks(list, TICKS)
+    for k = 1, TICKS do
+        local t = ringTicks[k]
+        if not t then
+            t = home.ring:CreateTexture(nil, "ARTWORK")
+            t:SetTexture(ARC)
+            t:SetAllPoints(home.ring)
+            -- clockwise from the top; a positive rotation turns the other way
+            t:SetRotation(-math.rad((k - 0.5) * 360 / TICKS))
+            ringTicks[k] = t
+        end
+        local on = marks[k]
+        if on == nil then paint(t, TRACK) else paint(t, on and S.GOOD or S.BAD, 1) end
+    end
+end
+
+local function fillReady(width)
+    local card = home.ready
+    if not ns.ReadyGet("show") then card:Hide() return false end
+    card:Show()
+    card:SetWidth(width)
+    local list = {}
+    for _, r in ipairs(ns.Readiness()) do if not r.ok then list[#list + 1] = r end end
+    for _, r in ipairs(ns.Readiness()) do if r.ok then list[#list + 1] = r end end
+    local ok, n = ns.ReadyCount(list)
+    fillRing(list)
+    home.ringCount:SetText(ok)
+    home.ringOf:SetText("/" .. n)
+    home.ringNote:SetText(ok == n and L.RD_ALL or L.RD_FIX:format(n - ok))
+    local nc = ok == n and S.GOOD or S.WARN
+    home.ringNote:SetTextColor(nc[1], nc[2], nc[3], 1)
+    -- The meters: two columns beside the ring, more when the card has the whole width.
+    local left = RING + 22
+    local room = width - 2 * S.INSET - left
+    local cols = math.max(2, math.floor((room + 18) / 172))
+    local w = math.floor((room - (cols - 1) * 18) / cols)
+    local rows = math.max(1, math.ceil(#list / cols))
+    local bodyH = TOP_H - 36 - S.INSET
+    local pitch = math.min(42, math.floor((bodyH + 6) / rows))
+    for i, r in ipairs(list) do
+        local m = meters[i] or makeMeter(i)
+        m.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        m.label:SetText(r.label)
+        m.value:SetText(r.value)
+        local lc, vc = r.ok and S.MUTED or WHITE, r.ok and S.TEXT or S.BAD
+        m.label:SetTextColor(lc[1], lc[2], lc[3], 1)
+        m.value:SetTextColor(vc[1], vc[2], vc[3], 1)
+        m.bar:Set(w, r.frac, r.ok and S.GOOD or S.BAD, r.mark)
+        m.text = r.text
+        m:SetWidth(w)
+        m:ClearAllPoints()
+        m:SetPoint("TOPLEFT", left + ((i - 1) % cols) * (w + 18), -math.floor((i - 1) / cols) * pitch)
+        m:Show()
+    end
+    for i = #list + 1, #meters do meters[i]:Hide() end
+    return true
+end
+
+-- The session card: what the first module with a `session` gives (ns.Session): its number big,
+-- a line under it, a column per stretch of time and the bar of the level. Returns the session.
+local columns = {}
+local COL_H, COL_GAP = 52, 4
+
+local function fillSession(data, width)
+    local card = home.session
+    local s = ns.Session(data)
+    if not s then card:Hide() return nil end
+    card:Show()
+    card:SetWidth(width)
+    card.row = s.row
+    card:SetTitle(L.SESSION, s.span)
+    home.sesValue:SetText(s.value)
+    home.sesUnit:SetText(s.unit)
+    home.sesLine:SetText(S.Emph(s.line, WHITE))
+    local inner = width - 2 * S.INSET
+    local n = #s.bars
+    local max = 0
+    for _, v in ipairs(s.bars) do max = math.max(max, v) end
+    home.sesGraph:SetShown(n > 0 and max > 0)
+    if n > 0 and max > 0 then
+        -- always room for a full set of columns, so a young session grows from the left
+        local slots = ns.SESSION_BARS
+        local cw = math.floor((inner - (slots - 1) * COL_GAP) / slots)
+        local fill, last = S.FILL, S.Accent()
+        for i = 1, n do
+            local c = columns[i]
+            if not c then
+                c = S.Tex(home.sesGraph, "ARTWORK", 0, fill)
+                columns[i] = c
+            end
+            c:ClearAllPoints()
+            c:SetSize(cw, math.max(2, math.floor(COL_H * s.bars[i] / max + 0.5)))
+            c:SetPoint("BOTTOMLEFT", (i - 1) * (cw + COL_GAP), 1)
+            if i == n then paint(c, last, 1) else paint(c, fill, 0.8) end
+            c:Show()
+        end
+    end
+    for i = (max > 0 and n or 0) + 1, #columns do columns[i]:Hide() end
+    local p = s.progress
+    home.sesBar:SetShown(p ~= nil)
+    home.sesLeft:SetShown(p ~= nil)
+    home.sesRight:SetShown(p ~= nil)
+    if p then
+        home.sesLeft:SetText(p.left)
+        home.sesRight:SetText(p.right)
+        local lw = math.ceil(tonumber(home.sesLeft:GetStringWidth()) or 0)
+        local rw = math.ceil(tonumber(home.sesRight:GetStringWidth()) or 0)
+        local bw = inner - (lw > 0 and lw + 8 or 0) - (rw > 0 and rw + 8 or 0)
+        home.sesBar:ClearAllPoints()
+        home.sesBar:SetPoint("BOTTOMLEFT", lw > 0 and lw + 8 or 0, 4)
+        home.sesBar:Set(bw, p.value, S.XP, nil, p.extra, { 0.35, 0.59, 1, 0.55 })
+    end
+    return s
+end
+
+-- A tile: the key number big in the colour of its tone, the module's name, one short line
+-- (or a row of pips), and the module's icon at the right.
+local TILE_COLS, TILE_H, TILE_GAP = 3, 62, 8
 
 local function makeTile(i)
     local t = CreateFrame("Button", nil, home.summary)
@@ -460,19 +669,20 @@ local function makeTile(i)
     -- No edge: a tile stands out from the window by its shade only.
     S.Box(t, S.SURFACE, S.CLEAR, S.R_LG)
     S.Depth(t, S.R_LG)
-    t.icon = S.IconBox(t, 32)
-    t.icon:SetPoint("LEFT", 12, 0)
+    t.value = S.Text(t, 28, WHITE, nil, "title")
+    t.value:SetPoint("LEFT", 14, 0)
+    t.value:SetWordWrap(false)
+    t.icon = S.IconBox(t, 26)
+    t.icon:SetPoint("RIGHT", -12, 0)
     t.name = S.Text(t, 12, S.GOLD, nil, "bold")
-    t.name:SetPoint("TOPLEFT", t.icon, "TOPRIGHT", 10, 3)
-    t.name:SetPoint("RIGHT", -10, 0)
     t.name:SetWordWrap(false)
     t.text = S.Text(t, 13, S.MUTED)
     t.text:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", 0, -2)
-    t.text:SetPoint("RIGHT", -10, 0)
+    t.text:SetPoint("RIGHT", t.icon, "LEFT", -8, 0)
     t.text:SetJustifyV("TOP")
-    t.text:SetMaxLines(2)
+    t.pips = {}
     t:SetScript("OnClick", function(self) enter(self.row) end)
-    -- The whole line in a tooltip, in case two lines do not hold it.
+    -- The module's whole line in a tooltip, as the tile keeps it short.
     t:SetScript("OnEnter", function(self)
         S.Fill(self, S.RAISED)
         if self.row then tip(self, self.row.title, { self.full }, "ANCHOR_TOP") end
@@ -482,18 +692,67 @@ local function makeTile(i)
     return t
 end
 
+local function fillTile(t, e)
+    t.row, t.full = e.row, e.text
+    t.icon:SetIcon(e.icon or e.row.icon)
+    t.name:SetText(S.Upper(e.row.title))
+    t.value:SetShown(e.value ~= nil)
+    t.name:ClearAllPoints()
+    local x = 14
+    if e.value then
+        t.value:SetText(e.value)
+        local c = TONE[e.tone or ""] or WHITE
+        t.value:SetTextColor(c[1], c[2], c[3], 1)
+        x = x + math.max(34, math.ceil(tonumber(t.value:GetStringWidth()) or 0)) + 11
+    end
+    local have, of = 0, 0
+    if e.pips then have, of = e.pips[1], e.pips[2] end
+    t.text:SetShown(of == 0)
+    -- A line too long for the tile takes two lines (never cut mid-word), the name moves up.
+    t.text:SetWordWrap(false)
+    t.text:SetText(S.Emph(e.label, S.TEXT))
+    local room = t.width - x - 12 - 26 - 8
+    local two = of == 0 and (tonumber(t.text:GetStringWidth()) or 0) > room
+    t.text:SetWordWrap(two)
+    t.text:SetMaxLines(two and 2 or 1)
+    t.name:SetPoint("TOPLEFT", x, two and -7 or -14)
+    t.name:SetPoint("RIGHT", t.icon, "LEFT", -8, 0)
+    for k = 1, of do
+        local p = t.pips[k]
+        if not p then
+            p = S.Tex(t, "ARTWORK", 0, S.GOOD)
+            p:SetSize(14, 5)
+            t.pips[k] = p
+        end
+        p:ClearAllPoints()
+        p:SetPoint("TOPLEFT", t.name, "BOTTOMLEFT", (k - 1) * 17, -7)
+        paint(p, k <= have and (TONE[e.tone or ""] or S.GOOD) or S.OFF, 1)
+        p:Show()
+    end
+    for k = of + 1, #t.pips do t.pips[k]:Hide() end
+end
+
+-- A line of the Recent feed: the module's icon, its name and the newest text, how many lines
+-- it stands for, and how long ago at the right.
+local FEED_H = 32
 local function makeFeedLine(i)
     local b = CreateFrame("Button", nil, home.recent.body)
-    b:SetHeight(LINE_H)
+    b:SetHeight(FEED_H)
     S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
+    b.icon = S.IconBox(b, 22)
+    b.icon:SetPoint("LEFT", 2, 0)
     b.ago = S.Text(b, 12, S.FAINT)
-    b.ago:SetPoint("LEFT", 4, 0)
-    b.ago:SetWidth(48)
+    b.ago:SetPoint("RIGHT", -4, 0)
+    b.ago:SetJustifyH("RIGHT")
     b.ago:SetWordWrap(false)
     b.text = S.Text(b, 13, S.MUTED)
-    b.text:SetPoint("LEFT", b.ago, "RIGHT", 6, 0)
-    b.text:SetPoint("RIGHT", -4, 0)
+    b.text:SetPoint("LEFT", b.icon, "RIGHT", 10, 0)
+    b.text:SetPoint("RIGHT", b.ago, "LEFT", -8, 0)
     b.text:SetWordWrap(false)
+    b.rule = S.Tex(b, "ARTWORK", 0, LINE)
+    b.rule:SetHeight(1)
+    b.rule:SetPoint("BOTTOMLEFT")
+    b.rule:SetPoint("BOTTOMRIGHT")
     b:SetScript("OnClick", function(self) enter(findRow(self.key)) end)
     b:SetScript("OnEnter", function(self)
         S.Fill(self, HOVER)
@@ -504,8 +763,33 @@ local function makeFeedLine(i)
     return b
 end
 
--- A line of the Modules card or the commands list: text, a tooltip with the whole text, and a
--- click that opens the module it names.
+local function fillFeed(height)
+    local feed = ns.FeedRows()
+    local room = math.max(1, math.floor((height - 36 - S.INSET) / FEED_H))
+    local now = time()
+    local shown = math.min(#feed, room)
+    for i = 1, shown do
+        local b = feedLines[i] or makeFeedLine(i)
+        local e = feed[i]
+        local who = tostring(e.key or "")
+        if ns.T.en["M_" .. who] then who = L["M_" .. who] end
+        local row = findRow(e.key)
+        b.key, b.who, b.full = e.key, who, e.text
+        b.icon:SetIcon((row and row.icon) or TOOLKIT_ICON)
+        b.ago:SetText(ns.Ago(e.t, now))
+        b.text:SetText(S.Hex(S.TEXT) .. who .. "|r  " .. e.text ..
+            (e.n > 1 and ("  " .. S.Hex(S.FAINT) .. "x" .. e.n .. "|r") or ""))
+        b.rule:SetShown(i < shown)
+        place(b, (i - 1) * FEED_H)
+        b:Show()
+    end
+    for i = shown + 1, #feedLines do feedLines[i]:Hide() end
+    home.noRecent:SetShown(#feed == 0)
+    home.clear:SetShown(#feed > 0)
+end
+
+-- A line of the Modules card: text, a tooltip with the whole text, and a click that opens the
+-- module it names.
 local function makeLine(parent, list, i, size)
     local b = CreateFrame("Button", nil, parent)
     b:SetHeight(LINE_H)
@@ -526,8 +810,9 @@ local function makeLine(parent, list, i, size)
     return b
 end
 
--- The lines of the Modules card from ns.Overview: what waits, what the game refuses, what was
--- updated and what uses the most memory. { { head, color, names, row, open } }
+-- The lines of the Modules card from ns.Overview, only what the player should know: errors,
+-- what waits for a reload, what the game refuses, what is paused and what was updated.
+-- { { head, color, names, row, open } }
 local function overviewLines(o)
     local out = {}
     if (o.errors or 0) > 0 then
@@ -545,247 +830,152 @@ local function overviewLines(o)
         return table.concat(t, ", ")
     end
     if #o.reload > 0 then out[#out + 1] = { L.OV_RELOAD, S.WARN, names(o.reload), o.reload[1] } end
-    if #o.paused > 0 then out[#out + 1] = { L.OV_PAUSED, S.MUTED, names(o.paused), o.paused[1] } end
     if #o.blocked > 0 then
         out[#out + 1] = { L.OV_BLOCKED, S.BAD,
             names(o.blocked, function(r) return " (" .. ns.ReasonText(r.reason) .. ")" end), o.blocked[1] }
     end
+    if #o.paused > 0 then out[#out + 1] = { L.OV_PAUSED, S.MUTED, names(o.paused), o.paused[1] } end
     if #o.new > 0 then
         out[#out + 1] = { L.OV_NEW, S.GOOD, names(o.new, function(r) return " " .. r.version end), o.new[1] }
-    end
-    local quiet = #out - ((o.errors or 0) > 0 and 1 or 0) - (#o.paused > 0 and 1 or 0)
-    if quiet == 0 and (o.errors or 0) == 0 then table.insert(out, 1, { L.OV_FINE, S.GOOD, "" }) end
-    if #o.heavy > 0 then
-        local t = {}
-        for i = 1, math.min(3, #o.heavy) do t[i] = o.heavy[i].row.title .. " " .. ns.Size(o.heavy[i].kb) end
-        out[#out + 1] = { L.OV_HEAVY, S.FAINT, table.concat(t, ", "), o.heavy[1].row }
     end
     return out
 end
 
--- One pip per module: green runs, dark is off or paused, orange waits for a reload, red is
--- refused by the game. The number of modules that are on stands above them.
+-- One pip per module across the card: green runs, dark is off or paused, orange waits for a
+-- reload, red is refused by the game.
 local pips = {}
-local PIP_W, PIP_GAP = 6, 2
-local function fillPips(data)
-    local n = 0
-    for _, r in ipairs(data) do
-        n = n + 1
-        local p = pips[n]
+local PIP_GAP = 2
+local function fillPips(data, width)
+    local n = #data
+    local w = math.max(2, math.floor((width - (n - 1) * PIP_GAP) / math.max(1, n)))
+    for i, r in ipairs(data) do
+        local p = pips[i]
         if not p then
             p = S.Tex(home.ovPips, "ARTWORK", 0, S.GOOD)
-            p:SetSize(PIP_W, 10)
-            pips[n] = p
+            pips[i] = p
         end
         local c = S.OFF
         if r.state == "blocked" then c = S.BAD
         elseif r.state == "reload" then c = S.WARN
         elseif r.state == "ready" and not r.paused then c = S.GOOD end
-        p:SetVertexColor(c[1], c[2], c[3], 1)
+        paint(p, c, 1)
+        p:SetSize(w, 8)
         p:ClearAllPoints()
-        p:SetPoint("TOPLEFT", ((n - 1) % 24) * (PIP_W + PIP_GAP), -math.floor((n - 1) / 24) * 14)
+        p:SetPoint("TOPLEFT", (i - 1) * (w + PIP_GAP), 0)
         p:Show()
     end
     for i = n + 1, #pips do pips[i]:Hide() end
 end
 
+-- The heaviest modules as bars, the first one full: name at the left, memory at the right.
+local heavyBars = {}
+local HEAVY_H, HEAVY_MAX = 24, 3
+local function makeHeavy(i)
+    local b = CreateFrame("Button", nil, home.overview.body)
+    b:SetHeight(HEAVY_H)
+    local track = S.Tex(b, "BACKGROUND", 0, TRACK)
+    track:SetAllPoints()
+    b.fill = S.Tex(b, "ARTWORK", 0, S.FILL)
+    b.fill:SetPoint("TOPLEFT")
+    b.fill:SetPoint("BOTTOMLEFT")
+    b.size = S.Text(b, 13, S.MUTED)
+    b.size:SetPoint("RIGHT", -8, 0)
+    b.size:SetJustifyH("RIGHT")
+    b.name = S.Text(b, 13)
+    b.name:SetPoint("LEFT", 8, 0)
+    b.name:SetPoint("RIGHT", b.size, "LEFT", -8, 0)
+    b.name:SetWordWrap(false)
+    b:SetScript("OnClick", function(self) enter(self.row) end)
+    b:SetScript("OnEnter", function(self) tip(self, L.OV_HEAVY, { self.row and self.row.title }, "ANCHOR_TOP") end)
+    b:SetScript("OnLeave", hideTip)
+    heavyBars[i] = b
+    return b
+end
+
 local function fillOverview(data, height)
     local o = ns.Overview(data)
+    local width = SIDE_W - 2 * S.INSET
     home.ovCount:SetText(o.on)
     home.ovTotal:SetText("/ " .. o.total)
-    home.ovTotal:ClearAllPoints()
-    home.ovTotal:SetPoint("BOTTOMLEFT", home.ovCount, "BOTTOMRIGHT", 6, 3)
-    local parts = { L.OV_RUNNING:format(o.running) }
-    if o.kb > 0 then parts[#parts + 1] = L.OV_MEMORY:format(ns.Size(o.kb)) end
-    home.ovHead:SetText(S.Emph(table.concat(parts, S.DOT), S.TEXT))
-    fillPips(data)
+    home.ovMemory:SetText(o.kb > 0 and S.Emph(ns.Size(o.kb), WHITE) or "")
+    fillPips(data, width)
     home.ovReload:SetShown(#o.reload > 0)
-    -- The lines wrap (never cut); as many as the card holds, each with its whole text in the
-    -- tooltip and a click that opens the module it names.
+    local room = height - 36 - S.INSET - 64
+    -- What needs the player comes first; the memory bars take the room that is left.
     local lines = overviewLines(o)
-    local width = math.max(1, (tonumber(home.ovBox:GetWidth()) or 0) - 8)
-    local y, room = 0, (height or 999) - 36 - S.INSET
-    local shown = 0
-    for i, e in ipairs(lines) do
-        local b = ovLines[i] or makeLine(home.ovBox, ovLines, i)
-        b.text:SetWordWrap(true)
-        b.text:SetMaxLines(2)
-        b.text:SetJustifyV("TOP")
+    local nl = math.min(#lines, math.max(0, math.floor(room / 22)))
+    local nb = math.min(#o.heavy, HEAVY_MAX, math.max(0, math.floor((room - nl * 22 + 5) / (HEAVY_H + 5))))
+    local y = 64
+    local top = (o.heavy[1] and o.heavy[1].kb) or 1
+    for i = 1, nb do
+        local b = heavyBars[i] or makeHeavy(i)
+        local h = o.heavy[i]
+        b.row = h.row
+        b.name:SetText(h.row.title)
+        b.size:SetText(ns.Size(h.kb))
+        b.fill:SetWidth(math.max(2, math.floor(width * h.kb / math.max(1, top) + 0.5)))
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 0, -y)
+        b:SetPoint("TOPRIGHT", 0, -y)
+        b:Show()
+        y = y + HEAVY_H + 5
+    end
+    for i = nb + 1, #heavyBars do heavyBars[i]:Hide() end
+    if nb > 0 then y = y + 3 end
+    for i = 1, nl do
+        local e = lines[i]
+        local b = ovLines[i] or makeLine(home.overview.body, ovLines, i)
         b.head, b.full, b.row, b.open = e[1], e[3] ~= "" and e[3] or nil, e[4], e[5]
         b.text:SetText(S.Hex(e[2]) .. e[1] .. "|r" .. (e[3] ~= "" and ("  " .. e[3]) or ""))
-        b.text:SetWidth(width)
-        local h = math.min(2, math.max(1, math.ceil((tonumber(b.text:GetStringWidth()) or 0) / width))) * 16 + 4
-        if 20 + y + h > room then b:Hide() else
-            b:SetHeight(h)
-            b.text:ClearAllPoints()
-            b.text:SetPoint("TOPLEFT", 4, -2)
-            b.text:SetPoint("BOTTOMRIGHT", -4, 2)
-            place(b, 20 + y)
-            b:Show()
-            shown = i
-            y = y + h
-        end
-    end
-    for i = math.max(shown, #lines) + 1, #ovLines do ovLines[i]:Hide() end
-end
-
--- The height the command lines may fill in a Quick setup card of height h whose commands title
--- sits cmdTop into the body: the body is the card less its 36 title and its inset.
-function ns.CommandsRoom(h, cmdTop)
-    return math.max(0, h - 36 - S.INSET - cmdTop - 24)
-end
-
--- The slash commands of the modules that run, as many as the Quick setup card has room for.
-local function fillCommands(data)
-    -- The lines start 24 below the title, inside the body (the card less its title and inset).
-    local room = math.floor((ns.CommandsRoom(home.quick:GetHeight(), home.cmdTop)) / LINE_H)
-    local list = {}
-    for _, r in ipairs(data) do if r.running and r.slash then list[#list + 1] = r end end
-    home.cmdTitle:SetShown(room > 0 and #list > 0)
-    local shown = math.max(0, math.min(#list, room))
-    if shown < #list and shown > 0 then shown = shown - 1 end
-    for i = 1, shown do
-        local b = cmdLines[i] or makeLine(home.quick.body, cmdLines, i)
-        local r = list[i]
-        b.row, b.head, b.full = r, nil, nil
-        b.text:SetText(S.Hex(S.Accent()) .. r.slash .. "|r  " .. r.title)
-        place(b, home.cmdTop + 24 + (i - 1) * LINE_H)
+        b:SetHeight(22)
+        place(b, y)
         b:Show()
+        y = y + 22
     end
-    local n = shown
-    if shown < #list and room > 0 then
-        n = n + 1
-        local b = cmdLines[n] or makeLine(home.quick.body, cmdLines, n)
-        b.row, b.head, b.full = nil, nil, nil
-        b.text:SetText(S.Hex(S.FAINT) .. L.COMMANDS_MORE:format(#list - shown) .. "|r")
-        place(b, home.cmdTop + 24 + (n - 1) * LINE_H)
-        b:Show()
-    end
-    for i = n + 1, #cmdLines do cmdLines[i]:Hide() end
+    for i = nl + 1, #ovLines do ovLines[i]:Hide() end
 end
-
--- The Ready card: one chip per check of ns.Readiness, two per row, the ones not met first:
--- a red edge and dot while a check is not met, a green dot when it is. Returns its height, 0
--- when it is switched off.
-local readyChips = {}
-local CHIP_H = 28
-local function makeChip(i)
-    local c = CreateFrame("Frame", nil, home.ready.body)
-    c:SetHeight(CHIP_H)
-    S.Box(c, S.RAISED, S.CLEAR, S.R_MD)
-    S.Depth(c, S.R_MD)
-    c.icon = S.IconBox(c, 18)
-    c.icon:SetPoint("LEFT", 6, 0)
-    c.dot = S.Circle(c, 8, S.GOOD, "OVERLAY")
-    c.dot:SetPoint("RIGHT", -8, 0)
-    c.value = S.Text(c, 13)
-    c.value:SetPoint("LEFT", c.icon, "RIGHT", 7, 0)
-    c.value:SetPoint("RIGHT", c.dot, "LEFT", -6, 0)
-    c.value:SetWordWrap(false)
-    c:EnableMouse(true)
-    c:SetScript("OnEnter", function(self) if self.text then tip(self, self.text, {}) end end)
-    c:SetScript("OnLeave", hideTip)
-    readyChips[i] = c
-    return c
-end
-
-function fillReady()
-    local card = home.ready
-    if not ns.ReadyGet("show") then
-        card:Hide()
-        home.overview:SetPoint("TOPLEFT", home.summaryCard, "BOTTOMLEFT", 0, -GAP)
-        return 0
-    end
-    card:Show()
-    home.overview:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -GAP)
-    local list = {}
-    for _, r in ipairs(ns.Readiness()) do if not r.ok then list[#list + 1] = r end end
-    for _, r in ipairs(ns.Readiness()) do if r.ok then list[#list + 1] = r end end
-    local ok, n = ns.ReadyCount(list)
-    card:SetTitle(L.READY .. "  " .. S.Hex(ok == n and S.GOOD or S.WARN) .. ok .. "/" .. n .. "|r", "")
-    local width = HOST_W - QUICK_W - GAP - 2 * S.INSET
-    local cols = 2
-    local w = math.floor((width - (cols - 1) * 6) / cols)
-    for i, r in ipairs(list) do
-        local c = readyChips[i] or makeChip(i)
-        c.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        c.value:SetText(r.text)
-        local tc = r.ok and S.TEXT or { 1, 1, 1, 1 }
-        c.value:SetTextColor(tc[1], tc[2], tc[3], 1)
-        local dc = r.ok and S.GOOD or S.BAD
-        c.dot:SetVertexColor(dc[1], dc[2], dc[3], 1)
-        S.SetBorder(c, r.ok and S.CLEAR or { S.BAD[1], S.BAD[2], S.BAD[3], 0.55 })
-        c.text = r.text
-        c:SetWidth(w)
-        c:ClearAllPoints()
-        c:SetPoint("TOPLEFT", ((i - 1) % cols) * (w + 6), -math.floor((i - 1) / cols) * (CHIP_H + 6))
-        c:Show()
-    end
-    for i = #list + 1, #readyChips do readyChips[i]:Hide() end
-    local rows = math.max(1, math.ceil(#list / cols))
-    return card:Fit(rows * (CHIP_H + 6) - 6)
-end
-
-local OV_H = 112
 
 local function fillHome(data)
-    local list2 = ns.Summaries(data)
-    local n = math.min(#list2, TILE_MAX)
-    local w = math.floor((HOST_W - (TILE_COLS - 1) * 8) / TILE_COLS)
+    -- The top row: Ready and the session side by side, or the one that shows across the width.
+    local ses = fillSession(data, SIDE_W)
+    local readyW = ses and (HOST_W - SIDE_W - GAP) or HOST_W
+    local ready = fillReady(readyW)
+    if ses and not ready then
+        home.session:SetWidth(HOST_W)
+        fillSession(data, HOST_W)
+    end
+    local top = (ses or ready) and (TOP_H + GAP) or 0
+
+    local shown = {}
+    if ready then for _, r in ipairs(ns.Readiness()) do shown[r.key] = true end end
+    local list2 = ns.Tiles(data, shown, ses and ses.row.key or nil)
+    local n = #list2
+    local w = math.floor((HOST_W - (TILE_COLS - 1) * TILE_GAP) / TILE_COLS)
     for i = 1, n do
         local t = tiles[i] or makeTile(i)
-        local s = list2[i]
-        t.row = s.row
-        t.icon:SetIcon(s.icon or s.row.icon)
-        t.name:SetText(S.Upper(s.row.title))
-        t.full = s.text
-        t.text:SetText(S.Emph(s.text, S.TEXT))
+        t.width = w
+        fillTile(t, list2[i])
         t:ClearAllPoints()
-        t:SetPoint("TOPLEFT", ((i - 1) % TILE_COLS) * (w + 8), -math.floor((i - 1) / TILE_COLS) * (TILE_H + 8))
+        t:SetPoint("TOPLEFT", ((i - 1) % TILE_COLS) * (w + TILE_GAP),
+            -math.floor((i - 1) / TILE_COLS) * (TILE_H + TILE_GAP))
         t:SetSize(w, TILE_H)
         t:Show()
     end
     for i = n + 1, #tiles do tiles[i]:Hide() end
     home.noSummary:SetShown(n == 0)
     local lines = math.max(1, math.ceil(n / TILE_COLS))
-    local inner = n == 0 and 36 or (lines * (TILE_H + 8) - 8)
+    local inner = n == 0 and 36 or (lines * (TILE_H + TILE_GAP) - TILE_GAP)
     local sh = LABEL_H + inner
+    home.summaryCard:ClearAllPoints()
+    home.summaryCard:SetPoint("TOPLEFT", 0, -top)
+    home.summaryCard:SetPoint("TOPRIGHT", 0, -top)
     home.summaryCard:SetHeight(sh)
-    local lower = HOST_H - sh - GAP
-    home.quick:SetHeight(lower)
-    local rdh = fillReady()
-    local rest = lower - (rdh > 0 and (rdh + GAP) or 0)
-    -- The Modules card keeps its height; the Recent feed takes what is left (at least 3 lines).
-    local oh = math.max(OV_H, rest - GAP - (36 + S.INSET + 3 * LINE_H))
-    oh = math.min(oh, OV_H + 40)
-    home.overview:SetHeight(oh)
-    fillOverview(data, oh)
-    local rh = rest - oh - GAP
-    home.recent:SetHeight(rh)
-    fillCommands(data)
 
-    local feed = ns.Feed()
-    local room = math.max(1, math.floor((rh - 36 - S.INSET) / LINE_H))
-    local now = time()
-    local shown = math.min(#feed, room)
-    for i = 1, shown do
-        local b = feedLines[i] or makeFeedLine(i)
-        local e = feed[i]
-        local who = tostring(e.key or "")
-        if ns.T.en["M_" .. who] then who = L["M_" .. who] end
-        b.key, b.who, b.full = e.key, who, e.text
-        b.ago:SetText(ns.Ago(e.t, now))
-        b.text:SetText(S.Hex(S.TEXT) .. who .. "|r  " .. e.text)
-        place(b, (i - 1) * LINE_H)
-        b:Show()
-    end
-    for i = shown + 1, #feedLines do feedLines[i]:Hide() end
-    home.noRecent:SetShown(#feed == 0)
-    home.clear:SetShown(#feed > 0)
-    home.move:SetText(ns.moving and L.MOVE_DONE or L.MOVE)
-    -- How many frames show on the screen, so the Unlock mode is easy to find.
-    local fon, ftotal = ns.FrameCount()
-    home.move.value:SetText(ftotal > 0 and (fon .. "/" .. ftotal) or "")
+    local rest = HOST_H - top - sh - GAP
+    home.recent:SetHeight(rest)
+    home.overview:SetHeight(rest)
+    fillOverview(data, rest)
+    fillFeed(rest)
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -795,7 +985,7 @@ local function applyScale()
     local sh = tonumber(UIParent:GetHeight()) or H
     local user = (GulliToolkitDB and GulliToolkitDB.scale) or 1
     S.ApplyScale(frame, ns.HubScale(user, sw, sh, W, H))
-    scaleText:SetText(math.floor(user * 100 + 0.5) .. "%")
+    if scaleText then scaleText:SetText(math.floor(user * 100 + 0.5) .. "%") end
 end
 
 local function nudgeScale(step)
@@ -820,8 +1010,10 @@ function ns.Refresh()
     end
     if view.page == "home" then fillHome(data) end
 
-    protectBtn:SetText(L.PROTECTED)
-    protectBtn.value:SetText(#ns.Protected())
+    if protectBtn then protectBtn.value:SetText(#ns.Protected()) end
+    -- How many frames show on the screen, beside the link that places them.
+    local fon, ftotal = ns.FrameCount()
+    unlockLink:Set(ns.moving and L.MOVE_DONE or L.UNLOCK, ftotal > 0 and (fon .. "/" .. ftotal) or "")
     if protectFrame and protectFrame:IsShown() then ns.RefreshProtected() end
 end
 
@@ -888,7 +1080,10 @@ local function centrePage(name, title)
     p.title = S.Text(p, 14)
     p.title:SetPoint("TOPLEFT", S.INSET, -14)
     p.title:SetText(title)
-    local close = S.Close(p, function() showHome() end)
+    -- A page opened from the Setup page goes back there.
+    local close = S.Close(p, function()
+        if view.from == "setup" and view.page ~= "setup" and setupFrame then showPanel("setup") else showHome() end
+    end)
     close:SetPoint("TOPRIGHT", -6, -6)
     p.hint = S.Note(p, 12)
     p.hint:SetPoint("TOPLEFT", p.title, "BOTTOMLEFT", 0, -8)
@@ -1051,19 +1246,44 @@ function ns.OpenErrors()
     showPanel("errors")
 end
 
--- The header: the window's own (icon, title, version), plus the size buttons.
+-- The header: the window's own (icon, title, version), plus the Unlock link at the right, where
+-- players look for it: accent text over a thin line, the frames that show counted beside it.
 local function buildHeader()
-    local plus = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
-    plus:SetText("+")
-    plus:SetScript("OnClick", function() nudgeScale(0.1) end)
-    scaleText = S.Text(frame.bar, 12, S.FAINT)
-    scaleText:SetWidth(40)
-    scaleText:SetJustifyH("CENTER")
-    scaleText:SetPoint("RIGHT", plus, "LEFT", 0, 0)
-    local minus = S.Ghost(S.Button(frame.bar, 28, 28))
-    minus:SetPoint("RIGHT", scaleText, "LEFT", 0, 0)
-    minus:SetText("-")
-    minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
+    local b = CreateFrame("Button", nil, frame.bar)
+    b:SetHeight(28)
+    b.icon = S.IconBox(b, 18, QUICK_ICON.move)
+    b.icon:SetPoint("LEFT", 2, 0)
+    local a = S.Accent()
+    b.text = S.Text(b, 13, a)
+    b.text:SetPoint("LEFT", b.icon, "RIGHT", 7, 0)
+    b.text:SetWordWrap(false)
+    b.count = S.Text(b, 12, S.FAINT)
+    b.count:SetPoint("LEFT", b.text, "RIGHT", 6, 0)
+    b.rule = S.Tex(b, "ARTWORK", 0, { a[1], a[2], a[3], 0.35 })
+    b.rule:SetHeight(1)
+    b.rule:SetPoint("BOTTOMLEFT", b.text, "BOTTOMLEFT", 0, -4)
+    b.rule:SetPoint("BOTTOMRIGHT", b.text, "BOTTOMRIGHT", 0, -4)
+    function b:Set(text, count)
+        self.text:SetText(text)
+        self.count:SetText(count)
+        local w = (tonumber(self.text:GetStringWidth()) or 0) + (tonumber(self.count:GetStringWidth()) or 0)
+        self:SetWidth(math.ceil(w) + 2 + 18 + 7 + (count ~= "" and 6 or 0) + 4)
+    end
+    b:SetScript("OnClick", function()
+        if ns.SetMoving(not ns.moving) then ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF) end
+    end)
+    b:SetScript("OnEnter", function(self)
+        self.rule:SetVertexColor(a[1], a[2], a[3], 1)
+        tip(self, L.MOVE, { L.UNLOCK_TIP }, "ANCHOR_BOTTOM")
+    end)
+    b:SetScript("OnLeave", function(self)
+        self.rule:SetVertexColor(a[1], a[2], a[3], 0.35)
+        hideTip()
+    end)
+    b:Set(L.UNLOCK, "")
+    unlockLink = frame:AddHeaderButton(b)
+    unlockLink:ClearAllPoints()
+    unlockLink:SetPoint("RIGHT", frame.close, "LEFT", -14, 0)
 end
 
 -- A switch row for the minimap button: on the home page and on the Options page.
@@ -1182,6 +1402,18 @@ local function buildSide()
     ht:SetText(L.HOME)
     homeRow:SetScript("OnClick", goHome)
     homeRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
+
+    -- Setup, right under Home: the presets, the tools and the hub's own switches.
+    setupRow = CreateFrame("Button", nil, list)
+    setupRow:SetHeight(ROW_H)
+    selectable(setupRow)
+    local si = S.IconBox(setupRow, 20, QUICK_ICON.page)
+    si:SetPoint("LEFT", 8, 0)
+    local st = S.Text(setupRow, 13)
+    st:SetPoint("LEFT", si, "RIGHT", 9, 0)
+    st:SetText(L.SETUP_PAGE)
+    setupRow:SetScript("OnClick", function() ns.OpenSetupPage() end)
+    setupRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
 
     empty = S.Empty(scroll)
     empty:Set(L.NO_MATCH)
@@ -1307,9 +1539,9 @@ local function link(parent, text)
     return b
 end
 
--- A full-width tool row of Quick setup: icon, label, an optional value on the right.
+-- A full-width tool row of the Setup page: icon, label, an optional value on the right.
 local function toolRow(parent, text, icon, onClick)
-    local b = S.Button(parent, QUICK_W - 2 * S.INSET, 28)
+    local b = S.Button(parent, SETUP_W - 2 * S.INSET, 28)
     S.SetButtonIcon(b, icon, 18)
     b.text:ClearAllPoints()
     b.text:SetPoint("LEFT", b.btnIcon, "RIGHT", 8, 0)
@@ -1323,10 +1555,163 @@ local function toolRow(parent, text, icon, onClick)
     return b
 end
 
+-- The Setup page: what the player sets once. The presets and the tools at the left, the
+-- hub's own switches and its size at the right.
+local function buildSetupPage()
+    setupFrame = centrePage("GulliToolkitSetupPage", L.SETUP_PAGE)
+    setupFrame.hint:SetText(L.SETUP_PAGE_HINT)
+    local quick = S.Card(setupFrame, L.QUICK)
+    quick:SetWidth(SETUP_W)
+    quick:SetPoint("TOPLEFT", S.INSET, -84)
+    local q = quick.body
+    local bw = math.floor((SETUP_W - 2 * S.INSET - 6) / 2)
+    for i, p in ipairs(ns.PRESETS) do
+        local b = S.Button(q, bw, 30)
+        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 6), -math.floor((i - 1) / 2) * 36)
+        b:SetText(L["PRESET_" .. p.key])
+        S.SetButtonIcon(b, p.icon, 18)
+        b:SetScript("OnClick", function()
+            local n = ns.ApplyPreset(p.key)
+            ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
+        end)
+        b:HookScript("OnEnter", function(self)
+            local names = {}
+            for _, k in ipairs(p.modules) do names[#names + 1] = (moduleName(k)) end
+            tip(self, L["PRESET_" .. p.key], { L.PRESET_TIP, table.concat(names, ", ") })
+        end)
+        b:HookScript("OnLeave", hideTip)
+    end
+    local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
+    local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
+        if not transfer then buildTransfer() end
+        showPanel("transfer", "setup")
+    end)
+    tr:SetPoint("TOPLEFT", 0, -y)
+    protectBtn = toolRow(q, L.PROTECTED, QUICK_ICON.protect, function()
+        if not protectFrame then buildProtected() end
+        showPanel("protect", "setup")
+    end)
+    protectBtn:SetPoint("TOPLEFT", 0, -(y + 32))
+    local setup = toolRow(q, L.SETUP, QUICK_ICON.setup, function() ns.OpenSetup() end)
+    setup:SetPoint("TOPLEFT", 0, -(y + 64))
+    setupFrame.first = setup
+    quick:SetHeight(quick:Fit(y + 92))
+
+    local win = S.Card(setupFrame, L.SETUP_WINDOW)
+    win:SetWidth(SETUP_W)
+    win:SetPoint("TOPLEFT", quick, "TOPRIGHT", GAP, 0)
+    local w = win.body
+    local map = minimapRow(w)
+    map:SetPoint("TOPLEFT")
+    map:SetPoint("TOPRIGHT")
+    local calm = calmRow(w)
+    calm:SetPoint("TOPLEFT", 0, -34)
+    calm:SetPoint("TOPRIGHT", 0, -34)
+    setupFrame.calm = calm
+    -- The size of the hub window: the player's own factor on top of the fit to the screen.
+    local size = CreateFrame("Frame", nil, w)
+    size:SetHeight(30)
+    size:SetPoint("TOPLEFT", 0, -68)
+    size:SetPoint("TOPRIGHT", 0, -68)
+    local plus = S.Button(size, 28, 28)
+    plus:SetPoint("RIGHT")
+    plus:SetText("+")
+    plus:SetScript("OnClick", function() nudgeScale(0.1) end)
+    scaleText = S.Text(size, 13, S.MUTED)
+    scaleText:SetWidth(48)
+    scaleText:SetJustifyH("CENTER")
+    scaleText:SetPoint("RIGHT", plus, "LEFT", 0, 0)
+    local minus = S.Button(size, 28, 28)
+    minus:SetPoint("RIGHT", scaleText, "LEFT", 0, 0)
+    minus:SetText("-")
+    minus:SetScript("OnClick", function() nudgeScale(-0.1) end)
+    local st = S.Text(size, 12)
+    st:SetPoint("LEFT")
+    st:SetPoint("RIGHT", minus, "LEFT", -6, 0)
+    st:SetWordWrap(false)
+    st:SetText(L.SETUP_SCALE)
+    setupFrame.scale = { minus = minus, plus = plus }
+    win:SetHeight(win:Fit(98))
+    setupFrame:SetScript("OnShow", function()
+        applyScale()
+        protectBtn.value:SetText(#ns.Protected())
+    end)
+end
+
+function ns.OpenSetupPage()
+    if not setupFrame then buildSetupPage() end
+    showPanel("setup")
+end
+function ns.SetupPage()
+    if not setupFrame then buildSetupPage() end
+    return setupFrame
+end
+
 local function buildHome()
     home = CreateFrame("Frame", nil, host)
     home:SetAllPoints(host)
     home:Show()
+
+    -- Ready: the ring at the left of the card's body, the meters beside it.
+    local ready = S.Card(home, L.READY, "")
+    ready:SetPoint("TOPLEFT")
+    ready:SetSize(HOST_W - SIDE_W - GAP, TOP_H)
+    home.ready = ready
+    ready.title:SetPoint("RIGHT", ready, "RIGHT", -100, 0)
+    local rs = link(ready, L.READY_SET)
+    rs:SetPoint("TOPRIGHT", -6, -7)
+    rs:SetScript("OnClick", function()
+        if not readyFrame then ns.BuildReady() end
+        if readyFrame:IsShown() then showHome() else showPanel("ready") end
+    end)
+    home.ring = CreateFrame("Frame", nil, ready.body)
+    home.ring:SetSize(RING, RING)
+    home.ring:SetPoint("LEFT", 4, 0)
+    home.ringCount = S.Text(home.ring, 32, WHITE, nil, "title")
+    home.ringCount:SetPoint("BOTTOMRIGHT", home.ring, "CENTER", 4, -6)
+    home.ringCount:SetJustifyH("RIGHT")
+    home.ringOf = S.Text(home.ring, 16, S.MUTED, nil, "title")
+    home.ringOf:SetPoint("BOTTOMLEFT", home.ringCount, "BOTTOMRIGHT", 1, 3)
+    home.ringNote = S.Text(home.ring, 12, S.WARN)
+    home.ringNote:SetPoint("TOP", home.ring, "CENTER", 0, -10)
+    home.ringNote:SetWidth(RING - 36)
+    home.ringNote:SetJustifyH("CENTER")
+    home.ringNote:SetMaxLines(2)
+
+    -- The session: the number, its line, the columns over a hairline, the level's bar.
+    local ses = S.Card(home, L.SESSION, "")
+    ses:SetPoint("TOPRIGHT")
+    ses:SetSize(SIDE_W, TOP_H)
+    home.session = ses
+    local sb = ses.body
+    home.sesValue = S.Text(sb, 28, WHITE, nil, "title")
+    home.sesValue:SetPoint("TOPLEFT", 0, 2)
+    home.sesUnit = S.Text(sb, 13, S.MUTED)
+    home.sesUnit:SetPoint("BOTTOMLEFT", home.sesValue, "BOTTOMRIGHT", 6, 4)
+    home.sesLine = S.Text(sb, 13, S.MUTED)
+    home.sesLine:SetPoint("TOPLEFT", 0, -34)
+    home.sesLine:SetPoint("RIGHT")
+    home.sesLine:SetWordWrap(false)
+    home.sesGraph = CreateFrame("Frame", nil, sb)
+    home.sesGraph:SetPoint("TOPLEFT", 0, -58)
+    home.sesGraph:SetPoint("TOPRIGHT", 0, -58)
+    home.sesGraph:SetHeight(COL_H + 1)
+    local base = S.Tex(home.sesGraph, "BACKGROUND", 0, LINE)
+    base:SetHeight(1)
+    base:SetPoint("BOTTOMLEFT")
+    base:SetPoint("BOTTOMRIGHT")
+    home.sesLeft = S.Text(sb, 12, S.MUTED)
+    home.sesLeft:SetPoint("BOTTOMLEFT")
+    home.sesRight = S.Text(sb, 12, S.MUTED)
+    home.sesRight:SetPoint("BOTTOMRIGHT")
+    home.sesBar = makeBar(sb, 7)
+    -- The whole card opens the module the session comes from.
+    local open = CreateFrame("Button", nil, ses)
+    open:SetAllPoints(ses)
+    open:SetScript("OnClick", function() if ses.row then enter(ses.row) end end)
+    open:SetScript("OnEnter", function() S.Fill(ses, S.RAISED) end)
+    open:SetScript("OnLeave", function() S.Fill(ses, S.SURFACE) end)
+    home.sessionOpen = open
 
     -- At a glance: a label and the tiles, no card around them.
     local sc = CreateFrame("Frame", nil, home)
@@ -1345,107 +1730,29 @@ local function buildHome()
     home.noSummary:SetMaxLines(2)
     home.noSummary:SetText(L.NO_SUMMARY)
 
-    local quick = S.Card(home, L.QUICK)
-    quick:SetWidth(QUICK_W)
-    quick:SetPoint("TOPRIGHT", sc, "BOTTOMRIGHT", 0, -GAP)
-    home.quick = quick
-    local q = quick.body
-    local bw = math.floor((QUICK_W - 2 * S.INSET - 6) / 2)
-    for i, p in ipairs(ns.PRESETS) do
-        local b = S.Button(q, bw, 30)
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 6), -math.floor((i - 1) / 2) * 36)
-        b:SetText(L["PRESET_" .. p.key])
-        S.SetButtonIcon(b, p.icon, 18)
-        b:SetScript("OnClick", function()
-            local n = ns.ApplyPreset(p.key)
-            ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
-        end)
-        b:HookScript("OnEnter", function(self)
-            local names = {}
-            for _, k in ipairs(p.modules) do names[#names + 1] = (moduleName(k)) end
-            tip(self, L["PRESET_" .. p.key], { L.PRESET_TIP, table.concat(names, ", ") })
-        end)
-        b:HookScript("OnLeave", hideTip)
-    end
-    local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
-    home.move = toolRow(q, L.MOVE, QUICK_ICON.move, function()
-        if ns.SetMoving(not ns.moving) then ns.Print(ns.moving and L.MOVE_ON or L.MOVE_OFF) end
-    end)
-    home.move:SetPoint("TOPLEFT", 0, -y)
-    local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
-        if not transfer then buildTransfer() end
-        showPanel("transfer")
-    end)
-    tr:SetPoint("TOPLEFT", 0, -(y + 32))
-    protectBtn = toolRow(q, L.PROTECTED, QUICK_ICON.protect, function()
-        if not protectFrame then buildProtected() end
-        if protectFrame:IsShown() then showHome() else showPanel("protect") end
-    end)
-    protectBtn:SetPoint("TOPLEFT", 0, -(y + 64))
-    local setup = toolRow(q, L.SETUP, QUICK_ICON.setup, function() ns.OpenSetup() end)
-    setup:SetPoint("TOPLEFT", 0, -(y + 96))
-    home.setup = setup
-    y = y + 128
-    local l1 = S.Tex(q, "ARTWORK", 0, LINE)
-    l1:SetHeight(1)
-    l1:SetPoint("TOPLEFT", 0, -(y + 2))
-    l1:SetPoint("TOPRIGHT", 0, -(y + 2))
-    local map = minimapRow(q)
-    map:SetPoint("TOPLEFT", 0, -(y + 8))
-    map:SetPoint("TOPRIGHT", 0, -(y + 8))
-    local calm = calmRow(q)
-    calm:SetPoint("TOPLEFT", 0, -(y + 38))
-    calm:SetPoint("TOPRIGHT", 0, -(y + 38))
-    home.calm = calm
-    -- Under a hairline, the slash commands (accent: they can be clicked); no label, as the
-    -- accent already says what they are. The lines start 24 under cmdTop.
-    local line2 = S.Tex(q, "ARTWORK", 0, LINE)
-    line2:SetHeight(1)
-    line2:SetPoint("TOPLEFT", 0, -(y + 74))
-    line2:SetPoint("TOPRIGHT", 0, -(y + 74))
-    home.cmdTop = y + 78 - 24
-    home.cmdTitle = { SetShown = function() end }
-
-    local ready = S.Card(home, L.READY, "")
-    ready:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
-    ready:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
-    ready:SetHeight(80)
-    home.ready = ready
-    ready.title:SetPoint("RIGHT", ready, "RIGHT", -100, 0)
-    local rs = link(ready, L.READY_SET)
-    rs:SetPoint("TOPRIGHT", -6, -7)
-    rs:SetScript("OnClick", function()
-        if not readyFrame then ns.BuildReady() end
-        if readyFrame:IsShown() then showHome() else showPanel("ready") end
-    end)
-
     local ov = S.Card(home, L.OV_TITLE)
-    ov:SetPoint("TOPLEFT", ready, "BOTTOMLEFT", 0, -GAP)
-    ov:SetPoint("TOPRIGHT", quick, "TOPLEFT", -GAP, 0)
+    ov:SetWidth(SIDE_W)
+    ov:SetPoint("TOPRIGHT", sc, "BOTTOMRIGHT", 0, -GAP)
     home.overview = ov
     home.ovReload = S.Primary(S.FitButton(ov, L.RELOAD, 26, 90))
     home.ovReload:SetPoint("TOPRIGHT", -8, -6)
     home.ovReload:SetScript("OnClick", function() ReloadUI() end)
-    -- The number of modules that are on, big, and a pip per module under it; the lines beside.
-    home.ovCount = S.Text(ov.body, 28, { 1, 1, 1, 1 }, nil, "title")
+    -- The number of modules that are on, big, the memory at the right, a pip per module under.
+    home.ovCount = S.Text(ov.body, 28, WHITE, nil, "title")
     home.ovCount:SetPoint("TOPLEFT", 0, 2)
     home.ovTotal = S.Text(ov.body, 13, S.MUTED)
+    home.ovTotal:SetPoint("BOTTOMLEFT", home.ovCount, "BOTTOMRIGHT", 6, 4)
+    home.ovMemory = S.Text(ov.body, 13, S.MUTED)
+    home.ovMemory:SetPoint("BOTTOMRIGHT", ov.body, "TOPRIGHT", 0, -28)
+    home.ovMemory:SetJustifyH("RIGHT")
     home.ovPips = CreateFrame("Frame", nil, ov.body)
-    home.ovPips:SetPoint("TOPLEFT", 0, -38)
-    home.ovPips:SetSize(24 * (PIP_W + PIP_GAP), 24)
-    local box = CreateFrame("Frame", nil, ov.body)
-    box:SetPoint("TOPLEFT", 24 * (PIP_W + PIP_GAP) + 12, 0)
-    box:SetPoint("BOTTOMRIGHT")
-    box:SetWidth(HOST_W - QUICK_W - GAP - 2 * S.INSET - (24 * (PIP_W + PIP_GAP) + 12))
-    home.ovBox = box
-    home.ovHead = S.Text(box, 13, S.MUTED)
-    home.ovHead:SetPoint("TOPLEFT", 4, 0)
-    home.ovHead:SetPoint("TOPRIGHT", -4, 0)
-    home.ovHead:SetWordWrap(false)
+    home.ovPips:SetPoint("TOPLEFT", 0, -42)
+    home.ovPips:SetPoint("TOPRIGHT", 0, -42)
+    home.ovPips:SetHeight(8)
 
     local recent = S.Card(home, L.RECENT)
-    recent:SetPoint("TOPLEFT", ov, "BOTTOMLEFT", 0, -GAP)
-    recent:SetPoint("TOPRIGHT", ov, "BOTTOMRIGHT", 0, -GAP)
+    recent:SetPoint("TOPLEFT", sc, "BOTTOMLEFT", 0, -GAP)
+    recent:SetPoint("TOPRIGHT", ov, "TOPLEFT", -GAP, 0)
     home.recent = recent
     home.clear = link(recent, L.CLEAR)
     home.clear:SetPoint("TOPRIGHT", -6, -7)
@@ -1542,6 +1849,7 @@ function ns.Enter(key)
 end
 function ns.Inside() return insideWin end
 function ns.Home() return home end
+function ns.UnlockLink() return unlockLink end
 function ns.Card() return card end
 function ns.ShowPanel(name)
     if name == "protect" and not protectFrame then buildProtected() end

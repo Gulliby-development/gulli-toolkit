@@ -438,7 +438,8 @@ function ns.Summary()
         local n = #ns.Tasks(e.char)
         if n > 0 then tasks, chars = tasks + n, chars + 1 end
     end
-    if tasks == 0 then return L.NOTHING_ALL end
+    -- nothing to do: the hub's tile is the first to give way to others
+    if tasks == 0 then return L.NOTHING_ALL, nil, { quiet = true } end
     return L.SUMMARY:format(tasks, chars)
 end
 

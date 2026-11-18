@@ -26,7 +26,7 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 - **Learns the real limit.** If the game says "too many instances", the addon sets the limit to your count. If you got in more often, it raises the limit. Until the game confirms it, the limit shows as ≈5. **Defaults** puts back 5 and 30.
 - **Run stats.** Time inside, XP, money and kills for each run, with a short line in chat when you leave.
 - **Works with your group.** After **Reset dungeons** the group gets a chat line, and group members with the addon also reset their counters. They share how many entries they have left, so you see who has the fewest. If someone may still be inside, Reset asks you to press it again.
-- **Your counter, your way.** Show it always or only in a group or dungeon; hide it in **Frames on screen** in `/gulli`. Change its size and opacity. It gets a red edge at 0.
+- **Your counter, your way.** Show it always or only in a group or dungeon; hide it in **Unlock frames** in `/gulli`. Change its size and opacity. It gets a red edge at 0.
 - **Count from the exit** (off): turn it on if the game counts the hour from when you leave. This is not checked in WoW Forever yet.
 
 ## Install
@@ -39,7 +39,7 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 
 1. The counter works on its own after you install it.
 2. Type `/gil` to see the list. **Settings** has the limits, alerts, group and counter options. `/gil status` prints one line in chat.
-3. The counter shows the entries left with one mark per entry. Click it to open the window. It starts hidden: turn it on and place it in **Frames on screen** in `/gulli` (not in the module's window). When an entry is free again, a card at the top of the screen tells you.
+3. The counter shows the entries left with one mark per entry. Click it to open the window. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli` (not in the module's window). When an entry is free again, a card at the top of the screen tells you.
 
 ## FAQ
 

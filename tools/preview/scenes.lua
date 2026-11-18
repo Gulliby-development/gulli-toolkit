@@ -6,20 +6,27 @@ local function mod(name, key, enabled)
     return { name = "Gulli-" .. name, enabled = enabled ~= false, loaded = enabled ~= false,
              meta = { ["X-Gulli-Module"] = key or name, Version = "1.0.0" } }
 end
+local HUB_MODS = { "QuestCleaner", "PartyQuests", "AutoQuest", "GroupBuffs", "InstanceLimit", "Attune", "DungeonPrep",
+    "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Bulletin", "Chores", "XP" }
+local function hubAddons()
+    local out = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.3.0" } } }
+    for _, k in ipairs(HUB_MODS) do out[#out + 1] = mod(k) end
+    out[#out + 1] = mod("MobFinder", nil, false)
+    out[#out + 1] = { name = "Gulli-Loot", enabled = false, loaded = true, meta = { ["X-Gulli-Module"] = "Loot", Version = "1.0.0" } }
+    return out
+end
 S.toolkit = { default = {
-    spec = { addons = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.3.0" } },
-        mod("QuestCleaner"), mod("BagSpace"), mod("Merchant"), mod("MobFinder", nil, false), mod("Bulletin"),
-        mod("Attune"), mod("XP"), mod("Restock"), mod("Mail"),
-        { name = "Gulli-Loot", enabled = false, loaded = true, meta = { ["X-Gulli-Module"] = "Loot", Version = "1.0.0" } } } },
+    spec = { addons = hubAddons() },
     open = function(ns)
         UpdateAddOnMemoryUsage = function() end
         GetAddOnMemoryUsage = function(name)
-            return ({ ["Gulli-QuestCleaner"] = 1900, ["Gulli-XP"] = 360, ["Gulli-Mail"] = 240 })[name] or 120
+            return ({ ["Gulli-CraftProfit"] = 14540, ["Gulli-DungeonPrep"] = 11570, ["Gulli-QuestCleaner"] = 6350,
+                      ["Gulli-XP"] = 360 })[name] or 900
         end
         GulliToolkit.Register({ key = "Loot", open = function() end, slash = "/glt",
             icon = "Interface\\AddOns\\Gulli-Loot\\icon", summary = function() return "12 item rules" end })
-        for _, k in ipairs({ "QuestCleaner", "BagSpace", "Merchant", "Bulletin", "Attune", "XP", "Restock", "Mail" }) do
-            GulliToolkitDB.paused = { Restock = true }
+        GulliToolkitDB.paused = { Restock = true }
+        for _, k in ipairs(HUB_MODS) do
             GulliToolkit.Register({ key = k, open = function() end, slash = "/g" .. k:sub(1, 2):lower(),
                 pause = function() end,
                 icon = "Interface\\AddOns\\Gulli-" .. k .. "\\icon",
@@ -30,16 +37,91 @@ S.toolkit = { default = {
                       icon = "Interface\\Icons\\INV_Misc_Key_14" },
                 } or nil })
         end
-        local sums = { XP = "Level 42 in 35 min (8.4k XP/h)", Attune = "Onyxia: 3 of 7 steps",
-            BagSpace = "2 free slots", Mail = "3 letters, 1 back in 2 days", Bulletin = "4 groups looking for players, 6 trade posts",
-            Merchant = "5 junk items, 1g 20s", Restock = "3 items to buy", QuestCleaner = "Quest log 23 of 25" }
-        for k, text in pairs(sums) do GulliToolkit.modules[k].summary = function() return text end end
-        GulliToolkit.Notify("BagSpace", "Your bags are almost full: 2 free slots.")
-        GulliToolkit.Notify("XP", "Level 42 in about 35 min at this pace.")
-        GulliToolkitDB.feed[2].t = 1000 - 1500
+        local ru = os.getenv("LOCALE") == "ruRU"
+        local sums = ru and {
+            GroupBuffs = { "1 бафф не наложен", { tone = "bad" } },
+            DungeonPrep = { "Мародон: 0 в журнале, 8 можно взять", { value = 8, tone = "warn" } },
+            InstanceLimit = { "5 из 5 входов осталось", { pips = { 5, 5 }, tone = "good" } },
+            Bulletin = { "3 группы ищут игроков, 45 объявлений торговли" },
+            Merchant = { "3 предмета хлама на 1з 10с" },
+            AutoQuest = { "12 сдано, 8 взято" },
+            BagSpace = { "26 свободных ячеек", { ready = "BAGS" } },
+            Chores = { "У персонажей ничего не ждёт", { quiet = true } },
+            XP = { "Уровень 48 через 1 ч 30 мин (19k опыта/ч)" },
+        } or {
+            GroupBuffs = { "1 buffs missing", { tone = "bad" } },
+            DungeonPrep = { "Maraudon: 0 in log, 8 to pick up", { value = 8, tone = "warn" } },
+            InstanceLimit = { "5 of 5 entries left", { pips = { 5, 5 }, tone = "good" } },
+            Bulletin = { "3 groups looking for players, 45 trade posts" },
+            Merchant = { "3 junk items worth 1g 10s" },
+            AutoQuest = { "12 handed in, 8 taken" },
+            BagSpace = { "26 free bag slots", { ready = "BAGS" } },
+            Chores = { "Nothing waits on your characters", { quiet = true } },
+            XP = { "Level 48 in 1 h 30 min (19k XP/h)" },
+        }
+        for k, v in pairs(sums) do GulliToolkit.modules[k].summary = function() return v[1], nil, v[2] end end
+        GulliToolkit.modules.XP.session = function()
+            return { value = "19k", unit = ru and "опыта / ч" or "XP / h",
+                     line = ru and "Уровень 48 через 1 ч 30 мин" or "Level 48 in 1 h 30 min",
+                     span = ru and "1 ч 12 мин" or "1 h 12 min",
+                     bars = { 1100, 1500, 1900, 1700, 2400, 2700, 2200, 3000 },
+                     progress = { value = 0.77, extra = 0.12, left = 47, right = "77%" } }
+        end
+        -- Sample checks for the Ready card, as a mage of 47 on the road has them.
+        local L, I = ns.L, "Interface\\Icons\\"
+        local function check(key, ok, value, text, frac, mark, label)
+            return { key = key, ok = ok, value = value, text = text, icon = ns.READY_ICON[key], frac = frac, mark = mark,
+                     label = label or L["RD_L_" .. key] }
+        end
+        ns.Readiness = function()
+            local bf, bm = ns.ReadyBar(26, 6)
+            local ff, fm = ns.ReadyBar(50, 20)
+            local df, dm = ns.ReadyBar(71, 20)
+            return {
+                check("REPAIR", false, "42%", L.RD_REPAIR:format(42), 0.42, 0.5),
+                check("BAGS", true, "26", L.RD_BAGS:format(26), bf, bm),
+                check("FOOD", true, "50", L.RD_FOOD:format(50), ff, fm),
+                check("DRINK", true, "71", L.RD_DRINK:format(71), df, dm),
+                check("HEARTH", false, L.RD_MIN:format(29), L.RD_HEARTH_CD:format(29), 0.52),
+                check("RESTOCK", false, "0/20", L.RD_RESTOCK:format("Morning Glory Dew 0/20"), 0, nil,
+                    ru and "Утренняя роса" or "Morning Glory Dew"),
+            }
+        end
+        local feed = ru and {
+            { "Mail", "Забрано 6 писем, 12з 40с", 18000 }, { "Bulletin", "Ищут в Мародон, нужен лекарь", 14400 },
+            { "Merchant", "Продано 14 предметов хлама за 3з 20с", 11000 }, { "XP", "Уровень 47 за 2 ч 05 мин", 10800 },
+            { "InstanceLimit", "Вход снова свободен", 7300 }, { "AutoQuest", "Взято 1, сдано 0", 4000 },
+            { "AutoQuest", "Взято 0, сдано 1", 3900 }, { "AutoQuest", "Сдано 2, взято 2", 3700 },
+        } or {
+            { "Mail", "Took 6 letters, 12g 40s", 18000 }, { "Bulletin", "LFM Maraudon, need healer", 14400 },
+            { "Merchant", "Sold 14 junk items for 3g 20s", 11000 }, { "XP", "Level 47 in 2 h 05 min", 10800 },
+            { "InstanceLimit", "An entry is free again", 7300 }, { "AutoQuest", "Taken 1, handed in 0", 4000 },
+            { "AutoQuest", "Taken 0, handed in 1", 3900 }, { "AutoQuest", "Handed in 2, taken 2", 3700 },
+        }
+        for _, e in ipairs(feed) do
+            GulliToolkit.Notify(e[1], e[2])
+            GulliToolkitDB.feed[1].t = 1000 - e[3]
+        end
         SlashCmdList.GULLITOOLKIT("")
     end,
 } }
+
+-- The Setup page: the presets, the tools and the hub's own switches.
+S.toolkit.setuppage = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        ns.OpenSetupPage()
+    end,
+}
+
+-- The home page without a session: the Ready card takes the whole row.
+S.toolkit.nosession = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        GulliToolkit.modules.XP.session = nil
+        ns.Refresh()
+    end,
+}
 
 -- The Unlock mode: the panel of every frame on the screen, with the grid behind it.
 S.toolkit.unlock = { spec = S.toolkit.default.spec, crop = "GulliToolkitUnlock",

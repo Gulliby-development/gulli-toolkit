@@ -841,6 +841,10 @@ test("registers with the toolkit when it is there", function()
     eq(got.key, "GroupBuffs")
     eq(got.slash, "/ggb")
     eq(type(got.open), "function")
+    -- the hub's tile: red while a buff is missing, quiet when all is done
+    local text, _, stat = got.summary()
+    assert(type(text) == "string" and type(stat) == "table", "a line and its tone")
+    assert(stat.tone == "bad" or stat.quiet == true, "bad or quiet")
 end)
 
 test("the settings window builds for every class and its buttons cycle", function()
