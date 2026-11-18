@@ -132,6 +132,8 @@ function Fake(spec)
     W.offHand = spec.offHand
     W.form = spec.form or 0
     GetShapeshiftForm = function() return W.form end
+    W.forms = spec.forms
+    GetNumShapeshiftForms = function() return W.forms or 1 end
     IsPlayerSpell = function(id) for _, k in ipairs(W.known) do if k == id then return true end end return false end
     C_Spell = { GetSpellName = function(id) return "Spell" .. id end, GetSpellTexture = function() return 1 end }
     W.left, W.pet, W.dead = spec.left or {}, spec.pet or false, false

@@ -187,12 +187,13 @@ local function now() return GetTime and GetTime() or 0 end
 -- A buff the game would not show: neither there nor missing, so nothing is asked for.
 local UNSURE = "?"
 ns.UNSURE = UNSURE
--- One buff of the player by name, as buffs() gives it; UNSURE when the game hid some auras
--- and asking by name does not tell either (in a fight a miss by name proves nothing).
+-- One buff of the player by name, as buffs() gives it; UNSURE when the game may be hiding it.
+-- In a fight (a boss above all) the game can leave auras out of the list without a sign, so
+-- there a buff that does not show is never taken as gone: only a found buff counts.
 local function lookup(have, hidden, name, fight)
     if not name or name == "" then return nil end
     local v = have[name]
-    if v ~= nil or not hidden then return v end
+    if v ~= nil or not (hidden or fight) then return v end
     if C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
         local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, "player", name, "HELPFUL")
         if ok and a then
@@ -556,10 +557,12 @@ function ns.Missing()
                 elseif left == false then best = false; break
                 elseif left and (not best or left > best) then best = left end
             end
-            if b.stance then
-                -- A stance is a form, not always an aura: any form counts.
-                local form = GetShapeshiftForm and GetShapeshiftForm() or 0
-                if best == nil and form and form > 0 then best = false end
+            if b.stance and GetShapeshiftForm and (not GetNumShapeshiftForms or (GetNumShapeshiftForms() or 0) > 0) then
+                -- A stance is a form, not always an aura: any form counts, and the game always
+                -- tells the form, so no form is sure even in a fight.
+                local form = GetShapeshiftForm() or 0
+                if best == nil and form > 0 then best = false end
+                if best == nil and form == 0 then unsure = nil end
             end
             local id1 = b.ids[1]
             if best ~= false and (ns.IsBounced(b.key) or ns.Covered("player", id1, soon)) then

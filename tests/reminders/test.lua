@@ -216,10 +216,34 @@ test("in a fight the panel's secure icons only fade, and a new reminder goes on 
     eq(W.Keys(ns.Refresh()), "", "cast in the fight")
     eq(#ns.CombatView(ns.Missing()), 0, "nothing new: the strip stays empty")
     W.auras = {}
-    local extra = ns.CombatView(ns.Missing())
-    eq(W.Keys(extra), "FORTITUDE", "Inner Fire is on the panel already, Fortitude is new")
+    eq(#ns.CombatView(ns.Missing()), 0, "a buff gone from the list in a fight is not sure: the boss may hide it")
     W.combat = false
     eq(W.Keys(ns.Refresh()), "FORTITUDE,INNER_FIRE", "after the fight the panel is laid out again")
+end)
+
+test("a form that drops in a fight goes on the plain strip; the game always tells the form", function()
+    Fake({ class = "PRIEST", known = { 1243, 588, 15473 }, auras = { "Spell1243", "Spell588" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    ns.SetTracked("SHADOWFORM", true)
+    W.form = 1
+    eq(W.Keys(ns.Refresh()), "")
+    W.combat, W.form = true, 0
+    eq(W.Keys(ns.CombatView(ns.Missing())), "SHADOWFORM")
+end)
+
+test("on a boss the game leaves auras out of the list: Well Fed is never shown missing in the fight", function()
+    Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243", "Spell588", "Spell19705" },
+           items = { [13928] = 2 }, instance = "party" })
+    local ns = Load()
+    ns.SetPref("show", true)
+    eq(W.Keys(ns.Refresh()), "")
+    W.combat, W.byName = true, false
+    W.auras = {}
+    eq(#ns.CombatView(ns.Missing()), 0, "nothing new on the strip")
+    eq(W.Keys(ns.Refresh()), "", "nothing sure is missing")
+    W.combat, W.byName = false, true
+    eq(W.Keys(ns.Refresh()), "FORTITUDE,INNER_FIRE,FOOD", "after the fight it is checked again")
 end)
 
 test("the panel shows the missing icons, every icon while unlocked, and hides when all is there", function()
