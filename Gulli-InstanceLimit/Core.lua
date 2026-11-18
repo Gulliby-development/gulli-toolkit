@@ -1,5 +1,5 @@
--- Counts dungeon entries per hour and per day for the whole account, like the game does,
--- and says when the next entry is free. Entering the same dungeon again does not count
+-- Counts dungeon entries per hour for the whole account, like the game does, and says when
+-- the next entry is free. The limit is not a setting: it is 5 until the game shows another. Entering the same dungeon again does not count
 -- until it was reset or the group changed. Group members with the addon share resets and
 -- what they have left over addon messages (prefix GulliIL).
 
@@ -7,7 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 ns.HOUR, ns.DAY = 3600, 86400
-ns.DEFAULT_LIMIT, ns.DEFAULT_DAY = 5, 30
+ns.DEFAULT_LIMIT = 5
 ns.PREFIX = "GulliIL"
 -- The counter on screen: always, only in a group or a dungeon (or when an entry is short), or never.
 ns.BADGE_MODES = { "ALWAYS", "GROUP", "HIDDEN" }
@@ -43,57 +43,49 @@ function ns.Clock(sec)
     return string.format("%d:%02d", f(sec / 60), sec % 60)
 end
 
--- The time an entry counts from: the entry, or with "count from the exit" the exit (an entry
--- the player is still inside counts as now).
-function ns.When(e, now)
-    if ns.db.fromExit then return e.out or now or time() end
-    return e.t
-end
-
--- Drops entries older than a day; returns entries in the last hour and day.
+-- Drops entries older than a day (the list shows a day); returns the entries of the last
+-- hour, oldest first: each holds a slot of the hour until an hour after it.
 function ns.Counts(now)
     now = now or time()
     local db = ns.db
     for i = #db.entries, 1, -1 do
-        if now - ns.When(db.entries[i], now) >= ns.DAY then table.remove(db.entries, i) end
+        if now - db.entries[i].t >= ns.DAY then table.remove(db.entries, i) end
     end
-    local hour, day = 0, #db.entries
-    local oldestHour, oldestDay
+    local used = {}
     for _, e in ipairs(db.entries) do
-        local t = ns.When(e, now)
-        if now - t < ns.HOUR then
-            hour = hour + 1
-            if not oldestHour or t < oldestHour then oldestHour = t end
-        end
-        if not oldestDay or t < oldestDay then oldestDay = t end
+        if now - e.t < ns.HOUR then used[#used + 1] = e end
     end
-    return hour, day, oldestHour, oldestDay
+    table.sort(used, function(a, b) return a.t < b.t end)
+    return used
 end
 
 -- How many entries are left, and in how many seconds the next one is free (0 = now).
--- by: "HOUR" or "DAY", the limit that blocks now (the one that frees last).
+-- nextFree: when the oldest entry of the hour stops counting (0 = none counts).
 function ns.Status(now)
     now = now or time()
-    local hour, day, oldestHour, oldestDay = ns.Counts(now)
-    local db = ns.db
-    local leftHour = math.max(0, db.limit - hour)
-    local leftDay = math.max(0, db.dayLimit - day)
-    local waitHour, waitDay = 0, 0
-    if leftHour == 0 and oldestHour then
-        -- The slot of the oldest entries frees one by one; the one that brings us under the limit.
-        local times = {}
-        for _, e in ipairs(db.entries) do
-            local t = ns.When(e, now)
-            if now - t < ns.HOUR then times[#times + 1] = t end
-        end
-        table.sort(times)
-        waitHour = times[hour - db.limit + 1] + ns.HOUR - now
+    local used = ns.Counts(now)
+    local limit = ns.db.limit
+    local hour = #used
+    local left = math.max(0, limit - hour)
+    local wait = 0
+    -- The slots free one by one; the one that brings us under the limit.
+    if left == 0 and hour > 0 then wait = used[hour - limit + 1].t + ns.HOUR - now end
+    return { hour = hour, leftHour = left, left = left, wait = wait, limit = limit,
+             nextFree = hour > 0 and (used[1].t + ns.HOUR - now) or 0 }
+end
+
+-- The slots of the hour for the window: the used ones first, the one that frees first on top
+-- ({ name, free = seconds until it frees, frac = the share of its hour left }), then the free ones.
+function ns.Slots(now)
+    now = now or time()
+    local used = ns.Counts(now)
+    local out = {}
+    for i, e in ipairs(used) do
+        local free = e.t + ns.HOUR - now
+        out[i] = { name = e.name, free = free, frac = free / ns.HOUR, first = i == 1 }
     end
-    if leftDay == 0 and oldestDay then waitDay = oldestDay + ns.DAY - now end
-    local by
-    if leftHour == 0 or leftDay == 0 then by = waitDay > waitHour and "DAY" or "HOUR" end
-    return { hour = hour, day = day, leftHour = leftHour, leftDay = leftDay, wait = math.max(waitHour, waitDay),
-             waitHour = waitHour, waitDay = waitDay, left = math.min(leftHour, leftDay), by = by }
+    for i = #used + 1, ns.db.limit do out[i] = { isFree = true } end
+    return out
 end
 
 -- Warnings after an entry: at the limit, and at the chosen number of entries left.
@@ -103,9 +95,6 @@ local function warn(s)
         say(msg); notify(msg); ring()
     elseif s.leftHour <= ns.db.warnAt then
         local msg = L.WARN_LEFT:format(s.leftHour)
-        say(msg); notify(msg)
-    elseif s.leftDay <= ns.db.warnDayAt then
-        local msg = L.WARN_DAY:format(s.leftDay)
         say(msg); notify(msg)
     end
 end
@@ -205,7 +194,6 @@ end
 -- The game says it refused a dungeon: the real limit is what we counted this hour.
 function ns.Refused(now)
     local s = ns.Status(now)
-    ns.db.confirmed = true
     if s.hour > 0 and s.hour < ns.db.limit then
         ns.db.limit = s.hour
         say(L.LEARNED:format(s.hour))
@@ -214,20 +202,11 @@ end
 
 -- Every setting back to its default; the counted entries stay.
 function ns.ResetSettings()
-    for _, k in ipairs({ "badgeMode", "badgeWas", "badgeScale", "badgeAlpha", "badgePoint", "warnAt", "warnDayAt", "freeAlert",
-                         "sound", "summary", "tellGroup", "sync", "fromExit" }) do ns.db[k] = nil end
+    for _, k in ipairs({ "badgeMode", "badgeWas", "badgeScale", "badgeAlpha", "badgePoint", "warnAt", "freeAlert",
+                         "sound", "summary", "tellGroup", "sync" }) do ns.db[k] = nil end
+    ns.db.limit = ns.DEFAULT_LIMIT
     ns.Defaults()
-    ns.DefaultLimits()
-end
-
-function ns.DefaultLimits()
-    ns.db.limit, ns.db.dayLimit, ns.db.confirmed = ns.DEFAULT_LIMIT, ns.DEFAULT_DAY, false
     if ns.Refresh then ns.Refresh() end
-end
-
--- "5" when the game confirmed the limit, "~5" while it is our guess.
-function ns.LimitText(n)
-    return (ns.db.confirmed and "" or "~") .. n
 end
 
 -- Watches the counter: when no entry was free and one frees, says so once.
@@ -286,43 +265,69 @@ function ns.Reset(now)
 end
 
 -- Messages: "RESET\t<dungeon>" from the leader, "STATE\t<hour left>\t<day left>\t<wait>" and
--- "HELLO" (asks the others for their STATE). New types may come; old ones never change.
+-- "HELLO" (asks the others for their STATE). New types may come; old ones never change: the
+-- day field stays in STATE, sent as NO_DAY (no day limit) and not read.
 function ns.Share()
     if not ns.db or not ns.db.sync or not inGroup() then return end
     local s = ns.Status()
-    sendAddon(string.format("STATE\t%d\t%d\t%d", s.leftHour, s.leftDay, math.floor(s.wait)), groupChannel())
+    sendAddon(string.format("STATE\t%d\t%d\t%d", s.leftHour, ns.NO_DAY, math.floor(s.wait)), groupChannel())
 end
 
+ns.NO_DAY = 99
 ns.group = {}
 function ns.Receive(prefix, text, sender, now)
     if prefix ~= ns.PREFIX or not ns.db.sync or secret(text) or secret(sender) or type(text) ~= "string" then return end
     now = now or time()
     local who = (sender or ""):match("^[^-]+") or sender
     if who == UnitName("player") then return end
-    local kind, a, b, c = strsplit("\t", text)
+    local kind, a, _, c = strsplit("\t", text)
     if kind == "RESET" and a then
         ns.Reopen(a)
         say(L.GROUP_RESET:format(who, a))
     elseif kind == "STATE" then
-        ns.group[who] = { leftHour = tonumber(a) or 0, leftDay = tonumber(b) or 0, wait = tonumber(c) or 0, t = now }
+        ns.group[who] = { leftHour = tonumber(a) or 0, wait = tonumber(c) or 0, t = now }
     elseif kind == "HELLO" then
         ns.Share()
     end
     if ns.Refresh then ns.Refresh() end
 end
 
--- The member with the fewest entries left, for "Group: Bob, 1 left".
-function ns.GroupLow(now)
+-- The group for the window: the members who share their counter, the fewest left first
+-- ({ name, class, left, wait }), then the ones without the addon ({ name, class, none = true }).
+function ns.GroupList(now)
     now = now or time()
-    local best, name
-    for who, g in pairs(ns.group) do
-        local left = math.min(g.leftHour, g.leftDay)
+    local out, seen = {}, {}
+    local function add(name, class)
+        local g = ns.group[name]
+        seen[name] = true
+        if not g then out[#out + 1] = { name = name, class = class, none = true }; return end
         local wait = math.max(0, g.wait - (now - g.t))
+        local left = g.leftHour
         if left == 0 and wait == 0 then left = 1 end
-        if not best or left < best.left then best, name = { left = left, wait = wait }, who end
+        out[#out + 1] = { name = name, class = class, left = left, wait = wait }
     end
-    if best then best.name = name end
-    return best
+    if inGroup() then
+        local raid = IsInRaid and IsInRaid()
+        local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+        for i = 1, raid and n or n - 1 do
+            local unit = (raid and "raid" or "party") .. i
+            if UnitExists(unit) and not UnitIsUnit(unit, "player") then
+                local name = UnitName(unit)
+                if name and not secret(name) then
+                    local _, class = UnitClass(unit)
+                    add(name, not secret(class) and class or nil)
+                end
+            end
+        end
+    end
+    -- A sender the roster did not name (a hidden name) still counts.
+    for who in pairs(ns.group) do if not seen[who] then add(who) end end
+    table.sort(out, function(x, y)
+        if (x.none or false) ~= (y.none or false) then return y.none or false end
+        if not x.none and x.left ~= y.left then return x.left < y.left end
+        return x.name < y.name
+    end)
+    return out
 end
 
 ---- Events --------------------------------------------------------------------------------------
@@ -350,9 +355,11 @@ function ns.System(msg)
     if msg == refusedText then ns.Refused() end
 end
 
-ns.DEFAULTS = { badgeMode = "HIDDEN", badgeScale = 100, badgeAlpha = 100, warnAt = 1, warnDayAt = 3,
-                freeAlert = true, sound = true, summary = true, tellGroup = true, sync = true, fromExit = false,
-                confirmed = false }
+ns.DEFAULTS = { badgeMode = "HIDDEN", badgeScale = 100, badgeAlpha = 100, warnAt = 1,
+                freeAlert = true, sound = true, summary = true, tellGroup = true, sync = true }
+-- Settings of older versions that are gone: the limits are not the player's to set, there is no
+-- day limit in WoW Forever that anyone confirmed, and an entry counts from the entry.
+local GONE = { "dayLimit", "warnDayAt", "fromExit", "confirmed" }
 function ns.Defaults()
     for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
     -- Frames on the screen start hidden (owner's decision): a counter shown before is hidden
@@ -362,6 +369,12 @@ function ns.Defaults()
         ns.db.hudHidden = true
     end
     ns.db.badgeLocked = nil
+    -- A limit typed in by hand goes back to 5 once; one the game showed stays.
+    if not ns.db.limitFixed then
+        if not ns.db.confirmed then ns.db.limit = ns.DEFAULT_LIMIT end
+        ns.db.limitFixed = true
+    end
+    for _, k in ipairs(GONE) do ns.db[k] = nil end
 end
 
 -- The counter on or off for the hub's Unlock mode; on brings back the last Show choice.
@@ -387,7 +400,6 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         db.entries = db.entries or {}
         db.open = db.open or {}
         db.limit = db.limit or ns.DEFAULT_LIMIT
-        db.dayLimit = db.dayLimit or ns.DEFAULT_DAY
         -- The old on/off counter switch becomes a mode.
         if db.badgeMode == nil then db.badgeMode = (db.badge == false) and "HIDDEN" or "ALWAYS" end
         db.badge = nil
