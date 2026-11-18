@@ -2,12 +2,13 @@ name: CurseForge
 
 # Uploads to CurseForge (tools/curseforge/upload.py): a module with its own project gets its zip
 # after each of its releases (Release calls this). The core and the small modules go into the
-# Gulli Toolkit project as one zip of the newest releases, uploaded by the hourly run only when
-# one of them was released since, so a batch makes one file and no duplicate. "Run workflow"
-# with a tag uploads it at once, "all" every project. Without CF_API_TOKEN or an id it does nothing.
+# Gulli Toolkit project as one zip of the newest releases: after such a release this waits
+# TOOLKIT_WAIT seconds, a newer release cancels the wait, and it uploads only what was released
+# since the last toolkit upload, so a batch makes one file and never a duplicate. (Not a cron:
+# GitHub ran this repository's schedules hours late.) "Run workflow" with "toolkit" uploads the
+# toolkit now, with a tag that project, with "all" every project. Without CF_API_TOKEN or an id
+# it does nothing.
 on:
-  schedule:
-    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       tag:
@@ -22,11 +23,11 @@ on:
 
 permissions:
   contents: read
-  actions: read   # the hourly run reads when it last succeeded
+  actions: read   # finds when the toolkit was last uploaded
 
 jobs:
   # One queue per CurseForge project (upload.py --route): a batch of releases never drops a
-  # module's upload.
+  # module's upload; a toolkit upload that still waits gives way to the newer one.
   route:
     runs-on: ubuntu-latest
     outputs:
@@ -37,16 +38,21 @@ jobs:
           persist-credentials: false
       - id: route
         env:
-          TAG: ${{ inputs.tag || 'hourly' }}
+          TAG: ${{ inputs.tag }}
         run: echo "project=$(python3 tools/curseforge/upload.py --route "$TAG")" >> "$GITHUB_OUTPUT"
 
   upload:
+    name: upload ${{ needs.route.outputs.project }}   # "upload toolkit" is how upload.py finds the last one
     needs: route
     runs-on: ubuntu-latest
     concurrency:
       group: curseforge-${{ needs.route.outputs.project }}
-      cancel-in-progress: false
+      cancel-in-progress: ${{ needs.route.outputs.project == 'toolkit' && github.workflow == 'Release' }}
     steps:
+      - name: Wait for the rest of a batch
+        if: needs.route.outputs.project == 'toolkit' && github.workflow == 'Release'
+        run: sleep 600
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -56,6 +62,6 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          TAG: ${{ inputs.tag || 'hourly' }}
+          TAG: ${{ inputs.tag }}
           FROM_RELEASE: ${{ github.workflow == 'Release' && '1' || '' }}
         run: python3 tools/curseforge/upload.py "$REPO" "$TAG"
