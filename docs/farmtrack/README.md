@@ -18,7 +18,7 @@ You go out to farm Mageweave, Mithril or gold. Farm Tracker counts what comes in
 
 ## Features
 
-- **Pick what you farm.** Up to three things at once: any item (cloth, ore, herbs, leather...) or gold. Drop an item on the window, press **Gold**, or press **Track** next to anything you looted.
+- **Pick what you farm.** Up to three things at once: any item (cloth, ore, herbs, leather...) or gold. Drop an item on the window, type its id, link or name and press **Add**, press **Gold**, or press **Track** next to anything you looted.
 - **A goal, if you want.** Type a number next to a target, such as 200 Mageweave or 50 gold. Leave it empty to just count.
 - **A small panel on the screen.** Each target with its icon, how many you got, a bar to the goal, the rate per hour and the time left to the goal. Click it to open the window.
 - **Only what you farm counts.** What you buy at a vendor or the auction house, take from the mail or the bank, or get in a trade does not count. Using or selling items does not take them away.
@@ -38,11 +38,11 @@ You go out to farm Mageweave, Mithril or gold. Farm Tracker counts what comes in
 ## How to use it
 
 1. Type `/gft` (or open **Farm Tracker** in `/gulli`).
-2. Drop the item you farm on **Drop an item here**, or press **Gold**.
+2. Drop the item you farm on **Drop an item here**, or type its id or name and press **Add** (Shift+click an item puts its link there). For gold, press **Gold**.
 3. Type a goal next to it if you want one.
 4. Go farm. The panel shows your progress.
 
-Commands: `/gft add <item link or id> [goal]`, `/gft gold [goal in gold]`, `/gft clear`, `/gft reset` (new session).
+Commands: `/gft add <item link, id or name> [goal]`, `/gft gold [goal in gold]`, `/gft clear`, `/gft reset` (new session).
 
 ## FAQ
 
