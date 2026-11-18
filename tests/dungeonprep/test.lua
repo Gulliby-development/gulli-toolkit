@@ -177,6 +177,25 @@ test("Show on map of a quest's page pins and opens the world map", function()
     OpenWorldMap = nil
 end)
 
+test("the map opened from the window is not hidden by it: the window lies under the map", function()
+    Fake({ areas = AREAS, map = { maps = MAPS }, level = 33, raceID = 2, faction = "Horde" })
+    OpenWorldMap = function() end
+    WorldMapFrame = CreateFrame("Frame")
+    local ns = Load()
+    ns.home, ns.selected = false, "GNOMER"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841)
+    local w, strata = ns.Window(), "DIALOG"
+    rawset(w, "GetFrameStrata", function() return strata end)
+    rawset(w, "SetFrameStrata", function(_, s) strata = s end)
+    rawset(w, "GetParent", function() return UIParent end)
+    local d = ns.DetailFrame()
+    d.startMap:GetScript("OnClick")(d.startMap)
+    eq(strata, "LOW", "under the map while it shows")
+    WorldMapFrame:GetScript("OnHide")(WorldMapFrame)
+    eq(strata, "DIALOG", "and back up when the map closes")
+    OpenWorldMap, WorldMapFrame = nil, nil
+end)
+
 test("the tracker's map button pins and opens the world map on the pin's zone", function()
     local W = Fake({ areas = AREAS, map = { maps = MAPS } })
     local opened

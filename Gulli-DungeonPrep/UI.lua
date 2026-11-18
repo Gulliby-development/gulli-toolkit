@@ -1991,6 +1991,34 @@ local function buildQuestPage(parent)
     return questPage
 end
 
+-- The world map the journal opened must not hide behind it: while that map shows, the window
+-- (and the hub around it) lies under the map, and comes back up when the map or the window
+-- closes. Only our own frames change strata, never the game's map.
+local lowered
+function ns.MapClosed()
+    if not lowered then return end
+    for _, e in ipairs(lowered) do e[1]:SetFrameStrata(e[2]) end
+    lowered = nil
+end
+
+function ns.BehindMap()
+    local map = _G.WorldMapFrame
+    if lowered or not frame or not frame:IsShown() or not map then return end
+    lowered = {}
+    local f = frame
+    while f and f ~= UIParent and #lowered < 6 do
+        local strata = f:GetFrameStrata()
+        lowered[#lowered + 1] = { f, type(strata) == "string" and strata or "DIALOG" }
+        f:SetFrameStrata("LOW")
+        f = f:GetParent()
+    end
+    if not rawget(ns, "mapHooked") and map.HookScript then
+        ns.mapHooked = true
+        map:HookScript("OnHide", ns.MapClosed)
+        frame:HookScript("OnHide", ns.MapClosed)
+    end
+end
+
 local function build()
     frame = S.Window("GulliDungeonPrepFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body = frame.body

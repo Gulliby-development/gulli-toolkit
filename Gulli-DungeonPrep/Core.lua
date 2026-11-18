@@ -873,13 +873,14 @@ function ns.OpenMap(id)
     if not id or (InCombatLockdown and InCombatLockdown()) then return false end
     if OpenWorldMap then
         OpenWorldMap(id)
-        return true
     elseif WorldMapFrame and WorldMapFrame.SetMapID and ShowUIPanel then
         ShowUIPanel(WorldMapFrame)
         WorldMapFrame:SetMapID(id)
-        return true
+    else
+        return false
     end
-    return false
+    if ns.BehindMap then ns.BehindMap() end
+    return true
 end
 
 -- Keys and items that open a dungeon or a part of it.
