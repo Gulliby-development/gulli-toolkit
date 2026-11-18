@@ -377,15 +377,21 @@ local function honorSource(s, t)
     }
 end
 
-local function goldSource(s, t)
+-- `worth` is what the looted items would bring (a module's `session` gives it, Farm Tracker
+-- today). With it the gold is an estimate: the vendor sales step back, since what was sold is
+-- in the worth already.
+local function goldSource(s, t, worth)
     local g = s.gold
+    worth = worth or 0
     local earned = ns.SesEarned(s)
-    if g.loot + g.quest + g.vendor + g.repair <= 0 then return nil end
+    if worth > 0 then earned = earned - g.vendor + worth end
+    if g.loot + g.quest + g.vendor + g.repair + worth <= 0 then return nil end
     local rate = earned * 3600 / math.max(MIN_SPAN, ns.SesActive(t))
     local rows = {}
-    for _, k in ipairs({ "loot", "quest", "vendor" }) do
+    for _, k in ipairs(worth > 0 and { "loot", "quest" } or { "loot", "quest", "vendor" }) do
         if g[k] > 0 then rows[#rows + 1] = { L["SES_G_" .. k:upper()], "+" .. moneyText(g[k]) } end
     end
+    if worth > 0 then rows[#rows + 1] = { L.SES_G_WORTH, "+" .. moneyText(worth) } end
     if g.repair > 0 then rows[#rows + 1] = { L.SES_G_REPAIR, moneyText(-g.repair), true } end
     local total = signed(moneyText(earned), earned)
     return {
@@ -423,13 +429,17 @@ function ns.SessionCard(rows, t)
     rows = rows or ns.List()
     local s = ns.ses
     local by, all = {}, {}
+    local worth = 0
     for _, r in ipairs(rows) do
         local src = ns.SessionOf(r)
-        if src then src.key = r.key; by[r.key] = src; all[#all + 1] = src end
+        if src then
+            src.key = r.key; by[r.key] = src; all[#all + 1] = src
+            worth = worth + (src.worth or 0)
+        end
     end
     if s then
         for key, fn in pairs(ns.SESSION_OWN) do
-            local src = fn(s, t)
+            local src = fn(s, t, worth)
             if src then by[key] = src; all[#all + 1] = src end
         end
     end

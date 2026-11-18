@@ -621,7 +621,10 @@ function ns.SessionOf(r)
     if type(d.tile) == "table" and d.tile.value ~= nil then
         tile = { icon = d.tile.icon or r.icon, value = tostring(d.tile.value), label = tostring(d.tile.label or r.title or "") }
     end
-    if d.value == nil and not tile then return nil end
+    -- what the looted items would bring: the card adds it to the gold (never a secret value)
+    local worth = d.worth
+    if type(worth) ~= "number" or (issecretvalue and issecretvalue(worth)) or worth <= 0 then worth = nil end
+    if d.value == nil and not tile and not worth then return nil end
     local bars = {}
     if type(d.bars) == "table" then
         local from = math.max(1, #d.bars - ns.SESSION_BARS + 1)
@@ -650,7 +653,7 @@ function ns.SessionOf(r)
     end
     return { row = r, value = text(d.value), unit = tostring(d.unit or ""), line = tostring(d.line or ""),
              span = tostring(d.span or ""), bars = bars, progress = pr, at = tonumber(d.at), tile = tile,
-             facts = facts, tip = tip }
+             facts = facts, tip = tip, worth = worth }
 end
 
 -- The Recent feed for the home page: lines of one module that follow each other are one row,
