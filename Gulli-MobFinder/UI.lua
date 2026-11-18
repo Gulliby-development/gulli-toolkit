@@ -282,6 +282,48 @@ ns.OnFound = function(hits)
     ns.Refresh()
 end
 
+---- Adding from the game world ------------------------------------------------------
+
+local ADD_ICON = "Interface\\Icons\\Ability_Hunter_SniperShot"
+
+-- A mob added with Alt+click or from the unit menu: a notice with Undo.
+function ns.OnQuick(name, new)
+    local buttons
+    if new then
+        buttons = { { text = L.UNDO, onClick = function()
+            ns.RemoveName(name)
+            ns.Refresh()
+        end } }
+    end
+    S.Toast({ key = "add", icon = ADD_ICON, title = name, text = new and L.QUICK_ADDED or L.QUICK_HAVE,
+              kind = new and "good" or nil, buttons = buttons, seconds = 6 })
+    ns.Refresh()
+end
+
+-- "Look for this mob" in the menu of the target and focus frames.
+function ns.UnitMenu(_, root, context)
+    if ns.paused or not ns.db then return end
+    local unit = context and context.unit
+    if not unit then return end
+    local name, guid = ns.Addable(unit)
+    if not name then return end
+    root:CreateDivider()
+    if ns.OnList(name) then
+        root:CreateButton(L.MENU_REMOVE, function()
+            ns.RemoveName(name)
+            ns.Refresh()
+        end)
+    else
+        root:CreateButton(L.MENU_ADD, function() ns.OnQuick(name, ns.AddName(name, guid)) end)
+    end
+end
+
+if Menu and Menu.ModifyMenu then
+    for _, tag in ipairs({ "MENU_UNIT_TARGET", "MENU_UNIT_FOCUS" }) do
+        pcall(Menu.ModifyMenu, tag, function(...) return ns.UnitMenu(...) end)
+    end
+end
+
 ---- Building -----------------------------------------------------------------------
 
 -- A button that steps through values (right click: back).
@@ -421,8 +463,13 @@ local function buildMobs(page, width)
         ns.Refresh()
         status:SetText(L.RARES_ADDED:format(n))
     end)
+    local hint = S.Note(page, 12)
+    hint:SetPoint("TOPLEFT", 0, -(top + 76))
+    hint:SetPoint("RIGHT")
+    hint:SetWordWrap(false)
+    hint:SetText(L.QUICK_HINT)
     mobList = S.List(page, 40, makeMobRow, fillMobRow)
-    mobList:SetPoint("TOPLEFT", 0, -(top + 76))
+    mobList:SetPoint("TOPLEFT", 0, -(top + 98))
     mobList:SetPoint("BOTTOMRIGHT", -10, 0)
     mobEmpty = S.Empty(mobList)
     mobEmpty:Set(L.LIST_EMPTY, L.LIST_EMPTY_D)

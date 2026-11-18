@@ -288,6 +288,74 @@ test("a secret level in combat shows the card without an error", function()
     assert(W.named.GulliMobFinderCard:IsShown(), "the card shows")
 end)
 
+test("Alt+click on a mob or its corpse adds it by its whole name, with Undo; Tab never does", function()
+    Fake { db = { names = {}, enabled = true } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    local mob = { name = "Hogger", guid = "Creature-0-1-2-3-448-01" }
+    W.target, W.mouseover, W.alt = mob, nil, true
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#ns.db.names, 0, "a target taken without the mouse on it")
+    W.mouseover, W.alt = mob, false
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#ns.db.names, 0, "a plain click")
+    W.alt = true
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.names[1], "Hogger")
+    eq(ns.Info("Hogger").exact, true)
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#ns.db.names, 1, "added once")
+    -- The mob just added is in sight: it does not alert at once, another one of its name does.
+    W.plates = { { name = "Hogger", guid = mob.guid } }
+    ns.Tick()
+    eq(#W.sounds, 0, "no alert for the mob the player just clicked")
+    W.plates = { { name = "Hogger", guid = "Creature-0-1-2-3-448-02" } }
+    ns.Tick()
+    eq(#W.sounds, 1, "another Hogger alerts")
+    eq(ns.RemoveName("hogger"), true, "Undo")
+    eq(#ns.db.names, 0)
+    eq(ns.db.mobs.hogger, nil)
+    W.target = { name = "Gulliby", player = true }; W.mouseover = W.target
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#ns.db.names, 0, "players are not added")
+end)
+
+test("a paused module adds nothing on Alt+click and shows no menu entry", function()
+    local got
+    Fake { toolkit = { Register = function(m) got = m end }, db = { names = {}, enabled = true } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    got.pause(true)
+    W.target = { name = "Hogger" }; W.mouseover, W.alt = W.target, true
+    Fire("PLAYER_TARGET_CHANGED")
+    eq(#ns.db.names, 0)
+    eq(#W.OpenMenu("MENU_UNIT_TARGET", "target"), 0)
+end)
+
+test("the target's menu adds the mob, then offers to stop; not for players or secret names", function()
+    Fake { db = { names = {}, enabled = true } }
+    local ns = Load()
+    Fire("PLAYER_LOGIN")
+    eq(#W.OpenMenu("MENU_UNIT_TARGET", "target"), 0, "no target")
+    W.target = { name = "Hogger", guid = "Creature-0-1-2-3-448-01" }
+    local items = W.OpenMenu("MENU_UNIT_TARGET", "target")
+    eq(#items, 1)
+    eq(items[1].text, "Look for this mob")
+    items[1].fn()
+    eq(ns.db.names[1], "Hogger")
+    W.plates = { { name = "Hogger", guid = W.target.guid } }
+    ns.Tick()
+    eq(#W.sounds, 0, "the mob added from the menu does not alert at once")
+    items = W.OpenMenu("MENU_UNIT_FOCUS", "target")
+    eq(items[1].text, "Stop looking for this mob")
+    items[1].fn()
+    eq(#ns.db.names, 0)
+    W.target = { name = "Gulliby", player = true }
+    eq(#W.OpenMenu("MENU_UNIT_TARGET", "target"), 0, "a player")
+    W.target = { name = W.SECRET_VALUE }
+    eq(#W.OpenMenu("MENU_UNIT_TARGET", "target"), 0, "a secret name")
+end)
+
 test("the target key binds to the Target button", function()
     Fake { db = { key = "F6" } }
     local ns = Load()

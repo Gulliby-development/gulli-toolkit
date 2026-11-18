@@ -462,10 +462,15 @@ local function richText(s)
                 local e = s:find("|t", i, true) or #s
                 -- the game's coins as discs in their colours, any other inline picture as a box
                 local coin = ({ Gold = "#e8b923", Silver = "#c7ccd6", Copper = "#c0703a" })[s:sub(i, e):match("UI%-(%a+)Icon") or ""]
-                local path = s:sub(i + 2, e - 1):match("^[^:]+")
+                -- a clear part of a picture (texture coordinates of a corner) is only a gap
+                local body = s:sub(i + 2, e - 1)
+                local path = body:match("^[^:]+")
+                local blank = body:match(":0:2:0:2$")
                 local pic, mark = picture(path), plainMark(path)
                 if coin then
                     out[#out + 1] = '<span class="ti" style="background:' .. coin .. ';border-radius:50%"></span>'
+                elseif blank then
+                    out[#out + 1] = '<span class="ti" style="background:none;border-color:transparent"></span>'
                 elseif pic then
                     out[#out + 1] = '<span class="ti" style="border:0;background:url(\'file://' .. pic .. '\') center/100% 100%"></span>'
                 elseif mark then

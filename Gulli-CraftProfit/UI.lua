@@ -1304,20 +1304,15 @@ function ns.LogLine(e)
         color(real >= (e.net or 0) - 100 and GOOD or BAD) .. ns.Money(real, true) .. "|r")
 end
 
--- The item tooltip: how many of it the chosen run needs.
-local function tooltipLine(tip, id)
+-- The item tooltip: how many of it the chosen run needs, in the Gulli block (see S.TipCollect).
+function ns.TipLines(id)
     local v = ns.view
-    if not id or not v or not v.route or not v.state or #v.route == 0 then return end
+    if not id or not v or not v.route or not v.state or #v.route == 0 then return {} end
     local n = ns.RunNeeds(v.state, v.route)[id]
-    if n and n > 0 then tip:AddLine(L.TOOLTIP_NEED:format(n), 0.6, 0.82, 1) end
+    if not (n and n > 0) then return {} end
+    return { { group = "craft", sub = true, icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
+               left = S.Emph(L.TOOLTIP_NEED:format(n)), color = S.MUTED } }
 end
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip, data)
-        if tip == GameTooltip or tip == ItemRefTooltip then tooltipLine(tip, data and data.id) end
-    end)
-elseif GameTooltip and GameTooltip.HookScript then
-    GameTooltip:HookScript("OnTooltipSetItem", function(tip)
-        local _, link = tip:GetItem()
-        tooltipLine(tip, link and tonumber(link:match("item:(%d+)")))
-    end)
-end
+S.TipProvider("item", "CraftProfit", function(id, tip)
+    if tip == GameTooltip or tip == ItemRefTooltip then return ns.TipLines(id) end
+end)

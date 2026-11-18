@@ -2909,3 +2909,209 @@ function S.ToastPlace(f)
     local k = ratio(f)
     return { math.floor((l + r) / 2 * k - w / 2 + 0.5), math.floor(t * k - h + 0.5) }
 end
+
+---- The Gulli block in game tooltips ---------------------------------------------
+
+-- Every Gulli module writes its tooltip lines through here, so a game tooltip gets one block
+-- in one look: a gold line above it, a faint line between its groups, a game icon on the first
+-- line of a group. A module gives a provider; one shared hook asks them all and draws once.
+-- The groups in the order they show; a new kind of line joins one of them or gets a key here.
+S.TIP_GROUPS = { "state", "quest", "stock", "price", "craft", "source", "note", "id" }
+-- The modules in the order their lines stand inside a group; any other comes after, by name.
+S.TIP_ORDER = { "Tooltip", "QuestCleaner", "Junk", "PartyQuests", "CraftProfit", "Attune" }
+local TIP_V = 1
+local TIP_RULE, TIP_RULE_FAINT = { 1, 0.82, 0, 0.34 }, { 1, 0.925, 0.784, 0.13 }
+-- An empty picture as wide as an icon (a clear corner of a game texture), for lines under one.
+local TIP_BLANK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0:0:0:0:64:64:0:2:0:2|t "
+
+local function tipState()
+    GulliHUD = GulliHUD or {}
+    local T = GulliHUD.tip
+    if not T then
+        T = { fns = { item = {}, unit = {}, spell = {} }, rules = setmetatable({}, { __mode = "k" }) }
+        GulliHUD.tip = T
+    end
+    return T
+end
+
+-- A small game icon in a tooltip line, as high as the text. Item and spell icons lose their
+-- frame; other pictures (the quest mark, the map's auctioneer) are shown whole.
+function S.TipIcon(path)
+    if not path then return "" end
+    if tostring(path):lower():find("interface\\icons\\", 1, true) or type(path) == "number" then
+        return "|T" .. path .. ":0:0:0:0:64:64:5:59:5:59|t "
+    end
+    return "|T" .. path .. ":0|t "
+end
+
+-- The first letter as a capital, so a module's short phrase can start a line.
+function S.Cap(text)
+    if type(text) ~= "string" or text == "" then return text end
+    local n = 1
+    local b = text:byte(1)
+    if b >= 240 then n = 4 elseif b >= 224 then n = 3 elseif b >= 192 then n = 2 end
+    return S.Upper(text:sub(1, n)) .. text:sub(n + 1)
+end
+
+-- The lines of every provider as one list in drawing order. A line is { group, left, right,
+-- color, rcolor, icon, sub, tag, unless, wrap }: `sub` stands under the line with the icon (and
+-- shows its own icon only when it leads its group), and a line with `unless` is left out when
+-- another line carries that `tag` (it would repeat it).
+function S.TipCollect(kind, ...)
+    local T = tipState()
+    local keys = {}
+    for k in pairs(T.fns[kind] or {}) do keys[#keys + 1] = k end
+    local rank = {}
+    for i, k in ipairs(S.TIP_ORDER) do rank[k] = i end
+    table.sort(keys, function(a, b)
+        local x, y = rank[a] or 99, rank[b] or 99
+        if x ~= y then return x < y end
+        return a < b
+    end)
+    local all, tags = {}, {}
+    for _, k in ipairs(keys) do
+        local ok, lines = pcall(T.fns[kind][k], ...)
+        if ok then
+            for _, l in ipairs(type(lines) == "table" and lines or {}) do
+                all[#all + 1] = l
+                if l.tag then tags[l.tag] = true end
+            end
+        elseif geterrorhandler then
+            geterrorhandler()(lines)
+        end
+    end
+    local out = {}
+    for _, g in ipairs(S.TIP_GROUPS) do
+        for _, l in ipairs(all) do
+            if (l.group or "note") == g and not (l.unless and tags[l.unless]) then out[#out + 1] = l end
+        end
+    end
+    return out
+end
+
+local function tipRule(T, tt, line, faint)
+    local name = tt.GetName and tt:GetName()
+    local fs = name and _G[name .. "TextLeft" .. line]
+    if not fs or line < 2 or not tt.CreateTexture then return end
+    local pool = T.rules[tt]
+    if not pool then
+        pool = { n = 0 }
+        T.rules[tt] = pool
+        if tt.HookScript then
+            tt:HookScript("OnTooltipCleared", function(self)
+                local p = GulliHUD.tip.rules[self]
+                if not p then return end
+                for i = 1, #p do p[i]:Hide() end
+                p.n = 0
+            end)
+        end
+    end
+    pool.n = pool.n + 1
+    local t = pool[pool.n]
+    if not t then
+        t = tt:CreateTexture(nil, "ARTWORK")
+        t:SetHeight(1)
+        pool[pool.n] = t
+    end
+    local c = faint and TIP_RULE_FAINT or TIP_RULE
+    t:SetColorTexture(c[1], c[2], c[3], c[4])
+    t:ClearAllPoints()
+    -- A faint line starts after the icon, so the block does not read as a table.
+    t:SetPoint("BOTTOMLEFT", fs, "TOPLEFT", faint and 18 or 0, faint and 1 or 2)
+    t:SetPoint("RIGHT", tt, "RIGHT", -10, 0)
+    t:Show()
+end
+
+-- Draws the block on a tooltip. Returns the number of lines added.
+function S.TipDraw(tt, lines)
+    if not tt or #lines == 0 then return 0 end
+    local T = tipState()
+    local at = (tt.NumLines and tt:NumLines() or 0) + 1
+    local first, group = at, nil
+    for _, l in ipairs(lines) do
+        local g = l.group or "note"
+        local c, r = l.color or S.TEXT, l.rcolor or S.TEXT
+        -- A line under another keeps its icon only when it turns out to lead its group.
+        local icon = l.icon and (not l.sub or g ~= group) and S.TipIcon(l.icon)
+        local left = (icon or (l.sub and TIP_BLANK or "")) .. tostring(l.left or "")
+        if l.right ~= nil and l.right ~= "" and tt.AddDoubleLine then
+            tt:AddDoubleLine(left, tostring(l.right), c[1], c[2], c[3], r[1], r[2], r[3])
+        elseif tt.AddLine then
+            tt:AddLine(left, c[1], c[2], c[3], l.wrap and true or false)
+        end
+        if g ~= group then
+            -- The ids are a footnote of the group above, not a group of their own.
+            if at == first then tipRule(T, tt, at, false)
+            elseif g ~= "id" then tipRule(T, tt, at, true) end
+            group = g
+        end
+        at = at + 1
+    end
+    if tt.Show then tt:Show() end
+    return #lines
+end
+
+local function tipRun(kind, tt, ...)
+    if not tt or (tt.IsForbidden and tt:IsForbidden()) then return end
+    local n = select("#", ...)
+    local args = { ... }
+    args[n + 1] = tt
+    return S.TipDraw(tt, S.TipCollect(kind, unpack(args, 1, n + 1)))
+end
+
+local function tipHook(T)
+    if T.hooked then return end
+    T.hooked = true
+    local function run(kind, ...) return GulliHUD.tip.run(kind, ...) end
+    local function unitOf(tt)
+        if not tt.GetUnit then return nil end
+        local ok, _, unit = pcall(tt.GetUnit, tt)
+        return ok and unit or nil
+    end
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+        local K = Enum.TooltipDataType
+        TooltipDataProcessor.AddTooltipPostCall(K.Item, function(tt, data)
+            if data then run("item", tt, data.id) end
+        end)
+        TooltipDataProcessor.AddTooltipPostCall(K.Unit, function(tt, data)
+            if not data then return end
+            local first = data.lines and data.lines[1]
+            run("unit", tt, data.guid, first and first.leftText, unitOf(tt))
+        end)
+        for _, kind in ipairs({ "Spell", "UnitAura" }) do
+            if K[kind] then
+                TooltipDataProcessor.AddTooltipPostCall(K[kind], function(tt, data)
+                    if data then run("spell", tt, data.id) end
+                end)
+            end
+        end
+    elseif GameTooltip and GameTooltip.HookScript then
+        GameTooltip:HookScript("OnTooltipSetItem", function(tt)
+            local _, link = tt:GetItem()
+            local id = link and tonumber(link:match("item:(%d+)"))
+            if id then run("item", tt, id) end
+        end)
+        GameTooltip:HookScript("OnTooltipSetUnit", function(tt)
+            local name, unit = tt:GetUnit()
+            -- The unit comes from the tooltip; a provider checks it for secrets before use.
+            local ok, guid = pcall(UnitGUID, unit)
+            run("unit", tt, ok and guid or nil, name, unit)
+        end)
+        GameTooltip:HookScript("OnTooltipSetSpell", function(tt)
+            local _, id = tt:GetSpell()
+            if id then run("spell", tt, id) end
+        end)
+    end
+end
+
+-- A module's lines for a kind of tooltip ("item", "unit" or "spell"). fn gets (itemID, tooltip),
+-- (guid, name, unit, tooltip) or (spellID, tooltip) and returns its lines or nil; the name, the
+-- guid and the unit of another unit can be secret values, which fn must check before use.
+function S.TipProvider(kind, key, fn)
+    local T = tipState()
+    T.fns[kind] = T.fns[kind] or {}
+    T.fns[kind][key] = fn
+    -- The newest copy of the skin draws for every module.
+    if (T.v or 0) < TIP_V then T.v, T.run = TIP_V, tipRun end
+    tipHook(T)
+end

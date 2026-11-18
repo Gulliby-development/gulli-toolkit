@@ -310,9 +310,6 @@ test("a secret unit or name on the world cursor tooltip is skipped", function()
                                       __lt = function() error("compared a secret") end })
     issecretvalue = function(v) return rawequal(v, SECRET) end
     eq(#ns.TooltipLines(SECRET), 0, "a secret name is never compared")
-    local shown = 0
-    local function tip(unit) return { GetUnit = function() return nil, unit end,
-        AddDoubleLine = function() shown = shown + 1 end, Show = function() end } end
     local names = 0
     local real = UnitName
     UnitName = function(u)
@@ -321,12 +318,18 @@ test("a secret unit or name on the world cursor tooltip is skipped", function()
         end
         return real(u)
     end
-    ns.UnitTooltip(tip(SECRET))
-    eq(names, 0, "a secret unit never reaches UnitName"); eq(shown, 0)
-    ns.UnitTooltip(tip("nameplate1"))
-    eq(shown, 0, "a secret name is skipped")
-    ns.UnitTooltip(tip("mouseover"))
-    eq(shown, 1)
+    eq(#ns.UnitTip(SECRET), 0)
+    eq(names, 0, "a secret unit never reaches UnitName")
+    eq(#ns.UnitTip("nameplate1"), 0, "a secret name gives no lines")
+    issecretvalue = nil
+    local lines = ns.UnitTip("mouseover")
+    eq(#lines, 1, "a plain name gets the group's progress")
+    eq(lines[1].group, "quest"); eq(lines[1].left, "Bob"); eq(lines[1].right, "4/15")
+    eq(lines[1].rcolor, ns.Skin.TEXT, "not done yet")
+    for _, p in ipairs({ "B", "Q153", "O153:15/15", "E" }) do ns.Receive(p, "Bob") end
+    lines = ns.UnitTip("mouseover")
+    eq(lines[1].rcolor, ns.Skin.GOOD, "done is green")
+    assert(lines[1].right:find("ReadyCheck", 1, true), "and has a check mark, not colour alone")
     issecretvalue = nil
 end)
 

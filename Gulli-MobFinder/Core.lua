@@ -389,18 +389,67 @@ function ns.SetNames(list)
     ns.db.names = list
 end
 
--- The current target's name, for the "Add target" button. A mob taken from the target is
--- looked for by its whole name; a typed name matches as a part.
-function ns.AddTarget()
-    if not UnitExists("target") or UnitIsPlayer("target") then return nil end
-    local name = UnitName("target")
-    if not readable(name) then return nil end
-    for _, n in ipairs(ns.db.names) do
-        if ns.Lower(n) == ns.Lower(name) then return name end
+-- A unit that can go on the list (a mob, alive or dead; not a player or a pet): its name and GUID.
+function ns.Addable(unit)
+    if not UnitExists(unit) or UnitIsPlayer(unit) then return nil end
+    if UnitPlayerControlled and UnitPlayerControlled(unit) then return nil end
+    local ok, name = pcall(UnitName, unit)
+    if not ok or not readable(name) or name == "" then return nil end
+    local guid = UnitGUID and UnitGUID(unit)
+    return name, readable(guid) and guid or nil
+end
+
+-- The list entry with exactly this name, any case: its place in the list, or nil.
+function ns.OnList(name)
+    local low = ns.Lower(name)
+    for i, n in ipairs(ns.db.names) do
+        if ns.Lower(n) == low then return i end
     end
+end
+
+-- Adds a mob the player pointed at; it is looked for by its whole name (a typed name matches
+-- as a part). The mob itself (guid) does not alert right after: the player is looking at it.
+-- Returns true when the name is new.
+function ns.AddName(name, guid)
+    if ns.OnList(name) then return false end
     table.insert(ns.db.names, name)
-    ns.Info(name).exact = true
-    return name
+    local info = ns.Info(name)
+    info.exact, info.off = true, nil
+    if guid then seen[guid], alerted[guid] = true, now() end
+    return true
+end
+
+function ns.RemoveName(name)
+    local i = ns.OnList(name)
+    if not i then return false end
+    table.remove(ns.db.names, i)
+    ns.db.mobs[ns.Lower(name)] = nil
+    return true
+end
+
+-- Adds a unit (the target by default): its name, and whether it was new.
+function ns.QuickAdd(unit)
+    local name, guid = ns.Addable(unit or "target")
+    if not name then return nil end
+    return name, ns.AddName(name, guid)
+end
+
+-- The current target's name, for the "Add target" button.
+function ns.AddTarget()
+    return (ns.QuickAdd("target"))
+end
+
+-- Alt+click on a mob or its corpse adds it: the click makes it the target while the mouse is
+-- still on it, so a target taken with Tab or a key never counts.
+function ns.AltClick()
+    if ns.paused or not ns.db then return nil end
+    if not (IsAltKeyDown and IsAltKeyDown()) then return nil end
+    if not (UnitIsUnit and UnitExists("target") and UnitExists("mouseover")) then return nil end
+    local ok, same = pcall(UnitIsUnit, "target", "mouseover")
+    if not ok or (issecretvalue and issecretvalue(same)) or not same then return nil end
+    local name, new = ns.QuickAdd("target")
+    if name and ns.OnQuick then ns.OnQuick(name, new) end
+    return name, new
 end
 
 ---- Saved settings and events -------------------------------------------------
@@ -436,8 +485,9 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         -- A plate that appears between two polls alerts at once.
         if ticker then ns.Tick() end
-    elseif ticker then
-        ns.Tick()
+    else
+        if event == "PLAYER_TARGET_CHANGED" then ns.AltClick() end
+        if ticker then ns.Tick() end
     end
 end)
 

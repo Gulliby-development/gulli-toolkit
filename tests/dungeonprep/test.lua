@@ -465,6 +465,12 @@ test("the wishlist: the Loot list puts it first, the filter shows only it", func
     local where = ns.DropsOf(5193)
     eq(where[1].boss, "Edwin VanCleef"); eq(where[1].pct, 18.2)
     eq(GulliDungeonJournal.DropsOf(5193)[1].key, "DM", "for Gulli Tooltip")
+    assert(type(GulliDungeonJournal.Name("DM")) == "string", "the dungeon's name by its key")
+    eq(GulliDungeonJournal.Name("NOPE"), nil)
+    eq(GulliDungeonJournal.Wished(5193), false)
+    ns.SetWish(5193, true)
+    eq(GulliDungeonJournal.Wished(5193), true)
+    ns.SetWish(5193, false)
 end)
 
 test("the journal data: bosses in the order of the way, the skull boss at level 0, no world drops", function()

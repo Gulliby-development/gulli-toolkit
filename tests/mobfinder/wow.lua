@@ -39,6 +39,24 @@ function Fake(spec)
     W.frames, W.printed, W.sounds, W.banners, W.cvars = {}, {}, {}, {}, { nameplateShowEnemies = spec.enemies or "0" }
     W.tickers = {}
     W.target = spec.target
+    -- What the mouse is on (the same table as W.target after a click on it), and the Alt key.
+    W.mouseover, W.alt = spec.mouseover, spec.alt or false
+    IsAltKeyDown = function() return W.alt end
+    UnitIsUnit = function(a, b)
+        local function of(u) if u == "target" then return W.target elseif u == "mouseover" then return W.mouseover end end
+        return of(a) ~= nil and of(a) == of(b)
+    end
+    -- The unit menus: Menu.ModifyMenu keeps the callbacks, W.OpenMenu(tag, unit) runs them and
+    -- returns the buttons they added.
+    W.menus = {}
+    Menu = { ModifyMenu = function(tag, fn) W.menus[tag] = W.menus[tag] or {}; table.insert(W.menus[tag], fn) end }
+    W.OpenMenu = function(tag, unit)
+        local items = {}
+        local root = { CreateDivider = function() end,
+                       CreateButton = function(_, text, fn) items[#items + 1] = { text = text, fn = fn } end }
+        for _, fn in ipairs(W.menus[tag] or {}) do fn(nil, root, { unit = unit }) end
+        return items
+    end
 
     local function plate(unit)
         local i = tonumber(unit:match("^nameplate(%d+)$") or "")
@@ -66,6 +84,7 @@ function Fake(spec)
     UnitIsDead = function(unit) local p = plate(unit); return p and p.dead or false end
     UnitExists = function(unit)
         if unit == "target" then return W.target ~= nil end
+        if unit == "mouseover" then return W.mouseover ~= nil end
         return plate(unit) ~= nil
     end
     UnitIsPlayer = function(unit) return unit == "target" and W.target and W.target.player or false end

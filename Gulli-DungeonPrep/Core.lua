@@ -968,8 +968,17 @@ end
 
 function GulliDungeonPrep_Toggle() ns.Toggle() end
 
--- For other addons (Gulli Tooltip): where an item drops, { key, boss, pct }.
-GulliDungeonJournal = { DropsOf = function(item) return ns.DropsOf and ns.DropsOf(item) or {} end }
+-- For other addons (Gulli Tooltip): where an item drops, { key, boss, pct }, the game's name of
+-- a dungeon by its key, and whether an item is on the wish list.
+GulliDungeonJournal = {
+    DropsOf = function(item) return ns.DropsOf and ns.DropsOf(item) or {} end,
+    Name = function(key)
+        for _, d in ipairs(ns.Dungeons(1)) do
+            if d.key == key then return ns.DungeonName(d) end
+        end
+    end,
+    Wished = function(item) return ns.Wished ~= nil and ns.Wished(item) end,
+}
 
 -- The game icon of each switch, in the window and in the hub.
 ns.OPT_ICON = {

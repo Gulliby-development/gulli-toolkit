@@ -138,15 +138,34 @@ function Fake(spec)
     }
     Enum = { TooltipDataType = { Item = 0, Unit = 2, Spell = 1 } }
     TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) W.post[kind] = fn end }
-    -- Lines are kept without colour codes, so the tests read the words.
-    local function plain(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-    W.tooltip = { AddDoubleLine = function(_, a, b) W.lines[#W.lines + 1] = plain(a .. "=" .. b) end, Show = function() end }
+    GulliHUD = nil -- the shared tooltip block hooks again for each test
+    -- Lines are kept without colour codes and pictures, so the tests read the words. W.rules
+    -- lists the lines drawn over the block: "gold" over it, "faint" between its groups.
+    local function plain(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t ?", "")) end
+    W.rules, W.counts = {}, {}
+    W.tooltip = {
+        AddDoubleLine = function(_, a, b) W.lines[#W.lines + 1] = plain(a .. "=" .. b) end,
+        AddLine = function(_, a) W.lines[#W.lines + 1] = plain(a .. "=") end,
+        NumLines = function() return #W.lines + 1 end, -- the game's own first line
+        GetName = function() return "FakeTip" end,
+        CreateTexture = function()
+            local t = W.stub()
+            rawset(t, "SetColorTexture", function(_, _, g) W.rules[#W.rules + 1] = g > 0.9 and "faint" or "gold" end)
+            return t
+        end,
+        Show = function() end,
+    }
+    for i = 1, 40 do _G["FakeTipTextLeft" .. i] = W.stub() end
+    C_Item.GetItemCount = function(id, bank)
+        local c = W.counts[id] or { 0, 0 }
+        return c[1] + (bank and c[2] or 0)
+    end
     GulliTooltipDB = spec.db
-    GulliChoresDB, GulliCraftProfitCharDB, Auctionator, IsShiftKeyDown = nil, nil, nil, nil
+    GulliChoresDB, GulliCraftProfitCharDB, Auctionator, IsShiftKeyDown, GulliDungeonJournal = nil, nil, nil, nil, nil
     return W
 end
 
-function W.HoverItem(id) W.lines = {}; W.post[0](W.tooltip, { id = id }); return W.lines end
+function W.HoverItem(id) W.lines, W.rules = {}, {}; W.post[0](W.tooltip, { id = id }); return W.lines end
 function W.HoverUnit(guid, name)
     W.lines = {}
     W.post[2](W.tooltip, { guid = guid, lines = name and { { leftText = name } } or nil })

@@ -8,78 +8,106 @@ local S = ns.Skin
 local frame, example
 local LEFT_W = 500
 
-local C = ns.COLORS
-local QUEST, MUTED, GOOD, WHITE, FAINT, PROF = C.QUEST, C.MUTED, C.DONE, C.WHITE, C.FAINT, C.PROF
-
 local function row(key)
     local K = key:upper()
     return { L["OPT_" .. K], nil, function() return ns.db[key] end, function(v) ns.Set(key, v) end,
              icon = ns.OPT_ICON[key] }
 end
 
--- The example tooltip: an item, then an NPC, each with the lines that are on, in the same
--- colours and order as the real ones. rule marks where the line above our lines goes.
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
+local function faint(t) return S.Hex(S.FAINT) .. t .. "|r" end
+
+-- The example: an item, a boss drop and an NPC, each with the lines that are on, as block lines
+-- like the real ones (see S.TipDraw). `head` is the game's own first line.
 local function exampleLines()
     local d = ns.db
     local shift = d.shift
-    local out = { { L.EX_ITEM, "", WHITE, nil, 14 } }
-    local first = #out + 1
-    if d.protect then out[#out + 1] = { L.PROTECTED, "", GOOD } end
-    if d.quest then out[#out + 1] = { L.QUEST:format(L.EX_QUEST), "3/10", QUEST, WHITE } end
-    if d.price and not shift then out[#out + 1] = { L.STACK:format(20), S.MoneyText(260), MUTED, WHITE } end
-    if d.auction and not shift then out[#out + 1] = { L.AUCTION_STACK, S.MoneyText(2100), MUTED, WHITE } end
-    if d.alts then
-        out[#out + 1] = { L.YOUR_CHARS, "17", MUTED, WHITE }
-        out[#out + 1] = { "  |cff3fc7eb" .. L.EX_ALT .. "|r", "12" .. S.Hex(MUTED) .. L.PLUS_BANK:format(5) .. "|r", WHITE, WHITE }
+    local I = ns.OPT_ICON
+    local out = { { head = true, left = L.EX_ITEM, color = S.TEXT } }
+    local function add(l) out[#out + 1] = l end
+    if d.protect then add({ group = "state", icon = I.protect, left = L.PROTECTED, color = S.GOOD }) end
+    if d.quest then
+        add({ group = "quest", icon = QUEST_ICON, left = L.EX_QUEST, right = "3" .. faint("/10"), color = S.GOLD })
     end
-    if d.reagent then out[#out + 1] = { L.REAGENT_FOR, L.EX_PROF, MUTED, PROF } end
-    if d.id and not shift then out[#out + 1] = { L.ITEM_ID, "2589", FAINT, FAINT } end
-    if #out >= first then out[first].rule = true end
-    out[#out + 1] = { " ", "" }
-    out[#out + 1] = { L.EX_MOB, "", WHITE, nil, 14 }
-    first = #out + 1
-    if d.mobs then out[#out + 1] = { L.QUEST:format(L.EX_MOB_QUEST), "1/5", QUEST, WHITE } end
-    if d.id and not shift then out[#out + 1] = { L.NPC_ID, "113", FAINT, FAINT } end
-    if out[first] then out[first].rule = true end
-    if shift and (d.price or d.auction or d.id) then out[#out + 1] = { L.SHIFT_NOTE, "", MUTED } end
+    if d.alts then
+        add({ group = "stock", icon = I.alts, left = L.YOU_HAVE, right = "34", color = S.MUTED })
+        add({ group = "stock", sub = true, left = (UnitName("player")) or "", right = "12" .. faint(" · " .. L.BANK_N:format(5)) })
+        add({ group = "stock", sub = true, left = "|cff3fc7eb" .. L.EX_ALT .. "|r", right = "17" })
+    end
+    if d.price and not shift then
+        add({ group = "price", icon = I.price, left = L.VENDOR .. faint(" ×20"), right = S.MoneyText(260), color = S.MUTED })
+    end
+    if d.auction and not shift then
+        add({ group = "price", icon = I.auction, left = L.AUCTION .. faint(" ×20"), right = S.MoneyText(2100), color = S.MUTED })
+    end
+    if d.reagent then add({ group = "craft", icon = I.reagent, left = L.EX_PROF, color = S.MUTED }) end
+    if d.id and not shift then add({ group = "id", left = L.ID:format(2589), color = S.FAINT }) end
+    if d.drops then
+        add({ gap = true })
+        add({ head = true, left = L.EX_GEAR, color = { 0.64, 0.21, 0.93 } })
+        add({ group = "source", icon = I.drops, left = L.EX_BOSS, right = "0.3" .. faint("%"), color = S.GOLD })
+        add({ group = "source", sub = true, left = L.EX_DUNGEON .. faint(" · ") .. S.Hex(S.GOOD) .. L.WISHED .. "|r",
+              color = S.MUTED })
+    end
+    if d.id and not shift then
+        add({ gap = true })
+        add({ head = true, left = L.EX_MOB, color = S.TEXT })
+        add({ group = "id", left = L.ID:format(113), color = S.FAINT })
+    end
+    if shift and (d.price or d.auction or d.id) then
+        add({ gap = true })
+        add({ left = L.SHIFT_NOTE, color = S.MUTED, note = true })
+    end
     return out
 end
+ns.ExampleLines = exampleLines
+
+local ROW_H, SUB_X = 20, 20
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local lines = exampleLines()
+    local group, blockStart
     for i, l in ipairs(lines) do
         local fs = example.lines[i]
         if not fs then
             fs = { left = S.Text(example.box, 12), right = S.Text(example.box, 12) }
-            fs.left:SetPoint("TOPLEFT", 10, -10 - (i - 1) * 20)
-            fs.left:SetPoint("RIGHT", example.box, "RIGHT", -80, 0)
             fs.left:SetWordWrap(false)
-            fs.right:SetPoint("TOPRIGHT", -10, -10 - (i - 1) * 20)
+            fs.right:SetPoint("TOPRIGHT", -10, -10 - (i - 1) * ROW_H)
             fs.right:SetJustifyH("RIGHT")
-            example.lines[i] = fs
-        end
-        local c = l[3] or WHITE
-        fs.left:SetText(l[1])
-        fs.left:SetTextColor(c[1], c[2], c[3], 1)
-        fs.right:SetText(l[2])
-        local rc = l[4] or c
-        fs.right:SetTextColor(rc[1], rc[2], rc[3], 1)
-        fs.left:Show(); fs.right:Show()
-        if not fs.rule then
             fs.rule = S.Tex(example.box, "ARTWORK", 0, { 1, 1, 1, 0.16 })
             fs.rule:SetHeight(1)
-            fs.rule:SetPoint("BOTTOMLEFT", fs.left, "TOPLEFT", 0, 3)
-            fs.rule:SetPoint("RIGHT", example.box, "RIGHT", -10, 0)
+            example.lines[i] = fs
         end
-        fs.rule:SetShown(l.rule == true)
+        local c = l.color or S.TEXT
+        local x = 10 + (l.sub and SUB_X or 0)
+        fs.left:ClearAllPoints()
+        fs.left:SetPoint("TOPLEFT", x, -10 - (i - 1) * ROW_H)
+        fs.left:SetPoint("RIGHT", example.box, "RIGHT", -70, 0)
+        S.SetFont(fs.left, l.head and 14 or 12)
+        fs.left:SetText(l.gap and "" or ((l.icon and S.IconTag(l.icon, 14) .. " " or "") .. (l.left or "")))
+        fs.left:SetTextColor(c[1], c[2], c[3], 1)
+        fs.right:SetText(l.right or "")
+        fs.right:SetTextColor(S.TEXT[1], S.TEXT[2], S.TEXT[3], 1)
+        fs.left:Show(); fs.right:Show()
+        -- The same lines as in the game: gold above the block, faint between its groups.
+        local g = l.group
+        if l.head or l.gap or l.note then group, blockStart = nil, true end
+        local rule = g and g ~= group and (blockStart and "gold" or (g ~= "id" and "faint"))
+        if g then group, blockStart = g, false end
+        fs.rule:ClearAllPoints()
+        fs.rule:SetPoint("TOPLEFT", example.box, "TOPLEFT", 10 + (rule == "faint" and SUB_X or 0), -8 - (i - 1) * ROW_H)
+        fs.rule:SetPoint("RIGHT", example.box, "RIGHT", -10, 0)
+        if rule == "gold" then fs.rule:SetColorTexture(1, 0.82, 0, 0.34)
+        else fs.rule:SetColorTexture(1, 0.925, 0.784, 0.13) end
+        fs.rule:SetShown(rule and true or false)
     end
     for i = #lines + 1, #example.lines do
         local fs = example.lines[i]
         fs.left:Hide(); fs.right:Hide(); fs.rule:Hide()
     end
-    example.box:SetHeight(20 + #lines * 20)
-    local q = ns.db.quality and { 0.12, 1, 0, 1 } or { 0.3, 0.3, 0.33, 1 }
+    example.box:SetHeight(20 + #lines * ROW_H)
+    local q = ns.db.quality and { 0.64, 0.21, 0.93, 1 } or { 0.3, 0.3, 0.33, 1 }
     S.SetBorder(example.box, q)
     for _, r in ipairs(frame.rows) do if r.SetChecked and r.key then r:SetChecked(ns.db[r.key]) end end
 end
