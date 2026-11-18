@@ -120,7 +120,8 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec.bags = { [item id] = count } (one slot each), spec.money in copper, spec.db, spec.cdb.
+-- spec.bags = { [item id] = count } (one slot each), spec.money in copper, spec.db, spec.cdb,
+-- spec.items (item facts), spec.ah (id -> auction price), spec.enchanter.
 function Fake(spec)
     W.Base(spec)
     W.bags, W.money, W.cursor, W.toasts, W.notes = spec.bags or {}, spec.money or 0, nil, {}, {}
@@ -140,7 +141,19 @@ function Fake(spec)
     C_Item = {
         GetItemNameByID = function(id) return "Item" .. id end,
         GetItemIconByID = function(id) return "icon" .. id end,
+        -- spec.items: id -> { quality, ilvl, sell, class, bind }; others are not cached yet
+        GetItemInfo = function(id)
+            local it = W.items[id]
+            if not it then return nil end
+            return "Item" .. id, "|Hitem:" .. id .. "|h", it.quality or 1, it.ilvl or 1, nil, nil, nil, nil, nil, nil,
+                it.sell or 0, it.class or 15, 0, it.bind or 0
+        end,
     }
+    W.items, W.ah = spec.items or {}, spec.ah or {}
+    Auctionator = spec.ah and { API = { v1 = { GetAuctionPriceByItemID = function(caller, id)
+        assert(caller == "Gulli-FarmTrack"); return W.ah[id] end } } } or nil
+    GetProfessions = function() if spec.enchanter then return 1 end end
+    GetProfessionInfo = function() return "Enchanting", "icon", 100, 300, 0, 0, 333 end
     GetMoney = function() return W.money end
     C_PlayerInteractionManager, Enum, MerchantFrame = nil, nil, nil
     CursorHasItem = function() return W.cursor ~= nil end
