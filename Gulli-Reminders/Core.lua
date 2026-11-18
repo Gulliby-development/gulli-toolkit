@@ -45,6 +45,7 @@ ns.BUFFS = {
     },
     WARRIOR = {
         { key = "SHOUT", ids = { 6673 }, on = false }, -- two minutes: off unless asked
+        { key = "STANCE", ids = { 2457, 71, 2458 }, stance = true }, -- no stance, as after a resurrection
     },
 }
 ns.PET_SPELL = { HUNTER = 883, WARLOCK = 688 } -- Call Pet, Summon Imp
@@ -483,7 +484,7 @@ function ns.ClassBuffs(class)
         for _, id in ipairs(b.ids) do
             if knows(id) then known = id; break end
         end
-        if not b.race or known or b.race == race then out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, tank = b.tank, known = known, name = L["BUFF_" .. b.key],
+        if not b.race or known or b.race == race then out[#out + 1] = { key = b.key, ids = b.ids, on = b.on, tank = b.tank, stance = b.stance, known = known, name = L["BUFF_" .. b.key],
                           icon = spellIcon(known or b.ids[1]) } end
     end
     return out
@@ -507,7 +508,9 @@ function ns.Missing()
     local out = {}
     local db = ns.db
     if not db.show then return out, "off" end
-    if InCombatLockdown() then return out, "combat" end
+    -- In a fight the check still runs (a buff, form or weapon oil can be put on in combat), but
+    -- the panel's secure icons cannot change; the second value tells the panel so.
+    local fight = InCombatLockdown() and "combat" or nil
     if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then return out, "dead" end
     if UnitOnTaxi and UnitOnTaxi("player") then return out, "taxi" end
     if not db.inRest and IsResting() then return out, "rest" end
@@ -524,6 +527,11 @@ function ns.Missing()
                 local left = have[spellName(id) or ""]
                 if left == false then best = false; break end
                 if left and (not best or left > best) then best = left end
+            end
+            if b.stance then
+                -- A stance is a form, not always an aura: any form counts.
+                local form = GetShapeshiftForm and GetShapeshiftForm() or 0
+                if best == nil and form and form > 0 then best = false end
             end
             local id1 = b.ids[1]
             if best ~= false and (ns.IsBounced(b.key) or ns.Covered("player", id1, soon)) then
@@ -648,7 +656,7 @@ function ns.Missing()
             end
         end
     end
-    return out
+    return out, fight
 end
 
 -- The name of a living, online group member of this class, or nil.
@@ -897,7 +905,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if not ns.OnError(a2) then return end
     end
     if event == "PLAYER_REGEN_DISABLED" then
-        if ns.Refresh then ns.Refresh() end -- hide at once when a fight starts
+        if ns.Refresh then ns.Refresh() end -- the last layout before the lockdown
         return
     end
     if event == "UNIT_AURA" then atOnce(); return end

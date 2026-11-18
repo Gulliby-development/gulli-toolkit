@@ -155,15 +155,113 @@ local function alert(missing)
     if UIErrorsFrame then UIErrorsFrame:AddMessage(new[1].text, 1, 0.72, 0.3) end
 end
 
+-- In a fight the secure icons cannot move, show or hide, and their clicks cannot change. So an
+-- icon whose need was met fades out (alpha may change), and what went missing since the fight
+-- began (a form lost to death, a buff that fell off) shows on a plain strip after them, with
+-- no click: the player uses their own key.
+local strip
+local stripIcons = {}
+
+local function stripIcon(j)
+    if stripIcons[j] then return stripIcons[j] end
+    local b = CreateFrame("Button", nil, strip)
+    S.HudIcon(b, ns.db.size or 40)
+    b.label = S.Text(b, 12, S.TEXT, "OUTLINE")
+    b.label:SetWordWrap(false)
+    b:SetScript("OnEnter", function(self)
+        tip(self, self.m)
+        if GameTooltip then GameTooltip:AddLine(L.TIP_COMBAT, 0.6, 0.61, 0.66, true); GameTooltip:Show() end
+    end)
+    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    stripIcons[j] = b
+    return b
+end
+
+function ns.CombatView(missing)
+    local d = ns.db
+    local size = d.size
+    local captions = d.labels and not d.vertical
+    local slot = captions and math.max(size, CAP_W) or size
+    local now = {}
+    for _, m in ipairs(missing) do now[m.key] = m end
+    local shown = 0
+    local onPanel = panel and panel:IsShown()
+    for i, b in ipairs(icons) do
+        if onPanel and b:IsShown() and b.m and not b.m.sample then
+            shown = i
+            local m = now[b.m.key]
+            b:SetAlpha(m and 1 or 0)
+            if m then
+                b:SetMid(m.left and ns.Short(m.left) or "")
+                now[b.m.key] = nil
+            end
+        end
+    end
+    local extra = {}
+    for _, m in ipairs(missing) do
+        if now[m.key] then extra[#extra + 1] = m end
+    end
+    if #extra == 0 then
+        if strip then strip:Hide() end
+        return extra
+    end
+    if not panel then buildPanel() end
+    if #icons == 0 then
+        -- No secure icon yet, so the panel is a plain frame and may be placed now.
+        local p = d.point or ns.PANEL_POINT
+        panel:ClearAllPoints()
+        panel:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
+        panel:SetSize(size, size)
+    end
+    if not strip then
+        strip = CreateFrame("Frame", "GulliRemindersCombat", UIParent)
+        strip:SetFrameStrata("MEDIUM")
+    end
+    strip:ClearAllPoints()
+    strip:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+    strip:SetSize(size, size)
+    strip:SetAlpha(math.max(0.2, d.alpha / 100))
+    for j, m in ipairs(extra) do
+        local b = stripIcon(j)
+        local k = shown + j - 1
+        b.m = m
+        b:SetSize(size, size)
+        b:ClearAllPoints()
+        if d.vertical then b:SetPoint("TOPLEFT", strip, "TOPLEFT", 0, -k * (size + GAP))
+        else b:SetPoint("TOPLEFT", strip, "TOPLEFT", k * (slot + GAP) + (slot - size) / 2, 0) end
+        b:SetIcon(m.icon)
+        b:SetState(m.left and "soon" or "need")
+        b:SetMid(m.left and ns.Short(m.left) or "")
+        b:SetCount("")
+        b.label:ClearAllPoints()
+        if captions then
+            b.label:SetPoint("TOP", b, "BOTTOM", 0, -3)
+            b.label:SetWidth(slot + GAP)
+            b.label:SetJustifyH("CENTER")
+            b.label:SetText(ns.Caption(m))
+        else
+            b.label:SetPoint("LEFT", b, "RIGHT", 8, 0)
+            b.label:SetWidth(0)
+            b.label:SetJustifyH("LEFT")
+            b.label:SetText(m.text or "")
+        end
+        b.label:SetShown(d.labels)
+        b:Show()
+    end
+    for j = #extra + 1, #stripIcons do stripIcons[j]:Hide() end
+    strip:Show()
+    return extra
+end
+
 function ns.Refresh()
     local missing, why = ns.Missing()
     local d = ns.db
-    -- The icons are secure buttons: in combat nothing on the panel may change (it was hidden
-    -- when the fight started).
     if InCombatLockdown() then
-        if refreshWindow then refreshWindow(missing, why) end
+        if not ns.moving then ns.CombatView(missing) end
+        if refreshWindow then refreshWindow(missing) end
         return missing
     end
+    if strip then strip:Hide() end
     alert(missing)
     local list, keys
     if ns.moving and why ~= "combat" then

@@ -54,12 +54,15 @@ test("hunter ammo and warlock shards below the set numbers", function()
     eq(W.Keys(Load().Missing()), "SHARDS")
 end)
 
-test("nothing in combat, when dead, or when the panel is off; cities only when asked", function()
+test("in combat the check still runs; nothing when dead or when the panel is off; cities only when asked", function()
     Fake({ class = "PRIEST", known = { 588 } })
     local ns = Load()
     W.combat = true
     local list, why = ns.Missing()
-    eq(#list, 0); eq(why, "combat")
+    eq(W.Keys(list), "INNER_FIRE", "a buff that fell off in a fight is still missing"); eq(why, "combat")
+    W.auras = { "Spell588" }
+    eq(W.Keys(ns.Missing()), "", "a buff cast in a fight counts at once")
+    W.auras = {}
     W.combat = false
     W.resting = true
     eq(#ns.Missing(), 1, "in cities by default")
@@ -144,6 +147,40 @@ test("old saves: the buffs switch off turns every buff off, the towns switch goe
     eq(ns.db.notResting, nil)
     eq(ns.db.inRest, true)
     eq(W.Keys(ns.Missing()), "")
+end)
+
+test("forms and stances count in a fight: Shadowform, a warrior without a stance", function()
+    Fake({ class = "PRIEST", known = { 15473 } })
+    local ns = Load()
+    ns.SetTracked("SHADOWFORM", true)
+    W.combat = true
+    eq(W.Keys(ns.Missing()), "SHADOWFORM", "resurrected in a fight: no Shadowform")
+    W.auras = { "Spell15473" }
+    eq(W.Keys(ns.Missing()), "", "pressed in the fight: gone at once")
+    Fake({ class = "WARRIOR", known = { 2457, 71 } })
+    ns = Load()
+    eq(W.Keys(ns.Missing()), "STANCE", "no stance")
+    W.form = 2
+    eq(W.Keys(ns.Missing()), "", "any stance counts, aura or not")
+    W.form = 0
+    W.auras = { "Spell71" }
+    eq(W.Keys(ns.Missing()), "")
+end)
+
+test("in a fight the panel's secure icons only fade, and a new reminder goes on the plain strip", function()
+    Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    eq(W.Keys(ns.Refresh()), "INNER_FIRE")
+    W.combat = true
+    W.auras = { "Spell1243", "Spell588" }
+    eq(W.Keys(ns.Refresh()), "", "cast in the fight")
+    eq(#ns.CombatView(ns.Missing()), 0, "nothing new: the strip stays empty")
+    W.auras = {}
+    local extra = ns.CombatView(ns.Missing())
+    eq(W.Keys(extra), "FORTITUDE", "Inner Fire is on the panel already, Fortitude is new")
+    W.combat = false
+    eq(W.Keys(ns.Refresh()), "FORTITUDE,INNER_FIRE", "after the fight the panel is laid out again")
 end)
 
 test("the panel shows the missing icons, every icon while unlocked, and hides when all is there", function()
