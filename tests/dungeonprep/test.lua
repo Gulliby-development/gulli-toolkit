@@ -1027,4 +1027,82 @@ test("a pin button near the giver targets and marks them, out of combat only", f
     eq(mark, 3)
 end)
 
+test("inside the dungeon: the data's flags, the stages of a quest's way, the tracker's mark", function()
+    local W = Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [215] = "Mulgore", [2100] = "Maraudon" },
+                     active = { [96776] = true }, done = { [7044] = true } })
+    local ns = Load()
+    -- An'she's Radiance: taken and handed in in Mulgore, done in Maraudon.
+    local i = ns.Inside("MARA", 96776)
+    eq(i.take, false); eq(i.work, true); eq(i.turnin, false)
+    -- The Scepter of Celebras: all of it with Celebras, inside.
+    i = ns.Inside("MARA", 7046)
+    eq(i.take, true); eq(i.work, true); eq(i.turnin, true)
+    -- Seed of Life is taken inside and carried to Moonglade; a talk in Booty Bay is not inside.
+    i = ns.Inside("MARA", 7066)
+    eq(i.take, true); eq(i.work, false); eq(i.turnin, false)
+    eq(ns.Inside("GNOMER", 2842).work, false, "Chief Engineer Scooty is in Booty Bay")
+    eq(ns.Inside("MARA", 1).work, false, "an unknown quest has no flag")
+    eq(ns.Inside(nil, 96776).work, false)
+    -- The way of a quest in the log: taken, its work now, the hand-in waits.
+    local function states(id)
+        local out = {}
+        for n, st in ipairs(ns.Stages(ns.Quest(id, 48), "MARA")) do out[n] = st.kind .. "=" .. st.state end
+        return table.concat(out, " ")
+    end
+    eq(states(96776), "take=done work=now turnin=wait")
+    eq(ns.Stages(ns.Quest(96776, 48), "MARA")[2].inside, true)
+    W.complete[96776] = true
+    eq(states(96776), "take=done work=done turnin=now")
+    eq(states(7046), "take=now work=wait turnin=wait", "a quest to take")
+    W.done[96776] = true
+    eq(states(96776), "take=done work=done turnin=done")
+    W.done[96776], W.complete[96776] = nil, nil
+    -- The tracker marks the rows whose next thing happens inside.
+    local byId = {}
+    for _, it in ipairs(ns.TrackerItems("MARA", 48)) do byId[it.id] = it end
+    eq(byId[96776].inside, true, "its work is in the dungeon")
+    eq(byId[7046].inside, true, "taken from Celebras, inside")
+    eq(byId[7068].inside, nil, "Shadowshard Fragments is taken in Orgrimmar")
+    W.complete[96776] = true
+    byId = {}
+    for _, it in ipairs(ns.TrackerItems("MARA", 48)) do byId[it.id] = it end
+    eq(byId[96776].state, "ready")
+    eq(byId[96776].inside, nil, "handed in outside: no mark any more")
+    -- The tracker row shows the dungeon's icon under its mark.
+    W.complete[96776] = nil
+    ns.ShowTracker("MARA")
+    local shown = 0
+    for _, child in ipairs(rawget(ns.TrackerFrame(), "rows")) do
+        local mark = rawget(child, "inside")
+        if child:IsShown() and mark and mark:IsShown() then shown = shown + 1 end
+    end
+    assert(shown >= 2, "rows with the dungeon's icon: " .. shown)
+end)
+
+test("a quest's page: the way in three stages, the dungeon's other quests beside it", function()
+    Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [215] = "Mulgore", [2100] = "Maraudon" },
+           active = { [96776] = true } })
+    local ns = Load()
+    ns.home, ns.selected = false, "MARA"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96776)
+    local d = ns.DetailFrame()
+    eq(d.start:GetText(), "Olana Brighthoof")
+    eq(d.work.title:GetText(), "Inside Maraudon")
+    assert(d.work.map:IsShown(), "the way in can be pinned")
+    eq(d.stages[1].tag.text:GetText(), "Done")
+    eq(d.stages[2].tag.text:GetText(), "Now")
+    assert(not d.stages[3].tag:IsShown(), "the hand-in waits")
+    -- A single quest without rewards: no chain card, the other quests take the column.
+    assert(not d.chainCard:IsShown(), "no chain of one step")
+    assert(d.othersCard:IsShown(), "the dungeon's other quests")
+    assert(#d.othersData > 0, "some are listed")
+    for _, it in ipairs(d.othersData) do assert(it.quest.id ~= 96776, "not the quest itself") end
+    -- A chain shows its card; a step taken inside says so.
+    ns.OpenQuest(7046)
+    assert(d.chainCard:IsShown(), "The Scepter of Celebras is step 2 of 2")
+    eq(d.start:GetText(), "Celebras the Redeemed")
+    assert(d.startXY:GetText():find("Inside Maraudon", 1, true), "taken inside: " .. d.startXY:GetText())
+    assert(not d.startMap:IsShown(), "no map pin inside a dungeon")
+end)
+
 W.finish()

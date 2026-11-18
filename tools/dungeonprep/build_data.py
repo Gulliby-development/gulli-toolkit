@@ -418,6 +418,52 @@ def main(root, att_root=None, gdq_root=None):
         out.sort(key=lambda n: (n.get(N_MAX_LEVEL) or 0, n.get(N_NAME)))
         return [n[N_NAME] for n in out][:4]
 
+    # Where a dungeon quest happens: "t" when it is taken inside the dungeon, "d" when its
+    # work is done there, "h" when it is handed in there. Taken or handed in inside: the NPC or
+    # object stands in the dungeon (or, in the classic data, nowhere on a map: it shows up
+    # during the run, as Celebras the Redeemed does), or the starting item drops there. Done
+    # inside: a mob, object or item of its objectives is the dungeon's, or its objective names
+    # the dungeon. When the data cannot tell, there is no flag: the mark is only ever a hint.
+    names = {k: [n[4:] if n.startswith("The ") else n] + WORDS.get(k, []) for k, _, n, _, _ in DUNGEONS}
+    areas_of = {k: a for k, a, _, _, _ in DUNGEONS}
+
+    def stands_in(side, key, qid):
+        for nid in seq(side.get(1) or {}):
+            n = npcs.get(nid) or {}
+            if npc_key(nid) == key:
+                return True
+            if qid < FOREVER_QUESTS and not zones_of(n, N_SPAWNS, N_ZONE) and not n.get(N_ZONE):
+                return True
+            return False
+        for oid in seq(side.get(2) or {}):
+            o = objects.get(oid) or {}
+            if obj_key(oid) == key:
+                return True
+            return qid < FOREVER_QUESTS and not zones_of(o, O_SPAWNS, O_ZONE) and not o.get(O_ZONE)
+        return False
+
+    def inside_flags(qid, key):
+        q = quests[qid]
+        sb = q.get(Q_STARTED_BY) or {}
+        flags = ""
+        if stands_in(sb, key, qid) or (not seq(sb.get(1) or {}) and not seq(sb.get(2) or {})
+                                       and any(item_key(i) == key for i in start_items(qid, q))):
+            flags += "t"
+        obj = q.get(Q_OBJECTIVES) or {}
+        work = (any(npc_key(o.get(1)) == key for o in seq(obj.get(1) or {}))
+                or any(obj_key(o.get(1)) == key for o in seq(obj.get(2) or {}))
+                or any(item_key(o.get(1)) == key for o in seq(obj.get(3) or {})))
+        text = objective(q)
+        handed = stands_in(q.get(Q_FINISHED_BY) or {}, key, qid)
+        # Without such an objective: a talk that starts and ends inside, or an escort from inside.
+        if not work and flags:
+            work = (handed and q.get(Q_ZONE) in areas_of[key]) or text.startswith("Escort ")
+        if work or any(w in text for w in names[key]):
+            flags += "d"
+        if handed:
+            flags += "h"
+        return flags
+
     def pres(qid):
         q = quests.get(qid) or {}
         return seq(q.get(Q_PRE_GROUP) or {}) + seq(q.get(Q_PRE_SINGLE) or {})[:1]
@@ -551,6 +597,14 @@ def main(root, att_root=None, gdq_root=None):
     for qid in sorted(used):
         if rewards.get(qid):
             lines.append("[%d]=%s," % (qid, lua_list(sorted(rewards[qid]))))
+    lines.append("}")
+    lines.append("-- Dungeon -> quest -> what of it happens inside the dungeon: t taken, d done, h handed in.")
+    lines.append("D.inside = {")
+    for key, *_ in DUNGEONS:
+        parts = ["[%d]=%s" % (qid, lua_str(f)) for qid in sorted(by_dungeon[key])
+                 for f in [inside_flags(qid, key)] if f]
+        if parts:
+            lines.append("%s={%s}," % (key, ",".join(parts)))
     lines.append("}")
     lines.append("-- Quest -> the dungeon mobs it needs, lowest level first (a rough boss order).")
     lines.append("D.target = {")

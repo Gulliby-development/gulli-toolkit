@@ -3,7 +3,8 @@
 -- in the log with their objectives, to take, and chain quests that wait for an earlier step.
 -- A chain is one row with the step it is at; a click opens it to show every step, a right-click
 -- opens the quest in the journal; the map button pins who to go to (and targets and marks them
--- when they are near, ns.TargetOver). The cross closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
+-- when they are near, ns.TargetOver). The dungeon's icon under a row's mark says that what the
+-- row asks for now (taking it, its work, handing it in) happens inside the dungeon. The cross closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
 
 local _, ns = ...
 local L = ns.L
@@ -82,6 +83,9 @@ local function makeRow(parent)
     r.icon = r:CreateTexture(nil, "ARTWORK")
     r.icon:SetSize(16, 16)
     r.icon:SetPoint("TOPLEFT", 8, -PAD)
+    -- Under the mark: the dungeon's icon, when what the row asks for now is done inside it.
+    r.inside = S.IconBox(r, 16)
+    r.inside:SetPoint("TOP", r.icon, "BOTTOM", 0, -2)
     r.name = S.Text(r, 12)
     r.name:SetPoint("TOPLEFT", 30, -PAD)
     r.name:SetPoint("RIGHT", -32, 0)
@@ -122,6 +126,11 @@ local function makeRow(parent)
         if not (GameTooltip and self.item) then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine(self.item.name, 1, 0.82, 0)
+        if self.item.inside and tracker.key then
+            local c = S.Accent()
+            GameTooltip:AddLine(S.IconTag(ns.Icon(tracker.key)) .. " " .. L.INSIDE_OF:format(tracker.title:GetText() or ""),
+                c[1], c[2], c[3])
+        end
         if self.item.steps then
             GameTooltip:AddLine(opened[self.item.key] and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
             GameTooltip:AddLine(L.TR_OPEN_RIGHT, 1, 1, 1)
@@ -138,6 +147,8 @@ local function fillRow(r, it)
     r.item = it
     r.icon:SetTexture(STATE_ICON[it.state])
     r.icon:SetDesaturated(it.state == "chain")
+    r.inside:SetShown(it.inside == true)
+    if it.inside then r.inside:SetIcon(ns.Icon(tracker.key)) end
     r.name:SetText(it.name)
     local diff = ns.Difficulty(it.level or 1, ns.level or UnitLevel("player") or 1)
     r.name:SetTextColor(unpack(ns.DiffColor(diff)))

@@ -679,6 +679,16 @@ local dpSpec = { level = 33, raceID = 6, faction = "Horde", className = "HUNTER"
     map = { best = 1454, pos = { 0.70, 0.30 },
             maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } },
     bags = { [0] = { size = 16, slots = { [1] = { 4540, 4 } } } } }
+-- Maraudon at level 48: two quests in the log whose work is inside, one chain step taken inside.
+local dpMara = { level = 48, raceID = 6, faction = "Horde", className = "PRIEST", items = dpItems,
+    active = { [96776] = true, [93404] = true }, done = { [7044] = true, [93594] = true },
+    objectives = { [96776] = { { text = "0/1 An'she's Radiance", finished = false } },
+                   [93404] = { { text = "0/1 Vial of Earth Song Water", finished = false },
+                               { text = "0/1 Woodwyrd extinguished", finished = false } } },
+    areas = { [1637] = "Orgrimmar", [405] = "Desolace", [215] = "Mulgore", [2100] = "Maraudon", [493] = "Moonglade",
+              [16651] = "Forlorn Gardens" },
+    map = { best = 1454, pos = { 0.70, 0.30 },
+            maps = { [1414] = { "Kalimdor", 2 }, [1454] = { "Orgrimmar", 3, 1414 } } } }
 -- Sample bosses for the journal pages (the real ones come from JournalData.lua).
 local function dpBosses(ns)
     ns.Data.boss = ns.Data.boss or {}
@@ -719,6 +729,24 @@ S.dungeonprep = {
     scholo = { spec = { level = 58, raceID = 2, faction = "Horde", className = "WARRIOR", areas = { [28] = "Western Plaguelands", [85] = "Tirisfal Glades" } },
                open = function(ns) ns.home = false; ns.selected = "SCHOLO"; ns.Toggle(); ns.ShowTab(3) end },
     chain = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
+    -- A single quest with no chain and no rewards, done inside the dungeon: the way takes the page.
+    inside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96776) end },
+    -- A chain whose step is taken and handed in inside the dungeon.
+    insidechain = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046) end },
+    insidelist = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3) end },
+    insidetracker = { spec = dpMara, crop = "GulliDungeonPrepTrackerStage",
+                before = function()
+                    local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                    stage:SetSize(360, 460)
+                    stage:SetPoint("CENTER")
+                    local bg = stage:CreateTexture(nil, "BACKGROUND")
+                    bg:SetAllPoints()
+                    bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                end,
+                open = function(ns)
+                    ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                    ns.ShowTracker("MARA")
+                end },
     -- The tracker of Lead me on its own, on a dark stand-in screen.
     tracker = { spec = dpSpec, crop = "GulliDungeonPrepTrackerStage",
                 before = function()
