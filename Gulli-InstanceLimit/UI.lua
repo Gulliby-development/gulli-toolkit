@@ -1,16 +1,17 @@
--- The window has two pages. Status: entries left this hour and today (~ while the limit is
--- our guess), which limit blocks, the group, and the entries of the last hour or day by
--- character, with Reset in the footer. Settings: limits, alerts, the group and the counter.
--- The counter is a small badge on screen that opens the window.
+-- The window has two pages. Status: the entries left this hour as one big number, a slot per
+-- entry of the hour with the dungeon that holds it and when it frees, the group, and the runs
+-- of the last day by character, with Reset in the footer. Settings: alerts, the group and the
+-- counter. The counter is a small badge on screen that opens the window.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-local frame, tabs, statusPage, settingsPage, big, nextLine, groupLine, list, empty, entries, span
+local frame, tabs, statusPage, settingsPage, hero, groupRow, list, empty, entries
 local resetBtn, footer, badge
 local TIME_ICON = "Interface\\Icons\\Spell_Nature_TimeStop"
-local page, range = 1, "HOUR"
+local page = 1
+local SLOT_GAP, SLOTS_MAX, CHIPS_MAX = 6, 10, 6
 local I = "Interface\\Icons\\"
 
 local function ago(t)
@@ -20,12 +21,15 @@ end
 ---- The entry list -------------------------------------------------------------
 
 local function makeRow(r)
+    -- a dot marks a run that still holds a slot of the hour
+    r.dot = S.Circle(r, 8, S.WARN, "ARTWORK")
+    r.dot:SetPoint("TOPLEFT", 2, -9)
     r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", 2, -5)
+    r.name:SetPoint("TOPLEFT", 16, -5)
     r.name:SetPoint("RIGHT", -110, 0)
     r.name:SetWordWrap(false)
     r.run = S.Text(r, 12, S.MUTED)
-    r.run:SetPoint("BOTTOMLEFT", 2, 5)
+    r.run:SetPoint("BOTTOMLEFT", 16, 5)
     r.run:SetPoint("RIGHT", -110, 0)
     r.run:SetWordWrap(false)
     r.when = S.Text(r, 12, S.MUTED)
@@ -45,6 +49,7 @@ local function fillRow(r, e)
     local header = e.header
     r.head:SetShown(header)
     r.name:SetShown(not header); r.run:SetShown(not header); r.when:SetShown(not header)
+    r.dot:SetShown(not header and time() - e.t < ns.HOUR)
     if header then
         S.Fill(r, S.RAISED)
         r.head:SetText(classHex(e.class) .. (e.char or "?") .. "|r  " .. S.Hex(S.FAINT) .. "(" .. e.count .. ")|r")
@@ -56,13 +61,12 @@ local function fillRow(r, e)
     r.when:SetText(ago(e.t))
 end
 
--- The entries of the last hour or day, grouped by character (the player's first).
-function ns.ListItems(which, now)
+-- The runs of the last day, grouped by character (the player's first), the newest first.
+function ns.ListItems(now)
     now = now or time()
-    local span = which == "DAY" and ns.DAY or ns.HOUR
     local byChar, chars = {}, {}
     for _, e in ipairs(ns.db.entries) do
-        if now - ns.When(e, now) < span then
+        if now - e.t < ns.DAY then
             local c = e.char or "?"
             if not byChar[c] then byChar[c] = {}; chars[#chars + 1] = c end
             table.insert(byChar[c], e)
@@ -76,12 +80,180 @@ function ns.ListItems(which, now)
     end)
     local out = {}
     for _, c in ipairs(chars) do
-        local list = byChar[c]
-        table.sort(list, function(a, b) return a.t > b.t end)
-        if #chars > 1 then out[#out + 1] = { header = true, char = c, class = list[1].class, count = #list } end
-        for _, e in ipairs(list) do out[#out + 1] = e end
+        local runs = byChar[c]
+        table.sort(runs, function(a, b) return a.t > b.t end)
+        if #chars > 1 then out[#out + 1] = { header = true, char = c, class = runs[1].class, count = #runs } end
+        for _, e in ipairs(runs) do out[#out + 1] = e end
     end
     return out
+end
+
+-- "Runs: 4 · 46:20 on average" over the runs of the list; the mean only of finished runs.
+function ns.RunsHint(items)
+    local n, sum, done = 0, 0, 0
+    for _, e in ipairs(items) do
+        if not e.header then
+            n = n + 1
+            if e.out then sum, done = sum + (e.secs or 0), done + 1 end
+        end
+    end
+    if n == 0 then return "" end
+    local text = L.RUNS_N:format(n)
+    if done > 0 then text = text .. S.DOT .. L.SES_AVG:format(ns.Clock(sum / done)) end
+    return text
+end
+
+---- The hero card: the number, the state and the slots of the hour ---------------
+
+local function buildHero(parent, width)
+    local c = S.Card(parent)
+    c.big = S.Text(c, 28, S.GOOD, nil, "title")
+    c.big:SetPoint("TOPLEFT", S.INSET + 2, -S.INSET - 4)
+    c.dot = S.Circle(c, 8, S.GOOD, "ARTWORK")
+    c.dot:SetPoint("TOPLEFT", S.INSET + 96, -S.INSET - 9)
+    c.state = S.Text(c, 14)
+    c.state:SetPoint("TOPLEFT", S.INSET + 112, -S.INSET - 4)
+    c.state:SetPoint("RIGHT", -S.INSET, 0)
+    c.state:SetWordWrap(false)
+    c.sub = S.Text(c, 12, S.MUTED)
+    c.sub:SetPoint("TOPLEFT", S.INSET + 112, -S.INSET - 26)
+    c.sub:SetPoint("RIGHT", -S.INSET, 0)
+    c.sub:SetWordWrap(false)
+    c.slots = {}
+    local function slot(i)
+        local f = c.slots[i]
+        if f then return f end
+        f = CreateFrame("Frame", nil, c)
+        S.Box(f, S.INPUT, S.LINE, S.R_MD)
+        f:SetHeight(50)
+        f.name = S.Text(f, 12)
+        f.name:SetPoint("TOPLEFT", 7, -6)
+        f.name:SetPoint("RIGHT", -5, 0)
+        f.name:SetWordWrap(false)
+        f.time = S.Text(f, 12, S.MUTED)
+        f.time:SetPoint("TOPLEFT", 7, -22)
+        f.track = f:CreateTexture(nil, "ARTWORK")
+        f.track:SetColorTexture(1, 1, 1, 0.07)
+        f.track:SetHeight(3)
+        f.track:SetPoint("BOTTOMLEFT", 7, 7)
+        f.track:SetPoint("BOTTOMRIGHT", -7, 7)
+        f.fill = f:CreateTexture(nil, "OVERLAY")
+        f.fill:SetHeight(3)
+        f.fill:SetPoint("BOTTOMLEFT", 7, 7)
+        -- A long dungeon name is cut in its slot: the tooltip has all of it.
+        f:SetScript("OnEnter", function(self)
+            if not self.full or not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(self.full)
+            GameTooltip:Show()
+        end)
+        f:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        c.slots[i] = f
+        return f
+    end
+    function c:Set(s, slots)
+        local tone = s.left == 0 and S.BAD or (s.left == 1 and S.WARN or S.GOOD)
+        self.big:SetText(S.Hex(tone) .. s.leftHour .. "|r" .. S.Hex(S.FAINT) .. " / " .. s.limit .. "|r")
+        self.dot:SetVertexColor(tone[1], tone[2], tone[3], 1)
+        if s.left == 0 then
+            self.state:SetText(L.NO_LEFT)
+            self.sub:SetText(S.Emph(L.NEXT_IN:format(ns.Clock(s.wait))))
+        else
+            self.state:SetText(L.ALL_FREE)
+            self.sub:SetText(s.nextFree > 0 and S.Emph(L.SLOT_NEXT:format(ns.Clock(s.nextFree))) or "")
+        end
+        S.SetBorder(self, s.left == 0 and S.BAD or S.CARD_EDGE)
+        local n = math.min(#slots, SLOTS_MAX)
+        local w = math.floor((width - 2 * S.INSET - (n - 1) * SLOT_GAP) / n)
+        for i = 1, math.max(n, #self.slots) do
+            local f = slot(i)
+            local d = slots[i]
+            f:SetShown(i <= n)
+            if i <= n then
+                f:ClearAllPoints()
+                f:SetPoint("BOTTOMLEFT", S.INSET + (i - 1) * (w + SLOT_GAP), S.INSET)
+                f:SetWidth(w)
+                local a = S.Accent()
+                if d.isFree then
+                    f.full = nil
+                    f.name:SetText(S.Hex(S.GOOD) .. L.SLOT_FREE .. "|r")
+                    f.time:SetText("")
+                    f.fill:Hide()
+                    S.SetBorder(f, S.LINE)
+                else
+                    f.full = d.name
+                    f.name:SetText(d.name or "?")
+                    f.time:SetText(ns.Clock(d.free))
+                    local c2 = d.first and S.WARN or S.MUTED
+                    f.time:SetTextColor(c2[1], c2[2], c2[3], 1)
+                    f.fill:SetColorTexture(a[1], a[2], a[3], 1)
+                    f.fill:SetWidth(math.max(1, (w - 14) * math.max(0, math.min(1, d.frac))))
+                    f.fill:Show()
+                    S.SetBorder(f, d.first and S.WARN or S.LINE)
+                end
+            end
+        end
+    end
+    return c
+end
+
+---- The group: a chip per member ------------------------------------------------
+
+local function buildGroup(parent, width)
+    local g = CreateFrame("Frame", nil, parent)
+    g.label = S.Text(g, 12, S.GOLD_DIM, nil, "bold")
+    g.label:SetPoint("LEFT", 2, 0)
+    g.label:SetText(S.Upper(L.GROUP))
+    g.none = S.Text(g, 12, S.FAINT)
+    g.none:SetPoint("LEFT", g.label, "RIGHT", 10, 0)
+    g.none:SetPoint("RIGHT")
+    g.none:SetWordWrap(false)
+    g.more = S.Text(g, 12, S.FAINT)
+    g.chips = {}
+    local function chip(i)
+        local f = g.chips[i]
+        if f then return f end
+        f = CreateFrame("Frame", nil, g)
+        S.Box(f, S.INPUT, S.LINE, 11)
+        f:SetHeight(22)
+        f.text = S.Text(f, 12, S.MUTED)
+        f.text:SetPoint("CENTER")
+        g.chips[i] = f
+        return f
+    end
+    function g:Set(members)
+        self.none:SetShown(#members == 0)
+        self.none:SetText(L.GROUP_NONE)
+        local x = (tonumber(self.label:GetStringWidth()) or 0) + 12
+        local shown = 0
+        for i = 1, math.max(#members, #self.chips) do
+            local m = members[i]
+            local f = (m or self.chips[i]) and chip(i)
+            if f then
+                local fits = false
+                if m and i <= CHIPS_MAX and shown == i - 1 then
+                    local tail = m.none and L.NO_ADDON or
+                        (S.Hex(m.left == 0 and S.BAD or (m.left == 1 and S.WARN or S.TEXT)) .. L.CHIP_LEFT:format(m.left) .. "|r")
+                    f.text:SetText(classHex(m.class) .. m.name .. "|r " .. tail)
+                    local w = math.floor((tonumber(f.text:GetStringWidth()) or 0) + 20)
+                    if x + w <= width - 34 then
+                        f:SetWidth(w)
+                        f:ClearAllPoints()
+                        f:SetPoint("LEFT", x, 0)
+                        x = x + w + 6
+                        shown = i
+                        fits = true
+                    end
+                end
+                f:SetShown(fits)
+            end
+        end
+        self.more:SetShown(shown < #members)
+        self.more:ClearAllPoints()
+        self.more:SetPoint("LEFT", x, 0)
+        self.more:SetText("+" .. (#members - shown))
+    end
+    return g
 end
 
 ---- The badge -------------------------------------------------------------------
@@ -105,7 +277,7 @@ local function updateBadge(s)
     badge:SetScale((ns.db.badgeScale or 100) / 100)
     badge:SetAlpha((ns.db.badgeAlpha or 100) / 100)
     local color = s.left == 0 and S.BAD or (s.left == 1 and S.WARN or nil)
-    badge:Set(TIME_ICON, s.leftHour .. "/" .. ns.LimitText(ns.db.limit), color, s.leftHour, ns.db.limit,
+    badge:Set(TIME_ICON, s.leftHour .. "/" .. ns.db.limit, color, s.leftHour, ns.db.limit,
         s.wait > 0 and ns.Clock(s.wait) or nil)
     badge:SetMoving(unlocked() and not InCombatLockdown())
 end
@@ -124,25 +296,12 @@ function ns.Refresh()
     statusPage:SetShown(page == 1)
     settingsPage:SetShown(page == 2)
     footer:SetShown(page == 1)
-    local function tone(left) return left == 0 and S.BAD or (left == 1 and S.WARN or S.GOOD) end
-    big.tiles[1]:Set(s.leftHour .. " / " .. ns.LimitText(ns.db.limit), tone(s.leftHour))
-    big.tiles[2]:Set(s.leftDay .. " / " .. ns.LimitText(ns.db.dayLimit), tone(s.leftDay))
-    if s.by then
-        nextLine:SetText(S.Hex(S.BAD) .. (s.by == "DAY" and L.BLOCK_DAY or L.BLOCK_HOUR):format(ns.Clock(s.wait)) .. "|r")
-    else
-        nextLine:SetText(ns.db.confirmed and L.ALL_FREE or (L.ALL_FREE .. " " .. S.Hex(S.FAINT) .. L.ESTIMATE .. "|r"))
-    end
-    local low = ns.GroupLow()
-    if low then
-        groupLine:SetText(L.GROUP_LOW:format(low.name, low.left) ..
-            (low.wait > 0 and (" " .. L.NEXT_FREE:format(ns.Clock(low.wait))) or ""))
-    else
-        groupLine:SetText(S.Hex(S.FAINT) .. L.GROUP_NONE .. "|r")
-    end
-    local items = ns.ListItems(range)
+    hero:Set(s, ns.Slots())
+    groupRow:Set(ns.GroupList())
+    local items = ns.ListItems()
     list:SetData(items)
+    entries:SetTitle(L.RUNS, ns.RunsHint(items))
     empty:SetShown(#items == 0)
-    empty:Set(range == "DAY" and L.NONE_DAY or L.NONE)
     resetBtn:SetEnabled(ns.CanReset())
     if ns.insideNames then
         footer:SetStatus(L.STILL_INSIDE:format(table.concat(ns.insideNames, ", ")), S.WARN)
@@ -152,24 +311,6 @@ function ns.Refresh()
 end
 
 ---- Settings --------------------------------------------------------------------
-
-local function numberEdit(parent, get, set)
-    local e = S.Edit(parent, 52, 28)
-    e:SetNumeric(true)
-    e:SetMaxLetters(3)
-    e:SetText(tostring(get()))
-    e:SetScript("OnShow", function(self) self:SetText(tostring(get())) end)
-    local function apply(self)
-        local n = tonumber(self:GetText())
-        if n and n > 0 then set(n) end
-        self:SetText(tostring(get()))
-        self:ClearFocus()
-        ns.Refresh()
-    end
-    e:SetScript("OnEnterPressed", apply)
-    e:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); apply(self) end)
-    return e
-end
 
 local function switch(key, label, desc, icon)
     return { label, desc, function() return ns.db[key] end, function(v) ns.db[key] = v; ns.Refresh() end, icon = icon }
@@ -187,24 +328,9 @@ local function buildSettings(body, width)
     c:SetWidth(width - 12)
     local st = S.Stack(c)
 
-    local defaults = S.Button(c, 90, 28)
-    defaults:SetText(L.DEFAULTS)
-    defaults:SetScript("OnClick", function() ns.DefaultLimits() end)
-    local limits, h1 = S.SettingsCard(c, L.SEC_LIMITS, {
-        { L.ROW_LIMIT, nil, control = numberEdit(c, function() return ns.db.limit end,
-            function(n) ns.db.limit = n; ns.db.confirmed = false end), icon = I .. "INV_Misc_PocketWatch_02" },
-        { L.ROW_DAY, nil, control = numberEdit(c, function() return ns.db.dayLimit end,
-            function(n) ns.db.dayLimit = n end), icon = I .. "Spell_Arcane_PortalIronForge" },
-        switch("fromExit", L.FROM_EXIT, L.FROM_EXIT_D, I .. "INV_Misc_PocketWatch_01"),
-        { L.ROW_DEFAULTS, L.ESTIMATE_D, control = defaults, icon = I .. "Spell_Nature_TimeStop" },
-    })
-    st:Add(limits, h1)
-
     local warnAt = S.Stepper(c, function() return ns.db.warnAt end, function(v) ns.db.warnAt = v end, 1, 0, 4, nil, 100)
-    local warnDay = S.Stepper(c, function() return ns.db.warnDayAt end, function(v) ns.db.warnDayAt = v end, 1, 0, 10, nil, 100)
     local alerts, h2 = S.SettingsCard(c, L.SEC_ALERTS, {
         { L.WARN_AT, nil, control = warnAt, icon = I .. "Spell_Nature_TimeStop" },
-        { L.WARN_DAY_AT, nil, control = warnDay, icon = I .. "Spell_Holy_BorrowedTime" },
         switch("freeAlert", L.OPT_FREE, nil, ns.OPT_ICON.freeAlert),
         switch("sound", L.OPT_SOUND, nil, I .. "INV_Misc_Drum_01"),
         switch("summary", L.OPT_SUMMARY, nil, I .. "INV_Misc_Note_01"),
@@ -223,8 +349,8 @@ local function buildSettings(body, width)
     local modeLabels = {}
     for i, m in ipairs(SHOWN) do modeLabels[i] = L["MODE_" .. m] end
     local modeHolder = CreateFrame("Frame", nil, c)
-    modeHolder:SetSize(#SHOWN * 86 + 4, 30)
-    local modes = S.Tabs(modeHolder, modeLabels, 86, function(i)
+    modeHolder:SetSize(#SHOWN * 136 + 4, 30)
+    local modes = S.Tabs(modeHolder, modeLabels, 136, function(i)
         if ns.db.badgeMode == "HIDDEN" then ns.db.badgeWas = SHOWN[i] else ns.db.badgeMode = SHOWN[i] end
         ns.Refresh()
     end)
@@ -262,39 +388,27 @@ local function build()
     statusPage:SetPoint("TOPLEFT", 0, -30 - S.GAP)
     statusPage:SetPoint("BOTTOMRIGHT")
     local st = S.Stack(statusPage)
-    big = S.StatRow(statusPage, { L.STAT_HOUR, L.STAT_DAY }, 62,
-        { "Interface\\Icons\\INV_Misc_PocketWatch_01", "Interface\\Icons\\Spell_Nature_TimeStop" })
-    st:Add(big, 62, 8)
-    big:Layout(width)
-    nextLine = S.Text(statusPage, 12, S.MUTED)
-    nextLine:SetWordWrap(false)
-    st:Add(nextLine, 16, 4)
-    groupLine = S.Text(statusPage, 12, S.MUTED)
-    groupLine:SetWordWrap(false)
-    st:Add(groupLine, 16)
+    hero = buildHero(statusPage, width)
+    st:Add(hero, 2 * S.INSET + 50 + 12 + 46)
+    groupRow = buildGroup(statusPage, width)
+    st:Add(groupRow, 22)
 
-    entries = S.Card(statusPage, L.ENTRIES)
+    entries = S.Card(statusPage, L.RUNS, " ")
     entries:SetPoint("TOPLEFT", 0, -st.y)
     entries:SetPoint("BOTTOMRIGHT")
-    span = S.Tabs(entries, { L.SPAN_HOUR, L.SPAN_DAY }, 90, function(i)
-        range = i == 2 and "DAY" or "HOUR"; ns.Refresh()
-    end, 26)
-    span.frame:ClearAllPoints()
-    span.frame:SetPoint("TOPRIGHT", -S.INSET, -6)
     list = S.List(entries.body, 40, makeRow, fillRow)
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
     empty = S.Empty(entries.body)
-    empty:Set(L.NONE)
+    empty:Set(L.NONE_DAY)
 
     buildSettings(body, width)
     frame:SetScript("OnShow", function() tabs:Select(page) end)
 end
 
--- Picks a page (1 Status, 2 Settings) and the list span, for the previews and the tests.
-function ns.ShowPage(i, which)
+-- Picks a page (1 Status, 2 Settings), for the previews and the tests.
+function ns.ShowPage(i)
     ns.Window():Show()
-    if which then range = which; span:Select(which == "DAY" and 2 or 1, true) end
     tabs:Select(i)
 end
 

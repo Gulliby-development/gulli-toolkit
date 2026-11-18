@@ -829,7 +829,7 @@ S.instancelimit = { default = { spec = { name = "Gulliby" },
             { t = now - 900, name = "Shadowfang Keep", char = "Thorn", class = "WARRIOR", out = now - 100, secs = 800, xp = 2500, kills = 30 },
             { t = now - 60, name = "Blackfathom Deeps", char = "Gulliby", class = "MAGE" },
         }
-        ns.group = { Bob = { leftHour = 1, leftDay = 20, wait = 0, t = now } }
+        ns.group = { Bob = { leftHour = 1, wait = 0, t = now }, Fernard = { leftHour = 4, wait = 0, t = now } }
         ns.Toggle()
     end,
 }, settings = { open = function(ns) ns.ShowPage(2) end } }

@@ -58,18 +58,53 @@ test("the next entry frees an hour after the oldest one that keeps us at the lim
     eq(ns.Status().wait, 0)
 end)
 
-test("the day limit and old entries", function()
-    Fake({ now = 0, db = { limit = 5, dayLimit = 2, entries = {}, open = {} } })
+test("there is no day limit; an entry older than a day leaves the list", function()
+    Fake({ now = 0 })
     local ns = Load()
     W.now = 100; W.Go("A", "party", 1); W.Go("Out", "none", 0)
     W.now = 4000; W.Go("B", "party", 2); W.Go("Out", "none", 0)
     W.now = 8000
     local s = ns.Status()
-    eq(s.leftDay, 0)
-    eq(s.wait, 100 + 86400 - 8000)
+    eq(s.leftHour, 5); eq(s.left, 5); eq(s.wait, 0)
+    eq(s.leftDay, nil)
     W.now = 100 + 86400
-    eq(ns.Status().leftDay, 1)
+    ns.Status()
     eq(#ns.db.entries, 1, "an entry older than a day is dropped")
+end)
+
+test("settings of older versions go, and a limit typed by hand is 5 again", function()
+    Fake({ db = { limit = 9, dayLimit = 12, warnDayAt = 2, fromExit = true, entries = {}, open = {} } })
+    local ns = Load()
+    eq(ns.db.limit, 5)
+    eq(ns.db.dayLimit, nil); eq(ns.db.warnDayAt, nil); eq(ns.db.fromExit, nil); eq(ns.db.confirmed, nil)
+    -- a limit the game showed stays
+    Fake({ db = { limit = 3, confirmed = true, entries = {}, open = {} } })
+    eq(Load().db.limit, 3)
+    -- and the hour counts from the entry, whatever fromExit said
+    Fake({ now = 1000, db = { fromExit = true, entries = {}, open = {} } })
+    ns = Load()
+    W.Go("A", "party", 1)
+    W.now = 1000 + 1800; W.Go("Out", "none", 0)
+    W.now = 1000 + 3700
+    eq(ns.Status().hour, 0)
+end)
+
+test("the slots of the hour: the one that frees first, then the free ones", function()
+    Fake({ now = 10000 })
+    local ns = Load()
+    W.Go("A", "party", 1); W.Go("Out", "none", 0)
+    W.now = 10900; W.Go("B", "party", 2); W.Go("Out", "none", 0)
+    W.now = 11800
+    local slots = ns.Slots()
+    eq(#slots, 5)
+    eq(slots[1].name, "A"); eq(slots[1].free, 1800); eq(slots[1].frac, 0.5); eq(slots[1].first, true)
+    eq(slots[2].name, "B"); eq(slots[2].free, 2700); eq(slots[2].first, false)
+    eq(slots[3].isFree, true); eq(slots[5].isFree, true)
+    eq(ns.Status().nextFree, 1800)
+    ns.ShowPage(1)
+    W.now = 10000 + 3600
+    eq(ns.Slots()[1].name, "B", "A freed its slot")
+    eq(ns.Slots()[2].isFree, true)
 end)
 
 test("a refusal from the game sets the limit to what we counted", function()
@@ -80,7 +115,7 @@ test("a refusal from the game sets the limit to what we counted", function()
     W.Go("C", "party", 3); W.Go("Out", "none", 0)
     W.Fire("UI_ERROR_MESSAGE", 0, "You have entered too many instances recently.")
     eq(ns.db.limit, 3)
-    eq(ns.db.confirmed, true, "the game confirmed it")
+    eq(#ns.Slots(), 3, "a slot per entry the game allows")
 end)
 
 test("reset only outside, as leader or alone", function()
@@ -124,32 +159,6 @@ test("an entry free again: one alert in chat, the hub and a sound", function()
     eq(sounds, 2, "only once")
 end)
 
-test("which limit blocks, hour or day", function()
-    Fake({ now = 0, db = { limit = 5, dayLimit = 2, entries = {}, open = {} } })
-    local ns = Load()
-    W.now = 100; W.Go("A", "party", 1); W.Go("Out", "none", 0)
-    W.now = 200; W.Go("B", "party", 2); W.Go("Out", "none", 0)
-    eq(ns.Status().by, "DAY")
-    ns.db.dayLimit, ns.db.limit = 30, 2
-    local s = ns.Status()
-    eq(s.by, "HOUR"); eq(s.wait, 100 + 3600 - 200)
-    ns.db.limit = 5
-    eq(ns.Status().by, nil)
-end)
-
-test("count from the exit: the hour starts when the player leaves", function()
-    Fake({ now = 1000, db = { fromExit = true, entries = {}, open = {} } })
-    local ns = Load()
-    W.Go("A", "party", 1)
-    W.now = 1000 + 1800
-    W.Go("Out", "none", 0)
-    eq(ns.db.entries[1].out, 2800)
-    W.now = 1000 + 3700
-    eq(ns.Status().hour, 1, "an hour after the entry but not after the exit")
-    ns.db.fromExit = false
-    eq(ns.Status().hour, 0)
-end)
-
 test("run stats: time, XP with a level up, money and kills, and a summary", function()
     Fake({ now = 1000 })
     local ns = Load()
@@ -174,14 +183,12 @@ test("run stats: time, XP with a level up, money and kills, and a summary", func
     assert(d > 0.2, "silver stands out from the text")
 end)
 
-test("learning raises the limit too, and the limit is an estimate until confirmed", function()
-    Fake({ db = { limit = 2, entries = {}, open = {} } })
+test("more entries than the limit raise it", function()
+    Fake({ db = { limit = 2, limitFixed = true, entries = {}, open = {} } })
     local ns = Load()
-    eq(ns.LimitText(5), "~5")
     for i = 1, 3 do W.Go("D" .. i, "party", i); W.Go("Out", "none", 0) end
     eq(ns.db.limit, 3, "we got in three times")
-    ns.DefaultLimits()
-    eq(ns.db.limit, 5); eq(ns.db.dayLimit, 30)
+    eq(ns.Status().limit, 3)
 end)
 
 test("early warnings at the chosen count", function()
@@ -198,12 +205,16 @@ test("the list is grouped by character, mine first", function()
     local ns = Load()
     ns.db.entries = { { t = W.now - 10, name = "A", char = "Ann" }, { t = W.now - 20, name = "B", char = "Zed" },
                       { t = W.now - 30, name = "C", char = "Zed" }, { t = W.now - 7200, name = "D", char = "Ann" } }
-    local hour = ns.ListItems("HOUR")
-    eq(#hour, 5)
-    eq(hour[1].header, true); eq(hour[1].char, "Zed"); eq(hour[1].count, 2)
-    eq(hour[4].char, "Ann")
-    eq(#ns.ListItems("DAY"), 6)
-    ns.ShowPage(1, "DAY")
+    ns.db.entries[2].out, ns.db.entries[2].secs = W.now - 5, 600
+    ns.db.entries[3].out, ns.db.entries[3].secs = W.now - 5, 1200
+    local day = ns.ListItems()
+    eq(#day, 6)
+    eq(day[1].header, true); eq(day[1].char, "Zed"); eq(day[1].count, 2)
+    eq(day[4].char, "Ann"); eq(day[4].count, 2)
+    local plain = ns.RunsHint(day):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    eq(plain, "Runs: 4  ·  15:00 on average")
+    eq(ns.RunsHint({}), "")
+    ns.ShowPage(1)
     ns.ShowPage(2)
 end)
 
@@ -285,20 +296,37 @@ test("Reset asks again while members are inside", function()
     eq(W.resets, 1)
 end)
 
-test("the group shares what is left; the lowest shows", function()
+test("the group shares what is left; every member shows", function()
     Fake({})
     local ns = Load()
     W.group = true
     W.Fire("CHAT_MSG_ADDON", "GulliIL", "STATE\t3\t20\t0", "PARTY", "Bob-Realm")
     W.Fire("CHAT_MSG_ADDON", "GulliIL", "STATE\t0\t20\t600", "PARTY", "Ann")
     W.Fire("CHAT_MSG_ADDON", "Other", "STATE\t0\t0\t0", "PARTY", "Cid")
-    local low = ns.GroupLow()
-    eq(low.name, "Ann"); eq(low.left, 0); eq(low.wait, 600)
+    W.members = { { "Bob" }, { "Dan" } }
+    local list = ns.GroupList()
+    eq(#list, 3)
+    eq(list[1].name, "Ann"); eq(list[1].left, 0); eq(list[1].wait, 600)
+    eq(list[2].name, "Bob"); eq(list[2].left, 3)
+    eq(list[3].name, "Dan"); eq(list[3].none, true, "in the group, without the addon")
+    ns.ShowPage(1)
     W.now = W.now + 600
-    eq(ns.GroupLow().left, 1, "that wait is over")
+    eq(ns.GroupList()[1].left, 1, "that wait is over")
     W.addon = {}
     W.Fire("CHAT_MSG_ADDON", "GulliIL", "HELLO", "PARTY", "Cid")
-    eq(W.addon[1], "PARTY:STATE\t5\t30\t0")
+    eq(W.addon[1], "PARTY:STATE\t5\t99\t0", "the old message keeps its day field")
+end)
+
+test("a group member whose name the game hides is left out", function()
+    Fake({})
+    local ns = Load()
+    local hidden = {}
+    issecretvalue = function(v) return v == hidden end
+    W.group = true
+    W.members = { { hidden }, { "Bob" } }
+    local list = ns.GroupList()
+    eq(#list, 1); eq(list[1].name, "Bob")
+    issecretvalue = nil
 end)
 
 test("the hub gets a summary, a move and a reset", function()
