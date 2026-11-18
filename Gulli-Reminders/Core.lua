@@ -84,6 +84,25 @@ ns.KIT_ICON = {
     STONE_OIL = "Interface\\Icons\\INV_Stone_02", OIL = "Interface\\Icons\\INV_Potion_100",
     IMBUE = "Interface\\Icons\\Spell_Nature_RockBiter",
 }
+-- The short caption under an icon ("MH: poison"), so every caption fits under its own icon.
+local function inList(list, id)
+    for _, x in ipairs(list) do if x == id then return true end end
+end
+local KIT_WORD = { POISON = "CAP_POISON", STONE = "CAP_STONE", STONE_OIL = "CAP_STONE", OIL = "CAP_OIL", IMBUE = "CAP_IMBUE" }
+function ns.KitCaption(hand, item, spell, kind)
+    local w = KIT_WORD[kind] or "CAP_STONE"
+    if spell then w = "CAP_IMBUE"
+    elseif item then
+        w = inList(ns.POISONS, item) and "CAP_POISON"
+            or (inList(ns.SHARP, item) or inList(ns.WEIGHT, item)) and "CAP_STONE" or "CAP_OIL"
+    end
+    return L[hand == "off" and "CAP_OH" or "CAP_MH"]:format(L[w])
+end
+ns.CAPS = { PET = "CAP_PET", AMMO = "CAP_AMMO", SHARDS = "CAP_SHARDS", GEM = "CAP_GEM", HEALTHSTONE = "CAP_HEALTHSTONE",
+            DURABILITY = "CAP_REPAIR", BAGS = "CAP_BAGS" }
+function ns.Caption(m)
+    return m.cap or (ns.CAPS[m.key] and L[ns.CAPS[m.key]]) or m.text or ""
+end
 -- Items a class makes for itself: missing from the bags, a click casts the best spell it knows.
 ns.CLASS_ITEMS = {
     MAGE = { { key = "GEM", items = { 8008, 8007, 5513, 5514 },            -- Mana Ruby .. Agate
@@ -535,7 +554,8 @@ function ns.Missing()
                         or item and { type = "macro", macrotext = "/use item:" .. item .. "\n/use " .. slot } or nil
                     out[#out + 1] = { key = key, text = L[key], left = has and msLeft and msLeft > 0 and msLeft / 1000 or nil,
                                       icon = spell and spellIcon(spell) or item and itemIcon(item) or ns.KIT_ICON[kit.kind],
-                                      act = act, none = not (item or spell) }
+                                      act = act, none = not (item or spell),
+                                      cap = ns.KitCaption(hand, item, spell, kit.kind) }
                 end
             end
         end
@@ -584,6 +604,7 @@ function ns.Missing()
             local n = itemCount(c.id)
             if n < (c.min or 1) then
                 out[#out + 1] = { key = key, text = L.COUNT:format(itemName(c.id) or ("#" .. c.id), n, c.min or 1),
+                                  cap = itemName(c.id) or ("#" .. c.id),
                                   icon = itemIcon(c.id), buy = c.id, want = (c.min or 1) - n }
             end
         else
@@ -621,7 +642,7 @@ function ns.Missing()
                 if not got and (ns.IsBounced("ASK_" .. o.key) or ns.Covered("player", o.ids[1], soon)) then got = true end
                 local who = not got and ns.GroupMember(o.class)
                 if who then
-                    out[#out + 1] = { key = "ASK_" .. o.key, text = L.ASK:format(L["BUFF_" .. o.key], who),
+                    out[#out + 1] = { key = "ASK_" .. o.key, text = L.ASK:format(L["BUFF_" .. o.key], who), cap = L["BUFF_" .. o.key],
                                       icon = spellIcon(o.ids[1]) }
                 end
             end
@@ -739,10 +760,12 @@ function ns.Sample()
     if e.weapon and ns.ClassPref("weapon", class) then
         local item, spell = ns.WeaponPick("main", false, class)
         out[#out + 1] = { key = "WEAPON", text = L.WEAPON, sample = true,
+                          cap = ns.KitCaption("main", item, spell, e.weapon.kind),
                           icon = spell and spellIcon(spell) or item and itemIcon(item) or ns.KIT_ICON[e.weapon.kind] }
         if e.weapon.off and offHandWeapon() then
             item = ns.WeaponPick("off", false, class)
             out[#out + 1] = { key = "WEAPON_OFF", text = L.WEAPON_OFF, sample = true,
+                              cap = ns.KitCaption("off", item, nil, e.weapon.kind),
                               icon = item and itemIcon(item) or ns.KIT_ICON[e.weapon.kind] }
         end
     end

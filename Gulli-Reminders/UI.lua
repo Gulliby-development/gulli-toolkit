@@ -8,6 +8,7 @@ local S = ns.Skin
 local panel, frame
 local icons = {}
 local GAP = 4
+local CAP_W = 64 -- in a row with captions, each icon gets a slot this wide, its caption under it
 
 -- Panel --------------------------------------------------------------------------------------
 
@@ -38,9 +39,6 @@ local function buildPanel()
     S.Mover(panel, { label = L.TITLE, hint = L.DRAG,
         save = function(point, rel, x, y) ns.db.point = { point, x, y, rel } end,
         reset = function() ns.db.point = nil; ns.Refresh() end })
-    panel.line = S.Text(panel, 12, S.TEXT, "OUTLINE")
-    panel.line:SetJustifyH("CENTER")
-    panel.line:SetWordWrap(false)
 end
 
 -- The panel for the hub's Unlock mode, built when it is asked for.
@@ -87,7 +85,6 @@ local function icon(i)
     h:SetColorTexture(1, 1, 1, 0.15)
     S.RoundMask(b, h, S.ROUND_SQ)
     b.label = S.Text(b, 12, S.TEXT, "OUTLINE")
-    b.label:SetPoint("LEFT", b, "RIGHT", 8, 0)
     b.label:SetWordWrap(false)
     b:SetScript("PostClick", postClick)
     b:SetScript("OnEnter", function(self) tip(self, self.m) end)
@@ -101,14 +98,16 @@ local function layout(list, missingKeys)
     local d = ns.db
     local size = d.size
     local n = #list
-    local labels = {}
+    -- A row with captions spaces the icons by the caption's slot, so a caption never pushes another.
+    local captions = d.labels and not d.vertical
+    local slot = captions and math.max(size, CAP_W) or size
     for i, m in ipairs(list) do
         local b = icon(i)
         b.m = m
         b:SetSize(size, size)
         b:ClearAllPoints()
         if d.vertical then b:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(i - 1) * (size + GAP))
-        else b:SetPoint("TOPLEFT", panel, "TOPLEFT", (i - 1) * (size + GAP), 0) end
+        else b:SetPoint("TOPLEFT", panel, "TOPLEFT", (i - 1) * (slot + GAP) + (slot - size) / 2, 0) end
         b:SetIcon(m.icon)
         aim(b, m)
         local dim = m.sample and missingKeys and not missingKeys[m.key]
@@ -120,18 +119,24 @@ local function layout(list, missingKeys)
         b:SetState(state)
         b:SetMid(m.left and ns.Short(m.left) or "")
         b:SetCount(m.count and tostring(m.count) or "")
-        b.label:SetText(m.text or "")
-        b.label:SetShown(d.labels and d.vertical)
+        b.label:ClearAllPoints()
+        if captions then
+            b.label:SetPoint("TOP", b, "BOTTOM", 0, -3)
+            b.label:SetWidth(slot + GAP)
+            b.label:SetJustifyH("CENTER")
+            b.label:SetText(ns.Caption(m))
+        else
+            b.label:SetPoint("LEFT", b, "RIGHT", 8, 0)
+            b.label:SetWidth(0)
+            b.label:SetJustifyH("LEFT")
+            b.label:SetText(m.text or "")
+        end
+        b.label:SetShown(d.labels)
         b:Show()
-        labels[#labels + 1] = m.text
     end
     for i = n + 1, #icons do icons[i]:Hide() end
-    local long = n * size + math.max(0, n - 1) * GAP
-    if d.vertical then panel:SetSize(size, long) else panel:SetSize(long, size) end
-    panel.line:ClearAllPoints()
-    panel.line:SetPoint("TOP", panel, "BOTTOM", 0, -6)
-    panel.line:SetText(table.concat(labels, "  ·  "))
-    panel.line:SetShown(d.labels and not d.vertical)
+    if d.vertical then panel:SetSize(size, n * size + math.max(0, n - 1) * GAP)
+    else panel:SetSize(n * slot + math.max(0, n - 1) * GAP, size) end
     panel:SetMoving(ns.moving)
     panel:SetAlpha(math.max(0.2, d.alpha / 100))
     panel:ClearAllPoints()
