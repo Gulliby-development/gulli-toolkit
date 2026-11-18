@@ -4,7 +4,7 @@
 -- it), the home page (a dashboard: the Ready card, the session, the modules' news as number
 -- tiles, the Recent feed and the Modules card) or the Setup page. Unlock frames is a link in
 -- the header. It only shows what Core.lua gives (ns.List, ns.Filter, ns.Groups, ns.Tiles,
--- ns.Session, ns.Readiness, ns.FeedRows, ns.Overview) and calls ns.Switch, ns.SetLoaded,
+-- ns.SessionCard, ns.Readiness, ns.FeedRows, ns.Overview) and calls ns.Switch, ns.SetLoaded,
 -- ns.ApplyPreset, ns.SetMoving and the module's own window.
 
 local _, ns = ...
@@ -603,31 +603,70 @@ local function fillReady(width)
     return true
 end
 
--- The session card: what the first module with a `session` gives (ns.Session): its number big,
--- a line under it, a column per stretch of time and the bar of the level. Returns the session.
-local columns = {}
-local COL_H, COL_GAP = 52, 4
+-- The session card (ns.SessionCard): the leading number big with its columns beside it, a line
+-- under it, up to ns.SES_STATS small tiles, a quiet line of facts and the bar of the level. A
+-- session with nothing in it yet says what will come. Returns the card's data.
+local columns, sesStats = {}, {}
+local COL_H, COL_W, COL_GAP = 30, 5, 3
+local STAT_ICON, STAT_PAD, STAT_GAP = 20, 6, 10
+
+local function makeStat(i)
+    local t = CreateFrame("Frame", nil, home.sesStats)
+    t:SetHeight(30)
+    t.icon = S.IconBox(t, STAT_ICON)
+    t.icon:SetPoint("LEFT", 0, 0)
+    t.value = S.Text(t, 13, WHITE, nil, "bold")
+    t.value:SetPoint("TOPLEFT", STAT_ICON + STAT_PAD, 0)
+    t.value:SetWordWrap(false)
+    t.label = S.Text(t, 12, S.FAINT)
+    t.label:SetPoint("BOTTOMLEFT", STAT_ICON + STAT_PAD, 0)
+    t.label:SetWordWrap(false)
+    sesStats[i] = t
+    return t
+end
+
+local function textWidth(fs) return math.ceil(tonumber(fs:GetStringWidth()) or 0) end
+
+local function sessionTip(owner)
+    local d = home.session.data
+    if not d or d.empty then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    GameTooltip:SetText(L.SESSION, S.GOLD[1], S.GOLD[2], S.GOLD[3])
+    GameTooltip:AddLine(d.span, S.FAINT[1], S.FAINT[2], S.FAINT[3])
+    for _, g in ipairs(d.tip or {}) do
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddDoubleLine((g.icon and (S.TipIcon(g.icon) .. " ") or "") .. g.head, g.value, 1, 1, 1, 1, 1, 1)
+        for _, r in ipairs(g.rows or {}) do
+            local c = r[3] and S.BAD or S.TEXT
+            GameTooltip:AddDoubleLine("    " .. r[1], r[2], S.MUTED[1], S.MUTED[2], S.MUTED[3], c[1], c[2], c[3])
+        end
+    end
+    GameTooltip:Show()
+end
 
 local function fillSession(data, width)
     local card = home.session
-    local s = ns.Session(data)
-    if not s then card:Hide() return nil end
+    local d = ns.SessionCard(data)
+    card.data = d
     card:Show()
     card:SetWidth(width)
-    card.row = s.row
-    card:SetTitle(L.SESSION, s.span)
-    home.sesValue:SetText(s.value)
-    home.sesUnit:SetText(s.unit)
-    home.sesLine:SetText(S.Emph(s.line, WHITE))
+    card:SetTitle(L.SESSION, d.span)
+    local h = d.hero
+    home.sesEmpty:SetShown(d.empty == true)
+    home.sesFull:SetShown(not d.empty)
+    if d.empty then return d end
     local inner = width - 2 * S.INSET
-    local n = #s.bars
+    home.sesValue:SetText(h.value)
+    home.sesUnit:SetText(h.unit)
+    home.sesLine:SetText(S.Emph(h.line, WHITE))
+
+    -- The columns, at the right of the number; a young session grows from the left.
+    local n = #h.bars
     local max = 0
-    for _, v in ipairs(s.bars) do max = math.max(max, v) end
-    home.sesGraph:SetShown(n > 0 and max > 0)
-    if n > 0 and max > 0 then
-        -- always room for a full set of columns, so a young session grows from the left
-        local slots = ns.SESSION_BARS
-        local cw = math.floor((inner - (slots - 1) * COL_GAP) / slots)
+    for _, v in ipairs(h.bars) do max = math.max(max, v) end
+    local graph = n > 0 and max > 0
+    home.sesGraph:SetShown(graph)
+    if graph then
         local fill, last = S.FILL, S.Accent()
         for i = 1, n do
             local c = columns[i]
@@ -636,28 +675,84 @@ local function fillSession(data, width)
                 columns[i] = c
             end
             c:ClearAllPoints()
-            c:SetSize(cw, math.max(2, math.floor(COL_H * s.bars[i] / max + 0.5)))
-            c:SetPoint("BOTTOMLEFT", (i - 1) * (cw + COL_GAP), 1)
+            c:SetSize(COL_W, math.max(2, math.floor(COL_H * h.bars[i] / max + 0.5)))
+            c:SetPoint("BOTTOMLEFT", (i - 1) * (COL_W + COL_GAP), 1)
             if i == n then paint(c, last, 1) else paint(c, fill, 0.8) end
             c:Show()
         end
     end
-    for i = (max > 0 and n or 0) + 1, #columns do columns[i]:Hide() end
-    local p = s.progress
+    for i = (graph and n or 0) + 1, #columns do columns[i]:Hide() end
+
+    -- The small tiles side by side; labels give way when the row is too long.
+    local ns_ = #d.stats
+    home.sesStats:SetShown(ns_ > 0)
+    local total = 0
+    for i = 1, ns_ do
+        local st = d.stats[i]
+        local t = sesStats[i] or makeStat(i)
+        t.icon:SetIcon(st.icon)
+        t.value:SetWidth(0)
+        t.label:SetWidth(0)
+        t.value:SetText(st.value)
+        t.label:SetText(st.label)
+        t.textW, t.cut = math.max(textWidth(t.value), textWidth(t.label), 20) + 2, false
+        total = total + STAT_ICON + STAT_PAD + t.textW
+        t:Show()
+    end
+    total = total + math.max(0, ns_ - 1) * STAT_GAP
+    -- Too long for the card: the widest text gives way, the others keep theirs.
+    local over = total - inner
+    while over > 0 do
+        local widest
+        for i = 1, ns_ do
+            if not widest or sesStats[i].textW > widest.textW then widest = sesStats[i] end
+        end
+        if not widest or widest.textW <= 30 then break end
+        local cut = math.min(over, widest.textW - 30)
+        widest.textW, widest.cut, over = widest.textW - cut, true, over - cut
+    end
+    local x = 0
+    for i = 1, ns_ do
+        local t = sesStats[i]
+        if t.cut then
+            t.value:SetWidth(t.textW)
+            t.label:SetWidth(t.textW)
+        end
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", x, 0)
+        t:SetWidth(STAT_ICON + STAT_PAD + t.textW)
+        x = x + STAT_ICON + STAT_PAD + t.textW + STAT_GAP
+    end
+    for i = ns_ + 1, #sesStats do sesStats[i]:Hide() end
+
+    -- The quiet line: as many facts as fit.
+    local low, shown = home.sesLow, ""
+    low:SetWidth(inner)
+    for i, f in ipairs(d.facts) do
+        local try = (i > 1 and (shown .. S.DOT) or "") .. f
+        low:SetText(try)
+        if i > 1 and textWidth(low) > inner then break end
+        shown = try
+    end
+    low:SetText(shown)
+    low:SetShown(shown ~= "")
+
+    local p = h.progress
     home.sesBar:SetShown(p ~= nil)
     home.sesLeft:SetShown(p ~= nil)
     home.sesRight:SetShown(p ~= nil)
+    low:ClearAllPoints()
+    low:SetPoint("BOTTOMLEFT", 0, p and 20 or 2)
     if p then
         home.sesLeft:SetText(p.left)
         home.sesRight:SetText(p.right)
-        local lw = math.ceil(tonumber(home.sesLeft:GetStringWidth()) or 0)
-        local rw = math.ceil(tonumber(home.sesRight:GetStringWidth()) or 0)
+        local lw, rw = textWidth(home.sesLeft), textWidth(home.sesRight)
         local bw = inner - (lw > 0 and lw + 8 or 0) - (rw > 0 and rw + 8 or 0)
         home.sesBar:ClearAllPoints()
         home.sesBar:SetPoint("BOTTOMLEFT", lw > 0 and lw + 8 or 0, 4)
         home.sesBar:Set(bw, p.value, S.XP, nil, p.extra, { 0.35, 0.59, 1, 0.55 })
     end
-    return s
+    return d
 end
 
 -- A tile: the key number big in the colour of its tone, the module's name, one short line
@@ -939,17 +1034,16 @@ end
 local function fillHome(data)
     -- The top row: Ready and the session side by side, or the one that shows across the width.
     local ses = fillSession(data, SIDE_W)
-    local readyW = ses and (HOST_W - SIDE_W - GAP) or HOST_W
-    local ready = fillReady(readyW)
-    if ses and not ready then
+    local ready = fillReady(HOST_W - SIDE_W - GAP)
+    if not ready then
         home.session:SetWidth(HOST_W)
         fillSession(data, HOST_W)
     end
-    local top = (ses or ready) and (TOP_H + GAP) or 0
+    local top = TOP_H + GAP
 
     local shown = {}
     if ready then for _, r in ipairs(ns.Readiness()) do shown[r.key] = true end end
-    local list2 = ns.Tiles(data, shown, ses and ses.row.key or nil)
+    local list2 = ns.Tiles(data, shown, ses.hero and ses.hero.row and ses.hero.row.key or nil)
     local n = #list2
     local w = math.floor((HOST_W - (TILE_COLS - 1) * TILE_GAP) / TILE_COLS)
     for i = 1, n do
@@ -1969,12 +2063,14 @@ local function buildHome()
     home.ringNote:SetJustifyH("CENTER")
     home.ringNote:SetMaxLines(2)
 
-    -- The session: the number, its line, the columns over a hairline, the level's bar.
+    -- The session: the number with its columns, a line, the small tiles, the facts, the level's bar.
     local ses = S.Card(home, L.SESSION, "")
     ses:SetPoint("TOPRIGHT")
     ses:SetSize(SIDE_W, TOP_H)
     home.session = ses
-    local sb = ses.body
+    local sb = CreateFrame("Frame", nil, ses.body)
+    sb:SetAllPoints(ses.body)
+    home.sesFull = sb
     home.sesValue = S.Text(sb, 28, WHITE, nil, "title")
     home.sesValue:SetPoint("TOPLEFT", 0, 2)
     home.sesUnit = S.Text(sb, 13, S.MUTED)
@@ -1984,24 +2080,52 @@ local function buildHome()
     home.sesLine:SetPoint("RIGHT")
     home.sesLine:SetWordWrap(false)
     home.sesGraph = CreateFrame("Frame", nil, sb)
-    home.sesGraph:SetPoint("TOPLEFT", 0, -58)
-    home.sesGraph:SetPoint("TOPRIGHT", 0, -58)
-    home.sesGraph:SetHeight(COL_H + 1)
+    home.sesGraph:SetPoint("TOPRIGHT", 0, 0)
+    home.sesGraph:SetSize(ns.SESSION_BARS * (COL_W + COL_GAP) - COL_GAP, COL_H + 1)
     local base = S.Tex(home.sesGraph, "BACKGROUND", 0, LINE)
     base:SetHeight(1)
     base:SetPoint("BOTTOMLEFT")
     base:SetPoint("BOTTOMRIGHT")
+    home.sesStats = CreateFrame("Frame", nil, sb)
+    home.sesStats:SetPoint("TOPLEFT", 0, -66)
+    home.sesStats:SetPoint("TOPRIGHT", 0, -66)
+    home.sesStats:SetHeight(30)
+    local rule = S.Tex(home.sesStats, "BACKGROUND", 0, LINE)
+    rule:SetHeight(1)
+    rule:SetPoint("BOTTOMLEFT", home.sesStats, "TOPLEFT", 0, 7)
+    rule:SetPoint("BOTTOMRIGHT", home.sesStats, "TOPRIGHT", 0, 7)
+    home.sesLow = S.Text(sb, 12, S.MUTED)
+    home.sesLow:SetWordWrap(false)
+    home.sesLow:SetJustifyH("LEFT")
     home.sesLeft = S.Text(sb, 12, S.MUTED)
     home.sesLeft:SetPoint("BOTTOMLEFT")
     home.sesRight = S.Text(sb, 12, S.MUTED)
     home.sesRight:SetPoint("BOTTOMRIGHT")
     home.sesBar = makeBar(sb, 7)
-    -- The whole card opens the module the session comes from.
+    -- Nothing yet: what the card will show.
+    local se = CreateFrame("Frame", nil, ses.body)
+    se:SetAllPoints(ses.body)
+    home.sesEmpty = se
+    local seIcon = S.IconBox(se, 30, ns.SES_ICON.empty)
+    seIcon:SetPoint("TOP", 0, -22)
+    local seTitle = S.Text(se, 13, S.TEXT, nil, "bold")
+    seTitle:SetPoint("TOP", seIcon, "BOTTOM", 0, -8)
+    seTitle:SetText(L.SES_EMPTY)
+    local seText = S.Text(se, 13, S.MUTED)
+    seText:SetPoint("TOP", seTitle, "BOTTOM", 0, -4)
+    seText:SetWidth(SIDE_W - 2 * S.INSET - 24)
+    seText:SetJustifyH("CENTER")
+    seText:SetText(L.SES_EMPTY_D)
+    -- The whole card opens the module that leads it and tells the rest in its tooltip.
     local open = CreateFrame("Button", nil, ses)
     open:SetAllPoints(ses)
-    open:SetScript("OnClick", function() if ses.row then enter(ses.row) end end)
-    open:SetScript("OnEnter", function() S.Fill(ses, S.RAISED) end)
-    open:SetScript("OnLeave", function() S.Fill(ses, S.SURFACE) end)
+    open:SetScript("OnClick", function()
+        local d = ses.data
+        local row = d and d.hero and d.hero.row
+        if row then enter(row) end
+    end)
+    open:SetScript("OnEnter", function(self) S.Fill(ses, S.RAISED); sessionTip(self) end)
+    open:SetScript("OnLeave", function() S.Fill(ses, S.SURFACE); GameTooltip:Hide() end)
     home.sessionOpen = open
 
     -- At a glance: a label and the tiles, no card around them.

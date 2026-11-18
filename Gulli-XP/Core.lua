@@ -309,6 +309,17 @@ function ns.Summary()
     return line
 end
 
+-- Where the session's XP came from, for the hub's tooltip: { { "Kills", "61%" }, ... }.
+function ns.SourceRows(st)
+    local rows = {}
+    if st.gained <= 0 then return rows end
+    for _, e in ipairs({ { L.ROW_KILLS, st.killXP }, { L.ROW_QUESTS, st.questXP }, { L.ROW_OTHER, st.otherXP } }) do
+        local pct = math.floor(e[2] * 100 / st.gained + 0.5)
+        if pct > 0 then rows[#rows + 1] = { e[1], pct .. "%" } end
+    end
+    return rows
+end
+
 -- The session card of the hub's home page: the pace big, when the level comes, a column per
 -- ns.BUCKET of the session (the newest ns.SESSION_COLUMNS) and the bar of the level with the
 -- rested part. Nothing at the top level.
@@ -326,6 +337,11 @@ function ns.Session(now)
         line = st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.SUM_LEFT:format(ns.Short(st.left), st.level + 1),
         span = ns.Span(st.session), bars = bars,
         progress = { value = done, extra = rested, left = st.level, right = st.percent .. "%" },
+        -- when XP last came in, so another source leads the card after a while without any
+        at = ns.s.gained > 0 and ns.s.lastActive or ns.s.t,
+        tile = st.gained > 0 and { value = "+" .. ns.Short(st.gained), label = L.TITLE } or nil,
+        facts = st.readyN > 0 and { L.SUM_READY:format(ns.Short(st.ready), st.readyN) } or nil,
+        tip = { head = L.TITLE, value = ns.Short(st.gained), rows = ns.SourceRows(st) },
     }
 end
 

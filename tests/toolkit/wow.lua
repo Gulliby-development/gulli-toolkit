@@ -89,7 +89,6 @@ function Fake(spec)
     GetCursorPosition = function() return W.cursor[1], W.cursor[2] end
     GetMinimapShape = nil
     ClearCursor = function() end
-    C_Item = { GetItemInfo = function() end }
     ReloadUI = function() W.reloaded = true end
     Settings = nil
     print = function(...) W.printed[#W.printed + 1] = table.concat({ ... }, " ") end
@@ -102,13 +101,23 @@ function Fake(spec)
     date = os.date
     GulliToolkit = nil
     GulliToolkitDB = nil
+    GulliToolkitCharDB = nil
+    -- what the session counts: W.money, W.repair, W.honor = { cur, max }, W.hk
+    W.money, W.repair, W.honor, W.hk, W.quality = 0, 0, nil, nil, {}
+    GetMoney = function() return W.money end
+    GetRepairAllCost = function() return W.repair end
+    UnitHonor = function() return W.honor and W.honor[1] end
+    UnitHonorMax = function() return W.honor and W.honor[2] end
+    GetPVPLifetimeStats = function() return W.hk end
+    C_Item = { GetItemInfo = function(link) return "x", link, W.quality[tostring(link):match("item:(%d+)")] end }
+    MerchantFrame, MailFrame, issecretvalue = nil, nil, nil
     return W
 end
 
 function Load(dir)
     dir = dir or "Gulli-Toolkit/"
     local ns = {}
-    for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Skin.lua", "UI.lua" }) do
+    for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Session.lua", "Skin.lua", "UI.lua" }) do
         assert(loadfile(dir .. f))("Gulli-Toolkit", ns)
     end
     for _, f in ipairs(W.frames) do

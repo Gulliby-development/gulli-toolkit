@@ -445,6 +445,22 @@ function ns.Summary()
     return L.SUM:format(i.name, ns.Amount(t.kind, i.gained), rate), i.icon
 end
 
+-- The hub's session card: the first item target that gained is a small tile there, and every
+-- target a line of the card's tooltip. Gold is the hub's own number, so a gold target gives none.
+function ns.Session()
+    if not ns.s then return nil end
+    local tile, rows = nil, {}
+    for _, t in ipairs(ns.Targets()) do
+        local i = ns.Info(t)
+        if i.gained > 0 then
+            rows[#rows + 1] = { i.name, ns.Amount(t.kind, i.gained) }
+            if not tile and t.kind == "item" then tile = { icon = i.icon, value = ns.Short(i.gained), label = i.name } end
+        end
+    end
+    if not tile then return nil end
+    return { tile = tile, tip = { head = L.TITLE, value = "", rows = rows } }
+end
+
 -- Settings -------------------------------------------------------------------------------------
 
 ns.DEFAULTS = { panel = false, sales = true, alert = true, value = false, alpha = 100, scale = 100 }
@@ -578,6 +594,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
+        session = function() return ns.Session() end,
         move = function(on) ns.Move(on) end,
         frames = { { key = "panel", icon = ns.OPT_ICON.panel,
                      get = function() return ns.db ~= nil and ns.db.panel == true end,

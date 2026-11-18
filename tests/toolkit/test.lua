@@ -324,44 +324,293 @@ test("home tiles: the number a line starts with goes big, trouble comes first, a
     eq(#tiles, 8, "with the Ready card off its tile is back")
 end)
 
-test("the session card takes the first module that gives a session, XP before the others", function()
+test("a module's session: a number that can lead, a tile, facts and its part of the tooltip", function()
     local mods = {}
     for _, k in ipairs({ "QuestCleaner", "FarmTrack", "XP" }) do
         mods[#mods + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
     end
     Fake({ addons = mods })
     local ns = Load()
-    eq(ns.Session(), nil, "no module gives one")
     local bars = {}
     for i = 1, 20 do bars[i] = i end
-    local xp
+    local xp, farm
     GulliToolkit.Register({ key = "XP", open = function() end, session = function() return xp end })
     GulliToolkit.Register({ key = "FarmTrack", open = function() end, pause = function() end,
-        session = function() return { value = "12g", unit = "gold / h" } end })
+        session = function() return farm end })
     GulliToolkit.Register({ key = "QuestCleaner", open = function() end, session = function() error("boom") end })
-    eq(ns.Session().row.key, "FarmTrack", "XP has nothing to say: the next one")
-    xp = { value = "19k", unit = "XP / h", line = "Level 48 in 1 h", span = "1 h", bars = bars,
-           progress = { value = 0.9, extra = 0.5, left = 47, right = "90%" } }
-    local s = ns.Session()
-    eq(s.row.key, "XP")
+    local rows = byKey(ns.List())
+    eq(ns.SessionOf(rows.XP), nil, "nothing to say")
+    eq(ns.SessionOf(rows.QuestCleaner), nil, "an error is no session")
+    xp = { value = "19k", unit = "XP / h", line = "Level 48 in 1 h", span = "1 h", bars = bars, at = 990,
+           progress = { value = 0.9, extra = 0.5, left = 47, right = "90%" },
+           tile = { value = "+22k", label = "XP" }, facts = { "3.1k to hand in", 5, "" },
+           tip = { head = "Experience", value = "22k", rows = { { "kills", "61%" }, "junk", { "quests" } } } }
+    local s = ns.SessionOf(rows.XP)
     eq(#s.bars, ns.SESSION_BARS, "only the newest bars")
     eq(s.bars[#s.bars], 20)
     eq(s.progress.left, "47")
     assert(math.abs(s.progress.extra - 0.1) < 1e-9, "the lighter part never passes the end")
+    eq(s.tile.value, "+22k")
+    eq(#s.facts, 1, "only texts are facts")
+    eq(#s.tip.rows, 2, "only rows with a left side")
+    eq(s.tip.rows[2][2], "")
     xp = { unit = "no value" }
-    eq(ns.Session().row.key, "FarmTrack", "a session without a value is none")
+    eq(ns.SessionOf(rows.XP), nil, "neither a value nor a tile is no session")
+    farm = { tile = { value = 86, label = "Runecloth", icon = "cloth" } }
+    s = ns.SessionOf(rows.FarmTrack)
+    eq(s.value, nil, "a tile alone never leads")
+    eq(s.tile.value, "86")
     GulliToolkitDB.paused = { FarmTrack = true }
-    eq(ns.Session(), nil, "a paused module gives none")
-    GulliToolkitDB.paused = nil
-    xp = { value = "19k", bars = bars, progress = { value = 0.5, left = 47, right = "50%" } }
-    ns.Toggle()
-    eq(ns.Home().session:IsShown(), true, "the home page shows the card")
-    eq(ns.Home().session.row.key, "XP")
+    eq(ns.SessionOf(byKey(ns.List()).FarmTrack), nil, "a paused module gives none")
+end)
+
+local function sessionWorld(keys)
+    local mods = {}
+    for _, k in ipairs(keys or {}) do
+        mods[#mods + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
+    end
+    local w = Fake({ addons = mods })
+    local ns = Load()
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    return ns, w
+end
+
+test("the session counts honor from one source only", function()
+    local ns, w = sessionWorld()
+    eq(ns.HonorIn("Boar dies, honorable kill Rank: Scout (Estimated Honor Points: 12)"), 12)
+    eq(ns.HonorIn("You have been awarded 1,240 honor points."), 1240)
+    eq(ns.HonorIn("You have been awarded 1.240 honor points."), 1240)
+    eq(ns.HonorIn("Awarded 12.50 honor."), 12, "two digits after the point are a fraction")
+    eq(ns.HonorIn("no number"), nil)
+    ns.SesEvent("CHAT_MSG_COMBAT_HONOR_GAIN", "honorable kill (Estimated Honor Points: 12)")
+    ns.SesEvent("CURRENCY_DISPLAY_UPDATE", 1792, 500, 12)
+    eq(ns.ses.honor, 12, "the same kill told twice counts once")
+    ns.SesEvent("CHAT_MSG_COMBAT_HONOR_GAIN", "awarded 30 honor points")
+    ns.SesEvent("CURRENCY_DISPLAY_UPDATE", 1792, 530, 30)
+    eq(ns.ses.honor, 42)
+    eq(ns.ses.honorSrc, "chat")
+    -- another character's client: only the honor bar tells, and a new honor level wraps it
+    ns, w = sessionWorld()
+    w.honor = { 100, 1000 }
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    w.honor = { 900, 1000 }
+    ns.SesEvent("HONOR_XP_UPDATE")
+    w.honor = { 50, 1200 }
+    ns.SesEvent("HONOR_XP_UPDATE")
+    eq(ns.ses.honor, 800 + 100 + 50)
+    ns.SesEvent("CURRENCY_DISPLAY_UPDATE", 1, 10, 10)
+    eq(ns.ses.honor, 950, "another currency is not honor")
+    -- honorable kills: the lifetime number when the game has it, else the events
+    w.hk = 100
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    w.hk = 103
+    ns.SesEvent("PLAYER_PVP_KILLS_CHANGED")
+    eq(ns.ses.hk, 3)
+    GetPVPLifetimeStats = nil
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    ns.SesEvent("PLAYER_PVP_KILLS_CHANGED")
+    ns.SesEvent("PLAYER_PVP_KILLS_CHANGED")
+    eq(ns.ses.hk, 2)
+    -- a secret amount is left alone
+    issecretvalue = function(v) return v == "secret" end
+    ns.SesEvent("CHAT_MSG_COMBAT_HONOR_GAIN", "secret")
+    ns.SesEvent("CURRENCY_DISPLAY_UPDATE", 1792, 5, "secret")
+    eq(ns.ses.honor, 0)
+    issecretvalue = nil
+end)
+
+test("the session's gold is what was earned: loot, quests, vendors, less repairs", function()
+    local ns, w = sessionWorld()
+    local function gain(n) w.money = w.money + n; ns.SesEvent("PLAYER_MONEY") end
+    gain(500)
+    eq(ns.ses.gold.loot, 500)
+    -- a quest: its money comes after the event, or just before it
+    ns.SesEvent("QUEST_TURNED_IN", 1, 100, 300)
+    gain(300)
+    eq(ns.ses.gold.quest, 300)
+    eq(ns.ses.gold.loot, 500, "the reward is not loot too")
+    gain(200)
+    ns.SesEvent("QUEST_TURNED_IN", 2, 100, 200)
+    eq(ns.ses.gold.quest, 500)
+    eq(ns.ses.gold.loot, 500, "money that came first moves from loot to the quest")
+    eq(ns.ses.quests, 2)
+    -- the mailbox only moves money
+    MailFrame = { IsShown = function() return true end }
+    ns.SesEvent("MAIL_SHOW")
+    gain(10000)
+    gain(-4000)
+    MailFrame = { IsShown = function() return false end }
+    ns.SesEvent("MAIL_CLOSED")
+    eq(ns.SesEarned(), 1000)
+    -- a vendor: a sale counts, a purchase does not, a repair is taken off
+    MerchantFrame = { IsShown = function() return true end }
+    w.repair = 150
+    ns.SesEvent("MERCHANT_SHOW")
+    gain(250)
+    eq(ns.ses.gold.vendor, 250)
+    gain(-90)
+    eq(ns.ses.gold.repair, 0, "a purchase is no repair")
+    w.repair = 0
+    gain(-150)
+    eq(ns.ses.gold.repair, 150)
+    -- the bill may also drop a moment after the money left
+    w.repair = 40
+    ns.SesEvent("UPDATE_INVENTORY_DURABILITY")
+    gain(-40)
+    w.repair = 0
+    ns.SesEvent("UPDATE_INVENTORY_DURABILITY")
+    eq(ns.ses.gold.repair, 190)
+    -- a guild repair costs the character nothing
+    w.repair = 70
+    ns.SesEvent("UPDATE_INVENTORY_DURABILITY")
+    w.repair = 0
+    ns.SesEvent("UPDATE_INVENTORY_DURABILITY")
+    eq(ns.ses.gold.repair, 190)
+    eq(ns.SesEarned(), 500 + 500 + 250 - 190)
+    -- a close event that never came: the flag ends when the game says the window is gone
+    MerchantFrame = { IsShown = function() return false end }
+    gain(60)
+    eq(ns.ses.gold.loot, 560)
+end)
+
+test("the session keeps kills, deaths and the best loot, and a reload keeps the session", function()
+    local ns, w = sessionWorld()
+    ns.SesEvent("CHAT_MSG_COMBAT_XP_GAIN", "Boar dies, you gain 45 experience.")
+    ns.SesEvent("CHAT_MSG_COMBAT_XP_GAIN", "no number")
+    ns.SesEvent("PLAYER_DEAD")
+    eq(ns.ses.kills, 1)
+    eq(ns.ses.deaths, 1)
+    w.quality = { ["1"] = 2, ["2"] = 3, ["3"] = 4, ["4"] = 3 }
+    local function loot(id, name, who, guid)
+        ns.SesEvent("CHAT_MSG_LOOT", "You receive loot: |cff0070dd|Hitem:" .. id .. "::::|h[" .. name .. "]|h|r.", who,
+            nil, nil, nil, nil, nil, nil, nil, nil, nil, guid)
+    end
+    loot(1, "Green Belt", "Tester")
+    eq(ns.ses.best, nil, "an uncommon item is not worth a word")
+    loot(3, "Epic Blade", "Other-Realm", "Player-9")
+    eq(ns.ses.best, nil, "someone else's loot")
+    loot(2, "Blue Staff", "Tester-Realm")
+    eq(ns.ses.best.name, "Blue Staff")
+    loot(3, "Epic Blade", nil, w.GUID)
+    eq(ns.ses.best.name, "Epic Blade")
+    loot(4, "Blue Ring", "Tester")
+    eq(ns.ses.best.name, "Epic Blade", "a lower quality does not replace it")
+    -- a /reload goes on, a loading screen too, a login starts anew
+    ns.ses, ns.sesBusy = nil, nil
+    ns.SesEvent("PLAYER_ENTERING_WORLD", false, true)
+    eq(ns.ses.kills, 1)
+    ns.SesEvent("PLAYER_ENTERING_WORLD", false, false)
+    eq(ns.ses.deaths, 1)
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    eq(ns.ses.kills, 0)
+    eq(GulliToolkitCharDB.session, ns.ses)
+    -- an older save without a field
+    GulliToolkitCharDB.session = { t = 5, kills = 7, gold = { loot = 9 } }
+    ns.ses = nil
+    ns.SesEvent("PLAYER_ENTERING_WORLD", false, true)
+    eq(ns.ses.kills, 7)
+    eq(ns.ses.gold.repair, 0)
+    eq(ns.ses.honor, 0)
+    eq(ns.Num(1240), "1 240")
+    eq(ns.Num(999), "999")
+    eq(ns.Num(1234567), "1 234 567")
+end)
+
+test("the session card: who leads, the tiles under it, the facts and the tooltip", function()
+    local ns, w = sessionWorld({ "XP", "InstanceLimit", "FarmTrack" })
+    local card = ns.SessionCard()
+    eq(card.empty, true, "nothing happened yet")
+    local xp, runs, farm
+    GulliToolkit.Register({ key = "XP", open = function() end, session = function() return xp end })
+    GulliToolkit.Register({ key = "InstanceLimit", open = function() end, session = function() return runs end })
+    GulliToolkit.Register({ key = "FarmTrack", open = function() end, session = function() return farm end })
+    -- everything at once: XP leads, gold, honor and the dungeons stand under it
+    xp = { value = "19k", unit = "XP / h", line = "Level 48 in 1 h", span = "2 h 40 min", at = 1000,
+           tile = { value = "+50k", label = "XP" }, facts = { "3.1k to hand in" },
+           tip = { head = "Experience", value = "50k", rows = { { "kills", "61%" } } } }
+    runs = { value = "2", unit = "dungeons", at = 400, tile = { value = "2", label = "Dungeons" },
+             tip = { head = "Dungeons", value = "2", rows = { { "Maraudon", "41 min" } } } }
+    farm = { tile = { value = "86", label = "Runecloth" } }
+    w.money = 5000; ns.SesEvent("PLAYER_MONEY")
+    ns.SesEvent("CHAT_MSG_COMBAT_HONOR_GAIN", "awarded 1240 honor")
+    for _ = 1, 3 do ns.SesEvent("CHAT_MSG_COMBAT_XP_GAIN", "you gain 45 experience") end
+    ns.SesEvent("PLAYER_DEAD")
+    card = ns.SessionCard()
+    eq(card.hero.key, "XP")
+    eq(card.span, "2 h 40 min", "the leader's own span")
+    eq(#card.stats, ns.SES_STATS)
+    eq(card.stats[1].key, "Gold")
+    eq(card.stats[2].key, "Honor")
+    eq(card.stats[2].value, "+1 240")
+    eq(card.stats[3].key, "InstanceLimit")
+    eq(card.facts[1], "Kills: 3", "what found no tile is a fact")
+    eq(card.facts[2], "Deaths: 1")
+    eq(card.facts[3], "3.1k to hand in")
+    eq(card.tip[1].head, "Experience")
+    eq(card.tip[#card.tip].head, "Other")
+    eq(card.tip[#card.tip].rows[1][2], "3")
+    -- no XP for a quarter of an hour: honor, gained just now, leads
+    xp.at = 1000 - ns.SES_RECENT - 1
+    card = ns.SessionCard()
+    eq(card.hero.key, "Honor")
+    eq(card.hero.unit, "honor / h")
+    eq(card.stats[1].key, "Gold")
+    eq(card.stats[3].key, "FarmTrack", "the tiles keep their order, XP last")
+    -- at the top level there is no XP: honor, then the dungeons, then gold
     xp = nil
-    GulliToolkit.modules.FarmTrack.session = nil
+    card = ns.SessionCard(nil, 1000)
+    eq(card.hero.key, "Honor")
+    card = ns.SessionCard(nil, 1000 + ns.SES_RECENT + 1)
+    eq(card.hero.key, "Honor", "nobody gained lately: the first of the order")
+    ns.ses.honor = 0
+    runs.at = 1000
+    card = ns.SessionCard()
+    eq(card.hero.key, "InstanceLimit")
+    eq(card.stats[1].key, "Gold")
+    eq(card.stats[2].key, "FarmTrack")
+    eq(card.stats[3].key, "kills", "a free place takes a small counter")
+    eq(card.facts[1], "Deaths: 1")
+    runs, farm = nil, nil
+    card = ns.SessionCard()
+    eq(card.hero.key, "Gold")
+    eq(card.hero.unit, "/ h")
+    eq(#card.stats, 2)
+    -- only small counters: the first one leads
+    ns.ses.gold.loot = 0
+    card = ns.SessionCard()
+    eq(card.hero.key, "kills")
+    eq(card.hero.value, "3")
+    eq(card.hero.unit, "Kills")
+    eq(card.stats[1].key, "deaths")
+    -- the best loot is the last fact and a line of the tooltip
+    ns.ses.best = { name = "Epic Blade", q = 4 }
+    card = ns.SessionCard()
+    assert(card.facts[#card.facts]:find("Epic Blade", 1, true), "the best loot is a fact")
+    assert(card.tip[#card.tip].rows[#card.tip[#card.tip].rows][2]:find("Epic Blade", 1, true))
+end)
+
+test("the home page always shows the session card, empty at first", function()
+    local ns, w = sessionWorld({ "XP" })
+    local xp
+    GulliToolkit.Register({ key = "XP", open = function() end, session = function() return xp end })
+    ns.Toggle()
+    local home = ns.Home()
+    eq(home.session:IsShown(), true)
+    eq(home.sesEmpty:IsShown(), true, "nothing yet: the card says what will come")
+    eq(home.sesFull:IsShown(), false)
+    eq(home.session.data.hero, nil)
+    xp = { value = "19k", bars = { 1, 2, 3 }, progress = { value = 0.5, left = 47, right = "50%" } }
     ns.Refresh()
-    eq(ns.Home().session:IsShown(), false, "no session: the Ready card takes the row")
-    eq(ns.Home().ready:IsShown(), true)
+    eq(home.sesEmpty:IsShown(), false)
+    eq(home.session.data.hero.row.key, "XP", "a click opens the module that leads")
+    eq(home.sesBar:IsShown(), true)
+    xp = nil
+    w.money = 900; ns.SesEvent("PLAYER_MONEY")
+    eq(home.session.data.hero.row, nil, "the core's own source opens nothing")
+    eq(home.sesBar:IsShown(), false, "no level bar without a level")
+    home.sessionOpen:GetScript("OnEnter")(home.sessionOpen)
+    home.sessionOpen:GetScript("OnClick")(home.sessionOpen)
+    eq(home.ready:IsShown(), true)
     ns.ReadySet("show", false)
     ns.Refresh()
     eq(ns.Home().ready:IsShown(), false, "the Ready card is a setting")

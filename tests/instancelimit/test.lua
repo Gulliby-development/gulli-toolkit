@@ -329,6 +329,40 @@ test("the Settings page takes the footer's space when the footer hides", functio
     assert(hidden and y and hidden < y, "body reaches lower without the footer")
 end)
 
+test("the hub's session card: the runs of this character since the login", function()
+    Fake({ now = 1000, db = { entries = { { t = 100, name = "Old", map = 9, char = "Tester", out = 400, secs = 300 } }, open = {} } })
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    local ns = Load()
+    eq(got.session(), nil, "nothing before the first loading screen")
+    W.Go("Out", "none", 0)
+    eq(got.session(), nil, "a run before the login is not this session's")
+    W.now = 1100; W.Go("Maraudon", "party", 1)
+    W.now = 1100 + 2400; W.Go("Out", "none", 0)
+    W.now = 4000; W.Go("Uldaman", "party", 2)
+    table.insert(ns.db.entries, { t = 3900, name = "Alt's run", map = 3, char = "Other", out = 3950, secs = 50 })
+    W.now = 4600
+    local s = got.session()
+    eq(s.value, 2)
+    eq(s.unit, "Dungeons")
+    eq(s.line, "40:00 on average, now Uldaman 10:00")
+    eq(#s.bars, 2)
+    eq(s.bars[2], 600, "the run that still goes on grows")
+    eq(s.at, 4600, "inside a dungeon it gains right now")
+    eq(s.tile.value, 2)
+    eq(s.tip.rows[1][1], "Maraudon")
+    eq(s.tip.rows[1][2], "40:00")
+    W.now = 5000; W.Go("Out", "none", 0)
+    W.now = 9000
+    eq(got.session().at, 5000, "outside: when the last run ended")
+    -- a /reload keeps the session, a login starts a new one
+    W.Fire("PLAYER_ENTERING_WORLD", false, true)
+    eq(got.session().value, 2)
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(got.session(), nil)
+    GulliToolkit = nil
+end)
+
 test("every language has every key, with the same placeholders", function()
     Fake({})
     W.CheckLocales(Load())

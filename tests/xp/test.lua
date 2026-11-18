@@ -247,6 +247,12 @@ test("summary, shift-click to chat, move and reset for the hub", function()
     eq(ses.progress.value, 0.1)
     eq(ses.progress.left, 20)
     eq(ses.progress.right, "10%")
+    eq(ses.at, 600, "when XP last came in")
+    eq(ses.tile.value, "+1.0k", "its small tile while another source leads the card")
+    eq(ses.tile.label, "XP")
+    eq(ses.tip.rows[1][1], ns.L.ROW_OTHER, "where the XP came from, for the card's tooltip")
+    eq(ses.tip.rows[1][2], "100%")
+    eq(ses.facts, nil, "no finished quest waits")
     W.now = 600 + 20 * ns.BUCKET
     eq(#got.session().bars, ns.SESSION_COLUMNS, "only the newest columns")
     W.now = 600
