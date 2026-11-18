@@ -411,6 +411,12 @@ test("the tooltip says why an item stays or goes", function()
     eq(ns.ItemVerdict(16309, "Drakefire Amulet")[1], "TT_KEPT")
     eq(ns.ItemVerdict(5, "Linen Cloth"), nil, "not a quest item")
     eq(ns.ItemVerdict(9, "Future")[2], "Later Quest")
+    local line = ns.TipLines(4)[1]
+    eq(line.group, "state"); eq(line.color, ns.Skin.WARN, "an offered item warns")
+    eq(line.left:sub(1, 1), "N", "the phrase starts the line with a capital")
+    line = ns.TipLines(3)[1]
+    eq(line.group, "quest"); eq(line.unless, "quest", "steps back for the quest's own line")
+    eq(#ns.TipLines(5), 0, "not a quest item: no line")
 end)
 
 test("the quest log button, the key, the gamepad and the hub fields", function()

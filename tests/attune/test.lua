@@ -282,17 +282,14 @@ test("a secret unit on the world cursor tooltip is skipped, a plain one gets its
     issecretvalue = function(v) return v == SECRET end
     local called = 0
     UnitIsPlayer = function(u) called = called + 1; if u == SECRET then error("secret unit") end return true end
-    local added = {}
-    local function tip(unit) return { GetUnit = function() return nil, unit end,
-        AddLine = function(_, l) added[#added + 1] = l end } end
-    ns.UnitTooltip(tip(SECRET))
-    eq(called, 0, "a secret unit never reaches UnitIsPlayer"); eq(#added, 0)
+    eq(#ns.UnitTip(SECRET), 0)
+    eq(called, 0, "a secret unit never reaches UnitIsPlayer")
     UnitName = function() return SECRET end
-    ns.UnitTooltip(tip("mouseover"))
-    eq(#added, 0, "a secret name is skipped")
+    eq(#ns.UnitTip("mouseover"), 0, "a secret name is skipped")
     UnitName = function() return "Bob" end
-    ns.UnitTooltip(tip("mouseover"))
-    eq(added[1], "Onyxia's Lair: 9 of 16 steps")
+    local lines = ns.UnitTip("mouseover")
+    eq(lines[1].left, "Onyxia's Lair: 9 of 16 steps")
+    eq(lines[1].group, "note")
     issecretvalue = nil
 end)
 

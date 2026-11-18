@@ -314,4 +314,17 @@ test("random bags: sell only gray items with a price", function()
     assert(sold > 100, "the rounds sold too little to prove anything: " .. sold)
 end)
 
+test("a junk item's tooltip line goes into the Gulli block and warns", function()
+    Fake({ slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 1 } }, prices = { [10] = 5, [11] = 100 } })
+    local ns = Load()
+    ns.J.InstallMarks({ JUNK_TIP = "junk: sold at the vendor", ALWAYS_TIP = "on your \"always sell\" list" })
+    ns.J.SetAlways(10, true)
+    local l = ns.J.TipLines(10)[1]
+    assert(l, "no line for a junk item")
+    eq(l.group, "state"); eq(l.color, ns.Skin.WARN)
+    assert(l.icon and l.left:match("^%u"), "an icon and a capital: " .. l.left)
+    ns.J.SetAlways(10, false)
+    eq(#ns.J.TipLines(11), 0, "no line for the rest")
+end)
+
 W.finish()

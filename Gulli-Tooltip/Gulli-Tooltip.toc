@@ -1,16 +1,16 @@
 ## Interface: 16001
 ## Title: |cff9ad0ffGulli|r-Tooltip
-## Notes: Adds to tooltips: the price of a full stack, the quests that need the item, item and NPC ids. /gtt
-## Notes-ruRU: Добавляет в подсказки цену полной стопки, квесты, которым нужен предмет, ID предметов и NPC. /gtt
-## Notes-deDE: Ergänzt Tooltips: Preis eines vollen Stapels, Quests, die den Gegenstand brauchen, IDs. /gtt
-## Notes-esES: Añade a los tooltips: precio de un montón, misiones que necesitan el objeto, IDs. /gtt
-## Notes-esMX: Añade a los tooltips: precio de un montón, misiones que necesitan el objeto, IDs. /gtt
-## Notes-frFR: Ajoute aux infobulles : prix d'une pile pleine, quêtes qui demandent l'objet, IDs. /gtt
-## Notes-ptBR: Adiciona às dicas: preço de uma pilha, missões que precisam do item, IDs. /gtt
-## Notes-zhCN: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
-## Notes-zhTW: 在提示中加入整组价格、需要该物品的任务、物品和 NPC 的 ID。 /gtt
+## Notes: Adds to tooltips: the quests that need the item, how many you hold, the price of a full stack, where it drops, ids. /gtt
+## Notes-ruRU: Добавляет в подсказки задания, которым нужен предмет, сколько его у вас, цену полной стопки, откуда он падает, ID. /gtt
+## Notes-deDE: Ergänzt Tooltips: Quests, die den Gegenstand brauchen, wie viele du hast, Preis eines vollen Stapels, wo er droppt, IDs. /gtt
+## Notes-esES: Añade a los tooltips: misiones que necesitan el objeto, cuántos tienes, precio de un montón, dónde cae, IDs. /gtt
+## Notes-esMX: Añade a los tooltips: misiones que necesitan el objeto, cuántos tienes, precio de un montón, dónde cae, IDs. /gtt
+## Notes-frFR: Ajoute aux infobulles : quêtes qui demandent l'objet, combien vous en avez, prix d'une pile pleine, où il tombe, IDs. /gtt
+## Notes-ptBR: Adiciona às dicas: missões que precisam do item, quantos você tem, preço de uma pilha, onde cai, IDs. /gtt
+## Notes-zhCN: 在提示中加入需要该物品的任务、你拥有的数量、整组价格、掉落来源和 ID。 /gtt
+## Notes-zhTW: 在提示中加入需要该物品的任务、你拥有的数量、整组价格、掉落来源和 ID。 /gtt
 ## Author: Gulliby
-## Version: 1.11.3
+## Version: 1.12.0
 ## IconTexture: Interface\AddOns\Gulli-Tooltip\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Tooltip

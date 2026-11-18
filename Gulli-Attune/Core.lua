@@ -605,24 +605,23 @@ local function safe(fn, ...)
     local ok, v = pcall(fn, ...)
     if ok and not secret(v) then return v end
 end
-function ns.UnitTooltip(tip)
-    if not (tip and tip.GetUnit) then return end
-    local ok, _, unit = pcall(tip.GetUnit, tip)
-    if not ok or not unit or secret(unit) or not safe(UnitIsPlayer, unit) then return end
+-- The lines for the Gulli block (see S.TipCollect in the skin), under the module's icon.
+function ns.UnitTip(unit)
+    if not unit or secret(unit) or not safe(UnitIsPlayer, unit) then return {} end
     local name = safe(UnitName, unit)
-    if not name then return end
-    for _, line in ipairs(ns.TooltipLines(name)) do tip:AddLine(line, 0.6, 0.8, 1) end
+    if not name then return {} end
+    local out = {}
+    for _, line in ipairs(ns.TooltipLines(name)) do
+        out[#out + 1] = { group = "note", sub = true, icon = "Interface\\AddOns\\Gulli-Attune\\icon", left = line,
+                          color = ns.Skin.MUTED }
+    end
+    return out
 end
 local hooked = false
 function ns.HookTooltip()
     if hooked then return end
     hooked = true
-    local add = ns.UnitTooltip
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, add)
-    elseif GameTooltip and GameTooltip.HookScript then
-        GameTooltip:HookScript("OnTooltipSetUnit", add)
-    end
+    ns.Skin.TipProvider("unit", "Attune", function(_, _, unit) return ns.UnitTip(unit) end)
 end
 
 SLASH_GULLIATTUNE1 = "/gat"

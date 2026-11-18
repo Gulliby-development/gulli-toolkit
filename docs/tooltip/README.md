@@ -2,7 +2,7 @@
 
 <h1 align="center">Gulli-Tooltip</h1>
 
-<p align="center"><b>Adds prices, the quests that need an item, what your other characters hold, and ids to tooltips.</b></p>
+<p align="center"><b>Adds the quests that need an item, how many you hold, prices, where it drops, and ids to tooltips.</b></p>
 
 <p align="center">
   <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=Tooltip-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
@@ -18,14 +18,15 @@ Is this worth keeping? Which quest wanted it? Gulli Tooltip puts the answer in t
 
 ## Features
 
-- **Easy to read.** A thin line sets the Gulli lines apart from the game's and other addons' lines. Quests are yellow, money shows in gold, silver and copper colours, your characters in their class colours.
-- **Stack price.** What a full stack sells for at a vendor.
-- **Auction price of a full stack** from Auctionator, when you have it. Off by default, because Auctionator already shows the price of one.
-- **Quests that need it.** "Quest: Wolves 3/10" on a Wolf Pelt, from the quests in your log. The count turns green when your bags hold enough. Only the whole name counts: a Large Wolf Pelt is not a Wolf Pelt.
-- **Kill quests on NPCs** ("Quest: Kill boars 1/5" on a boar). Off by default, because the game may show this already.
+- **One tidy block.** A gold line sets the Gulli lines apart from the game's and other addons' lines. Inside, thin lines split the groups, and each group starts with a small game icon. The lines of the other Gulli modules (junk, Quest Cleaner, Party Quests, Craft Profit, Attune) stand in the same block.
+- **Colours with one meaning.** Gold is a quest or a boss, green is good news, orange is an item that will go, money shows in gold, silver and copper colours, your characters in their class colours.
 - **Protected** on items you protected in the Gulli Toolkit.
-- **Your other characters:** how many you have in all, then each character with its bags and bank, from Gulli Chores.
-- **Reagent for** your professions, from Gulli Craft Profit. Off by default, because the game already says "Crafting Reagent".
+- **Quests that need it.** "Wolves 3/10" on a Wolf Pelt, from the quests in your log. The count turns green with a check mark when your bags hold enough. Only the whole name counts: a Large Wolf Pelt is not a Wolf Pelt.
+- **You have:** how many you hold in all, then you and each other character with bags and bank. The other characters come from Gulli Chores.
+- **Stack price.** What a full stack sells for at a vendor.
+- **Auction price of a full stack** from Auctionator, when you have it. It also says when a vendor pays more than the auction house after its cut. Off by default, because Auctionator already shows the price of one.
+- **Professions** that use the item, from Gulli Craft Profit. Off by default, because the game already says "Crafting Reagent".
+- **Where it drops:** the boss, the dungeon and the chance, from the Dungeon Journal. It also says when the item is on your wish list.
 - **Ids** of items, NPCs and spells, for guides and bug reports. Off by default.
 - **Look:** prices and ids only while you hold **Shift**, the border in the item's quality colour, the tooltip at the cursor.
 - The window shows an **example tooltip** with only the lines you switched on.
@@ -50,9 +51,15 @@ It reads the objectives in your quest log. A quest that does not name the item i
 </details>
 
 <details>
-<summary><b>The line for my other characters is empty</b></summary>
+<summary><b>My other characters are missing</b></summary>
 
-It reads what Gulli Chores saved. Log in once on each character with Chores on, and open the bank there.
+Your own bags and bank come from the game. The other characters come from what Gulli Chores saved. Log in once on each character with Chores on, and open the bank there.
+</details>
+
+<details>
+<summary><b>Where is the quest line on monsters?</b></summary>
+
+The game itself shows the kill objectives on a monster, so Gulli Tooltip no longer repeats them.
 </details>
 
 <details>
