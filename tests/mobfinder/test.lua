@@ -281,6 +281,24 @@ test("the card's Target button gets a /targetexact macro out of combat, and wait
     eq(btn:GetAttribute("macrotext1") or btn:GetAttribute("macrotext"), "/targetexact Alice", "applied after combat")
 end)
 
+test("a find in a fight says Target waits, and the line drops it once Target shows", function()
+    Fake { db = { names = { "Nascent Pylon Protector" }, enabled = true },
+           plates = { { name = "Nascent Pylon Protector", guid = "G", level = 43, class = "elite" } } }
+    local ns = Load()
+    W.combat = true
+    Fire("PLAYER_LOGIN")
+    local cardF, btn = W.named.GulliMobFinderCard, W.named.GulliMobFinderTarget
+    assert(cardF:IsShown(), "the card shows in a fight")
+    assert(not btn:IsShown(), "Target waits for the end of the fight")
+    local L = ns.L
+    assert(cardF.text:GetText():find(L.AFTER_COMBAT, 1, true), "the line says Target waits")
+    eq(cardF.title:GetText(), "Nascent Pylon Protector", "the whole name is the title")
+    W.combat = false
+    Fire("PLAYER_REGEN_ENABLED")
+    assert(btn:IsShown(), "Target shows after the fight")
+    assert(not cardF.text:GetText():find(L.AFTER_COMBAT, 1, true), "the line no longer says it waits")
+end)
+
 test("a secret level in combat shows the card without an error", function()
     Fake { db = { names = { "Bob" }, enabled = true }, plates = { { name = "Bob", guid = "G", level = W.SECRET_VALUE } } }
     Load()
