@@ -589,6 +589,41 @@ test("the session card: who leads, the tiles under it, the facts and the tooltip
     assert(card.tip[#card.tip].rows[#card.tip[#card.tip].rows][2]:find("Epic Blade", 1, true))
 end)
 
+test("the session card's gold is an estimate when a module tells what the loot is worth", function()
+    local ns, w = sessionWorld({ "FarmTrack" })
+    local farm
+    GulliToolkit.Register({ key = "FarmTrack", open = function() end, session = function() return farm end })
+    local function gold(card)
+        for _, g in ipairs(card.tip or {}) do if g.head == "Gold" then return g end end
+    end
+    local function plain(text) return (text:gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    w.money = 20000; ns.SesEvent("PLAYER_MONEY")
+    ns.SesEvent("MERCHANT_SHOW"); w.money = 50000; ns.SesEvent("PLAYER_MONEY"); ns.SesEvent("MERCHANT_CLOSED")
+    local card = ns.SessionCard()
+    eq(ns.SesEarned(), 50000)
+    eq(#gold(card).rows, 2, "looted and sold")
+    local before = plain(gold(card).value)
+    -- the loot is worth 12 gold: it replaces the sales, since what was sold is in the worth
+    farm = { worth = 120000 }
+    card = ns.SessionCard()
+    eq(card.hero.key, "Gold", "a worth alone gives no tile and no leader of its own")
+    local g = gold(card)
+    eq(#g.rows, 2)
+    eq(g.rows[1][1], "Loot")
+    eq(g.rows[2][1], "Loot worth (estimate)")
+    assert(plain(g.value) ~= before, "the total is the estimate")
+    assert(plain(g.value):find("14"), plain(g.value))
+    -- nothing earned yet, but loot in the bags: the gold shows
+    ns.SesStart(time())
+    card = ns.SessionCard()
+    eq(card.hero.key, "Gold")
+    -- a worth that is no plain number is left out
+    farm = { worth = "many" }
+    eq(ns.SessionCard().empty, true)
+    farm = { worth = -5 }
+    eq(ns.SessionCard().empty, true)
+end)
+
 test("the home page always shows the session card, empty at first", function()
     local ns, w = sessionWorld({ "XP" })
     local xp

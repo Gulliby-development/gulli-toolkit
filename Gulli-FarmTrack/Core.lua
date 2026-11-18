@@ -391,16 +391,22 @@ function ns.ItemValue(id, enchanter)
     return vendor, "vendor"
 end
 
--- Everything the session looted at its worth, plus the gold looted. Second value: items the
--- client does not know yet (they count as nothing until it does).
-function ns.SessionValue()
-    local total, unknown = ns.s.money - (ns.s.sold or 0), 0
+-- The items the session looted at their worth. Second value: items the client does not know
+-- yet (they count as nothing until it does).
+function ns.ItemsWorth()
+    local total, unknown = 0, 0
     local enchanter = ns.CanDisenchant()
     for id, n in pairs(ns.s.items) do
         local v = ns.ItemValue(id, enchanter)
         if v then total = total + v * n else unknown = unknown + 1 end
     end
     return total, unknown
+end
+
+-- Everything the session looted at its worth, plus the gold looted.
+function ns.SessionValue()
+    local total, unknown = ns.ItemsWorth()
+    return total + ns.s.money - (ns.s.sold or 0), unknown
 end
 
 -- Text ------------------------------------------------------------------------------------------
@@ -446,7 +452,8 @@ function ns.Summary()
 end
 
 -- The hub's session card: the first item target that gained is a small tile there, and every
--- target a line of the card's tooltip. Gold is the hub's own number, so a gold target gives none.
+-- target a line of the card's tooltip. Gold is the hub's own number, so a gold target gives none;
+-- `worth` is what the looted items would bring, which the hub adds to its gold.
 function ns.Session()
     if not ns.s then return nil end
     local tile, rows = nil, {}
@@ -457,8 +464,9 @@ function ns.Session()
             if not tile and t.kind == "item" then tile = { icon = i.icon, value = ns.Short(i.gained), label = i.name } end
         end
     end
-    if not tile then return nil end
-    return { tile = tile, tip = { head = L.TITLE, value = "", rows = rows } }
+    local worth = ns.ItemsWorth()
+    if not tile and worth <= 0 then return nil end
+    return { tile = tile, worth = worth, tip = tile and { head = L.TITLE, value = "", rows = rows } or nil }
 end
 
 -- Settings -------------------------------------------------------------------------------------
