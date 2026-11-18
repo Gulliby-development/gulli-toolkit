@@ -12,12 +12,57 @@ local L = ns.L
 -- side. tag: "elite", "dungeon" or "raid" (a step whose area is a dungeon is "dungeon" anyway).
 -- Ids and names come from the QuestieDB Forever data.
 -- Only what WoW Forever has: a raid or dungeon that is not in Forever does not belong here.
--- Order is the order in the window: raids first, then the dungeon keys.
+-- Order is the order in the window: by `level`, the level the dungeon or raid opens at, lowest first.
 local BRD, LBRS, SW, BURNING = 1584, 1583, 1519, 46
 local WPL, TIRISFAL, TANARIS, DESOLACE, MARAUDON = 28, 85, 440, 405, 2100
 local HILLSBRAD, ALTERAC, DALARAN = 267, 36, 16544
 ns.RAIDS = {
-    { key = "ONY", area = 2159, faction = "Alliance", item = 16309, steps = {
+    -- Keys that only drop (Key to the City, Crescent Key) need no tracking.
+    -- City of Dalaran (Forever): the Dalaran Sewer Key comes with Heart of Disruption.
+    { key = "DALARAN", level = 28, area = DALARAN, faction = "Alliance", item = 277507, steps = {
+        { 92432, "An Alarming Request", "Emissary Jacques", HILLSBRAD },
+        { 92458, "Heart of Disruption", "Image of Archmage Modera", ALTERAC, tag = "dungeon" },
+    } },
+    { key = "DALARAN", level = 28, area = DALARAN, faction = "Horde", item = 277507, steps = {
+        { 544, "Prison Break In", "Magus Wordeen Voidglare", HILLSBRAD },
+        { 93680, "Key to the City", "Magus Wordeen Voidglare", HILLSBRAD },
+        { 545, "Dalaran Patrols", "Magus Wordeen Voidglare", HILLSBRAD },
+        { 92434, "Blood in the Streets", "Magus Wordeen Voidglare", HILLSBRAD },
+        { 96984, "Heart of Disruption", "Image of Archmage Modera", ALTERAC, tag = "dungeon" },
+    } },
+    { key = "MARA", level = 46, area = MARAUDON, item = 17191, steps = {
+        { 7044, "Legends of Maraudon", "Cavindra", DESOLACE },
+        { 7046, "The Scepter of Celebras", "Celebras the Redeemed", MARAUDON },
+    } },
+    { key = "BRD", level = 52, area = BRD, item = 11000, steps = {
+        { 3801, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
+        { 3802, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
+    } },
+    { key = "SCHOLO", level = 58, area = 2057, faction = "Alliance", item = 13704, steps = {
+        { 5092, "Clear the Way", "Commander Ashlam Valorfist", WPL },
+        { 5097, "All Along the Watchtowers", "Commander Ashlam Valorfist", WPL },
+        { 5533, "Scholomance", "Commander Ashlam Valorfist", WPL },
+        { 5537, "Skeletal Fragments", "Alchemist Arbington", WPL },
+        { 5538, "Mold Rhymes With...", "Alchemist Arbington", WPL },
+        { 5801, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
+        { 5803, "Araj's Scarab", "Alchemist Arbington", WPL },
+        { 5505, "The Key to Scholomance", "Alchemist Arbington", WPL },
+    } },
+    { key = "SCHOLO", level = 58, area = 2057, faction = "Horde", item = 13704, steps = {
+        { 5096, "Scarlet Diversions", "High Executor Derrington", TIRISFAL },
+        { 5098, "All Along the Watchtowers", "High Executor Derrington", TIRISFAL },
+        { 838, "Scholomance", "High Executor Derrington", TIRISFAL },
+        { 964, "Skeletal Fragments", "Apothecary Dithers", TIRISFAL },
+        { 5514, "Mold Rhymes With...", "Apothecary Dithers", TIRISFAL },
+        { 5802, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
+        { 5804, "Araj's Scarab", "Apothecary Dithers", TIRISFAL },
+        { 5511, "The Key to Scholomance", "High Executor Derrington", TIRISFAL },
+    } },
+    { key = "UBRS", level = 58, area = 1583, item = 12344, steps = {
+        { 4742, "Seal of Ascension", "Vaelan", LBRS },
+        { 4743, "Seal of Ascension", "Vaelan", LBRS, tag = "raid" },
+    } },
+    { key = "ONY", level = 60, area = 2159, faction = "Alliance", item = 16309, steps = {
         { 4182, "Dragonkin Menace", "Helendis Riverhorn", BURNING },
         { 4183, "The True Masters", "Helendis Riverhorn", BURNING },
         { 4184, "The True Masters", "Magistrate Solomon", 44 },
@@ -35,7 +80,7 @@ ns.RAIDS = {
         { 6501, "The Dragon's Eye", "Highlord Bolvar Fordragon", SW },
         { 6502, "Drakefire Amulet", "Haleh", 618, tag = "raid" },
     } },
-    { key = "ONY", area = 2159, faction = "Horde", item = 16309, steps = {
+    { key = "ONY", level = 60, area = 2159, faction = "Horde", item = 16309, steps = {
         { 4903, "Warlord's Command", "Warlord Goretooth", 3 },
         { 4941, "Eitrigg's Wisdom", "Warlord Goretooth", 3 },
         { 4974, "For The Horde!", "Thrall", 1637 },
@@ -50,51 +95,6 @@ ns.RAIDS = {
         { 6585, "The Test of Skulls, Axtroz", "Emberstrife", 15, after = { 6570 }, tag = "elite" },
         { 6601, "Ascension...", "Emberstrife", 15, after = { 6582, 6583, 6584, 6585 }, tag = "elite" },
         { 6602, "Blood of the Black Dragon Champion", "Rexxar", 357, tag = "raid" },
-    } },
-    { key = "UBRS", area = 1583, item = 12344, steps = {
-        { 4742, "Seal of Ascension", "Vaelan", LBRS },
-        { 4743, "Seal of Ascension", "Vaelan", LBRS, tag = "raid" },
-    } },
-    -- Dungeon keys from quest chains. Keys that only drop (Key to the City, Crescent Key) need no tracking.
-    { key = "BRD", area = BRD, item = 11000, steps = {
-        { 3801, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
-        { 3802, "Dark Iron Legacy", "Franclorn Forgewright", BRD },
-    } },
-    { key = "SCHOLO", area = 2057, faction = "Alliance", item = 13704, steps = {
-        { 5092, "Clear the Way", "Commander Ashlam Valorfist", WPL },
-        { 5097, "All Along the Watchtowers", "Commander Ashlam Valorfist", WPL },
-        { 5533, "Scholomance", "Commander Ashlam Valorfist", WPL },
-        { 5537, "Skeletal Fragments", "Alchemist Arbington", WPL },
-        { 5538, "Mold Rhymes With...", "Alchemist Arbington", WPL },
-        { 5801, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
-        { 5803, "Araj's Scarab", "Alchemist Arbington", WPL },
-        { 5505, "The Key to Scholomance", "Alchemist Arbington", WPL },
-    } },
-    { key = "SCHOLO", area = 2057, faction = "Horde", item = 13704, steps = {
-        { 5096, "Scarlet Diversions", "High Executor Derrington", TIRISFAL },
-        { 5098, "All Along the Watchtowers", "High Executor Derrington", TIRISFAL },
-        { 838, "Scholomance", "High Executor Derrington", TIRISFAL },
-        { 964, "Skeletal Fragments", "Apothecary Dithers", TIRISFAL },
-        { 5514, "Mold Rhymes With...", "Apothecary Dithers", TIRISFAL },
-        { 5802, "Fire Plume Forged", "Krinkle Goodsteel", TANARIS },
-        { 5804, "Araj's Scarab", "Apothecary Dithers", TIRISFAL },
-        { 5511, "The Key to Scholomance", "High Executor Derrington", TIRISFAL },
-    } },
-    -- City of Dalaran (Forever): the Dalaran Sewer Key comes with Heart of Disruption.
-    { key = "DALARAN", area = DALARAN, faction = "Alliance", item = 277507, steps = {
-        { 92432, "An Alarming Request", "Emissary Jacques", HILLSBRAD },
-        { 92458, "Heart of Disruption", "Image of Archmage Modera", ALTERAC, tag = "dungeon" },
-    } },
-    { key = "DALARAN", area = DALARAN, faction = "Horde", item = 277507, steps = {
-        { 544, "Prison Break In", "Magus Wordeen Voidglare", HILLSBRAD },
-        { 93680, "Key to the City", "Magus Wordeen Voidglare", HILLSBRAD },
-        { 545, "Dalaran Patrols", "Magus Wordeen Voidglare", HILLSBRAD },
-        { 92434, "Blood in the Streets", "Magus Wordeen Voidglare", HILLSBRAD },
-        { 96984, "Heart of Disruption", "Image of Archmage Modera", ALTERAC, tag = "dungeon" },
-    } },
-    { key = "MARA", area = MARAUDON, item = 17191, steps = {
-        { 7044, "Legends of Maraudon", "Cavindra", DESOLACE },
-        { 7046, "The Scepter of Celebras", "Celebras the Redeemed", MARAUDON },
     } },
 }
 

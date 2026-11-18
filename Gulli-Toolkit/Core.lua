@@ -10,8 +10,8 @@ Toolkit.modules = Toolkit.modules or {}
 Toolkit.api = 1
 
 -- Modules we make, shown in the hub even before they are installed.
-ns.KNOWN = { "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
-             "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
+ns.KNOWN = { "QuestCleaner", "MobFinder", "Attune", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
+             "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
              "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates", "FarmTrack" }
 
 -- The hub's categories in sidebar order. A known module has its category here; another module
