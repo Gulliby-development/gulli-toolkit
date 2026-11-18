@@ -135,6 +135,7 @@ function Toolkit.Register(a, b)
     if type(info) ~= "table" or type(info.key) ~= "string" or info.key == "" then return false end
     Toolkit.modules[info.key] = info
     if Toolkit.IsPaused(info.key) and type(info.pause) == "function" then pcall(info.pause, true) end
+    if ns.PlacePins then ns.PlacePins() end
     if ns.Refresh then ns.Refresh() end
     return true
 end
@@ -457,6 +458,82 @@ function ns.AngleTo(cx, cy, px, py)
     return math.deg(math.atan2(py - cy, px - cx)) % 360
 end
 
+-- Module buttons at the minimap: GulliToolkitDB.pins = { [module key] = angle }. Nothing is
+-- pinned until the player asks for it; a module's button shows only while the module runs.
+ns.PIN_TRIES = 40
+
+function ns.Pinned(key)
+    local p = GulliToolkitDB and GulliToolkitDB.pins
+    return p ~= nil and p[key] ~= nil
+end
+
+function ns.PinAngle(key)
+    local p = GulliToolkitDB and GulliToolkitDB.pins
+    return p and tonumber(p[key]) or nil
+end
+
+-- The first place beside the hub's button that no button has: steps of `step` degrees away
+-- from it, up the left side first.
+function ns.FreeAngle(step)
+    step = step or 26
+    local used = { ns.MinimapAngle() }
+    for _, a in pairs(GulliToolkitDB and GulliToolkitDB.pins or {}) do used[#used + 1] = tonumber(a) or 0 end
+    for i = 1, ns.PIN_TRIES do
+        local a = (ns.MinimapAngle() - i * step) % 360
+        local free = true
+        for _, u in ipairs(used) do
+            local d = math.abs(a - u) % 360
+            if math.min(d, 360 - d) < step - 0.5 then free = false end
+        end
+        if free then return a end
+    end
+    return (ns.MinimapAngle() - step) % 360
+end
+
+function ns.SetPinned(key, on, step)
+    if not key then return end
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.pins = GulliToolkitDB.pins or {}
+    if on then
+        if GulliToolkitDB.pins[key] == nil then GulliToolkitDB.pins[key] = ns.FreeAngle(step or ns.pinStep) end
+    else
+        GulliToolkitDB.pins[key] = nil
+    end
+    if ns.PlacePins then ns.PlacePins() end
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.SetPinAngle(key, angle)
+    if not ns.Pinned(key) then return end
+    GulliToolkitDB.pins[key] = angle
+end
+
+-- The module buttons the minimap shows now: the pinned modules that run and can be opened.
+-- A module that is off, paused or waits for a reload keeps its pin and gets the button back.
+function ns.Pins(rows)
+    local out = {}
+    for _, r in ipairs(rows or ns.List()) do
+        if ns.Pinned(r.key) and r.state == "ready" and r.on and r.info and type(r.info.open) == "function" then
+            out[#out + 1] = r
+        end
+    end
+    return out
+end
+
+function ns.PinnedCount(rows)
+    local n = 0
+    for _, r in ipairs(rows or ns.List()) do if ns.Pinned(r.key) then n = n + 1 end end
+    return n
+end
+
+-- The module's line of the home page, for its button's tooltip; nil when it has nothing to say.
+function ns.SummaryOf(row)
+    local fn = row and not row.paused and row.info and row.info.summary
+    if type(fn) ~= "function" then return nil end
+    local ok, text = pcall(fn)
+    if ok and type(text) == "string" and text ~= "" then return text end
+end
+
 function ns.Version()
     return version() or ""
 end
@@ -490,6 +567,7 @@ function ns.Switch(row, on)
     if not row then return false end
     if row.canPause and row.loadOn then
         setPaused(row.info, row.key, not on)
+        if ns.PlacePins then ns.PlacePins() end
         if ns.Refresh then ns.Refresh() end
         return true
     end
