@@ -1814,11 +1814,12 @@ local function build()
         { TI .. "INV_Misc_Head_Dragon_01", TI .. "INV_Misc_Bag_10", S.TAB.quests, S.TAB.settings })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", homeBtn, "TOPRIGHT", S.GAP, 0)
-    search = S.Edit(area, 140, 30)
+    -- beside the page tabs: lower than them and lifted, clear of the hairline under the tabs
+    search = S.Edit(area, 140, 28)
     search:SetJustifyH("LEFT")
     S.Placeholder(search, L.SEARCH)
-    search:SetPoint("TOPRIGHT")
-    search:SetPoint("LEFT", tabs.frame, "RIGHT", 8, 0)
+    search:SetPoint("TOPRIGHT", 0, 3)
+    search:SetPoint("TOPLEFT", tabs.frame, "TOPRIGHT", 8, 3)
     search:HookScript("OnTextChanged", function() ns.Refresh() end)
 
     -- The dungeon's header, like the top of a dungeon journal page.

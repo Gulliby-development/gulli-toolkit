@@ -502,9 +502,10 @@ local function build()
     tabs = S.PageTabs(body, { L.TAB_CHARS, L.TAB_OVERVIEW, L.TAB_SETTINGS }, nil, function() ns.Refresh() end, nil, { S.TAB.char, S.TAB.overview, S.TAB.settings })
     local labels = {}
     for i, k in ipairs(ns.FILTERS) do labels[i] = L["FILTER_" .. k:upper()] end
-    filterTabs = S.Tabs(body, labels, nil, function(i) ns.SetPref("filter", ns.FILTERS[i]) end)
+    -- beside the page tabs: lower than them and lifted, clear of the hairline under the tabs
+    filterTabs = S.Tabs(body, labels, nil, function(i) ns.SetPref("filter", ns.FILTERS[i]) end, 28)
     filterTabs.frame:ClearAllPoints()
-    filterTabs.frame:SetPoint("TOPRIGHT")
+    filterTabs.frame:SetPoint("TOPRIGHT", 0, 3)
     for i = 1, 3 do
         local p = CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
