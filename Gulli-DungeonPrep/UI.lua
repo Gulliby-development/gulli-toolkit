@@ -260,8 +260,8 @@ end
 
 -- A pin button targets and marks who it is for when they are near. Only a secure click may
 -- target, so while the mouse is on a pin button out of combat one secure button lies over it:
--- its click runs /targetexact, then the pin button's own click and ns.MarkTarget. In combat it
--- never shows, and the pin button works alone.
+-- its click runs /targetexact, then the pin button's own click. In combat it never shows, and
+-- the pin button works alone. It never sets a raid mark: SetRaidTarget is forbidden to addons.
 local overlay
 local function buildOverlay()
     overlay = CreateFrame("Button", "GulliDungeonPrepTarget", UIParent, "SecureActionButtonTemplate")
@@ -273,7 +273,6 @@ local function buildOverlay()
         local owner = self.owner
         local click = owner and owner:GetScript("OnClick")
         if click then click(owner, button) end
-        ns.MarkTarget(self.who)
     end)
     overlay:SetScript("OnEnter", function(self) if self.tip then self.tip(self) end end)
     overlay:SetScript("OnLeave", function(self)
@@ -1368,7 +1367,7 @@ local function buildDetail(parent)
     end)
     -- The work is in the dungeon: the way in.
     work.map:SetScript("OnClick", function() ns.PinEntrance(ns.selected) end)
-    -- Near by, the map buttons also target and mark the giver (ns.TargetOver).
+    -- Near by, the map buttons also target the giver (ns.TargetOver).
     local function targets(btn, whoOf)
         local function tip(owner)
             if not GameTooltip then return end

@@ -1003,29 +1003,12 @@ test("chains: one card per chain, at the step to do now; the tracker opens one t
     eq(finished, 1)
 end)
 
-test("a pin button near the giver targets and marks them, out of combat only", function()
+test("a pin button near the giver targets them, out of combat only, and never sets a raid mark", function()
     Fake({})
     local ns = Load()
-    local target, mark = nil, nil
-    UnitExists = function(u) return u == "target" and target ~= nil end
-    local name = UnitName
-    UnitName = function(u) if u == "target" then return target end return name(u) end
-    GetRaidTargetIndex = function() return mark end
-    SetRaidTarget = function(_, i) mark = (mark ~= i) and i or nil end
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "nobody targeted")
-    target = "Defias Pillager"
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "another target is not marked")
-    eq(mark, nil)
-    target = "Gryan Stoutmantle"
-    eq(ns.MarkTarget("Gryan Stoutmantle"), true)
-    eq(mark, 3, "a diamond")
-    ns.MarkTarget("Gryan Stoutmantle")
-    eq(mark, 3, "a second click keeps the mark")
-    issecretvalue = function() return true end
-    mark = nil
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "a secret name is not compared")
-    issecretvalue = nil
-    -- The secure button over the pin: its macro targets by name, its click pins and marks.
+    local forbidden
+    SetRaidTarget = function() forbidden = true end
+    -- The secure button over the pin: its macro targets by name, its click pins.
     local pinned
     local btn = W.stub()
     btn.GetCenter = function() return 100, 200 end
@@ -1038,12 +1021,12 @@ test("a pin button near the giver targets and marks them, out of combat only", f
     eq(ns.TargetOver(btn, "Gryan Stoutmantle"), true)
     local o = ns.TargetOverlay()
     eq(o.who, "Gryan Stoutmantle", "the macro targets by name")
-    mark = nil
     o:GetScript("PostClick")(o, "LeftButton", true)
     eq(pinned, nil, "nothing on the press")
     o:GetScript("PostClick")(o, "LeftButton", false)
     eq(pinned, true, "the pin's own click runs")
-    eq(mark, 3)
+    eq(forbidden, nil, "SetRaidTarget is forbidden to addons: never called")
+    SetRaidTarget = nil
 end)
 
 test("inside the dungeon: the data's flags, the stages of a quest's way, the tracker's mark", function()

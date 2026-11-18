@@ -1077,22 +1077,6 @@ end
 
 -- A map pin on someone the data places on a zone map (a quest giver, a turn-in, a chain step).
 -- Returns false when the spot is not on an outdoor map (inside a dungeon, an item).
--- The raid mark a quest giver gets when a pin button targets them (3, the diamond).
-ns.MARK = 3
-
--- After a pin button's secure click targeted who: marks the target when it is them. The game
--- may hand back a secret name; then nothing is marked. A mark the target already has stays
--- (setting the same one again would take it off).
-function ns.MarkTarget(who)
-    if not who or who == "" or not (UnitExists and UnitExists("target")) then return false end
-    local name = UnitName("target")
-    if issecretvalue and issecretvalue(name) then return false end
-    if name ~= who then return false end
-    if GetRaidTargetIndex and GetRaidTargetIndex("target") == ns.MARK then return true end
-    if SetRaidTarget then SetRaidTarget("target", ns.MARK) end
-    return true
-end
-
 -- A pin on a dungeon's way in, with the map open on it; with `probe` it only says whether
 -- the dungeon has one.
 function ns.PinEntrance(key, probe)
