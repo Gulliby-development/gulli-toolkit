@@ -1105,4 +1105,23 @@ test("a quest's page: the way in three stages, the dungeon's other quests beside
     assert(not d.startMap:IsShown(), "no map pin inside a dungeon")
 end)
 
+test("experience: the game's number for a quest in the log, else the data's, cut above the quest", function()
+    Fake({ level = 47, raceID = 2, faction = "Horde", active = { [168] = true } })
+    local ns = Load()
+    local xp, exact = ns.QuestXP(168, 18)
+    eq(xp, 1450); eq(exact, true, "in the log: the game says it")
+    -- Twisted Evils is level 47 and gives 5250 at its level.
+    eq(ns.Data.xp[7028], 5250)
+    xp, exact = ns.QuestXP(7028, 47)
+    eq(xp, 5250); eq(exact, false)
+    eq(ns.QuestXP(7028, 52), 5250, "five levels above still gives all of it")
+    eq(ns.QuestXP(7028, 53), 4200, "then a fifth less per level")
+    eq(ns.QuestXP(7028, 57), 525, "a tenth at the end, rounded like the game")
+    eq(ns.QuestXP(7028, 60), 0, "nothing at the top level")
+    eq(ns.QuestXP(1, 47), 0, "an unknown quest")
+    assert(ns.XPText(7028, 47):find("~5250 experience", 1, true), "the data's number is marked: " .. ns.XPText(7028, 47))
+    eq(ns.XPText(7028, 60), nil)
+    assert(not ns.XPText(168, 18):find("~", 1, true), "the game's number is not")
+end)
+
 W.finish()

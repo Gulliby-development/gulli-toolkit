@@ -680,6 +680,31 @@ function ns.LogReward(id)
     return type(xp) == "number" and xp or 0, type(money) == "number" and money or 0
 end
 
+-- The experience a quest gives this character, and whether the game itself said so (a quest
+-- in the log). Else it comes from the data (D.xp, at the quest's own level), cut like the
+-- game cuts it for a character above the quest; 0 when nothing is known or at the top level.
+ns.MAX_LEVEL = 60
+function ns.QuestXP(id, level)
+    local xp = ns.LogReward(id)
+    if onQuest(id) and xp > 0 then return xp, true end
+    local D = data()
+    local base, q = D.xp and D.xp[id], D.quest[id]
+    level = level or UnitLevel("player") or 1
+    if not base or not q or level >= ns.MAX_LEVEL then return 0, false end
+    local factor = math.max(1, math.min(10, 2 * (q[2] - level) + 20))
+    xp = base * factor / 10
+    local step, half = 50, 25
+    if xp <= 100 then step, half = 5, 2 elseif xp <= 500 then step, half = 10, 5 elseif xp <= 1000 then step, half = 25, 12 end
+    return step * math.floor((xp + half) / step), false
+end
+
+-- The same as a text in the experience colour: "5250 experience", with "~" when it is the data's.
+function ns.XPText(id, level)
+    local xp, exact = ns.QuestXP(id, level)
+    if xp <= 0 then return nil end
+    return ns.Skin.Hex(ns.Skin.XP) .. (exact and "" or "~") .. L.TT_XP:format(xp) .. "|r"
+end
+
 -- Group members (names) who have this quest too.
 function ns.GroupOn(id)
     local out = {}

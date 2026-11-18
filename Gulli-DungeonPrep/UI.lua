@@ -213,9 +213,10 @@ local function questTooltip(owner, item)
     if q.targets and #q.targets > 0 then
         GameTooltip:AddLine(L.TT_MOBS:format(table.concat(q.targets, ", ")), 0.7, 0.7, 0.7, true)
     end
+    local xpText = item.group ~= "done" and ns.XPText(q.id, ns.level)
+    if xpText then GameTooltip:AddLine(xpText) end
     if item.group == "log" then
-        local xp, cash = ns.LogReward(q.id)
-        if xp > 0 then GameTooltip:AddLine(L.TT_XP:format(xp), 0.6, 0.6, 1) end
+        local _, cash = ns.LogReward(q.id)
         if money(cash) then GameTooltip:AddLine(L.TT_MONEY:format(money(cash)), 1, 1, 1) end
         local others = ns.GroupOn(q.id)
         if #others > 0 then GameTooltip:AddLine(L.TT_GROUP:format(table.concat(others, ", ")), 0.4, 0.8, 1, true) end
@@ -493,6 +494,7 @@ local function fillRow(r, item)
     local parts = { S.Hex(ns.DiffColor(diff)) .. L.LEVEL:format(q.level) .. "|r" }
     if q.minLevel and q.minLevel > 0 then parts[2] = L.FROM_LEVEL:format(q.minLevel) end
     if q.steps and q.steps > 1 then parts[#parts + 1] = L.STEP:format(q.step, q.steps) end
+    if group ~= "done" then parts[#parts + 1] = ns.XPText(q.id, ns.level) end
     r.sub:SetText(table.concat(parts, "  ·  "))
     -- What comes next: the earlier quest first, where to hand in, how hard.
     local ahead = {}
@@ -1511,6 +1513,7 @@ function ns.FillDetail(level)
     local sub = { L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) }
     if q.steps and q.steps > 1 then sub[#sub + 1] = L.STEP:format(q.step, q.steps) end
     sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"]
+    sub[#sub + 1] = ns.XPText(q.id, level)
     d.sub:SetText(table.concat(sub, "  ·  "))
     local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state
     d.state:Set(L["STATE_" .. (state == "hidden" and "TAKE" or state):upper()] or "", STATE_COLOR[state] or S.MUTED)

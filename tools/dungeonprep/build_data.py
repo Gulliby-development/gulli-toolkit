@@ -182,6 +182,21 @@ def lua_list(values):
     return "{" + ",".join(str(v) for v in values) + "}"
 
 
+def load_xp(root):
+    """Quest -> (quest level, experience at that level), from QuestieDB's Forever QuestXP tables
+    (the classic table, then what players' traces measured in WoW Forever). Read as text."""
+    out = {}
+    d = os.path.join(root, "support", "Forever", "QuestXP")
+    for name in ("xpDB-classic.lua", "xpDB-traces.lua"):
+        path = os.path.join(d, name)
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            for m in re.finditer(r"^\s*(?:QuestXP\.db)?\[(\d+)\]\s*=\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}", fh.read(), re.M):
+                out[int(m.group(1))] = (int(m.group(2)), int(m.group(3)))
+    return out
+
+
 def load_att(root):
     """Dungeon key -> {quest id: "A" | "H" | ""} from an AllTheThings checkout, or {}."""
     if not root:
@@ -216,6 +231,7 @@ def load_guides(root):
 def main(root, att_root=None, gdq_root=None):
     # The data files and the Forever corrections, where everything Forever added lives.
     quests, npcs, objects, items = questie.load_forever(root)
+    quest_xp = load_xp(root)
     att_quests = load_att(att_root)
     guide_quests = load_guides(gdq_root)
     att_side = {}
@@ -597,6 +613,12 @@ def main(root, att_root=None, gdq_root=None):
     for qid in sorted(used):
         if rewards.get(qid):
             lines.append("[%d]=%s," % (qid, lua_list(sorted(rewards[qid]))))
+    lines.append("}")
+    lines.append("-- Quest -> the experience it gives at its own level (less for a character far above it).")
+    lines.append("D.xp = {")
+    for qid in sorted(used):
+        if qid in quest_xp and quest_xp[qid][1] > 0:
+            lines.append("[%d]=%d," % (qid, quest_xp[qid][1]))
     lines.append("}")
     lines.append("-- Dungeon -> quest -> what of it happens inside the dungeon: t taken, d done, h handed in.")
     lines.append("D.inside = {")
