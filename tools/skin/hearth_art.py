@@ -3,9 +3,10 @@
 with an alpha channel (the game tints them):
 Grain (128 px, tiles without a seam): soft paper fibres and fine grain under every window.
 Arc (256 px, Gulli-Toolkit/Art only): one mark of the Ready ring on the hub's home page.
-Mark (256 px, Gulli-Toolkit/Art only, not shared): the toolkit logo as a pale silhouette, the
-dim emblem behind the hub's home page.
-Needs Pillow for Mark (it reads docs/toolkit/icon.png). Run from the repository root, then
+Mark (512 px, Gulli-Toolkit/Art only, not shared): the toolkit's satchel as a pale silhouette, the
+dim emblem behind the hub's centre.
+Needs Pillow for Mark. It reads docs/toolkit/emblem.png, the satchel cut out of the painted logo
+with a clear background; a picture with its own background would show as a pale square. Run from the repository root, then
 tools/skin/sync.sh copies them into every module."""
 import math
 import random
@@ -15,7 +16,7 @@ from PIL import Image
 
 OUT = "Gulli-Toolkit/Media"
 N = 128
-MARK = 256
+MARK = 512
 
 
 def write_tga(path, w, h, alpha):
@@ -75,12 +76,24 @@ def grain():
 
 
 def mark():
-    im = Image.open("docs/toolkit/icon.png").convert("RGBA").resize((MARK, MARK), Image.LANCZOS)
+    src = Image.open("docs/toolkit/emblem.png").convert("RGBA")
+    if src.getextrema()[3][0] > 0:
+        raise SystemExit("docs/toolkit/emblem.png has no clear background")
+    src = src.crop(src.getbbox())
+    k = MARK / max(src.size)
+    src = src.resize((max(1, round(src.width * k)), max(1, round(src.height * k))), Image.LANCZOS)
+    # Fitted into the square, standing on its bottom edge and centred.
+    im = Image.new("RGBA", (MARK, MARK), (0, 0, 0, 0))
+    im.paste(src, ((MARK - src.width) // 2, MARK - src.height))
     out = []
     for r, g, b, a in list(im.getdata()):
-        lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255
-        out.append((a / 255) * (0.35 + 0.65 * lum))
+        lum = min(1.0, 1.25 * (0.3 * r + 0.59 * g + 0.11 * b) / 255)
+        out.append((a / 255) * (0.30 + 0.70 * lum))
     write_tga("Gulli-Toolkit/Art/Mark.tga", MARK, MARK, out)
+    # The same picture as a PNG for tools/preview, which cannot read TGA, in the hub's tint.
+    png = Image.new("RGBA", (MARK, MARK), (255, 219, 168, 0))
+    png.putalpha(Image.frombytes("L", (MARK, MARK), bytes(int(round(v * 255)) for v in out)))
+    png.save("tools/preview/mark.png", optimize=True)
 
 
 ARC, ARC_DEG, ARC_OUT, ARC_IN = 256, 5.6, 0.97, 0.83
