@@ -2063,6 +2063,16 @@ function ns.MoveOverlay(on)
     end
     overlay:SetShown(on and true or false)
     overlay.bar:SetShown(on and true or false)
+    -- The hub steps aside while frames are placed (it would cover them) and comes back after.
+    if on then
+        if frame and frame:IsShown() then
+            ns.hubAside = true
+            frame:Hide()
+        end
+    elseif ns.hubAside then
+        ns.hubAside = nil
+        if frame and not frame:IsShown() then frame:Show() end
+    end
     if on then
         panel:Show()
         ns.RefreshUnlock()
