@@ -1,15 +1,16 @@
 """Upload Gulli releases to CurseForge.
 
-    CF_API_TOKEN=... GH_TOKEN=... python3 tools/curseforge/upload.py owner/repo <tag | all | hourly>
+    CF_API_TOKEN=... GH_TOKEN=... python3 tools/curseforge/upload.py owner/repo <tag | all | toolkit>
 
 The projects are in tools/curseforge/projects.json. A module in "separate" has its own
 CurseForge project and gets its own release zip, uploaded after each of its releases. Every
 other folder (the core and the small modules) ships in the "toolkit" project as one zip, rebuilt
-from the newest release of each. A release from the Release workflow (FROM_RELEASE=1) does not
-upload it: "hourly" (the scheduled run) uploads one toolkit file when one of those folders was
-released since the last successful hourly run, so a batch of releases makes one file and an
-unchanged zip is never sent twice (CurseForge rejects it as a duplicate). A tag given by hand
-uploads at once; "all" uploads every project once. Without a token, or for a project without an id, it says so and does nothing.
+from the newest release of each. After a release of one of them, Release waits a few minutes
+(a newer release cancels the wait, see curseforge.yml) and then uploads one toolkit file, only
+when one of those folders was released since the last toolkit upload, so a batch of releases
+makes one file and an unchanged zip is never sent twice (CurseForge rejects it as a duplicate).
+"toolkit" does the same at once; another tag given by hand uploads that project at once; "all"
+uploads every project once. Without a token, or for a project without an id, it says so and does nothing.
 Standard library only.
 """
 
@@ -33,7 +34,7 @@ def targets(tag, config):
     sep = config["separate"]
     if tag == "all":
         return ["toolkit"] + sorted(sep)
-    if tag == "hourly":
+    if tag == "toolkit":
         return ["toolkit"]
     m = B.TAG.match(tag or "")
     if not m:
@@ -56,17 +57,24 @@ def toolkit_display(core, changed, groups, most=3):
     return display
 
 
-def last_hourly(repo, token):
-    """When the last successful hourly upload started. Before the first one, when the last
-    successful Release run ended, since Release uploaded the toolkit itself until then."""
-    def newest(query):
-        runs = json.loads(B.get("%s/repos/%s/actions/workflows/%s" % (B.API, repo, query), token)).get("workflow_runs", [])
-        return runs[0] if runs else None
-    run = newest("curseforge.yml/runs?event=schedule&status=success&per_page=1")
-    if run:
-        return run["created_at"]
-    run = newest("release.yml/runs?status=success&per_page=1")
-    return run["updated_at"] if run else None
+# The last toolkit upload before jobs were named "upload toolkit" (Gulli Toolkit 1.33.0).
+FIRST_SINCE = "2026-11-18T16:53:37Z"
+TOOLKIT_JOB = "upload toolkit"
+
+
+def last_toolkit_upload(repo, token):
+    """When the last successful toolkit upload job ended (ISO time)."""
+    newest = FIRST_SINCE
+    for wf in ("release.yml", "curseforge.yml"):
+        runs = json.loads(B.get("%s/repos/%s/actions/workflows/%s/runs?per_page=30" % (B.API, repo, wf), token))
+        for run in runs.get("workflow_runs", []):
+            if (run.get("updated_at") or "") <= newest:
+                continue
+            jobs = json.loads(B.get("%s/repos/%s/actions/runs/%d/jobs?per_page=100" % (B.API, repo, run["id"]), token))
+            for j in jobs.get("jobs", []):
+                if (j.get("name") or "").endswith(TOOLKIT_JOB) and j.get("conclusion") == "success":
+                    newest = max(newest, j.get("completed_at") or "")
+    return newest
 
 
 def route(tag, config):
@@ -153,9 +161,6 @@ def main(repo, tag):
         config = json.load(f)
     cf_token = os.environ.get("CF_API_TOKEN")
     gh_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if os.environ.get("FROM_RELEASE") == "1" and targets(tag, config) == ["toolkit"]:
-        print("::notice::%s goes into the Gulli Toolkit file of the next hourly upload." % tag)
-        return
     want = [t for t in targets(tag, config) if project_of(t, config).get("id")]
     for t in targets(tag, config):
         if t not in want:
@@ -180,8 +185,8 @@ def main(repo, tag):
             if "Core" not in groups:
                 raise SystemExit("no Core-v release yet")
             core = B.TAG.match(groups["Core"]["tag_name"]).group(2)
-            if tag == "hourly":
-                since = last_hourly(repo, gh_token)
+            if tag == "toolkit" or os.environ.get("FROM_RELEASE") == "1":
+                since = last_toolkit_upload(repo, gh_token)
                 changed = changed_groups(groups, config["separate"], since)
                 if not changed:
                     print("::notice::Nothing in the toolkit was released since %s; nothing uploaded." % since)
