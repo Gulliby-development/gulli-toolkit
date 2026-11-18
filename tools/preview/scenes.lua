@@ -618,8 +618,26 @@ local REM_ICONS = { [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", [588]
     [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow",
     [13165] = "Interface\\Icons\\Spell_Nature_RavenForm", [19506] = "Interface\\Icons\\Ability_TrueShot",
     [883] = "Interface\\Icons\\Ability_Hunter_BeastCall", [324] = "Interface\\Icons\\Spell_Nature_LightningShield" }
+-- Items and imbues of the class supplies, with their names, for the same previews.
+local REM_ITEMS = { [2892] = { "Deadly Poison", "Interface\\Icons\\Ability_Rogue_DualWeild" },
+    [6949] = { "Instant Poison II", "Interface\\Icons\\Ability_Poisons" },
+    [13928] = { "Grilled Squid", "Interface\\Icons\\INV_Misc_Fish_13" },
+    [12404] = { "Dense Sharpening Stone", "Interface\\Icons\\INV_Stone_SharpeningStone_05" },
+    [12643] = { "Dense Weightstone", "Interface\\Icons\\INV_Stone_WeightStone_05" },
+    [20749] = { "Brilliant Wizard Oil", "Interface\\Icons\\INV_Potion_105" } }
+local REM_SPELLS = { [8232] = { "Windfury Weapon", "Interface\\Icons\\Spell_Nature_Cyclone" },
+    [8024] = { "Flametongue Weapon", "Interface\\Icons\\Spell_Fire_FlameTounge" },
+    [8017] = { "Rockbiter Weapon", "Interface\\Icons\\Spell_Nature_RockBiter" },
+    [3552] = { "Conjure Mana Jade", "Interface\\Icons\\INV_Misc_Gem_Emerald_02" },
+    [759] = { "Conjure Mana Agate", "Interface\\Icons\\INV_Misc_Gem_Emerald_01" },
+    [1459] = { "Arcane Intellect", "Interface\\Icons\\Spell_Holy_MagicalSentry" },
+    [168] = { "Frost Armor", "Interface\\Icons\\Spell_Frost_FrostArmor02" },
+    [324] = { "Lightning Shield", "Interface\\Icons\\Spell_Nature_LightningShield" } }
 local function remIcons()
-    C_Spell.GetSpellTexture = function(id) return REM_ICONS[id] end
+    C_Spell.GetSpellTexture = function(id) return REM_ICONS[id] or (REM_SPELLS[id] or {})[2] end
+    C_Spell.GetSpellName = function(id) return (REM_SPELLS[id] or {})[1] or ("Spell" .. id) end
+    C_Item.GetItemIconByID = function(id) return (REM_ITEMS[id] or {})[2] end
+    C_Item.GetItemNameByID = function(id) return (REM_ITEMS[id] or {})[1] or ("Item" .. id) end
 end
 -- The panel on a dark stand-in screen, with room for its names.
 local function remStage(W)
@@ -645,6 +663,17 @@ S.reminders = {
                  crop = "GulliRemindersStage" },
     hunter = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, ammo = 120,
                         db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
+    -- Class supplies: the picks show the item or imbue a click uses.
+    rogue = { spec = { class = "ROGUE", items = { [6949] = 5, [2892] = 5, [13928] = 3 }, offHand = 50,
+                       db = { point = { "BOTTOMLEFT", 0, 0 }, foodItem = 13928, classes = { ROGUE = { main = 2892 } } } },
+              before = remIcons },
+    warrior = { spec = { class = "WARRIOR", items = { [12404] = 5, [12643] = 5 }, mainHand = 70, offHand = 71,
+                         sub = { [70] = 7, [71] = 4 }, db = { point = { "BOTTOMLEFT", 0, 0 }, classes = { WARRIOR = { weapon = true } } } },
+                before = remIcons },
+    shaman = { spec = { class = "SHAMAN", known = { 324, 8017, 8024, 8232 }, db = { point = { "BOTTOMLEFT", 0, 0 } } },
+               before = remIcons },
+    mage = { spec = { class = "MAGE", known = { 1459, 168, 759, 3552 }, items = { [20749] = 2 },
+                      db = { point = { "BOTTOMLEFT", 0, 0 } } }, before = remIcons },
 }
 
 S.autoquest = {

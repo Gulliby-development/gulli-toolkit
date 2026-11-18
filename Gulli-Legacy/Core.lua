@@ -1011,8 +1011,6 @@ if GulliToolkit and GulliToolkit.Register then
               get = function() return ns.db ~= nil and ns.db.raid == true end, set = function(v) ns.SetPref("raid", v) end },
             { label = ns.L.OPT_PVP, icon = ns.OPT_ICON.pvp, tip = ns.L.OPT_PVP_D,
               get = function() return ns.db ~= nil and ns.db.pvp == true end, set = function(v) ns.SetPref("pvp", v) end },
-            { label = ns.L.OPT_TRACKER, icon = ns.OPT_ICON.tracker, tip = ns.L.OPT_TRACKER_D,
-              get = function() return ns.db ~= nil and ns.db.tracker == true end, set = function(v) ns.SetPref("tracker", v) end },
         },
     })
 end

@@ -40,7 +40,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 
 ## How to use it
 
-1. Turn on **Show the bar on screen** in the window (under **Bar**). Place it in **Frames on screen** in `/gulli` (`/gulli unlock`) with the other Gulli frames; **Place: Reset** puts it back at the top.
+1. Turn the bar on in **Frames on screen** in `/gulli` (`/gulli unlock`) and place it there with the other Gulli frames; a right-click on it there puts it back at the top.
 2. Tap the bar, or type `/gxp`, for all numbers: **Session**, **Levels** and **Bar**. **Start again** (or `/gxp reset`) starts a new session.
 
 ## FAQ
