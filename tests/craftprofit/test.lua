@@ -644,6 +644,36 @@ test("the profession window is read with the modern API", function()
     eq(st.recipes[102].skill[3], 175, "grey from the game still wins")
 end)
 
+test("a pattern that asks for a reputation the character lacks is never planned", function()
+    local n = game()
+    n.Data.src[104] = { "v", 6, "Ally Gal|A" }
+    n.Data.spell[104] = { 150, 160, 170 }
+    eq(n.State().recipes[104].src.t, "vendor", "no requirement on the pattern")
+    -- the game paints the line red: not met, so neither the vendor nor the auction is a way
+    W.tips[6] = { { "Pattern: Thing" }, { "Requires Cenarion Circle - Honored", 1, 0.125, 0.125 } }
+    local src = n.State().recipes[104].src
+    eq(src.t, "rep"); eq(src.text, "Requires Cenarion Circle - Honored")
+    eq(n.CanGet({ src = src }, n.Prefs({})), false)
+    n.db.vendor[6] = 9000
+    eq(n.State().recipes[104].src.t, "rep", "the auction copy cannot be learned either")
+    local P = n.Prefs({})
+    local plan = n.Plan(n.State(), P)
+    eq(plan.buyRecipes[104], nil, "the route does not buy it")
+    local where
+    for _, row in ipairs(n.Recipes(n.State(), P)) do if row.recipe == 104 then where = row.src end end
+    eq(where, "rep", "the Recipes tab still lists it, with why")
+    -- met (white line): bought as before
+    W.tips[6][2] = { "Requires Cenarion Circle - Honored", 1, 1, 1 }
+    eq(n.State().recipes[104].src.t, "ah")
+    -- no colour from the client: the reputation list decides, and a faction it lacks is not met
+    W.tips[6][2] = { "Requires Cenarion Circle - Honored" }
+    eq(n.State().recipes[104].src.t, "rep")
+    W.factions = { { "Cenarion Circle", 5 } }
+    eq(n.State().recipes[104].src.t, "rep", "Friendly is below Honored")
+    W.factions = { { "Cenarion Circle", 6 } }
+    eq(n.State().recipes[104].src.t, "ah")
+end)
+
 test("a pattern's source and price come from the data; no pattern: the trainer", function()
     local n = game()
     -- sold by a vendor of each faction: the Alliance one counts; the price is four times its sell price

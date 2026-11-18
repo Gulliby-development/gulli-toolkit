@@ -38,7 +38,7 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 - **In the item tooltip:** how many of it the chosen run needs.
 - **Crafts now.** Your recipes in their game colour, sorted by profit per craft, and how many you can make from what you have. Tap a column head to sort by it; point at a row to see its reagents.
 - **My items.** For each material in your bags and bank: sell at the auction, sell to a vendor, or craft it.
-- **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first. Recipes that WoW Forever does not give (the Season of Discovery ones the game still lists, such as Invoker's Cord) are left out.
+- **Recipes.** Patterns you can buy or learn: from the trainer, a vendor (with the vendor's name), a quest, a drop or the auction, with the price, the profit per craft and after how many crafts the profit has paid for the pattern. The best profit first. Recipes that WoW Forever does not give (the Season of Discovery ones the game still lists, such as Invoker's Cord) are left out. A pattern that needs a reputation your character does not have yet shows **Reputation** as its source, and no route buys it.
 
 ## Install
 
