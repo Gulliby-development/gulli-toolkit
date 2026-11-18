@@ -576,8 +576,10 @@ local function texHtml(t, rect, prect)
             return string.format('<div class="tx" style="%s%sbackground:linear-gradient(180deg,%s,transparent)"></div>',
                 box(rect, prect), blend, css(c))
         elseif media == "Radial" then
-            return string.format('<div class="tx" style="%s%sbackground:radial-gradient(100%% 100%% at 0 0,%s,transparent)"></div>',
-                box(rect, prect), blend, css(c))
+            -- flipped texture coordinates turn the light to the bottom right corner
+            local at = tc[1] > tc[2] and "100% 100%" or "0 0"
+            return string.format('<div class="tx" style="%s%sbackground:radial-gradient(100%% 100%% at %s,%s,transparent)"></div>',
+                box(rect, prect), blend, at, css(c))
         elseif media == "Glow" then
             return string.format('<div class="tx" style="%sbackground:radial-gradient(circle closest-side,%s 0,%s 55%%,transparent 100%%)"></div>',
                 box(rect, prect), css(c), css(c))
@@ -597,9 +599,11 @@ local function texHtml(t, rect, prect)
         return string.format('<div class="tx" style="%sbackground:conic-gradient(from %.2fdeg,%s 0 5.6deg,transparent 5.6deg);-webkit-mask:%s;mask:%s"></div>',
             box(rect, prect), at - 2.8, css(c), m, m)
     end
+    -- The hub's emblem: the tinted PNG copy of Art/Mark, with the texture's cut.
     if tostring(tex):find("\\Art\\Mark$") then
-        return string.format('<div class="tx" style="%sbackground-image:url(\'file://' .. (os.getenv("PWD") or ".") .. '/docs/toolkit/icon.png\');background-size:100%% 100%%;filter:grayscale(1) sepia(1);opacity:%.3f"></div>',
-            box(rect, prect), c[4] or 1)
+        local tc = t.__tc or { 0, 1, 0, 1 }
+        return string.format('<div class="tx" style="%sbackground:url(\'file://%s/tools/preview/mark.png\') 0 0/%.2f%% %.2f%% no-repeat;opacity:%.3f"></div>',
+            box(rect, prect), os.getenv("PWD") or ".", 100 / math.max(0.01, tc[2] - tc[1]), 100 / math.max(0.01, tc[4] - tc[3]), c[4] or 1)
     end
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
         return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), round, css(c))

@@ -26,12 +26,10 @@ local LIST_W = SIDE + S.PAD - 1 - 2 * SIDE_IN - 10
 local ROW_H, HEAD_H = 30, 26
 local LABEL_H = 20
 local LINE_H = 24
--- The two cards of the Setup page, side by side.
-local SETUP_W = math.floor((HOST_W - 2 * S.INSET - GAP) / 2)
 -- The Setup page's buttons that are not presets (a preset names its own icon in ns.PRESETS),
 -- its own row in the list, and the Unlock link in the header.
 local QUICK_ICON = {
-    page = "Interface\Icons\INV_Misc_Gear_01",
+    page = "Interface\\Icons\\INV_Misc_Gear_01",
     move = "Interface\\Icons\\Ability_Hunter_Pathfinding",
     transfer = "Interface\\Icons\\INV_Misc_Note_01",
     protect = "Interface\\Icons\\Spell_Holy_SealOfProtection",
@@ -42,6 +40,8 @@ local GOOD, WAIT, BAD = S.GOOD, S.WARN, S.BAD
 local LINE, HOVER = S.LINE, S.HOVER
 local TOOLKIT_ICON = "Interface\\AddOns\\Gulli-Toolkit\\icon"
 local MARK = "Interface\\AddOns\\Gulli-Toolkit\\Art\\Mark"
+-- The emblem's size behind the centre, and how much of it runs off the window's corner.
+local MARK_SIZE, MARK_CUT_X, MARK_CUT_Y = 430, 34, 46
 
 -- page: "home", "module", "setup", "protect", "transfer", "ready" or "errors"; inside: the key of
 -- the docked module; from: the page a centre page was opened from ("setup"), where its close
@@ -51,6 +51,7 @@ local frame, side, search, placeholder, scroll, list, empty
 local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
 local host, hubSwitch, offWin, insideWin, card, home, homeRow, setupRow, setupFrame, unlockLink
 local rows, heads = {}, {}
+local fillSetup
 
 local function catName(key)
     if key == "All" then return L.ALL_MODULES end
@@ -1010,7 +1011,7 @@ function ns.Refresh()
     end
     if view.page == "home" then fillHome(data) end
 
-    if protectBtn then protectBtn.value:SetText(#ns.Protected()) end
+    if view.page == "setup" and setupFrame then fillSetup(data) end
     -- How many frames show on the screen, beside the link that places them.
     local fon, ftotal = ns.FrameCount()
     unlockLink:Set(ns.moving and L.MOVE_DONE or L.UNLOCK, ftotal > 0 and (fon .. "/" .. ftotal) or "")
@@ -1333,13 +1334,6 @@ local function buildSide()
     side:SetPoint("BOTTOMLEFT", -(S.PAD - 1), -(VPAD - 1))
     S.Box(side, S.SIDE, S.CLEAR, S.R_XL - 1, "bottomleft")
     S.Glass(side, S.R_XL)
-    -- The dim emblem of the toolkit behind the lower end of the module list.
-    local mark = side:CreateTexture(nil, "BACKGROUND", nil, -5)
-    mark:SetTexture(MARK)
-    mark:SetSize(SIDE - 20, SIDE - 20)
-    mark:SetPoint("BOTTOM", 0, 18)
-    mark:SetVertexColor(1, 0.86, 0.66, 0.06)
-    side.mark = mark
     local edge = line(side, LINE)
     edge:SetWidth(1)
     edge:SetPoint("TOPRIGHT")
@@ -1539,67 +1533,324 @@ local function link(parent, text)
     return b
 end
 
--- A full-width tool row of the Setup page: icon, label, an optional value on the right.
-local function toolRow(parent, text, icon, onClick)
-    local b = S.Button(parent, SETUP_W - 2 * S.INSET, 28)
-    S.SetButtonIcon(b, icon, 18)
-    b.text:ClearAllPoints()
-    b.text:SetPoint("LEFT", b.btnIcon, "RIGHT", 8, 0)
-    b.text:SetPoint("RIGHT", -40, 0)
-    b.text:SetJustifyH("LEFT")
-    b:SetText(text)
-    b.value = S.Text(b, 13, S.MUTED)
-    b.value:SetPoint("RIGHT", -10, 0)
+-- The Setup page ------------------------------------------------------------------------------
+-- What the player sets once, on the window's own background: the presets as cards that show
+-- their modules, the board of every module, the hub's own switches, the commands and the tools.
+local buildSetupPage
+do
+local PRESET_GAP, PRESET_H = 8, 122
+local PRESET_W = math.floor((HOST_W - 3 * PRESET_GAP) / 4)
+local SETUP_TOP, BOARD_TOP = 66, 220
+local TOOL_GAP, TOOL_H, FOOT_H = 10, 108, 26
+local TOOL_W = math.floor((HOST_W - 2 * TOOL_GAP) / 3)
+local TOOLS_TOP = HOST_H - FOOT_H - TOOL_H - 6
+local BOARD_W = MID - 16
+local BOARD_H = TOOLS_TOP - S.GAP - BOARD_TOP
+local BOARD_LABEL, BOARD_COUNT, BOARD_ICON = 168, 34, 30
+local MINI, MINI_MAX = 18, 9
+
+local function width(t)
+    return math.floor((tonumber((t:GetStringWidth())) or 0) + 0.5)
+end
+
+-- A small pill at the right of the page's title: a number with its words.
+local function setupChip(parent, button)
+    local c = CreateFrame(button and "Button" or "Frame", nil, parent)
+    c:SetHeight(26)
+    S.Box(c, S.SURFACE, S.CARD_EDGE, 11)
+    c.text = S.Text(c, 12, S.MUTED)
+    c.text:SetPoint("RIGHT", -11, 0)
+    c.text:SetWordWrap(false)
+    function c:Set(text, lead)
+        self.text:SetText(text)
+        self:SetWidth(width(self.text) + 22 + (lead or 0))
+    end
+    return c
+end
+
+-- A module on the board or on a preset card: its round icon, and on the board the dot of its state.
+local function modIcon(parent, size, dot)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size, size)
+    b.icon = S.IconBox(b, size)
+    b.icon:SetPoint("CENTER")
+    if dot then
+        b.dotBack = S.Circle(b, 11, S.SOLID, "OVERLAY", 1)
+        b.dotBack:SetPoint("CENTER", b, "BOTTOMRIGHT", -3, 3)
+        b.dot = S.Circle(b, 7, S.GOOD, "OVERLAY", 2)
+        b.dot:SetPoint("CENTER", b.dotBack, "CENTER")
+        b.dotIn = S.Circle(b, 3, S.SOLID, "OVERLAY", 3)
+        b.dotIn:SetPoint("CENTER", b.dotBack, "CENTER")
+    end
+    b:SetScript("OnLeave", hideTip)
+    return b
+end
+
+-- The state of a module as the board shows it: the dot's colour, a hollow dot and a grey icon
+-- for one that is off, so no state shows by colour alone.
+local function paintMod(b, row)
+    b.row = row
+    b.icon:SetIcon(row.icon)
+    local off = not row.on
+    if b.icon.tex.SetDesaturated then b.icon.tex:SetDesaturated(off) end
+    b.icon.tex:SetAlpha(off and 0.55 or 1)
+    b.icon:SetGlow(off and S.EDGE or nil)
+    if b.dot then
+        local c = (row.state == "blocked" and BAD) or (row.state == "reload" and WAIT) or (off and S.FAINT) or GOOD
+        b.dot:SetVertexColor(c[1], c[2], c[3], 1)
+        b.dotIn:SetShown(off and row.state ~= "reload")
+    end
+end
+
+local function boardTip(self)
+    local row = self.row
+    if not row then return end
+    local text, color = stateText(row)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(row.title, S.GOLD[1], S.GOLD[2], S.GOLD[3], 1, true)
+    GameTooltip:AddLine(catName(row.category) .. S.DOT .. text, color[1], color[2], color[3], true)
+    if self.can then
+        local a = S.Accent()
+        GameTooltip:AddLine(row.on and L.BOARD_OFF or L.BOARD_ON, a[1], a[2], a[3], true)
+    end
+    GameTooltip:Show()
+end
+
+-- A switch from the board: the same switch as the one in a module's header.
+local function boardClick(self)
+    local row = self.row and findRow(self.row.key)
+    if not row or not self.can then return end
+    ns.Switch(row, not row.on)
+    ns.Refresh()
+    if GameTooltip:IsOwned(self) then boardTip(self) end
+end
+
+local presetCards, boardRows, boardIcons = {}, {}, {}
+
+local function makePreset(parent, i, p)
+    local c = CreateFrame("Frame", nil, parent)
+    c:SetSize(PRESET_W, PRESET_H)
+    c:SetPoint("TOPLEFT", (i - 1) * (PRESET_W + PRESET_GAP), -(SETUP_TOP + 20))
+    S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(c, S.R_LG)
+    c.key = p.key
+    c.icon = S.IconBox(c, 36, p.icon)
+    c.icon:SetPoint("TOPLEFT", 12, -12)
+    c.name = S.Text(c, 16, S.GOLD, nil, "title")
+    c.name:SetPoint("TOPLEFT", 58, -11)
+    c.name:SetPoint("RIGHT", -8, 0)
+    c.name:SetWordWrap(false)
+    c.name:SetText(L["PRESET_" .. p.key])
+    c.count = S.Text(c, 12, S.MUTED)
+    c.count:SetPoint("TOPLEFT", 58, -32)
+    c.count:SetPoint("RIGHT", -8, 0)
+    c.count:SetWordWrap(false)
+    c.minis = {}
+    c.apply = S.Button(c, PRESET_W - 24, 26)
+    c.apply:SetPoint("BOTTOM", 0, 10)
+    c.apply:SetText(L.SETUP_APPLY)
+    local a = S.Accent()
+    c.apply.text:SetTextColor(a[1], a[2], a[3], 1)
+    c.apply:SetScript("OnClick", function()
+        local n = ns.ApplyPreset(p.key)
+        ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
+        ns.Refresh()
+    end)
+    return c
+end
+
+local function miniTip(self)
+    if self.row then tip(self, self.row.title, { catName(self.row.category) }) end
+end
+
+-- The preset's modules that are installed, as small icons in the preset's own order.
+local function fillPreset(c, p, byKey)
+    local n = 0
+    for _, k in ipairs(p.modules) do
+        local row = byKey[k]
+        if row and n < MINI_MAX then
+            n = n + 1
+            local m = c.minis[n]
+            if not m then
+                m = modIcon(c, MINI)
+                m:SetScript("OnEnter", miniTip)
+                c.minis[n] = m
+            end
+            m.row = row
+            m.icon:SetIcon(row.icon)
+            m:Show()
+        end
+    end
+    local step = math.min(MINI + 2, math.floor((PRESET_W - 24) / math.max(1, n)))
+    for i, m in ipairs(c.minis) do
+        m:SetShown(i <= n)
+        m:ClearAllPoints()
+        m:SetPoint("TOPLEFT", 12 + (i - 1) * step, -58)
+    end
+    c.shown = n
+    c.count:SetText(L.MODULES_N:format(n))
+end
+
+-- The board: a line per group, its modules as icons. The lines share the card's height, and a
+-- group with many modules moves its icons closer, so every installed module has a place.
+local function fillBoard(board, data)
+    local groups = ns.Groups(data)
+    local rowH = math.min(40, math.floor((BOARD_H - 36 - S.INSET) / math.max(1, #groups)))
+    local size = math.min(BOARD_ICON, rowH - 8)
+    local room = BOARD_W - 2 * S.INSET - BOARD_LABEL - BOARD_COUNT
+    local used = 0
+    for gi, g in ipairs(groups) do
+        local line = boardRows[gi]
+        if not line then
+            line = CreateFrame("Frame", nil, board.body)
+            line.label = S.Text(line, 13)
+            line.label:SetPoint("LEFT")
+            line.label:SetWidth(BOARD_LABEL - 6)
+            line.label:SetWordWrap(false)
+            line.count = S.Text(line, 12, S.FAINT)
+            line.count:SetPoint("LEFT", BOARD_LABEL, 0)
+            line.count:SetWidth(BOARD_COUNT)
+            boardRows[gi] = line
+        end
+        line:ClearAllPoints()
+        line:SetPoint("TOPLEFT", 0, -(gi - 1) * rowH)
+        line:SetPoint("TOPRIGHT", 0, -(gi - 1) * rowH)
+        line:SetHeight(rowH)
+        line.key = g.key
+        line.label:SetText(catName(g.key))
+        local on = 0
+        local step = math.min(size + 9, math.floor(room / #g.rows))
+        local sz = math.max(18, math.min(size, step - 4))
+        for ri, row in ipairs(g.rows) do
+            if row.on then on = on + 1 end
+            used = used + 1
+            local b = boardIcons[used]
+            if not b or b.size ~= sz then
+                if b then b:Hide() end
+                b = modIcon(board.body, sz, true)
+                b.size = sz
+                b:SetScript("OnEnter", boardTip)
+                b:SetScript("OnClick", boardClick)
+                boardIcons[used] = b
+            end
+            b:ClearAllPoints()
+            b:SetPoint("LEFT", line, "LEFT", BOARD_LABEL + BOARD_COUNT + (ri - 1) * step, 0)
+            -- A module the hub cannot switch (no addon of its own to switch and no pause) only shows.
+            b.can = row.addon ~= nil or row.canPause == true
+            paintMod(b, row)
+            b:Show()
+        end
+        line.count:SetText(on .. "/" .. #g.rows)
+        line:Show()
+    end
+    for i = #groups + 1, #boardRows do boardRows[i]:Hide() end
+    for i = used + 1, #boardIcons do boardIcons[i]:Hide() end
+    board.groups, board.shown, board.icons = #groups, used, boardIcons
+end
+
+-- A tool of the Setup page as a tile: icon, name, what it is for, and where it leads.
+local function toolTile(parent, i, text, desc, icon, onClick)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(TOOL_W, TOOL_H)
+    b:SetPoint("TOPLEFT", (i - 1) * (TOOL_W + TOOL_GAP), -TOOLS_TOP)
+    S.Box(b, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(b, S.R_LG)
+    b.icon = S.IconBox(b, 36, icon)
+    b.icon:SetPoint("TOPLEFT", 12, -14)
+    b.value = S.Text(b, 28, WHITE, nil, "title")
+    b.value:SetPoint("BOTTOMRIGHT", -14, 6)
     b.value:SetJustifyH("RIGHT")
+    b.title = S.Text(b, 15, S.GOLD, nil, "title")
+    b.title:SetPoint("TOPLEFT", 58, -13)
+    b.title:SetPoint("RIGHT", -10, 0)
+    b.title:SetWordWrap(false)
+    b.title:SetText(text)
+    b.desc = S.Note(b, 12)
+    b.desc:SetPoint("TOPLEFT", 58, -36)
+    b.desc:SetPoint("RIGHT", -14, 0)
+    b.desc:SetMaxLines(3)
+    b.desc:SetText(desc)
+    b.go = S.Text(b, 12, S.Accent())
+    b.go:SetPoint("BOTTOMLEFT", 58, 9)
+    b.go:SetPoint("RIGHT", b.value, "LEFT", -6, 0)
+    b.go:SetWordWrap(false)
+    b.go:SetText(L.OPEN .. " »")
+    b:SetScript("OnEnter", function(self) S.Fill(self, S.RAISED) end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.SURFACE) end)
     b:SetScript("OnClick", onClick)
     return b
 end
 
--- The Setup page: what the player sets once. The presets and the tools at the left, the
--- hub's own switches and its size at the right.
-local function buildSetupPage()
-    setupFrame = centrePage("GulliToolkitSetupPage", L.SETUP_PAGE)
-    setupFrame.hint:SetText(L.SETUP_PAGE_HINT)
-    local quick = S.Card(setupFrame, L.QUICK)
-    quick:SetWidth(SETUP_W)
-    quick:SetPoint("TOPLEFT", S.INSET, -84)
-    local q = quick.body
-    local bw = math.floor((SETUP_W - 2 * S.INSET - 6) / 2)
-    for i, p in ipairs(ns.PRESETS) do
-        local b = S.Button(q, bw, 30)
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * (bw + 6), -math.floor((i - 1) / 2) * 36)
-        b:SetText(L["PRESET_" .. p.key])
-        S.SetButtonIcon(b, p.icon, 18)
-        b:SetScript("OnClick", function()
-            local n = ns.ApplyPreset(p.key)
-            ns.Print(n > 0 and L.PRESET_DONE:format(n) or L.PRESET_SAME)
-        end)
-        b:HookScript("OnEnter", function(self)
-            local names = {}
-            for _, k in ipairs(p.modules) do names[#names + 1] = (moduleName(k)) end
-            tip(self, L["PRESET_" .. p.key], { L.PRESET_TIP, table.concat(names, ", ") })
-        end)
-        b:HookScript("OnLeave", hideTip)
+function fillSetup(data)
+    local p = setupFrame
+    local byKey, on, waits = {}, 0, 0
+    for _, r in ipairs(data) do
+        byKey[r.key] = r
+        if r.on then on = on + 1 end
+        if r.state == "reload" then waits = waits + 1 end
     end
-    local y = math.ceil(#ns.PRESETS / 2) * 36 + 4
-    local tr = toolRow(q, L.TRANSFER, QUICK_ICON.transfer, function()
-        if not transfer then buildTransfer() end
-        showPanel("transfer", "setup")
-    end)
-    tr:SetPoint("TOPLEFT", 0, -y)
-    protectBtn = toolRow(q, L.PROTECTED, QUICK_ICON.protect, function()
-        if not protectFrame then buildProtected() end
-        showPanel("protect", "setup")
-    end)
-    protectBtn:SetPoint("TOPLEFT", 0, -(y + 32))
-    local setup = toolRow(q, L.SETUP, QUICK_ICON.setup, function() ns.OpenSetup() end)
-    setup:SetPoint("TOPLEFT", 0, -(y + 64))
-    setupFrame.first = setup
-    quick:SetHeight(quick:Fit(y + 92))
+    p.onChip:Set(S.Emph(L.OV_ON:format(on, #data)))
+    p.waitChip:SetShown(waits > 0)
+    if waits > 0 then
+        p.waitChip:Set(S.Emph(L.SETUP_WAIT:format(waits)) .. S.DOT .. S.Hex(S.Accent()) .. L.RELOAD .. "|r", 14)
+    end
+    p.onChip:ClearAllPoints()
+    if waits > 0 then p.onChip:SetPoint("RIGHT", p.waitChip, "LEFT", -8, 0) else p.onChip:SetPoint("TOPRIGHT", 0, -2) end
+    p.waits = waits
+    for i, pr in ipairs(ns.PRESETS) do fillPreset(presetCards[i], pr, byKey) end
+    fillBoard(p.board, data)
+    protectBtn.value:SetText(#ns.Protected())
+    local o = ns.Overview(data)
+    local foot = L.TITLE .. " " .. ns.Version() .. S.DOT .. L.MODULES_N:format(#data)
+    if o.kb > 0 then foot = foot .. S.DOT .. ns.Size(o.kb) end
+    p.foot:SetText(foot)
+end
 
-    local win = S.Card(setupFrame, L.SETUP_WINDOW)
-    win:SetWidth(SETUP_W)
-    win:SetPoint("TOPLEFT", quick, "TOPRIGHT", GAP, 0)
+function buildSetupPage()
+    local p = CreateFrame("Frame", "GulliToolkitSetupPage", host)
+    p:SetAllPoints(host)
+    p:EnableMouse(true)
+    p:Hide()
+    setupFrame = p
+    p.title = S.Text(p, 20, S.GOLD, nil, "title")
+    p.title:SetPoint("TOPLEFT", 2, 0)
+    p.title:SetText(L.SETUP_PAGE)
+    p.hint = S.Note(p, 12)
+    p.hint:SetPoint("TOPLEFT", 2, -28)
+    p.hint:SetWidth(HOST_W - 400)
+    p.hint:SetMaxLines(2)
+    p.hint:SetText(L.SETUP_PAGE_HINT)
+
+    -- At the right of the title: how many modules are on, and the reload that waits, if any.
+    p.waitChip = setupChip(p, true)
+    p.waitChip:SetPoint("TOPRIGHT", 0, -2)
+    p.waitChip.text:SetTextColor(WAIT[1], WAIT[2], WAIT[3], 1)
+    local dot = S.Circle(p.waitChip, 7, WAIT, "ARTWORK")
+    dot:SetPoint("LEFT", 10, 0)
+    p.waitChip:SetScript("OnClick", function() ReloadUI() end)
+    p.waitChip:SetScript("OnEnter", function(self) S.Fill(self, S.RAISED) end)
+    p.waitChip:SetScript("OnLeave", function(self) S.Fill(self, S.SURFACE) end)
+    p.onChip = setupChip(p)
+
+    local pl = label(p, L.PRESETS)
+    pl:SetPoint("TOPLEFT", 2, -SETUP_TOP)
+    local ph = S.Text(p, 12, S.FAINT)
+    ph:SetPoint("TOPRIGHT", 0, -SETUP_TOP)
+    ph:SetPoint("LEFT", pl, "RIGHT", 12, 0)
+    ph:SetJustifyH("RIGHT")
+    ph:SetWordWrap(false)
+    ph:SetText(L.PRESET_HINT)
+    for i, pr in ipairs(ns.PRESETS) do presetCards[i] = makePreset(p, i, pr) end
+    p.presets = presetCards
+
+    local board = S.Card(p, L.OV_TITLE, L.BOARD_HINT)
+    board:SetPoint("TOPLEFT", 0, -BOARD_TOP)
+    board:SetSize(BOARD_W, BOARD_H)
+    p.board = board
+
+    local win = S.Card(p, L.SETUP_WINDOW)
+    win:SetPoint("TOPLEFT", board, "TOPRIGHT", S.GAP, 0)
+    win:SetPoint("RIGHT")
     local w = win.body
     local map = minimapRow(w)
     map:SetPoint("TOPLEFT")
@@ -1607,7 +1858,7 @@ local function buildSetupPage()
     local calm = calmRow(w)
     calm:SetPoint("TOPLEFT", 0, -34)
     calm:SetPoint("TOPRIGHT", 0, -34)
-    setupFrame.calm = calm
+    p.calm = calm
     -- The size of the hub window: the player's own factor on top of the fit to the screen.
     local size = CreateFrame("Frame", nil, w)
     size:SetHeight(30)
@@ -1617,7 +1868,7 @@ local function buildSetupPage()
     plus:SetPoint("RIGHT")
     plus:SetText("+")
     plus:SetScript("OnClick", function() nudgeScale(0.1) end)
-    scaleText = S.Text(size, 13, S.MUTED)
+    scaleText = S.Text(size, 13, WHITE, nil, "bold")
     scaleText:SetWidth(48)
     scaleText:SetJustifyH("CENTER")
     scaleText:SetPoint("RIGHT", plus, "LEFT", 0, 0)
@@ -1630,12 +1881,52 @@ local function buildSetupPage()
     st:SetPoint("RIGHT", minus, "LEFT", -6, 0)
     st:SetWordWrap(false)
     st:SetText(L.SETUP_SCALE)
-    setupFrame.scale = { minus = minus, plus = plus }
-    win:SetHeight(win:Fit(98))
-    setupFrame:SetScript("OnShow", function()
-        applyScale()
-        protectBtn.value:SetText(#ns.Protected())
+    p.scale = { minus = minus, plus = plus }
+    local winH = win:Fit(98)
+
+    -- The three commands worth knowing; /gulli help prints the rest.
+    local cmds = S.Card(p, L.CMD_TITLE)
+    cmds:SetPoint("TOPLEFT", win, "BOTTOMLEFT", 0, -TOOL_GAP)
+    cmds:SetPoint("RIGHT")
+    cmds:SetHeight(BOARD_H - winH - TOOL_GAP)
+    p.commands = {}
+    for i, c in ipairs({ { "/gulli", L.CMD_OPEN }, { "/gulli unlock", L.CMD_UNLOCK }, { "/gulli help", L.CMD_HELP } }) do
+        local cmd = S.Text(cmds.body, 12, S.Accent())
+        cmd:SetPoint("TOPLEFT", 0, -(i - 1) * 18)
+        cmd:SetWidth(88)
+        cmd:SetWordWrap(false)
+        cmd:SetText(c[1])
+        local what = S.Text(cmds.body, 12, S.MUTED)
+        what:SetPoint("TOPLEFT", 92, -(i - 1) * 18)
+        what:SetPoint("RIGHT")
+        what:SetWordWrap(false)
+        what:SetText(c[2])
+        p.commands[i] = { cmd = cmd, what = what }
+    end
+
+    local tr = toolTile(p, 1, L.TRANSFER, L.TOOL_TRANSFER, QUICK_ICON.transfer, function()
+        if not transfer then buildTransfer() end
+        showPanel("transfer", "setup")
     end)
+    protectBtn = toolTile(p, 2, L.PROTECTED, L.TOOL_PROTECT, QUICK_ICON.protect, function()
+        if not protectFrame then buildProtected() end
+        showPanel("protect", "setup")
+    end)
+    local first = toolTile(p, 3, L.SETUP, L.TOOL_SETUP, QUICK_ICON.setup, function() ns.OpenSetup() end)
+    p.transfer, p.protect, p.first = tr, protectBtn, first
+
+    p.foot = S.Text(p, 12, S.FAINT)
+    p.foot:SetPoint("BOTTOMLEFT", 2, 4)
+    p.foot:SetWordWrap(false)
+    local lang = S.Text(p, 12, S.FAINT)
+    lang:SetPoint("BOTTOMRIGHT", 0, 4)
+    lang:SetPoint("LEFT", p.foot, "RIGHT", 12, 0)
+    lang:SetJustifyH("RIGHT")
+    lang:SetWordWrap(false)
+    lang:SetText(L.FOOT_LANG)
+
+    p:SetScript("OnShow", applyScale)
+end
 end
 
 function ns.OpenSetupPage()
@@ -1796,19 +2087,27 @@ local function build()
     host = CreateFrame("Frame", nil, frame.body)
     host:SetPoint("TOPLEFT", frame.body, "TOPLEFT", SIDE + GAP, 0)
     host:SetPoint("BOTTOMRIGHT")
-    -- Behind the centre: a warm light from its top left and the emblem, very dim, low on the
-    -- right, so the see-through cards and tiles have something to show.
+    -- Behind the centre: a warm light from its top left, and low on the right the toolkit's
+    -- satchel as a pale emblem in a second light, so the see-through cards and tiles have
+    -- something to show. The emblem runs off the window's corner: the texture is cut there.
     local light = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
     light:SetTexture(S.RADIAL)
     light:SetPoint("TOPLEFT", host, "TOPLEFT", -GAP, 0)
     light:SetPoint("BOTTOMRIGHT", host, "CENTER", 0, -40)
     light:SetVertexColor(0.85, 0.62, 0.32, 0.07)
-    local mark = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+    local glow = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+    glow:SetTexture(S.RADIAL)
+    glow:SetTexCoord(1, 0, 1, 0)
+    glow:SetSize(620, 460)
+    glow:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    glow:SetVertexColor(0.85, 0.62, 0.32, 0.10)
+    local mark = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
     mark:SetTexture(MARK)
-    mark:SetSize(360, 360)
-    mark:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 20, -20)
-    mark:SetVertexColor(1, 0.86, 0.66, 0.035)
-    frame.light, frame.mark = light, mark
+    mark:SetTexCoord(0, (MARK_SIZE - MARK_CUT_X) / MARK_SIZE, 0, (MARK_SIZE - MARK_CUT_Y) / MARK_SIZE)
+    mark:SetSize(MARK_SIZE - MARK_CUT_X, MARK_SIZE - MARK_CUT_Y)
+    mark:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    mark:SetVertexColor(1, 0.86, 0.66, 0.12)
+    frame.light, frame.glow, frame.mark = light, glow, mark
     buildHome()
     buildCard()
 

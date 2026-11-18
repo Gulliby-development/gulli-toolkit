@@ -435,6 +435,106 @@ test("Unlock frames is a link in the header; the Setup page holds the presets an
     eq(GulliToolkitDB.scale, 1)
 end)
 
+test("the Setup page: the board switches a module, a waiting reload has its button", function()
+    Fake({ addons = { QC, { name = "Gulli-Merchant", enabled = false, meta = { ["X-Gulli-Module"] = "Merchant" } },
+                      { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    ns.Toggle()
+    ns.OpenSetupPage()
+    local page = ns.SetupPage()
+    local board = page.board
+    eq(board.shown, 3, "every installed module has an icon")
+    eq(board.groups, 3, "a line per group that has modules")
+    eq(page.waits, 0)
+    eq(page.waitChip:IsShown(), false, "no reload button while nothing waits")
+    local merchant
+    for i = 1, board.shown do
+        if board.icons[i].row.key == "Merchant" then merchant = board.icons[i] end
+    end
+    assert(merchant, "Merchant is on the board")
+    eq(merchant.row.on, false)
+    eq(merchant.dotIn:IsShown(), true, "off shows as a hollow dot, not by colour alone")
+    merchant:GetScript("OnClick")(merchant)
+    eq(byKey(ns.List()).Merchant.on, true, "a click on the icon switches the module on")
+    eq(merchant.row.state, "reload", "the board shows the new state")
+    eq(merchant.dotIn:IsShown(), false)
+    eq(page.waits, 1)
+    eq(page.waitChip:IsShown(), true, "the reload that waits is on the page")
+    eq(W.reloaded, false, "the click that switches does not reload")
+    page.waitChip:GetScript("OnClick")(page.waitChip)
+    eq(W.reloaded, true, "its own click reloads")
+    merchant:GetScript("OnClick")(merchant)
+    eq(byKey(ns.List()).Merchant.on, false, "and a second click switches it off again")
+end)
+
+test("the Setup page: preset cards show their installed modules, the tools are tiles", function()
+    Fake({ addons = { QC, { name = "Gulli-Merchant", enabled = false, meta = { ["X-Gulli-Module"] = "Merchant" } },
+                      { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    ns.Toggle()
+    ns.OpenSetupPage()
+    local page = ns.SetupPage()
+    eq(#page.presets, #ns.PRESETS)
+    local have = byKey(ns.List())
+    for i, p in ipairs(ns.PRESETS) do
+        local n = 0
+        for _, k in ipairs(p.modules) do if have[k] then n = n + 1 end end
+        eq(page.presets[i].shown, n, p.key .. ": one small icon per installed module of the preset")
+    end
+    local min
+    for _, c in ipairs(page.presets) do if c.key == "Minimum" then min = c end end
+    min.apply:GetScript("OnClick")(min.apply)
+    local now = byKey(ns.List())
+    eq(now.Merchant.on, true, "Apply switches the preset's modules on")
+    eq(now.Loot.on, false, "and the others off")
+    eq(page.protect.value:GetText(), 0, "the protected items, counted on their tile")
+    GulliToolkit.Protect(6948, true)
+    ns.Refresh()
+    eq(page.protect.value:GetText(), 1)
+    page.protect:GetScript("OnClick")(page.protect)
+    eq(ns.View().page, "protect")
+    eq(ns.View().from, "setup", "a tool's page goes back to Setup")
+    ns.OpenSetupPage()
+    page.transfer:GetScript("OnClick")(page.transfer)
+    eq(ns.View().page, "transfer")
+    eq(#page.commands, 3)
+end)
+
+test("every texture path is written with double backslashes", function()
+    local p = io.popen("ls Gulli-*/*.lua")
+    for file in p:lines() do
+        local n = 0
+        for line in io.lines(file) do
+            n = n + 1
+            -- "Interface\Icons" in the source; a single backslash is eaten as an escape and
+            -- the icon comes out empty.
+            assert(not line:find('"Interface\\[^\\]'), file .. ":" .. n .. ": a path with a single backslash")
+        end
+    end
+    p:close()
+end)
+
+test("the hub's emblem has a clear background", function()
+    local f = assert(io.open("Gulli-Toolkit/Art/Mark.tga", "rb"))
+    local data = f:read("*a")
+    f:close()
+    local w = data:byte(13) + data:byte(14) * 256
+    local h = data:byte(15) + data:byte(16) * 256
+    eq(#data, 18 + w * h * 4, "32 bit, not packed")
+    local function alpha(x, y) return data:byte(18 + (y * w + x) * 4 + 4) end
+    eq(alpha(0, 0), 0, "top left")
+    eq(alpha(w - 1, 0), 0, "top right")
+    eq(alpha(0, h - 1), 0, "bottom left: a picture with its own background shows as a pale square")
+    eq(alpha(w - 1, h - 1), 0, "bottom right")
+    local clear, some = 0, 0
+    for y = 0, h - 1, 8 do
+        for x = 0, w - 1, 8 do
+            if alpha(x, y) == 0 then clear = clear + 1 else some = some + 1 end
+        end
+    end
+    assert(some > 0 and clear > some / 4, "the emblem is a shape, not a filled square")
+end)
+
 test("the hub opens the module that was open last, back goes home and stays there", function()
     Fake({ addons = { QC } })
     local ns = Load()
