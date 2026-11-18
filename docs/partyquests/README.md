@@ -18,7 +18,8 @@ Before you leave town with a group, you want to know: who has which quest? Gulli
 
 ## Features
 
-- **Your quests against your group.** One row per quest, one column per player: a tick has it, gold is done, red does not have it, a clock did it before, **?** is offline.
+- **Your quests against your group.** One row per quest, one column per player, with the game's own quest marks: a grey **?** has it, a yellow **?** is ready to hand in, a yellow **!** does not have it yet, a tick did it before. Point at a mark to read it in words.
+- **Zone by zone.** The list is cut into zones, and the zone you are in comes first. "Their quests" shows zones too, when your friends run the module.
 - **Progress of everyone.** When a friend runs Gulli Party Quests too, the cell shows how far they are (**3/8**). Tap a quest to see everyone's objectives.
 - **Who runs the module.** Under each name: **module**, **old data** or **no module**, so you know what the cells can tell.
 - **One line about the group.** "To share: 2. Ready to hand in for everyone: 1", or "The group is in sync".
