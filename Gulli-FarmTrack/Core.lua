@@ -140,8 +140,36 @@ local function played(t)
 end
 
 -- Vendors, the mailbox, the bank, the auction house and a trade move things without farming.
+-- A flag is set by the window's show event and cleared by its close event; since a close event can
+-- go missing (another addon's frame, a walk away, a loading screen), a flag also ends as soon as the
+-- game says that interaction is over, so the counter never stays deaf.
 ns.busy = {}
+local INTERACTION = { merchant = "Merchant", mail = "MailInfo", bank = "Banker", auction = "Auctioneer",
+                      trade = "TradePartner" }
+local FRAMES = { merchant = { "MerchantFrame" }, mail = { "MailFrame" }, bank = { "BankFrame" },
+                 auction = { "AuctionHouseFrame", "AuctionFrame" }, trade = { "TradeFrame" } }
+
+-- true or false when the game can tell whether the player still uses that window, else nil.
+function ns.StillOpen(what)
+    local PIM, E = C_PlayerInteractionManager, Enum and Enum.PlayerInteractionType
+    local kind = E and E[INTERACTION[what] or ""]
+    if PIM and PIM.IsInteractingWithNpcOfType and kind then
+        local ok, on = pcall(PIM.IsInteractingWithNpcOfType, kind)
+        if ok and on then return true end
+    end
+    for _, name in ipairs(FRAMES[what] or {}) do
+        local fr = _G[name]
+        if type(fr) == "table" and fr.IsShown then return fr:IsShown() and true or false end
+    end
+    if PIM and PIM.IsInteractingWithNpcOfType and kind then return false end
+    return nil
+end
+
 function ns.Busy()
+    for what in pairs(ns.busy) do
+        -- ns.last followed the bags all along, so only the flag goes.
+        if ns.StillOpen(what) == false then ns.busy[what] = nil end
+    end
     return next(ns.busy) ~= nil
 end
 
@@ -182,6 +210,7 @@ function ns.OnMoney(t)
     local d = m - (ns.lastMoney or m)
     ns.lastMoney = m
     if d <= 0 then return end
+    ns.Busy()
     local other = false
     for what in pairs(ns.busy) do if what ~= "merchant" then other = true end end
     if not other and (not ns.busy.merchant or ns.db.sales) then ns.Gain("gold", d, t) end
@@ -381,6 +410,12 @@ function ns.Slash(msg)
         ns.Start()
         say(L.NEW_SESSION_DONE)
         if ns.Refresh then ns.Refresh() end
+    elseif cmd == "debug" then
+        local open = {}
+        for what in pairs(ns.busy) do open[#open + 1] = what .. "=" .. tostring(ns.StillOpen(what)) end
+        local kinds = 0
+        for _ in pairs(ns.CountBags()) do kinds = kinds + 1 end
+        say(L.DEBUG:format(#open > 0 and table.concat(open, ", ") or "-", kinds, money()))
     elseif cmd == "help" then
         say(L.HELP)
     else
@@ -413,11 +448,15 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if not ns.db.hudHidden then ns.db.panel, ns.db.hudHidden = false, true end
         ns.db.locked = nil
         ns.cdb.targets = ns.cdb.targets or {}
-        local events = { "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED" }
+        local events = { "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED", "LOOT_READY" }
         for e in pairs(BUSY) do events[#events + 1] = e end
         for _, e in ipairs(events) do self:RegisterEvent(e) end
         ns.Resume()
         return
+    end
+    if event == "LOOT_READY" or event == "PLAYER_ENTERING_WORLD" then
+        -- Looting or a loading screen: no vendor, mailbox, bank or trade window is in use.
+        for what in pairs(ns.busy) do ns.busy[what] = nil end
     end
     if event == "PLAYER_ENTERING_WORLD" then
         -- a1: a real login, which starts a new session; a2: a /reload, which keeps it.
