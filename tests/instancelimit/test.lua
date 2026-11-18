@@ -307,6 +307,10 @@ test("the hub gets a summary, a move and a reset", function()
     GulliToolkit = { Register = function(info) got = info end }
     local ns = Load()
     eq(got.summary(), "5 of 5 entries left")
+    local _, _, stat = got.summary()
+    eq(stat.pips[1], 5, "the hub's tile: a pip per entry left")
+    eq(stat.pips[2], 5)
+    eq(stat.tone, "good")
     ns.db.badgeScale, ns.db.limit = 150, 3
     got.reset()
     eq(ns.db.badgeScale, 100); eq(ns.db.limit, 5)

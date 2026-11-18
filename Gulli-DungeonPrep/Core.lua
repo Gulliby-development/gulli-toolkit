@@ -902,7 +902,9 @@ function ns.Summary()
     if not d then return nil end
     local q = ns.Quests(d.key, level)
     if #q.log + #q.take == 0 then return nil end
-    return L.SUMMARY:format(ns.DungeonName(d), #q.log, #q.take), ns.Icon(d.key)
+    -- the third value is for the hub's tile: the quests to take as its number, else those in the log
+    local stat = #q.take > 0 and { value = #q.take, tone = "warn" } or { value = #q.log }
+    return L.SUMMARY:format(ns.DungeonName(d), #q.log, #q.take), ns.Icon(d.key), stat
 end
 
 ns.ITEM_REFRESH = 0.5

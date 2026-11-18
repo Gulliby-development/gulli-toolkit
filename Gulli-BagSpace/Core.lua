@@ -392,7 +392,8 @@ if GulliToolkit and GulliToolkit.Register then
         summary = function()
             if not ns.db then return nil end
             local free = ns.Space()
-            return ns.L.HUB_SUMMARY:format(free), "Interface\\Icons\\INV_Misc_Bag_10"
+            -- the hub's Ready card shows the free slots too: the tile gives way to it
+            return ns.L.HUB_SUMMARY:format(free), "Interface\\Icons\\INV_Misc_Bag_10", { ready = "BAGS" }
         end,
         reset = function()
             if not ns.db then return end

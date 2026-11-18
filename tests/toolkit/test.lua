@@ -282,16 +282,157 @@ test("the home page shows the modules' summaries and the feed; a click opens the
     eq(#ns.Feed(), 0, "Clear empties the feed")
 end)
 
-test("the command lines on Quick setup end inside the card, the 'more' line too", function()
+test("home tiles: the number a line starts with goes big, trouble comes first, a quiet tile goes first", function()
+    local mods = {}
+    for _, k in ipairs({ "QuestCleaner", "BagSpace", "Merchant", "XP", "Chores", "Loot", "Mail", "GroupBuffs" }) do
+        mods[#mods + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
+    end
+    Fake({ addons = mods })
+    local ns = Load()
+    local sums = {
+        QuestCleaner = function() return "Quest log 23 of 25" end,
+        BagSpace = function() return "26 free bag slots", nil, { ready = "BAGS" } end,
+        Merchant = function() return "3 junk items worth 1g\nsecond line" end,
+        XP = function() return "Level 48 in 1 h" end,
+        Chores = function() return "Nothing waits", nil, { quiet = true } end,
+        Loot = function() return "Maraudon: 0 in log, 8 to pick up", nil, { value = 8, tone = "warn" } end,
+        Mail = function() return "5 of 5 entries left", nil, { pips = { 4, 5 }, tone = "nonsense" } end,
+        GroupBuffs = function() return "1 buffs missing", nil, { tone = "bad" } end,
+    }
+    for k, fn in pairs(sums) do GulliToolkit.Register({ key = k, open = function() end, summary = fn }) end
+    local by = {}
+    for _, s in ipairs(ns.Summaries()) do by[s.row.key] = ns.TileOf(s) end
+    eq(by.Merchant.value, "3", "the number the line starts with")
+    eq(by.Merchant.label, "junk items worth 1g", "the rest of the first line")
+    eq(by.QuestCleaner.value, nil, "a line that starts with a word has no number")
+    eq(by.QuestCleaner.label, "Quest log 23 of 25")
+    eq(by.Loot.value, "8", "the module names its number")
+    eq(by.Loot.label, "Maraudon: 0 in log, 8 to pick up")
+    eq(by.Mail.pips[1], 4)
+    eq(by.Mail.pips[2], 5)
+    eq(by.Mail.tone, nil, "an unknown tone is no tone")
+    local tiles = ns.Tiles()
+    eq(#tiles, ns.TILES_MAX, "at most TILES_MAX tiles")
+    eq(tiles[1].row.key, "GroupBuffs", "bad first")
+    eq(tiles[2].row.key, "Loot", "then warn")
+    for _, t in ipairs(tiles) do assert(t.row.key ~= "Chores", "the quiet tile is the first to go") end
+    tiles = ns.Tiles(nil, { BAGS = true }, "XP", 20)
+    eq(#tiles, 6, "the Ready check and the session card take two tiles")
+    for _, t in ipairs(tiles) do assert(t.row.key ~= "BagSpace" and t.row.key ~= "XP", t.row.key) end
+    eq(tiles[#tiles].row.key, "Chores", "quiet goes last")
+    tiles = ns.Tiles(nil, {}, nil, 20)
+    eq(#tiles, 8, "with the Ready card off its tile is back")
+end)
+
+test("the session card takes the first module that gives a session, XP before the others", function()
+    local mods = {}
+    for _, k in ipairs({ "QuestCleaner", "FarmTrack", "XP" }) do
+        mods[#mods + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
+    end
+    Fake({ addons = mods })
+    local ns = Load()
+    eq(ns.Session(), nil, "no module gives one")
+    local bars = {}
+    for i = 1, 20 do bars[i] = i end
+    local xp
+    GulliToolkit.Register({ key = "XP", open = function() end, session = function() return xp end })
+    GulliToolkit.Register({ key = "FarmTrack", open = function() end, pause = function() end,
+        session = function() return { value = "12g", unit = "gold / h" } end })
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end, session = function() error("boom") end })
+    eq(ns.Session().row.key, "FarmTrack", "XP has nothing to say: the next one")
+    xp = { value = "19k", unit = "XP / h", line = "Level 48 in 1 h", span = "1 h", bars = bars,
+           progress = { value = 0.9, extra = 0.5, left = 47, right = "90%" } }
+    local s = ns.Session()
+    eq(s.row.key, "XP")
+    eq(#s.bars, ns.SESSION_BARS, "only the newest bars")
+    eq(s.bars[#s.bars], 20)
+    eq(s.progress.left, "47")
+    assert(math.abs(s.progress.extra - 0.1) < 1e-9, "the lighter part never passes the end")
+    xp = { unit = "no value" }
+    eq(ns.Session().row.key, "FarmTrack", "a session without a value is none")
+    GulliToolkitDB.paused = { FarmTrack = true }
+    eq(ns.Session(), nil, "a paused module gives none")
+    GulliToolkitDB.paused = nil
+    xp = { value = "19k", bars = bars, progress = { value = 0.5, left = 47, right = "50%" } }
+    ns.Toggle()
+    eq(ns.Home().session:IsShown(), true, "the home page shows the card")
+    eq(ns.Home().session.row.key, "XP")
+    xp = nil
+    GulliToolkit.modules.FarmTrack.session = nil
+    ns.Refresh()
+    eq(ns.Home().session:IsShown(), false, "no session: the Ready card takes the row")
+    eq(ns.Home().ready:IsShown(), true)
+    ns.ReadySet("show", false)
+    ns.Refresh()
+    eq(ns.Home().ready:IsShown(), false, "the Ready card is a setting")
+end)
+
+test("the Recent feed joins lines of one module that follow each other", function()
     Fake({ addons = { QC } })
     local ns = Load()
-    local S = ns.Skin
-    local top = 200
-    -- Room for exactly two lines of 24 under the title, and not a pixel more.
-    local h = 36 + S.INSET + top + 24 + 2 * 24
-    eq(math.floor(ns.CommandsRoom(h, top) / 24), 2)
-    eq(math.floor(ns.CommandsRoom(h - 1, top) / 24), 1, "one pixel short: one line less")
-    eq(ns.CommandsRoom(10, top), 0, "a short card: no lines")
+    GulliToolkit.Notify("XP", "one")
+    GulliToolkit.Notify("AutoQuest", "a")
+    GulliToolkit.Notify("AutoQuest", "b")
+    GulliToolkit.Notify("AutoQuest", "c")
+    GulliToolkit.Notify("XP", "two")
+    local rows = ns.FeedRows()
+    eq(#rows, 3)
+    eq(rows[1].text, "two")
+    eq(rows[1].n, 1)
+    eq(rows[2].key, "AutoQuest")
+    eq(rows[2].text, "c", "the newest text")
+    eq(rows[2].n, 3)
+    eq(rows[3].text, "one", "the same module again after another is a row of its own")
+end)
+
+test("the Ready ring gives each check a run of marks with a dark one between", function()
+    Fake({})
+    local ns = Load()
+    local marks = ns.RingTicks({ { ok = false }, { ok = true }, { ok = true } }, 12)
+    eq(marks[1], false)
+    eq(marks[3], false)
+    eq(marks[4], nil, "the gap after the first check")
+    eq(marks[5], true)
+    eq(marks[8], nil)
+    eq(marks[11], true)
+    eq(marks[12], nil)
+    marks = ns.RingTicks({ { ok = true } }, 12)
+    eq(marks[12], true, "one check: a whole ring")
+    local frac, mark = ns.ReadyBar(5, 10)
+    eq(frac, 0.25, "the limit sits in the middle of the bar")
+    eq(mark, 0.5)
+    eq((ns.ReadyBar(50, 10)), 1, "never past the end")
+    frac, mark = ns.ReadyBar(3, 0)
+    eq(frac, 1, "no limit: a full bar")
+    eq(mark, nil, "and no mark")
+end)
+
+test("Unlock frames is a link in the header; the Setup page holds the presets and the hub's switches", function()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    local shown = false
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end,
+        frames = { { key = "bar", label = "Bar", get = function() return shown end, set = function(v) shown = v end } } })
+    ns.Toggle()
+    local link = ns.UnlockLink()
+    eq(link.text:GetText(), ns.L.UNLOCK)
+    eq(link.count:GetText(), "0/1", "the frames that show, counted")
+    shown = true
+    ns.Refresh()
+    eq(link.count:GetText(), "1/1")
+    link:GetScript("OnClick")(link)
+    eq(ns.moving, true, "a click starts the Unlock mode")
+    ns.SetMoving(false)
+    ns.OpenSetupPage()
+    local view = ns.View()
+    eq(view.page, "setup")
+    eq(ns.Home():IsShown(), false)
+    local page = ns.SetupPage()
+    eq(page:IsShown(), true)
+    page.scale.plus:GetScript("OnClick")(page.scale.plus)
+    eq(GulliToolkitDB.scale, 1.1, "the window size moved here")
+    page.scale.minus:GetScript("OnClick")(page.scale.minus)
+    eq(GulliToolkitDB.scale, 1)
 end)
 
 test("the hub opens the module that was open last, back goes home and stays there", function()
@@ -997,12 +1138,12 @@ test("errors of Gulli addons are kept to copy, others only go on to the game", f
     eq(ns.RecordError(nil, nil), nil, "nothing to keep without a Gulli file")
 end)
 
-test("Reduce motion: the Quick setup switch saves calm, and calm stops every animation", function()
+test("Reduce motion: the Setup page's switch saves calm, and calm stops every animation", function()
     Fake({})
     local ns = Load()
     local S = ns.Skin
     ns.Toggle()
-    local sw = ns.Home().calm.switch
+    local sw = ns.SetupPage().calm.switch
     eq(sw:GetChecked(), false, "off by default")
     eq(S.Calm(), false)
     sw:GetScript("OnClick")(sw)
@@ -1059,6 +1200,11 @@ test("Ready: repairs, bags, food and drink apart, the hearthstone and class supp
     eq(by.DRINK.value, "4", "only the water")
     eq(by.HEARTH.ok, false, "the hearthstone waits")
     eq(by.HEARTH.text, "Hearthstone in 25 min")
+    eq(by.REPAIR.frac, 0.4, "the bar of the gear is its durability")
+    eq(by.REPAIR.mark, 0.5, "with the limit marked on it")
+    eq(by.REPAIR.label, ns.L.RD_L_REPAIR, "a short name beside the bar")
+    assert(by.HEARTH.frac > 0.16 and by.HEARTH.frac < 0.17, "the hearthstone's bar fills as the cooldown runs out")
+    eq(by.HEARTH.mark, nil)
     eq(by.REAGENT.ok, false, "a priest of 50 has no candles")
     ns.ReadySet("durMin", 30)
     ns.ReadySet("bagsMin", 5)

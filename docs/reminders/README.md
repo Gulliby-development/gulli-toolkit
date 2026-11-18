@@ -38,7 +38,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 - **A sound and a line on screen** when a new reminder shows up: always, only in dungeons and raids (the default), or never.
 - **Tanks.** Righteous Fury is on for a paladin who has the tank role, unless you turn it off.
 - **Easy to read.** A missing buff pulses red; one that runs out soon has a yellow ring and the time on it.
-- **A panel you place.** It starts hidden. Turn it on and place it in **Frames on screen** in `/gulli` (`/grm unlock`), with the other Gulli frames: there it shows every icon it can show. In the window, set the icon size, the opacity, a row or a column, and names with the icons.
+- **A panel you place.** It starts hidden. Turn it on and place it in **Unlock frames** in `/gulli` (`/grm unlock`), with the other Gulli frames: there it shows every icon it can show. In the window, set the icon size, the opacity, a row or a column, and names with the icons.
 - **Quiet in a fight.** It checks only out of combat, not while you are dead or on a flight. In cities and inns too, unless you turn that off.
 
 <p align="center"><img src="panel.png" alt="The panel on screen" width="460"></p>
@@ -53,7 +53,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 
 1. Type `/grm`, or open **Reminders** in `/gulli`.
 2. Switch on the buffs you want to watch.
-3. Open **Frames on screen** in `/gulli` (or type `/grm unlock`), turn on **Reminders**, drag the icons where you want them, and press **Save and lock**.
+3. Open **Unlock frames** in `/gulli` (or type `/grm unlock`), turn on **Reminders**, drag the icons where you want them, and press **Save and lock**.
 4. Hover over an icon to see what is missing. A click fixes it, a right-click opens the settings.
 
 `/grm reset` puts the panel back at the top of the screen.
@@ -66,7 +66,7 @@ The camp gives stats such as Stamina. When the camp gives as much as your buff o
 <details>
 <summary><b>I see no icons. Why?</b></summary>
 
-Nothing is missing, or the panel waits: in a fight, while you are dead, on a flight, in a city when you turned **Also in cities and inns** off, or outside a group or a dungeon when **Where to check** says so. The line at the bottom of the window says which. Open **Frames on screen** in `/gulli` to see where the icons appear, and check that **Reminders** is on there.
+Nothing is missing, or the panel waits: in a fight, while you are dead, on a flight, in a city when you turned **Also in cities and inns** off, or outside a group or a dungeon when **Where to check** says so. The line at the bottom of the window says which. Open **Unlock frames** in `/gulli` to see where the icons appear, and check that **Reminders** is on there.
 </details>
 
 <details>

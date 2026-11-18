@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Draws the two background pictures of Gulli Hearth into Gulli-Toolkit/Media as white TGA files
+"""Draws the pictures of Gulli Hearth into Gulli-Toolkit/Media as white TGA files
 with an alpha channel (the game tints them):
 Grain (128 px, tiles without a seam): soft paper fibres and fine grain under every window.
+Arc (256 px, Gulli-Toolkit/Art only): one mark of the Ready ring on the hub's home page.
 Mark (256 px, Gulli-Toolkit/Art only, not shared): the toolkit logo as a pale silhouette, the
 dim emblem behind the hub's home page.
 Needs Pillow for Mark (it reads docs/toolkit/icon.png). Run from the repository root, then
@@ -82,6 +83,29 @@ def mark():
     write_tga("Gulli-Toolkit/Art/Mark.tga", MARK, MARK, out)
 
 
+ARC, ARC_DEG, ARC_OUT, ARC_IN = 256, 5.6, 0.97, 0.83
+
+
+def arc():
+    """One mark of the Ready ring (Gulli-Toolkit/Art only): a short piece of a ring at 12 o'clock.
+    The hub turns 72 copies of it, 5 degrees apart, so each is a little wider than its step."""
+    ss, half = 4, math.radians(ARC_DEG / 2)
+    out = []
+    for y in range(ARC):
+        for x in range(ARC):
+            hit = 0
+            for sy in range(ss):
+                for sx in range(ss):
+                    px = ((x + (sx + 0.5) / ss) / ARC) * 2 - 1
+                    py = 1 - ((y + (sy + 0.5) / ss) / ARC) * 2
+                    r = math.hypot(px, py)
+                    if ARC_IN <= r <= ARC_OUT and abs(math.atan2(px, py)) <= half:
+                        hit += 1
+            out.append(hit / (ss * ss))
+    write_tga("Gulli-Toolkit/Art/Arc.tga", ARC, ARC, out)
+
+
 if __name__ == "__main__":
     grain()
     mark()
+    arc()
