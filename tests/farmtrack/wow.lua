@@ -142,6 +142,7 @@ function Fake(spec)
         GetItemIconByID = function(id) return "icon" .. id end,
     }
     GetMoney = function() return W.money end
+    C_PlayerInteractionManager, Enum, MerchantFrame = nil, nil, nil
     CursorHasItem = function() return W.cursor ~= nil end
     GetCursorInfo = function() if W.cursor then return "item", W.cursor end end
     ClearCursor = function() W.cursor = nil end

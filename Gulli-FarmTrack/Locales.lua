@@ -55,6 +55,7 @@ T.en = {
     HM = "%d h %d min",
     M = "%d min",
     HELP = "/gft add <item link or id> [goal], /gft gold [goal in gold], /gft clear, /gft reset",
+    DEBUG = "Paused by: %s. Item kinds in the bags: %d. Money: %d copper.",
     ADDED = "Tracking %s.",
     UNKNOWN_ITEM = "Give an item link or an item id.",
 }
@@ -105,6 +106,7 @@ T.de = {
     HM = "%d Std. %d Min.",
     M = "%d Min.",
     HELP = "/gft add <Link oder ID> [Ziel], /gft gold [Ziel in Gold], /gft clear, /gft reset",
+    DEBUG = "Pausiert durch: %s. Gegenstandsarten in den Taschen: %d. Geld: %d Kupfer.",
     ADDED = "%s wird gezählt.",
     UNKNOWN_ITEM = "Gib einen Gegenstandslink oder eine ID an.",
 }
@@ -155,6 +157,7 @@ T.es = {
     HM = "%d h %d min",
     M = "%d min",
     HELP = "/gft add <enlace o id> [meta], /gft gold [meta en oro], /gft clear, /gft reset",
+    DEBUG = "En pausa por: %s. Tipos de objeto en las bolsas: %d. Dinero: %d cobre.",
     ADDED = "Contando %s.",
     UNKNOWN_ITEM = "Indica un enlace de objeto o un id.",
 }
@@ -205,6 +208,7 @@ T.fr = {
     HM = "%d h %d min",
     M = "%d min",
     HELP = "/gft add <lien ou id> [objectif], /gft gold [objectif en or], /gft clear, /gft reset",
+    DEBUG = "En pause à cause de : %s. Types d'objets dans les sacs : %d. Argent : %d cuivre.",
     ADDED = "Suivi de %s.",
     UNKNOWN_ITEM = "Donnez un lien d'objet ou un id.",
 }
@@ -255,6 +259,7 @@ T.pl = {
     HM = "%d godz. %d min",
     M = "%d min",
     HELP = "/gft add <link lub id> [cel], /gft gold [cel w złocie], /gft clear, /gft reset",
+    DEBUG = "Wstrzymane przez: %s. Rodzaje przedmiotów w torbach: %d. Pieniądze: %d miedzi.",
     ADDED = "Liczę: %s.",
     UNKNOWN_ITEM = "Podaj link przedmiotu lub jego id.",
 }
@@ -305,6 +310,7 @@ T.pt = {
     HM = "%d h %d min",
     M = "%d min",
     HELP = "/gft add <link ou id> [meta], /gft gold [meta em ouro], /gft clear, /gft reset",
+    DEBUG = "Pausado por: %s. Tipos de item nas bolsas: %d. Dinheiro: %d cobre.",
     ADDED = "Contando %s.",
     UNKNOWN_ITEM = "Informe o link de um item ou um id.",
 }
@@ -355,6 +361,7 @@ T.ru = {
     HM = "%d ч %d мин",
     M = "%d мин",
     HELP = "/gft add <ссылка или id> [цель], /gft gold [цель в золоте], /gft clear, /gft reset",
+    DEBUG = "Пауза из-за: %s. Видов предметов в сумках: %d. Деньги: %d меди.",
     ADDED = "Считаю: %s.",
     UNKNOWN_ITEM = "Укажи ссылку на предмет или его id.",
 }
@@ -405,6 +412,7 @@ T.zh = {
     HM = "%d 小时 %d 分",
     M = "%d 分钟",
     HELP = "/gft add <物品链接或ID> [目标]，/gft gold [金币目标]，/gft clear，/gft reset",
+    DEBUG = "暂停原因：%s。背包中的物品种类：%d。金钱：%d 铜。",
     ADDED = "正在计数：%s。",
     UNKNOWN_ITEM = "请提供物品链接或物品ID。",
 }

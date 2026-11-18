@@ -46,6 +46,42 @@ test("vendors, mail, bank, auction house and trade do not count", function()
     end
 end)
 
+test("a close event that never came does not stop the counting", function()
+    Fake({ now = 100 })
+    local ns = Load()
+    -- the game knows the vendor window is shut
+    W.Fire("MERCHANT_SHOW")
+    MerchantFrame = W.stub(); MerchantFrame:Hide()
+    W.now = 110
+    W.Loot(ORE, 3)
+    eq(ns.s.items[ORE], 3, "a hidden window does not keep the counter deaf")
+    W.Money(500)
+    eq(ns.s.money, 500)
+    MerchantFrame = nil
+    -- the interaction manager says the mailbox is over
+    W.Fire("MAIL_SHOW")
+    C_PlayerInteractionManager = { IsInteractingWithNpcOfType = function() return false end }
+    Enum = { PlayerInteractionType = { MailInfo = 17, Merchant = 5, Banker = 8, Auctioneer = 21, TradePartner = 1 } }
+    W.now = 120
+    W.Loot(ORE, 1)
+    eq(ns.s.items[ORE], 4)
+    -- while it is still open, nothing counts
+    C_PlayerInteractionManager.IsInteractingWithNpcOfType = function(k) return k == 8 end
+    W.Fire("BANKFRAME_OPENED")
+    W.Loot(ORE, 5)
+    eq(ns.s.items[ORE], 4, "the bank is open")
+    C_PlayerInteractionManager, Enum = nil, nil
+    -- no way to ask the game: looting proves the window is gone
+    W.Fire("TRADE_SHOW")
+    W.Loot(ORE, 1)
+    eq(ns.s.items[ORE], 4)
+    W.Fire("LOOT_READY")
+    W.now = 130
+    W.Loot(ORE, 2)
+    eq(ns.s.items[ORE], 6, "after looting it counts again")
+    ns.Slash("debug")
+end)
+
 test("looted gold counts; vendor sales only with their switch; mail never", function()
     Fake({ money = 1000 })
     local ns = Load()
