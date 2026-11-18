@@ -544,6 +544,39 @@ function ns.Tracked(steps)
     return top, false
 end
 
+-- What the compact window shows: the pinned steps that are still open first, then the first
+-- steps of `pool` (the plan to the goal, else every step), n in all. Second value: the pinned.
+ns.COMPACT_STEPS = 5
+function ns.CompactSteps(steps, pool, n)
+    n = n or ns.COMPACT_STEPS
+    local out, pinned = {}, 0
+    for _, s in ipairs(steps) do
+        if #out < n and ns.db.pins[s.ch.id] then out[#out + 1] = s; pinned = pinned + 1 end
+    end
+    for _, s in ipairs(pool or steps) do
+        if #out >= n then break end
+        if not ns.db.pins[s.ch.id] then out[#out + 1] = s end
+    end
+    return out, pinned
+end
+
+-- Where the compact window stands beside the game's Legacy window: as high as that window
+-- (its scale), BESIDE_GAP to its right so the game's side tabs stay free, and inside the
+-- screen. gh, gs, gr: the game window's height, scale and right edge; sw: the screen's width.
+-- Returns the scale, the gap in the compact window's own units, and false when there is no
+-- room to the right (the window then hugs the screen's edge).
+ns.COMPACT_W, ns.COMPACT_H, ns.BESIDE_GAP = 416, 577, 40
+function ns.BesidePlace(gh, gs, gr, sw)
+    gs = tonumber(gs) or 1
+    if gs <= 0 then gs = 1 end
+    gh, gr, sw = tonumber(gh) or 0, tonumber(gr) or 0, tonumber(sw) or 0
+    local k = gh > 0 and gh * gs / ns.COMPACT_H or 1
+    k = math.max(0.8, math.min(1.6, k))
+    local gap = ns.BESIDE_GAP * gs
+    local fits = sw <= 0 or gr <= 0 or gr * gs + gap + ns.COMPACT_W * k <= sw
+    return k, gap / k, fits
+end
+
 -- Text -----------------------------------------------------------------------------------------
 
 function ns.Span(sec)

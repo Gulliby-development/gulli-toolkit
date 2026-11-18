@@ -921,6 +921,21 @@ S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = 
     tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end },
     explore = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70040) end },
     detail = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70010) end } }
+-- The compact window that stands beside the game's Legacy window: the plan and its settings.
+local function lgCompact(settings, goal)
+    return function(ns)
+        ns.Scan(); ns.Snapshot()
+        ns.Pin(70010)
+        if goal then ns.SetGoal(goal) end
+        local c = ns.Compact()
+        c:Show()
+        ns.Refresh()
+        if settings then c.ShowSettings(true) end
+    end
+end
+S.legacy.compact = { crop = "GulliLegacyCompact", open = lgCompact() }
+S.legacy.compactgoal = { crop = "GulliLegacyCompact", open = lgCompact(false, 15) }
+S.legacy.compactset = { crop = "GulliLegacyCompact", open = lgCompact(true) }
 for _, sc in pairs(S.legacy) do sc.spec = lgSpec() end
 -- Explore Azeroth with zones of every level, and Lord Valthalak for a level 37 character.
 local function lgWorld(spec)
