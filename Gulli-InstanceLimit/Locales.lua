@@ -11,6 +11,9 @@ local T = {}
 
 T.en = {
     TITLE = "Instance Limit",
+    SES_DUNGEONS = "Dungeons",
+    SES_AVG = "%s on average",
+    SES_NOW = "now %s %s",
     LEFT_HOUR = "%d of %d entries left this hour",
     NEXT_FREE = "Next entry free in %s.",
     ALL_FREE = "You can enter a new dungeon now.",
@@ -75,6 +78,9 @@ T.en = {
 
 T.de = {
     TITLE = "Instanzlimit",
+    SES_DUNGEONS = "Dungeons",
+    SES_AVG = "im Schnitt %s",
+    SES_NOW = "jetzt %s %s",
     LEFT_HOUR = "Noch %d von %d Betretungen diese Stunde",
     NEXT_FREE = "Nächste Betretung frei in %s.",
     ALL_FREE = "Du kannst jetzt einen neuen Dungeon betreten.",
@@ -139,6 +145,9 @@ T.de = {
 
 T.es = {
     TITLE = "Límite de mazmorras",
+    SES_DUNGEONS = "Mazmorras",
+    SES_AVG = "%s de media",
+    SES_NOW = "ahora %s %s",
     LEFT_HOUR = "Quedan %d de %d entradas esta hora",
     NEXT_FREE = "Siguiente entrada libre en %s.",
     ALL_FREE = "Ya puedes entrar en una mazmorra nueva.",
@@ -203,6 +212,9 @@ T.es = {
 
 T.fr = {
     TITLE = "Limite d'instances",
+    SES_DUNGEONS = "Donjons",
+    SES_AVG = "%s en moyenne",
+    SES_NOW = "en cours : %s %s",
     LEFT_HOUR = "%d entrées sur %d restantes cette heure",
     NEXT_FREE = "Prochaine entrée libre dans %s.",
     ALL_FREE = "Vous pouvez entrer dans un nouveau donjon.",
@@ -267,6 +279,9 @@ T.fr = {
 
 T.pl = {
     TITLE = "Limit lochów",
+    SES_DUNGEONS = "Lochy",
+    SES_AVG = "średnio %s",
+    SES_NOW = "teraz %s %s",
     LEFT_HOUR = "Zostało %d z %d wejść w tej godzinie",
     NEXT_FREE = "Następne wejście za %s.",
     ALL_FREE = "Możesz teraz wejść do nowego lochu.",
@@ -331,6 +346,9 @@ T.pl = {
 
 T.pt = {
     TITLE = "Limite de masmorras",
+    SES_DUNGEONS = "Masmorras",
+    SES_AVG = "%s em média",
+    SES_NOW = "agora %s %s",
     LEFT_HOUR = "Restam %d de %d entradas nesta hora",
     NEXT_FREE = "Próxima entrada livre em %s.",
     ALL_FREE = "Você já pode entrar em uma nova masmorra.",
@@ -395,6 +413,9 @@ T.pt = {
 
 T.ru = {
     TITLE = "Лимит подземелий",
+    SES_DUNGEONS = "Подземелья",
+    SES_AVG = "в среднем %s",
+    SES_NOW = "сейчас %s %s",
     LEFT_HOUR = "Осталось %d из %d входов за час",
     NEXT_FREE = "Следующий вход через %s.",
     ALL_FREE = "Можно заходить в новое подземелье.",
@@ -459,6 +480,9 @@ T.ru = {
 
 T.zh = {
     TITLE = "副本次数",
+    SES_DUNGEONS = "地下城",
+    SES_AVG = "平均 %s",
+    SES_NOW = "当前 %s %s",
     LEFT_HOUR = "本小时还剩 %d / %d 次",
     NEXT_FREE = "下一次可用还需 %s。",
     ALL_FREE = "现在可以进入新副本。",

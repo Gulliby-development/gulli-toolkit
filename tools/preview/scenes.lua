@@ -7,7 +7,7 @@ local function mod(name, key, enabled)
              meta = { ["X-Gulli-Module"] = key or name, Version = "1.0.0" } }
 end
 local HUB_MODS = { "QuestCleaner", "PartyQuests", "AutoQuest", "GroupBuffs", "InstanceLimit", "Attune", "DungeonPrep",
-    "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Bulletin", "Chores", "XP" }
+    "BagSpace", "Restock", "Merchant", "Mail", "CraftProfit", "Bulletin", "Chores", "XP", "FarmTrack" }
 local function hubAddons()
     local out = { { name = "Gulli-Toolkit", enabled = true, loaded = true, meta = { Version = "1.3.0" } } }
     for _, k in ipairs(HUB_MODS) do out[#out + 1] = mod(k) end
@@ -63,10 +63,29 @@ S.toolkit = { default = {
         GulliToolkit.modules.XP.session = function()
             return { value = "19k", unit = ru and "опыта / ч" or "XP / h",
                      line = ru and "Уровень 48 через 1 ч 30 мин" or "Level 48 in 1 h 30 min",
-                     span = ru and "1 ч 12 мин" or "1 h 12 min",
-                     bars = { 1100, 1500, 1900, 1700, 2400, 2700, 2200, 3000 },
-                     progress = { value = 0.77, extra = 0.12, left = 47, right = "77%" } }
+                     span = ru and "2 ч 40 мин" or "2 h 40 min", at = 1000,
+                     bars = { 1100, 1500, 1900, 1700, 2400, 2700, 2200, 3000, 2600, 3100, 2900, 2800 },
+                     progress = { value = 0.77, extra = 0.12, left = 47, right = "77%" },
+                     tile = { value = "+50k", label = ru and "Опыт" or "XP" },
+                     tip = { head = ru and "Опыт" or "Experience", value = "50.6k",
+                             rows = { { ru and "Убийства" or "Kills", "61%" }, { ru and "Квесты" or "Quests", "39%" } } } }
         end
+        GulliToolkit.modules.InstanceLimit.session = function()
+            return { value = "2", unit = ru and "подземелья" or "dungeons", at = 400, bars = { 41, 36 },
+                     line = ru and "В среднем 38 мин" or "38 min on average",
+                     tile = { value = "2", label = ru and "Подземелья" or "Dungeons", icon = "Interface\\Icons\\INV_Misc_Key_03" },
+                     tip = { head = ru and "Подземелья" or "Dungeons", value = "2", icon = "Interface\\Icons\\INV_Misc_Key_03",
+                             rows = { { ru and "Мародон" or "Maraudon", "41:10" }, { ru and "Мародон" or "Maraudon", "36:02" } } } }
+        end
+        -- What the core counted itself: two hours and forty minutes of everything.
+        ns.SesStart(1000 - 9600)
+        local ses = ns.ses
+        ses.active, ses.lastActive = 9600, 1000
+        ses.honor, ses.hk, ses.honorAt, ses.honorB = 1240, 18, 700, { [28] = 300, [29] = 520, [30] = 420 }
+        ses.gold = { loot = 81000, quest = 30000, vendor = 21500, repair = 8500 }
+        ses.goldAt, ses.goldB = 990, { [25] = 9000, [27] = 14000, [29] = 11000, [30] = 16000, [31] = 21000, [32] = 18000, [33] = 24000 }
+        ses.kills, ses.quests, ses.deaths = 214, 6, 1
+        ses.best = { name = ru and "Посох Природной Ярости" or "Staff of Nature's Fury", q = 3 }
         -- Sample checks for the Ready card, as a mage of 47 on the road has them.
         local L, I = ns.L, "Interface\\Icons\\"
         local function check(key, ok, value, text, frac, mark, label)
@@ -114,14 +133,45 @@ S.toolkit.setuppage = { spec = S.toolkit.default.spec,
     end,
 }
 
--- The home page without a session: the Ready card takes the whole row.
-S.toolkit.nosession = { spec = S.toolkit.default.spec,
-    open = function(ns, W, R)
-        S.toolkit.default.open(ns, W, R)
-        GulliToolkit.modules.XP.session = nil
-        ns.Refresh()
-    end,
-}
+-- The session card in other sessions: nothing yet, honor and dungeons at the top level, only
+-- dungeons, only gold with a Farm Tracker goal.
+local function sessionScene(change)
+    return { spec = S.toolkit.default.spec,
+        open = function(ns, W, R)
+            S.toolkit.default.open(ns, W, R)
+            GulliToolkit.modules.XP.session = nil
+            change(ns, os.getenv("LOCALE") == "ruRU")
+            ns.Refresh()
+        end }
+end
+S.toolkit.nosession = sessionScene(function(ns)
+    GulliToolkit.modules.InstanceLimit.session = nil
+    ns.SesStart(1000 - 120)
+end)
+S.toolkit.seshonor = sessionScene(function(ns)
+    local s = ns.ses
+    s.honor, s.hk, s.honorAt, s.kills, s.quests, s.deaths = 6820, 74, 950, 0, 0, 7
+    s.honorB = { [21] = 300, [22] = 500, [23] = 900, [24] = 1200, [25] = 1000, [28] = 150, [29] = 900, [30] = 1300, [31] = 1400, [32] = 1100 }
+    s.best = { name = "Blade of Eternal Darkness", q = 4 }
+end)
+S.toolkit.sesdungeon = sessionScene(function(ns, ru)
+    local s = ns.ses
+    s.honor, s.kills, s.quests = 0, 0, 0
+    GulliToolkit.modules.InstanceLimit.session = function()
+        return { value = "3", unit = ru and "подземелья" or "dungeons", at = 1000, bars = { 41, 36, 38, 12 },
+                 line = ru and "В среднем 38 мин, сейчас Мародон 12 мин" or "38 min on average, now Maraudon 12 min",
+                 tip = { head = ru and "Подземелья" or "Dungeons", value = "3", rows = {} } }
+    end
+end)
+S.toolkit.sesgold = sessionScene(function(ns, ru)
+    local s = ns.ses
+    s.honor, s.quests, s.deaths, s.kills, s.best = 0, 0, 0, 0, nil
+    s.gold = { loot = 352000, quest = 0, vendor = 41000, repair = 10500 }
+    GulliToolkit.modules.InstanceLimit.session = nil
+    GulliToolkit.modules.FarmTrack.session = function()
+        return { tile = { value = "86", label = ru and "Руническая ткань" or "Runecloth", icon = "Interface\\Icons\\INV_Fabric_PurpleFire_01" } }
+    end
+end)
 
 -- The Unlock mode: the panel of every frame on the screen, with the grid behind it.
 S.toolkit.unlock = { spec = S.toolkit.default.spec, crop = "GulliToolkitUnlock",

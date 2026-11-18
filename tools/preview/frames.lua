@@ -79,7 +79,12 @@ function Region:CreateMaskTexture()
 end
 function Region:AddMaskTexture(m) self.__mask = (m and m.__tex) or true end
 function Region:SetSize(w, h) self.__w, self.__h = w, h; changed() end
-function Region:SetWidth(w) self.__w = w; changed() end
+-- a text of width 0 sizes itself, as in the game
+function Region:SetWidth(w)
+    if self.__kind == "FontString" and w == 0 then w = nil end
+    self.__w = w
+    changed()
+end
 function Region:SetHeight(h) self.__h = h; changed() end
 function Region:SetScale(s) self.__scale = s; changed() end
 function Region:GetScale() return self.__scale or 1 end

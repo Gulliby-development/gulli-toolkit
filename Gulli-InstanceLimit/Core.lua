@@ -418,11 +418,43 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         wipe(ns.group)
         if event == "GROUP_JOINED" and ns.db.sync then sendAddon("HELLO", groupChannel()); ns.Share() end
     else
+        -- a1: a real login, which starts a new session for the hub's card; a /reload keeps it.
+        if event == "PLAYER_ENTERING_WORLD" and ((a1 and not a2) or not ns.db.sessionAt) then
+            ns.db.sessionAt = time()
+        end
         local name, kind, mapID = instanceInfo()
         ns.Entered(name, kind, mapID)
     end
     if ns.Refresh then ns.Refresh() end
 end)
+
+-- The hub's session card: the runs of this character since the login. The number of runs with
+-- their mean length, a column per run, and the run that still goes on.
+ns.SESSION_ICON = "Interface\\Icons\\INV_Misc_Key_03"
+function ns.Session(now)
+    local db = ns.db
+    if not db or not db.sessionAt then return nil end
+    now = now or time()
+    local me = UnitName("player")
+    local runs, bars, rows, sum, done, last, open = 0, {}, {}, 0, 0, nil, nil
+    for _, e in ipairs(db.entries) do
+        if e.t >= db.sessionAt and e.char == me then
+            runs = runs + 1
+            local secs = e.out and (e.secs or 0) or math.max(0, now - e.t)
+            bars[#bars + 1] = secs
+            rows[#rows + 1] = { e.name or "?", ns.Clock(secs) }
+            if e.out then sum, done = sum + secs, done + 1 else open = e end
+            last = math.max(last or 0, e.out or now)
+        end
+    end
+    if runs == 0 then return nil end
+    local parts = {}
+    if done > 0 then parts[#parts + 1] = L.SES_AVG:format(ns.Clock(sum / done)) end
+    if open then parts[#parts + 1] = L.SES_NOW:format(open.name or "?", ns.Clock(now - open.t)) end
+    return { value = runs, unit = L.SES_DUNGEONS, line = table.concat(parts, ", "), bars = bars, at = last,
+             tile = { icon = ns.SESSION_ICON, value = runs, label = L.SES_DUNGEONS },
+             tip = { icon = ns.SESSION_ICON, head = L.SES_DUNGEONS, value = runs, rows = rows } }
+end
 
 SLASH_GULLIINSTANCELIMIT1 = "/gil"
 SLASH_GULLIINSTANCELIMIT2 = "/gulliinstancelimit"
@@ -469,6 +501,7 @@ if GulliToolkit and GulliToolkit.Register then
             return L.SUM_LEFT:format(s.leftHour, ns.db.limit), "Interface\\Icons\\INV_Misc_PocketWatch_01",
                 { pips = { s.leftHour, ns.db.limit }, tone = s.leftHour <= 1 and "warn" or "good" }
         end,
+        session = function() return ns.Session() end,
         move = function(on) if ns.MoveBadge then ns.MoveBadge(on) end end,
         frames = { { key = "badge", label = ns.L.TITLE, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
                      get = function() return ns.BadgeOn() end, set = function(v) ns.SetBadgeOn(v) end,

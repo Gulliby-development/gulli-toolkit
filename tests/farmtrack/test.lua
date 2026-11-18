@@ -115,6 +115,27 @@ test("targets: at most three, one per item, gold once", function()
     eq(ns.Targets()[2].id, ORE)
 end)
 
+test("the hub's session card gets the first item target that gained as a tile", function()
+    Fake({ now = 0 })
+    local got
+    GulliToolkit = { Register = function(m) got = m end }
+    local ns = Load()
+    eq(got.session(), nil, "no target")
+    ns.AddTarget("gold")
+    ns.AddTarget("item", ORE)
+    ns.AddTarget("item", CLOTH)
+    eq(got.session(), nil, "nothing gained yet")
+    ns.Gain("gold", 5000, 10)
+    eq(got.session(), nil, "gold is the hub's own number")
+    W.now = 60; W.Loot(CLOTH, 86)
+    local s = got.session()
+    eq(s.value, nil, "a tile only: it never leads the card")
+    eq(s.tile.value, "86")
+    eq(s.tile.label, ns.ItemName(CLOTH))
+    eq(#s.tip.rows, 2, "every target that gained is a line of the tooltip")
+    GulliToolkit = nil
+end)
+
 test("rate, goal and time to the goal", function()
     Fake({ now = 0 })
     local ns = Load()

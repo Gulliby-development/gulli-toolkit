@@ -124,7 +124,7 @@ end
 -- (icon and tip optional). More optional fields: window (see AGENTS.md), summary = function()
 -- return text[, icon[, stat]] end (one short line for the hub's home page; stat is an optional
 -- table for its tile, see ns.TileOf), session = function() return { ... } end (the graph of the
--- home page's session card, see ns.Session), move = function(on) end
+-- home page's session card, see ns.SessionOf), move = function(on) end
 -- (show or hide the module's frames with their movers for the hub's Unlock mode; a frame that
 -- is off shows too, so it can be placed), frames = { { key, label, icon, get, set } } (the
 -- frames the Unlock mode lists, see ns.Frames) and reset = function() end (back to the defaults).
@@ -601,19 +601,27 @@ function ns.Tiles(rows, shown, skip, max)
     return out
 end
 
--- The session card of the home page: the first module of ns.SESSION_FIRST, then any other,
--- whose `session` gives a table:
+-- What a module gives the session card of the home page through `session`:
 -- { value = "19k", unit = "XP / h", line = "Level 48 in 1 h 30 min", span = "1 h 12 min",
 --   bars = { numbers, oldest first, at most ns.SESSION_BARS }, progress = { value = 0..1,
---   extra = 0..1 (a lighter part after it), left = "47", right = "77%" } }.
--- Only value is required. A new source (honor, gold, dungeons) is a module that gives `session`.
-ns.SESSION_FIRST = { "XP", "FarmTrack" }
+--   extra = 0..1 (a lighter part after it), left = "47", right = "77%" },
+--   at = when it last gained (time()), tile = { icon, value, label } (its small tile while
+--   another source leads), facts = { short texts for the quiet line }, tip = { icon, head, value,
+--   rows = { { left, right } } } (its part of the card's tooltip) }.
+-- value makes it a source that can lead the card; a module with only a tile gives no value.
+-- The card itself is ns.SessionCard (Session.lua), which adds the core's own honor and gold.
 ns.SESSION_BARS = 12
-local function sessionOf(r)
+local function text(v) return v ~= nil and tostring(v) or nil end
+function ns.SessionOf(r)
     local fn = r and r.running and not r.paused and r.info and r.info.session
     if type(fn) ~= "function" then return nil end
     local ok, d = pcall(fn)
-    if not ok or type(d) ~= "table" or d.value == nil then return nil end
+    if not ok or type(d) ~= "table" then return nil end
+    local tile
+    if type(d.tile) == "table" and d.tile.value ~= nil then
+        tile = { icon = d.tile.icon or r.icon, value = tostring(d.tile.value), label = tostring(d.tile.label or r.title or "") }
+    end
+    if d.value == nil and not tile then return nil end
     local bars = {}
     if type(d.bars) == "table" then
         local from = math.max(1, #d.bars - ns.SESSION_BARS + 1)
@@ -625,21 +633,24 @@ local function sessionOf(r)
         pr = { value = v, extra = math.max(0, math.min(1 - v, tonumber(d.progress.extra) or 0)),
                left = tostring(d.progress.left or ""), right = tostring(d.progress.right or "") }
     end
-    return { row = r, value = tostring(d.value), unit = tostring(d.unit or ""), line = tostring(d.line or ""),
-             span = tostring(d.span or ""), bars = bars, progress = pr }
-end
-function ns.Session(rows)
-    rows = rows or ns.List()
-    local by = {}
-    for _, r in ipairs(rows) do by[r.key] = r end
-    for _, k in ipairs(ns.SESSION_FIRST) do
-        local s = sessionOf(by[k])
-        if s then return s end
+    local facts = {}
+    if type(d.facts) == "table" then
+        for _, f in ipairs(d.facts) do if type(f) == "string" and f ~= "" then facts[#facts + 1] = f end end
     end
-    for _, r in ipairs(rows) do
-        local s = sessionOf(r)
-        if s then return s end
+    local tip
+    if type(d.tip) == "table" and d.tip.head ~= nil then
+        tip = { icon = d.tip.icon or r.icon, head = tostring(d.tip.head), value = tostring(d.tip.value or ""), rows = {} }
+        if type(d.tip.rows) == "table" then
+            for _, row in ipairs(d.tip.rows) do
+                if type(row) == "table" and row[1] ~= nil then
+                    tip.rows[#tip.rows + 1] = { tostring(row[1]), tostring(row[2] or ""), row[3] and true or false }
+                end
+            end
+        end
     end
+    return { row = r, value = text(d.value), unit = tostring(d.unit or ""), line = tostring(d.line or ""),
+             span = tostring(d.span or ""), bars = bars, progress = pr, at = tonumber(d.at), tile = tile,
+             facts = facts, tip = tip }
 end
 
 -- The Recent feed for the home page: lines of one module that follow each other are one row,
