@@ -546,11 +546,8 @@ local function step(g, kind, order, dur, smooth)
     return a
 end
 
-local function scaleFrom(a, from)
-    if not a then return end
-    if a.SetScaleFrom then a:SetScaleFrom(from, from); a:SetScaleTo(1, 1)
-    elseif a.SetFromScale then a:SetFromScale(from, from); a:SetToScale(1, 1) end
-end
+-- No motion scales a frame: a box drawn from many textures, scaled by a fraction, shows seams
+-- (dark lines at its corners and edges). Frames only fade and slide.
 
 -- Plays one cached group of r, made by build(g) the first time; stops it first.
 local function play(r, key, build, onDone)
@@ -572,8 +569,8 @@ local function play(r, key, build, onDone)
     return true
 end
 
--- r appears: it fades in while it moves dy pixels up into place (dy < 0: down into place) and,
--- with scale, grows from that size. Calm: shows at once.
+-- r appears: it fades in while it moves dy pixels up into place (dy < 0: down into place); scale
+-- is kept for older calls and does nothing. Calm: shows at once.
 function S.MotionIn(r, dy, dur, scale, delay)
     if S.Calm() then return end
     local key = "in" .. tostring(dy or 0) .. tostring(scale or 1) .. tostring(delay or 0)
@@ -588,17 +585,15 @@ function S.MotionIn(r, dy, dur, scale, delay)
         end
         local fade = step(g, "Alpha", 2, dur or S.BASE, "OUT")
         if fade and fade.SetFromAlpha then fade:SetFromAlpha(0); fade:SetToAlpha(1) end
-        if scale then scaleFrom(step(g, "Scale", 2, dur or S.BASE, "OUT"), scale) end
     end)
 end
 
--- r fades out (and shrinks a little), then done() runs; calm: done() at once.
+-- r fades out, then done() runs; calm: done() at once.
 function S.MotionOut(r, done, dur)
     if S.Calm() then if done then done() end return end
     play(r, "out", function(g)
         local fade = step(g, "Alpha", 1, dur or 0.14, "IN")
         if fade and fade.SetFromAlpha then fade:SetFromAlpha(1); fade:SetToAlpha(0) end
-        scaleFrom(step(g, "Scale", 1, dur or 0.14, "IN"), 1)
         if g.SetToFinalAlpha then g:SetToFinalAlpha(false) end
     end, done)
 end
@@ -619,7 +614,7 @@ end
 function S.MotionPop(r, from, dur)
     if S.Calm() then return end
     play(r, "pop" .. tostring(from), function(g)
-        scaleFrom(step(g, "Scale", 1, dur or S.BASE, "OUT"), from or 0.6)
+        -- Only a fade: a scaled box of several textures shows seams between them.
         local fade = step(g, "Alpha", 1, dur or S.BASE, "OUT")
         if fade and fade.SetFromAlpha then fade:SetFromAlpha(0.2); fade:SetToAlpha(1) end
     end)
@@ -693,6 +688,9 @@ end
 
 local function paint(b)
     local hover = b.hover and b:IsEnabled()
+    local down = b.down and b:IsEnabled()
+    if b.text then b.text:SetPoint("LEFT", 6, down and -1 or 0); b.text:SetPoint("RIGHT", -6, down and -1 or 0) end
+    if down then hover = false end
     if (b.kind == "primary" or b.kind == "danger") and not b:IsEnabled() then
         -- a main action that cannot run now looks like a plain dim button, not a lit one
         S.Fill(b, S.RAISED)
@@ -701,16 +699,16 @@ local function paint(b)
     elseif b.kind == "primary" or b.kind == "danger" then
         local c = b.kind == "danger" and S.DANGER_FILL or S.FILL
         local e = b.kind == "danger" and S.DANGER_EDGE or S.FILL_EDGE
-        local k = hover and 1.18 or 1
+        local k = down and 0.82 or hover and 1.18 or 1
         S.Fill(b, { math.min(1, c[1] * k), math.min(1, c[2] * k), math.min(1, c[3] * k), 1 })
         S.SetBorder(b, e)
         b.text:SetTextColor(1, 1, 1, 1)
         b.text:SetShadowColor(0, 0, 0, 1)
     elseif b.kind == "ghost" then
-        S.Fill(b, hover and S.HOVER or S.CLEAR)
+        S.Fill(b, (hover or down) and S.HOVER or S.CLEAR)
         S.SetBorder(b, S.CLEAR)
     else
-        S.Fill(b, hover and S.RAISED_HOVER or S.RAISED)
+        S.Fill(b, down and S.PRESSED or hover and S.RAISED_HOVER or S.RAISED)
         S.SetBorder(b, hover and S.EDGE or S.LINE)
     end
 end
@@ -738,23 +736,13 @@ function S.Button(parent, width, height)
     b:SetScript("OnLeave", function(self) self.hover = false; paint(self) end)
     b:SetScript("OnDisable", function(self) self.text:SetAlpha(0.4); paint(self) end)
     b:SetScript("OnEnable", function(self) self.text:SetAlpha(1); paint(self) end)
-    -- A press shrinks it a little.
+    -- A press darkens it and moves the text one pixel down. No scaling: a box made of many
+    -- textures scaled by a fraction shows seams between them.
     b:HookScript("OnMouseDown", function(self)
-        if self:IsEnabled() and not S.Calm() then
-            play(self, "press", function(g)
-                local a = step(g, "Scale", 1, 0.08, "OUT")
-                if a then
-                    if a.SetScaleFrom then a:SetScaleFrom(1, 1); a:SetScaleTo(0.97, 0.97)
-                    elseif a.SetFromScale then a:SetFromScale(1, 1); a:SetToScale(0.97, 0.97) end
-                end
-                local back = step(g, "Scale", 2, 0.08, "IN")
-                if back then
-                    if back.SetScaleFrom then back:SetScaleFrom(0.97, 0.97); back:SetScaleTo(1, 1)
-                    elseif back.SetFromScale then back:SetFromScale(0.97, 0.97); back:SetToScale(1, 1) end
-                end
-            end)
-        end
+        if self:IsEnabled() then self.down = true; paint(self) end
     end)
+    b:HookScript("OnMouseUp", function(self) self.down = false; paint(self) end)
+    b:HookScript("OnHide", function(self) self.down = false end)
     return b
 end
 
