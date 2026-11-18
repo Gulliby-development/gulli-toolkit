@@ -1,6 +1,7 @@
 -- Dungeons on the left (icon, name, level range in the game's difficulty colours); on the
--- right the dungeon's header and its pages: Bosses (the boss list, the boss's model, abilities,
--- note and loot), Loot (every drop of the dungeon with the wishlist), Quests (in the log, the
+-- right the dungeon's header and its pages: Bosses (the bosses in the order a group meets them and
+-- the rares under them, the boss's model, kills, abilities, note and loot), Loot (what the mobs
+-- drop, what the bosses have for the class, the wishlist), Quests (in the log, the
 -- stops of the way to take the rest with the entrance last, the ones that come later, and the
 -- guide), and Settings.
 
@@ -513,24 +514,90 @@ local function fillRow(r, item)
 end
 
 -- The dungeon's header: name, levels, bosses and quest counts, the keys, the entrance.
+-- A plate in the dungeon's header: a text, with an icon before it or a thin bar after it.
+local function headChip(parent)
+    local c = CreateFrame("Frame", nil, parent)
+    c:SetHeight(26)
+    S.Box(c, S.RAISED, S.CARD_EDGE, S.R_MD)
+    c.icon = c:CreateTexture(nil, "ARTWORK")
+    c.icon:SetSize(14, 14)
+    c.icon:SetPoint("LEFT", 8, 0)
+    c.text = S.Text(c, 12, S.MUTED)
+    c.text:SetWordWrap(false)
+    c.bar = S.Progress(c, 4)
+    c.bar:SetWidth(40)
+    c.bar:SetPoint("RIGHT", -9, 0)
+    function c:Set(text, icon, share)
+        self.icon:SetShown(icon ~= nil)
+        if icon then self.icon:SetTexture(icon) end
+        self.text:ClearAllPoints()
+        self.text:SetPoint("LEFT", icon and 28 or 9, 0)
+        self.text:SetText(text)
+        self.bar:SetShown(share ~= nil)
+        if share then self.bar:Set(share, S.GOOD) end
+        self:SetWidth(math.floor(self.text:GetStringWidth() or 0) + (icon and 28 or 9) + (share and 58 or 9))
+        self:Show()
+    end
+    return c
+end
+
+-- The header's plates: the bosses killed, the quests done (with what is in the log and to
+-- take while there is room) and each key, from the right edge leftwards.
+local KEY_ICON = TI .. "INV_Misc_Key_03"
 local function fillHead(current, level)
     local c = counts[ns.selected] or { log = 0, take = 0, later = 0, done = 0 }
     setPortrait(head.icon, ns.selected or "")
     head.name:SetText(current and ns.DungeonName(current) or "")
     head.range:SetText(current and (current.min .. "-" .. current.max) or "")
     if current then head.range:SetTextColor(unpack(ns.DiffColor(ns.DungeonDifficulty(current, level)))) end
-    local parts = { L.HEAD_COUNTS:format(c.log, c.take, c.later, c.done) }
-    local n = 0
-    for _, b in ipairs((ns.Data and ns.Data.boss and ns.Data.boss[ns.selected]) or {}) do
-        if b[7] ~= 1 then n = n + 1 end
+    for _, chip in ipairs(head.chips) do chip:Hide() end
+    local shown = {}
+    local killed, bosses = ns.BossProgress(ns.selected)
+    if bosses > 0 then
+        head.chips[1]:Set(S.Emph(L.HEAD_BOSSES:format(killed, bosses)), nil, killed / bosses)
+        shown[#shown + 1] = head.chips[1]
     end
-    if n > 0 then table.insert(parts, 1, L.HEAD_BOSSES:format(n)) end
+    local total = c.log + c.take + c.later + c.done
+    local quests = total > 0 and S.Emph(L.HEAD_QUESTS:format(c.done, total)) or nil
+    if quests then
+        local more = quests
+        if c.log > 0 then more = more .. "  ·  " .. L.HEAD_LOG:format(c.log) end
+        if c.take > 0 then more = more .. "  ·  " .. L.HEAD_TAKE:format(c.take) end
+        head.chips[2]:Set(more)
+        shown[#shown + 1] = head.chips[2]
+    end
     if ns.Get("keys") then
-        for _, k in ipairs(ns.KeyState(ns.selected)) do
-            parts[#parts + 1] = S.Hex(k.have and S.GOOD or S.BAD) .. (k.have and L.CHECK_KEY or L.CHECK_NO_KEY):format(k.name) .. "|r"
+        for i, k in ipairs(ns.KeyState(ns.selected)) do
+            local chip = head.chips[2 + i]
+            if chip then
+                chip:Set(S.Hex(k.have and S.GOOD or S.BAD) .. (k.have and k.name or L.CHECK_NO_KEY:format(k.name)) .. "|r",
+                         k.have and ICON_OK or KEY_ICON)
+                shown[#shown + 1] = chip
+            end
         end
     end
-    head.sub:SetText(table.concat(parts, "  ·  "))
+    -- What does not fit beside the name goes: first the quest plate's extras, then the plate.
+    local function width()
+        local w = 0
+        for _, chip in ipairs(shown) do w = w + chip:GetWidth() + 6 end
+        return w
+    end
+    local room = (tonumber(head.body:GetWidth()) or 0)
+    if room > 1 then
+        room = room - 46 - (head.name:GetStringWidth() or 0) - 8 - (head.range:GetStringWidth() or 0) - 14
+               - entranceBtn:GetWidth() - 8
+        if quests and width() > room then head.chips[2]:Set(quests) end
+        if quests and width() > room then
+            head.chips[2]:Hide()
+            for i, chip in ipairs(shown) do if chip == head.chips[2] then table.remove(shown, i) break end end
+        end
+    end
+    local at = entranceBtn
+    for i = #shown, 1, -1 do
+        shown[i]:ClearAllPoints()
+        shown[i]:SetPoint("RIGHT", at, "LEFT", at == entranceBtn and -8 or -6, 0)
+        at = shown[i]
+    end
     entranceBtn:SetEnabled(current ~= nil and current.entrance ~= nil)
 end
 
@@ -584,10 +651,30 @@ end
 
 -- Bosses and loot -----------------------------------------------------------------------------
 
-local WISH_ICON = "Interface\\Icons\\INV_Misc_Gem_Pearl_04"
 local MAX_SPELLS = 6
-local LOOT_FILTERS = { { "all", "F_LOOT_ALL", S.TAB.list }, { "mine", "F_MINE", TI .. "INV_Chest_Chain_05" },
+local OWN_PIPS = 10
+local LOOT_ROW, HEAD_ROW = 38, 26
+-- A boss's loot card holds this many rows of this height.
+local BOSS_LOOT, BOSS_LOOT_ROW = 5, 36
+local STAR = "PetJournal-FavoritesIcon"
+local WISH_ICON = "Interface\\Icons\\INV_Misc_Gem_Pearl_04"
+local EMPTY_PIP = { 1, 0.93, 0.78, 0.13 }
+local LOOT_FILTERS = { { "mobs", "F_MOBS", TI .. "INV_Misc_Bone_01" }, { "mine", "F_MINE", TI .. "INV_Chest_Chain_05" },
                        { "wish", "F_WISH", WISH_ICON } }
+
+-- A plain coloured texture of a frame.
+local function plain(f, layer, c)
+    local t = f:CreateTexture(nil, layer or "ARTWORK")
+    t:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
+    return t
+end
+local function paint(t, c) t:SetColorTexture(c[1], c[2], c[3], c[4] or 1) end
+
+-- The wishlist mark: the game's star where the client has it, else the pearl.
+local function setStar(t)
+    local has = C_Texture and C_Texture.GetAtlasInfo and t.SetAtlas and C_Texture.GetAtlasInfo(STAR)
+    if has then t:SetAtlas(STAR) else t:SetTexture(WISH_ICON) end
+end
 
 -- The hover card of a loot line: the game's item tooltip, then where and how often it drops.
 local function lootTooltip(owner, l)
@@ -595,10 +682,13 @@ local function lootTooltip(owner, l)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if GameTooltip.SetItemByID then GameTooltip:SetItemByID(l.item) end
     GameTooltip:AddLine(" ")
-    local chance = l.pct > 0 and (L.CHANCE:format(l.pct) .. (l.own and ("  " .. L.CHANCE_OWN) or "")) or L.SEEN
-    GameTooltip:AddLine(l.boss .. ":  " .. chance, 1, 0.82, 0)
-    if l.runs then GameTooltip:AddLine(L.RUNS_TT:format(l.runs), 0.7, 0.7, 0.7) end
-    GameTooltip:AddLine(L.TT_LOOT_CLICK, 0.6, 0.6, 0.6, true)
+    if l.zone then
+        GameTooltip:AddLine(L.ZONE_DROP, 1, 0.82, 0)
+    else
+        local chance = l.pct > 0 and (L.CHANCE:format(l.pct) .. (l.own and ("  " .. L.CHANCE_OWN) or "")) or L.SEEN
+        GameTooltip:AddLine(l.boss .. ":  " .. chance, 1, 0.82, 0)
+    end
+    GameTooltip:AddLine(l.wish and L.WISH_REMOVE or L.WISH_ADD, 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end
 
@@ -615,15 +705,21 @@ local function onLootClick(self, button)
     end
 end
 
+local BAR_W = 44
 local function makeLoot(r)
+    r.head = S.Text(r, 12, S.MUTED, nil, "bold")
+    r.head:SetPoint("BOTTOMLEFT", 6, 5)
+    r.head:SetPoint("RIGHT", -6, 0)
+    r.head:SetWordWrap(false)
     r.icon = S.IconBox(r, 24)
     r.icon:SetPoint("LEFT", 6, 0)
     r.wish = CreateFrame("Button", nil, r)
     r.wish:SetSize(22, 22)
     r.wish:SetPoint("RIGHT", -6, 0)
     r.wish.tex = r.wish:CreateTexture(nil, "ARTWORK")
-    r.wish.tex:SetAllPoints()
-    r.wish.tex:SetTexture(WISH_ICON)
+    r.wish.tex:SetPoint("CENTER")
+    r.wish.tex:SetSize(18, 18)
+    setStar(r.wish.tex)
     r.wish:SetScript("OnClick", function(self)
         local l = self:GetParent().loot
         if l then ns.SetWish(l.item, not l.wish) end
@@ -636,21 +732,24 @@ local function makeLoot(r)
         end
     end)
     r.wish:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    r.pct = S.Text(r, 12)
-    r.pct:SetPoint("TOPRIGHT", r.wish, "TOPLEFT", -10, 2)
+    -- The chance: the number, and a thin bar under it filled by that share.
+    r.pct = S.Text(r, 12, nil, nil, "bold")
+    r.pct:SetPoint("RIGHT", r.wish, "LEFT", -10, 4)
     r.pct:SetJustifyH("RIGHT")
-    r.pct:SetWidth(64)
-    r.runs = S.Text(r, 12, S.FAINT)
-    r.runs:SetPoint("TOPRIGHT", r.pct, "BOTTOMRIGHT", 0, -2)
-    r.runs:SetJustifyH("RIGHT")
-    r.runs:SetWidth(84)
+    r.pct:SetWordWrap(false)
+    r.track = plain(r, "ARTWORK", EMPTY_PIP)
+    r.track:SetSize(BAR_W, 3)
+    r.track:SetPoint("TOPRIGHT", r.pct, "BOTTOMRIGHT", 0, -3)
+    r.fill = plain(r, "OVERLAY", S.Accent())
+    r.fill:SetHeight(3)
+    r.fill:SetPoint("LEFT", r.track, "LEFT")
     r.name = S.Text(r, 12)
     r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 1)
     r.name:SetPoint("RIGHT", r.pct, "LEFT", -8, 0)
     r.name:SetWordWrap(false)
     r.sub = S.Text(r, 12, S.MUTED)
     r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
-    r.sub:SetPoint("RIGHT", r.runs, "LEFT", -8, 0)
+    r.sub:SetPoint("RIGHT", r.pct, "LEFT", -8, 0)
     r.sub:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetPoint("TOPLEFT")
@@ -668,57 +767,84 @@ local function slotText(l)
     return ""
 end
 
+-- A chance under this is told quietly: the eye finds what really drops.
+local LOW_PCT = 15
+
 local function fillLoot(r, item)
-    if item.header then
+    local header = item.header == true
+    r.head:SetShown(header)
+    r.icon:SetShown(not header); r.wish:SetShown(not header); r.click:SetShown(not header)
+    r.name:SetShown(not header); r.sub:SetShown(not header); r.pct:SetShown(not header)
+    r.line:SetShown(not header)
+    if header then
         r.loot = nil
-        r.icon:Hide(); r.wish:Hide(); r.pct:SetText(""); r.runs:SetText("")
-        r.name:SetText(item.text)
-        r.name:SetTextColor(unpack(S.MUTED))
-        r.sub:SetText("")
+        r.track:Hide(); r.fill:Hide()
+        r.head:SetText(item.text)
         return
     end
     local l = item.loot
     r.loot = l
-    r.icon:Show(); r.wish:Show()
+    local mine = l.fits ~= false
     r.icon:SetIcon(l.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-    r.icon:SetAlpha(l.fits == false and 0.4 or 1)
+    r.icon:SetAlpha(mine and 1 or 0.4)
     S.SetBorder(r.icon, l.better and S.GOOD or S.BORDER)
     r.name:SetText((S.QualityHex(l.quality or 1)) .. (l.name or ("item:" .. l.item)) .. "|r")
+    r.name:SetAlpha(mine and 1 or 0.55)
+    r.sub:SetAlpha(mine and 1 or 0.7)
     local sub = {}
-    if item.showBoss then sub[#sub + 1] = l.boss end
     local slot = slotText(l)
     if slot ~= "" then sub[#sub + 1] = slot end
+    if l.zone then sub[#sub + 1] = L.ZONE_DROP end
     if l.better then sub[#sub + 1] = S.Hex(S.GOOD) .. L.BETTER .. "|r"
-    elseif l.fits == false then sub[#sub + 1] = L.NOT_FOR_YOU end
+    elseif not mine then sub[#sub + 1] = L.NOT_FOR_YOU end
     if l.seen then sub[#sub + 1] = S.Hex(S.Accent()) .. L.SEEN .. "|r" end
     r.sub:SetText(table.concat(sub, "  ·  "))
-    if l.pct > 0 then
+    local bar = not l.zone and l.pct > 0
+    r.track:SetShown(bar); r.fill:SetShown(bar)
+    r.pct:ClearAllPoints()
+    r.pct:SetPoint("RIGHT", r.wish, "LEFT", -10, bar and 4 or 0)
+    if bar then
+        local c = l.own and S.TEXT or (l.pct < LOW_PCT and S.FAINT or S.Accent())
         r.pct:SetText(L.CHANCE:format(l.pct))
-        r.pct:SetTextColor(unpack(l.own and S.Accent() or S.TEXT))
+        r.pct:SetTextColor(unpack(c))
+        paint(r.fill, c)
+        r.fill:SetWidth(math.max(2, BAR_W * math.min(l.pct, 100) / 100))
     else
-        r.pct:SetText("-")
-        r.pct:SetTextColor(unpack(S.MUTED))
+        r.pct:SetText(l.zone and L.RARE_DROP or "-")
+        r.pct:SetTextColor(unpack(S.FAINT))
     end
-    r.runs:SetText(l.runs and L.RUNS:format(l.runs) or "")
     r.wish.tex:SetDesaturated(not l.wish)
-    r.wish:SetAlpha(l.wish and 1 or 0.35)
+    r.wish:SetAlpha(l.wish and 1 or 0.45)
 end
+local function lootHeight(item) return item.header and HEAD_ROW or LOOT_ROW end
 
 local function makeBoss(r)
     S.NavRow(r)
     r.line:Hide()
+    -- A header of the list: the bosses, a wing, the rares.
+    r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
+    r.head:SetPoint("BOTTOMLEFT", 6, 5)
+    r.head:SetWordWrap(false)
+    r.note = S.Text(r, 12, S.FAINT)
+    r.note:SetPoint("BOTTOMRIGHT", -6, 5)
+    r.note:SetJustifyH("RIGHT")
+    r.note:SetWordWrap(false)
     -- The boss's picture in a round ring: the journal's, else its portrait, else its number.
-    r.pic = S.IconBox(r, 30)
+    r.pic = S.IconBox(r, 28)
     r.pic:SetPoint("LEFT", 6, 0)
     r.num = S.Text(r, 13, S.Accent(), nil, "bold")
     r.num:SetPoint("CENTER", r.pic, "CENTER", 0, 0)
     r.num:SetJustifyH("CENTER")
-    r.lv = S.Text(r, 12)
-    r.lv:SetPoint("TOPRIGHT", -8, -6)
-    r.lv:SetJustifyH("RIGHT")
+    -- Killed by the player: a green ring and a check on the picture's corner.
+    local over = CreateFrame("Frame", nil, r.pic)
+    over:SetAllPoints()
+    r.done = over:CreateTexture(nil, "OVERLAY")
+    r.done:SetSize(15, 15)
+    r.done:SetPoint("BOTTOMRIGHT", r.pic, "BOTTOMRIGHT", 6, -5)
+    r.done:SetTexture(ICON_OK)
     r.name = S.Text(r, 12)
-    r.name:SetPoint("TOPLEFT", 44, -5)
-    r.name:SetPoint("RIGHT", r.lv, "LEFT", -4, 0)
+    r.name:SetPoint("TOPLEFT", 44, -4)
+    r.name:SetPoint("RIGHT", -6, 0)
     r.name:SetWordWrap(false)
     r.sub = S.Text(r, 12, S.FAINT)
     r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
@@ -727,7 +853,9 @@ local function makeBoss(r)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
     r.click:SetScript("OnClick", function(self)
-        ns.boss = self:GetParent().b.npc
+        local b = self:GetParent().b
+        if not b then return end
+        ns.boss = b.npc
         ns.modelBoss = ns.boss
         ns.Refresh()
     end)
@@ -744,8 +872,21 @@ local function bossColor(b)
     return ns.DiffColor(ns.Difficulty(b.max, ns.level or 1))
 end
 
-local function fillBoss(r, b)
+local function fillBoss(r, item)
+    local b = item.b
     r.b = b
+    local header = b == nil
+    r.head:SetShown(header); r.note:SetShown(header)
+    r.pic:SetShown(not header); r.num:SetShown(not header); r.name:SetShown(not header)
+    r.sub:SetShown(not header); r.click:SetShown(not header)
+    if header then
+        r.done:Hide()
+        r.head:SetText(S.Upper(item.text))
+        r.head:SetTextColor(unpack(item.rare and S.WARN or S.GOLD_DIM))
+        r.note:SetText(item.note or "")
+        r:SetSelected(false)
+        return
+    end
     local icon = ns.selected and ns.BossIcon(ns.selected, b)
     local portrait = not icon and b.display > 0 and SetPortraitTextureFromCreatureDisplayID
     if icon then
@@ -756,21 +897,77 @@ local function fillBoss(r, b)
     else
         r.pic.tex:SetTexture(nil)
     end
-    r.pic:SetGlow(b.rare and S.WARN or S.RING)
+    local killed = b.kills > 0
+    r.pic:SetGlow(b.rare and S.WARN or (killed and S.GOOD or S.RING))
+    r.done:SetShown(killed)
     r.num:SetText((icon or portrait) and "" or (b.rare and "R" or tostring(b.n)))
     r.num:SetTextColor(unpack(b.rare and S.WARN or S.Accent()))
     r.name:SetText(b.name)
-    r.lv:SetText(bossLevel(b))
-    r.lv:SetTextColor(unpack(bossColor(b)))
-    local parts = {}
-    if b.tag ~= "" then parts[#parts + 1] = b.tag end
-    if b.kills > 0 then parts[#parts + 1] = L.KILLS:format(b.kills) end
-    if b.rare then parts[#parts + 1] = L.RARE end
-    r.sub:SetText(table.concat(parts, "  ·  "))
+    -- The level on its own line, so the name keeps the row's width.
+    local sub = S.Hex(bossColor(b)) .. bossLevel(b) .. "|r"
+    if killed then sub = sub .. "  ·  " .. S.Hex(S.GOOD) .. "×" .. b.kills .. "|r" end
+    r.sub:SetText(sub)
     r:SetSelected(b.npc == ns.boss)
 end
+local function bossHeight(item) return item.b and LOOT_ROW or HEAD_ROW end
 
--- The boss page: the model, name, abilities and note on top, the loot under it.
+-- The rows of the boss list: the bosses under one header, or under their wings, in the order a
+-- group meets them; the rares under their own header at the end.
+local function bossItems(list)
+    local items, wings, wing, rares = {}, false, nil, false
+    for _, b in ipairs(list) do if not b.rare and b.wing ~= "" then wings = true end end
+    for _, b in ipairs(list) do
+        if b.rare then
+            if not rares then
+                rares = true
+                items[#items + 1] = { header = true, rare = true, text = L.RARE, note = L.RARE_NOTE }
+            end
+        elseif wings then
+            if b.wing ~= wing then
+                wing = b.wing
+                items[#items + 1] = { header = true, text = wing ~= "" and (L["WING_" .. wing] or wing) or L.TAB_BOSSES }
+            end
+        elseif #items == 0 then
+            local walk = ns.Data and ns.Data.walk and ns.Data.walk[ns.selected]
+            items[1] = { header = true, text = L.TAB_BOSSES, note = walk and L.IN_ORDER or nil }
+        end
+        items[#items + 1] = { b = b }
+    end
+    return items
+end
+ns.BossItems = bossItems
+
+-- The model of the boss shown: at once after a click on it, a moment later for the boss the
+-- page opened on, so the window shows before the game loads the model (a load stalls it).
+local modelWait
+local function wantModel(b)
+    if b.display <= 0 then return 0 end
+    if ns.modelBoss == b.npc then return b.display end
+    if not modelWait then
+        modelWait = true
+        local function load()
+            modelWait = nil
+            if ns.boss and frame and frame:IsShown() and tabs.selected == 1 and not ns.home then
+                ns.modelBoss = ns.boss
+                ns.Refresh()
+            end
+        end
+        if C_Timer and C_Timer.After then C_Timer.After(0.2, load) else load() end
+    end
+    return ns.modelBoss == b.npc and b.display or 0
+end
+
+-- The note of a boss: a quiet line until the player writes one, then the edit box.
+local function showNote(p, b)
+    local text = ns.Note("n" .. b.npc)
+    local open = text ~= "" or p.noteOpen == b.npc or p.note:HasFocus()
+    p.note:SetShown(open)
+    p.noteBtn:SetShown(not open)
+    if not p.note:HasFocus() then p.note:SetText(text) end
+    p.noteKey = "n" .. b.npc
+end
+
+-- The boss page: the model, name, kills, abilities and note on top, the loot under it.
 local function fillBossPage()
     local list = bossCache
     bossPage.empty:SetShown(#list == 0)
@@ -781,10 +978,9 @@ local function fillBossPage()
     local b
     for _, x in ipairs(list) do if x.npc == ns.boss then b = x end end
     if not b then b = list[1]; ns.boss = b.npc end
-    bossPage.list:SetData(list)
+    bossPage.list:SetData(bossItems(list))
     local p = bossPage
-    -- The model loads only for a boss the player clicked: loading one stalls the game.
-    local want = ns.modelBoss == b.npc and b.display > 0 and b.display or 0
+    local want = wantModel(b)
     if p.model.SetDisplayInfo and p.model.shown ~= want then
         p.model.shown = want
         if p.model.ClearModel then p.model:ClearModel() end
@@ -793,23 +989,30 @@ local function fillBossPage()
             if p.model.SetFacing then p.model:SetFacing(0) end
         end
     end
-    p.modelHint:SetShown(want == 0 and b.display > 0)
     p.name:SetText(b.name)
     p.name:SetTextColor(unpack(b.rare and S.WARN or S.TEXT))
     local parts = { S.Hex(bossColor(b)) .. L.LEVEL:format(bossLevel(b)) .. "|r" }
-    if b.tag ~= "" then table.insert(parts, 1, b.tag) end
-    if b.rare then parts[#parts + 1] = L.RARE end
+    if b.tag ~= "" then parts[#parts + 1] = b.tag end
+    if b.rare then parts[#parts + 1] = L.RARE
+    elseif b.of then parts[#parts + 1] = L.BOSS_N:format(b.n, b.of) end
     p.sub:SetText(table.concat(parts, "  ·  "))
-    p.kills:SetText(b.kills > 0 and L.KILLS:format(b.kills) or L.NO_KILLS)
-    for i, ic in ipairs(p.spells) do
+    -- Kills: the count, and how far the player's own drop chances are (ns.OWN_AFTER kills).
+    local killed = b.kills > 0
+    p.kills:SetText(killed and (S.Hex(S.GOOD) .. L.KILLS:format(b.kills) .. "|r") or L.NO_KILLS)
+    local got = math.min(b.kills, ns.OWN_AFTER)
+    for i, pip in ipairs(p.pips) do paint(pip, i <= got * OWN_PIPS / ns.OWN_AFTER and S.GOOD or EMPTY_PIP) end
+    p.own:SetText(got .. "/" .. ns.OWN_AFTER)
+    p.pipBox.kills = b.kills
+    for i, row in ipairs(p.spells) do
         local s = b.spells[i]
-        ic:SetShown(s ~= nil)
-        ic.spell = s
-        if s then ic:SetIcon(s.icon or "Interface\\Icons\\INV_Misc_QuestionMark") end
+        row:SetShown(s ~= nil)
+        row.spell = s
+        if s then
+            row.icon:SetIcon(s.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.name:SetText(s.name)
+        end
     end
-    p.spellLabel:SetShown(#b.spells > 0)
-    if not p.note:HasFocus() then p.note:SetText(ns.Note("n" .. b.npc)) end
-    p.noteKey = "n" .. b.npc
+    showNote(p, b)
     p.lootCard:SetTitle(L.LOOT_OF, tostring(#b.loot))
     local items = {}
     for _, l in ipairs(b.loot) do items[#items + 1] = { loot = l } end
@@ -817,28 +1020,37 @@ local function fillBossPage()
     p.loot:SetData(items)
 end
 
+-- The Loot page: what the ordinary mobs drop, what the bosses have for this class and the
+-- wishlist; the last two boss by boss in their order.
 local function fillLootPage()
-    local filter = ns.lootFilter or "all"
-    local all = ns.Loot(ns.selected, "all", search:GetText())
-    local n = { all = #all, mine = 0, wish = 0 }
-    for _, l in ipairs(all) do
-        if l.fits ~= false then n.mine = n.mine + 1 end
-        if l.wish then n.wish = n.wish + 1 end
-    end
+    local text = search:GetText()
+    local lists = {}
+    for _, f in ipairs(LOOT_FILTERS) do lists[f[1]] = ns.Loot(ns.selected, f[1], text) end
+    -- Opens on the mobs' loot; a dungeon without any opens on the class's.
+    local filter = ns.lootFilter or (#lists.mobs > 0 and "mobs" or "mine")
     local x = 0
     for _, f in ipairs(LOOT_FILTERS) do
         local b = lootFilters[f[1]]
-        b:SetText(f[1] == "mine" and L.F_MINE:format(n.mine) or L[f[2]]:format(n[f[1]]))
+        b:SetText(L[f[2]]:format(#lists[f[1]]))
         b:SetWidth(math.floor((b.text:GetStringWidth() or 0) + 44))
         b:ClearAllPoints()
         b:SetPoint("LEFT", lootPage.filters, "LEFT", x, 0)
         x = x + b:GetWidth() + 6
         b:SetSelected(filter == f[1])
     end
-    local items = {}
-    for _, l in ipairs(ns.Loot(ns.selected, filter, search:GetText())) do items[#items + 1] = { loot = l, showBoss = true } end
+    local items, group = {}, nil
+    for _, l in ipairs(lists[filter]) do
+        local g = l.zone and "mobs" or l.npc
+        if filter ~= "mobs" and g ~= group then
+            group = g
+            local head = l.zone and L.MOBS or (l.rare and (L.RARE .. "  ·  " .. l.boss)) or (l.bossN .. "  ·  " .. l.boss)
+            items[#items + 1] = { header = true, text = head }
+        end
+        items[#items + 1] = { loot = l }
+    end
     if #items == 0 then
-        items[1] = { header = true, text = (#((ns.Data and ns.Data.boss and ns.Data.boss[ns.selected]) or {}) == 0 and L.NO_BOSSES) or (filter == "wish" and L.NO_WISH) or L.NO_LOOT }
+        local none = #((ns.Data and ns.Data.boss and ns.Data.boss[ns.selected]) or {}) == 0 and L.NO_BOSSES
+        items[1] = { header = true, text = none or (filter == "wish" and L.NO_WISH) or (filter == "mobs" and L.NO_MOB_LOOT) or L.NO_LOOT }
     end
     lootPage.list:SetData(items)
 end
@@ -1370,22 +1582,34 @@ local function buildBossPage(parent)
     local left = S.Card(p)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
-    left:SetWidth(212)
+    left:SetWidth(248)
     p.left = left
-    p.list = S.List(left.body, 38, makeBoss, fillBoss)
+    p.list = S.List(left.body, LOOT_ROW, makeBoss, fillBoss)
     p.list:SetPoint("TOPLEFT")
     p.list:SetPoint("BOTTOMRIGHT", -10, 0)
+    p.list.heightOf = bossHeight
+
+    -- The loot keeps the bottom, as high as BOSS_LOOT rows: most bosses fit without a scroll bar.
+    local loot = S.Card(p, L.LOOT_OF, "", "Interface\\Icons\\INV_Misc_Bag_10")
+    loot:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT", S.GAP, 0)
+    loot:SetPoint("BOTTOMRIGHT")
+    loot:Fit(BOSS_LOOT * BOSS_LOOT_ROW)
+    p.lootCard = loot
+    p.loot = S.List(loot.body, BOSS_LOOT_ROW, makeLoot, fillLoot)
+    p.loot:SetPoint("TOPLEFT")
+    p.loot:SetPoint("BOTTOMRIGHT", -10, 0)
 
     local info = S.Card(p)
     info:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
     info:SetPoint("TOPRIGHT")
-    info:Fit(168)
+    info:SetPoint("BOTTOM", loot, "TOP", 0, S.GAP)
     p.info = info
     local b = info.body
     -- The boss's own model from the game; drag to turn it.
     local holder = CreateFrame("Frame", nil, b)
     holder:SetPoint("TOPLEFT")
-    holder:SetSize(150, 168)
+    holder:SetPoint("BOTTOMLEFT")
+    holder:SetWidth(150)
     S.Box(holder, S.INPUT, S.CARD_EDGE, S.R_MD)
     local m = CreateFrame("PlayerModel", nil, holder)
     m:SetPoint("TOPLEFT", 2, -2)
@@ -1405,41 +1629,70 @@ local function buildBossPage(parent)
     end)
     m:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     p.model = m
-    p.modelHint = S.Text(holder, 12, S.FAINT)
-    p.modelHint:SetPoint("LEFT", 10, 0)
-    p.modelHint:SetPoint("RIGHT", -10, 0)
-    p.modelHint:SetJustifyH("CENTER")
-    p.modelHint:SetText(L.MODEL_HINT)
-    p.name = S.Text(b, 15)
-    p.name:SetPoint("TOPLEFT", holder, "TOPRIGHT", 14, -2)
+    p.name = S.Text(b, 16, nil, nil, "title")
+    p.name:SetPoint("TOPLEFT", holder, "TOPRIGHT", 14, -1)
     p.name:SetPoint("RIGHT", b, "RIGHT")
     p.name:SetWordWrap(false)
     p.sub = S.Text(b, 12, S.MUTED)
     p.sub:SetPoint("TOPLEFT", p.name, "BOTTOMLEFT", 0, -5)
     p.sub:SetPoint("RIGHT", b, "RIGHT")
     p.sub:SetWordWrap(false)
-    p.kills = S.Text(b, 12, S.FAINT)
-    p.kills:SetPoint("TOPLEFT", p.sub, "BOTTOMLEFT", 0, -4)
-    p.kills:SetPoint("RIGHT", b, "RIGHT")
+    -- Kills, and a bar of pips: full when the chances shown are the player's own.
+    p.kills = S.Text(b, 12, S.FAINT, nil, "bold")
+    p.kills:SetPoint("TOPLEFT", p.sub, "BOTTOMLEFT", 0, -7)
     p.kills:SetWordWrap(false)
-    p.spellLabel = S.Text(b, 12, S.FAINT)
-    p.spellLabel:SetPoint("TOPLEFT", p.kills, "BOTTOMLEFT", 0, -10)
-    p.spellLabel:SetText(S.Upper(L.ABILITIES))
+    local box = CreateFrame("Frame", nil, b)
+    box:SetSize(OWN_PIPS * 13 + 40, 16)
+    box:SetPoint("LEFT", p.kills, "RIGHT", 10, 0)
+    box:EnableMouse(true)
+    box:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        local k = self.kills or 0
+        GameTooltip:AddLine(k >= ns.OWN_AFTER and L.OWN_DONE or L.OWN_HINT:format(k, ns.OWN_AFTER), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    box:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    p.pipBox = box
+    p.pips = {}
+    for i = 1, OWN_PIPS do
+        local pip = plain(box, "ARTWORK", EMPTY_PIP)
+        pip:SetSize(10, 4)
+        pip:SetPoint("LEFT", (i - 1) * 13, 0)
+        p.pips[i] = pip
+    end
+    p.own = S.Text(box, 12, S.FAINT)
+    p.own:SetPoint("LEFT", OWN_PIPS * 13 + 4, 0)
+    -- The abilities by name, two to a line.
     p.spells = {}
     for i = 1, MAX_SPELLS do
-        local ic = S.IconBox(b, 26)
-        ic:SetPoint("TOPLEFT", p.spellLabel, "BOTTOMLEFT", (i - 1) * 32, -6)
-        ic:EnableMouse(true)
-        ic:SetScript("OnEnter", function(self)
+        local row = CreateFrame("Frame", nil, b)
+        row:SetHeight(22)
+        local col, line = (i - 1) % 2, math.floor((i - 1) / 2)
+        if col == 0 then
+            row:SetPoint("TOPLEFT", p.kills, "BOTTOMLEFT", 0, -9 - line * 23)
+            row:SetPoint("RIGHT", b, "RIGHT", -178, 0)
+        else
+            row:SetPoint("TOPLEFT", p.kills, "BOTTOMLEFT", 178, -9 - line * 23)
+            row:SetPoint("RIGHT", b, "RIGHT")
+        end
+        row.icon = S.IconBox(row, 20)
+        row.icon:SetPoint("LEFT")
+        row.name = S.Text(row, 12, S.MUTED)
+        row.name:SetPoint("LEFT", row.icon, "RIGHT", 7, 0)
+        row.name:SetPoint("RIGHT")
+        row.name:SetWordWrap(false)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
             if not (GameTooltip and self.spell) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if GameTooltip.SetSpellByID then GameTooltip:SetSpellByID(self.spell.id) else GameTooltip:AddLine(self.spell.name) end
             GameTooltip:Show()
         end)
-        ic:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        p.spells[i] = ic
+        row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        p.spells[i] = row
     end
-    p.note = S.Edit(b, 200, 28)
+    p.note = S.Edit(b, 200, 26)
     p.note:SetPoint("BOTTOMLEFT", holder, "BOTTOMRIGHT", 14, 0)
     p.note:SetPoint("RIGHT", b, "RIGHT")
     p.note:SetJustifyH("LEFT")
@@ -1448,14 +1701,23 @@ local function buildBossPage(parent)
         if user and p.noteKey then ns.SetNote(p.noteKey, self:GetText()) end
     end)
     p.note:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-
-    local loot = S.Card(p, L.LOOT_OF, "", "Interface\\Icons\\INV_Misc_Bag_10")
-    loot:SetPoint("TOPLEFT", info, "BOTTOMLEFT", 0, -S.GAP)
-    loot:SetPoint("BOTTOMRIGHT")
-    p.lootCard = loot
-    p.loot = S.List(loot.body, 38, makeLoot, fillLoot)
-    p.loot:SetPoint("TOPLEFT")
-    p.loot:SetPoint("BOTTOMRIGHT", -10, 0)
+    p.note:HookScript("OnEditFocusLost", function()
+        p.noteOpen = nil
+        if ns.Refresh then ns.Refresh() end
+    end)
+    p.noteBtn = CreateFrame("Button", nil, b)
+    p.noteBtn:SetHeight(26)
+    p.noteBtn:SetPoint("BOTTOMLEFT", holder, "BOTTOMRIGHT", 14, 0)
+    p.noteBtn.text = S.Text(p.noteBtn, 12, S.Accent())
+    p.noteBtn.text:SetPoint("LEFT")
+    p.noteBtn.text:SetText(L.NOTE_ADD)
+    p.noteBtn:SetWidth(math.max(80, math.floor((p.noteBtn.text:GetStringWidth() or 0) + 8)))
+    p.noteBtn:SetScript("OnClick", function()
+        p.noteOpen = ns.boss
+        p.note:Show()
+        p.noteBtn:Hide()
+        if p.note.SetFocus then p.note:SetFocus() end
+    end)
     return p
 end
 
@@ -1469,15 +1731,17 @@ local function buildLootPage(parent)
     for _, f in ipairs(LOOT_FILTERS) do
         local b = S.Pill(p.filters, 96, 28)
         S.SetButtonIcon(b, f[3], 14)
+        if f[1] == "wish" and rawget(b, "btnIcon") then setStar(b.btnIcon) end
         b:SetScript("OnClick", function() ns.lootFilter = f[1]; ns.Refresh() end)
         lootFilters[f[1]] = b
     end
     local card = S.Card(p)
     card:SetPoint("TOPLEFT", p.filters, "BOTTOMLEFT", 0, -S.GAP)
     card:SetPoint("BOTTOMRIGHT")
-    p.list = S.List(card.body, 38, makeLoot, fillLoot)
+    p.list = S.List(card.body, LOOT_ROW, makeLoot, fillLoot)
     p.list:SetPoint("TOPLEFT")
     p.list:SetPoint("BOTTOMRIGHT", -10, 0)
+    p.list.heightOf = lootHeight
     return p
 end
 
@@ -1575,18 +1839,15 @@ local function build()
             end
         end
     end)
-    head.range = S.Text(head.body, 12)
-    head.name = S.Text(head.body, 14)
-    head.name:SetPoint("TOPLEFT", head.icon, "TOPRIGHT", 10, -2)
+    head.range = S.Text(head.body, 13, nil, nil, "bold")
+    head.name = S.Text(head.body, 16, nil, nil, "title")
+    head.name:SetPoint("LEFT", head.icon, "RIGHT", 10, 0)
     head.name:SetWordWrap(false)
     head.range:SetPoint("LEFT", head.name, "RIGHT", 8, 0)
-    head.range:SetPoint("RIGHT", entranceBtn, "LEFT", -8, 0)
     head.range:SetJustifyH("LEFT")
     head.range:SetWordWrap(false)
-    head.sub = S.Text(head.body, 12, S.MUTED)
-    head.sub:SetPoint("TOPLEFT", head.name, "BOTTOMLEFT", 0, -5)
-    head.sub:SetPoint("RIGHT", entranceBtn, "LEFT", -8, 0)
-    head.sub:SetWordWrap(false)
+    head.chips = {}
+    for i = 1, 4 do head.chips[i] = headChip(head.body) end
 
     local function page(p, under)
         p:SetPoint("TOPLEFT", under or head, "BOTTOMLEFT", 0, -S.GAP)

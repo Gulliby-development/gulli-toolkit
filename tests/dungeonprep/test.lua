@@ -409,20 +409,18 @@ strsplit = function(sep, s)
     return unpack(out)
 end
 
-test("bosses in order with the rare last, loot best first, runs from the chance", function()
+test("bosses in order with the rare last, loot best first", function()
     Fake({ items = { [5193] = { "Cape of the Brotherhood", 3, 24, "INVTYPE_CLOAK", 4, 1 } } })
     local ns = Load()
     journal(ns)
     local b = ns.Bosses("DM")
     eq(#b, 3)
-    eq(b[1].name, "Edwin VanCleef"); eq(b[1].n, 1)
+    eq(b[1].name, "Edwin VanCleef"); eq(b[1].n, 1); eq(b[1].of, 2, "boss 1 of 2, the rare apart")
     eq(b[3].rare, true, "the rare comes last")
     eq(b[1].loot[1].item, 5193, "blue before white, the best chance first")
     eq(b[1].loot[1].name, "Cape of the Brotherhood")
     eq(b[1].loot[1].fits, true, "a cloak fits everyone")
-    eq(b[1].loot[1].runs, 5, "18.2% is about 5 runs")
-    eq(ns.Runs(100), nil, "a sure drop needs no count")
-    eq(ns.Runs(0), nil)
+    eq(ns.Runs, nil, "no runs to count: the chance says it")
     eq(#ns.Bosses("RFC"), 0, "no data yet")
     eq(ns.NpcOf("Creature-0-1-2-3-639-0000AB"), 639)
     eq(ns.NpcOf("Player-1-0ABC"), nil)
@@ -466,7 +464,7 @@ test("the wishlist: the Loot list puts it first, the filter shows only it", func
     eq(GulliDungeonJournal.DropsOf(5193)[1].key, "DM", "for Gulli Tooltip")
 end)
 
-test("the journal data: bosses by level, the skull boss at level 0, no world drops", function()
+test("the journal data: bosses in the order of the way, the skull boss at level 0, no world drops", function()
     Fake({})
     local ns = Load()
     local dm = ns.Data.boss.DM
@@ -475,7 +473,30 @@ test("the journal data: bosses by level, the skull boss at level 0, no world dro
     local names = {}
     for _, b in ipairs(ns.Bosses("DM")) do names[#names + 1] = b.name end
     eq(names[#names], "Miner Johnson", "the rare comes last")
-    eq(ns.Bosses("DM")[#names - 1].name, "Edwin VanCleef", "the last boss before the rares")
+    eq(names[#names - 2], "Edwin VanCleef", "VanCleef on his ship")
+    eq(names[#names - 1], "Cookie", "the cook comes after him, before the rares")
+    local zf = ns.Bosses("ZF")
+    eq(zf[1].name, "Theka the Martyr", "not Sergeant Bly, the lowest level")
+    eq(zf[10].name, "Chief Ukorz Sandscalp", "the last boss last")
+    eq(zf[11].rare, true)
+    eq(ns.Data.walk.ZF, true, "every boss has its place on the way")
+    local wings = {}
+    for _, b in ipairs(ns.Bosses("SM")) do if not b.rare and wings[#wings] ~= b.wing then wings[#wings + 1] = b.wing end end
+    eq(table.concat(wings, " "), "GRAVEYARD LIBRARY ARMORY CATHEDRAL ", "the monastery wing by wing")
+    local L = ns.L
+    for key, list in pairs(ns.Data.boss) do
+        for _, b in ipairs(list) do
+            assert(b[10] == "" or L["WING_" .. b[10]], key .. ": a wing without a name: " .. tostring(b[10]))
+            assert(#b[8] <= 6, key .. ": more abilities than the page shows")
+            for _, sp in ipairs(b[8]) do assert(sp ~= 5101 and sp ~= 13496 and sp ~= 15571, "Dazed is no boss spell") end
+            for _, l in ipairs(b[9]) do assert(l[2] >= 2, key .. ": " .. b[2] .. " lists a white item") end
+        end
+    end
+    for key, zone in pairs(ns.Data.zone) do
+        local boss = {}
+        for _, b in ipairs(ns.Data.boss[key] or {}) do for _, l in ipairs(b[9]) do boss[l[1]] = true end end
+        for _, z in ipairs(zone) do assert(not boss[z[1]], key .. ": a boss drop among the mobs' loot") end
+    end
     for key, list in pairs(ns.Data.boss) do
         local known = false
         for _, d in ipairs(ns.Data.dungeons) do if d[1] == key then known = true end end
@@ -598,6 +619,62 @@ test("Lead me with only quests in the log: who takes back a finished one, then t
     W.active[167], W.complete[167], W.done[167] = nil, nil, true
     W.Fire("QUEST_TURNED_IN")
     eq(ns.guide, nil, "then the entrance, and the guide is done")
+end)
+
+test("kills: how many bosses are down, the list's headers, the model of the boss the page opens on", function()
+    local W = Fake({ level = 20, areas = AREAS, map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    journal(ns)
+    ns.db.kills = { [639] = 2, [596] = 1 }
+    local killed, all = ns.BossProgress("DM")
+    eq(killed, 1); eq(all, 2, "the rare is no boss")
+    ns.selected = "DM"
+    local items = ns.BossItems(ns.Bosses("DM"))
+    eq(#items, 5, "two bosses and a rare under two headers")
+    eq(items[1].header, true); eq(items[1].text, ns.L.TAB_BOSSES)
+    eq(items[4].rare, true, "the rares have their own header")
+    eq(items[5].b.name, "Brainwashed Noble")
+    ns.Data.boss.DM[1][10], ns.Data.boss.DM[2][10] = "EAST", "WEST"
+    items = ns.BossItems(ns.Bosses("DM"))
+    eq(items[1].text, ns.L.WING_EAST); eq(items[3].text, ns.L.WING_WEST, "a header per wing")
+    -- The page opens on the first boss: its model comes a moment later, not with the window.
+    W.timers = {}
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    ns.ShowTab(1)
+    eq(ns.modelBoss, nil, "no model while the window opens")
+    W.RunTimers()
+    eq(ns.modelBoss, 639, "then the model of the boss shown")
+end)
+
+test("the Loot page: the mobs' drops without white and quest items, the class's loot boss by boss", function()
+    Fake({ level = 20, items = {
+        [5193] = { "Cape of the Brotherhood", 3, 24, "INVTYPE_CLOAK", 4, 1 },
+        [872] = { "Rockslicer", 3, 24, "INVTYPE_2HWEAPON", 2, 1 },
+        [100] = { "Green Belt", 2, 20, "INVTYPE_WAIST", 4, 1 },
+        [101] = { "Troll Temper", 1, 1, "", 12, 0 },
+        [102] = { "Quest Trophy", 2, 1, "", 12, 0 },
+    } })
+    local instant = C_Item.GetItemInfoInstant
+    C_Item.GetItemInfoInstant = function(id)
+        if id == 101 or id == 102 then return id, "", "", "", 1, 12, 0 end
+        return instant(id)
+    end
+    local ns = Load()
+    journal(ns)
+    ns.Data.zone = { DM = { { 100, 2 }, { 101, 0 }, { 102, 2 }, { 103, 0 } } }
+    local mobs = ns.Loot("DM", "mobs")
+    eq(#mobs, 1, "no white item, no quest item, nothing the game does not know yet")
+    eq(mobs[1].item, 100); eq(mobs[1].zone, true)
+    local mine = ns.Loot("DM", "mine")
+    eq(mine[1].npc, 639, "boss by boss in their order")
+    eq(mine[1].bossN, 1)
+    eq(mine[#mine].rare, true, "the rare's loot last")
+    ns.SetWish(100, true)
+    local wish = ns.Loot("DM", "wish")
+    eq(#wish, 1, "a wished drop of the mobs is on the wishlist too")
+    eq(#ns.Loot("DM", "mobs", "belt"), 1); eq(#ns.Loot("DM", "mobs", "cape"), 0, "the search narrows it")
+    SlashCmdList.GULLIDUNGEONPREP("dm")
+    for _, f in ipairs({ "mobs", "mine", "wish" }) do ns.lootFilter = f; ns.ShowTab(2); ns.Refresh() end
 end)
 
 test("notes on a boss and a quest are kept, trimmed and short", function()

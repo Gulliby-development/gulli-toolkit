@@ -78,12 +78,6 @@ function ns.Chance(npc, item, pct)
     return pct, false
 end
 
--- Runs it takes on average to see an item at this chance (none at 0 or a sure drop).
-function ns.Runs(pct)
-    if not pct or pct <= 0 or pct >= 100 then return nil end
-    return math.max(1, math.floor(100 / pct + 0.5))
-end
-
 function ns.Wished(item) return db("wish")[item] == true end
 function ns.SetWish(item, on)
     db("wish")[item] = on and true or nil
@@ -101,13 +95,13 @@ function ns.SetNote(key, text)
     db("notes")[key] = text ~= "" and text:sub(1, 300) or nil
 end
 
--- One loot line: { item, npc, boss, pct, own, runs, quality, name, link, icon, fits, better,
+-- One loot line: { item, npc, boss, pct, own, quality, name, link, icon, fits, better,
 -- wish, seen }. `seen` marks an item only the player's own loot showed.
 local function lootLine(npc, bossName, item, quality, pct, seen)
     local chance, own = ns.Chance(npc, item, pct)
     local name, link, q, _, equipLoc, icon = itemInfo(item)
     local classID, subclassID, eloc, iconI = itemInstant(item)
-    local line = { item = item, npc = npc, boss = bossName, pct = chance, own = own, runs = ns.Runs(chance),
+    local line = { item = item, npc = npc, boss = bossName, pct = chance, own = own,
                    quality = q or quality, name = name, link = link, icon = icon or iconI,
                    wish = ns.Wished(item), seen = seen, equipLoc = equipLoc or eloc,
                    classID = classID, subclassID = subclassID }
@@ -146,17 +140,44 @@ function ns.BossIcon(key, b)
     return map[b.display] or map[b.name]
 end
 
--- A dungeon's bosses (then its rares) with their loot, best chance first:
--- { npc, name, tag, min, max, display, rare, spells = { {id, name, icon} }, kills, loot = {...} }.
+-- What the player's class can use first, then the better item, then the likelier one.
+local function lootOrder(a, c)
+    local fa, fc = a.fits ~= false, c.fits ~= false
+    if fa ~= fc then return fa end
+    if (a.quality or 0) ~= (c.quality or 0) then return (a.quality or 0) > (c.quality or 0) end
+    if a.pct ~= c.pct then return a.pct > c.pct end
+    return a.item < c.item
+end
+
+-- How many of a dungeon's bosses (not its rares) the player has killed: killed, all.
+function ns.BossProgress(key)
+    local killed, all = 0, 0
+    for _, b in ipairs((data().boss or {})[key] or {}) do
+        if b[7] ~= 1 then
+            all = all + 1
+            if ns.Kills(b[1]) > 0 then killed = killed + 1 end
+        end
+    end
+    return killed, all
+end
+
+-- A dungeon's bosses in the order a group meets them (the data's), then its rares, with their
+-- loot, the player's class first:
+-- { npc, name, tag, min, max, display, rare, wing, n, of, spells = { {id, name, icon} }, kills, loot }.
 function ns.Bosses(key)
     local out = {}
     for i, b in ipairs((data().boss or {})[key] or {}) do
         local x = { npc = b[1], name = b[2], tag = b[3] or "", min = b[4] or 0, max = b[5] or 0,
-                    display = b[6] or 0, rare = b[7] == 1, n = i, spells = {}, loot = {} }
+                    display = b[6] or 0, rare = b[7] == 1, n = i, wing = b[10] or "", spells = {}, loot = {} }
         x.kills = ns.Kills(x.npc)
+        -- One line per name: the data has a spell's ranks under several ids.
+        local named = {}
         for _, s in ipairs(b[8] or {}) do
             local name = spellName(s)
-            if name then x.spells[#x.spells + 1] = { id = s, name = name, icon = spellIcon(s) } end
+            if name and not named[name] then
+                named[name] = true
+                x.spells[#x.spells + 1] = { id = s, name = name, icon = spellIcon(s) }
+            end
         end
         local known = {}
         for _, l in ipairs(b[9] or {}) do
@@ -166,41 +187,63 @@ function ns.Bosses(key)
         for item in pairs(ownDrops(x.npc)) do
             if not known[item] then x.loot[#x.loot + 1] = lootLine(x.npc, x.name, item, 2, 0, true) end
         end
-        table.sort(x.loot, function(a, c)
-            if (a.quality or 0) ~= (c.quality or 0) then return (a.quality or 0) > (c.quality or 0) end
-            if a.pct ~= c.pct then return a.pct > c.pct end
-            return a.item < c.item
-        end)
+        table.sort(x.loot, lootOrder)
         out[#out + 1] = x
     end
     -- Bosses in the order of the data, rares after them.
     local bosses, rares = {}, {}
     for _, x in ipairs(out) do if x.rare then rares[#rares + 1] = x else bosses[#bosses + 1] = x end end
-    for i, x in ipairs(bosses) do x.n = i end
+    for i, x in ipairs(bosses) do x.n, x.of = i, #bosses end
     for _, x in ipairs(rares) do bosses[#bosses + 1] = x end
     return bosses
 end
 
--- The whole loot of a dungeon in one list: filter "all", "mine" (for this class) or "wish";
--- `text` finds a name or a boss. Wished first, then the best chance.
+-- What the ordinary mobs of a dungeon drop (D.zone), uncommon or better and no quest items;
+-- an item the game does not know yet waits until it does. Lines like a boss's, with zone = true.
+function ns.ZoneLoot(key)
+    local out = {}
+    for _, z in ipairs((data().zone or {})[key] or {}) do
+        local l = lootLine(0, "", z[1], z[2], 0, false)
+        l.zone = true
+        if l.name and (l.quality or 0) >= 2 and l.classID ~= 12 then out[#out + 1] = l end
+    end
+    table.sort(out, lootOrder)
+    return out
+end
+
+-- The loot of a dungeon in one list. Filter "mobs": what the ordinary mobs drop. "mine": what
+-- the bosses drop for this class, boss by boss in their order. "wish": the wishlist, bosses then
+-- mobs. "all": every boss drop, wished first, then the best chance. `text` finds a name or a boss.
 function ns.Loot(key, filter, text)
     local out = {}
     text = text and text ~= "" and text:lower() or nil
-    for _, b in ipairs(ns.Bosses(key)) do
-        for _, l in ipairs(b.loot) do
-            local keep = filter ~= "mine" or l.fits ~= false
-            if filter == "wish" then keep = l.wish end
-            if keep and text then
-                keep = ((l.name or ""):lower():find(text, 1, true) or b.name:lower():find(text, 1, true)) ~= nil
+    local function add(l, boss)
+        local keep = true
+        if filter == "mine" then keep = l.fits ~= false end
+        if filter == "wish" then keep = l.wish end
+        if keep and text then
+            keep = ((l.name or ""):lower():find(text, 1, true) or boss:lower():find(text, 1, true)) ~= nil
+        end
+        if keep then out[#out + 1] = l end
+    end
+    if filter ~= "mobs" then
+        for _, b in ipairs(ns.Bosses(key)) do
+            for _, l in ipairs(b.loot) do
+                l.bossN, l.rare = b.n, b.rare
+                add(l, b.name)
             end
-            if keep then out[#out + 1] = l end
         end
     end
-    table.sort(out, function(a, c)
-        if a.wish ~= c.wish then return a.wish end
-        if a.pct ~= c.pct then return a.pct > c.pct end
-        return a.item < c.item
-    end)
+    if filter == "mobs" or filter == "wish" then
+        for _, l in ipairs(ns.ZoneLoot(key)) do add(l, "") end
+    end
+    if filter == "all" then
+        table.sort(out, function(a, c)
+            if a.wish ~= c.wish then return a.wish end
+            if a.pct ~= c.pct then return a.pct > c.pct end
+            return a.item < c.item
+        end)
+    end
     return out
 end
 
