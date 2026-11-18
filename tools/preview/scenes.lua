@@ -943,10 +943,18 @@ S.toolkit.hud = { spec = S.toolkit.default.spec, before = hudStage(900, 470), cr
             { tag = "Wailing Caverns", tagColor = Sk.LevelColor(19), text = "|cff3fc7ebLFG|r dps  Ann", right = "6 m" } })
     end }
 S.mobfinder = S.mobfinder or {}
-S.mobfinder.card = { spec = { level = 14 }, before = hudStage(460, 140), crop = "GulliHudStage",
+S.mobfinder.card = { spec = { level = 14 }, before = hudStage(500, 170), crop = "GulliHudStage",
     open = function(ns)
         ns.db.cardPoint = { "CENTER", 0, 0 }
         ns.ShowFind({ { name = "Foreman Grills" } })
+    end }
+-- A long name found in a fight while in a group: Tell and Pin, Target waits for the fight's end.
+S.mobfinder.cardcombat = { spec = { level = 14 }, before = hudStage(500, 170), crop = "GulliHudStage",
+    open = function(ns, W)
+        ns.db.cardPoint = { "CENTER", 0, 0 }
+        IsInGroup = function() return true end
+        InCombatLockdown = function() return true end
+        ns.ShowFind({ { name = "Nascent Pylon Protector", vignette = true }, { name = "Second" } })
     end }
 S.instancelimit.badge = { spec = S.instancelimit.default.spec, before = function(W, R)
         hudStage(300, 120)()

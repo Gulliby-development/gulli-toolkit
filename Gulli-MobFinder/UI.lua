@@ -31,6 +31,54 @@ end
 -- secure child in combat, and a find often comes in combat. It shows and hides only out of combat.
 local targetPending
 
+-- The card is wider than a notice and keeps its buttons on a row of their own under the name,
+-- so a long name and its line never share the width with Tell, Pin and Target.
+local CARD_W, CARD_H, CARD_PAD = 420, 100, 12
+local cardMeta, cardWaiting
+
+local function layoutCard()
+    if not card or not rawget(card, "target") then return end
+    card:SetSize(CARD_W, CARD_H)
+    card.ico:ClearAllPoints()
+    card.ico:SetPoint("TOPLEFT", 13, -12)
+    card.title:ClearAllPoints()
+    -- Without a grey line the name sits in the middle of the icon.
+    local t = card.text:GetText()
+    if t and t ~= "" and t ~= " " then
+        card.title:SetPoint("TOPLEFT", card.ico, "TOPRIGHT", 10, -2)
+    else
+        card.title:SetPoint("LEFT", card.ico, "RIGHT", 10, 0)
+    end
+    card.title:SetPoint("RIGHT", card.close, "LEFT", -4, 0)
+    card.text:ClearAllPoints()
+    card.text:SetPoint("TOPLEFT", card.title, "BOTTOMLEFT", 0, -4)
+    card.text:SetPoint("RIGHT", card.close, "LEFT", -4, 0)
+    -- Target sits at the right end of the row while it shows; in a fight it waits, and the other
+    -- buttons take its place instead of leaving a gap.
+    local on = card.target:IsShown() and (tonumber((card.target:GetAlpha())) or 1) > 0
+    card.target:ClearAllPoints()
+    card.target:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -CARD_PAD, CARD_PAD)
+    local last = on and card.target or nil
+    for _, b in ipairs(card.buttons) do
+        if b:IsShown() then
+            b:ClearAllPoints()
+            if last then b:SetPoint("RIGHT", last, "LEFT", -6, 0)
+            else b:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -CARD_PAD, CARD_PAD) end
+            last = b
+        end
+    end
+    if card.timer:IsShown() then card.timer:SetWidth(CARD_W - 2 * S.R_LG) end
+end
+ns.LayoutCard = layoutCard
+
+-- The grey line under the name: what the card knows, and the wait for Target in a fight.
+local function cardLine()
+    local parts = {}
+    for _, p in ipairs(cardMeta or {}) do parts[#parts + 1] = p end
+    if cardWaiting then parts[#parts + 1] = L.AFTER_COMBAT end
+    card.text:SetText(table.concat(parts, " · "))
+end
+
 local function showTarget(on)
     if not card then return end
     if InCombatLockdown() then
@@ -41,6 +89,7 @@ local function showTarget(on)
     targetPending = nil
     card.target:SetAlpha(1)
     card.target:SetShown(on and true or false)
+    layoutCard()
 end
 
 local function hideCard()
@@ -59,7 +108,8 @@ local function aimTarget(name)
     return true
 end
 
-local CARD_POINT = { "TOP", 0, -76 }
+-- Below the top of the screen, where the XP bar, guide arrows and the notice stack sit.
+local CARD_POINT = { "TOP", 0, -200 }
 
 local function placeCard()
     local p = ns.db.cardPoint or CARD_POINT
@@ -71,6 +121,10 @@ local function buildCard()
     -- The Gulli HUD notice card, at its own place (it is movable) so it stays above the others.
     card = S.ToastFrame("GulliMobFinderCard")
     card:SetFrameStrata("HIGH")
+    card:SetSize(CARD_W, CARD_H)
+    -- The mob's name is the card's title: a name, so gold.
+    S.SetFont(card.title, 15, nil, "bold")
+    card.title:SetTextColor(S.GOLD[1], S.GOLD[2], S.GOLD[3], 1)
     placeCard()
     S.Mover(card, { label = L.TITLE, save = function(p, rp, x, y) ns.db.cardPoint = { p, x, y, rp } end,
         reset = function() ns.db.cardPoint = nil; placeCard() end })
@@ -102,8 +156,10 @@ function ns.MoveCard(on)
     if not card then buildCard() end
     card:SetMoving(on)
     if on then
+        cardMeta, cardWaiting = { L.CARD_D }, nil
         card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", title = L.TITLE, text = L.CARD_D,
                    kind = "bad" })
+        layoutCard()
     else
         card:Hide()
     end
@@ -166,7 +222,8 @@ function ns.ShowFind(hits)
     end
     if h.vignette then parts[#parts + 1] = L.ON_MAP end
     if #hits > 1 then parts[#parts + 1] = L.MORE:format(#hits - 1) end
-    if not aimTarget(h.name) then parts[#parts + 1] = L.AFTER_COMBAT end
+    cardMeta = parts
+    cardWaiting = not aimTarget(h.name) or nil
     local key = ns.db.key and S.ShortKey(ns.db.key)
     card.target.text:SetText(L.TARGET .. (key and key ~= "" and ("  " .. S.Hex(S.HEAD) .. key .. "|r") or ""))
     card.target:SetWidth(math.max(80, math.floor((tonumber((card.target.text:GetStringWidth())) or 60) + 24)))
@@ -180,10 +237,10 @@ function ns.ShowFind(hits)
         if last then ns.Pin(last) end
     end }
     card:Set({ icon = "Interface\\Icons\\Ability_Hunter_SniperShot", portrait = portrait, title = h.name,
-               text = table.concat(parts, " · "), kind = "bad", buttons = buttons,
-               reserve = (card.target:GetWidth() or 96) + 6,
-               seconds = ns.CARD_SECONDS })
+               text = " ", kind = "bad", buttons = buttons, seconds = ns.CARD_SECONDS })
+    cardLine()
     showTarget(true)
+    layoutCard()
     stopRepeat()
     if ns.db.repeatSound and C_Timer and C_Timer.NewTicker then
         repeater = C_Timer.NewTicker(3, function() ns.PlayAlert() end, 10)
@@ -555,6 +612,7 @@ regen:SetScript("OnEvent", function(_, event)
     end
     if pendingMacro ~= nil and card then
         aimTarget(pendingMacro ~= false and card.hit and card.hit.name or nil)
+        if cardWaiting then cardWaiting = nil; cardLine() end
     end
     if targetPending ~= nil then showTarget(targetPending and card:IsShown()) end
     if ns.db and ns.db.key then ns.ApplyKey() end
