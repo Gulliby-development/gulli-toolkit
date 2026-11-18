@@ -177,6 +177,25 @@ test("Show on map of a quest's page pins and opens the world map", function()
     OpenWorldMap = nil
 end)
 
+test("the map opened from the window is not hidden by it: the window lies under the map", function()
+    Fake({ areas = AREAS, map = { maps = MAPS }, level = 33, raceID = 2, faction = "Horde" })
+    OpenWorldMap = function() end
+    WorldMapFrame = CreateFrame("Frame")
+    local ns = Load()
+    ns.home, ns.selected = false, "GNOMER"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841)
+    local w, strata = ns.Window(), "DIALOG"
+    rawset(w, "GetFrameStrata", function() return strata end)
+    rawset(w, "SetFrameStrata", function(_, s) strata = s end)
+    rawset(w, "GetParent", function() return UIParent end)
+    local d = ns.DetailFrame()
+    d.startMap:GetScript("OnClick")(d.startMap)
+    eq(strata, "LOW", "under the map while it shows")
+    WorldMapFrame:GetScript("OnHide")(WorldMapFrame)
+    eq(strata, "DIALOG", "and back up when the map closes")
+    OpenWorldMap, WorldMapFrame = nil, nil
+end)
+
 test("the tracker's map button pins and opens the world map on the pin's zone", function()
     local W = Fake({ areas = AREAS, map = { maps = MAPS } })
     local opened
@@ -984,29 +1003,12 @@ test("chains: one card per chain, at the step to do now; the tracker opens one t
     eq(finished, 1)
 end)
 
-test("a pin button near the giver targets and marks them, out of combat only", function()
+test("a pin button near the giver targets them, out of combat only, and never sets a raid mark", function()
     Fake({})
     local ns = Load()
-    local target, mark = nil, nil
-    UnitExists = function(u) return u == "target" and target ~= nil end
-    local name = UnitName
-    UnitName = function(u) if u == "target" then return target end return name(u) end
-    GetRaidTargetIndex = function() return mark end
-    SetRaidTarget = function(_, i) mark = (mark ~= i) and i or nil end
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "nobody targeted")
-    target = "Defias Pillager"
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "another target is not marked")
-    eq(mark, nil)
-    target = "Gryan Stoutmantle"
-    eq(ns.MarkTarget("Gryan Stoutmantle"), true)
-    eq(mark, 3, "a diamond")
-    ns.MarkTarget("Gryan Stoutmantle")
-    eq(mark, 3, "a second click keeps the mark")
-    issecretvalue = function() return true end
-    mark = nil
-    eq(ns.MarkTarget("Gryan Stoutmantle"), false, "a secret name is not compared")
-    issecretvalue = nil
-    -- The secure button over the pin: its macro targets by name, its click pins and marks.
+    local forbidden
+    SetRaidTarget = function() forbidden = true end
+    -- The secure button over the pin: its macro targets by name, its click pins.
     local pinned
     local btn = W.stub()
     btn.GetCenter = function() return 100, 200 end
@@ -1019,12 +1021,12 @@ test("a pin button near the giver targets and marks them, out of combat only", f
     eq(ns.TargetOver(btn, "Gryan Stoutmantle"), true)
     local o = ns.TargetOverlay()
     eq(o.who, "Gryan Stoutmantle", "the macro targets by name")
-    mark = nil
     o:GetScript("PostClick")(o, "LeftButton", true)
     eq(pinned, nil, "nothing on the press")
     o:GetScript("PostClick")(o, "LeftButton", false)
     eq(pinned, true, "the pin's own click runs")
-    eq(mark, 3)
+    eq(forbidden, nil, "SetRaidTarget is forbidden to addons: never called")
+    SetRaidTarget = nil
 end)
 
 test("inside the dungeon: the data's flags, the stages of a quest's way, the tracker's mark", function()

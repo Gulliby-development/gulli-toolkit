@@ -12,6 +12,7 @@ local S = ns.Skin
 local frame, list, tabs, search, entranceBtn, settings, questPage, listCard
 local detail, head, filterRow, guideBtn, mainSwitch, bossPage, lootPage
 local grid, areaFrame, homeBtn
+local EDGE_SHADE = 3 -- the height of one step of the shadow under the grid's title
 local filters, lootFilters = {}, {}
 local counts = {}
 local bossCache = {}
@@ -259,8 +260,8 @@ end
 
 -- A pin button targets and marks who it is for when they are near. Only a secure click may
 -- target, so while the mouse is on a pin button out of combat one secure button lies over it:
--- its click runs /targetexact, then the pin button's own click and ns.MarkTarget. In combat it
--- never shows, and the pin button works alone.
+-- its click runs /targetexact, then the pin button's own click. In combat it never shows, and
+-- the pin button works alone. It never sets a raid mark: SetRaidTarget is forbidden to addons.
 local overlay
 local function buildOverlay()
     overlay = CreateFrame("Button", "GulliDungeonPrepTarget", UIParent, "SecureActionButtonTemplate")
@@ -272,7 +273,6 @@ local function buildOverlay()
         local owner = self.owner
         local click = owner and owner:GetScript("OnClick")
         if click then click(owner, button) end
-        ns.MarkTarget(self.who)
     end)
     overlay:SetScript("OnEnter", function(self) if self.tip then self.tip(self) end end)
     overlay:SetScript("OnLeave", function(self)
@@ -1137,6 +1137,7 @@ end
 local REWARD_MAX, CHAIN_ROW, REWARD_ROW = 4, 40, 26
 -- A stage of the quest's way: its round icon, and the least height of one.
 local STAGE_ICON, STAGE_MIN = 30, 72
+local LABEL_Y = 4 -- a stage's label below its top, so its Done/Now tag is not cut
 -- A row of the page's list of the dungeon's other quests, and the game's quest mark per group.
 local OTHER_ROW = 26
 local OTHER_MARK = { log = "Interface\\GossipFrame\\IncompleteQuestIcon", take = "Interface\\GossipFrame\\AvailableQuestIcon",
@@ -1320,7 +1321,8 @@ local function buildDetail(parent)
         s.icon = S.IconBox(s, STAGE_ICON)
         s.icon:SetPoint("TOPLEFT")
         s.label = S.Text(s, 12, S.GOLD_DIM, nil, "bold")
-        s.label:SetPoint("TOPLEFT", TEXT_X, 0)
+        -- The tag beside the label is higher than the label: both sit low enough for it to fit.
+        s.label:SetPoint("TOPLEFT", TEXT_X, -LABEL_Y)
         s.label:SetWordWrap(false)
         s.label:SetText(S.Upper(title))
         s.tag = S.Badge(s, "")
@@ -1365,7 +1367,7 @@ local function buildDetail(parent)
     end)
     -- The work is in the dungeon: the way in.
     work.map:SetScript("OnClick", function() ns.PinEntrance(ns.selected) end)
-    -- Near by, the map buttons also target and mark the giver (ns.TargetOver).
+    -- Near by, the map buttons also target the giver (ns.TargetOver).
     local function targets(btn, whoOf)
         local function tip(owner)
             if not GameTooltip then return end
@@ -1630,7 +1632,7 @@ function ns.FillDetail(level)
     -- The work stage: the quest's own text, the objectives, the mobs, what stands in the way.
     local work = d.work
     local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
-    local y = work.title:GetText() ~= "" and 40 or 20
+    local y = LABEL_Y + (work.title:GetText() ~= "" and 40 or 20)
     local objs = q.objectives
     local counted = false
     for _, o in ipairs(objs) do
@@ -1988,6 +1990,34 @@ local function buildQuestPage(parent)
     return questPage
 end
 
+-- The world map the journal opened must not hide behind it: while that map shows, the window
+-- (and the hub around it) lies under the map, and comes back up when the map or the window
+-- closes. Only our own frames change strata, never the game's map.
+local lowered
+function ns.MapClosed()
+    if not lowered then return end
+    for _, e in ipairs(lowered) do e[1]:SetFrameStrata(e[2]) end
+    lowered = nil
+end
+
+function ns.BehindMap()
+    local map = _G.WorldMapFrame
+    if lowered or not frame or not frame:IsShown() or not map then return end
+    lowered = {}
+    local f = frame
+    while f and f ~= UIParent and #lowered < 6 do
+        local strata = f:GetFrameStrata()
+        lowered[#lowered + 1] = { f, type(strata) == "string" and strata or "DIALOG" }
+        f:SetFrameStrata("LOW")
+        f = f:GetParent()
+    end
+    if not rawget(ns, "mapHooked") and map.HookScript then
+        ns.mapHooked = true
+        map:HookScript("OnHide", ns.MapClosed)
+        frame:HookScript("OnHide", ns.MapClosed)
+    end
+end
+
 local function build()
     frame = S.Window("GulliDungeonPrepFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body = frame.body
@@ -2001,6 +2031,29 @@ local function build()
     grid.list:SetPoint("TOPLEFT")
     grid.list:SetPoint("BOTTOMRIGHT", -10, 0)
     grid.list.heightOf = function(row) return row.title and 24 or TILE_H end
+    -- The edge the tiles scroll under: a line across the card below its title, and a short
+    -- shadow under it, drawn over the tiles.
+    local edge = CreateFrame("Frame", nil, grid.card)
+    edge:SetPoint("TOPLEFT", grid.card.body, "TOPLEFT", -S.INSET + 1, 0)
+    edge:SetPoint("TOPRIGHT", grid.card.body, "TOPRIGHT", S.INSET - 1, 0)
+    edge:SetHeight(EDGE_SHADE * 3 + 1)
+    edge:SetFrameLevel((tonumber(grid.list:GetFrameLevel()) or 1) + 10)
+    local line = S.Divider(edge, S.EDGE)
+    line:SetPoint("TOPLEFT")
+    line:SetPoint("TOPRIGHT")
+    line:SetHeight(1)
+    for i = 1, 3 do
+        local shade = S.Divider(edge, { 0, 0, 0, 0.36 - i * 0.1 })
+        shade:SetPoint("TOPLEFT", 0, -1 - (i - 1) * EDGE_SHADE)
+        shade:SetPoint("TOPRIGHT", 0, -1 - (i - 1) * EDGE_SHADE)
+        shade:SetHeight(EDGE_SHADE)
+    end
+    -- The same line where they leave the view at the bottom.
+    local foot = S.Divider(edge, S.EDGE)
+    foot:SetPoint("BOTTOMLEFT", grid.card.body, "BOTTOMLEFT", -S.INSET + 1, 0)
+    foot:SetPoint("BOTTOMRIGHT", grid.card.body, "BOTTOMRIGHT", S.INSET - 1, 0)
+    foot:SetHeight(1)
+    grid.edge = edge
 
     -- Inside a dungeon its pages take the whole width; « All dungeons goes back to the tiles.
 
