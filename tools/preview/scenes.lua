@@ -739,6 +739,11 @@ S.reminders = {
                        left = { Spell1243 = 140 } },
               before = remStage, open = function(ns) ns.db.point = { "CENTER", 0, 20 }; ns.Refresh() end,
               crop = "GulliRemindersStage" },
+    -- A row with captions: each short caption sits under its own icon.
+    captions = { spec = { class = "ROGUE", level = 30, items = { [6949] = 5, [13928] = 3 }, offHand = 50,
+                          weapon = { false, 0, false, 0 }, db = { labels = true, food = true, foodItem = 13928 } },
+                 before = remStage, open = function(ns) ns.db.point = { "CENTER", 0, 20 }; ns.Refresh() end,
+                 crop = "GulliRemindersStage" },
     unlocked = { spec = { class = "HUNTER", known = { 13165, 19506, 883 }, auras = { "Spell13165" }, ammo = 120,
                           db = { vertical = true } },
                  before = remStage, open = function(ns) ns.db.point = { "CENTER", -60, 0 }; ns.Move(true) end,

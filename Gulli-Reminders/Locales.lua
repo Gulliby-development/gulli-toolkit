@@ -128,6 +128,20 @@ T.en = {
     PICK_BEST = "Best you know",
     PICK_TIP = "Drop an item here to use it first. Right-click: back to the best in your bags.",
     OPT_WHERE_ITEMS_D = "Food, oils and stones.",
+    -- Short captions under the icons.
+    CAP_MH = "MH: %s",
+    CAP_OH = "OH: %s",
+    CAP_POISON = "poison",
+    CAP_STONE = "stone",
+    CAP_OIL = "oil",
+    CAP_IMBUE = "imbue",
+    CAP_PET = "Pet",
+    CAP_AMMO = "Ammo",
+    CAP_SHARDS = "Shards",
+    CAP_GEM = "Mana gem",
+    CAP_HEALTHSTONE = "Healthstone",
+    CAP_REPAIR = "Repair",
+    CAP_BAGS = "Bags",
 }
 
 T.de = {
@@ -249,6 +263,20 @@ T.de = {
     PICK_BEST = "Bester bekannter",
     PICK_TIP = "Lege einen Gegenstand hier ab, um ihn zuerst zu nutzen. Rechtsklick: zurück zum besten in den Taschen.",
     OPT_WHERE_ITEMS_D = "Essen, Öle und Steine.",
+    -- Short captions under the icons.
+    CAP_MH = "WH: %s",
+    CAP_OH = "NH: %s",
+    CAP_POISON = "Gift",
+    CAP_STONE = "Stein",
+    CAP_OIL = "Öl",
+    CAP_IMBUE = "Zauber",
+    CAP_PET = "Begleiter",
+    CAP_AMMO = "Munition",
+    CAP_SHARDS = "Splitter",
+    CAP_GEM = "Manastein",
+    CAP_HEALTHSTONE = "Heilstein",
+    CAP_REPAIR = "Reparatur",
+    CAP_BAGS = "Taschen",
 }
 
 T.es = {
@@ -370,6 +398,20 @@ T.es = {
     PICK_BEST = "El mejor que conoces",
     PICK_TIP = "Suelta un objeto aquí para usarlo primero. Clic derecho: volver al mejor de tus bolsas.",
     OPT_WHERE_ITEMS_D = "Comida, aceites y piedras.",
+    -- Short captions under the icons.
+    CAP_MH = "MP: %s",
+    CAP_OH = "MS: %s",
+    CAP_POISON = "veneno",
+    CAP_STONE = "piedra",
+    CAP_OIL = "aceite",
+    CAP_IMBUE = "imbuir",
+    CAP_PET = "Mascota",
+    CAP_AMMO = "Munición",
+    CAP_SHARDS = "Fragmentos",
+    CAP_GEM = "Gema maná",
+    CAP_HEALTHSTONE = "Piedra salud",
+    CAP_REPAIR = "Reparar",
+    CAP_BAGS = "Bolsas",
 }
 
 T.fr = {
@@ -491,6 +533,20 @@ T.fr = {
     PICK_BEST = "Le meilleur connu",
     PICK_TIP = "Déposez un objet ici pour l'utiliser d'abord. Clic droit : retour au meilleur de vos sacs.",
     OPT_WHERE_ITEMS_D = "Repas, huiles et pierres.",
+    -- Short captions under the icons.
+    CAP_MH = "MD: %s",
+    CAP_OH = "MG: %s",
+    CAP_POISON = "poison",
+    CAP_STONE = "pierre",
+    CAP_OIL = "huile",
+    CAP_IMBUE = "imprégn.",
+    CAP_PET = "Familier",
+    CAP_AMMO = "Munitions",
+    CAP_SHARDS = "Fragments",
+    CAP_GEM = "Gemme mana",
+    CAP_HEALTHSTONE = "Pierre soins",
+    CAP_REPAIR = "Réparer",
+    CAP_BAGS = "Sacs",
 }
 
 T.pl = {
@@ -612,6 +668,20 @@ T.pl = {
     PICK_BEST = "Najlepszy znany",
     PICK_TIP = "Upuść tu przedmiot, by używać go najpierw. Prawy klik: z powrotem najlepszy w torbach.",
     OPT_WHERE_ITEMS_D = "Jedzenie, olejki i kamienie.",
+    -- Short captions under the icons.
+    CAP_MH = "GR: %s",
+    CAP_OH = "DR: %s",
+    CAP_POISON = "trucizna",
+    CAP_STONE = "osełka",
+    CAP_OIL = "olej",
+    CAP_IMBUE = "zaklęcie",
+    CAP_PET = "Zwierzak",
+    CAP_AMMO = "Amunicja",
+    CAP_SHARDS = "Odłamki",
+    CAP_GEM = "Klejnot many",
+    CAP_HEALTHSTONE = "Kamień zdr.",
+    CAP_REPAIR = "Naprawa",
+    CAP_BAGS = "Torby",
 }
 
 T.pt = {
@@ -733,6 +803,20 @@ T.pt = {
     PICK_BEST = "O melhor que conhece",
     PICK_TIP = "Solte um item aqui para usá-lo primeiro. Clique direito: volta ao melhor das bolsas.",
     OPT_WHERE_ITEMS_D = "Comida, óleos e pedras.",
+    -- Short captions under the icons.
+    CAP_MH = "MP: %s",
+    CAP_OH = "MS: %s",
+    CAP_POISON = "veneno",
+    CAP_STONE = "pedra",
+    CAP_OIL = "óleo",
+    CAP_IMBUE = "imbuir",
+    CAP_PET = "Ajudante",
+    CAP_AMMO = "Munição",
+    CAP_SHARDS = "Fragmentos",
+    CAP_GEM = "Gema mana",
+    CAP_HEALTHSTONE = "Pedra vida",
+    CAP_REPAIR = "Reparar",
+    CAP_BAGS = "Bolsas",
 }
 
 T.ru = {
@@ -854,6 +938,20 @@ T.ru = {
     PICK_BEST = "Лучшие из известных",
     PICK_TIP = "Перетащите сюда предмет, он будет первым. Правый клик: снова лучший в сумках.",
     OPT_WHERE_ITEMS_D = "Еда, масла и камни.",
+    -- Short captions under the icons.
+    CAP_MH = "ПР: %s",
+    CAP_OH = "ЛР: %s",
+    CAP_POISON = "яд",
+    CAP_STONE = "камень",
+    CAP_OIL = "масло",
+    CAP_IMBUE = "чары",
+    CAP_PET = "Питомец",
+    CAP_AMMO = "Боезапас",
+    CAP_SHARDS = "Осколки",
+    CAP_GEM = "Камень маны",
+    CAP_HEALTHSTONE = "Камень здор.",
+    CAP_REPAIR = "Ремонт",
+    CAP_BAGS = "Сумки",
 }
 
 T.zh = {
@@ -975,6 +1073,20 @@ T.zh = {
     PICK_BEST = "已学会的最好的",
     PICK_TIP = "把物品拖到这里优先使用。右键：恢复为背包里最好的。",
     OPT_WHERE_ITEMS_D = "食物、油和石头。",
+    -- Short captions under the icons.
+    CAP_MH = "主手: %s",
+    CAP_OH = "副手: %s",
+    CAP_POISON = "毒药",
+    CAP_STONE = "磨刀石",
+    CAP_OIL = "油",
+    CAP_IMBUE = "强化",
+    CAP_PET = "宠物",
+    CAP_AMMO = "弹药",
+    CAP_SHARDS = "碎片",
+    CAP_GEM = "法力宝石",
+    CAP_HEALTHSTONE = "治疗石",
+    CAP_REPAIR = "修理",
+    CAP_BAGS = "背包",
 }
 
 ns.T = T

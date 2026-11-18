@@ -38,7 +38,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 - **A sound and a line on screen** when a new reminder shows up: always, only in dungeons and raids (the default), or never.
 - **Tanks.** Righteous Fury is on for a paladin who has the tank role, unless you turn it off.
 - **Easy to read.** A missing buff pulses red; one that runs out soon has a yellow ring and the time on it.
-- **A panel you place.** It starts hidden. Turn it on and place it in **Unlock frames** in `/gulli` (`/grm unlock`), with the other Gulli frames: there it shows every icon it can show. In the window, set the icon size, the opacity, a row or a column, and names with the icons.
+- **A panel you place.** It starts hidden. Turn it on and place it in **Unlock frames** in `/gulli` (`/grm unlock`), with the other Gulli frames: there it shows every icon it can show. In the window, set the icon size, the opacity, a row or a column, and names with the icons. In a row each icon gets a short name under it, such as "MH: poison" (main hand) or "OH: stone" (off hand), so the icons never move.
 - **Quiet in a fight.** It checks only out of combat, not while you are dead or on a flight. In cities and inns too, unless you turn that off.
 
 <p align="center"><img src="panel.png" alt="The panel on screen" width="460"></p>

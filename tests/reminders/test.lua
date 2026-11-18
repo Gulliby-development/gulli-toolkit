@@ -498,6 +498,27 @@ test("the food and weapon picks show the item they use", function()
     eq(ns.ClassPref("main"), nil, "right-click clears it")
 end)
 
+test("each icon has a short caption of its own under it: MH/OH and what goes on the weapon", function()
+    Fake({ class = "ROGUE", level = 30, items = { [6949] = 3 } })
+    local ns = Load()
+    W.weapon = { false, 0, false, 0 }
+    W.offHand = 50
+    local list = ns.Missing()
+    eq(ns.Caption(list[1]), "MH: poison")
+    eq(ns.Caption(list[2]), "OH: poison")
+    eq(ns.KitCaption("main", 2862, nil, "POISON"), "MH: stone")
+    eq(ns.KitCaption("main", 20748, nil, "OIL"), "MH: oil")
+    eq(ns.KitCaption("main", nil, 8232, "IMBUE"), "MH: imbue")
+    eq(ns.KitCaption("off", nil, nil, "STONE_OIL"), "OH: stone")
+    eq(ns.Caption({ key = "FOOD", text = ns.L.FOOD }), "Well Fed")
+    eq(ns.Caption({ key = "BAGS", text = "Free bag slots: 2" }), "Bags")
+    ns.SetPref("labels", true)
+    ns.SetPref("vertical", false)
+    ns.Refresh()
+    ns.SetPref("vertical", true)
+    ns.Refresh()
+end)
+
 test("the hub gets a summary, move and reset", function()
     Fake({ class = "PRIEST", known = { 588 } })
     local got
