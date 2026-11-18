@@ -27,7 +27,7 @@ Trade chat in a big city moves fast. Gulli Bulletin Board reads it for you and s
 - **Search and fold.** Type in **Search** to filter any tab. Click a dungeon header to fold it.
 - **Hide spam.** **x** on a row hides that player for good; in **Setup** you can hide words too (boost, www...). **Show again** brings hidden players back.
 - **Watch words.** In **Setup**, add words you look for: an item, a dungeon, a profession. When a new message has one, you get a notice on the screen (with **Ask** or **Whisper**), a sound and a chat line. Each word shows how many messages on the board have it now.
-- **Small feed.** A small panel on the screen with the newest messages with your words (or the newest groups when you watch no words). Set its opacity, and let clicks go through it so it never gets in the way. It starts hidden: turn it on and place it in **Frames on screen** in `/gulli`.
+- **Small feed.** A small panel on the screen with the newest messages with your words (or the newest groups when you watch no words). Set its opacity, and let clicks go through it so it never gets in the way. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli`.
 - **Lasts the session.** The board keeps everything until you log out; a /reload keeps it too. Or pick a number of minutes in **Setup**.
 - **One line per player.** When a player posts again, the old line is replaced, so nobody floods the board.
 - **Whisper and Invite** on every row, with big buttons for touch.

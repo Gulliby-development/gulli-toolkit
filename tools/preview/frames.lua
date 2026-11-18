@@ -310,6 +310,7 @@ function Region:SetTexCoord(a, b, c, d)
     self.__crop = a and a > 0 and a < 0.5 and b and b > 0.5 or false
     self.__tc = { a, b, c, d }
 end
+function Region:SetRotation(r) self.__rot = r end
 function Region:SetGradient() end
 function Region:SetBlendMode(m) self.__blend = m end
 function Region:SetStartPoint(point, rel, x, y) self.__start = { point, rel or self.__parent, x or 0, y or 0 } end
@@ -561,6 +562,13 @@ local function texHtml(t, rect, prect)
         else
             return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), rad, css(c))
         end
+    end
+    -- One mark of the Ready ring: a short piece of a ring, turned around the centre.
+    if tostring(tex):find("\\Art\\Arc$") then
+        local at = -math.deg(t.__rot or 0)
+        local m = "radial-gradient(closest-side,transparent 82%,#000 83.5%,#000 96.5%,transparent 98%)"
+        return string.format('<div class="tx" style="%sbackground:conic-gradient(from %.2fdeg,%s 0 5.6deg,transparent 5.6deg);-webkit-mask:%s;mask:%s"></div>',
+            box(rect, prect), at - 2.8, css(c), m, m)
     end
     if tostring(tex):find("\\Art\\Mark$") then
         return string.format('<div class="tx" style="%sbackground-image:url(\'file://' .. (os.getenv("PWD") or ".") .. '/docs/toolkit/icon.png\');background-size:100%% 100%%;filter:grayscale(1) sepia(1);opacity:%.3f"></div>',

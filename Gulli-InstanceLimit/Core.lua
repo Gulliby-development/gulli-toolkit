@@ -462,8 +462,12 @@ if GulliToolkit and GulliToolkit.Register then
         summary = function()
             if not ns.db then return nil end
             local s = ns.Status()
-            if s.left == 0 then return L.SUM_WAIT:format(ns.Clock(s.wait)), "Interface\\Icons\\Spell_Nature_TimeStop" end
-            return L.SUM_LEFT:format(s.leftHour, ns.db.limit), "Interface\\Icons\\INV_Misc_PocketWatch_01"
+            -- the third value is for the hub's tile: a pip per entry of the hour, red when none is left
+            if s.left == 0 then
+                return L.SUM_WAIT:format(ns.Clock(s.wait)), "Interface\\Icons\\Spell_Nature_TimeStop", { tone = "bad" }
+            end
+            return L.SUM_LEFT:format(s.leftHour, ns.db.limit), "Interface\\Icons\\INV_Misc_PocketWatch_01",
+                { pips = { s.leftHour, ns.db.limit }, tone = s.leftHour <= 1 and "warn" or "good" }
         end,
         move = function(on) if ns.MoveBadge then ns.MoveBadge(on) end end,
         frames = { { key = "badge", label = ns.L.TITLE, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",

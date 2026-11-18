@@ -24,7 +24,7 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 - **Set up the ring by hand.** The **Phrases** page shows the ring on the left and all phrases on the right. Click a phrase, then a place on the ring, or drag it there. A right-click empties a place.
 - **Your own phrases.** Type one in **Your phrase...** and press **Add**. "inv please", "Ready!", "brb", "Need a heal!", "WTS {item}" and more are there from the start. The **x** on a row removes the phrase. **Reset ring** puts the starting phrases back on the ring and keeps yours.
 - **Where it goes.** In **Setup**, put the channels in your order: raid, party, guild, say, yell, LookingForGroup, Trade, General, whisper. A phrase goes to the first one you can write in now. Each row shows where its phrase goes: **As in Setup** uses that order, a channel name in blue means the phrase has its own order. Click it to change it.
-- **Favourites panel.** A small panel on the screen with the phrases you marked with the star (or the ring's). Pick how many buttons, the size, a row or a column. It starts hidden: turn it on and place it in **Frames on screen** in `/gulli`.
+- **Favourites panel.** A small panel on the screen with the phrases you marked with the star (or the ring's). Pick how many buttons, the size, a row or a column. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli`.
 - **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader} and {item} (the last item you linked).
 - **No double posts.** Two taps on the same phrase send it once.
 

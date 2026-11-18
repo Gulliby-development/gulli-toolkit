@@ -848,8 +848,9 @@ if GulliToolkit and GulliToolkit.Register then
                      frame = function() return ns.BarFrame and ns.BarFrame() end } },
         summary = function()
             local plan, far = ns.Plan()
-            if #plan + #far == 0 then return ns.L.ALL_DONE end
-            return ns.L.SUMMARY:format(#plan + #far)
+            -- the third value tones the hub's tile: red while a buff is missing
+            if #plan + #far == 0 then return ns.L.ALL_DONE, nil, { quiet = true } end
+            return ns.L.SUMMARY:format(#plan + #far), nil, { tone = "bad" }
         end,
     })
 end

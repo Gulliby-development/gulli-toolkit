@@ -237,6 +237,19 @@ test("summary, shift-click to chat, move and reset for the hub", function()
     local ns = Load()
     W.now = 600; W.Gain(1000)
     assert(got.summary():find("Level 21", 1, true), got.summary())
+    -- the hub's session card: the pace, when the level comes, a column per 10 minutes, the level's bar
+    local ses = got.session()
+    eq(ses.value, ns.Short(ns.Rate()))
+    eq(ses.unit, ns.L.TEXT_RATE)
+    assert(ses.line:find(ns.Span(ns.Stats().toLevel), 1, true), ses.line)
+    eq(#ses.bars, 2, "600 seconds in: the second column")
+    eq(ses.bars[1] + ses.bars[2], 1000, "the columns hold what was gained")
+    eq(ses.progress.value, 0.1)
+    eq(ses.progress.left, 20)
+    eq(ses.progress.right, "10%")
+    W.now = 600 + 20 * ns.BUCKET
+    eq(#got.session().bars, ns.SESSION_COLUMNS, "only the newest columns")
+    W.now = 600
     assert(ns.ShareText():find("Level 20", 1, true))
     local sent
     IsInGroup = function() return true end
@@ -254,6 +267,7 @@ test("summary, shift-click to chat, move and reset for the hub", function()
     GetWatchedFactionInfo = function() return "Darnassus", 5, 3000, 9000, 4500 end
     FACTION_STANDING_LABEL5 = "Friendly"
     eq(got.summary(), "Darnassus: Friendly, 25%", "at the top level: the watched reputation")
+    eq(got.session(), nil, "no XP session at the top level")
     ns.Refresh()
     GetWatchedFactionInfo, FACTION_STANDING_LABEL5, GulliToolkit = nil, nil, nil
 end)

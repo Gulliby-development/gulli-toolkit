@@ -309,6 +309,26 @@ function ns.Summary()
     return line
 end
 
+-- The session card of the hub's home page: the pace big, when the level comes, a column per
+-- ns.BUCKET of the session (the newest ns.SESSION_COLUMNS) and the bar of the level with the
+-- rested part. Nothing at the top level.
+ns.SESSION_COLUMNS = 12
+function ns.Session(now)
+    if not ns.s or ns.MaxLevel() then return nil end
+    now = now or time()
+    local st = ns.Stats(now)
+    local last = math.floor(math.max(0, now - ns.s.t) / ns.BUCKET) + 1
+    local bars = {}
+    for b = math.max(1, last - ns.SESSION_COLUMNS + 1), last do bars[#bars + 1] = ns.s.buckets[b] or 0 end
+    local done, rested = ns.BarParts(st)
+    return {
+        value = ns.Short(st.rate), unit = L.TEXT_RATE,
+        line = st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.SUM_LEFT:format(ns.Short(st.left), st.level + 1),
+        span = ns.Span(st.session), bars = bars,
+        progress = { value = done, extra = rested, left = st.level, right = st.percent .. "%" },
+    }
+end
+
 -- One line to share in chat (shift-click on the bar).
 function ns.ShareText()
     local st = ns.Stats()
@@ -399,6 +419,7 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         summary = function() return ns.Summary() end,
+        session = function() return ns.Session() end,
         move = function(on) ns.Move(on) end,
         reset = function() ns.Reset() end,
         frames = { { key = "bar", icon = ns.OPT_ICON.bar,

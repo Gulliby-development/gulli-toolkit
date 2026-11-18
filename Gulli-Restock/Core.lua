@@ -724,7 +724,9 @@ if GulliToolkit and GulliToolkit.Register then
             if not ns.char then return nil end
             local miss = ns.Missing()
             if #miss == 0 then return nil end
-            return ns.L.HUB_SUMMARY:format(#miss), "Interface\\Icons\\INV_Misc_Bag_08"
+            -- the hub's Ready card shows what the list misses too: the tile gives way to it
+            return ns.L.HUB_SUMMARY:format(#miss), "Interface\\Icons\\INV_Misc_Bag_08",
+                { ready = "RESTOCK", tone = "warn" }
         end,
         reset = function()
             if not ns.db then return end
