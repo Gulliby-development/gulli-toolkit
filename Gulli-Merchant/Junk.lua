@@ -300,27 +300,25 @@ function J.UpdateCoins()
     end)
 end
 
+-- The tooltip line of a junk item: { group, icon, left, color }, or nothing.
+function J.TipLines(id, bag, slot)
+    local why = shared.marks and junkFor(id, bag, slot)
+    if not why then return {} end
+    local S, t = ns.Skin, shared.marks
+    return { { group = "state", icon = "Interface\\Icons\\INV_Misc_Coin_02",
+               left = S.Cap(why == "always" and t.ALWAYS_TIP or t.JUNK_TIP), color = S.WARN } }
+end
+
 function J.InstallMarks(texts)
     if shared.marks then return end
     shared.marks = texts
     shared.coins = true
-    -- The tooltip line.
-    local function addLine(tip, id, bag, slot)
-        local why = junkFor(id, bag, slot)
-        if not why then return end
-        local t = shared.marks
-        tip:AddLine("|cff9ad0ffGulli|r " .. (why == "always" and t.ALWAYS_TIP or t.JUNK_TIP), 0.8, 0.8, 0.8)
-    end
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip, data)
-            if tip ~= GameTooltip or not data then return end
-            addLine(tip, data.id)
-        end)
-    elseif GameTooltip and GameTooltip.HookScript then
-        GameTooltip:HookScript("OnTooltipSetItem", function(tip)
-            local _, link = tip:GetItem()
-            local id = link and tonumber(link:match("item:(%d+)"))
-            if id then addLine(tip, id) end
+    -- The tooltip line, in the Gulli block (see S.TipCollect in the skin): junk warns, with the coin.
+    local S = ns.Skin
+    if S and S.TipProvider then
+        S.TipProvider("item", "Junk", function(id, tip)
+            if tip ~= GameTooltip then return end
+            return J.TipLines(id)
         end)
     end
     -- Alt+click on a bag item marks or unmarks it as "always sell".

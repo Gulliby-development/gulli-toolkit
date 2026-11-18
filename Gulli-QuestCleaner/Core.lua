@@ -746,32 +746,27 @@ function ns.ItemVerdict(itemID, name)
     return { "TT_OFFER" }
 end
 
-local function addVerdict(tt, itemID)
-    if db().tooltip == false or not itemID then return end
+-- The line for the Gulli block (see S.TipCollect in the skin). "Needed for <quest>" steps back
+-- when a line of the quest itself is there (Gulli Tooltip's), since it would say it twice.
+function ns.TipLines(itemID)
+    if db().tooltip == false or not itemID then return {} end
     local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID))
         or (GetItemInfo and GetItemInfo(itemID))
     local v = ns.ItemVerdict(itemID, name)
-    if not v then return end
+    if not v then return {} end
+    local S = ns.Skin
     local text = v[2] and L[v[1]]:format(v[2]) or L[v[1]]
-    local good = v[1] ~= "TT_OFFER"
-    tt:AddLine("Quest Cleaner: " .. text, good and 0.42 or 1, good and 0.84 or 0.72, good and 0.5 or 0.3, true)
-    tt:Show()
+    local quest = v[1] == "TT_NEEDED" or v[1] == "TT_LATER"
+    return { { group = quest and "quest" or "state", icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon",
+               sub = quest, left = S.Cap(text), color = v[1] == "TT_OFFER" and S.WARN or S.GOOD, wrap = true,
+               unless = v[1] == "TT_NEEDED" and "quest" or nil } }
 end
 
 local hooked = false
 function ns.HookTooltip()
     if hooked then return end
     hooked = true
-    if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, d)
-            if d then addVerdict(tt, d.id) end
-        end)
-    elseif GameTooltip and GameTooltip.HookScript then
-        GameTooltip:HookScript("OnTooltipSetItem", function(tt)
-            local _, link = tt:GetItem()
-            addVerdict(tt, link and tonumber(link:match("item:(%d+)")))
-        end)
-    end
+    ns.Skin.TipProvider("item", "QuestCleaner", function(id) return ns.TipLines(id) end)
 end
 
 ---- Quest log button and key ---------------------------------------------------

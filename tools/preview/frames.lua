@@ -426,6 +426,8 @@ end
 
 local function esc(s) return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")) end
 
+local picture -- defined below: a fetched picture for a texture path
+
 -- WoW text escapes to HTML: |cAARRGGBB..|r colours, |n new lines, |T..|t icons.
 local function richText(s)
     s = tostring(s or ""):gsub("|H.-|h", ""):gsub("|h", "")
@@ -450,7 +452,14 @@ local function richText(s)
                 local e = s:find("|t", i, true) or #s
                 -- the game's coins as discs in their colours, any other inline picture as a box
                 local coin = ({ Gold = "#e8b923", Silver = "#c7ccd6", Copper = "#c0703a" })[s:sub(i, e):match("UI%-(%a+)Icon") or ""]
+                -- a picture icons.sh fetched shows as itself; a clear part of one (texture
+                -- coordinates of a corner) is only a gap
+                local body = s:sub(i + 2, e - 1)
+                local pic = picture(body:match("^[^:]+"))
+                local blank = body:match(":0:2:0:2$")
                 out[#out + 1] = coin and ('<span class="ti" style="background:' .. coin .. ';border-radius:50%"></span>')
+                    or blank and '<span class="ti" style="background:none;border-color:transparent"></span>'
+                    or pic and ('<span class="ti" style="border:0;border-radius:2px;background:url(\'file://' .. pic .. '\') center/112%"></span>')
                     or '<span class="ti"></span>'
                 i = e + 2
             elseif n == "|" then
@@ -507,7 +516,7 @@ end
 -- A real picture for a texture path, when tools/preview/icons.sh has fetched it.
 local CACHE = (os.getenv("PWD") or ".") .. "/tools/preview/.cache/"
 local function exists(f) local h = io.open(f, "rb"); if h then h:close() return true end end
-local function picture(path)
+function picture(path)
     path = tostring(path or ""):lower():gsub("/", "\\")
     local icon = path:match("interface\\icons\\([%w_]+)")
     if icon and exists(CACHE .. "icons/" .. icon .. ".png") then return CACHE .. "icons/" .. icon .. ".png" end
@@ -515,6 +524,8 @@ local function picture(path)
     if btn and exists(CACHE .. "buttons/" .. btn .. ".png") then return CACHE .. "buttons/" .. btn .. ".png" end
     local track = path:match("interface\\minimap\\tracking\\([%w_]+)")
     if track and exists(CACHE .. "tracking/" .. track .. ".png") then return CACHE .. "tracking/" .. track .. ".png" end
+    local mark = path:match("interface\\gossipframe\\([%w_]+)") or path:match("interface\\raidframe\\([%w_%-]+)")
+    if mark and exists(CACHE .. "marks/" .. mark .. ".png") then return CACHE .. "marks/" .. mark .. ".png" end
     local addon = path:match("interface\\addons\\([%w%-]+)\\icon")
     if addon and exists(CACHE .. "addons/" .. addon .. ".png") then return CACHE .. "addons/" .. addon .. ".png" end
 end

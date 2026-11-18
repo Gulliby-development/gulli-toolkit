@@ -13,6 +13,12 @@ grep -ohE 'Interface\\\\+Minimap\\\\+Tracking\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua |
   curl -fsS -o "$dir/tracking/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/MINIMAP/TRACKING/$n.PNG" ||
     { rm -f "$dir/tracking/$low.png"; echo "no tracking icon: $n" >&2; }
 done
+# the quest mark and the check mark of the tooltip lines
+mkdir -p "$dir/marks"
+[ -s "$dir/marks/availablequesticon.png" ] || curl -fsS -o "$dir/marks/availablequesticon.png" \
+  "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/GossipFrame/AvailableQuestIcon.PNG" || true
+[ -s "$dir/marks/readycheck-ready.png" ] || curl -fsS -o "$dir/marks/readycheck-ready.png" \
+  "https://raw.githubusercontent.com/Gethe/wow-ui-textures/live/RAIDFRAME/ReadyCheck-Ready.PNG" || true
 # the game's button pictures (the loot roll dice, coin and pass)
 mkdir -p "$dir/buttons"
 grep -ohE 'Interface\\\\+Buttons\\\\+UI-GroupLoot-[A-Za-z-]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do

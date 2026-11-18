@@ -571,9 +571,9 @@ function ns.TooltipLines(name)
                     local r = remoteFor(m.name)
                     local x = r and r.obj[q.id] and r.obj[q.id][i]
                     if x then
-                        out[#out + 1] = { m.name, x[1] .. "/" .. x[2], x[1] >= x[2] }
+                        out[#out + 1] = { m.name, x[1] .. "/" .. x[2], x[1] >= x[2], m.class }
                     elseif onQuest(m.unit, q.id) then
-                        out[#out + 1] = { m.name, "?", false }
+                        out[#out + 1] = { m.name, "?", false, m.class }
                     end
                 end
             end
@@ -582,35 +582,34 @@ function ns.TooltipLines(name)
     return out
 end
 
-local function addTooltip(tt, name)
-    local lines = ns.TooltipLines(name)
-    if #lines == 0 then return end
-    for _, l in ipairs(lines) do
-        local g = l[3] and 0.42 or 0.93
-        tt:AddDoubleLine(l[1], l[2], 0.6, 0.82, 1, g, l[3] and 0.84 or 0.93, l[3] and 0.5 or 0.94)
+-- The lines for the Gulli block (see S.TipCollect in the skin): each member in the class colour
+-- under the quest, a finished count green with a check mark.
+local QUEST_ICON, DONE_ICON = "Interface\\GossipFrame\\AvailableQuestIcon", "Interface\\RaidFrame\\ReadyCheck-Ready"
+local function tipLines(name)
+    local S = ns.Skin
+    local out = {}
+    for _, l in ipairs(ns.TooltipLines(name)) do
+        local c = l[4] and RAID_CLASS_COLORS and RAID_CLASS_COLORS[l[4]]
+        out[#out + 1] = { group = "quest", sub = true, icon = QUEST_ICON, left = l[1],
+                          color = c and { c.r, c.g, c.b } or S.TEXT,
+                          right = l[3] and (S.TipIcon(DONE_ICON) .. l[2]) or l[2], rcolor = l[3] and S.GOOD or S.TEXT }
     end
-    tt:Show()
+    return out
 end
+ns.TipLines = tipLines
 
 -- The world cursor tooltip can carry a secret unit token or name (WoW 12): skip those.
-function ns.UnitTooltip(tt)
-    if not (tt and tt.GetUnit) then return end
-    local ok, _, unit = pcall(tt.GetUnit, tt)
-    if not ok or not unit or secret(unit) or not UnitName then return end
+function ns.UnitTip(unit)
+    if not unit or secret(unit) or not UnitName then return {} end
     local okName, name = pcall(UnitName, unit)
-    if okName and name and not secret(name) then addTooltip(tt, name) end
+    if okName and name and not secret(name) then return tipLines(name) end
+    return {}
 end
 
 local function hookTooltip()
-    if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, data)
-            if data and data.id then addTooltip(tt, itemName(data.id)) end
-        end)
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, ns.UnitTooltip)
-    elseif GameTooltip and GameTooltip.HookScript then
-        GameTooltip:HookScript("OnTooltipSetItem", function(tt) addTooltip(tt, (tt:GetItem())) end)
-        GameTooltip:HookScript("OnTooltipSetUnit", ns.UnitTooltip)
-    end
+    local S = ns.Skin
+    S.TipProvider("item", "PartyQuests", function(id) return tipLines(id and itemName(id)) end)
+    S.TipProvider("unit", "PartyQuests", function(_, _, unit) return ns.UnitTip(unit) end)
 end
 
 -- Events -------------------------------------------------------------------------------------

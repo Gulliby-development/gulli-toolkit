@@ -263,4 +263,16 @@ test("random bags: never offer what must stay", function()
     assert(offered > 100, "the rounds offered too little to prove anything: " .. offered)
 end)
 
+test("a junk item's tooltip line goes into the Gulli block and warns", function()
+    Fake({ bags = bags(), items = ITEMS })
+    local ns = Load()
+    ns.J.InstallMarks({ JUNK_TIP = "junk: sold at the vendor", ALWAYS_TIP = "on your \"always sell\" list" })
+    ns.J.SetAlways(5, true)
+    local l = ns.J.TipLines(5)[1]
+    assert(l, "no line for a junk item")
+    eq(l.group, "state"); eq(l.color, ns.Skin.WARN)
+    assert(l.icon and l.left:match("^%u"), "an icon and a capital: " .. l.left)
+    ns.J.SetAlways(5, false)
+end)
+
 W.finish()
