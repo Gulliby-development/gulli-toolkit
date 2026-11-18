@@ -1138,6 +1138,7 @@ end
 local REWARD_MAX, CHAIN_ROW, REWARD_ROW = 4, 40, 26
 -- A stage of the quest's way: its round icon, and the least height of one.
 local STAGE_ICON, STAGE_MIN = 30, 72
+local LABEL_Y = 4 -- a stage's label below its top, so its Done/Now tag is not cut
 -- A row of the page's list of the dungeon's other quests, and the game's quest mark per group.
 local OTHER_ROW = 26
 local OTHER_MARK = { log = "Interface\\GossipFrame\\IncompleteQuestIcon", take = "Interface\\GossipFrame\\AvailableQuestIcon",
@@ -1321,7 +1322,8 @@ local function buildDetail(parent)
         s.icon = S.IconBox(s, STAGE_ICON)
         s.icon:SetPoint("TOPLEFT")
         s.label = S.Text(s, 12, S.GOLD_DIM, nil, "bold")
-        s.label:SetPoint("TOPLEFT", TEXT_X, 0)
+        -- The tag beside the label is higher than the label: both sit low enough for it to fit.
+        s.label:SetPoint("TOPLEFT", TEXT_X, -LABEL_Y)
         s.label:SetWordWrap(false)
         s.label:SetText(S.Upper(title))
         s.tag = S.Badge(s, "")
@@ -1631,7 +1633,7 @@ function ns.FillDetail(level)
     -- The work stage: the quest's own text, the objectives, the mobs, what stands in the way.
     local work = d.work
     local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
-    local y = work.title:GetText() ~= "" and 40 or 20
+    local y = LABEL_Y + (work.title:GetText() ~= "" and 40 or 20)
     local objs = q.objectives
     local counted = false
     for _, o in ipairs(objs) do
