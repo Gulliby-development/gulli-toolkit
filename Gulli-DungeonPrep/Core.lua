@@ -316,9 +316,6 @@ local function stateOf(entry, q, level)
 end
 
 -- The levelling chains of a dungeon (D.main): quest id -> true, or nil when the data has none.
--- The levelling guides are older than WoW Forever, so its own quests (from ns.FOREVER_QUEST,
--- Rot and Regret in Maraudon) always count as chains too.
-ns.FOREVER_QUEST = 90000
 local mainSets = {}
 function ns.MainSet(key)
     local D = data()
@@ -327,9 +324,6 @@ function ns.MainSet(key)
     if not mainSets[key] then
         local set = {}
         for _, id in ipairs(ids) do set[id] = true end
-        for _, id in ipairs(D.byDungeon and D.byDungeon[key] or {}) do
-            if id >= ns.FOREVER_QUEST then set[id] = true end
-        end
         mainSets[key] = set
     end
     return mainSets[key]

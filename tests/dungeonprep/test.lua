@@ -819,20 +819,11 @@ test("AllTheThings fills the gaps: its dungeon quests join, its faction wins for
     assert(not has("GNOMER", 2951), "a Sparklematic exchange stays out")
 end)
 
-test("levelling chains: WoW Forever's own dungeon quests always count, the guides predate them", function()
+test("levelling chains: a quest the guides leave out comes in by hand (D.main, MAIN_EXTRA)", function()
     Fake({ level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()
     eq(ns.Get("mainOnly"), true, "on by default")
-    local main = ns.MainSet("MARA")
-    assert(main[93404], "Rot and Regret is shown with Chains only")
-    for key, ids in pairs(ns.Data.byDungeon) do
-        local set = ns.MainSet(key)
-        if set then
-            for _, id in ipairs(ids) do
-                if id >= ns.FOREVER_QUEST then assert(set[id], key .. ": Forever quest " .. id) end
-            end
-        end
-    end
+    assert(ns.MainSet("MARA")[93404], "Rot and Regret is shown with Chains only")
     local seen
     for _, l in ipairs({ "log", "take", "later", "hidden" }) do
         for _, x in ipairs(ns.Quests("MARA", 50)[l]) do
