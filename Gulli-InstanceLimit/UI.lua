@@ -217,13 +217,20 @@ local function buildSettings(body, width)
     })
     st:Add(group, h3)
 
+    -- When the counter shows; hiding it is the hub's switch (Frames on screen), and while it is
+    -- hidden the choice is kept for when it comes back.
+    local SHOWN = { "ALWAYS", "GROUP" }
     local modeLabels = {}
-    for i, m in ipairs(ns.BADGE_MODES) do modeLabels[i] = L["MODE_" .. m] end
+    for i, m in ipairs(SHOWN) do modeLabels[i] = L["MODE_" .. m] end
     local modeHolder = CreateFrame("Frame", nil, c)
-    modeHolder:SetSize(3 * 86 + 4, 30)
-    local modes = S.Tabs(modeHolder, modeLabels, 86, function(i) ns.db.badgeMode = ns.BADGE_MODES[i]; ns.Refresh() end)
+    modeHolder:SetSize(#SHOWN * 86 + 4, 30)
+    local modes = S.Tabs(modeHolder, modeLabels, 86, function(i)
+        if ns.db.badgeMode == "HIDDEN" then ns.db.badgeWas = SHOWN[i] else ns.db.badgeMode = SHOWN[i] end
+        ns.Refresh()
+    end)
     modeHolder:SetScript("OnShow", function()
-        for i, m in ipairs(ns.BADGE_MODES) do if m == ns.db.badgeMode then modes:Select(i, true) end end
+        local cur = ns.db.badgeMode == "HIDDEN" and (ns.db.badgeWas or "ALWAYS") or ns.db.badgeMode
+        for i, m in ipairs(SHOWN) do if m == cur then modes:Select(i, true) end end
     end)
     local pct = function(v) return v .. "%" end
     local scale = S.Stepper(c, function() return ns.db.badgeScale end, function(v) ns.db.badgeScale = v; ns.Refresh() end,

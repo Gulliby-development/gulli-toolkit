@@ -406,8 +406,6 @@ if GulliToolkit and GulliToolkit.Register then
                      set = function(v) ns.SetPref("bar", v) end,
                      frame = function() return ns.BarFrame and ns.BarFrame() end } },
         options = {
-            { label = ns.L.OPT_BAR, icon = ns.OPT_ICON.bar, tip = ns.L.OPT_BAR_TIP,
-              get = function() return ns.db ~= nil and ns.db.bar == true end, set = function(v) ns.SetPref("bar", v) end },
             { label = ns.L.OPT_REP, icon = ns.OPT_ICON.rep, tip = ns.L.OPT_REP_TIP,
               get = function() return ns.db ~= nil and ns.db.rep == true end, set = function(v) ns.SetPref("rep", v) end },
         },

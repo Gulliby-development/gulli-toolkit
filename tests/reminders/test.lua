@@ -30,9 +30,13 @@ test("rogue poisons from level 20, the off hand only when it holds a weapon", fu
     W.offHand = 99 -- a shield, not a weapon
     eq(W.Keys(ns.Missing()), "")
     W.offHand = 50
-    eq(W.Keys(ns.Missing()), "WEAPON")
+    eq(W.Keys(ns.Missing()), "WEAPON_OFF", "the off hand has its own icon")
     W.weapon = { true, 30000, true, 30 * 60 * 1000 }
     eq(W.Keys(ns.Missing()), "WEAPON", "less than a minute left")
+    W.weapon = { false, 0, false, 0 }
+    eq(W.Keys(ns.Missing()), "WEAPON,WEAPON_OFF")
+    W.mainHand = false
+    eq(W.Keys(ns.Missing()), "WEAPON_OFF", "no main hand weapon, nothing to put on it")
 end)
 
 test("a shaman who knows an imbue is reminded", function()
@@ -169,11 +173,15 @@ test("the settings list only the checks of the class", function()
     Fake({ class = "ROGUE" })
     local ns = Load()
     local e = ns.Extras()
-    eq(e.weapon, true); eq(e.pet, nil); eq(e.ammo, nil)
+    eq(e.weapon.kind, "POISON"); eq(e.pet, nil); eq(e.ammo, nil); eq(e.items, nil)
     eq(#ns.ClassBuffs(), 0)
     ns.Toggle()
     e = ns.Extras("HUNTER")
-    eq(e.pet, true); eq(e.ammo, true); eq(e.weapon, nil)
+    eq(e.pet, true); eq(e.ammo, true); eq(e.weapon.kind, "STONE_OIL")
+    e = ns.Extras("MAGE")
+    eq(e.weapon.kind, "OIL"); eq(e.items, true); eq(e.pet, nil); eq(e.shards, nil)
+    eq(ns.Extras("SHAMAN").weapon.kind, "IMBUE")
+    eq(ns.Extras("WARRIOR").weapon.kind, "STONE")
 end)
 
 test("a click casts the missing buff on you, applies poison, summons the picked pet", function()
@@ -221,22 +229,23 @@ test("the panel starts hidden, once also for older saves, and has no lock of its
 end)
 
 test("Well Fed and oils: shown where asked, a click eats or applies the best item in the bags", function()
-    Fake({ class = "WARRIOR", items = { [13928] = 2, [20748] = 1 }, db = { anyWeapon = true }, instance = "party" })
-    GetInventoryItemID = function(_, slot) if slot == 16 then return 1 end end
+    Fake({ class = "PRIEST", items = { [13928] = 2, [20748] = 1 }, instance = "party" })
     local ns = Load()
+    eq(W.Keys(ns.Missing()), "FOOD", "oils start off")
+    ns.SetClassPref("weapon", true)
     local list = ns.Missing()
-    eq(W.Keys(list), "WEAPON_ITEM,FOOD")
+    eq(W.Keys(list), "WEAPON,FOOD")
     eq(list[1].act.macrotext, "/use item:20748\n/use 16")
     eq(list[2].act.item, "item:13928")
     ns.db.foodItem = 99999
     W.items[99999] = 1
     eq(ns.Missing()[2].act.item, "item:99999", "the food the player set comes first")
     W.auras = { "Spell19705" }
-    eq(W.Keys(ns.Missing()), "WEAPON_ITEM")
+    eq(W.Keys(ns.Missing()), "WEAPON")
     W.instance = nil
     eq(W.Keys(ns.Missing()), "", "consumables only in instances by default")
     ns.SetPref("whereItems", "always")
-    eq(W.Keys(ns.Missing()), "WEAPON_ITEM")
+    eq(W.Keys(ns.Missing()), "WEAPON")
 end)
 
 test("class buffs only in a group when asked", function()
@@ -360,6 +369,133 @@ test("a buff of yours that comes or goes shows on the next frame", function()
     W.RunTimers()
     W.Fire("BAG_UPDATE_DELAYED")
     eq(W.lastDelay, 0.5, "other events still wait")
+end)
+
+test("each class gets its own weapon kit, and only its own", function()
+    Fake({})
+    local ns = Load()
+    for _, class in ipairs({ "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }) do
+        local kit = ns.KITS[class]
+        assert(kit, class .. " has no kit")
+        assert(ns.KIT_ICON[kit.kind], kit.kind .. " has no icon")
+        for _, tag in ipairs(ns.TAGS) do
+            assert(ns.T[tag]["KIT_" .. kit.kind], tag .. " misses KIT_" .. kit.kind)
+        end
+        for _, name in ipairs(kit.lists or {}) do
+            assert(name == "STONES" or type(ns[name]) == "table", class .. ": no list " .. name)
+        end
+    end
+    for _, list in pairs(ns.CLASS_ITEMS) do
+        for _, c in ipairs(list) do
+            for _, tag in ipairs(ns.TAGS) do assert(ns.T[tag][c.key] and ns.T[tag]["OPT_" .. c.key], tag .. " misses " .. c.key) end
+        end
+    end
+end)
+
+test("a warrior's stones follow the weapon: sharpening for a blade, weight for a mace, both hands", function()
+    Fake({ class = "WARRIOR", items = { [2862] = 5, [3239] = 5 }, mainHand = 70, offHand = 71,
+           sub = { [70] = 7, [71] = 4 }, instance = "party" })
+    local ns = Load()
+    eq(W.Keys(ns.Missing()), "FOOD", "stones start off: they cost money")
+    ns.SetClassPref("weapon", true)
+    local list = ns.Missing()
+    eq(W.Keys(list), "WEAPON,WEAPON_OFF,FOOD")
+    eq(list[1].act.macrotext, "/use item:2862\n/use 16")
+    eq(list[1].icon, "icon2862", "the icon is the stone it will use")
+    eq(list[2].act.macrotext, "/use item:3239\n/use 17")
+    ns.SetClassPref("main", 3239)
+    eq(ns.Missing()[1].act.macrotext, "/use item:3239\n/use 16", "the player's pick comes first")
+    W.items[3239] = 0
+    eq(ns.Missing()[1].act.macrotext, "/use item:2862\n/use 16", "a pick that is used up falls back")
+    eq(ns.WeaponPick("main", true), 2862)
+end)
+
+test("a rogue below 20 may use stones; poisons from 20, the picked poison first", function()
+    Fake({ class = "ROGUE", level = 15, items = { [2862] = 1, [6947] = 2, [2892] = 2 }, sub = { [1] = 15 } })
+    local ns = Load()
+    eq(ns.Missing()[1].act.macrotext, "/use item:2862\n/use 16")
+    W.level = 30
+    eq(ns.Missing()[1].act.macrotext, "/use item:6947\n/use 16", "poisons before stones")
+    ns.SetClassPref("main", 2892)
+    eq(ns.Missing()[1].act.macrotext, "/use item:2892\n/use 16")
+    ns.SetClassPref("weapon", false)
+    eq(W.Keys(ns.Missing()), "")
+end)
+
+test("a shaman casts the imbue picked, else the best known", function()
+    Fake({ class = "SHAMAN", known = { 8017, 8024, 324 }, auras = { "Spell324" } })
+    local ns = Load()
+    local m = ns.Missing()[1]
+    eq(m.key, "WEAPON"); eq(m.act.spell, "Spell8024", "Flametongue before Rockbiter")
+    ns.SetClassPref("imbue", 8017)
+    eq(ns.Missing()[1].act.spell, "Spell8017")
+    ns.SetClassPref("imbue", 8232) -- Windfury, not learned
+    eq(ns.Missing()[1].act.spell, "Spell8024")
+end)
+
+test("a mage is told about a missing mana gem, a warlock about a healthstone", function()
+    Fake({ class = "MAGE", known = { 759, 3552 } })
+    local ns = Load()
+    local m = ns.Missing()[1]
+    eq(m.key, "GEM"); eq(m.act.spell, "Spell3552", "the best conjure spell known")
+    W.items[5514] = 1
+    eq(W.Keys(ns.Missing()), "", "any gem in the bags counts")
+    W.items[5514] = 0
+    ns.SetClassPref("gem", false)
+    eq(W.Keys(ns.Missing()), "")
+    Fake({ class = "WARLOCK", known = { 6201, 6202 }, shards = 5 })
+    ns = Load()
+    m = ns.Missing()[1]
+    eq(m.key, "HEALTHSTONE"); eq(m.act.spell, "Spell6202")
+    W.items[19005] = 1
+    eq(W.Keys(ns.Missing()), "", "an improved healthstone counts too")
+    Fake({ class = "WARLOCK", shards = 5 })
+    eq(W.Keys(Load().Missing()), "", "nothing before the spell is learned")
+end)
+
+test("old weapon switches move into the class settings", function()
+    Fake({ class = "SHAMAN", db = { weapon = false, anyWeapon = true, imbue = 8024 } })
+    local ns = Load()
+    eq(ns.db.weapon, nil); eq(ns.db.anyWeapon, nil); eq(ns.db.imbue, nil)
+    eq(ns.ClassPref("weapon", "ROGUE"), false); eq(ns.ClassPref("weapon", "SHAMAN"), false)
+    eq(ns.ClassPref("weapon", "WARRIOR"), true); eq(ns.ClassPref("imbue", "SHAMAN"), 8024)
+    eq(ns.ClassPref("weapon", "MAGE"), true)
+    Fake({ class = "ROGUE", db = { weapon = true, anyWeapon = false } })
+    ns = Load()
+    eq(ns.ClassPref("weapon"), true); eq(ns.ClassPref("weapon", "WARRIOR"), false)
+end)
+
+test("the window has no show switch and no move button: both are the hub's", function()
+    Fake({ class = "PRIEST", known = { 588 } })
+    local ns = Load()
+    local f = ns.Window()
+    eq(rawget(f, "move"), nil)
+    for _, card in ipairs(f.cards) do
+        for _, row in ipairs(card.rows or {}) do
+            local label = row.label and row.label:GetText()
+            assert(label ~= "Show the panel" and label ~= "Position", "found " .. tostring(label))
+        end
+    end
+end)
+
+test("the food and weapon picks show the item they use", function()
+    Fake({ class = "WARRIOR", items = { [13928] = 1, [2862] = 1 }, sub = { [1] = 7 } })
+    local ns = Load()
+    local f = ns.Window()
+    eq(f.tiles.food.shown, 13928, "the best food in the bags, as the automatic pick")
+    eq(f.tiles.food.mine, false)
+    ns.SetPref("foodItem", 21023)
+    f.tiles.food:Refresh()
+    eq(f.tiles.food.shown, 21023); eq(f.tiles.food.mine, true)
+    eq(f.tiles.main.shown, 2862)
+    -- An item dropped on a pick becomes the pick.
+    GetCursorInfo = function() return "item", 7964 end
+    ClearCursor = function() end
+    f.tiles.main:GetScript("OnReceiveDrag")(f.tiles.main)
+    eq(ns.ClassPref("main"), 7964); eq(f.tiles.main.shown, 7964)
+    GetCursorInfo = nil
+    f.tiles.main:GetScript("OnClick")(f.tiles.main, "RightButton")
+    eq(ns.ClassPref("main"), nil, "right-click clears it")
 end)
 
 test("the hub gets a summary, move and reset", function()

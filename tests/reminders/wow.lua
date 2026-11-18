@@ -154,11 +154,16 @@ function Fake(spec)
     UnitIsDeadOrGhost = function() return W.dead end
     GetWeaponEnchantInfo = function() local w = W.weapon; return w[1], w[2], 0, 0, w[3], w[4], 0, 0 end
     GetInventoryItemCount = function() return W.ammo end
-    GetInventoryItemID = function(_, slot) if slot == 17 then return W.offHand end end
+    -- W.mainHand, W.offHand: item ids in the hands; W.sub[id] = the weapon's subclass.
+    W.mainHand, W.sub = spec.mainHand == nil and 1 or spec.mainHand, spec.sub or {}
+    GetInventoryItemID = function(_, slot)
+        if slot == 17 then return W.offHand end
+        if slot == 16 then return W.mainHand or nil end
+    end
     -- W.items[id] = count in the bags; soul shards as before.
     W.items = spec.items or {}
     C_Item = { GetItemCount = function(id) if id == 6265 then return W.shards end return W.items[id] or 0 end,
-               GetItemInfo = function(id) return "I", nil, 1, 1, 1, "", "", 1, "", 1, 0, id == 99 and 4 or 2 end,
+               GetItemInfo = function(id) return "I", nil, 1, 1, 1, "", "", 1, "", 1, 0, id == 99 and 4 or 2, W.sub[id] end,
                GetItemNameByID = function(id) return "Item" .. id end,
                GetItemIconByID = function(id) return "icon" .. id end,
                GetItemSpell = function(id) if W.itemSpells and W.itemSpells[id] then return W.itemSpells[id], 1 end end }

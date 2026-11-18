@@ -428,6 +428,15 @@ local function esc(s) return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "
 
 local picture -- defined below: a fetched picture for a texture path
 
+-- The marks the game draws itself and the mirror lacks, as plain discs.
+local function plainMark(path)
+    local low = tostring(path or ""):lower()
+    if low:find("readycheck%-ready") then return "ok"
+    elseif low:find("readycheck%-notready") then return "no"
+    elseif low:find("readycheck%-waiting") then return "wait"
+    elseif low:find("disconnect%-icon") then return "off" end
+end
+
 -- WoW text escapes to HTML: |cAARRGGBB..|r colours, |n new lines, |T..|t icons.
 local function richText(s)
     s = tostring(s or ""):gsub("|H.-|h", ""):gsub("|h", "")
@@ -452,15 +461,22 @@ local function richText(s)
                 local e = s:find("|t", i, true) or #s
                 -- the game's coins as discs in their colours, any other inline picture as a box
                 local coin = ({ Gold = "#e8b923", Silver = "#c7ccd6", Copper = "#c0703a" })[s:sub(i, e):match("UI%-(%a+)Icon") or ""]
-                -- a picture icons.sh fetched shows as itself; a clear part of one (texture
-                -- coordinates of a corner) is only a gap
+                -- a clear part of a picture (texture coordinates of a corner) is only a gap
                 local body = s:sub(i + 2, e - 1)
-                local pic = picture(body:match("^[^:]+"))
+                local path = body:match("^[^:]+")
                 local blank = body:match(":0:2:0:2$")
-                out[#out + 1] = coin and ('<span class="ti" style="background:' .. coin .. ';border-radius:50%"></span>')
-                    or blank and '<span class="ti" style="background:none;border-color:transparent"></span>'
-                    or pic and ('<span class="ti" style="border:0;border-radius:2px;background:url(\'file://' .. pic .. '\') center/112%"></span>')
-                    or '<span class="ti"></span>'
+                local pic, mark = picture(path), plainMark(path)
+                if coin then
+                    out[#out + 1] = '<span class="ti" style="background:' .. coin .. ';border-radius:50%"></span>'
+                elseif blank then
+                    out[#out + 1] = '<span class="ti" style="background:none;border-color:transparent"></span>'
+                elseif pic then
+                    out[#out + 1] = '<span class="ti" style="border:0;background:url(\'file://' .. pic .. '\') center/100% 100%"></span>'
+                elseif mark then
+                    out[#out + 1] = '<span class="ti ic ' .. mark .. '" style="position:static"></span>'
+                else
+                    out[#out + 1] = '<span class="ti"></span>'
+                end
                 i = e + 2
             elseif n == "|" then
                 out[#out + 1] = "|"
@@ -524,8 +540,8 @@ function picture(path)
     if btn and exists(CACHE .. "buttons/" .. btn .. ".png") then return CACHE .. "buttons/" .. btn .. ".png" end
     local track = path:match("interface\\minimap\\tracking\\([%w_]+)")
     if track and exists(CACHE .. "tracking/" .. track .. ".png") then return CACHE .. "tracking/" .. track .. ".png" end
-    local mark = path:match("interface\\gossipframe\\([%w_]+)") or path:match("interface\\raidframe\\([%w_%-]+)")
-    if mark and exists(CACHE .. "marks/" .. mark .. ".png") then return CACHE .. "marks/" .. mark .. ".png" end
+    local mark = path:match("interface\\gossipframe\\([%w_]+)")
+    if mark and exists(CACHE .. "gossip/" .. mark .. ".png") then return CACHE .. "gossip/" .. mark .. ".png" end
     local addon = path:match("interface\\addons\\([%w%-]+)\\icon")
     if addon and exists(CACHE .. "addons/" .. addon .. ".png") then return CACHE .. "addons/" .. addon .. ".png" end
 end
@@ -587,11 +603,8 @@ local function texHtml(t, rect, prect)
             box(rect, prect), round, pic, crop, t.__desat and "filter:grayscale(1);opacity:.6;" or "")
     end
     local name = iconName(tex)
-    local cls = "ic"
-    local low = name:lower()
-    if low:find("readycheck%-ready") then cls = "ic ok"
-    elseif low:find("readycheck%-notready") then cls = "ic no"
-    elseif low:find("readycheck%-waiting") then cls = "ic wait" end
+    local mark = plainMark(name)
+    local cls = mark and ("ic " .. mark) or "ic"
     return string.format('<div class="%s" title="%s" style="%s%s"></div>', cls, esc(name), box(rect, prect),
         t.__desat and "filter:grayscale(1);opacity:.6;" or "")
 end
@@ -679,6 +692,7 @@ body{margin:0;background:#1d2229;background-image:radial-gradient(circle at 30%%
 .ic{background:linear-gradient(135deg,#6b5a3a,#2b2418);border:1px solid #000;border-radius:2px}
 .ic.ok{background:radial-gradient(#4ccf5a 55%%,transparent 60%%);border:0}
 .ic.no{background:radial-gradient(#d9483f 55%%,transparent 60%%);border:0}
+.ic.off{background:radial-gradient(#8a8279 55%%,transparent 60%%);border:0}
 .ic.wait{background:radial-gradient(#e6b43c 55%%,transparent 60%%);border:0}
 .ti{display:inline-block;width:1em;height:1em;vertical-align:-2px;background:#6b5a3a;border:1px solid #000}
 ]]

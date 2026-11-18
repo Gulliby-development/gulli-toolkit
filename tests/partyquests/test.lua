@@ -211,6 +211,46 @@ test("group events become messages, each behind its switch; the whole group fini
     eq(d[1][1], "objective")
 end)
 
+test("zones travel with the list; an old module's list still reads", function()
+    Fake({ quests = LOG, party = PARTY, titles = { [64] = "The Forgotten Heirloom", [70] = "Wolves" } })
+    local ns = Load()
+    local parts = ns.Encode(ns.MyQuests())
+    eq(parts[3], "ZWestfall|155:18,153:15,999:16")
+    local long = {}
+    for i = 1, 60 do long[i] = { id = 10000 + i, level = 60, zone = "Eastern Plaguelands" } end
+    for _, p in ipairs(ns.Encode(long)) do
+        assert(#p <= 240, "a part is too long")
+        assert(p:sub(1, 1) ~= "Z" or p:find("^ZEastern Plaguelands|%d"), "each zone part names its zone")
+    end
+    eq(#ns.Encode({ { id = 1, zone = ("x"):rep(61) }, { id = 2, zone = "a|b" } }), 3, "a zone that cannot travel is left out")
+    for _, p in ipairs({ "B", "Q64,70,71", "ZDuskwood|64:25", "ZWestfall|70:12", "Z" .. ("x"):rep(61) .. "|71:1", "E" }) do
+        ns.Receive(p, "Ann")
+    end
+    for _, p in ipairs({ "B", "Q64,72", "E" }) do ns.Receive(p, "Bob") end
+    local theirs = ns.Theirs()
+    eq(theirs[1].id, 64); eq(theirs[1].zone, "Duskwood"); eq(theirs[1].level, 25)
+    local list = ns.ByZone(theirs, function(item) return item.zone end)
+    eq(list[1].head, true); eq(list[1].zone, "Westfall"); eq(list[1].here, true, "the player's zone first")
+    eq(list[2].id, 70)
+    eq(list[3].zone, "Duskwood"); eq(list[3].count, 1); eq(list[3].here, false)
+    eq(list[5].head, true); eq(list[5].zone, nil, "quests without a zone come last")
+    eq(list[5].count, 2)
+end)
+
+test("my quests are cut into zones: the player's zone first, then the quest log order", function()
+    local log = { { title = "Tanaris", isHeader = true }, { title = "Thistleshrub Valley", questID = 1, level = 50 },
+                  { title = "Elwynn Forest", isHeader = true }, { title = "Wolves", questID = 33, level = 5 },
+                  LOG[1], LOG[2], LOG[3] }
+    Fake({ quests = log, party = PARTY })
+    local ns = Load()
+    local list = ns.ByZone(ns.Ours(), function(r) return r.quest.zone end, function(r) return r.order end)
+    local seen = {}
+    for _, item in ipairs(list) do seen[#seen + 1] = item.head and (item.zone .. ":" .. item.count) or item.quest.id end
+    eq(table.concat(seen, " "), "Westfall:2 155 153 Tanaris:1 1 Elwynn Forest:1 33")
+    list = ns.ByZone(ns.Ours({ zone = "Westfall" }), function(r) return r.quest.zone end)
+    eq(#list, 3); eq(list[1].here, true)
+end)
+
 test("the zone filter and the search narrow my quests", function()
     local log = { LOG[1], LOG[2], { title = "Elwynn Forest", isHeader = true }, { title = "Wolves", questID = 33, level = 5 } }
     Fake({ quests = log, party = PARTY })

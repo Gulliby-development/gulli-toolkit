@@ -447,7 +447,6 @@ if GulliToolkit and GulliToolkit.Register then
         open = function() ns.Toggle() end,
         window = function() return ns.Window and ns.Window() end,
         options = {
-            option("panelShow", L.OPT_PANEL, L.TIP_PANEL),
             option("wheelHold", L.WHEEL_HOLD, L.WHEEL_HOLD_D),
         },
         move = function(on) if ns.MovePanel then ns.MovePanel(on) end end,
