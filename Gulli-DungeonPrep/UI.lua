@@ -213,9 +213,10 @@ local function questTooltip(owner, item)
     if q.targets and #q.targets > 0 then
         GameTooltip:AddLine(L.TT_MOBS:format(table.concat(q.targets, ", ")), 0.7, 0.7, 0.7, true)
     end
+    local xpText = item.group ~= "done" and ns.XPText(q.id, ns.level)
+    if xpText then GameTooltip:AddLine(xpText) end
     if item.group == "log" then
-        local xp, cash = ns.LogReward(q.id)
-        if xp > 0 then GameTooltip:AddLine(L.TT_XP:format(xp), 0.6, 0.6, 1) end
+        local _, cash = ns.LogReward(q.id)
         if money(cash) then GameTooltip:AddLine(L.TT_MONEY:format(money(cash)), 1, 1, 1) end
         local others = ns.GroupOn(q.id)
         if #others > 0 then GameTooltip:AddLine(L.TT_GROUP:format(table.concat(others, ", ")), 0.4, 0.8, 1, true) end
@@ -493,6 +494,7 @@ local function fillRow(r, item)
     local parts = { S.Hex(ns.DiffColor(diff)) .. L.LEVEL:format(q.level) .. "|r" }
     if q.minLevel and q.minLevel > 0 then parts[2] = L.FROM_LEVEL:format(q.minLevel) end
     if q.steps and q.steps > 1 then parts[#parts + 1] = L.STEP:format(q.step, q.steps) end
+    if group ~= "done" then parts[#parts + 1] = ns.XPText(q.id, ns.level) end
     r.sub:SetText(table.concat(parts, "  ·  "))
     -- What comes next: the earlier quest first, where to hand in, how hard.
     local ahead = {}
@@ -507,6 +509,16 @@ local function fillRow(r, item)
         if q.turnin and q.turnin.who ~= "" then ahead[1] = L.HAND_TO:format(q.turnin.who) end
         local others = ns.GroupOn(q.id)
         if #others > 0 then ahead[#ahead + 1] = L.ALSO:format(table.concat(others, ", ")) end
+    end
+    -- What it asks for now happens in the dungeon: the dungeon's icon and name first.
+    local ins = (group == "take" or group == "log") and ns.selected and ns.Inside(ns.selected, q.id)
+    if ins then
+        local ready = C_QuestLog and C_QuestLog.IsComplete and C_QuestLog.IsComplete(q.id) == true
+        local now = (group == "take" and ins.take) or (group == "log" and ((ready and ins.turnin) or (not ready and ins.work)))
+        if now then
+            table.insert(ahead, 1, S.IconTag(ns.Icon(ns.selected)) .. " " .. S.Hex(S.Accent())
+                .. L.INSIDE_OF:format(ns.dungeonName or "") .. "|r")
+        end
     end
     r.chain:SetTextColor(unpack(group == "later" and S.WARN or S.FAINT))
     r.chain:SetText(table.concat(ahead, "  ·  "))
@@ -645,6 +657,8 @@ local function listItems(current, level)
     if #items == 0 then add({ header = true, text = L.NO_QUESTS }) end
     if filter == "take" and #q.take == 0 then items = { { header = true, text = L.NO_QUESTS } } end
     ns.listIds = ids
+    ns.listItems = items
+    ns.dungeonName = current and ns.DungeonName(current) or ""
     ns.takeCount = #q.take
     return items
 end
@@ -1120,7 +1134,15 @@ end
 -- The page of one quest (like a dungeon journal): what to do, where it starts and ends with a
 -- map pin for each, the whole chain as numbered steps, the rewards and the mobs, and Track,
 -- Share and Hide. ns.openQuest is the quest shown; nil shows the list.
-local REWARD_MAX, CHAIN_ROW = 4, 40
+local REWARD_MAX, CHAIN_ROW, REWARD_ROW = 4, 40, 26
+-- A stage of the quest's way: its round icon, and the least height of one.
+local STAGE_ICON, STAGE_MIN = 30, 72
+-- A row of the page's list of the dungeon's other quests, and the game's quest mark per group.
+local OTHER_ROW = 26
+local OTHER_MARK = { log = "Interface\\GossipFrame\\IncompleteQuestIcon", take = "Interface\\GossipFrame\\AvailableQuestIcon",
+                     later = "Interface\\GossipFrame\\AvailableQuestIcon", hidden = "Interface\\GossipFrame\\AvailableQuestIcon",
+                     done = "Interface\\RaidFrame\\ReadyCheck-Ready" }
+local STAGE_ICONS = { take = TI .. "INV_Misc_Note_01", turnin = TI .. "INV_Misc_Ribbon_01" }
 local SIDE_TEXT = { A = "FACTION_A", H = "FACTION_H" }
 local SIDE_ICON = { A = "Interface\\Icons\\INV_BannerPVP_02", H = "Interface\\Icons\\INV_BannerPVP_01" }
 local STATE_COLOR = { log = S.Accent and S.Accent() or S.TEXT, take = S.GOOD, done = S.MUTED, later = S.WARN,
@@ -1193,6 +1215,7 @@ local function buildDetail(parent)
     top:SetPoint("TOPLEFT")
     top:SetPoint("TOPRIGHT")
     top:Fit(44)
+    d.topCard = top
     -- Back to the list: the list icon, so it is not taken for the arrows on the right.
     d.back = S.Button(top.body, 30, 30)
     d.back:SetText("")
@@ -1243,6 +1266,7 @@ local function buildDetail(parent)
     foot:SetPoint("BOTTOMLEFT")
     foot:SetPoint("BOTTOMRIGHT")
     foot:SetHeight(30)
+    d.foot = foot
     d.track = iconButton(foot, ACT_ICON.track)
     d.track:SetPoint("LEFT")
     d.track:SetScript("OnClick", function() if ns.openQuest then ns.Track(ns.openQuest) end end)
@@ -1271,69 +1295,76 @@ local function buildDetail(parent)
     d.status:SetPoint("RIGHT", d.note, "LEFT", -8, 0)
     d.status:SetWordWrap(false)
 
-    -- Left: objective, start, turn-in, what it needs, rewards, mobs.
+    -- Left: the quest's way as three stages under each other, joined by a rail: taking it,
+    -- its work (the objectives, inside the dungeon or not), handing it in. Each stage says
+    -- whether it is done or the one to do now.
     local info = S.Card(d)
     info:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
     info:SetPoint("BOTTOMLEFT", foot, "TOPLEFT", 0, S.GAP)
-    info:SetPoint("RIGHT", d, "CENTER", 20, 0)
-    -- A long objective, a chain note and many rewards outgrow the card: its body scrolls.
+    d.infoCard = info
+    -- A long objective and many objectives outgrow the card: its body scrolls.
     d.infoPage = S.ScrollPage(info.body, 380)
     d.infoPage:SetAllPoints()
     local b = d.infoPage.inner
     d.infoBody = b
-    d.objLabel = label(b, L.DETAIL_OBJECTIVE)
-    d.objLabel:SetPoint("TOPLEFT")
-    -- One row per objective: its state, the count, then what it asks for.
-    d.objRows = {}
-    for i = 1, OBJ_MAX do
-        local r = {}
-        r.state = b:CreateTexture(nil, "ARTWORK")
-        r.state:SetSize(14, 14)
-        r.state:SetPoint("TOP", i == 1 and d.objLabel or d.objRows[i - 1].text, "BOTTOM", 0, -6)
-        r.state:SetPoint("LEFT", b, "LEFT")
-        r.count = S.Text(b, 12)
-        r.count:SetPoint("LEFT", r.state, "RIGHT", 6, 0)
-        r.count:SetJustifyH("LEFT")
-        r.text = S.Text(b, 12)
-        r.text:SetPoint("TOPLEFT", r.count, "TOPRIGHT", 6, 0)
-        r.text:SetPoint("RIGHT", b, "RIGHT")
-        r.text:SetJustifyH("LEFT")
-        r.text:SetJustifyV("TOP")
-        d.objRows[i] = r
+    local TEXT_X = STAGE_ICON + 14
+    local function stage(kind, title)
+        local s = CreateFrame("Frame", nil, b)
+        s:SetPoint("LEFT", b, "LEFT")
+        s:SetPoint("RIGHT", b, "RIGHT")
+        s.kind = kind
+        s.rail = s:CreateTexture(nil, "BACKGROUND")
+        s.rail:SetWidth(2)
+        s.rail:SetPoint("TOP", s, "TOPLEFT", STAGE_ICON / 2, -STAGE_ICON - 3)
+        s.rail:SetPoint("BOTTOM", s, "BOTTOMLEFT", STAGE_ICON / 2, 3)
+        s.icon = S.IconBox(s, STAGE_ICON)
+        s.icon:SetPoint("TOPLEFT")
+        s.label = S.Text(s, 12, S.GOLD_DIM, nil, "bold")
+        s.label:SetPoint("TOPLEFT", TEXT_X, 0)
+        s.label:SetWordWrap(false)
+        s.label:SetText(S.Upper(title))
+        s.tag = S.Badge(s, "")
+        s.tag.text:SetWordWrap(false)
+        s.tag:SetPoint("LEFT", s.label, "RIGHT", 8, 0)
+        s.map = iconButton(s, ACT_ICON.map, 28)
+        s.map:SetPoint("TOPRIGHT", 0, -16)
+        s.title = S.Text(s, 14)
+        s.title:SetPoint("TOPLEFT", s.label, "BOTTOMLEFT", 0, -5)
+        s.title:SetPoint("RIGHT", s.map, "LEFT", -8, 0)
+        s.title:SetWordWrap(false)
+        s.sub = S.Text(s, 12, S.MUTED)
+        s.sub:SetPoint("TOPLEFT", s.title, "BOTTOMLEFT", 0, -4)
+        s.sub:SetPoint("RIGHT", s.map, "LEFT", -8, 0)
+        s.sub:SetWordWrap(false)
+        d.stages[#d.stages + 1] = s
+        return s
     end
-
-    -- A place: its label, the giver and zone, then the spot with its map button.
-    local function place(name, title)
-        local l = label(b, title)
-        local t = S.Text(b, 12)
-        t:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -5)
-        t:SetPoint("RIGHT", b, "RIGHT")
-        t:SetWordWrap(false)
-        local btn = iconButton(b, ACT_ICON.map, 28)
-        fitIcon(btn, L.SHOW_ON_MAP)
-        btn:SetPoint("TOP", t, "BOTTOM", 0, -4)
-        btn:SetPoint("RIGHT", b, "RIGHT")
-        local xy = S.Text(b, 12, S.MUTED)
-        xy:SetPoint("LEFT", t, "LEFT")
-        xy:SetPoint("TOP", btn, "TOP")
-        xy:SetPoint("BOTTOM", btn, "BOTTOM")
-        xy:SetPoint("RIGHT", btn, "LEFT", -8, 0)
-        xy:SetWordWrap(false)
-        d[name .. "Label"], d[name], d[name .. "Map"], d[name .. "XY"] = l, t, btn, xy
-        return t
-    end
-    place("start", L.DETAIL_START)
-    d.startMap:SetScript("OnClick", function()
+    d.stages = {}
+    local take = stage("take", L.DETAIL_START)
+    local work = stage("work", L.DETAIL_OBJECTIVE)
+    local turn = stage("turnin", L.DETAIL_TURNIN)
+    take:SetPoint("TOP", b, "TOP")
+    work:SetPoint("TOP", take, "BOTTOM")
+    turn:SetPoint("TOP", work, "BOTTOM")
+    turn.rail:Hide()
+    d.start, d.startXY, d.startMap = take.title, take.sub, take.map
+    d.turnin, d.turninXY, d.turninMap = turn.title, turn.sub, turn.map
+    d.work = work
+    fitIcon(take.map, L.SHOW_ON_MAP)
+    fitIcon(turn.map, L.SHOW_ON_MAP)
+    fitIcon(work.map, L.PIN_ENTRANCE, 80)
+    -- Higher than the others: the quest's sentence runs under it.
+    work.map:SetPoint("TOPRIGHT", 0, -4)
+    take.map:SetScript("OnClick", function()
         local q = d.q
         if q then ns.PinAt(q.who, q.area, q.x, q.y, true) end
     end)
-    place("turnin", L.DETAIL_TURNIN)
-    d.turninLabel:SetPoint("TOP", d.startMap, "BOTTOM", 0, -10)
-    d.turninLabel:SetPoint("LEFT", b, "LEFT")
-    d.turninMap:SetScript("OnClick", function()
+    turn.map:SetScript("OnClick", function()
         local t = d.q and d.q.turnin
         if t then ns.PinAt(t.who, t.area, t.x, t.y, true) end
     end)
+    -- The work is in the dungeon: the way in.
+    work.map:SetScript("OnClick", function() ns.PinEntrance(ns.selected) end)
     -- Near by, the map buttons also target and mark the giver (ns.TargetOver).
     local function targets(btn, whoOf)
         local function tip(owner)
@@ -1349,22 +1380,94 @@ local function buildDetail(parent)
         end)
         btn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end
-    targets(d.startMap, function() return d.q and d.q.who end)
-    targets(d.turninMap, function() return d.q and d.q.turnin and d.q.turnin.who end)
-    d.need = S.Text(b, 12, S.BAD)
-    d.need:SetPoint("TOP", d.turninMap, "BOTTOM", 0, -10)
-    d.need:SetPoint("LEFT", b, "LEFT")
-    d.need:SetPoint("RIGHT", b, "RIGHT")
+    targets(take.map, function() return d.q and d.q.who end)
+    targets(turn.map, function() return d.q and d.q.turnin and d.q.turnin.who end)
+
+    -- The work: what the quest says, one row per objective (its state, the count, what it
+    -- asks for), the dungeon mobs it needs and what still stands in its way.
+    d.objText = S.Text(work, 12, S.MUTED)
+    d.objText:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+    d.objText:SetPoint("RIGHT", work, "RIGHT")
+    d.objText:SetJustifyH("LEFT")
+    d.objText:SetJustifyV("TOP")
+    d.objRows = {}
+    for i = 1, OBJ_MAX do
+        local r = {}
+        r.state = work:CreateTexture(nil, "ARTWORK")
+        r.state:SetSize(14, 14)
+        r.state:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+        r.count = S.Text(work, 12)
+        r.count:SetPoint("LEFT", r.state, "RIGHT", 6, 0)
+        r.count:SetJustifyH("LEFT")
+        r.text = S.Text(work, 12)
+        r.text:SetPoint("LEFT", r.count, "RIGHT", 6, 0)
+        r.text:SetPoint("RIGHT", work, "RIGHT")
+        r.text:SetJustifyH("LEFT")
+        r.text:SetWordWrap(false)
+        d.objRows[i] = r
+    end
+    d.mobs = S.Text(work, 12, S.MUTED)
+    d.mobs:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+    d.mobs:SetPoint("RIGHT", work, "RIGHT")
+    d.mobs:SetJustifyH("LEFT")
+    d.mobs:SetWordWrap(false)
+    d.need = S.Text(work, 12, S.BAD)
+    d.need:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+    d.need:SetPoint("RIGHT", work, "RIGHT")
+    d.need:SetJustifyH("LEFT")
     d.need:SetWordWrap(false)
-    d.rewLabel = label(b, L.DETAIL_REWARDS)
-    -- One row per reward: its icon, its name in its quality colour, and whether it is for you.
+
+    -- Right, only for a quest that has them: the chain, as high as its steps, and the rewards
+    -- (each with its icon, its name in its quality colour, and whether it is for you).
+    local chain = S.Card(d, L.DETAIL_CHAIN, nil, "Interface\\Icons\\INV_Scroll_03")
+    d.chainCard = chain
+    d.chain = S.List(chain.body, CHAIN_ROW, makeStep, fillStep)
+    d.chain:SetPoint("TOPLEFT")
+    d.chain:SetPoint("BOTTOMRIGHT", -10, 0)
+    -- Under them, as far as there is room: the dungeon's other quests, a click away.
+    local others = S.Card(d, L.DETAIL_OTHERS, nil, S.TAB.list)
+    d.othersCard = others
+    d.others = S.List(others.body, OTHER_ROW, function(r)
+        r.mark = r:CreateTexture(nil, "ARTWORK")
+        r.mark:SetSize(16, 16)
+        r.mark:SetPoint("LEFT", 4, 0)
+        r.tag = S.Text(r, 12, S.FAINT)
+        r.tag:SetPoint("RIGHT", -6, 0)
+        r.tag:SetWidth(96)
+        r.tag:SetJustifyH("RIGHT")
+        r.tag:SetWordWrap(false)
+        r.text = S.Text(r, 12)
+        r.text:SetPoint("LEFT", 28, 0)
+        r.text:SetPoint("RIGHT", r.tag, "LEFT", -8, 0)
+        r.text:SetJustifyH("LEFT")
+        r.text:SetWordWrap(false)
+        r.click = CreateFrame("Button", nil, r)
+        r.click:SetAllPoints()
+        r.click:SetScript("OnClick", function(self)
+            local it = self:GetParent().item
+            if it then ns.OpenQuest(it.quest.id) end
+        end)
+    end, function(r, it)
+        r.item = it
+        local q, group = it.quest, it.hidden and "hidden" or it.group
+        r.mark:SetTexture(OTHER_MARK[group] or OTHER_MARK.take)
+        r.mark:SetDesaturated(group == "later" or group == "hidden")
+        r.mark:SetAlpha((group == "later" or group == "hidden" or group == "done") and 0.6 or 1)
+        r.text:SetText(q.head and q.head.name or q.name)
+        r.text:SetTextColor(unpack((group == "done" or group == "hidden") and S.MUTED
+            or ns.DiffColor(ns.Difficulty(q.level, ns.level or 1))))
+        r.tag:SetText(L[(STATUS[group] or STATUS.take)[1]])
+    end)
+    d.others:SetPoint("TOPLEFT")
+    d.others:SetPoint("BOTTOMRIGHT", -10, 0)
+    local rew = S.Card(d, L.DETAIL_REWARDS, nil, TI .. "INV_Misc_Bag_10")
+    d.rewardCard = rew
     d.rewards = {}
     for i = 1, REWARD_MAX do
-        local row = CreateFrame("Frame", nil, b)
-        row:SetHeight(24)
-        row:SetPoint("TOP", i == 1 and d.rewLabel or d.rewards[i - 1], "BOTTOM", 0, i == 1 and -6 or -2)
-        row:SetPoint("LEFT", b, "LEFT")
-        row:SetPoint("RIGHT", b, "RIGHT")
+        local row = CreateFrame("Frame", nil, rew.body)
+        row:SetHeight(REWARD_ROW - 2)
+        row:SetPoint("TOPLEFT", 0, -(i - 1) * REWARD_ROW)
+        row:SetPoint("RIGHT")
         row.icon = S.IconBox(row, 22)
         row.icon:SetPoint("LEFT", 2, 0)
         row.name = S.Text(row, 12)
@@ -1381,22 +1484,11 @@ local function buildDetail(parent)
         row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         d.rewards[i] = row
     end
-    d.mobLabel = label(b, L.DETAIL_MOBS)
-    d.mobLabel:SetPoint("TOPLEFT", d.rewLabel, "BOTTOMLEFT", 0, -12)
-    d.mobs = S.Text(b, 12)
-    d.mobs:SetPoint("TOPLEFT", d.mobLabel, "BOTTOMLEFT", 0, -4)
-    d.mobs:SetPoint("RIGHT", b, "RIGHT")
-    d.mobs:SetWordWrap(false)
-
-    -- Right: the chain.
-    local chain = S.Card(d, L.DETAIL_CHAIN, nil, "Interface\\Icons\\INV_Scroll_03")
-    chain:SetPoint("TOPLEFT", info, "TOPRIGHT", S.GAP, 0)
-    chain:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT", 0, S.GAP)
-    d.chainCard = chain
-    d.chain = S.List(chain.body, CHAIN_ROW, makeStep, fillStep)
-    d.chain:SetPoint("TOPLEFT")
-    d.chain:SetPoint("BOTTOMRIGHT", -10, 0)
     return d
+end
+
+local function dungeonOf(key, level)
+    for _, x in ipairs(ns.Dungeons(level or 1)) do if x.key == key then return x end end
 end
 
 -- The quest page, for the tests.
@@ -1421,95 +1513,60 @@ function ns.FillDetail(level)
     local sub = { L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) }
     if q.steps and q.steps > 1 then sub[#sub + 1] = L.STEP:format(q.step, q.steps) end
     sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"]
+    sub[#sub + 1] = ns.XPText(q.id, level)
     d.sub:SetText(table.concat(sub, "  ·  "))
     local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state
     d.state:Set(L["STATE_" .. (state == "hidden" and "TAKE" or state):upper()] or "", STATE_COLOR[state] or S.MUTED)
     d.side:SetShown(SIDE_ICON[q.side] ~= nil)
     if SIDE_ICON[q.side] then d.side:SetIcon(SIDE_ICON[q.side]) end
 
-    local objs, last = q.objectives, nil
-    -- The height of the left column, added up as it is laid out, for its scroll.
-    local LABEL, LINE = 15, 15
-    local height = LABEL
-    for i, r in ipairs(d.objRows) do
-        local o = objs[i]
-        local shown = o ~= nil or (i == 1)
-        r.state:SetShown(shown)
-        r.count:SetShown(shown)
-        r.text:SetShown(shown)
-        if shown then
-            o = o or { text = "-" }
-            local have, need, what = o.text:match("^(%d+)%s*/%s*(%d+)%s+(.+)$")
-            if not have then what, have, need = o.text:match("^(.-):%s*(%d+)%s*/%s*(%d+)$") end
-            local done = o.done or (have and tonumber(have) >= tonumber(need))
-            r.state:SetTexture(done and ICON_OK or WAIT_ICON)
-            r.state:SetAlpha((done or have) and 1 or 0.5)
-            r.count:SetWidth(have and 38 or 1)
-            if have then
-                r.count:SetText(have .. "/" .. need)
-                r.count:SetTextColor(unpack(done and S.GOOD or S.WARN))
-                r.text:SetText(what)
+    -- The three stages: whose turn it is, where each happens.
+    local key = ns.selected
+    local dungeon = ns.DungeonName(dungeonOf(key, level) or {}) or ""
+    local insideText = S.IconTag(ns.Icon(key)) .. " " .. L.INSIDE_OF:format(dungeon)
+    local stages = ns.Stages(q, key)
+    for i, s in ipairs(d.stages) do
+        local st = stages[i]
+        s.tag:Set((st.state == "done" and L.STATE_DONE) or (st.state == "now" and L.STAGE_NOW) or nil,
+                  st.state == "done" and S.GOOD or S.Accent())
+        S.SetBorder(s.icon, (st.state == "done" and S.GOOD) or (st.state == "now" and S.Accent()) or S.RING)
+        s.icon:SetAlpha(st.state == "wait" and 0.6 or 1)
+        local faded = st.state == "done"
+        s.title:SetTextColor(unpack(faded and S.MUTED or S.TEXT))
+        if st.kind == "work" then
+            s.icon:SetIcon(st.inside and ns.Icon(key) or S.TAB.quests)
+            s.title:SetText(st.inside and L.INSIDE_OF:format(dungeon) or "")
+            s.title:SetTextColor(unpack(faded and S.MUTED or S.GOLD))
+            s.sub:SetText("")
+            s.map:SetShown(st.inside and ns.PinEntrance(key, true))
+        else
+            s.icon:SetIcon(STAGE_ICONS[st.kind])
+            local pin = st.area > 0 and st.x > 0
+            if st.inside then
+                s.title:SetText(st.who ~= "" and st.who or L.INSIDE)
+                s.sub:SetText(insideText)
+            elseif st.area > 0 then
+                s.title:SetText(st.who ~= "" and st.who or "-")
+                local zone, xy = whereLine("", st.area), spot(st.x, st.y)
+                s.sub:SetText(zone .. ((zone ~= "" and xy ~= "") and "  ·  " or "") .. xy)
+            elseif st.who ~= "" then
+                s.title:SetText(st.kind == "take" and L.FROM_ITEM:format(st.who) or st.who)
+                s.sub:SetText("")
             else
-                r.count:SetText("")
-                r.text:SetText(o.text)
+                s.title:SetText(st.kind == "take" and L.INSIDE or "-")
+                s.sub:SetText("")
             end
-            r.text:SetTextColor(unpack(done and S.MUTED or S.TEXT))
-            -- Only the quest's own text (no counts) may run over a few lines.
-            r.text:SetWordWrap(not have)
-            local lines = 1
-            if not have then
-                local w = math.max(100, (d.infoBody:GetWidth() or 0) - 20)
-                lines = math.min(4, math.max(1, math.ceil((r.text:GetStringWidth() or 0) * 1.15 / w)))
-                r.text:SetMaxLines(lines)
-            end
-            r.text:SetHeight(lines * 15)
-            height = height + 6 + lines * LINE
-            last = r
+            s.map:SetShown(pin)
         end
     end
-    d.startLabel:ClearAllPoints()
-    d.startLabel:SetPoint("TOP", last.text, "BOTTOM", 0, -10)
-    d.startLabel:SetPoint("LEFT", d.objLabel, "LEFT")
 
-    if q.area and q.area > 0 then
-        d.start:SetText(whereLine(q.who, q.area))
-    elseif q.who ~= "" then
-        d.start:SetText(L.FROM_ITEM:format(q.who))
-    else
-        d.start:SetText(L.INSIDE)
-    end
-    d.startXY:SetText(q.area > 0 and spot(q.x, q.y) or "")
-    d.startMap:SetEnabled(q.area > 0 and q.x > 0)
-    local t = q.turnin
-    d.turnin:SetText(t and whereLine(t.who, t.area) or "-")
-    d.turninXY:SetText(t and spot(t.x, t.y) or "")
-    d.turninMap:SetEnabled(t ~= nil and t.area > 0 and t.x > 0)
-
-    local need
-    for _, st in ipairs(q.chain) do if st.missing then need = st end end
-    if need then
-        d.need:SetText(L.REQUIRES:format(need.name))
-    elseif q.state == "later" and q.why == "WHY_LEVEL" then
-        d.need:SetText(L.WHY_LEVEL:format(q.minLevel))
-    elseif q.state == "later" then
-        d.need:SetText(ns.NeedText(q.need))
-    else
-        d.need:SetText("")
-    end
-    -- start and turn-in: label, place, map button
-    height = height + 2 * (10 + LABEL + 5 + LINE + 4 + 28)
-    if d.need:GetText() ~= "" then height = height + 10 + LINE end
-    d.rewLabel:ClearAllPoints()
-    d.rewLabel:SetPoint("TOP", d.need:GetText() ~= "" and d.need or d.turninMap, "BOTTOM", 0, -12)
-    d.rewLabel:SetPoint("LEFT", d.objLabel, "LEFT")
-
+    -- The right column: the chain, the rewards, the dungeon's other quests.
     local rewards = ns.Rewards(q)
-    local lastRew
+    local shownRew = math.min(#rewards, #d.rewards)
     for i, row in ipairs(d.rewards) do
         local r = rewards[i]
         row:SetShown(r ~= nil)
         if r then
-            lastRew = row
             row.id = r.id
             row.icon:SetIcon(r.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
             row.icon:SetAlpha((r.name and not r.fits) and 0.35 or 1)
@@ -1520,24 +1577,144 @@ function ns.FillDetail(level)
             row.name:SetText(name .. mark)
         end
     end
-    d.mobLabel:ClearAllPoints()
-    d.mobLabel:SetPoint("TOP", lastRew or d.rewLabel, "BOTTOM", 0, -12)
-    d.mobLabel:SetPoint("LEFT", d.objLabel, "LEFT")
-    d.rewLabel:SetText(#rewards > 0 and L.DETAIL_REWARDS or "")
-    d.mobLabel:SetText(q.targets and #q.targets > 0 and L.DETAIL_MOBS or "")
-    d.mobs:SetText(q.targets and table.concat(q.targets, ", ") or "")
-    local shownRew = math.min(#rewards, #d.rewards)
-    height = height + 12 + LABEL + (shownRew > 0 and (6 + shownRew * 26) or 0) + 12 + LABEL + 4 + LINE
-    d.infoPage:SetContent(height + 8)
+    local hasChain, hasRew = #q.chain > 1, shownRew > 0
+    local info, chain, rew, others = d.infoCard, d.chainCard, d.rewardCard, d.othersCard
+    local room = (info:GetHeight() or 0) > 80 and info:GetHeight() or 306
+    local rewH = hasRew and (36 + shownRew * REWARD_ROW + S.INSET) or 0
+    local chainH = 0
+    if hasChain then
+        -- As high as its steps, at most down to the rewards (or the buttons).
+        chainH = math.min(36 + #q.chain * CHAIN_ROW + S.INSET, room - (hasRew and (rewH + S.GAP) or 0))
+    end
+    -- The other quests of the list, in its order.
+    local rest = {}
+    for _, it in ipairs(ns.listItems or {}) do
+        if it.quest and it.quest.id ~= q.id then rest[#rest + 1] = it end
+    end
+    local used = chainH + rewH + (hasChain and S.GAP or 0) + (hasRew and S.GAP or 0)
+    local hasOthers = #rest > 0 and room - used >= 36 + S.INSET + 2 * OTHER_ROW
+    local prev
+    local function put(card, shown, height)
+        card:SetShown(shown)
+        if not shown then return end
+        card:ClearAllPoints()
+        if prev then card:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -S.GAP)
+        else card:SetPoint("TOPLEFT", info, "TOPRIGHT", S.GAP, 0) end
+        card:SetPoint("RIGHT", d, "RIGHT")
+        if height then card:SetHeight(height) else card:SetPoint("BOTTOM", d.foot, "TOP", 0, S.GAP) end
+        prev = card
+    end
+    put(chain, hasChain, chainH)
+    put(rew, hasRew, rewH)
+    put(others, hasOthers)
+    if hasChain then
+        chain:SetTitle(L.DETAIL_CHAIN, tostring(#q.chain))
+        d.chain:SetData(q.chain)
+    end
+    if hasOthers then
+        others:SetTitle(L.DETAIL_OTHERS, tostring(#rest))
+        d.others:SetData(rest)
+        d.othersData = rest
+    end
+    -- With nothing for the right column, the way takes the whole page.
+    local full = not (hasChain or hasRew or hasOthers)
+    info:ClearAllPoints()
+    info:SetPoint("TOPLEFT", d.topCard, "BOTTOMLEFT", 0, -S.GAP)
+    info:SetPoint("BOTTOMLEFT", d.foot, "TOPLEFT", 0, S.GAP)
+    if full then info:SetPoint("RIGHT", d, "RIGHT") else info:SetPoint("RIGHT", d, "CENTER", 20, 0) end
+
+    -- The page's scroll takes its width from a resize; set it here too, for the first show.
+    local cardW = (d:GetWidth() or 0) > 200 and (full and d:GetWidth() or d:GetWidth() / 2 + 20) or 0
+    if cardW > 0 then d.infoBody:SetWidth(cardW - 2 * S.INSET - 10) end
+
+    -- The work stage: the quest's own text, the objectives, the mobs, what stands in the way.
+    local work = d.work
+    local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
+    local y = work.title:GetText() ~= "" and 40 or 20
+    local objs = q.objectives
+    local counted = false
+    for _, o in ipairs(objs) do
+        if o.text:match("%d+%s*/%s*%d+") then counted = true end
+    end
+    -- The game gives counted lines while the quest is in the log; the data's sentence says
+    -- what it is about, over them or alone.
+    local sentence = q.text or ""
+    if not counted and #objs > 0 then sentence = objs[1].text end
+    d.objText:SetText(sentence)
+    d.objText:SetShown(sentence ~= "")
+    if sentence ~= "" then
+        local lines = math.min(4, math.max(1, math.ceil((d.objText:GetStringWidth() or 0) * 1.12 / wide)))
+        d.objText:SetMaxLines(lines)
+        d.objText:SetHeight(lines * 16)
+        d.objText:ClearAllPoints()
+        d.objText:SetPoint("TOP", work, "TOP", 0, -y)
+        d.objText:SetPoint("LEFT", work, "LEFT", STAGE_ICON + 14, 0)
+        d.objText:SetPoint("RIGHT", work, "RIGHT")
+        y = y + lines * 16 + 6
+    end
+    for i, r in ipairs(d.objRows) do
+        local o = counted and objs[i] or nil
+        r.state:SetShown(o ~= nil)
+        r.count:SetShown(o ~= nil)
+        r.text:SetShown(o ~= nil)
+        if o then
+            local have, need, what = o.text:match("^(%d+)%s*/%s*(%d+)%s+(.+)$")
+            if not have then what, have, need = o.text:match("^(.-):%s*(%d+)%s*/%s*(%d+)$") end
+            local done = o.done or (have and tonumber(have) >= tonumber(need))
+            r.state:SetTexture(done and ICON_OK or WAIT_ICON)
+            r.state:SetAlpha((done or have) and 1 or 0.5)
+            r.count:SetWidth(have and 38 or 1)
+            r.count:SetText(have and (have .. "/" .. need) or "")
+            r.count:SetTextColor(unpack(done and S.GOOD or S.WARN))
+            r.text:SetText(have and what or o.text)
+            r.text:SetTextColor(unpack(done and S.MUTED or S.TEXT))
+            r.state:ClearAllPoints()
+            r.state:SetPoint("TOPLEFT", work, "TOPLEFT", STAGE_ICON + 14, -y - 1)
+            y = y + 20
+        end
+    end
+    local function lineAt(t, text)
+        t:SetText(text)
+        t:SetShown(text ~= "")
+        if text == "" then return end
+        t:ClearAllPoints()
+        t:SetPoint("TOP", work, "TOP", 0, -y - 2)
+        t:SetPoint("LEFT", work, "LEFT", STAGE_ICON + 14, 0)
+        t:SetPoint("RIGHT", work, "RIGHT")
+        y = y + 20
+    end
+    lineAt(d.mobs, (q.targets and #q.targets > 0) and (L.DETAIL_MOBS .. ":  " .. S.Hex(S.TEXT)
+        .. table.concat(q.targets, ", ") .. "|r") or "")
+    local need
+    for _, st in ipairs(q.chain) do if st.missing then need = st end end
+    if need then
+        lineAt(d.need, L.REQUIRES:format(need.name))
+    elseif q.state == "later" and q.why == "WHY_LEVEL" then
+        lineAt(d.need, L.WHY_LEVEL:format(q.minLevel))
+    elseif q.state == "later" then
+        lineAt(d.need, ns.NeedText(q.need))
+    else
+        lineAt(d.need, "")
+    end
+
+    -- The stages share the card's height, so the way fills it; a long one scrolls.
+    local workH = math.max(y + 8, STAGE_MIN)
+    room = room - 2 * S.INSET
+    local ends = STAGE_MIN
+    if room > 0 and room > workH + 2 * STAGE_MIN then
+        local spare = room - workH - 2 * STAGE_MIN
+        ends = STAGE_MIN + math.floor(math.min(spare, 60) / 3)
+        workH = workH + math.floor(math.min(spare, 60) / 3)
+    end
+    d.stages[1]:SetHeight(ends)
+    d.stages[2]:SetHeight(workH)
+    d.stages[3]:SetHeight(STAGE_MIN - 14)
+    d.infoPage:SetContent(ends + workH + STAGE_MIN - 14)
     if d.shownId ~= q.id then
         d.shownId = q.id
         local bar = d.infoPage.scroll.bar
         if bar then bar:SetValue(0) end
     end
-
-    d.chainCard:SetTitle(L.DETAIL_CHAIN, #q.chain > 0 and tostring(#q.chain) or "")
-    d.chain:SetData(#q.chain > 0 and q.chain or { { n = 1, name = q.name, this = true, id = q.id, level = q.level,
-                                                    who = q.who, area = q.area, x = q.x, y = q.y } })
 
     local at
     for i, id in ipairs(ns.listIds or {}) do if id == q.id then at = i end end
@@ -1857,12 +2034,7 @@ local function build()
     fitIcon(entranceBtn, L.PIN_ENTRANCE, 80)
     entranceBtn:SetPoint("RIGHT")
     entranceBtn:SetScript("OnClick", function()
-        for _, d in ipairs(ns.Dungeons(ns.level or 1)) do
-            if d.key == ns.selected and d.entrance then
-                ns.SetPin({ who = ns.DungeonName(d), zone = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(d.entrance.area),
-                            x = d.entrance.x, y = d.entrance.y }, true)
-            end
-        end
+        ns.PinEntrance(ns.selected)
     end)
     head.range = S.Text(head.body, 13, nil, nil, "bold")
     head.name = S.Text(head.body, 16, nil, nil, "title")

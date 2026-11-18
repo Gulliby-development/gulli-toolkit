@@ -430,6 +430,33 @@ function ns.Quest(id, level)
     return entry
 end
 
+-- What of a dungeon quest happens inside the dungeon (D.inside): { take, work, turnin }.
+-- Only a hint: where the data cannot tell, nothing is set.
+function ns.Inside(key, id)
+    local D = data()
+    local f = (key and D.inside and D.inside[key] and D.inside[key][id]) or ""
+    return { take = f:find("t", 1, true) ~= nil, work = f:find("d", 1, true) ~= nil,
+             turnin = f:find("h", 1, true) ~= nil }
+end
+
+-- The way of a quest (ns.Quest) as its page shows it: taking it, its work, handing it in.
+-- { kind = take|work|turnin, state = done|now|wait, inside (in the dungeon `key`), and for
+-- the two ends who, area, x, y }.
+function ns.Stages(q, key)
+    local inside = ns.Inside(key, q.id)
+    local done, log = q.state == "done", q.state == "log"
+    local ready = log and Q.IsComplete ~= nil and Q.IsComplete(q.id) == true
+    local function st(isDone, now) return (isDone and "done") or (now and "now") or "wait" end
+    local t = q.turnin or {}
+    return {
+        { kind = "take", state = st(done or log, q.state == "take"), inside = inside.take,
+          who = q.who or "", area = q.area or 0, x = q.x or 0, y = q.y or 0 },
+        { kind = "work", state = st(done or ready, log), inside = inside.work },
+        { kind = "turnin", state = st(done, ready), inside = inside.turnin,
+          who = t.who or "", area = t.area or 0, x = t.x or 0, y = t.y or 0 },
+    }
+end
+
 -- The whole chain a quest is in, first step first: { id, n, name, level, who, area, x, y,
 -- done, active, this, missing, dungeon }. `missing` marks the first step before this quest
 -- that is neither done nor in the log.
@@ -489,8 +516,9 @@ end
 -- hand in, the rest of the log with their objectives, the ones to take, then chains that wait
 -- for an earlier step. { id (the step to do now), key (the chain's head), name (the head's),
 -- level, state = ready|log|take|chain, lines = { { text, done } }, steps (ns.Chain of the step,
--- for a row opened by a click) or nil, pin = { who, area, x, y } or nil }, then how many are
--- ready and how many there are. A chain's first line says which step it is at.
+-- for a row opened by a click) or nil, pin = { who, area, x, y } or nil, inside = true when
+-- what the row asks for now (taking it, its work, handing it in) happens in the dungeon }, then
+-- how many are ready and how many there are. A chain's first line says which step it is at.
 ns.TRACK_MAX = 8
 local TRACK_ORDER = { ready = 1, log = 2, take = 3, chain = 4 }
 function ns.TrackerItems(key, level)
@@ -504,8 +532,11 @@ function ns.TrackerItems(key, level)
     for _, e in ipairs(q.log) do
         local it = { id = e.id, name = e.name, level = e.level, state = "log", lines = {}, entry = e }
         local t = e.turnin
+        local ins = ns.Inside(key, e.id)
+        it.inside = ins.work or nil
         if Q.IsComplete and Q.IsComplete(e.id) then
             it.state, ready = "ready", ready + 1
+            it.inside = ins.turnin or nil
             it.lines[1] = { text = (t and t.who ~= "") and L.TR_READY_TO:format(t.who) or L.TR_READY, done = true }
             if t then it.pin = pinOf(t.who, t.area, t.x, t.y) end
         else
@@ -520,7 +551,8 @@ function ns.TrackerItems(key, level)
         local where = ns.Where(e)
         all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
                           lines = { { text = where ~= "" and L.TR_TAKE:format(where) or L.Q_TAKE } },
-                          pin = pinOf(e.who, e.area, e.x, e.y), entry = e }
+                          pin = pinOf(e.who, e.area, e.x, e.y), entry = e,
+                          inside = ns.Inside(key, e.id).take or nil }
     end
     for _, e in ipairs(q.later) do
         if e.why == "WHY_EARLIER" and e.need and e.need.name then
@@ -646,6 +678,31 @@ function ns.LogReward(id)
     local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(id)
     local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(id)
     return type(xp) == "number" and xp or 0, type(money) == "number" and money or 0
+end
+
+-- The experience a quest gives this character, and whether the game itself said so (a quest
+-- in the log). Else it comes from the data (D.xp, at the quest's own level), cut like the
+-- game cuts it for a character above the quest; 0 when nothing is known or at the top level.
+ns.MAX_LEVEL = 60
+function ns.QuestXP(id, level)
+    local xp = ns.LogReward(id)
+    if onQuest(id) and xp > 0 then return xp, true end
+    local D = data()
+    local base, q = D.xp and D.xp[id], D.quest[id]
+    level = level or UnitLevel("player") or 1
+    if not base or not q or level >= ns.MAX_LEVEL then return 0, false end
+    local factor = math.max(1, math.min(10, 2 * (q[2] - level) + 20))
+    xp = base * factor / 10
+    local step, half = 50, 25
+    if xp <= 100 then step, half = 5, 2 elseif xp <= 500 then step, half = 10, 5 elseif xp <= 1000 then step, half = 25, 12 end
+    return step * math.floor((xp + half) / step), false
+end
+
+-- The same as a text in the experience colour: "5250 experience", with "~" when it is the data's.
+function ns.XPText(id, level)
+    local xp, exact = ns.QuestXP(id, level)
+    if xp <= 0 then return nil end
+    return ns.Skin.Hex(ns.Skin.XP) .. (exact and "" or "~") .. L.TT_XP:format(xp) .. "|r"
 end
 
 -- Group members (names) who have this quest too.
@@ -1033,6 +1090,19 @@ function ns.MarkTarget(who)
     if GetRaidTargetIndex and GetRaidTargetIndex("target") == ns.MARK then return true end
     if SetRaidTarget then SetRaidTarget("target", ns.MARK) end
     return true
+end
+
+-- A pin on a dungeon's way in, with the map open on it; with `probe` it only says whether
+-- the dungeon has one.
+function ns.PinEntrance(key, probe)
+    for _, d in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do
+        local e = d.key == key and d.entrance
+        if e and e.area > 0 then
+            if probe then return true end
+            return ns.SetPin({ who = ns.DungeonName(d), zone = areaName(e.area), x = e.x, y = e.y }, true)
+        end
+    end
+    return false
 end
 
 function ns.PinAt(who, area, x, y, open)
