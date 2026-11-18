@@ -1028,6 +1028,7 @@ S.legacy.zones = lgExplore(80000)
 S.legacy.valthalak = lgExplore(80010)
 -- The settings pages with the Lock switch of their frame on the screen.
 S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
+S.instancelimit.free = { spec = S.instancelimit.default.spec, open = function(ns) ns.db.entries = {}; ns.Toggle() end }
 S.mobfinder.mobs = { spec = { level = 14 }, open = function(ns)
     ns.db.names = { "Sandfury Guardian", "firebird" }
     ns.db.ids = { [5400] = "Cyclok the Mad" }

@@ -13,6 +13,9 @@ local TIME_ICON = "Interface\\Icons\\Spell_Nature_TimeStop"
 local page = 1
 local SLOT_GAP, SLOTS_MAX, CHIPS_MAX = 6, 10, 6
 local I = "Interface\\Icons\\"
+-- A slot of the hour: a key while it is free, the clock (time, as everywhere) while it is taken.
+local FREE_ICON, TAKEN_ICON = I .. "INV_Misc_Key_14", I .. "INV_Misc_PocketWatch_01"
+local SLOT_ICON = 22
 
 local function ago(t)
     return L.AGO:format(ns.Clock(time() - t))
@@ -124,14 +127,19 @@ local function buildHero(parent, width)
         local f = c.slots[i]
         if f then return f end
         f = CreateFrame("Frame", nil, c)
-        S.Box(f, S.INPUT, S.LINE, S.R_MD)
+        -- A light tile like every other one: the darkest fill reads as a hole in the card.
+        S.Box(f, S.RAISED, S.CARD_EDGE, S.R_MD)
+        S.Depth(f, S.R_MD)
         f:SetHeight(50)
+        f.icon = S.IconBox(f, SLOT_ICON, FREE_ICON)
+        f.icon:SetPoint("TOP", 0, -6)
+        f.icon:SetGlow(S.GOOD)
+        f.clock = S.IconBox(f, 14, TAKEN_ICON)
+        f.clock:SetPoint("TOPLEFT", 7, -22)
         f.name = S.Text(f, 12)
-        f.name:SetPoint("TOPLEFT", 7, -6)
-        f.name:SetPoint("RIGHT", -5, 0)
         f.name:SetWordWrap(false)
         f.time = S.Text(f, 12, S.MUTED)
-        f.time:SetPoint("TOPLEFT", 7, -22)
+        f.time:SetPoint("LEFT", f.clock, "RIGHT", 4, 0)
         f.track = f:CreateTexture(nil, "ARTWORK")
         f.track:SetColorTexture(1, 1, 1, 0.07)
         f.track:SetHeight(3)
@@ -140,6 +148,23 @@ local function buildHero(parent, width)
         f.fill = f:CreateTexture(nil, "OVERLAY")
         f.fill:SetHeight(3)
         f.fill:SetPoint("BOTTOMLEFT", 7, 7)
+        -- Free: a key over the word, in the middle. Taken: the name, the time left and its bar.
+        function f:Lay(free)
+            self.name:ClearAllPoints()
+            if free then
+                self.name:SetPoint("BOTTOMLEFT", 3, 6)
+                self.name:SetPoint("BOTTOMRIGHT", -3, 6)
+                self.name:SetJustifyH("CENTER")
+            else
+                self.name:SetPoint("TOPLEFT", 7, -6)
+                self.name:SetPoint("RIGHT", -5, 0)
+                self.name:SetJustifyH("LEFT")
+            end
+            self.icon:SetShown(free)
+            self.clock:SetShown(not free)
+            self.time:SetShown(not free)
+            self.track:SetShown(not free)
+        end
         -- A long dungeon name is cut in its slot: the tooltip has all of it.
         f:SetScript("OnEnter", function(self)
             if not self.full or not GameTooltip then return end
@@ -175,12 +200,14 @@ local function buildHero(parent, width)
                 f:SetWidth(w)
                 local a = S.Accent()
                 if d.isFree then
+                    f:Lay(true)
                     f.full = nil
                     f.name:SetText(S.Hex(S.GOOD) .. L.SLOT_FREE .. "|r")
                     f.time:SetText("")
                     f.fill:Hide()
-                    S.SetBorder(f, S.LINE)
+                    S.SetBorder(f, S.CARD_EDGE)
                 else
+                    f:Lay(false)
                     f.full = d.name
                     f.name:SetText(d.name or "?")
                     f.time:SetText(ns.Clock(d.free))
@@ -189,7 +216,7 @@ local function buildHero(parent, width)
                     f.fill:SetColorTexture(a[1], a[2], a[3], 1)
                     f.fill:SetWidth(math.max(1, (w - 14) * math.max(0, math.min(1, d.frac))))
                     f.fill:Show()
-                    S.SetBorder(f, d.first and S.WARN or S.LINE)
+                    S.SetBorder(f, d.first and S.WARN or S.CARD_EDGE)
                 end
             end
         end
