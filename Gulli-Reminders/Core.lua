@@ -188,7 +188,7 @@ local function now() return GetTime and GetTime() or 0 end
 local UNSURE = "?"
 ns.UNSURE = UNSURE
 -- One buff of the player by name, as buffs() gives it; UNSURE when the game may be hiding it.
--- In a fight (a boss above all) the game can leave auras out of the list without a sign, so
+-- While the game hides auras (a boss fight) it can leave them out of the list without a sign, so
 -- there a buff that does not show is never taken as gone: only a found buff counts.
 local function lookup(have, hidden, name, fight)
     if not name or name == "" then return nil end
@@ -545,7 +545,14 @@ function ns.Missing()
     local level = UnitLevel("player")
     local soon = (db.soonMin or 0) * 60
     local have, hidden = buffs()
-    local function look(name) return lookup(have, hidden, name, fight) end
+    -- The game says when it hides auras (C_Secrets, a boss fight); a client without the call is
+    -- taken as hiding them in every fight.
+    local hiding = fight and true
+    if fight and C_Secrets and C_Secrets.ShouldAurasBeSecret then
+        local ok, v = pcall(C_Secrets.ShouldAurasBeSecret)
+        if ok and v == false then hiding = false end
+    end
+    local function look(name) return lookup(have, hidden, name, hiding) end
     local here, items = ns.PlaceOK(db.where), ns.PlaceOK(db.whereItems)
     local function cast(id) return { type = "spell", spell = spellName(id) } end
     for _, b in ipairs(here and ns.ClassBuffs(class) or {}) do

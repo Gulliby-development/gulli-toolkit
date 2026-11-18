@@ -221,6 +221,19 @@ test("in a fight the panel's secure icons only fade, and a new reminder goes on 
     eq(W.Keys(ns.Refresh()), "FORTITUDE,INNER_FIRE", "after the fight the panel is laid out again")
 end)
 
+test("a fight where the game says it hides no auras (trash) checks every buff as out of a fight", function()
+    Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243", "Spell588" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    eq(W.Keys(ns.Refresh()), "")
+    W.combat, W.byName, W.auras = true, false, {}
+    C_Secrets = { ShouldAurasBeSecret = function() return false end }
+    eq(W.Keys(ns.CombatView(ns.Missing())), "FORTITUDE,INNER_FIRE", "the game hides nothing: a buff gone is gone")
+    C_Secrets.ShouldAurasBeSecret = function() return true end
+    eq(#ns.CombatView(ns.Missing()), 0, "a boss: the game hides auras, nothing is sure")
+    C_Secrets = nil
+end)
+
 test("a form that drops in a fight goes on the plain strip; the game always tells the form", function()
     Fake({ class = "PRIEST", known = { 1243, 588, 15473 }, auras = { "Spell1243", "Spell588" } })
     local ns = Load()
