@@ -34,6 +34,7 @@ jobs:
         run: |
           python3 tools/questcleaner/build_data.py /tmp/questiedb
           python3 tools/dungeonprep/build_data.py /tmp/questiedb /tmp/att /tmp/gdq
+          python3 tools/dungeonprep/build_journal.py tools/dungeonprep/wowhead-dungeons.json /tmp/att
           python3 tools/mobfinder/build_data.py /tmp/questiedb
           python3 tools/craftprofit/build_data.py /tmp/SkillLevelData1.lua /tmp/questiedb
 

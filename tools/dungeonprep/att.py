@@ -8,6 +8,11 @@ wrong for WoW Forever's own quests, so the generator takes both.
 
     quests(path) -> {quest id: "A" | "H" | ""}
 
+ATT also lists an instance's NPCs in the order a group meets them, under a header for each wing,
+and the drops of its ordinary mobs under ZONE_DROPS: the journal takes the order from there.
+
+    walk(path) -> {"order": [[npc id, wing key or ""]], "zone": [item id]}
+
 The file is Lua, read as text: never run.
 """
 import re
@@ -87,6 +92,82 @@ def quests(path):
             p = frames[p]["parent"]
         out.setdefault(qid, side(races or ""))
     return out
+
+
+# ATT's headers for the wings of an instance -> our wing key (a WING_<KEY> text in the addon).
+WINGS = {
+    "SCARLET_MONASTERY_GRAVEYARD_HEADER": "GRAVEYARD", "SCARLET_MONASTERY_LIBRARY_HEADER": "LIBRARY",
+    "SCARLET_MONASTERY_ARMORY_HEADER": "ARMORY", "SCARLET_MONASTERY_CATHEDRAL_HEADER": "CATHEDRAL",
+    "LOWER_BLACKROCK_SPIRE": "LOWER", "UPPER_BLACKROCK_SPIRE": "UPPER",
+    "WARPWOOD_QUARTER": "EAST", "CAPITAL_GARDENS": "WEST", "GORDOK_COMMONS": "NORTH",
+    "MAIN_GATE": "MAIN", "SERVICE_ENTRANCE": "SERVICE",
+}
+# Sections whose NPCs are not met on the way (quest givers, vendors, ...).
+ASIDE = {"QUESTS", "VENDORS", "FACTIONS", "ACHIEVEMENTS", "REWARDS", "PROFESSIONS", "TREASURES",
+         "SPECIAL", "ZONE_DROPS", "COMMON_BOSS_DROPS"}
+
+
+def walk(path):
+    text = open(path, encoding="utf-8").read()
+    toks = [m.group(0) for m in TOKEN.finditer(text) if not m.group(0).startswith("--")]
+    # A frame per open bracket: what opened it (a call's name and first arguments, or "{").
+    stack = [{"fn": "", "args": []}]
+    order, zone, seen = [], [], set()
+
+    def wing():
+        for f in reversed(stack):
+            for a in f["args"]:
+                if a in WINGS:
+                    return WINGS[a]
+        return ""
+
+    def aside():
+        return any(f["fn"] == "n" and f["args"] and f["args"][0] in ASIDE for f in stack)
+
+    def add(npc):
+        if npc not in seen:
+            seen.add(npc)
+            order.append([npc, wing()])
+
+    i = 0
+    while i < len(toks):
+        t = toks[i]
+        if t == "(":
+            fn = toks[i - 1] if i > 0 and re.match(r"[A-Za-z_]", toks[i - 1]) else ""
+            args, j = [], i + 1
+            while j < len(toks) and toks[j] not in "({)}" and len(args) < 4:
+                if toks[j] != ",":
+                    args.append(toks[j])
+                j += 1
+            stack.append({"fn": fn, "args": args})
+            first = args[0] if args else ""
+            if fn == "n" and first.isdigit() and not aside():
+                add(int(first))
+            elif fn == "i" and first.isdigit():
+                # A drop of the ordinary mobs: straight under ZONE_DROPS, not inside an NPC there.
+                calls = [f for f in stack[:-1] if f["fn"] in ("n", "e", "i")]
+                if calls and calls[-1]["fn"] == "n" and calls[-1]["args"][:1] == ["ZONE_DROPS"]:
+                    if int(first) not in zone:
+                        zone.append(int(first))
+        elif t == "{":
+            stack.append({"fn": "{", "args": []})
+        elif t in ")}":
+            if len(stack) > 1:
+                stack.pop()
+        elif t in ("creatureID", "crs") and i + 1 < len(toks) and toks[i + 1] == "=":
+            # The creatures of an encounter: keys of the table that e( ... ) opens.
+            if len(stack) >= 2 and stack[-1]["fn"] == "{" and stack[-2]["fn"] == "e" and not aside():
+                j = i + 2
+                if toks[j] == "{":
+                    j += 1
+                    while j < len(toks) and toks[j] != "}":
+                        if toks[j].isdigit():
+                            add(int(toks[j]))
+                        j += 1
+                elif toks[j].isdigit():
+                    add(int(toks[j]))
+        i += 1
+    return {"order": order, "zone": zone}
 
 
 if __name__ == "__main__":

@@ -514,13 +514,18 @@ local function dpBosses(ns)
           { { 9492, 3, 18.7 }, { 9459, 3, 17.2 }, { 9461, 3, 16.4 }, { 9458, 3, 15.3 }, { 4415, 3, 4.1 } } },
         { 6228, "Dark Iron Ambassador", "", 33, 33, 6669, 1, {}, { { 9455, 3, 33.3 }, { 9457, 3, 30.6 } } },
     }
-    ns.db.kills = { [7800] = 3 }
+    ns.Data.zone = ns.Data.zone or {}
+    ns.Data.zone.GNOMER = { { 9445, 3 }, { 9450, 3 } }
+    ns.db.kills = { [7800] = 3, [7361] = 2, [7079] = 2, [6235] = 12 }
     ns.SetWish(9492, true)
 end
 S.dungeonprep = {
     home = { spec = dpSpec, open = function(ns) ns.Toggle() end },
     default = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle() end },
+    boss = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.boss = 7800; ns.modelBoss = 7800; ns.Toggle() end },
+    wings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "SM"; ns.Toggle() end },
     loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
+    lootmine = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.lootFilter = "mine"; ns.Toggle(); ns.ShowTab(2) end },
     quests = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
     settings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
     real = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "THANES"; ns.Toggle() end },
