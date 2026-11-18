@@ -845,7 +845,13 @@ S.legacy.zones = lgExplore(80000)
 S.legacy.valthalak = lgExplore(80010)
 -- The settings pages with the Lock switch of their frame on the screen.
 S.instancelimit.settings = { spec = S.instancelimit.default.spec, open = function(ns) ns.ShowPage(2) end }
-S.mobfinder.search = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(1) end }
+S.mobfinder.mobs = { spec = { level = 14 }, open = function(ns)
+    ns.db.names = { "Sandfury Guardian", "firebird" }
+    ns.db.ids = { [5400] = "Cyclok the Mad" }
+    ns.Info("Sandfury Guardian").count = 2; ns.Info("Sandfury Guardian").zone = "Tanaris"
+    ns.Toggle(); ns.ShowPage(1)
+end }
+S.mobfinder.settings = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(3) end }
 -- Crates: two Flowering crates, Apprentice Herbs and Expert Ore at the auction house, with some
 -- herbs in the bags and the bank, after Calculate and the first price asked.
 local function crSpec(locale)
