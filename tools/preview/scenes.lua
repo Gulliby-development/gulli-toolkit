@@ -733,6 +733,8 @@ S.dungeonprep = {
     inside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96776) end },
     -- A chain whose step is taken and handed in inside the dungeon.
     outside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(93601, 93404) end },
+    wowhead = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046)
+                    local d = ns.DetailFrame(); d.link:GetScript("OnClick")(d.link) end },
     insidechain = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046) end },
     insidelist = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3) end },
     insidetracker = { spec = dpMara, crop = "GulliDungeonPrepTrackerStage",

@@ -23,11 +23,67 @@ local OBJ_MAX = 5
 local TI = "Interface\\Icons\\"
 -- One icon per action; every map pin (start, turn-in, entrance) shares the map.
 local ACT_ICON = { map = TI .. "INV_Misc_Map_01", track = TI .. "Ability_Hunter_Pathfinding", share = S.TAB.group,
-                   hide = TI .. "Ability_Stealth", later = TI .. "INV_Misc_PocketWatch_01" }
+                   hide = TI .. "Ability_Stealth", link = TI .. "INV_Misc_Book_09", later = TI .. "INV_Misc_PocketWatch_01" }
 -- The list filters, each with its icon: every quest, the ones to take, the log, the done ones.
 local FILTERS = { { "all", "F_ALL", S.TAB.list }, { "take", "F_TAKE", TI .. "INV_Misc_Note_01" },
                   { "log", "F_LOG", S.TAB.quests }, { "done", "F_DONE", TI .. "INV_Misc_Ribbon_01" } }
 local WAIT_ICON = "Interface\\RaidFrame\\ReadyCheck-Waiting"
+
+-- A small box over the window with a link to copy (Ctrl+C); the game cannot open a link.
+local linkBox
+function ns.ShowLink(url, title)
+    if not url or not frame then return end
+    local f = linkBox
+    if not f then
+        f = CreateFrame("Frame", nil, frame)
+        linkBox = f
+        f:SetSize(440, 104)
+        f:SetPoint("CENTER")
+        f:SetFrameStrata("DIALOG")
+        f:EnableMouse(true)
+        S.Box(f, S.SOLID, S.EDGE, S.R_LG)
+        f.title = S.Text(f, 12, S.GOLD)
+        f.title:SetPoint("TOPLEFT", 14, -12)
+        f.title:SetPoint("RIGHT", -44, 0)
+        f.title:SetWordWrap(false)
+        f.edit = S.Edit(f, 412, 28)
+        f.edit:SetPoint("TOPLEFT", 14, -34)
+        f.edit:SetPoint("RIGHT", -14, 0)
+        f.edit:SetJustifyH("LEFT")
+        f.hint = S.Text(f, 12, S.MUTED)
+        f.hint:SetPoint("BOTTOMLEFT", 14, 12)
+        f.hint:SetPoint("RIGHT", -14, 0)
+        f.hint:SetWordWrap(false)
+        f.hint:SetText(L.LINK_HINT)
+        f.close = S.Button(f, 28, 22)
+        f.close:SetPoint("TOPRIGHT", -8, -6)
+        f.close:SetText("x")
+        local function close() f:Hide() end
+        local function whole(self)
+            if self.HighlightText then self:HighlightText() end
+        end
+        f.close:SetScript("OnClick", close)
+        f.edit:SetScript("OnEscapePressed", close)
+        f.edit:SetScript("OnEnterPressed", close)
+        -- the link stays as it is, and stays selected, whatever the player types
+        f.edit:HookScript("OnTextChanged", function(self, user)
+            if user and f.url then self:SetText(f.url); whole(self) end
+        end)
+        f.edit:HookScript("OnMouseUp", whole)
+        f.edit:HookScript("OnKeyDown", function(_, key)
+            if key == "C" and IsControlKeyDown and IsControlKeyDown() then
+                if C_Timer and C_Timer.After then C_Timer.After(0.15, close) else close() end
+            end
+        end)
+    end
+    f.url = url
+    f.title:SetText(title and (L.WOWHEAD .. " " .. S.DOT .. " " .. title) or L.WOWHEAD)
+    f.edit:SetText(url)
+    f:Show()
+    if f.edit.SetFocus then f.edit:SetFocus() end
+    if f.edit.HighlightText then f.edit:HighlightText() end
+    return f
+end
 
 -- A button with a game icon before its text, as wide as both need.
 local function iconButton(parent, icon, height)
@@ -1287,6 +1343,13 @@ local function buildDetail(parent)
         if ns.openQuest then ns.SetHidden(ns.openQuest, not ns.Hidden(ns.openQuest)) end
     end)
     -- The player's own note on the quest.
+    d.link = iconButton(foot, ACT_ICON.link)
+    fitIcon(d.link, L.WOWHEAD)
+    d.link:SetPoint("LEFT", d.hide, "RIGHT", 8, 0)
+    d.link:SetScript("OnClick", function()
+        local q = detail and detail.q
+        if q then ns.ShowLink(ns.WowheadURL("quest", q.id), q.name) end
+    end)
     d.note = S.Edit(foot, 220, 28)
     d.note:SetPoint("RIGHT")
     d.note:SetJustifyH("LEFT")
@@ -1296,7 +1359,7 @@ local function buildDetail(parent)
     end)
     d.note:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     d.status = S.Text(foot, 12, S.MUTED)
-    d.status:SetPoint("LEFT", d.hide, "RIGHT", 12, 0)
+    d.status:SetPoint("LEFT", d.link, "RIGHT", 12, 0)
     d.status:SetPoint("RIGHT", d.note, "LEFT", -8, 0)
     d.status:SetWordWrap(false)
 
@@ -1845,13 +1908,19 @@ local function buildBossPage(parent)
     end)
     m:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     p.model = m
+    p.link = iconButton(b, ACT_ICON.link, 28)
+    fitIcon(p.link, L.WOWHEAD)
+    p.link:SetPoint("TOPRIGHT")
+    p.link:SetScript("OnClick", function()
+        if ns.boss then ns.ShowLink(ns.WowheadURL("npc", ns.boss), p.name:GetText()) end
+    end)
     p.name = S.Text(b, 16, nil, nil, "title")
     p.name:SetPoint("TOPLEFT", holder, "TOPRIGHT", 14, -1)
-    p.name:SetPoint("RIGHT", b, "RIGHT")
+    p.name:SetPoint("RIGHT", p.link, "LEFT", -8, 0)
     p.name:SetWordWrap(false)
     p.sub = S.Text(b, 12, S.MUTED)
     p.sub:SetPoint("TOPLEFT", p.name, "BOTTOMLEFT", 0, -5)
-    p.sub:SetPoint("RIGHT", b, "RIGHT")
+    p.sub:SetPoint("RIGHT", p.link, "LEFT", -8, 0)
     p.sub:SetWordWrap(false)
     -- Kills, and a bar of pips: full when the chances shown are the player's own.
     p.kills = S.Text(b, 12, S.FAINT, nil, "bold")
