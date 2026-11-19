@@ -1875,4 +1875,27 @@ test("an item the client had not loaded gets its name once the game sends it", f
     eq(n.view.stale, true)
 end)
 
+test("a trade supply has its vendor price before the player saw it at a vendor", function()
+    local n = game({ vendor = {} })
+    local P = n.Prefs({})
+    -- Blue Dye (3) has no auction price and was never seen at a vendor: nowhere to buy it
+    eq(n.State().items[3].buy, nil)
+    n.VENDOR_ITEMS[3], n.VENDOR_ITEMS[5] = true, true
+    local st = n.State()
+    eq(st.items[3].buy, 48, "four times what a vendor pays"); eq(st.items[3].buyEst, true)
+    local v, how = n.BuyOption(st, P, 3)
+    eq(v, 48); eq(how, "vendor")
+    -- the auction wins only when it is cheaper than the vendor
+    W.items[5].ah = 150
+    v, how = n.BuyOption(n.State(), P, 5)
+    eq(v, 100); eq(how, "vendor")
+    W.items[5].ah = 90
+    v, how = n.BuyOption(n.State(), P, 5)
+    eq(v, 90); eq(how, "ah")
+    -- a price seen at a vendor replaces the estimate
+    n.db.vendor[3] = 50
+    st = n.State()
+    eq(st.items[3].buy, 50); eq(st.items[3].buyEst, nil)
+end)
+
 W.finish()
