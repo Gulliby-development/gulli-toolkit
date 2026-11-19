@@ -42,6 +42,26 @@ test("the data: every reward has its quest, a kind and a chain that ends in it",
     end
 end)
 
+test("a quest an item starts is taken where that item lies or drops", function()
+    Fake({})
+    local D = Load().Data
+    local riddle = D.quest[624]
+    eq(riddle[8], 33, "Cortello's Riddle lies in Stranglethorn Vale")
+    assert(riddle[9] > 0 and riddle[10] > 0, "with a place on the map")
+    local map = D.quest[136]
+    assert(map[8] > 0 and map[9] > 0, "a dropped item has the place of its mob")
+    assert(map[7]:find("%("), "and names the mob")
+end)
+
+test("the Wowhead link box lies over the hub", function()
+    Fake({ level = 20, slots = { [POUCH] = 10 } })
+    local ns = Load()
+    ns.Toggle()
+    local box = ns.ShowLink(ns.WowheadURL("quest", 624), "Cortello's Riddle")
+    eq(box:IsShown(), true)
+    eq(box.edit:GetText(), "https://www.wowhead.com/forever/quest=624")
+end)
+
 test("a bag's slots are read from its tooltip, in the client's wording, and kept", function()
     Fake({ slots = { [POUCH] = 8 } })
     local ns = Load()
@@ -262,9 +282,11 @@ test("a guide kept over a reload leads on", function()
     eq(#W.pins, 1)
 end)
 
-test("a quest started by an item has no pin, and never an error", function()
+test("a giver on no map has no pin, and never an error", function()
     Fake({ level = 20 })
     local ns = Load()
+    local q = ns.Data.quest[136]
+    q[8], q[9], q[10] = 0, 0, 0
     local e = find(ns.Rewards(), 140)
     eq(e.cur, 136)
     local stop = ns.Stop(e)

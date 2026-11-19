@@ -366,8 +366,30 @@ def main(root, att_root=None, gdq_root=None):
             zone = o.get(O_ZONE) or (zs[0] if zs else 0)
             return (o.get(O_NAME) or "", zone) + spot(o, O_SPAWNS, zone)
         for iid in seq(sb.get(3) or {}) or ([q[Q_SOURCE_ITEM]] if q.get(Q_SOURCE_ITEM) else []):
-            return (items.get(iid) or {}).get(I_NAME) or "", 0, 0, 0
+            return item_place(items.get(iid) or {})
         return "", 0, 0, 0
+
+    def item_place(it):
+        """An item that starts a quest is taken where it lies or drops: the object that holds it,
+        else the mob that drops it and has the most spawns. Named "Item (Source)"."""
+        name = it.get(I_NAME) or ""
+        best, most = None, -1
+        for key, recs, spawns, zkey, nkey in ((I_OBJECT_DROPS, objects, O_SPAWNS, O_ZONE, O_NAME),
+                                              (I_NPC_DROPS, npcs, N_SPAWNS, N_ZONE, N_NAME)):
+            for rid in seq(it.get(key) or {}):
+                rec = recs.get(rid) or {}
+                zs = sorted(zones_of(rec, spawns, zkey))
+                zone = rec.get(zkey) or (zs[0] if zs else 0)
+                x, y = spot(rec, spawns, zone)
+                pts = rec.get(spawns) if isinstance(rec.get(spawns), dict) else {}
+                n = sum(len(seq(v)) for v in pts.values())
+                if zone and (x or y) and n > most:
+                    best, most = (rec.get(nkey) or "", zone, x, y), n
+            if best:
+                break
+        if not best:
+            return name, 0, 0, 0
+        return (name if best[0] in ("", name) else "%s (%s)" % (name, best[0]),) + best[1:]
 
     # "A" or "H" when the quest is for one faction only: from its race mask, else from the
     # NPCs that give and take it (QuestieDB leaves the race mask 0 on many such quests).

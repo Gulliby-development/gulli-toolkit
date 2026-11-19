@@ -114,8 +114,31 @@ def build(quests, npcs, objects, items):
             return place(objects.get(oid) or {}, O_SPAWNS, O_ZONE, O_NAME)
         if key == Q_STARTED_BY:
             for iid in seq(by.get(3) or {}):
-                return (items.get(iid) or {}).get(I_NAME) or "", 0, 0, 0
+                return item_place(items.get(iid) or {})
         return "", 0, 0, 0
+
+    def item_place(it):
+        """An item that starts a quest is taken where it lies or drops: the object that holds it,
+        else the mob that drops it and has the most spawns. Named "Item (Source)"."""
+        name = it.get(I_NAME) or ""
+        best = None
+        for oid in seq(it.get(I_OBJECT_DROPS) or {}):
+            got = place(objects.get(oid) or {}, O_SPAWNS, O_ZONE, O_NAME)
+            if got[1] and (got[2] or got[3]):
+                best = got
+                break
+        if not best:
+            most = -1
+            for nid in seq(it.get(I_NPC_DROPS) or {}):
+                rec = npcs.get(nid) or {}
+                got = place(rec, N_SPAWNS, N_ZONE, N_NAME)
+                n = sum(len(v) for v in points(rec, N_SPAWNS).values())
+                if got[1] and (got[2] or got[3]) and n > most:
+                    best, most = got, n
+        if not best:
+            return name, 0, 0, 0
+        label = name if best[0] in ("", name) else "%s (%s)" % (name, best[0])
+        return label, best[1], best[2], best[3]
 
     def faction(q):
         races = q.get(Q_RACES) or 0
