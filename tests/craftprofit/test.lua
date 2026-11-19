@@ -2094,6 +2094,20 @@ test("a recipe only one trainer teaches names that trainer and the city", functi
     for rid in pairs(n.TRAINERS) do assert(n.Data.train[rid], "trainer recipe " .. rid) end
 end)
 
+test("Shadoweave is learned from skill 200 while the game bug lasts", function()
+    local n = game({ faction = "Horde", prof = { name = "Tailoring", skill = 176, cap = 225, recipes = {
+        { id = 12052, name = "Shadoweave Pants", learned = false, out = 4, r = { [2] = 2 } },
+        { id = 12055, name = "Shadoweave Robe", learned = true, out = 5, r = { [2] = 2 } },
+    } }, trainer = {} })
+    local r = n.State().recipes[12052]
+    eq(r.skill[1], 200, "the learn level is raised")
+    eq(r.skill[2], 190); eq(r.skill[3], 220)
+    eq(n.Chance(r, 199), 0, "nothing to learn below 200")
+    assert(n.Chance(r, 200) > 0, "a skill point from 200")
+    eq(n.State().recipes[12055].skill[1], 0, "a recipe the character knows is not touched")
+    for rid in pairs(n.TRAINERS) do eq(n.LEARN_MIN[rid], 200) end
+end)
+
 test("a vendor or trainer line names who to go to, and Show on map pins the map there", function()
     local n = game({ prof = { name = "Tailoring", skill = 176, cap = 225, recipes = {
         { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },

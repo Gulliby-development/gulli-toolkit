@@ -384,6 +384,12 @@ end
 local SHADOWEAVE = { Horde = { "Josephine Lister", 1497 }, Alliance = { "Jalane Ayrole", 1519 } }
 ns.TRAINERS = {}
 for _, rid in ipairs({ 12052, 12055, 12071, 12076, 12082 }) do ns.TRAINERS[rid] = SHADOWEAVE end
+
+-- TEMPORARY (2026-11-19): WoW Forever's Shadoweave trainers teach these only from skill 200,
+-- not 175, which looks like a game bug. The learn level is raised to at least this; the
+-- colours stay as the data says. Remove this table once the game teaches them at 175 again.
+ns.LEARN_MIN = {}
+for rid in pairs(ns.TRAINERS) do ns.LEARN_MIN[rid] = 200 end
 local function trainerWho(rid)
     local t = ns.TRAINERS[rid]
     t = t and t[UnitFactionGroup and UnitFactionGroup("player") or ""]
@@ -718,6 +724,10 @@ function ns.State()
             if req and skill and skill[1] and req ~= skill[1] then
                 local d = req - skill[1]
                 skill = { skill[1] + d, skill[2] and skill[2] + d, skill[3] and skill[3] + d, skill[4] and skill[4] + d }
+            end
+            local min = not rec.learned and ns.LEARN_MIN[rid]
+            if min and skill and skill[1] and skill[1] < min then
+                skill = { min, skill[2], skill[3], skill[4] }
             end
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
             -- a recipe of a specialization this character did not choose is no way to go
