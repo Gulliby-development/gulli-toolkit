@@ -1173,6 +1173,76 @@ test("the auction stop sends the list to Auctionator; a craft stop makes the cra
     eq(n.view.state.items[id].gather, true)
 end)
 
+test("a craft the player avoids is in no route, learned or not, and comes back", function()
+    local c = core()
+    local st, P = state(), prefs()
+    local function used(plan, rid)
+        for _, seg in ipairs(plan.segs) do if seg.rid == rid then return true end end
+        return (plan.prep and plan.prep[rid] or 0) > 0 or plan.buyRecipes[rid] == true
+    end
+    local plan = c.Plan(st, P)
+    local first = plan.segs[1].rid
+    assert(st.recipes[first].learned, "the first craft of the plan is a learned one")
+    st.recipes[first].skip = true
+    c.ForgetMakers(st.recipes)
+    local without = c.Plan(st, P)
+    assert(not used(without, first), "the plan goes without it")
+    for _, v in ipairs(c.Frontier(st, P)) do assert(not used(v, first), "no levelling route uses it") end
+    for _, own in ipairs({ true, false }) do
+        local e = c.Earn(st, P, own)
+        assert(not used(e, first), "no profit route uses it")
+    end
+    for _, x in ipairs(c.Crafts(st, P)) do assert(x.recipe ~= first, "not offered as a craft now") end
+    -- a recipe to buy or learn can be avoided too
+    local st2 = state()
+    for rid, r in pairs(st2.recipes) do if not r.learned then r.skip = true end end
+    local p2 = c.Plan(st2, P)
+    eq(next(p2.buyRecipes), nil, "no avoided recipe is bought or learned")
+    eq(c.CanGet(st2.recipes.pants, P), false)
+    -- the lists for the Settings card
+    eq(#c.Skipped(st), 1); eq(c.Skipped(st)[1].recipe, first)
+    local found, all = c.FindRecipes(st, "bolt of", 2)
+    eq(#found, 2); assert(all >= 3, "three bolts in the example")
+    assert(found[1].name:find("^Bolt of"))
+    eq(#c.FindRecipes(st, "", 5), 0)
+    st.recipes[first].skip = nil
+    assert(used(c.Plan(st, P), first), "back in the plan")
+end)
+
+test("Without this craft at a craft stop plans again without it; Settings puts it back", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local craft
+    for i, s in ipairs(n.view.route) do if s.segs then craft = craft or i end end
+    assert(craft, kinds(n.view.route))
+    local a = n.StopAction(craft)
+    local tool
+    for _, t in ipairs(a.tools) do if t.skip then tool = t end end
+    assert(tool and tool[1] == n.L.SKIP_CRAFT)
+    local rid = tool.skip
+    tool[2]()
+    eq(n.db.skip[rid], true)
+    eq(n.view.state.recipes[rid].skip, true)
+    for _, s in ipairs(n.view.route) do
+        for _, seg in ipairs(s.segs or {}) do assert(seg.rid ~= rid, "the new route has no such craft") end
+    end
+    -- the Settings card lists it; its button puts it back
+    n.Tab(5)
+    local rows, note = n.SkipRows()
+    eq(#rows, 1); eq(rows[1].recipe, rid); eq(note, nil)
+    local row = n.ui.skipRows[1]
+    assert(row:IsShown()); eq(row.btn:GetText(), n.L.SKIP_BACK)
+    W.Click(row.btn)
+    eq(n.db.skip[rid], nil)
+    eq(n.view.state.recipes[rid].skip, nil)
+    rows, note = n.SkipRows()
+    eq(#rows, 0); eq(note, n.L.SKIP_EMPTY)
+    -- typing a name finds recipes to avoid
+    n.ui.skipEdit:SetText(n.view.state.recipes[rid].name)
+    rows = n.SkipRows()
+    assert(#rows >= 1 and rows[1].skip == false)
+end)
+
 test("the lots of the run are read at the auction one item at a time", function()
     local n = game()
     local asked = {}

@@ -181,6 +181,98 @@ local function rowsCard(parent, title, rows)
     return card, card:Fit(st:Height() - 6)
 end
 
+-- The crafts the player keeps out of the routes: a name box to find a recipe, then the avoided
+-- ones (or what the name finds), each with a button that takes it out or puts it back.
+local SKIP_ROWS, SKIP_ROW_H = 4, 32
+local refreshSkip
+local function toggleSkip(rid)
+    local st = ns.view.state
+    local r = st and st.recipes[rid]
+    if not r then return end
+    local on = not r.skip
+    local text = (on and L.SKIP_ON or L.SKIP_OFF):format(r.name)
+    ns.SetSkip(rid, on)
+    ns.Toast(text)
+end
+local function skipCard(parent)
+    local card = S.Card(parent, L.SIDE_SKIP)
+    local body = card.body
+    local edit = S.Edit(body, 100, 28)
+    edit:SetPoint("TOPLEFT", 0, 0)
+    edit:SetPoint("TOPRIGHT", 0, 0)
+    edit:SetJustifyH("LEFT")
+    S.Placeholder(edit, L.SKIP_FIND)
+    edit:SetScript("OnTextChanged", function() if refreshSkip then refreshSkip() end end)
+    ui.skipEdit, ui.skipRows = edit, {}
+    for k = 1, SKIP_ROWS do
+        local r = CreateFrame("Frame", nil, body)
+        r:SetHeight(SKIP_ROW_H)
+        r:SetPoint("TOPLEFT", 0, -(28 + 6 + (k - 1) * SKIP_ROW_H))
+        r:SetPoint("RIGHT", 0, 0)
+        r.icon = S.ItemIcon(r, 22)
+        r.icon:SetPoint("LEFT", 0, 0)
+        r.btn = S.Button(r, 84, 28)
+        r.btn:SetPoint("RIGHT", 0, 0)
+        r.btn:SetScript("OnClick", function() if r.rid then toggleSkip(r.rid) end end)
+        r.text = S.Text(r, 12)
+        r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
+        r.text:SetPoint("RIGHT", r.btn, "LEFT", -8, 0)
+        r.text:SetWordWrap(false)
+        r:EnableMouse(true)
+        r:SetScript("OnEnter", function(self)
+            if not self.full or not GameTooltip or not GameTooltip.SetOwner then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(self.full, 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        ui.skipRows[k] = r
+    end
+    ui.skipNote = S.Text(body, 12, S.MUTED)
+    ui.skipNote:SetJustifyH("LEFT")
+    ui.skipNote:SetJustifyV("TOP")
+    ui.skipNote:SetWordWrap(true)
+    return card, card:Fit(28 + 6 + SKIP_ROWS * SKIP_ROW_H)
+end
+
+function ns.SkipRows()
+    local st = ns.view.state
+    local text = ui.skipEdit and ui.skipEdit:GetText() or ""
+    if type(text) ~= "string" then text = "" end
+    text = text:match("^%s*(.-)%s*$")
+    local rows, all
+    if text ~= "" then rows, all = ns.FindRecipes(st, text, SKIP_ROWS)
+    else rows = ns.Skipped(st); all = #rows end
+    local note
+    if all == 0 then note = text ~= "" and L.SKIP_NONE or L.SKIP_EMPTY
+    elseif all > SKIP_ROWS then
+        -- the last place says how many more there are
+        for i = #rows, SKIP_ROWS, -1 do rows[i] = nil end
+        note = L.SKIP_MORE:format(all - #rows)
+    end
+    return rows, note
+end
+
+refreshSkip = function()
+    if not ui.skipRows then return end
+    local rows, note = ns.SkipRows()
+    for k, r in ipairs(ui.skipRows) do
+        local e = rows[k]
+        r:SetShown(e ~= nil)
+        if e then
+            r.rid, r.full = e.recipe, e.name
+            r.icon:Set(e.out and ns.ItemIcon(e.out) or PATTERN_ICON)
+            r.text:SetText(color(e.skip and S.MUTED or S.TEXT) .. e.name .. "|r")
+            r.btn:SetText(e.skip and L.SKIP_BACK or L.SKIP_ADD)
+            r.btn:SetWidth(math.max(84, math.floor((tonumber((r.btn.text:GetStringWidth())) or 0) + 24)))
+        end
+    end
+    ui.skipNote:SetText(note or "")
+    ui.skipNote:ClearAllPoints()
+    ui.skipNote:SetPoint("TOPLEFT", 0, -(28 + 6 + #rows * SKIP_ROW_H + 8))
+    ui.skipNote:SetPoint("RIGHT", 0, 0)
+end
+
 local function buildSettings(box)
     -- under the page: what the last change did to the plan, and the reset
     ui.reset = S.FitButton(box, L.RESET, 32, 96)
@@ -212,6 +304,7 @@ local function buildSettings(box)
     add(1, rowsCard(cols[1], L.SIDE_TARGET, { sw("level"), stepRow(cols[1], "target", 5, 1, 300),
         stepRow(cols[1], "maxCrafts", 5, 5, 500),
         stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end) }))
+    add(1, skipCard(cols[1]))
     add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side") }))
     add(1, rowsCard(cols[1], L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") }))
 
@@ -255,6 +348,7 @@ local function refreshSettings()
     end
     for _, s in pairs(ui.steppers) do s:Refresh() end
     ui.target:Refresh()
+    refreshSkip()
     if ns.char then
         local run = ns.char.run
         ui.logBtn:SetText(run and L.LOG_FINISH or L.LOG_START)
@@ -597,6 +691,15 @@ function ns.StopAction(i, aside)
         if rid then
             a.primary = { L.MAKE_N:format(k), function() if not ns.Craft(rid, k) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
             a.second = { L.OPEN_RECIPE, function() if not ns.OpenRecipe(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
+            -- the player does not want this craft: every route is planned again without it
+            local r = v.state.recipes[rid]
+            if r then
+                a.tools[#a.tools + 1] = { L.SKIP_CRAFT, function()
+                    local text = L.SKIP_ON:format(r.name)
+                    ns.SetSkip(rid, true)
+                    ns.Print(text); ns.Toast(text)
+                end, skip = rid }
+            end
         end
         a.hint = L.HINT_CRAFT
     elseif n.kind == "trainer" then

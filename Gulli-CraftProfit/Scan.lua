@@ -282,6 +282,15 @@ function ns.SetGather(id, on)
     ns.Rebuild(true)
 end
 
+-- Takes a craft out of every route (learned, from a trainer or from a pattern alike), or puts it
+-- back. Saved by recipe for every character.
+function ns.SetSkip(rid, on)
+    if not rid then return end
+    ns.db.skip = ns.db.skip or {}
+    ns.db.skip[rid] = on and true or nil
+    ns.Rebuild(true)
+end
+
 -- The skill levels Data.lua has for a recipe. The modern API keys recipes by spell, the classic
 -- one by the item made (then the key is the item and must not be read as a spell).
 local function levels(rid, rec)
@@ -441,7 +450,8 @@ function ns.State()
             local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
-                                   out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon }
+                                   out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
+                                   skip = ns.db.skip and ns.db.skip[rid] == true or nil }
             for id in pairs(rec.r or {}) do itemFor(state, id) end
             if rec.out then itemFor(state, rec.out) end
         end
@@ -880,6 +890,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db.vendor = ns.db.vendor or {}
         ns.db.trainer = ns.db.trainer or {}
         ns.db.gather = ns.db.gather or {}
+        ns.db.skip = ns.db.skip or {}
         ns.db.lots = ns.db.lots or {}
         GulliCraftProfitCharDB = GulliCraftProfitCharDB or {}
         ns.char = GulliCraftProfitCharDB
