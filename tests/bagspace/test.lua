@@ -277,4 +277,125 @@ test("a junk item's tooltip line goes into the Gulli block and warns", function(
     ns.J.SetAlways(5, false)
 end)
 
+-- Disenchant on a middle click ---------------------------------------------------------------
+
+local DE_ITEMS = {
+    [60] = { name = "Green Boots", quality = 2, price = 300, classID = 4 },
+    [61] = { name = "Blue Sword", quality = 3, price = 900, classID = 2 },
+    [62] = { name = "White Cap", quality = 1, price = 20, classID = 4 },
+    [63] = { name = "Gray Rag", quality = 0, price = 2, classID = 4 },
+    [64] = { name = "Green Shirt", quality = 2, price = 50, classID = 4, equipLoc = "INVTYPE_BODY" },
+    [65] = { name = "Green Potion", quality = 2, price = 50, classID = 0 },
+    [66] = { name = "Set Gloves", quality = 2, price = 50, classID = 4 },
+    [67] = { name = "Kept Ring", quality = 3, price = 50, classID = 4 },
+    [68] = { name = "Legend Axe", quality = 5, price = 50, classID = 2 },
+}
+local function deBags()
+    local slots = {}
+    for i = 0, 8 do slots[i + 1] = { id = 60 + i, count = 1 } end
+    return { [0] = { size = 9, slots = slots } }
+end
+local function deFake(known, db)
+    Fake({ bags = deBags(), items = DE_ITEMS, sets = { [0] = { [7] = true } },
+           known = known == false and {} or { [13262] = true }, db = db })
+    GulliToolkit = { IsProtected = function(id) return id == 67 end }
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    return ns
+end
+
+test("disenchant: only green, blue and purple gear, never what the junk rules keep", function()
+    local ns = deFake()
+    local yes = {}
+    for slot = 1, 9 do
+        local it = ns.DisenchantTarget(0, slot)
+        if it then yes[#yes + 1] = it.name end
+    end
+    eq(table.concat(yes, ","), "Green Boots,Blue Sword")
+    eq(ns.DisenchantTarget(-1, 1), nil, "not the bank")
+    GulliToolkit = nil
+end)
+
+test("disenchant: nothing without Enchanting, with the switch off or in combat", function()
+    local ns = deFake(false)
+    eq(ns.DisenchantTarget(0, 1), nil, "no Enchanting")
+    ns = deFake(true, { disenchant = false })
+    eq(ns.DisenchantTarget(0, 1), nil, "switch off")
+    ns = deFake()
+    W.combat = true
+    eq(ns.DisenchantTarget(0, 1), nil, "in combat")
+    GulliToolkit = nil
+end)
+
+test("disenchant: the secure button lies over the slot and takes only the middle button", function()
+    local ns = deFake()
+    local slotButton = W.stub()
+    ns.OnBagTip(slotButton, 0, 2)
+    local b = ns.DisenchantButton()
+    assert(b and b:IsShown(), "the button shows over a blue sword")
+    eq(b:GetAttribute("type3"), "spell"); eq(b:GetAttribute("spell3"), 13262)
+    eq(b:GetAttribute("target-bag3"), 0); eq(b:GetAttribute("target-slot3"), 2)
+    eq(b:GetAttribute("type"), nil, "left and right clicks do nothing of ours")
+    eq(b:GetAttribute("type1"), nil); eq(b:GetAttribute("type2"), nil)
+    ns.OnBagTip(slotButton, 0, 3)
+    assert(not b:IsShown(), "a white cap hides it")
+    ns.OnBagTip(slotButton, 0, 1)
+    assert(b:IsShown())
+    W.Fire("PLAYER_REGEN_DISABLED")
+    assert(not b:IsShown(), "it hides before a fight")
+    ns.OnBagTip(slotButton, 0, 1)
+    W.combat = true
+    W.Fire("PLAYER_REGEN_DISABLED")
+    assert(b:IsShown(), "a secure frame is never hidden in combat lockdown")
+    W.combat = false
+    -- the item left the slot (disenchanted): the button goes
+    W.bags[0].slots[1] = nil
+    b:GetScript("OnUpdate")(b)
+    assert(not b:IsShown(), "an empty slot hides it")
+    GulliToolkit = nil
+end)
+
+test("disenchant: the switch in the hub turns it off at once", function()
+    local opts
+    Fake({ bags = deBags(), items = DE_ITEMS, known = { [13262] = true } })
+    GulliToolkit = { Register = function(m) opts = m.options end }
+    local ns = Load()
+    local sw
+    for _, o in ipairs(opts) do if o.icon == ns.OPT_ICON.disenchant then sw = o end end
+    assert(sw and sw.get(), "on by default")
+    local owner = W.stub()
+    ns.OnBagTip(owner, 0, 1)
+    assert(ns.DisenchantButton():IsShown())
+    sw.set(false)
+    assert(not ns.DisenchantButton():IsShown(), "off hides the button")
+    eq(ns.DisenchantTarget(0, 1), nil)
+    GulliToolkit = nil
+end)
+
+test("disenchant: a client that cannot pass clicks through gets no button", function()
+    Fake({ bags = deBags(), items = DE_ITEMS, known = { [13262] = true } })
+    local make = CreateFrame
+    CreateFrame = function(...)
+        local f = make(...)
+        rawset(f, "SetPassThroughButtons", false)
+        return f
+    end
+    local ns = Load()
+    ns.OnBagTip(W.stub(), 0, 1)
+    eq(ns.DisenchantButton(), nil)
+end)
+
+test("disenchant: the tooltip line names the middle click", function()
+    local ns = deFake()
+    local owner = W.stub()
+    ns.OnBagTip(owner, 0, 2)
+    local tip = W.stub()
+    rawset(tip, "_owner", owner)
+    local l = ns.DisenchantTip(61, tip)[1]
+    assert(l and l.left:match("^%u"), "a line with a capital")
+    eq(l.group, "note")
+    eq(#ns.DisenchantTip(60, tip), 0, "another item")
+    GulliToolkit = nil
+end)
+
 W.finish()

@@ -36,6 +36,7 @@ T.en = {
     OPT_UNUSABLE = "Offer bound gear your class cannot use",
     OPT_COUNTER = "Free slots on the backpack button",
     OPT_POPUP = "Offer \"Free 1 slot\" when the bags are full",
+    OPT_DISENCHANT = "Disenchant with a middle click",
     TAG_AH = "auction: %s",
     TAG_BOE = "not bound",
     KEPT = "%d items you unticked stay out of the plan. /gbs reset brings them back.",
@@ -46,6 +47,8 @@ T.en = {
     TIP_unusable = "Offer bound gear your class cannot use.",
     TIP_counter = "Free slots on the bag button.",
     TIP_popup = "When the bags are full, offer to free one slot.",
+    TIP_disenchant = "Middle-click a green, blue or purple item in the bags to disenchant it. Needs Enchanting, not in combat.",
+    TIP_DE = "middle-click: disenchant",
 }
 
 T.de = {
@@ -75,6 +78,7 @@ T.de = {
     OPT_UNUSABLE = "Gebundene Ausrüstung anbieten, die deine Klasse nicht nutzen kann",
     OPT_COUNTER = "Freie Plätze auf dem Rucksack-Knopf",
     OPT_POPUP = "\"1 Platz freimachen\" anbieten, wenn die Taschen voll sind",
+    OPT_DISENCHANT = "Mit Mittelklick entzaubern",
     TAG_AH = "Auktion: %s",
     TAG_BOE = "nicht gebunden",
     KEPT = "%d abgewählte Gegenstände bleiben aus dem Plan. /gbs reset holt sie zurück.",
@@ -85,6 +89,8 @@ T.de = {
     TIP_unusable = "Bietet unbrauchbare gebundene Ausrüstung an.",
     TIP_counter = "Freie Plätze auf dem Taschenknopf.",
     TIP_popup = "Bei vollen Taschen einen Platz frei machen.",
+    TIP_disenchant = "Mittelklick auf ein grünes, blaues oder lila Teil in den Taschen entzaubert es. Braucht Verzauberkunst, nicht im Kampf.",
+    TIP_DE = "Mittelklick: entzaubern",
 }
 
 T.es = {
@@ -114,6 +120,7 @@ T.es = {
     OPT_UNUSABLE = "Ofrecer equipo ligado que tu clase no puede usar",
     OPT_COUNTER = "Huecos libres en el botón de la mochila",
     OPT_POPUP = "Ofrecer \"Liberar 1 hueco\" con las bolsas llenas",
+    OPT_DISENCHANT = "Desencantar con clic central",
     TAG_AH = "subasta: %s",
     TAG_BOE = "no ligado",
     KEPT = "%d objetos desmarcados quedan fuera del plan. /gbs reset los recupera.",
@@ -124,6 +131,8 @@ T.es = {
     TIP_unusable = "Ofrece equipo ligado que no puedes usar.",
     TIP_counter = "Huecos libres en el botón de la bolsa.",
     TIP_popup = "Con la bolsa llena, ofrece liberar un hueco.",
+    TIP_disenchant = "Clic central en un objeto verde, azul o morado de las bolsas lo desencanta. Requiere Encantamiento, no en combate.",
+    TIP_DE = "clic central: desencantar",
 }
 
 T.fr = {
@@ -153,6 +162,7 @@ T.fr = {
     OPT_UNUSABLE = "Proposer l'équipement lié inutilisable par votre classe",
     OPT_COUNTER = "Emplacements libres sur le bouton du sac",
     OPT_POPUP = "Proposer « Libérer 1 place » quand les sacs sont pleins",
+    OPT_DISENCHANT = "Désenchanter d'un clic molette",
     TAG_AH = "enchères : %s",
     TAG_BOE = "non lié",
     KEPT = "%d objets décochés restent hors du plan. /gbs reset les remet.",
@@ -163,6 +173,8 @@ T.fr = {
     TIP_unusable = "Propose l'équipement lié inutilisable.",
     TIP_counter = "Emplacements libres sur le bouton du sac.",
     TIP_popup = "Sacs pleins : propose de libérer une place.",
+    TIP_disenchant = "Un clic molette sur un objet vert, bleu ou violet des sacs le désenchante. Enchantement requis, hors combat.",
+    TIP_DE = "clic molette : désenchanter",
 }
 
 T.pl = {
@@ -192,6 +204,7 @@ T.pl = {
     OPT_UNUSABLE = "Proponuj związany sprzęt, którego twoja klasa nie użyje",
     OPT_COUNTER = "Wolne miejsca na przycisku plecaka",
     OPT_POPUP = "Proponuj „Zwolnij 1 miejsce”, gdy torby są pełne",
+    OPT_DISENCHANT = "Rozczarowuj kliknięciem kółka",
     TAG_AH = "aukcja: %s",
     TAG_BOE = "niezwiązany",
     KEPT = "%d odznaczonych przedmiotów jest poza planem. /gbs reset je przywróci.",
@@ -202,6 +215,8 @@ T.pl = {
     TIP_unusable = "Proponuje związany sprzęt, którego nie użyjesz.",
     TIP_counter = "Wolne miejsca na przycisku torby.",
     TIP_popup = "Gdy torby pełne, proponuje zwolnić miejsce.",
+    TIP_disenchant = "Kliknięcie kółkiem na zielony, niebieski lub fioletowy przedmiot w torbach rozczarowuje go. Wymaga Zaklinania, nie w walce.",
+    TIP_DE = "kółko: rozczaruj",
 }
 
 T.pt = {
@@ -231,6 +246,7 @@ T.pt = {
     OPT_UNUSABLE = "Oferecer equipamento vinculado que sua classe não usa",
     OPT_COUNTER = "Espaços livres no botão da mochila",
     OPT_POPUP = "Oferecer \"Liberar 1 espaço\" com as bolsas cheias",
+    OPT_DISENCHANT = "Desencantar com clique do meio",
     TAG_AH = "leilão: %s",
     TAG_BOE = "não vinculado",
     KEPT = "%d itens desmarcados ficam fora do plano. /gbs reset traz de volta.",
@@ -241,6 +257,8 @@ T.pt = {
     TIP_unusable = "Oferece equipamento vinculado inútil.",
     TIP_counter = "Espaços livres no botão da bolsa.",
     TIP_popup = "Com bolsas cheias, oferece liberar um espaço.",
+    TIP_disenchant = "Clique do meio num item verde, azul ou roxo das bolsas o desencanta. Requer Encantamento, fora de combate.",
+    TIP_DE = "clique do meio: desencantar",
 }
 
 T.ru = {
@@ -270,6 +288,7 @@ T.ru = {
     OPT_UNUSABLE = "Предлагать привязанную экипировку, которую класс не носит",
     OPT_COUNTER = "Свободные ячейки на кнопке рюкзака",
     OPT_POPUP = "Предлагать «Освободить 1 ячейку», когда сумки полны",
+    OPT_DISENCHANT = "Распылять щелчком колёсика",
     TAG_AH = "аукцион: %s",
     TAG_BOE = "не привязан",
     KEPT = "Предметов, с которых вы сняли галочку: %d, они не предлагаются. /gbs reset вернёт их.",
@@ -280,6 +299,8 @@ T.ru = {
     TIP_unusable = "Предлагать привязанные вещи, которые класс не носит.",
     TIP_counter = "Свободные ячейки на кнопке сумки.",
     TIP_popup = "При полных сумках предложить освободить ячейку.",
+    TIP_disenchant = "Щелчок колёсиком по зелёному, синему или фиолетовому предмету в сумках распыляет его. Нужно Наложение чар, не в бою.",
+    TIP_DE = "колёсико: распылить",
 }
 
 T.zh = {
@@ -309,6 +330,7 @@ T.zh = {
     OPT_UNUSABLE = "提供你的职业无法使用的已绑定装备",
     OPT_COUNTER = "在背包按钮上显示空位",
     OPT_POPUP = "背包满时提供“腾出 1 格”",
+    OPT_DISENCHANT = "中键分解",
     TAG_AH = "拍卖：%s",
     TAG_BOE = "未绑定",
     KEPT = "你取消勾选的 %d 件物品不再列入计划。/gbs reset 可恢复。",
@@ -319,6 +341,8 @@ T.zh = {
     TIP_unusable = "列出本职业无法使用的绑定装备。",
     TIP_counter = "在背包按钮上显示空位。",
     TIP_popup = "背包满时提示腾出一格。",
+    TIP_disenchant = "在背包中用鼠标中键点击绿色、蓝色或紫色物品即可分解。需要附魔，战斗中无效。",
+    TIP_DE = "中键：分解",
 }
 
 ns.T = T

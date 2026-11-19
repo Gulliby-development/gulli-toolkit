@@ -122,11 +122,13 @@ local function build()
     end
 
     local rows = {}
-    for _, o in ipairs({ { "unusable", L.OPT_UNUSABLE }, { "counter", L.OPT_COUNTER }, { "popup", L.OPT_POPUP } }) do
+    for _, o in ipairs({ { "unusable", L.OPT_UNUSABLE }, { "counter", L.OPT_COUNTER }, { "popup", L.OPT_POPUP },
+                             { "disenchant", L.OPT_DISENCHANT } }) do
         local key = o[1]
         rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v)
             ns.db[key] = v
             if key == "counter" then ns.UpdateCounter() end
+            if key == "disenchant" and not v then ns.HideDisenchant() end
             ns.Refresh(true)
         end, icon = ns.OPT_ICON[key] }
     end
@@ -195,3 +197,81 @@ function ns.ShowPopup()
 end
 
 function ns.HidePopup() if popup then popup:Hide() end end
+
+-- Disenchant on a middle click. When the tooltip of a bag item that can be disenchanted shows
+-- (every bag frame, ours or another addon's, calls GameTooltip:SetBagItem), one secure button
+-- lies over that slot, out of combat only. It takes only the middle button: left and right clicks
+-- and the mouse's motion pass through to the slot under it, so the bag works as before.
+local de, deOwner, deBag, deSlot, deId
+
+-- In combat lockdown the button cannot hide: it keeps its slot, and OnUpdate hides it after.
+function ns.HideDisenchant()
+    if InCombatLockdown() then return end
+    deOwner, deBag, deSlot, deId = nil, nil, nil, nil
+    if de and de:IsShown() then de:Hide() end
+end
+
+local function stillThere()
+    if not deOwner or InCombatLockdown() then return end
+    local over = deOwner.IsMouseOver and deOwner:IsMouseOver()
+    local visible = not deOwner.IsVisible or deOwner:IsVisible()
+    if not over or not visible or ns.J.SlotInfo(deBag, deSlot) ~= deId or not (ns.db and ns.db.disenchant) then
+        ns.HideDisenchant()
+    end
+end
+
+-- The button, built once out of combat; false on a client that cannot let clicks pass through.
+function ns.DisenchantButton()
+    if de ~= nil then return de or nil end
+    if InCombatLockdown() then return nil end
+    local b = CreateFrame("Button", "GulliBagSpaceDisenchant", UIParent, "SecureActionButtonTemplate")
+    local ok = b.SetPassThroughButtons and b.SetPropagateMouseMotion and pcall(function()
+        b:SetPassThroughButtons("LeftButton", "RightButton")
+        b:SetPropagateMouseMotion(true)
+    end)
+    if not ok then de = false; return nil end
+    b:RegisterForClicks("MiddleButtonUp", "MiddleButtonDown")
+    b:SetAttribute("type3", "spell")
+    b:SetAttribute("spell3", ns.DISENCHANT)
+    b:SetScript("OnLeave", function() ns.HideDisenchant() end)
+    b:SetScript("OnUpdate", stillThere)
+    b:Hide()
+    de = b
+    return b
+end
+
+-- Called with the tooltip's owner and the bag slot it shows.
+function ns.OnBagTip(owner, bag, slot)
+    if not owner or InCombatLockdown() then return end
+    if owner == deOwner and bag == deBag and slot == deSlot then return end
+    local it = ns.DisenchantTarget(bag, slot)
+    if not it then
+        if owner ~= deOwner then return end
+        return ns.HideDisenchant()
+    end
+    local b = ns.DisenchantButton()
+    if not b then return end
+    b:ClearAllPoints()
+    b:SetAllPoints(owner)
+    b:SetFrameStrata(owner:GetFrameStrata())
+    b:SetFrameLevel(owner:GetFrameLevel() + 5)
+    b:SetAttribute("target-bag3", bag)
+    b:SetAttribute("target-slot3", slot)
+    deOwner, deBag, deSlot, deId = owner, bag, slot, it.id
+    b:Show()
+end
+
+-- The tooltip line under a bag item a middle click would disenchant.
+function ns.DisenchantTip(id, tip)
+    if not deOwner or id ~= deId or not tip or tip.GetOwner == nil or tip:GetOwner() ~= deOwner then return {} end
+    return { { group = "note", icon = ns.OPT_ICON.disenchant, left = S.Cap(L.TIP_DE), color = S.MUTED } }
+end
+
+function ns.InstallDisenchant()
+    if ns.deInstalled then return end
+    ns.deInstalled = true
+    if GameTooltip and GameTooltip.SetBagItem then
+        hooksecurefunc(GameTooltip, "SetBagItem", function(tip, bag, slot) ns.OnBagTip(tip:GetOwner(), bag, slot) end)
+    end
+    if S.TipProvider then S.TipProvider("item", "BagSpace", ns.DisenchantTip) end
+end

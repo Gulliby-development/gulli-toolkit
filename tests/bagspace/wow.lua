@@ -18,6 +18,11 @@ local function stub()
         if k == "SetScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "HookScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "GetScript" then return function(_, n) return rawget(t, "_" .. n) end end
+        if k == "SetAttribute" then return function(_, n, v) local a = rawget(t, "_attr") or {}; a[n] = v; rawset(t, "_attr", a) end end
+        if k == "GetAttribute" then return function(_, n) return (rawget(t, "_attr") or {})[n] end end
+        if k == "GetFrameLevel" then return function() return rawget(t, "_level") or 3 end end
+        if k == "IsMouseOver" then return function() return rawget(t, "_over") ~= false end end
+        if k == "GetOwner" then return function() return rawget(t, "_owner") end end
         if k == "RegisterEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
         if k == "UnregisterEvent" then return function(_, e) rawget(t, "_events")[e] = nil end end
         return function() return stub() end
@@ -170,7 +175,7 @@ function Fake(spec)
     C_Item = { GetItemInfo = function(id)
         local it = W.items[id]
         if not it then return nil end
-        return it.name, "item:" .. id, it.quality, 1, 1, "", "", it.maxStack or 1, "", 1, it.price or 0, it.classID or 15,
+        return it.name, "item:" .. id, it.quality, 1, 1, "", "", it.maxStack or 1, it.equipLoc or "", 1, it.price or 0, it.classID or 15,
             it.subclassID or 0
     end }
     W.sets, W.refuse = spec.sets or {}, {}
@@ -191,6 +196,9 @@ function Fake(spec)
         if W.refuse[W.cursor.id] then ClearCursor() return end
         W.deleted[#W.deleted + 1] = W.cursor.id; W.cursor = nil
     end
+    -- Enchanting: spec.known lists the spells the character knows.
+    W.known = spec.known or {}
+    C_SpellBook = { IsSpellKnown = function(id) return W.known[id] == true end }
     GulliBagSpaceDB = spec.db
     return W
 end
