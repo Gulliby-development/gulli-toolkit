@@ -732,6 +732,7 @@ S.dungeonprep = {
     -- A single quest with no chain and no rewards, done inside the dungeon: the way takes the page.
     inside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96776) end },
     -- A chain whose step is taken and handed in inside the dungeon.
+    outside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(93601, 93404) end },
     insidechain = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046) end },
     insidelist = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3) end },
     insidetracker = { spec = dpMara, crop = "GulliDungeonPrepTrackerStage",
