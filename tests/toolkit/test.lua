@@ -1693,6 +1693,14 @@ test("first setup: a module whose job another addon does starts off and says why
     eq(by.Social.on, true)
 end)
 
+test("first setup: Obvious Fishing does Fishing's job", function()
+    Fake({ addons = { mod("Fishing"), { name = "ObviousFishing", enabled = true, loaded = true } } })
+    local ns = Load()
+    local by = planBy(ns.SetupPlan())
+    eq(by.Fishing.on, false)
+    eq(by.Fishing.why, "Because you have Obvious Fishing")
+end)
+
 test("first setup: Leatrix Plus counts only for the settings it has on", function()
     Fake({ addons = { mod("Merchant"), mod("AutoQuest"), mod("Social"), { name = "Leatrix_Plus", enabled = true, loaded = true } } })
     local ns = Load()

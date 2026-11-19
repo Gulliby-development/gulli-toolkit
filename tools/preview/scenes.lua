@@ -1306,4 +1306,24 @@ S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns
               crop = "GulliFarmTrackPanel" },
     empty = { spec = { now = 0 }, open = function(ns) ns.Toggle() end } }
 
+-- Fishing: half an hour at a pool, a lure on the pole.
+local function fiPlay(ns, W)
+    local names = { [6303] = "Raw Slitherskin Mackerel", [6291] = "Raw Brilliant Smallfish", [6358] = "Oily Blackmouth",
+                    [6643] = "Bloated Smallfish", [6299] = "Sickly Looking Fish" }
+    local icons = { [6303] = "INV_Misc_Fish_14", [6291] = "INV_Misc_Fish_02", [6358] = "INV_Misc_Fish_07",
+                    [6643] = "INV_Misc_Fish_17", [6299] = "INV_Misc_Fish_09" }
+    C_Item.GetItemNameByID = function(id) return names[id] end
+    C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (icons[id] or "INV_Misc_QuestionMark") end
+    for i = 1, 23 do
+        local id = (i % 5 == 0 and 6358) or (i % 7 == 0 and 6643) or (i % 3 == 0 and 6291) or 6303
+        W.Catch({ { id, 1 } })
+    end
+    W.Catch({ { 6299, 1 } })
+    W.lureLeft = 420
+    ns.Refresh()
+end
+S.fishing = { default = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end },
+    settings = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
+    empty = { spec = { pole = false }, open = function(ns) ns.Toggle() end } }
+
 return S
