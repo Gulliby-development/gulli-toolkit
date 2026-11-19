@@ -284,8 +284,41 @@ end
 
 function ns.SortBags() return sortBags() end
 
--- Disenchant on a middle click: which bag item a middle click would disenchant. The click itself
--- goes to a secure button over the slot (UI.lua), since only a hardware click may cast.
+-- Bag frames by name, for a bag addon whose item buttons do not say their bag.
+local BAG_FRAMES = { "bag", "container", "inventory", "baganator", "bagnon", "adibags", "arkinv", "combuctor", "elvui" }
+local function inBagFrame(f)
+    for _ = 1, 10 do
+        if not f then return false end
+        local name = f.GetName and f:GetName()
+        if type(name) == "string" then
+            name = name:lower()
+            for _, w in ipairs(BAG_FRAMES) do if name:find(w, 1, true) then return true end end
+        end
+        f = f.GetParent and f:GetParent()
+    end
+    return false
+end
+
+-- The bag slot of the item a tooltip shows: the owner's own bag and slot when it says them, else,
+-- for a button in a bag frame, the first slot that holds this item and may be disenchanted.
+function ns.BagPlace(owner, id)
+    if not owner or not id then return nil end
+    local ok, bag = pcall(function() return owner.GetBagID and owner:GetBagID() end)
+    local slot = owner.GetID and owner:GetID()
+    if ok and type(bag) == "number" and type(slot) == "number" and slotInfo(bag, slot) == id then
+        return bag, slot
+    end
+    if not inBagFrame(owner) then return nil end
+    for _, b in ipairs(ns.BAGS) do
+        for s = 1, numSlots(b) do
+            if slotInfo(b, s) == id and ns.DisenchantTarget(b, s) then return b, s end
+        end
+    end
+    return nil
+end
+
+-- Disenchant with a key: which bag item the key would disenchant. The key presses a secure button
+-- (UI.lua), since only a hardware event may cast.
 ns.DISENCHANT = 13262
 function ns.KnowsDisenchant()
     local id = ns.DISENCHANT
@@ -305,7 +338,7 @@ function ns.CanDisenchant(it)
     return true
 end
 
--- The item at a bag slot when a middle click would disenchant it now, else nil.
+-- The item at a bag slot when the key would disenchant it now, else nil.
 function ns.DisenchantTarget(bag, slot)
     if not (ns.db and ns.db.disenchant) or InCombatLockdown() then return nil end
     if type(bag) ~= "number" or type(slot) ~= "number" or bag < 0 or bag > 4 then return nil end
@@ -357,6 +390,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     if event == "BAG_UPDATE_DELAYED" then
         checkFull()
         if ns.UpdateCounter then ns.UpdateCounter() end
+        if ns.CheckArmed then ns.CheckArmed() end
         if ns.Refresh then ns.Refresh(true) end
         return
     end
@@ -371,7 +405,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     end
     if event == "PLAYER_REGEN_DISABLED" then
         if ns.HidePopup then ns.HidePopup() end
-        -- Still out of lockdown here: the secure button over a slot hides before the fight.
+        -- Still out of lockdown here: the disenchant key lets go before the fight.
         if ns.HideDisenchant then ns.HideDisenchant() end
         return
     end

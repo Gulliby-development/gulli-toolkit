@@ -132,6 +132,7 @@ local function build()
             ns.Refresh(true)
         end, icon = ns.OPT_ICON[key] }
     end
+    rows[#rows + 1] = { L.DE_KEY, L.DE_KEY_D, control = ns.KeyButton(body), icon = ns.OPT_ICON.disenchant }
     local settingsCard, sh = S.SettingsCard(body, nil, rows)
     settingsCard:SetPoint("BOTTOMLEFT")
     settingsCard:SetPoint("BOTTOMRIGHT")
@@ -198,80 +199,121 @@ end
 
 function ns.HidePopup() if popup then popup:Hide() end end
 
--- Disenchant on a middle click. When the tooltip of a bag item that can be disenchanted shows
--- (every bag frame, ours or another addon's, calls GameTooltip:SetBagItem), one secure button
--- lies over that slot, out of combat only. It takes only the middle button: left and right clicks
--- and the mouse's motion pass through to the slot under it, so the bag works as before.
-local de, deOwner, deBag, deSlot, deId
+-- Disenchant with a key. While the tooltip of a bag item that can be disenchanted shows, the key
+-- the player picked (deKey) is bound to one secure button that casts Disenchant on that slot;
+-- the binding goes when the tooltip hides, in a fight, or when the slot changes. A key binding
+-- works over any bag frame, also one whose addon takes the mouse buttons for itself.
+local de, deBag, deSlot, deId
+local deOwner = CreateFrame("Frame")
 
--- In combat lockdown the button cannot hide: it keeps its slot, and OnUpdate hides it after.
+function ns.DisenchantButton()
+    if de then return de end
+    if InCombatLockdown() then return nil end
+    de = CreateFrame("Button", "GulliBagSpaceDisenchant", UIParent, "SecureActionButtonTemplate")
+    de:SetSize(1, 1)
+    de:SetPoint("TOPLEFT", UIParent, "BOTTOMRIGHT", 10, -10)
+    de:RegisterForClicks("AnyUp", "AnyDown")
+    de:SetAttribute("type", "spell")
+    de:SetAttribute("spell", ns.DISENCHANT)
+    de:Show()
+    return de
+end
+
+-- The bag slot the key is bound for now, or nil.
+function ns.Armed() return deBag, deSlot end
+
+-- In combat lockdown a binding cannot change: PLAYER_REGEN_DISABLED disarms before it.
 function ns.HideDisenchant()
     if InCombatLockdown() then return end
-    deOwner, deBag, deSlot, deId = nil, nil, nil, nil
-    if de and de:IsShown() then de:Hide() end
+    if deBag then ClearOverrideBindings(deOwner) end
+    deBag, deSlot, deId = nil, nil, nil
 end
 
-local function stillThere()
-    if not deOwner or InCombatLockdown() then return end
-    local over = deOwner.IsMouseOver and deOwner:IsMouseOver()
-    local visible = not deOwner.IsVisible or deOwner:IsVisible()
-    if not over or not visible or ns.J.SlotInfo(deBag, deSlot) ~= deId or not (ns.db and ns.db.disenchant) then
-        ns.HideDisenchant()
-    end
-end
-
--- The button, built once out of combat; false on a client that cannot let clicks pass through.
-function ns.DisenchantButton()
-    if de ~= nil then return de or nil end
-    if InCombatLockdown() then return nil end
-    local b = CreateFrame("Button", "GulliBagSpaceDisenchant", UIParent, "SecureActionButtonTemplate")
-    local ok = b.SetPassThroughButtons and b.SetPropagateMouseMotion and pcall(function()
-        b:SetPassThroughButtons("LeftButton", "RightButton")
-        b:SetPropagateMouseMotion(true)
-    end)
-    if not ok then de = false; return nil end
-    b:RegisterForClicks("MiddleButtonUp", "MiddleButtonDown")
-    b:SetAttribute("type3", "spell")
-    b:SetAttribute("spell3", ns.DISENCHANT)
-    b:SetScript("OnLeave", function() ns.HideDisenchant() end)
-    b:SetScript("OnUpdate", stillThere)
-    b:Hide()
-    de = b
-    return b
-end
-
--- Called with the tooltip's owner and the bag slot it shows.
-function ns.OnBagTip(owner, bag, slot)
-    if not owner or InCombatLockdown() then return end
-    if owner == deOwner and bag == deBag and slot == deSlot then return end
-    local it = ns.DisenchantTarget(bag, slot)
-    if not it then
-        if owner ~= deOwner then return end
-        return ns.HideDisenchant()
-    end
+function ns.ArmDisenchant(bag, slot)
+    if InCombatLockdown() then return end
+    local key = ns.db and ns.db.deKey
+    local it = key and ns.DisenchantTarget(bag, slot)
+    if not it then return ns.HideDisenchant() end
+    if bag == deBag and slot == deSlot and it.id == deId then return end
     local b = ns.DisenchantButton()
     if not b then return end
-    b:ClearAllPoints()
-    b:SetAllPoints(owner)
-    b:SetFrameStrata(owner:GetFrameStrata())
-    b:SetFrameLevel(owner:GetFrameLevel() + 5)
-    b:SetAttribute("target-bag3", bag)
-    b:SetAttribute("target-slot3", slot)
-    deOwner, deBag, deSlot, deId = owner, bag, slot, it.id
-    b:Show()
+    b:SetAttribute("target-bag", bag)
+    b:SetAttribute("target-slot", slot)
+    ClearOverrideBindings(deOwner)
+    SetOverrideBindingClick(deOwner, true, key, "GulliBagSpaceDisenchant", "LeftButton")
+    deBag, deSlot, deId = bag, slot, it.id
 end
 
--- The tooltip line under a bag item a middle click would disenchant.
+-- The slot changed under an armed binding (the item went, the bags were sorted).
+function ns.CheckArmed()
+    if deBag and ns.J.SlotInfo(deBag, deSlot) ~= deId then ns.HideDisenchant() end
+end
+
+local function keyText(key)
+    if not key then return L.KEY_NONE end
+    return GetBindingText and GetBindingText(key) or key
+end
+
+-- The tooltip of an item: arms the key for its bag slot and adds the line that names the key.
 function ns.DisenchantTip(id, tip)
-    if not deOwner or id ~= deId or not tip or tip.GetOwner == nil or tip:GetOwner() ~= deOwner then return {} end
-    return { { group = "note", icon = ns.OPT_ICON.disenchant, left = S.Cap(L.TIP_DE), color = S.MUTED } }
+    if not tip or tip ~= GameTooltip then return {} end
+    if InCombatLockdown() then return {} end
+    local bag, slot = ns.BagPlace(tip.GetOwner and tip:GetOwner(), id)
+    if bag then ns.ArmDisenchant(bag, slot) else ns.HideDisenchant() end
+    if not deBag or deId ~= id then return {} end
+    return { { group = "note", icon = ns.OPT_ICON.disenchant, left = S.Cap(L.TIP_DE:format(keyText(ns.db.deKey))),
+               color = S.MUTED } }
 end
 
 function ns.InstallDisenchant()
     if ns.deInstalled then return end
     ns.deInstalled = true
-    if GameTooltip and GameTooltip.SetBagItem then
-        hooksecurefunc(GameTooltip, "SetBagItem", function(tip, bag, slot) ns.OnBagTip(tip:GetOwner(), bag, slot) end)
+    if GameTooltip and GameTooltip.HookScript then
+        GameTooltip:HookScript("OnHide", function() ns.HideDisenchant() end)
     end
     if S.TipProvider then S.TipProvider("item", "BagSpace", ns.DisenchantTip) end
+end
+
+-- The key button of the window: a click waits for a key or a mouse button, a right-click clears it.
+local MODIFIER = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
+local MOUSE = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
+
+local function mods()
+    return (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "")
+end
+
+local function capture(b, on)
+    b.capturing = on
+    b:EnableKeyboard(on)
+    if b.SetPropagateKeyboardInput and not InCombatLockdown() then b:SetPropagateKeyboardInput(not on) end
+    b:SetText(on and L.KEY_PRESS or keyText(ns.db.deKey))
+end
+
+function ns.SetDeKey(key)
+    ns.HideDisenchant()
+    ns.db.deKey = key
+end
+
+function ns.KeyButton(parent)
+    local b = S.Button(parent, 150, 28)
+    b:RegisterForClicks("AnyUp")
+    b:SetScript("OnClick", function(self, mouse)
+        if self.capturing and MOUSE[mouse] then
+            ns.SetDeKey(mods() .. MOUSE[mouse])
+            capture(self, false)
+        elseif mouse == "RightButton" then
+            ns.SetDeKey(nil)
+            capture(self, false)
+        elseif mouse == "LeftButton" then
+            capture(self, not self.capturing)
+        end
+    end)
+    b:SetScript("OnKeyDown", function(self, key)
+        if not self.capturing or MODIFIER[key] then return end
+        if key ~= "ESCAPE" then ns.SetDeKey(mods() .. key) end
+        capture(self, false)
+    end)
+    b:SetScript("OnShow", function(self) capture(self, false) end)
+    capture(b, false)
+    return b
 end
