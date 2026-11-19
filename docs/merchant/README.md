@@ -18,7 +18,7 @@ Every time you open a vendor, you sell the gray junk and press Repair. Gulli Mer
 
 ## Features
 
-- **Sells gray items.** Every gray item with a price goes, in small steps. The vendor keeps the last 12 for buyback; turn on **Sell no more than 12 per visit** to be able to buy back everything.
+- **Sells gray items.** Every gray item with a price goes, in small steps. The vendor keeps the last 12 for buyback; turn on **No more than 12 per visit** to be able to buy back everything.
 - **Repairs.** With guild money when your guild allows it and the amount is within your limit, else with your own. Short of money? It sells the junk first and repairs with what it brought.
 - **Your own junk list.** Alt+click an item in your bags (or drop it on the list in the window, or `/gmc junk <item link>`) to always sell it. Gulli Bag Space uses the same list.
 - **See before you sell.** The window lists what the next vendor gets. Untick an item to keep it this time.
@@ -45,7 +45,7 @@ Every time you open a vendor, you sell the gray junk and press Repair. Gulli Mer
 <details>
 <summary><b>I sold something by mistake</b></summary>
 
-Open the vendor's buyback tab. The last 12 sold items are there. If you want all of them back every time, turn on **Sell no more than 12 per visit**.
+Open the vendor's buyback tab. The last 12 sold items are there. If you want all of them back every time, turn on **No more than 12 per visit**.
 </details>
 
 <details>

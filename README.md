@@ -15,7 +15,7 @@
 
 ---
 
-<p align="center"><img src="docs/toolkit/preview.png" alt="Gulli Toolkit" width="860"></p>
+<p align="center"><img src="docs/toolkit/home.jpg" alt="The home page of Gulli Toolkit" width="860"></p>
 
 ## The modules
 
@@ -56,7 +56,7 @@
 - **Ready on the first start.** The first time the toolkit runs, a small window in the middle of the screen asks which modules you want. It looks at the addons you already have: when another addon does the same job (Scrap or Leatrix Plus sell your junk, SilverDragon finds rares, Postal empties the mail), that module starts off, with a grey line under it such as "Because you have Scrap". A module that works with one of your addons (Craft Profit and Waylaid Crates with Auctionator) stays on. Change any switch, then press **Apply**. **First setup** on the **Setup** page (or `/gulli setup`) opens it again.
 - **Setup.** The **Setup** page, right under **Home** in the list, has what you set once. Four cards switch on a set of modules for **Questing**, **Trade**, **Dungeons** or a **Minimum**, and the others off; each card shows its modules before you press **Apply**. The **Modules** board shows every module as an icon: click one to switch it on or off. **Export / import**, **Protected items**, **First setup**, the minimap buttons and the window size are there too.
 - **One look on the screen.** Buff buttons, reminders, counters and notices of every module share one look: game icons with a coloured ring (red pulses: do it now, yellow: runs out soon), and notice cards that stack at the top of the screen instead of covering each other.
-- **Easy to read, in WoW colours.** Every window is dark brown like the game's own panels, with gold names, blue for what you can click and clear text that is never smaller than the game's chat. The hub grows with your screen, so it stays readable at a small UI scale; **Window size** on the **Setup** page makes it smaller or bigger. Turn on **Reduce motion** there (or under Options, AddOns) to stop the short animations everywhere. Nothing moves in combat.
+- **Easy to read, in WoW colours.** Every window is dark brown like the game's own panels, with gold names, bronze for what you can click and clear text that is never smaller than the game's chat. The hub grows with your screen, so it stays readable at a small UI scale; **Window size** on the **Setup** page makes it smaller or bigger. Turn on **Reduce motion** there (or under Options, AddOns) to stop the short animations everywhere. Nothing moves in combat.
 - **Unlock frames.** Bars and panels on the screen (the XP bar, the buff button, trackers, feeds) are hidden until you turn them on. **Unlock frames** at the top right of the `/gulli` window (or `/gulli unlock`) shows all of them over a grid, with a list on the left: turn each one on or off, drag them where you want, or click one and move it with the arrow keys. Right click puts a frame back. **Save and lock** keeps it all, **Cancel** puts everything back as it was.
 - **Take your settings along.** **Export / import** gives one line of text with every Gulli setting. Paste it on another computer, phone or handheld and press **Import**.
 - **A button on the minimap.** The toolkit icon sits on the edge of the minimap: click it to open `/gulli`, right-click it to unlock the frames and move them, drag it to move it around the minimap. Type `/gulli minimap` to hide it.
@@ -68,8 +68,8 @@
 - **Each module works alone.** You do not need the toolkit to use a module. With the toolkit, they come together in one place.
 - **Install once.** In Runeloader, install **Gulli Toolkit** and every module comes with it. Remove the ones you do not want; the rest keeps working.
 - **Protected items.** On the **Setup** page of `/gulli`, press **Protected items** and drop an item there (or type `/gulli protect` and shift-click it). No module ever sells, deletes or moves it.
-- **One look.** Every module has the same flat dark window with a blue accent, in the style of ElvUI: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
-- **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **-** and **+** make it smaller or bigger.
+- **One look.** Every module has the same window: settings in cards, the main button at the bottom right, and an icon from the game next to each setting, timer and spell, so you find things at a glance.
+- **Made for handhelds.** Big buttons and switches, so it works with a mouse and with touch on WoW Forever for Android. The window shrinks to fit a small screen, and **Window size** on the **Setup** page makes it smaller or bigger.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 
 ## Install
@@ -96,10 +96,8 @@
 `/gulli questcleaner` opens a module directly, in its own window.
 
 <p align="center"><img src="docs/toolkit/setup.png" alt="The first setup window of Gulli Toolkit" width="540"></p>
-<p align="center"><img src="docs/toolkit/home.png" alt="The home page of Gulli Toolkit" width="860"></p>
-
-<p align="center"><img src="docs/toolkit/setup-page.png" alt="The Setup page of Gulli Toolkit" width="860"></p>
-<p align="center"><img src="docs/toolkit/inside.png" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
+<p align="center"><img src="docs/toolkit/setup-page.jpg" alt="The Setup page of Gulli Toolkit" width="860"></p>
+<p align="center"><img src="docs/toolkit/inside.jpg" alt="Merchant inside the Gulli Toolkit window" width="860"></p>
 
 ## FAQ
 
@@ -130,7 +128,7 @@ A module that can pause stops at once. Any other one, and **Do not load in the g
 <details>
 <summary><b>The switch does not move, and chat says "The game did not switch it"</b></summary>
 
-Update the toolkit: version 1.6.1 fixed this. If it still happens, type `/gulli debug <module>` (for example `/gulli debug PartyQuests`) and send us the lines it prints.
+Type `/gulli debug <module>` (for example `/gulli debug PartyQuests`) and send us the lines it prints.
 </details>
 
 <details>

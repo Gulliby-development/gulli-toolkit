@@ -4,7 +4,7 @@
 
 Type the mobs you look for. When one of them shows its nameplate, you hear a sound.
 
-<p align="center"><img src="window.png" alt="The window" width="560"></p>
+<p align="center"><img src="window.png" alt="The window" width="400"> <img src="card.png" alt="The card when a mob is found" width="400"></p>
 
 ## Features
 
