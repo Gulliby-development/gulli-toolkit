@@ -93,8 +93,10 @@ function ns.RowButton(line)
         if b.phase == "buying" then return { text = L.BUYING, on = false } end
         if b.phase == "ready" then return { text = S.MoneyIcons(b.quote.total, b.quote.total >= 10000), primary = true, on = true } end
     end
-    local busy = ns.Busy()
-    return { text = line.kind == "c" and L.PRICE or L.BUY, primary = line == ns.Top(), on = not busy and ns.atAH == true }
+    -- while another purchase runs a click queues the line; a queued line shows its place
+    local pos = ns.QueuePos(line)
+    if pos then return { text = L.QUEUED:format(pos), primary = line == ns.Top(), on = ns.atAH == true } end
+    return { text = line.kind == "c" and L.PRICE or L.BUY, primary = line == ns.Top(), on = ns.atAH == true }
 end
 
 local function fillDealRow(r, line)
@@ -190,7 +192,9 @@ end
 function ns.ScanLine()
     local s = ns.scan
     if not ns.CanScan() then return L.NO_API, 0 end
+    if s.held and s.phase ~= "idle" then return L.SCAN_HELD, 0 end
     if s.phase == "browse" then return L.SCAN_BROWSE:format(#s.results), math.min(1, s.pages / ns.MAX_PAGES) end
+    if s.phase == "sift" then return L.SCAN_BROWSE:format(#s.results), #s.results > 0 and s.sifted / #s.results or 1 end
     if s.phase == "detail" then return L.SCAN_DETAIL:format(math.min(s.done + 1, s.n), s.n), s.n > 0 and s.done / s.n or 0 end
     if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
     local left = ns.NextIn()
@@ -238,6 +242,8 @@ local function refreshDeals()
     local b = ns.buy
     if b.err then
         frame.footer:SetStatus(L[b.err], S.BAD)
+    elseif #ns.queue > 0 then
+        frame.footer:SetStatus(L.QUEUE_LINE:format(#ns.queue))
     else
         local _, sum = ns.History("day")
         frame.footer:SetStatus(sum.count > 0 and L.STATUS:format(sum.count, money(sum.paid), ns.FreeSlots()) or L.HOW)

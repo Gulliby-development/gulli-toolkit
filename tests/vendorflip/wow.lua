@@ -134,6 +134,7 @@ function Fake(spec)
     W.commodity = spec.commodity or {}
     W.lots = spec.lots or {}
     W.calls, W.queries, W.searches, W.used = {}, {}, {}, {}
+    W.throttled, W.loads = false, 0
     GetMoney = function() return W.money end
     C_Container = {
         GetContainerNumSlots = function(b) return b == 0 and math.max(#W.bags, 1) or 0 end,
@@ -156,12 +157,12 @@ function Fake(spec)
             if not i then return nil end
             return i[1], "item:" .. id, i[2] or 1, 10, 1, "Misc", "Misc", i[4] or 20, "", "icon" .. id, i[3] or 0, i[5] or 15
         end,
-        RequestLoadItemDataByID = function() end,
+        RequestLoadItemDataByID = function() W.loads = W.loads + 1 end,
     }
     if spec.ah == false then C_AuctionHouse = nil else
         local A = {}
         C_AuctionHouse = A
-        A.IsThrottledMessageSystemReady = function() return true end
+        A.IsThrottledMessageSystemReady = function() return not W.throttled end
         A.SendBrowseQuery = function(q) W.queries[#W.queries + 1] = q end
         A.GetBrowseResults = function()
             local out = {}

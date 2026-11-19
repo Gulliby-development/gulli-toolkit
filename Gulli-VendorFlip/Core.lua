@@ -33,6 +33,11 @@ ns.PAGE_WAIT = 10     -- seconds a browse page may take
 ns.SEARCH_WAIT = 4    -- seconds a search may take
 ns.SEARCH_GAP = 0.2
 ns.QUOTE_WAIT = 6     -- seconds the auction house has to answer a price or a purchase
+ns.HOLD = 8           -- seconds the scan sends nothing after a buy click, so the next click buys at once
+ns.HOLD_STEP = 0.5    -- how often a held scan looks again
+ns.SIFT_STEP = 300    -- browse results looked at in one frame (a full market is tens of thousands)
+ns.LOAD_MAX = 200     -- unknown items a scan asks the client to load (cheapest first; the rest next time)
+ns.REDRAW = 0.25      -- the window redraws at most this often for the scan and item events
 ns.SOUND_AT = 10000   -- a new line worth at least this rings, with `sound` on
 ns.SELL_STEP = 12     -- items sold at a vendor in one step
 ns.HISTORY_MAX = 400
@@ -59,8 +64,8 @@ local function A() return C_AuctionHouse end
 local I = C_Item or {}
 
 -- name, quality, icon, sell price of one, stack size, item class; nil while the client does not
--- know the item.
-function ns.ItemInfo(item)
+-- know the item (then the client is asked to load it, unless noLoad).
+function ns.ItemInfo(item, noLoad)
     local name, q, stack, icon, sell, class
     if I.GetItemInfo then
         local n, _, q1, _, _, _, _, st, _, ic, sp, cl = I.GetItemInfo(item)
@@ -71,7 +76,7 @@ function ns.ItemInfo(item)
     end
     if not name then
         local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
-        if id and I.RequestLoadItemDataByID then pcall(I.RequestLoadItemDataByID, id) end
+        if id and not noLoad and I.RequestLoadItemDataByID then pcall(I.RequestLoadItemDataByID, id) end
         return nil
     end
     return name, q or 1, icon, sell or 0, math.max(1, stack or 1), class
@@ -229,9 +234,12 @@ local function ready()
     return not a.IsThrottledMessageSystemReady or a.IsThrottledMessageSystemReady()
 end
 
--- The vendor price of one, nil while unknown or when the filters leave the item out.
+-- The vendor price of one, nil while unknown or when the filters leave the item out. A scan asks
+-- the client to load at most LOAD_MAX unknown items: each answer is an event.
 local function sellOf(id)
-    local name, q, _, sell, _, class = ns.ItemInfo(id)
+    local load = (scan.loads or 0) < ns.LOAD_MAX
+    local name, q, _, sell, _, class = ns.ItemInfo(id, not load)
+    if not name and load then scan.loads = (scan.loads or 0) + 1 end
     if not name or not ns.Wanted(q, class, ns.db) then return nil end
     return sell
 end
@@ -242,6 +250,15 @@ local function wantedLine(line)
 end
 
 local function refresh() if ns.Refresh then ns.Refresh() end end
+
+-- One redraw for a burst of events (item loads, scan steps), never one per event.
+local redrawPending = false
+local function refreshSoon()
+    if redrawPending then return end
+    redrawPending = true
+    C_Timer.After(ns.REDRAW, function() redrawPending = false; refresh() end)
+end
+ns.RefreshSoon = refreshSoon
 
 local function finish()
     scan.phase, scan.busy = "idle", nil
@@ -302,6 +319,13 @@ local function readItems(c)
 end
 
 nextSearch = function()
+    -- a purchase goes first: one query at a time, so the scan sends nothing while the player buys
+    if ns.atAH and ns.Holding() then
+        scan.held = true
+        C_Timer.After(ns.HOLD_STEP, function() if scan.phase == "detail" and not scan.busy then nextSearch() end end)
+        return refreshSoon()
+    end
+    scan.held = nil
     local c = table.remove(scan.queue, 1)
     if not ns.atAH then scan.phase = "idle"; return end
     if not c then return finish() end
@@ -316,7 +340,7 @@ nextSearch = function()
     C_Timer.After(ns.SEARCH_WAIT, function()
         if scan.busy == c then scan.done = scan.done + 1; nextSearch() end
     end)
-    refresh()
+    refreshSoon()
 end
 
 -- An answer to a search: COMMODITY_SEARCH_RESULTS_UPDATED (item id) or
@@ -333,15 +357,43 @@ function ns.OnSearch(event, arg)
 end
 
 local function startDetail()
-    local cands = ns.Candidates(scan.results, sellOf)
-    scan.queue, scan.found = {}, {}
+    local cands = scan.cands or {}
+    table.sort(cands, function(a, b) return a.gain > b.gain end)
+    scan.queue, scan.found, scan.cands = {}, {}, nil
     for i = 1, math.min(#cands, ns.DetailMax(ns.Interval())) do scan.queue[i] = cands[i] end
     scan.phase, scan.done, scan.n = "detail", 0, #scan.queue
     nextSearch()
 end
 
+-- The browse results are looked at SIFT_STEP per frame, so a market of tens of thousands of
+-- lots never stops the game.
+local function sift()
+    if scan.phase ~= "sift" then return end
+    local res, i = scan.results, scan.sifted
+    local last = math.min(#res, i + ns.SIFT_STEP)
+    local part = {}
+    for k = i + 1, last do part[#part + 1] = res[k] end
+    for _, c in ipairs(ns.Candidates(part, sellOf)) do scan.cands[#scan.cands + 1] = c end
+    scan.sifted = last
+    if last >= #res then return startDetail() end
+    refreshSoon()
+    C_Timer.After(0, sift)
+end
+
+local function startSift()
+    scan.phase, scan.sifted, scan.cands, scan.loads = "sift", 0, {}, 0
+    sift()
+end
+
 local function morePage()
     local a = A()
+    if ns.Holding() then
+        scan.held = true
+        local page = scan.pages
+        C_Timer.After(ns.HOLD_STEP, function() if scan.phase == "browse" and scan.pages == page then morePage() end end)
+        return refreshSoon()
+    end
+    scan.held = nil
     if not ready() then scan.waitReady = true; return end
     scan.waitReady = nil
     scan.pages = scan.pages + 1
@@ -350,18 +402,23 @@ local function morePage()
     ours = false
     local page = scan.pages
     C_Timer.After(ns.PAGE_WAIT, function()
-        if scan.phase == "browse" and scan.pages == page then startDetail() end
+        if scan.phase == "browse" and scan.pages == page then startSift() end
     end)
 end
 
 -- AUCTION_HOUSE_BROWSE_RESULTS_UPDATED / _ADDED while our browse runs.
-function ns.OnBrowse()
+-- A page adds its results (the _ADDED event brings them), so the whole list is read only once.
+function ns.OnBrowse(added)
     if scan.phase ~= "browse" then return end
     local a = A()
-    scan.results = a.GetBrowseResults() or {}
-    refresh()
+    if type(added) == "table" then
+        for _, r in ipairs(added) do scan.results[#scan.results + 1] = r end
+    else
+        scan.results = a.GetBrowseResults() or {}
+    end
+    refreshSoon()
     if (a.HasFullBrowseResults and a.HasFullBrowseResults()) or scan.pages >= ns.MAX_PAGES or not a.RequestMoreBrowseResults then
-        return startDetail()
+        return startSift()
     end
     morePage()
 end
@@ -373,7 +430,7 @@ end
 -- Starts a scan now, when nothing stands in the way.
 function ns.Scan(force)
     if not ns.atAH or ns.paused or not canScan() or scan.phase ~= "idle" then return false end
-    if not force and (not ns.db.scan or time() < scan.quietUntil) then return false end
+    if not force and (not ns.db.scan or time() < scan.quietUntil or ns.Holding()) then return false end
     if ns.Busy() or not ready() then return false end
     scan.phase, scan.pages, scan.results, scan.done, scan.n = "browse", 1, {}, 0, 0
     ours = true
@@ -425,9 +482,37 @@ function ns.Shown()
     return ns.Deals(lines, ns.db.minGain, ns.Money(), ns.db.reserve, ns.FreeSlots(), ns.db.keepFree)
 end
 
--- The line the big button works on: the one in a purchase, else the best one left.
+-- The lines the player clicked while another purchase ran, in click order. Each one still needs
+-- a click of its own (the game buys only inside a click): the big button takes them first.
+ns.queue = {}
+
+local function tidyQueue()
+    local q, live = ns.queue, {}
+    for _, line in ipairs(ns.lines) do live[line] = true end
+    for i = #q, 1, -1 do
+        if q[i].state or not live[q[i]] or q[i] == ns.buy.line then table.remove(q, i) end
+    end
+end
+
+-- The place of a line in the queue, or nil.
+function ns.QueuePos(line)
+    tidyQueue()
+    for i, l in ipairs(ns.queue) do if l == line then return i end end
+end
+
+-- The scan waits while the player buys: a purchase runs or waits for its click, lines are queued,
+-- or a buy click came less than HOLD seconds ago.
+function ns.Holding()
+    tidyQueue()
+    return ns.Busy() or #ns.queue > 0 or time() < (ns.holdUntil or 0)
+end
+
+-- The line the big button works on: the one in a purchase, else the first queued, else the best
+-- one left.
 function ns.Top()
     if ns.buy.line and ns.Busy() then return ns.buy.line end
+    tidyQueue()
+    if ns.queue[1] then return ns.queue[1] end
     for _, line in ipairs(ns.Shown()) do if not line.state then return line end end
 end
 
@@ -466,21 +551,40 @@ local function wait(token)
     end)
 end
 
+-- Purchases sent and not yet confirmed: item lots by auction id, commodities in the order sent.
+-- A confirmation that comes after the wait gave up (a lag) is still written to the history.
+ns.pending, ns.pendingC = {}, {}
+
 local function bought(line, paid)
     local b = ns.buy
+    if b.line == line then b.phase, b.line, b.quote, b.err = "idle", nil, nil, nil end
+    if line.state == "bought" then return refresh() end
     line.state = "bought"
-    b.phase, b.line, b.quote = "idle", nil, nil
     ns.Log(line.id, line.n, paid, line.value)
     ns.session = (ns.session or 0) + (line.value - paid)
     refresh()
 end
 
--- A click on a line (or the big button on the top line).
+-- A click on a line (or the big button on the top line). While another purchase runs or waits
+-- for its second click, a click on a line queues it (again: takes it out of the queue).
 function ns.Click(line)
     local b = ns.buy
     if not line or line.state or not ns.atAH or ns.paused or not A() then return end
+    ns.holdUntil = time() + ns.HOLD
+    if ns.Busy() and b.line ~= line then
+        local pos = ns.QueuePos(line)
+        if pos then table.remove(ns.queue, pos) else ns.queue[#ns.queue + 1] = line end
+        return refresh()
+    end
     if b.phase == "quote" or b.phase == "buying" then return end
-    if b.phase == "ready" and b.line ~= line then cancelQuote(); b.phase, b.line, b.quote = "idle", nil, nil end
+    -- the auction house still answers the scan's last question: this click cannot buy yet
+    if not ready() then
+        if not ns.QueuePos(line) then table.insert(ns.queue, 1, line) end
+        b.err, b.errLine = "ERR_WAIT", line
+        return refresh()
+    end
+    local pos = ns.QueuePos(line)
+    if pos then table.remove(ns.queue, pos) end
     b.err = nil
     if not ns.Fits(line, ns.Money(), ns.db.reserve, ns.FreeSlots(), ns.db.keepFree) then
         b.err, b.errLine = "ERR_ROOM", line
@@ -492,10 +596,15 @@ function ns.Click(line)
     if line.kind == "i" then
         if not A().PlaceBid then return end
         b.phase, b.line = "buying", line
-        if not pcall(A().PlaceBid, line.auction, line.cost) then b.phase, b.err = "idle", "ERR_BUY" else wait(token) end
+        if not pcall(A().PlaceBid, line.auction, line.cost) then b.phase, b.err = "idle", "ERR_BUY"
+        else ns.pending[line.auction] = line; wait(token) end
     elseif b.phase == "ready" then
         b.phase = "buying"
-        if not pcall(A().ConfirmCommoditiesPurchase, line.id, line.n) then b.phase, b.err = "idle", "ERR_BUY" else wait(token) end
+        if not pcall(A().ConfirmCommoditiesPurchase, line.id, line.n) then b.phase, b.err = "idle", "ERR_BUY"
+        else
+            ns.pendingC[#ns.pendingC + 1] = { line = line, total = b.quote and b.quote.total or line.cost }
+            wait(token)
+        end
     else
         if not A().StartCommoditiesPurchase then return end
         b.phase, b.line, b.quote = "quote", line, nil
@@ -522,14 +631,18 @@ function ns.OnAuction(event, a1, a2)
     elseif event == "COMMODITY_PRICE_UNAVAILABLE" then
         if b.phase == "quote" and line then line.state = "gone"; b.phase, b.line = "idle", nil end
     elseif event == "COMMODITY_PURCHASE_SUCCEEDED" then
-        if b.phase == "buying" and line and line.kind == "c" then bought(line, b.quote and b.quote.total or line.cost) end
+        local p = table.remove(ns.pendingC, 1)
+        if p then bought(p.line, p.total) end
     elseif event == "COMMODITY_PURCHASE_FAILED" then
-        if b.phase == "buying" then b.phase, b.err, b.errLine = "idle", "ERR_BUY", line end
+        local p = table.remove(ns.pendingC, 1)
+        if p and b.phase == "buying" and line == p.line then b.phase, b.err, b.errLine = "idle", "ERR_BUY", line end
     elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
-        if b.phase == "buying" and line and line.kind == "i" and a1 == line.auction then bought(line, line.cost) end
+        local l = a1 and ns.pending[a1]
+        if l then ns.pending[a1] = nil; bought(l, l.cost) end
     elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
         -- the lot is gone or cannot be bought
         if b.phase == "buying" and line and line.kind == "i" then
+            ns.pending[line.auction] = nil
             line.state = "gone"
             b.phase, b.line = "idle", nil
         end
@@ -704,20 +817,23 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if ticker then ticker:Cancel(); ticker = nil end
         local b = ns.buy
         b.phase, b.line, b.quote = "idle", nil, nil
+        ns.queue, ns.holdUntil = {}, 0
         if ns.HideAtAH then ns.HideAtAH() end
     elseif event == "MERCHANT_SHOW" then
         ns.atVendor = true
         ns.OfferSale()
     elseif event == "MERCHANT_CLOSED" then
         ns.atVendor = false
-    elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" or event == "AUCTION_HOUSE_BROWSE_RESULTS_ADDED" then
+    elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then
         ns.OnBrowse()
+    elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_ADDED" then
+        ns.OnBrowse(a1)
     elseif event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
         ns.OnThrottleReady()
     elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_UPDATED" then
         ns.OnSearch(event, a1)
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_MONEY" or event == "GET_ITEM_INFO_RECEIVED" then
-        if ns.atAH then refresh() end
+        if ns.atAH then refreshSoon() end
     else
         ns.OnAuction(event, a1, a2)
     end
