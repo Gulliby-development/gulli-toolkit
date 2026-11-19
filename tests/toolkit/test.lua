@@ -1933,5 +1933,26 @@ test("the minimap tooltip names each action in colour", function()
     assert(lines[5].text:find("/gulli minimap", 1, true), "the command")
 end)
 
+test("an item name the client has not loaded yet is asked for, never shown as item:123, and kept once known", function()
+    Fake({})
+    local ns = Load()
+    local name, asked = nil, {}
+    C_Item = { GetItemNameByID = function() return name end,
+               RequestLoadItemDataByID = function(id) asked[#asked + 1] = id end }
+    local redraws = 0
+    ns.Refresh = function() redraws = redraws + 1 end
+    eq(ns.ItemName(17028), nil, "not loaded yet")
+    eq(asked[1], 17028, "the game is asked for it")
+    ns.OnItemInfo(99999)
+    eq(redraws, 0, "an item nobody waits for redraws nothing")
+    name = "Holy Candle"
+    ns.OnItemInfo(17028)
+    eq(redraws, 1, "the page redraws when the name comes")
+    eq(ns.ItemName(17028), "Holy Candle")
+    name = nil
+    eq(ns.ItemName(17028), "Holy Candle", "a name once known stays, even when the client drops it")
+    C_Item = nil
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

@@ -71,9 +71,9 @@ local function itemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
     return f and f(id) or 0
 end
+-- "..." until the client has the name; the hub redraws when it comes (ns.OnItemInfo).
 local function itemName(id)
-    local get = (C_Item and C_Item.GetItemInfo) or GetItemInfo
-    return (get and get(id)) or ("item:" .. id)
+    return ns.ItemName(id) or "..."
 end
 local function itemIcon(id)
     local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon

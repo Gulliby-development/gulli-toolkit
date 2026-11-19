@@ -1118,8 +1118,9 @@ end
 -- Protected items: a page in the centre, with a drop zone for items from the bags.
 local protRows = {}
 local function itemInfo(id)
-    local name, _, _, _, _, _, _, _, _, icon = (C_Item and C_Item.GetItemInfo or GetItemInfo)(id)
-    return name, icon
+    local _, _, _, _, _, _, _, _, _, icon = (C_Item and C_Item.GetItemInfo or GetItemInfo)(id)
+    if not icon and C_Item and C_Item.GetItemIconByID then icon = C_Item.GetItemIconByID(id) end
+    return ns.ItemName(id), icon
 end
 
 function ns.RefreshProtected()
@@ -1152,7 +1153,7 @@ function ns.RefreshProtected()
         end
         r.id = id
         local name, icon = itemInfo(id)
-        r.name:SetText(name or ("item:" .. id))
+        r.name:SetText(name or "...")
         r.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         r:Show()
     end

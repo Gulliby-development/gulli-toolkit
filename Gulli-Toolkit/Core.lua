@@ -176,6 +176,39 @@ function Toolkit.Protect(item, on)
     return true
 end
 
+-- An item's name the client may not have loaded yet: kept once known, and asked for while
+-- not, so a page shows its name, never "item:123", and redraws when the game sends it.
+ns.itemNames, ns.itemWaiting = {}, {}
+function ns.ItemName(id)
+    id = tonumber(id)
+    if not id then return nil end
+    local known = ns.itemNames[id]
+    if known then return known end
+    local get = (C_Item and C_Item.GetItemNameByID) or (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    local name = get and get(id)
+    if type(name) == "string" and name ~= "" then
+        ns.itemNames[id] = name
+        return name
+    end
+    ns.itemWaiting[id] = true
+    if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+    return nil
+end
+
+-- GET_ITEM_INFO_RECEIVED for an item a page waits for: one redraw for a burst of them.
+function ns.OnItemInfo(id)
+    id = tonumber(id)
+    if not id or not ns.itemWaiting[id] then return end
+    ns.itemWaiting[id] = nil
+    if ns.itemRedraw then return end
+    ns.itemRedraw = true
+    local function redraw()
+        ns.itemRedraw = nil
+        if ns.Refresh then ns.Refresh() end
+    end
+    if C_Timer and C_Timer.After then C_Timer.After(0.2, redraw) else redraw() end
+end
+
 function ns.Protected()
     local ids = {}
     for id in pairs((GulliToolkitDB and GulliToolkitDB.protected) or {}) do ids[#ids + 1] = id end
@@ -1289,6 +1322,7 @@ end
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
+events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("CHAT_MSG_ADDON")
@@ -1297,6 +1331,10 @@ events:RegisterEvent("ADDON_ACTION_BLOCKED")
 events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 local lastSent = 0
 events:SetScript("OnEvent", function(self, event, a, b, c, d)
+    if event == "GET_ITEM_INFO_RECEIVED" then
+        ns.OnItemInfo(a)
+        return
+    end
     if event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
         if type(a) == "string" then
             ns.RecordError(event .. ": " .. tostring(b), debugstack and debugstack(2) or nil, "blocked", a)
