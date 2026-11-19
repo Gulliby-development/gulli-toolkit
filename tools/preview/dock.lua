@@ -26,7 +26,7 @@ win:Hide()
 local key = name
 for _, k in ipairs({ "QuestCleaner", "MobFinder", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
     "Attune", "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail", "AutoQuest",
-    "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates", "FarmTrack", "Fishing" }) do
+    "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates", "FarmTrack", "Fishing", "WorthIt" }) do
     if k:lower() == name then key = k end
 end
 local addons = { { "Gulli-Toolkit" }, { "Gulli-" .. key, key } }
