@@ -196,6 +196,45 @@ test("a buy click in the middle of a scan buys at once; the scan waits and goes 
     eq(ns.scan.phase, "idle")
 end)
 
+test("each search shows its finds at once, while the scan still reads the rest", function()
+    local w = Fake(market({ db = { minGain = 0 } }))
+    local ns = Load()
+    w.Fire("AUCTION_HOUSE_SHOW")
+    assert(ns.Scan(true))
+    w.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+    eq(ns.scan.phase, "detail")
+    eq(#ns.Shown(), 0)
+    -- the first answer: the best candidate (the belt) shows before the scan ends
+    local key = w.searches[1]
+    if w.commodity[key.itemID] then w.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", key.itemID)
+    else w.Fire("ITEM_SEARCH_RESULTS_UPDATED", key) end
+    eq(ns.scan.phase, "detail", "still reading")
+    local shown = ns.Shown()
+    eq(#shown, 1)
+    eq(shown[1].id, key.itemID)
+    -- it can be bought at once
+    ns.Click(shown[1])
+    assert(ns.Busy(), "the purchase started")
+    w.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", shown[1].auction)
+    w.now = w.now + ns.HOLD + 1
+    w.RunTimers()
+    -- the rest of the scan: the belt stays bought, the others join
+    for _ = 1, 20 do
+        local k = w.searches[#w.searches]
+        if ns.scan.phase ~= "detail" then break end
+        if w.commodity[k.itemID] then w.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", k.itemID)
+        else w.Fire("ITEM_SEARCH_RESULTS_UPDATED", k) end
+        w.RunTimers()
+    end
+    eq(ns.scan.phase, "idle")
+    assert(find(ns, ORE) and find(ns, FANG), "the commodities joined")
+    -- a line the next scan does not find again leaves the list when that scan ends
+    w.lots[BELT] = nil
+    w.now = w.now + ns.INTERVAL + 1
+    w.ScanAll(ns)
+    eq(find(ns, BELT), nil)
+end)
+
 test("clicks during a purchase queue lines; the big button buys them in order", function()
     local w = Fake(market({ db = { minGain = 0 } }))
     local ns = Load()

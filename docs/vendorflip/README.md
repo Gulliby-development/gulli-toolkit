@@ -18,7 +18,7 @@ Players often put items on the auction house for less than a vendor pays for the
 
 ## Features
 
-- **A scan as often as you like.** While the auction house is open, Vendor Flip looks at the whole market every minute. Pick another wait in the settings: from 5 seconds to 5 minutes. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once.
+- **A scan as often as you like.** While the auction house is open, Vendor Flip looks at the whole market every minute. Pick another wait in the settings: from 5 seconds to 5 minutes. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once. A good lot shows in the list as soon as the scan finds it, so you can buy it before the scan ends.
 - **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many, what the auction house wants, what a vendor pays and your gain. The best gain is on top.
 - **Buy with clicks.** Each line has its own button. The big button at the bottom always buys the top line, so you can press it again and again.
 - **A queue.** Click more lines while one is being bought: they wait in a queue, and each press of the big button buys the next one. While you buy, the scan waits, so your purchase goes through at once.
