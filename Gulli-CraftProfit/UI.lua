@@ -223,6 +223,7 @@ local function skipCard(parent)
             if not self.full or not GameTooltip or not GameTooltip.SetOwner then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:SetText(self.full, 1, 1, 1)
+            if type(self.rid) == "number" then GameTooltip:AddLine("ID " .. self.rid, 0.6, 0.6, 0.6) end
             GameTooltip:Show()
         end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)

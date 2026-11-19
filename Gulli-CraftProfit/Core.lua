@@ -1183,16 +1183,20 @@ function ns.Skipped(state)
     return rows
 end
 
--- The recipes whose name has `text` in it (any case), names that start with it first; at most
--- `max`. Second value: how many there are in all.
+-- The recipes whose name has `text` in it (any case), names that start with it first; a number
+-- or a link finds the recipe by its id. At most `max`. Second value: how many there are in all.
 function ns.FindRecipes(state, text, max)
     local rows = {}
     text = tostring(text or "")
     if text == "" then return rows, 0 end
     local low = text:lower()
+    -- a number is the recipe's id (or the id of the item it makes); a pasted link gives it too
+    local id = tonumber(text) or tonumber(text:match("|H%a+:(%d+)")) or tonumber(text:match("^%a+:(%d+)"))
     for rid, r in pairs(state and state.recipes or {}) do
         local name = tostring(r.name or "")
-        local at = name:lower():find(low, 1, true) or name:find(text, 1, true)
+        local at
+        if id then at = (rid == id or r.out == id) and 1 or nil
+        else at = name:lower():find(low, 1, true) or name:find(text, 1, true) end
         if at then rows[#rows + 1] = { recipe = rid, name = name, out = r.out, skip = r.skip and true or false, at = at } end
     end
     table.sort(rows, function(a, b)

@@ -1205,6 +1205,13 @@ test("a craft the player avoids is in no route, learned or not, and comes back",
     eq(#found, 2); assert(all >= 3, "three bolts in the example")
     assert(found[1].name:find("^Bolt of"))
     eq(#c.FindRecipes(st, "", 5), 0)
+    -- by id: the recipe's own, the made item's, or a pasted link
+    local byId = { recipes = { [3840] = { name = "Bolt of Silk Cloth", out = 4305 }, [8762] = { name = "Silk Headband", out = 7050 } } }
+    eq(c.FindRecipes(byId, "8762", 5)[1].recipe, 8762)
+    eq(c.FindRecipes(byId, "4305", 5)[1].recipe, 3840, "the id of the item it makes")
+    eq(c.FindRecipes(byId, "|cffffd000|Henchant:8762|h[Silk Headband]|h|r", 5)[1].recipe, 8762)
+    eq(c.FindRecipes(byId, "spell:3840", 5)[1].recipe, 3840)
+    eq(#c.FindRecipes(byId, "999", 5), 0)
     st.recipes[first].skip = nil
     assert(used(c.Plan(st, P), first), "back in the plan")
 end)
