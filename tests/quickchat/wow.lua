@@ -162,8 +162,21 @@ function Fake(spec)
     SetOverrideBindingClick = function(_, _, key, button) W.bindings[key] = button end
     C_Map = { GetAreaInfo = function(id) return spec.areas and spec.areas[id] end }
     W.hooks = {}
-    ChatEdit_InsertLink = function() end
-    hooksecurefunc = function(name, fn) W.hooks[name] = fn end
+    -- The retail client links through ChatFrameUtil.InsertLink; ChatEdit_InsertLink is gone.
+    ChatEdit_InsertLink = nil
+    ChatFrameUtil = { InsertLink = function() return false end }
+    hooksecurefunc = function(a, b, c)
+        if type(a) == "table" then W.hooks[b] = c else W.hooks[a] = b end
+    end
+    -- Items the client has loaded (W.items id -> name); W.asked are the loads asked for.
+    W.items, W.asked = { [2589] = "Linen Cloth" }, {}
+    C_Item = {
+        GetItemInfo = function(id)
+            local name = W.items[id]
+            if name then return name, "|cffffffff|Hitem:" .. id .. "::|h[" .. name .. "]|h|r" end
+        end,
+        RequestLoadItemDataByID = function(id) W.asked[#W.asked + 1] = id end,
+    }
     GulliQuickChatDB = spec.db
     return W
 end

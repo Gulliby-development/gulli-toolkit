@@ -257,8 +257,60 @@ test("more tokens: target class and level, health, mana, leader, item", function
     eq(ns.Fill("{leader}"), "", "no group, no leader")
     W.group, W.leader = true, "Ann"
     eq(ns.Fill("{leader} lead"), "Ann lead")
-    W.hooks.ChatEdit_InsertLink("|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
+    W.hooks.InsertLink("|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
     eq(ns.Fill("WTS {item}"), "WTS |cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
+end)
+
+test("{item:ID} and {ID} become the item's link", function()
+    Fake({})
+    local ns = Load()
+    local cloth = "|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r"
+    eq(ns.Fill("WTS {item:2589} 5s"), "WTS " .. cloth .. " 5s")
+    eq(ns.Fill("WTS {2589} 5s, {ITEM:2589}"), "WTS " .. cloth .. " 5s, " .. cloth)
+    eq(table.concat(ns.ItemIds("{10009} {item:2589} {10009} {target}"), ","), "2589,10009")
+    eq(ns.Show("WTS {2589} {target}"), "WTS " .. cloth .. " {target}", "the window shows the link, other tokens stay")
+    eq(ns.Show("WTS {10009}"), "WTS [Item 10009]", "an item not loaded yet")
+end)
+
+test("a phrase waits for its items to load, then sends with their links", function()
+    Fake({})
+    local ns = Load()
+    W.group = true
+    eq(ns.Say("WTS {10009} 90s"), "PARTY")
+    eq(#W.chat, 0, "nothing sent before the item is known")
+    eq(W.asked[#W.asked], 10009)
+    W.items[10009] = "Mageweave Cloth"
+    W.Fire("GET_ITEM_INFO_RECEIVED", 10009, true)
+    eq(#W.chat, 1)
+    eq(W.chat[1][1], "WTS |cffffffff|Hitem:10009::|h[Mageweave Cloth]|h|r 90s")
+    W.RunTimers()
+    eq(#W.chat, 1, "the timeout does not send it twice")
+    -- An item the game never loads: the phrase goes after the wait with the item's number.
+    W.now = W.now + 10
+    eq(ns.Say("WTB {77777}"), "PARTY")
+    W.RunTimers()
+    eq(W.chat[2][1], "WTB Item 77777")
+end)
+
+test("Shift-click on an item puts it into the phrase box while it has the focus", function()
+    Fake({})
+    local ns = Load()
+    SlashCmdList.GULLIQUICKCHAT("")
+    local box = ns.phraseBox
+    assert(box, "the phrase box is known")
+    local text, focus = "WTS ", false
+    box.HasFocus = function() return focus end
+    box.Insert = function(_, t) text = text .. t end
+    W.hooks.InsertLink("|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
+    eq(text, "WTS ", "no focus, no insert")
+    W.now = W.now + 1
+    focus = true
+    W.hooks.InsertLink("|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
+    eq(text, "WTS {item:2589}")
+    W.hooks.InsertLink("|cffffffff|Hitem:2589::|h[Linen Cloth]|h|r")
+    eq(text, "WTS {item:2589}", "one click through two hooks inserts once")
+    W.hooks.InsertLink("|cff71d5ff|Hspell:1459|h[Arcane Intellect]|h|r")
+    eq(text, "WTS {item:2589}", "a spell is no item")
 end)
 
 test("a double tap sends once", function()
