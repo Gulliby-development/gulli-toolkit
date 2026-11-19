@@ -40,9 +40,9 @@ jobs:
       - name: Lint (luacheck, only the warnings that are bugs)
         run: python3 tools/lint/luacheck.py
 
-      - name: Client API (events and functions the retail client has)
+      - name: Client API (events and functions the WoW Forever client has)
         run: |
-          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/Gethe/wow-ui-source /tmp/wus
+          git clone -q --depth 1 --branch forever --filter=blob:none --sparse https://github.com/Gethe/wow-ui-source /tmp/wus
           git -C /tmp/wus sparse-checkout set Interface/AddOns/Blizzard_APIDocumentationGenerated
           echo "Client build: $(git -C /tmp/wus log -1 --format=%s)"
           python3 tools/apicheck/check.py /tmp/wus/Interface/AddOns/Blizzard_APIDocumentationGenerated
