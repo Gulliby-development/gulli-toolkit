@@ -260,25 +260,48 @@ local function refreshSoon()
 end
 ns.RefreshSoon = refreshSoon
 
+-- A line found again keeps its table (the queue and a purchase point to it) and its "bought".
+local function merge(was, d)
+    local state = was.state == "bought" and "bought" or nil
+    for k in pairs(was) do was[k] = nil end
+    for k, v in pairs(d) do was[k] = v end
+    was.state = state
+    return was
+end
+
+-- Each search shows its finds at once, so a deal can be bought while the scan goes on: the lines
+-- of that item are replaced by what the search found now.
+local function publish(c, deals)
+    local old, keep = {}, {}
+    for _, line in ipairs(ns.lines) do
+        local mine = line.key == c.key or line.id == c.id
+        if mine and not (line == ns.buy.line and ns.Busy()) then old[line.uid] = line else keep[#keep + 1] = line end
+    end
+    for _, d in ipairs(deals) do
+        local was = old[d.uid]
+        local line = was and merge(was, d) or d
+        if not was and d.gain >= ns.SOUND_AT then scan.ring = true end
+        keep[#keep + 1] = line
+        scan.found[line.uid] = true
+    end
+    ns.lines = keep
+    if scan.ring and not scan.rang and ns.db.sound and PlaySound and SOUNDKIT and SOUNDKIT.AUCTION_WINDOW_OPEN then
+        scan.rang = true
+        pcall(PlaySound, SOUNDKIT.AUCTION_WINDOW_OPEN, "Master")
+    end
+end
+
 local function finish()
     scan.phase, scan.busy = "idle", nil
     scan.at = time()
     scan.next = time() + ns.Interval()
-    -- lines found before keep their state when the same lot is there again
-    local old = {}
-    for _, line in ipairs(ns.lines) do old[line.uid] = line end
-    local fresh, best = {}, 0
-    for _, line in ipairs(scan.found or {}) do
-        local was = old[line.uid]
-        if was and was.state == "bought" then line.state = "bought" end
-        if not was and line.gain > best then best = line.gain end
-        fresh[#fresh + 1] = line
+    -- what this scan did not find again is gone from the market or the top of the list
+    local fresh = {}
+    for _, line in ipairs(ns.lines) do
+        if scan.found and scan.found[line.uid] then fresh[#fresh + 1] = line end
     end
     ns.lines = fresh
-    scan.found = nil
-    if ns.db.sound and best >= ns.SOUND_AT and PlaySound and SOUNDKIT and SOUNDKIT.AUCTION_WINDOW_OPEN then
-        pcall(PlaySound, SOUNDKIT.AUCTION_WINDOW_OPEN, "Master")
-    end
+    scan.found, scan.ring, scan.rang = nil, nil, nil
     refresh()
 end
 
@@ -299,8 +322,8 @@ local function readCommodity(c)
     if d then
         d.kind, d.id, d.key, d.uid = "c", c.id, c.key, "c" .. c.id
         d.slots = math.ceil(d.n / (stack or 1))
-        scan.found[#scan.found + 1] = d
     end
+    publish(c, d and { d } or {})
 end
 
 local function readItems(c)
@@ -312,10 +335,11 @@ local function readItems(c)
             lots[#lots + 1] = { r.auctionID, math.max(1, r.quantity or 1), r.buyoutAmount, sell or c.sell, r.containsOwnerItem }
         end
     end
-    for _, d in ipairs(ns.ItemDeals(lots)) do
+    local deals = ns.ItemDeals(lots)
+    for _, d in ipairs(deals) do
         d.kind, d.id, d.key, d.uid, d.slots = "i", c.id, c.key, "i" .. d.auction, 1
-        scan.found[#scan.found + 1] = d
     end
+    publish(c, deals)
 end
 
 nextSearch = function()
@@ -353,6 +377,7 @@ function ns.OnSearch(event, arg)
     scan.busy = nil
     if event == "COMMODITY_SEARCH_RESULTS_UPDATED" then readCommodity(c) else readItems(c) end
     scan.done = scan.done + 1
+    refreshSoon()
     C_Timer.After(ns.SEARCH_GAP, function() if scan.phase == "detail" and not scan.busy then nextSearch() end end)
 end
 
