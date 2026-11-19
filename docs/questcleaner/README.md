@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
-<p align="center"><img src="hero.jpg" alt="Gulli-QuestCleaner: quests on the left, their items on the right" width="860"></p>
+<p align="center"><img src="hero.jpg" alt="Quest Cleaner: quests on the left, their items on the right" width="860"></p>
 
 ---
 
@@ -42,7 +42,7 @@ After a few zones, your quest log is full of grey quests, and your bags are full
 - **Made for handhelds.** Big buttons and check boxes, so it works with a mouse and with touch on WoW Forever for Android. With a gamepad: up and down move through the list, A ticks, X presses **Clear** or **OK**, B goes back.
 - **Your own key.** Pick a key that opens the window, right in the window.
 - **In the Gulli Toolkit feed.** What the last cleaning removed shows in `/gulli`.
-- **Clean, modern look.** A flat dark window in your class colour, in the style of ElvUI. It fits a modern interface.
+- **Looks like the game.** A dark brown window with gold names, in the same look as every Gulli module.
 - **Your language.** English, German, Spanish, French, Polish, Portuguese, Russian and Chinese. It follows the language of your game.
 
 <p align="center"><img src="preview.png" alt="The preview: quests linked to their items" width="660"></p>

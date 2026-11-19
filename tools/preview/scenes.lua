@@ -333,7 +333,7 @@ S.xp = { default = {
     crop = "GulliXPBar",
 } }
 S.xp.bar = { before = xpQuests, crop = "GulliXPBar",
-    open = function(ns, W) xpPlay(W); ns.SetPref("wide", false); ns.Refresh() end }
+    open = function(ns, W) xpPlay(W); ns.SetPref("bar", true); ns.SetPref("wide", false); ns.Refresh() end }
 S.xp.bar.spec = S.xp.default.spec
 S.xp.levels.spec = S.xp.default.spec
 S.xp.settings.spec = S.xp.default.spec
@@ -1020,7 +1020,7 @@ end
 S.legacy = { default = { open = lgOpen() }, chars = { open = lgOpen(2) }, all = { open = lgOpen(3) },
     settings = { open = lgOpen(4) },
     goal = { open = function(ns) lgOpen()(ns); ns.SetGoal(15) end },
-    tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.Refresh() end },
+    tracker = { crop = "GulliLegacyTracker", open = function(ns) ns.Scan(); ns.Snapshot(); ns.SetPref("tracker", true); ns.Refresh() end },
     explore = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70040) end },
     detail = { open = function(ns) lgOpen()(ns); ns.ShowDetail(70010) end } }
 -- The compact window that stands beside the game's Legacy window: the plan and its settings.
