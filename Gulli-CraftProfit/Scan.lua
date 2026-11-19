@@ -7,18 +7,31 @@ local ADDON, ns = ...
 local CALLER = "Gulli-CraftProfit"
 local OBS_MAX = 8 -- colours kept per recipe, newest skills first
 
--- Trade supplies every trade vendor sells without a limit. Their price is known before the
--- player ever saw one at a vendor: a vendor asks four times what it pays (an estimate until seen).
--- Only items that are never in limited supply belong here.
-ns.VENDOR_ITEMS = {}
-for _, id in ipairs({
-    2320, 2321, 4291, 8343, 14341,                              -- threads
-    2324, 2325, 2604, 2605, 4340, 4341, 4342, 6260, 6261, 10290, -- bleach and dyes
-    4289, 2880, 3466, 3857, 18567,                              -- salt, fluxes, coal
-    3371, 3372, 8925, 18256,                                    -- vials
-    2678, 2692, 3713, 2665, 159, 1179, 2596, 2594, 2894, 4536,  -- cooking supplies
-    4399, 4400, 4470, 6217, 11291, 10647, 10648, 6530,          -- stocks, wood, rod, ink, parchment, bait
-}) do ns.VENDOR_ITEMS[id] = true end
+-- Trade supplies every trade vendor sells without a limit (Data.vend). Their price is known
+-- before the player ever saw one at a vendor: a vendor asks four times what it pays, less the
+-- reputation discount (an estimate until seen).
+ns.VENDOR_ITEMS = (ns.Data and ns.Data.vend) or {}
+-- The capital factions: a trade vendor in a city gives the discount of the standing with it.
+local CITY = { Horde = { 76, 68, 81, 530 }, Alliance = { 72, 47, 69, 54 } }
+local function standingById(id)
+    local R = C_Reputation
+    if R and R.GetFactionDataByID then
+        local ok, d = pcall(R.GetFactionDataByID, id)
+        return ok and type(d) == "table" and d.reaction or nil
+    elseif GetFactionInfoByID then
+        local _, _, s = GetFactionInfoByID(id)
+        return s
+    end
+end
+-- The share a vendor of the player's best capital takes off: 5% per standing above Neutral.
+function ns.VendorDiscount()
+    local best = 4
+    for _, id in ipairs(CITY[UnitFactionGroup and UnitFactionGroup("player") or ""] or {}) do
+        local s = standingById(id)
+        if type(s) == "number" and not (issecretvalue and issecretvalue(s)) and s > best then best = s end
+    end
+    return math.min(best - 4, 4) * 0.05
+end
 
 -- ---------- wrappers ----------
 
@@ -294,7 +307,7 @@ local function itemFor(state, id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
     local alts, who = ns.AltCount(id)
-    local buy = ns.db.vendor[id] or (ns.VENDOR_ITEMS[id] and sell > 0 and sell * 4) or nil
+    local buy = ns.db.vendor[id] or (ns.VENDOR_ITEMS[id] and sell > 0 and math.floor(sell * 4 * (1 - ns.VendorDiscount()) + 0.5)) or nil
     state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
                         ah = ah, age = age, buy = buy, buyEst = not ns.db.vendor[id] and buy ~= nil or nil, bags = bags, bank = bank,
                         mail = ns.char.mail and ns.char.mail[id] or 0, alts = alts, altWho = who,
@@ -511,6 +524,12 @@ function ns.State()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
         if rec.learned or not gone[rid] then
             local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
+            -- a trainer that asks for another skill than the data says wins: the levels move with it
+            local req = not rec.learned and rec.name and ns.db.trainerReq[rec.name]
+            if req and skill and skill[1] and req ~= skill[1] then
+                local d = req - skill[1]
+                skill = { skill[1] + d, skill[2] and skill[2] + d, skill[3] and skill[3] + d, skill[4] and skill[4] + d }
+            end
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
@@ -562,6 +581,11 @@ local function learnTrainer()
         local name = GetTrainerServiceInfo(i)
         local cost = GetTrainerServiceCost and GetTrainerServiceCost(i)
         if name and cost and cost > 0 then ns.db.trainer[name] = cost end
+        -- the skill the trainer asks for: the game's own word on when the recipe can be learned
+        if name and GetTrainerServiceSkillReq then
+            local _, rank = GetTrainerServiceSkillReq(i)
+            if type(rank) == "number" and rank > 0 then ns.db.trainerReq[name] = rank end
+        end
     end
 end
 
@@ -952,6 +976,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db.prefs = ns.db.prefs or {}
         ns.db.vendor = ns.db.vendor or {}
         ns.db.trainer = ns.db.trainer or {}
+        ns.db.trainerReq = ns.db.trainerReq or {}
         ns.db.gather = ns.db.gather or {}
         ns.db.skip = ns.db.skip or {}
         ns.db.lots = ns.db.lots or {}

@@ -1892,10 +1892,43 @@ test("a trade supply has its vendor price before the player saw it at a vendor",
     W.items[5].ah = 90
     v, how = n.BuyOption(n.State(), P, 5)
     eq(v, 90); eq(how, "ah")
+    -- the standing with the best capital takes its share off: Honored 10%, so the vendor beats the auction
+    W.items[5].ah = 95
+    W.standing = { [72] = 6, [47] = 5 }
+    near(n.VendorDiscount(), 0.10)
+    st = n.State()
+    eq(st.items[5].buy, 90)
+    v, how = n.BuyOption(st, P, 5)
+    eq(v, 90); eq(how, "vendor")
+    W.standing = { [72] = 8 }
+    near(n.VendorDiscount(), 0.20)
+    W.standing = { [72] = 2 }
+    near(n.VendorDiscount(), 0, "no surcharge below Neutral")
+    W.standing = nil
+    -- the list comes from Data.lua: threads and dyes, never what vendors keep a few of
+    local c = core()
+    assert(c.Data.vend[8343] and c.Data.vend[2324] and c.Data.vend[2320] and c.Data.vend[3371], "supplies")
+    assert(not c.Data.vend[10940] and not c.Data.vend[2319] and not c.Data.vend[765], "limited supply")
+    for id in pairs(c.Data.vend) do assert(not c.Data.item[id], "a made item is no supply: " .. id) end
     -- a price seen at a vendor replaces the estimate
     n.db.vendor[3] = 50
     st = n.State()
     eq(st.items[3].buy, 50); eq(st.items[3].buyEst, nil)
+end)
+
+test("the skill a trainer asks for wins over the data's learning level", function()
+    local n = game({ trainer = { { "Pattern Thing", 300, 150 } } })
+    n.Data.spell[104] = { 120, 130, 140 }
+    n.Data.item[7] = { 105, 120, 130, 140 }
+    local was = n.State().recipes[104].skill
+    eq(was[1], 105, "the data alone")
+    W.Fire("TRAINER_SHOW")
+    eq(n.db.trainerReq["Pattern Thing"], 150)
+    local sk = n.State().recipes[104].skill
+    eq(sk[1], 150, "the trainer's skill")
+    for i = 2, #was do eq(sk[i], was[i] + 45, "the other levels move with it") end
+    -- a learned recipe keeps what the game shows for it
+    eq(n.State().recipes[103].skill[1] ~= nil, true)
 end)
 
 W.finish()
