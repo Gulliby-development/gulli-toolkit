@@ -392,6 +392,60 @@ local function trainerWho(rid)
     return { (type(city) == "string" and city ~= "") and (t[1] .. ", " .. city) or t[1] }, { t[1] }
 end
 
+-- ---------- profession specializations ----------
+
+-- Recipes only one specialization of a profession can learn (owner's decision of 2026-11-19:
+-- offered only when the character chose that specialization; with none, or another, never).
+-- Key: the specialization's own spell (what the game gives when it is chosen). The Weaponsmith's
+-- masters need the Weaponsmith too, which their spell implies. Tailoring has none in WoW Forever.
+ns.SPECS = {
+    [20219] = { 12899, 12895, 12897, 12902, 12903, 12905, 12906, 12907, 12759, 23489, 23129, 1266937 }, -- Gnomish Engineer
+    [20222] = { 12718, 12717, 12716, 12715, 12760, 8895, 12755, 12754, 12908, 12758, 23486 }, -- Goblin Engineer
+    [10656] = { 10619, 10650, 19060, 20855, 22926 }, -- Dragonscale Leatherworking
+    [10658] = { 10630, 10632, 19078 }, -- Elemental Leatherworking
+    [10660] = { 10621, 10647, 19073, 19080, 19086, 19104, 23709 }, -- Tribal Leatherworking
+    [9788] = { 23637, 23636, 20876, 24399, 20873, 20872, 20874, 16745, 16742, 16744, 16741, 27829, 16724, 16729,
+               16660, 16655, 16667, 15296, 9974, 9954 }, -- Armorsmith
+    [9787] = { 23638, 23639, 16995, 15294, 10007, 15292, 10015, 10003 }, -- Weaponsmith
+    [17041] = { 23653, 16991, 16994, 20897, 16970 }, -- Master Axesmith
+    [17039] = { 16990, 23652, 20890, 27832, 16985, 16978 }, -- Master Swordsmith
+    [17040] = { 23650, 16988, 16993, 27830, 16983, 16973 }, -- Master Hammersmith
+}
+ns.SPEC_OF = {}
+for spec, list in pairs(ns.SPECS) do for _, rid in ipairs(list) do ns.SPEC_OF[rid] = spec end end
+
+local function knowsSpell(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        local ok, yes = pcall(C_SpellBook.IsSpellKnown, id)
+        if ok and yes then return true end
+    end
+    if IsPlayerSpell then
+        local ok, yes = pcall(IsPlayerSpell, id)
+        if ok and yes then return true end
+    end
+    return false
+end
+
+-- Whether this character has the specialization: the game knows its spell, or the character
+-- already knows one of its recipes (a client that names the spell otherwise still shows that).
+function ns.HasSpec(spec)
+    if knowsSpell(spec) then return true end
+    for _, prof in pairs(ns.char and ns.char.profs or {}) do
+        for _, rid in ipairs(ns.SPECS[spec] or {}) do
+            local rec = prof.recipes and prof.recipes[rid]
+            if rec and rec.learned then return true end
+        end
+    end
+    return false
+end
+
+-- The specialization's name in the client's language.
+function ns.SpecName(spec)
+    local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spec)
+    if type(name) ~= "string" or name == "" then name = GetSpellInfo and GetSpellInfo(spec) end
+    return type(name) == "string" and name ~= "" and name or nil
+end
+
 -- ---------- where an NPC stands ----------
 
 -- Data.npc has the place of every vendor and trainer the data names (area id, x, y in map
@@ -618,6 +672,9 @@ function ns.State()
                 skill = { skill[1] + d, skill[2] and skill[2] + d, skill[3] and skill[3] + d, skill[4] and skill[4] + d }
             end
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
+            -- a recipe of a specialization this character did not choose is no way to go
+            local spec = not rec.learned and ns.SPEC_OF[rid]
+            if spec and not ns.HasSpec(spec) then src = { t = "spec", spec = spec, text = ns.SpecName(spec) } end
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
                                    skip = ns.db.skip and ns.db.skip[rid] == true or nil }

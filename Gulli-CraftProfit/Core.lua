@@ -6,7 +6,7 @@
 --   skill, cap, level,                    -- the profession's skill, its rank cap, the character level
 --   items = { [id] = { name, ah, age, vend, buy, bags, bank, bop, mail, alts, altWho, gather, lots } },
 --   recipes = { [rid] = { name, skill = { orange, yellow, grey }, r = { [id] = n }, out, count,
---                         learned, src = { t = "trainer"|"vendor"|"ah"|"rep"|..., cost }, guess,
+--                         learned, src = { t = "trainer"|"vendor"|"ah"|"rep"|"spec"|..., cost }, guess,
 --                         skip } },  -- skip: the player does not want this craft in any route
 -- }
 -- Prices are in copper. Green starts halfway between yellow and grey, as in the game.
