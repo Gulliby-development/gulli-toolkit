@@ -379,6 +379,19 @@ local function levels(rid, rec)
     return byItem
 end
 
+-- Recipes the ordinary trainers do not teach: one trainer per faction does (the Shadoweave
+-- tailors), named with the city's area id so the city shows in the client's language.
+local SHADOWEAVE = { Horde = { "Josephine Lister", 1497 }, Alliance = { "Jalane Ayrole", 1519 } }
+ns.TRAINERS = {}
+for _, rid in ipairs({ 12052, 12055, 12071, 12076, 12082 }) do ns.TRAINERS[rid] = SHADOWEAVE end
+local function trainerWho(rid)
+    local t = ns.TRAINERS[rid]
+    t = t and t[UnitFactionGroup and UnitFactionGroup("player") or ""]
+    if not t then return nil end
+    local city = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(t[2])
+    return { (type(city) == "string" and city ~= "") and (t[1] .. ", " .. city) or t[1] }
+end
+
 -- ---------- reputation ----------
 
 -- "Requires %s - %s" of the client's language as a Lua pattern that catches the faction and the standing.
@@ -451,9 +464,10 @@ end
 local function recipeSource(state, rid, rec, skill)
     -- a recipe the trainer teaches is learned there, even when a vendor also sells its pattern
     local cost = rec.name and ns.db.trainer[rec.name]
-    if cost then return { t = "trainer", cost = cost, est = false } end
+    local who = rid ~= rec.out and trainerWho(rid) or nil
+    if cost then return { t = "trainer", cost = cost, est = false, who = who } end
     local train = ns.Data and ns.Data.train and rid ~= rec.out and ns.Data.train[rid]
-    if train then return { t = "trainer", cost = train, est = false } end
+    if train then return { t = "trainer", cost = train, est = false, who = who } end
     local D = ns.Data and ns.Data.src
     local d = D and rid ~= rec.out and D[rid]
     if d then

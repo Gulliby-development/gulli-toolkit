@@ -843,7 +843,8 @@ function ns.Route(state, plan)
         for _, rid in ipairs(rids) do
             local r = state.recipes[rid]
             if r.src.t == "trainer" and first[rid] == i then
-                ls[#ls + 1] = { recipe = rid, name = r.name, n = 1, src = "trainer", price = r.src.cost }
+                ls[#ls + 1] = { recipe = rid, name = r.name, n = 1, src = "trainer", price = r.src.cost,
+                                 who = r.src.who and r.src.who[1] }
             end
         end
         if #ls > 0 then
