@@ -4,11 +4,11 @@ local test, eq = W.test, W.eq
 
 local ORE, FANG, BELT, CLOAK, ROCK = 2770, 3300, 5001, 5002, 2836
 local ITEMS = {
-    [ORE] = { "Copper Ore", 1, 10, 20 },      -- vendor pays 10c, stacks of 20
-    [FANG] = { "Broken Fang", 0, 230, 10 },
-    [BELT] = { "Warrior's Belt", 2, 11200, 1 },
-    [CLOAK] = { "Shore Cloak", 2, 3500, 1 },
-    [ROCK] = { "Coarse Stone", 1, 3, 20 },
+    [ORE] = { "Copper Ore", 1, 10, 20, 7 },      -- vendor pays 10c, stacks of 20, a trade good
+    [FANG] = { "Broken Fang", 0, 230, 10, 15 },
+    [BELT] = { "Warrior's Belt", 2, 11200, 1, 4 }, -- armour
+    [CLOAK] = { "Shore Cloak", 2, 3500, 1, 4 },
+    [ROCK] = { "Coarse Stone", 1, 3, 20, 7 },
 }
 
 local function market(extra)
@@ -181,6 +181,29 @@ test("the scan waits while the player searches the auction house", function()
     eq(ns.Scanning(), false)
 end)
 
+test("the picked interval: from 5 seconds to 5 minutes, fewer lots per scan when short", function()
+    local w = Fake(market({ db = { interval = 5 } }))
+    local ns = Load()
+    w.ScanAll(ns)
+    eq(#w.queries, 1)
+    w.now = w.now + 4
+    ns.Tick()
+    eq(#w.queries, 1)
+    w.now = w.now + 2
+    ns.Tick()
+    eq(#w.queries, 2, "the next scan 5 seconds after the last ended")
+    assert(ns.DetailMax(5) < ns.DETAIL_MAX, "a short interval reads fewer lots")
+    eq(ns.DetailMax(60), ns.DETAIL_MAX)
+    eq(ns.DetailMax(300), ns.DETAIL_MAX)
+    for _, i in ipairs(ns.INTERVALS) do
+        assert(ns.DetailMax(i) * 60 / i <= ns.SEARCHES_PER_MIN or ns.DetailMax(i) == ns.DETAIL_MIN, "too many searches at " .. i)
+    end
+    ns.SetPref("interval", 7)
+    eq(ns.Interval(), ns.INTERVAL, "a value not in the list is a minute")
+    ns.SetPref("interval", 300)
+    eq(ns.Interval(), 300)
+end)
+
 test("the scan runs again every minute, and not with the switch off", function()
     local w = Fake(market())
     local ns = Load()
@@ -329,6 +352,59 @@ test("Scan now on the deals page starts a scan at once", function()
     assert(ns.scan.phase == "browse", "browsing")
 end)
 
+test("the filters: gear only, goods only, by quality", function()
+    local function ids(db)
+        db.minGain = 0
+        local w = Fake(market({ db = db }))
+        local ns = Load()
+        w.ScanAll(ns)
+        local out = {}
+        for _, line in ipairs(ns.Shown()) do out[#out + 1] = line.id end
+        table.sort(out)
+        return table.concat(out, ","), w
+    end
+    eq(ids({ goods = false }), tostring(BELT), "gear only")
+    eq(ids({ gear = false }), ORE .. "," .. FANG, "goods only")
+    eq(ids({ q2 = false }), ORE .. "," .. FANG, "no greens")
+    eq(ids({ q0 = false, q1 = false }), tostring(BELT), "greens and better")
+    local got, w = ids({ gear = false, goods = false })
+    eq(got, "", "nothing wanted")
+    eq(#w.searches, 0, "an item left out is never searched")
+end)
+
+test("a filter changed after the scan hides its lines at once", function()
+    local w = Fake(market({ db = { minGain = 0 } }))
+    local ns = Load()
+    w.ScanAll(ns)
+    eq(#ns.Shown(), 3)
+    ns.SetPref("gear", false)
+    eq(#ns.Shown(), 2)
+    ns.SetPref("gear", true)
+    eq(#ns.Shown(), 3)
+end)
+
+test("the most per line and the least gain in percent", function()
+    local w = Fake(market({ db = { minGain = 0, maxPrice = 100 } }))
+    local ns = Load()
+    w.ScanAll(ns)
+    local got = {}
+    for _, line in ipairs(ns.Shown()) do got[line.id] = line; assert(line.cost <= 100, "a line over the most") end
+    assert(not got[BELT], "the belt costs 48 silver")
+    eq(got[ORE].n, 25, "the ore is cut to what 100 copper buys")
+    eq(got[FANG].n, 1, "one fang costs 75, two 150")
+    w = Fake(market({ db = { minGain = 0, minPct = 100 } }))
+    ns = Load()
+    w.ScanAll(ns)
+    got = {}
+    for _, line in ipairs(ns.Shown()) do got[line.id] = line end
+    eq(got[ORE].n, 30, "only the ore at 4 doubles its money; at 6 it gains 66%")
+    assert(got[FANG] and got[BELT], "fangs and the belt gain more than 100%")
+    eq(ns.PriceOK({ cost = 100, gain = 9 }, 0, 10), false)
+    eq(ns.PriceOK({ cost = 100, gain = 10 }, 0, 10), true)
+    eq(ns.PriceOK({ cost = 101, gain = 500 }, 100, 0), false)
+    eq(ns.Wanted(5, 4, { q4 = false }), false, "legendary counts as purple")
+end)
+
 test("random markets: nothing is offered at a loss or past the limits", function()
     math.randomseed(20261119)
     local offered = 0
@@ -337,7 +413,7 @@ test("random markets: nothing is offered at a loss or past the limits", function
         for k = 1, 6 do
             local id = 1000 + k
             local sell = math.random(1, 3000)
-            items[id] = { "Item " .. k, 1, sell, math.random(1, 20) }
+            items[id] = { "Item " .. k, math.random(0, 4), sell, math.random(1, 20), math.random() < 0.4 and 4 or 7 }
             if math.random() < 0.5 then
                 local l = {}
                 for _ = 1, math.random(1, 4) do l[#l + 1] = { math.random(1, 4000), math.random(1, 30), math.random() < 0.2 and 1 or 0 } end
@@ -353,7 +429,11 @@ test("random markets: nothing is offered at a loss or past the limits", function
         end
         local money, free = math.random(0, 50000), math.random(0, 6)
         local w = Fake({ items = items, browse = browse, commodity = commodity, lots = lots, money = money, free = free,
-                         db = { minGain = 0, reserve = math.random(0, 3) * 1000, keepFree = math.random(0, 2) } })
+                         db = { minGain = 0, reserve = math.random(0, 3) * 1000, keepFree = math.random(0, 2),
+                                maxPrice = math.random() < 0.5 and 0 or math.random(1, 5000),
+                                minPct = math.random() < 0.5 and 0 or math.random(0, 20) * 5,
+                                gear = math.random() < 0.8, goods = math.random() < 0.8,
+                                q0 = math.random() < 0.8, q2 = math.random() < 0.8 } })
         local ns = Load()
         w.ScanAll(ns)
         for _, line in ipairs(ns.Shown()) do
@@ -361,6 +441,10 @@ test("random markets: nothing is offered at a loss or past the limits", function
             assert(line.cost < line.value, "a line at a loss")
             assert(line.cost <= money - ns.db.reserve, "a line past the reserve")
             assert(line.slots <= free - ns.db.keepFree, "a line past the free slots")
+            assert(ns.db.maxPrice == 0 or line.cost <= ns.db.maxPrice, "a line past the most per line")
+            assert(line.gain * 100 >= line.cost * ns.db.minPct, "a line under the least percent")
+            local it = items[line.id]
+            assert(ns.Wanted(it[2], it[5], ns.db), "a line the filters leave out")
             if line.kind == "i" then
                 for _, l in ipairs(lots[line.id]) do if l[1] == line.auction then assert(not l[4], "an own lot") end end
             end
