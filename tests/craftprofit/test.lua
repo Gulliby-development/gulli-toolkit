@@ -918,6 +918,20 @@ test("a levelling tile shows the target and the crafts of the whole way, not of 
     eq(n.ui.varTiles[1].sub:GetText(), n.L.VAR_RUN:format(run.full.target, 69))
 end)
 
+test("settings before Calculate never read the whole profession", function()
+    local n = game()
+    n.Toggle()
+    local real, calls = n.State, 0
+    n.State = function(...) calls = calls + 1; return real(...) end
+    W.Click(n.ui.target.plus); W.Click(n.ui.target.minus)
+    W.Click(n.ui.steppers.maxCrafts.plus); W.Click(n.ui.steppers.maxCrafts.minus)
+    W.Click(n.ui.checks.useBank); W.Click(n.ui.checks.useBank)
+    n.State = real
+    eq(calls, 0, "no item counts or prices on a settings click")
+    eq(n.view.plan, nil, "nothing calculated")
+    eq(n.ui.target.value:GetText(), tostring(n.Target(n.Skill(), n.Prefs(n.db.prefs))))
+end)
+
 test("the crafts stepper starts on auto and binds to it again", function()
     local n = game()
     n.Toggle(); n.Calculate()

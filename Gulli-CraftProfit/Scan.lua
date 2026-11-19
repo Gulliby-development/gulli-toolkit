@@ -402,8 +402,8 @@ local function recipeSource(state, rid, rec, skill)
     return { t = "text", text = rec.source }
 end
 
--- The profession the window shows, as a plain table for Core.lua; nil before any scan.
-function ns.State()
+-- The profession the window shows and its saved data; nil before any scan.
+local function current()
     local db = charDB()
     local name = db.current
     local prof = name and db.profs[name]
@@ -415,10 +415,27 @@ function ns.State()
         if not prof then return nil end
         db.current = name
     end
-    local state = { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
-                    icon = prof.icon, items = {}, recipes = {} }
+    return name, prof
+end
+
+-- Only the skill of that profession, without its recipes and items: cheap enough for the
+-- settings column, which needs the target and the crafts cap on every click.
+function ns.Skill()
+    local name, prof = current()
+    if not name then return nil end
+    return { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
+             icon = prof.icon, items = {}, recipes = {} }
+end
+
+-- The profession the window shows, as a plain table for Core.lua; nil before any scan.
+-- It reads counts and prices of every item, so it runs only in a calculation (ns.Tick).
+function ns.State()
+    local name, prof = current()
+    if not name then return nil end
+    local state = ns.Skill()
     local gone = ns.Data and ns.Data.gone or {}
     for rid, rec in pairs(prof.recipes) do
+        ns.Tick()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
         if rec.learned or not gone[rid] then
             local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
