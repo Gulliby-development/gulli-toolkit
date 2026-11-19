@@ -7,6 +7,19 @@ local ADDON, ns = ...
 local CALLER = "Gulli-CraftProfit"
 local OBS_MAX = 8 -- colours kept per recipe, newest skills first
 
+-- Trade supplies every trade vendor sells without a limit. Their price is known before the
+-- player ever saw one at a vendor: a vendor asks four times what it pays (an estimate until seen).
+-- Only items that are never in limited supply belong here.
+ns.VENDOR_ITEMS = {}
+for _, id in ipairs({
+    2320, 2321, 4291, 8343, 14341,                              -- threads
+    2324, 2325, 2604, 2605, 4340, 4341, 4342, 6260, 6261, 10290, -- bleach and dyes
+    4289, 2880, 3466, 3857, 18567,                              -- salt, fluxes, coal
+    3371, 3372, 8925, 18256,                                    -- vials
+    2678, 2692, 3713, 2665, 159, 1179, 2596, 2594, 2894, 4536,  -- cooking supplies
+    4399, 4400, 4470, 6217, 11291, 10647, 10648, 6530,          -- stocks, wood, rod, ink, parchment, bait
+}) do ns.VENDOR_ITEMS[id] = true end
+
 -- ---------- wrappers ----------
 
 local function itemName(id)
@@ -48,7 +61,8 @@ function ns.CheckNames()
         local n = itemName(id)
         if type(n) == "string" and n ~= "" then ns.nameFound[id] = n; ns.nameWaiting[id] = nil; got = true
             -- the pattern's tooltip can be read now: the plan may have counted on a pattern it cannot learn
-            if ns.repWaiting[id] then ns.repWaiting[id] = nil; if ns.view then ns.view.stale = true end end
+            -- (the same for a vendor supply: its price was not known either)
+            if ns.repWaiting[id] or ns.VENDOR_ITEMS[id] then ns.repWaiting[id] = nil; if ns.view then ns.view.stale = true end end
         end
     end
     if not got or nameRedraw then return end
@@ -280,8 +294,9 @@ local function itemFor(state, id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
     local alts, who = ns.AltCount(id)
+    local buy = ns.db.vendor[id] or (ns.VENDOR_ITEMS[id] and sell > 0 and sell * 4) or nil
     state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
-                        ah = ah, age = age, buy = ns.db.vendor[id], bags = bags, bank = bank,
+                        ah = ah, age = age, buy = buy, buyEst = not ns.db.vendor[id] and buy ~= nil or nil, bags = bags, bank = bank,
                         mail = ns.char.mail and ns.char.mail[id] or 0, alts = alts, altWho = who,
                         gather = ns.db.gather[id] == true, lots = ns.db.lots[id] }
 end
