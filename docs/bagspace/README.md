@@ -29,6 +29,7 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 - **Auction prices.** With Auctionator, an item that sells for much more at the auction house is shown unticked, with its price.
 - **Gear you cannot use.** Bound armour and weapons your class can never wear are offered with the white gear.
 - **Free 1 slot.** When the game says your bags are full, a button offers to sell or delete the cheapest junk item with one tap.
+- **Disenchant with a middle click.** If you know Enchanting, point at a green, blue or purple weapon or armour in your bags and click the mouse wheel: it is disenchanted. Left and right clicks work as before. It does nothing in a fight, on items it cannot disenchant, or on items you protected or keep in an equipment set. A switch turns it off.
 - **Sort and count.** A **Sort** button, and the number of free slots on the backpack button.
 - **A warning** in chat when only two slots are left.
 
@@ -50,6 +51,12 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 <summary><b>Can I get an item back?</b></summary>
 
 Sold items: the last 12, from the vendor's buyback tab. Deleted items: no. Open a vendor first if you are not sure.
+</details>
+
+<details>
+<summary><b>The middle click does not disenchant. Why?</b></summary>
+
+Check that **Disenchant with a middle click** is on in `/gbs`, that you know Enchanting, and that you are not in a fight. Only green, blue and purple weapons and armour show the "middle-click: disenchant" line in their tooltip. If your skill is too low for the item, the game says so.
 </details>
 
 <details>

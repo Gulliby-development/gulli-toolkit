@@ -7,7 +7,7 @@ local L = ns.L
 
 local J = ns.J
 local BATCH, STEP = J.BATCH, J.STEP
-ns.DEFAULTS = { want = 5, warnAt = 2, unusable = true, counter = true, popup = true }
+ns.DEFAULTS = { want = 5, warnAt = 2, unusable = true, counter = true, popup = true, disenchant = true }
 local AH_FACTOR = 2 -- an auction price this many times the vendor price keeps an item off the ticks
 
 -- Game API wrappers.
@@ -283,6 +283,37 @@ function ns.FreeOne()
 end
 
 function ns.SortBags() return sortBags() end
+
+-- Disenchant on a middle click: which bag item a middle click would disenchant. The click itself
+-- goes to a secure button over the slot (UI.lua), since only a hardware click may cast.
+ns.DISENCHANT = 13262
+function ns.KnowsDisenchant()
+    local id = ns.DISENCHANT
+    if C_SpellBook and C_SpellBook.IsSpellKnown then return C_SpellBook.IsSpellKnown(id) and true or false end
+    if IsPlayerSpell then return IsPlayerSpell(id) and true or false end
+    return false
+end
+
+-- Green, blue and purple weapons and armour, never a shirt or tabard, and never what the junk
+-- rules keep (protected items, equipment sets, tools, quest items).
+function ns.CanDisenchant(it)
+    if not it or J.Never(it) then return false end
+    if it.classID ~= 2 and it.classID ~= 4 then return false end
+    local q = it.quality or 1
+    if q < 2 or q > 4 then return false end
+    if it.equipLoc == "INVTYPE_BODY" or it.equipLoc == "INVTYPE_TABARD" then return false end
+    return true
+end
+
+-- The item at a bag slot when a middle click would disenchant it now, else nil.
+function ns.DisenchantTarget(bag, slot)
+    if not (ns.db and ns.db.disenchant) or InCombatLockdown() then return nil end
+    if type(bag) ~= "number" or type(slot) ~= "number" or bag < 0 or bag > 4 then return nil end
+    if not ns.KnowsDisenchant() then return nil end
+    local it = J.Item(bag, slot)
+    if it and not it.locked and ns.CanDisenchant(it) then return it end
+    return nil
+end
 function ns.CanSort() return (C.SortBags or SortBags) ~= nil end
 
 -- A hint in the chat when the bags are nearly full; it never removes anything.
@@ -320,6 +351,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     end
     if event == "PLAYER_LOGIN" then
         if ns.UpdateCounter then ns.UpdateCounter() end
+        if ns.InstallDisenchant then ns.InstallDisenchant() end
         return
     end
     if event == "BAG_UPDATE_DELAYED" then
@@ -339,6 +371,8 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     end
     if event == "PLAYER_REGEN_DISABLED" then
         if ns.HidePopup then ns.HidePopup() end
+        -- Still out of lockdown here: the secure button over a slot hides before the fight.
+        if ns.HideDisenchant then ns.HideDisenchant() end
         return
     end
     ns.atMerchant = event == "MERCHANT_SHOW"
@@ -369,6 +403,7 @@ ns.OPT_ICON = {
     unusable = "Interface\\Icons\\INV_Gauntlets_04",
     counter = "Interface\\Icons\\INV_Misc_Bag_08",
     popup = "Interface\\Icons\\INV_Misc_Bag_10",
+    disenchant = "Interface\\Icons\\INV_Enchant_Disenchant",
 }
 
 local function option(key, label)
@@ -377,13 +412,14 @@ local function option(key, label)
                  if not ns.db then return end
                  ns.db[key] = on and true or false
                  if key == "counter" and ns.UpdateCounter then ns.UpdateCounter() end
+                 if key == "disenchant" and not on and ns.HideDisenchant then ns.HideDisenchant() end
              end }
 end
 
 if GulliToolkit and GulliToolkit.Register then
     GulliToolkit.Register({
         options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
-                    option("popup", ns.L.OPT_POPUP) },
+                    option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT) },
         key = "BagSpace",
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",
@@ -399,6 +435,7 @@ if GulliToolkit and GulliToolkit.Register then
             if not ns.db then return end
             for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
             if ns.UpdateCounter then ns.UpdateCounter() end
+            if ns.HideDisenchant then ns.HideDisenchant() end
             if ns.Refresh then ns.Refresh(true) end
         end,
     })
