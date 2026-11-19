@@ -1949,6 +1949,8 @@ local function dock(f, host, opts)
     f:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
     f:SetWidth(opts.width or f.size[1])
     f:SetHeight(opts.height or f.size[2])
+    -- inside the hub a click must not lift the page over the hub's own controls
+    if f.SetToplevel then f:SetToplevel(false) end
     f:SetFrameStrata(host:GetFrameStrata())
     f:SetFrameLevel((tonumber(host:GetFrameLevel()) or 0) + 5)
     for _, sh in ipairs(f.shadow or {}) do sh:Hide() end
@@ -2006,6 +2008,7 @@ local function undock(f)
     f:SetWidth(f.size[1])
     f:SetHeight(f.size[2])
     f:SetFrameStrata(f.strata or "DIALOG")
+    if f.SetToplevel then f:SetToplevel(true) end
     for _, sh in ipairs(f.shadow or {}) do sh:Show() end
     S.Fill(f, S.GLASS)
     S.SetBorder(f, S.GLASS_EDGE)
@@ -2093,11 +2096,29 @@ function S.Window(name, title, width, height, opts)
     f.close = closeButton(bar, function() S.MotionOut(f, function() f:Hide() end) end)
     -- Opening: it grows in from 96.5% and fades in, and one pass of light runs over the glass.
     S.TrackScale(f)
-    f:HookScript("OnShow", function(self)
+    -- A window that stands alone comes up over every other window (the one opened or clicked
+    -- last is whole on top), at the screen's scale. A module's own OnShow script must not wipe
+    -- this (SetScript drops hooks), so SetScript keeps it in front of the module's script.
+    if f.SetToplevel then f:SetToplevel(true) end
+    local function opened(self)
+        self = self or f
         if self.docked then return end
         scaleWindow(self)
-        S.MotionIn(self, 8, S.SLOW, 0.965)
+        if self.Raise then self:Raise() end
+        -- beside the auction house a window changes with its tab: it stands there at once
+        if not rawget(self, "quietShow") then S.MotionIn(self, 8, S.SLOW, 0.965) end
         sweep(self)
+    end
+    local setScript = f.SetScript
+    f:SetScript("OnShow", opened)
+    rawset(f, "SetScript", function(self, what, fn)
+        if what == "OnShow" then
+            return setScript(self, what, function(frame, ...)
+                opened(frame)
+                if fn then return fn(frame, ...) end
+            end)
+        end
+        return setScript(self, what, fn)
     end)
     f.close:SetPoint("RIGHT", -8, 0)
     -- Small header buttons (help, scale...) go left of the close button: f:AddHeaderButton(b).
@@ -3132,7 +3153,7 @@ end
 -- more: only one shows, and a strip of tabs like a browser's lies over its header (icon, name,
 -- a badge with what is left to do). The tab chosen last is remembered. The state is shared by
 -- every copy of the skin (GulliHUD.side); the newest copy lays it out.
-local SIDE_V = 1
+local SIDE_V = 2
 local SIDE_GAP = 8
 local SIDE_TAB_H = S.HEADER_H - 8
 
@@ -3312,8 +3333,17 @@ local function sideLayout(T)
             w:ClearAllPoints()
             w:SetPoint("TOPLEFT", ah, "TOPRIGHT", SIDE_GAP, 0)
         end
+        -- Every window of this place has one size, so the tabs stand still when it changes: no
+        -- opening motion (it would carry the strip along) and the same scale for each.
+        local was = T.shown[cur.key]
         T.shown[cur.key] = true
+        rawset(w, "quietShow", true)
         w:Show()
+        rawset(w, "quietShow", false)
+        if not was then
+            S.ApplyScale(w, S.FitScale(S.NARROW_W, S.DOCK_H))
+            if w.Raise then w:Raise() end
+        end
     end
     T.switching = false
     if w and #list > 1 then sideDraw(T, list, w)

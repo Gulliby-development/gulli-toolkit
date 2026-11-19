@@ -547,6 +547,48 @@ test("the refresh button plans anew, or clears the plan without crates", functio
     eq(ns.plan, nil)
 end)
 
+test("a window alone keeps its scale and comes up on top, whatever OnShow the module sets", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names() })
+    local ns = Load()
+    local w = ns.Window()
+    local scale, raised = nil, 0
+    rawset(w, "SetScale", function(_, k) scale = k end)
+    rawset(w, "Raise", function() raised = raised + 1 end)
+    local own = 0
+    w:SetScript("OnShow", function() own = own + 1 end)
+    rawget(w, "_OnShow")(w)
+    eq(own, 1, "the module's own script still runs")
+    assert(type(scale) == "number" and scale > 0, "the window was scaled")
+    eq(raised, 1, "and raised over the other windows")
+    -- inside the hub the hub scales and layers it
+    scale, raised = nil, 0
+    rawset(w, "docked", true)
+    rawget(w, "_OnShow")(w)
+    eq(scale, nil); eq(raised, 0)
+    rawset(w, "docked", false)
+end)
+
+test("beside the auction house every window has one scale and shows without the opening motion", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names() })
+    local ns = Load()
+    local S = ns.Skin
+    GulliToolkitDB = {}
+    local other = W.stub()
+    rawset(other, "docked", false); rawset(other, "bar", W.stub())
+    S.SideAdd({ key = "Other", order = 20, title = "Other", icon = "x", window = function() return other end })
+    local scales, quiet = {}, {}
+    for key, w in pairs({ Crates = ns.Window(), Other = other }) do
+        rawset(w, "SetScale", function(_, k) scales[key] = k end)
+        rawset(w, "Show", function(self) quiet[key] = rawget(self, "quietShow"); rawset(self, "_shown", true) end)
+    end
+    S.SideOpen("Crates", true)
+    S.SideOpen("Other", true)
+    assert(scales.Crates and scales.Crates == scales.Other, "the same scale, so the tabs stand still")
+    assert(quiet.Crates == true and quiet.Other == true, "no opening motion under the tabs")
+    eq(rawget(other, "quietShow"), false, "only for that show")
+    S.SideClose()
+end)
+
 test("the history tab draws without errors", function()
     Fake({ names = names(), db = { history = { { at = 99000, crate = FLOWER, item = WB, n = 10, paid = 3000, bought = 6, who = "Tester" } } } })
     local ns = Load()
