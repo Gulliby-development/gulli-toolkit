@@ -134,7 +134,11 @@ function Fake(spec)
     if GulliHUD then GulliHUD.side = nil end -- the tabs beside the auction house start anew
     W.items = spec.items or {}
     C_Item = {
-        GetItemNameByID = function(id) return W.items[id] and W.items[id].name or ("Item" .. id) end,
+        GetItemNameByID = function(id) -- `pending`: the client has not loaded the item yet
+            if W.items[id] and W.items[id].pending then return nil end
+            return W.items[id] and W.items[id].name or ("Item" .. id)
+        end,
+        RequestLoadItemDataByID = function(id) W.asked = W.asked or {}; W.asked[id] = true end,
         GetItemIconByID = function(id) return W.items[id] and W.items[id].icon or ("icon" .. id) end,
         GetItemInfo = function(id)
             local it = W.items[id] or {}
