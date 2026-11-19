@@ -199,6 +199,23 @@ function Fake(spec)
     -- Enchanting: spec.known lists the spells the character knows.
     W.known = spec.known or {}
     C_SpellBook = { IsSpellKnown = function(id) return W.known[id] == true end }
+    -- Override bindings: owner -> key -> button name.
+    W.bindings = {}
+    SetOverrideBindingClick = function(owner, _, key, name)
+        if W.combat then error("ADDON_ACTION_BLOCKED: SetOverrideBindingClick()") end
+        W.bindings[owner] = W.bindings[owner] or {}
+        W.bindings[owner][key] = name
+    end
+    ClearOverrideBindings = function(owner)
+        if W.combat then error("ADDON_ACTION_BLOCKED: ClearOverrideBindings()") end
+        W.bindings[owner] = nil
+    end
+    W.Bound = function(key)
+        for _, keys in pairs(W.bindings) do if keys[key] then return keys[key] end end
+    end
+    IsAltKeyDown = function() return W.alt == true end
+    IsControlKeyDown = function() return false end
+    IsShiftKeyDown = function() return false end
     GulliBagSpaceDB = spec.db
     return W
 end
