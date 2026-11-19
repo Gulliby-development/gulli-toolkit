@@ -1029,6 +1029,25 @@ test("a pin button near the giver targets them, out of combat only, and never se
     SetRaidTarget = nil
 end)
 
+test("Wowhead on a quest's page shows the quest's link in a box to copy", function()
+    Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [2100] = "Maraudon" },
+           active = { [93404] = true } })
+    local ns = Load()
+    eq(ns.WowheadURL("quest", 93404), "https://www.wowhead.com/forever/quest=93404")
+    eq(ns.WowheadURL("npc", 12201), "https://www.wowhead.com/forever/npc=12201")
+    eq(ns.WowheadURL("quest", nil), nil, "no link without an id")
+    ns.home, ns.selected = false, "MARA"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(93404)
+    local d = ns.DetailFrame()
+    d.link:GetScript("OnClick")(d.link)
+    local box = ns.ShowLink(ns.WowheadURL("quest", 93404))
+    eq(box:IsShown(), true)
+    eq(box.url, "https://www.wowhead.com/forever/quest=93404")
+    eq(box.edit:GetText(), box.url, "the link is in the box")
+    box.close:GetScript("OnClick")(box.close)
+    eq(box:IsShown(), false, "the cross closes it")
+end)
+
 test("a click on a chain step opens that step's page and sets no pin, also for a step outside the dungeon", function()
     local W = Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [2100] = "Maraudon" },
                      active = { [93404] = true },

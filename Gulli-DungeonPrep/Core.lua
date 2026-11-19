@@ -1122,3 +1122,10 @@ function ns.PinAt(who, area, x, y, open)
     if not area or area == 0 or not x or (x == 0 and y == 0) then return false end
     return ns.SetPin({ who = who ~= "" and who or "?", zone = areaName(area), x = x, y = y }, open)
 end
+
+-- The Wowhead page of a quest, an NPC or an item. The game cannot open a link, so the window
+-- shows it in a box to copy.
+function ns.WowheadURL(kind, id)
+    if not kind or not tonumber(id) then return nil end
+    return "https://www.wowhead.com/forever/" .. kind .. "=" .. tonumber(id)
+end
