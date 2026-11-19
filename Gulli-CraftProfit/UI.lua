@@ -59,6 +59,17 @@ function ns.Money(c, plus)
     local sign = c < 0 and "-" or (plus and c > 0 and "+" or "")
     return sign .. coins(math.abs(c))
 end
+-- A signed amount for a list column: copper drops once there is gold, silver too from 100 gold,
+-- so the column never cuts the amount with "...". The exact amount stays in the sort key.
+function ns.Brief(c, plus)
+    if c ~= c or c == math.huge or c == -math.huge then return "?" end
+    c = math.floor((c or 0) + 0.5)
+    local a = math.abs(c)
+    if a >= 1000000 then a = math.floor(a / 10000 + 0.5) * 10000
+    elseif a >= 10000 then a = math.floor(a / 100 + 0.5) * 100 end
+    local sign = c < 0 and "-" or (plus and c > 0 and "+" or "")
+    return sign .. coins(a)
+end
 -- The biggest coin only, for the tight space on a stop.
 function ns.Short(c)
     if c ~= c or c == math.huge or c == -math.huge then return "?" end
@@ -588,8 +599,8 @@ local function listRows(which)
             local c = x.color and segColor(x.color) or S.TEXT
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                 text = color(c) .. x.name .. "|r" .. (x.stale and (" " .. color(GOLD) .. L.STALE .. "|r") or ""),
-                cols = { ns.Money(x.cost), ns.Money(x.value), L["HOW_" .. x.how],
-                         color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r",
+                cols = { ns.Brief(x.cost), ns.Brief(x.value), L["HOW_" .. x.how],
+                         color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r",
                          x.can > 0 and ("x" .. x.can) or "-" },
                 keys = { x.name, x.cost, x.value, x.how, x.profit, x.can }, tip = recipeTip(r) }
         end
@@ -598,7 +609,7 @@ local function listRows(which)
             rows[#rows + 1] = { icon = ns.ItemIcon(x.id), n = x.bags + x.bank, q = (st.items[x.id] or {}).quality, text = x.name,
                 cols = { tostring(x.bags), tostring(x.bank),
                          L["HOW_" .. x.how] .. (x.recipeName and (": " .. x.recipeName) or ""),
-                         ns.Money(x.each), ns.Money(x.total) },
+                         ns.Brief(x.each), ns.Brief(x.total) },
                 keys = { x.name, x.bags, x.bank, x.how, x.each, x.total } }
         end
     else
@@ -606,7 +617,7 @@ local function listRows(which)
             local r = st.recipes[x.recipe]
             local where = (x.src == "text" and (ns.SourceLabel(x.text) or "-")) or L["WHERE_" .. x.src] or "-"
             -- an estimated vendor price gets "~"; the trainer's price is known after one visit
-            local price = x.cost and ((x.est and "~" or "") .. ns.Money(x.cost)) or (x.src == "trainer" and "?" or "-")
+            local price = x.cost and ((x.est and "~" or "") .. ns.Brief(x.cost)) or (x.src == "trainer" and "?" or "-")
             local tip = recipeTip(r)
             if x.who then tip[#tip + 1] = { L.TIP_VENDOR:format(table.concat(x.who, ", ")), nil, nil, nil, true } end
             if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
@@ -614,7 +625,7 @@ local function listRows(which)
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name,
                 cols = { where, price, x.skill and tostring(x.skill) or "-",
-                         x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Money(x.profit, true) .. "|r") or L.NO_PRICE,
+                         x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r") or L.NO_PRICE,
                          x.pay and L.PAY_AT:format(x.pay) or ((x.profit and x.cost) and L.PAY_NEVER or "-") },
                 keys = { x.name, where, x.cost, x.skill, x.profit, x.pay }, tip = tip }
         end
