@@ -709,9 +709,18 @@ function ns.StopAction(i, aside)
         local rid, k
         if n.segs then rid, k = ns.NextCraft(n)
         elseif n.lines and n.lines[1] then rid, k = n.lines[1].recipe, n.lines[1].n end
-        if rid then
+        local closed = rid and not ns.ProfessionShown() and ns.CanOpenProfession()
+        if closed then
+            -- the game crafts only with the profession window open: the first click opens it
+            local prof = ns.char.current or ""
+            a.primary = { L.OPEN_PROF_BTN:format(prof), function()
+                if not ns.OpenProfession(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end
+            end, short = L.OPEN_PROF_SHORT }
+        elseif rid then
             a.primary = { L.MAKE_N:format(k), function() if not ns.Craft(rid, k) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
             a.second = { L.OPEN_RECIPE, function() if not ns.OpenRecipe(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
+        end
+        if rid then
             -- the player does not want this craft: every route is planned again without it
             local r = v.state.recipes[rid]
             if r then
@@ -722,7 +731,7 @@ function ns.StopAction(i, aside)
                 end, skip = rid }
             end
         end
-        a.hint = L.HINT_CRAFT
+        a.hint = closed and L.HINT_CRAFT_OPEN or L.HINT_CRAFT
     elseif n.kind == "trainer" then
         local spot = stopPin(n, p)
         if spot then a.tools[#a.tools + 1] = { L.SHOW_ON_MAP, function() ns.ShowOnMap(spot) end, pin = spot } end

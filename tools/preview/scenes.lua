@@ -731,6 +731,15 @@ S.craftprofit.sidetabs = { spec = cpSpec(), before = S.craftprofit.default.befor
         ns.Skin.SideOpen("Crates")
         ns.Skin.SideOpen("CraftProfit", true)
     end }
+-- A craft stop while the profession window is closed: the button opens it first.
+S.craftprofit.craftopen = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.craft.open(ns, W)
+        ns.CanOpenProfession = function() return true end
+        ns.profOpen = false
+        ns.char.current = ns.char.current or "Tailoring"
+        ns.Refresh()
+    end }
 
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },

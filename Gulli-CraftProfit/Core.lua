@@ -809,7 +809,9 @@ function ns.Route(state, plan)
     local rids = sortedIds(plan.buyRecipes)
     for _, rid in ipairs(rids) do
         local r = state.recipes[rid]
-        local l = { recipe = rid, name = r.name, n = 1, src = r.src.t, price = r.src.cost,
+        -- `pattern`: the pattern's item, so the stop's button buys it like any other line
+        local l = { recipe = rid, name = r.name, n = 1, src = r.src.t, price = r.src.cost, pattern = r.src.item,
+                    pname = r.src.item and (state.items[r.src.item] or {}).name or nil,
                     npc = r.src.t == "vendor" and r.src.npc or nil }
         if r.src.t == "ah" then ah[#ah + 1] = l elseif r.src.t == "vendor" then vend[#vend + 1] = l end
     end
@@ -916,9 +918,9 @@ function ns.Shopping(route)
     for _, node in ipairs(route or {}) do
         if node.kind == "ah" then
             for _, l in ipairs(node.lines or {}) do
-                local key = l.id or l.name
+                local key = l.id or l.pattern or l.name
                 if at[key] then out[at[key]].n = out[at[key]].n + l.n
-                else out[#out + 1] = { id = l.id, name = l.name, n = l.n }; at[key] = #out end
+                else out[#out + 1] = { id = l.id or l.pattern, name = l.pname or l.name, n = l.n }; at[key] = #out end
             end
         end
     end
@@ -969,10 +971,11 @@ function ns.Progress(route, state, have)
         if gets(node) then
             for k, l in ipairs(node.lines or {}) do
                 local e = { got = 0, left = l.n, done = false }
-                if l.id then
-                    local base = ((state and state.items[l.id]) or {}).bags or 0
-                    local gained = math.max(0, (have(l.id) or 0) - base - (used[l.id] or 0))
-                    used[l.id] = (used[l.id] or 0) + l.n
+                local id = l.id or l.pattern
+                if id then
+                    local base = ((state and state.items[id]) or {}).bags or 0
+                    local gained = math.max(0, (have(id) or 0) - base - (used[id] or 0))
+                    used[id] = (used[id] or 0) + l.n
                     e.got = math.min(l.n, gained)
                     e.left = l.n - e.got
                     e.done = e.left <= 0
@@ -1005,14 +1008,17 @@ function ns.Here(route, prog, place)
     return later
 end
 
--- What is left to buy of an auction stop, in its order: { { id, name, n, unit, line } }, and
--- how many lines the button cannot buy (a pattern: no item id).
+-- What is left to buy of an auction stop, in its order: { { id, name, n, unit, line, pattern } },
+-- and how many lines the button cannot buy (no item id). A pattern is bought by its item, as an
+-- auction of its own, not as a commodity.
 function ns.BuyQueue(node, p)
     local q, byHand = {}, 0
     for k, l in ipairs(node and node.lines or {}) do
         local e = p and p.lines[k]
         if not (e and e.done) then
-            if l.id then q[#q + 1] = { id = l.id, name = l.name, n = e and e.left or l.n, unit = l.price, line = k }
+            local id = l.id or l.pattern
+            if id then q[#q + 1] = { id = id, name = l.pname or l.name, n = e and e.left or l.n, unit = l.price, line = k,
+                                     pattern = l.pattern and not l.id or nil }
             else byHand = byHand + 1 end
         end
     end
@@ -1045,7 +1051,7 @@ function ns.VendorPlan(node, p, goods, money)
     for k, l in ipairs(node and node.lines or {}) do
         local e = p and p.lines[k]
         if not (e and e.done) then
-            local g = l.id and byId[l.id]
+            local g = byId[l.id or l.pattern or false]
             if not g or not g.price or g.price <= 0 then
                 out.missing = out.missing + 1
             else
@@ -1058,7 +1064,7 @@ function ns.VendorPlan(node, p, goods, money)
                 end
                 if stacks > 0 then
                     local units = stacks * stack
-                    out.buys[#out.buys + 1] = { index = g.index, id = l.id, name = l.name, stacks = stacks, stack = stack,
+                    out.buys[#out.buys + 1] = { index = g.index, id = l.id or l.pattern, name = l.name, stacks = stacks, stack = stack,
                         units = units, need = need, extra = math.max(0, units - need), cost = stacks * g.price, line = k }
                     out.cost = out.cost + stacks * g.price
                     left = left - stacks * g.price
