@@ -667,6 +667,21 @@ S.craftprofit.vendor = { spec = cpSpec({ vendor = { { 3, 50 }, { 5, 500, 5 } }, 
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Select(cpStop(ns, "STOP_VENDOR_BUY")) end }
 S.craftprofit.settings = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(5) end }
+-- A craft stop with its "Without this craft" tool, and the Settings card of the avoided crafts.
+S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i); break end end
+    end }
+S.craftprofit.skip = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        local ids = {}
+        for rid in pairs(ns.view.state.recipes) do ids[#ids + 1] = rid end
+        table.sort(ids, function(x, y) return tostring(x) < tostring(y) end)
+        for k = 1, math.min(2, #ids) do ns.SetSkip(ids[k], true) end
+        ns.Tab(5)
+    end }
 -- The window beside the auction house, alone and as a tab next to another module's.
 local function cpSide(ns, W, over)
     AuctionHouseFrame = nil -- the preview has no auction window to stand beside

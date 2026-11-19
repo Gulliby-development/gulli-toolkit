@@ -6,7 +6,8 @@
 --   skill, cap, level,                    -- the profession's skill, its rank cap, the character level
 --   items = { [id] = { name, ah, age, vend, buy, bags, bank, bop, mail, alts, altWho, gather, lots } },
 --   recipes = { [rid] = { name, skill = { orange, yellow, grey }, r = { [id] = n }, out, count,
---                         learned, src = { t = "trainer"|"vendor"|"ah"|"rep"|..., cost }, guess } },
+--                         learned, src = { t = "trainer"|"vendor"|"ah"|"rep"|..., cost }, guess,
+--                         skip } },  -- skip: the player does not want this craft in any route
 -- }
 -- Prices are in copper. Green starts halfway between yellow and grey, as in the game.
 
@@ -274,6 +275,8 @@ function ns.Thresholds(d, obs, grey, learned)
 end
 
 function ns.CanGet(r, P)
+    -- a craft the player took out of the routes is never used, learned or not
+    if r.skip then return false end
     if r.learned then return true end
     local t = r.src and r.src.t
     if t == "trainer" then return P.trainer end
@@ -516,8 +519,8 @@ function ns.Earn(state, P, own)
     end
     local known, cands = {}, {}
     for rid, r in pairs(state.recipes) do
-        if r.learned then known[rid] = true end
-        if r.out and (r.learned or (not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1])) then
+        if r.learned and not r.skip then known[rid] = true end
+        if r.out and not r.skip and (r.learned or (not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1])) then
             cands[#cands + 1] = rid
         end
     end
@@ -1092,7 +1095,7 @@ end
 
 local function learnedSet(state)
     local k = {}
-    for rid, r in pairs(state.recipes) do if r.learned then k[rid] = true end end
+    for rid, r in pairs(state.recipes) do if r.learned and not r.skip then k[rid] = true end end
     return k
 end
 
@@ -1148,7 +1151,7 @@ end
 -- Recipes not learned yet: where, the price, profit per craft and the craft that pays it back.
 function ns.Recipes(state, P)
     local known, st = {}, ns.Stock(state, P)
-    for rid, r in pairs(state.recipes) do if r.learned or ns.CanGet(r, P) then known[rid] = true end end
+    for rid, r in pairs(state.recipes) do if ns.CanGet(r, P) then known[rid] = true end end
     local rows = {}
     for rid, r in pairs(state.recipes) do
         if not r.learned and r.src then
@@ -1168,6 +1171,38 @@ function ns.Recipes(state, P)
         return a.name < b.name
     end)
     return rows
+end
+
+-- The crafts taken out of the routes, by name: { recipe, name, out }.
+function ns.Skipped(state)
+    local rows = {}
+    for rid, r in pairs(state and state.recipes or {}) do
+        if r.skip then rows[#rows + 1] = { recipe = rid, name = r.name, out = r.out, skip = true } end
+    end
+    table.sort(rows, function(a, b) if a.name ~= b.name then return a.name < b.name end return tostring(a.recipe) < tostring(b.recipe) end)
+    return rows
+end
+
+-- The recipes whose name has `text` in it (any case), names that start with it first; at most
+-- `max`. Second value: how many there are in all.
+function ns.FindRecipes(state, text, max)
+    local rows = {}
+    text = tostring(text or "")
+    if text == "" then return rows, 0 end
+    local low = text:lower()
+    for rid, r in pairs(state and state.recipes or {}) do
+        local name = tostring(r.name or "")
+        local at = name:lower():find(low, 1, true) or name:find(text, 1, true)
+        if at then rows[#rows + 1] = { recipe = rid, name = name, out = r.out, skip = r.skip and true or false, at = at } end
+    end
+    table.sort(rows, function(a, b)
+        if (a.at == 1) ~= (b.at == 1) then return a.at == 1 end
+        if a.name ~= b.name then return a.name < b.name end
+        return tostring(a.recipe) < tostring(b.recipe)
+    end)
+    local all = #rows
+    for i = all, (max or all) + 1, -1 do rows[i] = nil end
+    return rows, all
 end
 
 -- ---------- settings and recalculation ----------
