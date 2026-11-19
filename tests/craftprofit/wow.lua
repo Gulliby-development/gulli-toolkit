@@ -211,7 +211,7 @@ function Fake(spec)
     local prof = spec.prof
     -- the spellbook: { { name, skill, cap, icon } }
     GetProfessions = function() local o = {}; for i in ipairs(spec.spellbook or {}) do o[i] = i end; return unpack(o) end
-    GetProfessionInfo = function(i) local b = spec.spellbook[i]; return b[1], b[4] or "picon", b[2], b[3] end
+    GetProfessionInfo = function(i) local b = spec.spellbook[i]; return b[1], b[4] or "picon", b[2], b[3], 0, 0, b[5] end
     C_TradeSkillUI, GetTradeSkillLine, GetNumTradeSkills = nil, nil, nil
     if prof and not spec.classic then
         C_TradeSkillUI = {
@@ -297,6 +297,16 @@ function Fake(spec)
         ConfirmCommoditiesPurchase = function(id, n) W.calls[#W.calls + 1] = { "confirm", id, n } end,
         CancelCommoditiesPurchase = function() W.calls[#W.calls + 1] = { "cancel" } end,
     }
+    -- spec.itemAH: auctions of single items (patterns); W.itemLots: item id -> the results the search answers
+    W.itemLots = {}
+    if C_AuctionHouse and spec.itemAH then
+        local A = C_AuctionHouse
+        A.MakeItemKey = function(id) return { itemID = id } end
+        A.SendSearchQuery = function(key) W.calls[#W.calls + 1] = { "search", key.itemID } end
+        A.GetNumItemSearchResults = function(key) return #(W.itemLots[key.itemID] or {}) end
+        A.GetItemSearchResultInfo = function(key, i) return (W.itemLots[key.itemID] or {})[i] end
+        A.PlaceBid = function(auction, copper) W.calls[#W.calls + 1] = { "bid", auction, copper } end
+    end
     W.trainer = spec.trainer or {}
     GetNumTrainerServices = function() return #W.trainer end
     GetTrainerServiceInfo = function(i) return W.trainer[i][1], "available" end

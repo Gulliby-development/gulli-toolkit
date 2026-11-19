@@ -905,7 +905,9 @@ end
 
 -- The game lets an addon buy only inside a click, and both steps are protected: asking the
 -- price (StartCommoditiesPurchase) and buying (ConfirmCommoditiesPurchase). So each line takes
--- two clicks of the stop's button; nothing here runs from an event or a timer.
+-- two clicks of the stop's button; nothing here runs from an event or a timer. An item that is
+-- not a commodity (a pattern) takes two clicks too: the first searches its auctions
+-- (SendSearchQuery), the second buys the cheapest one out (PlaceBid with its buyout).
 local QUOTE_WAIT = 8
 ns.buy = { queue = {}, i = 1, phase = "done", byHand = 0, bought = 0, spent = 0 }
 
@@ -949,27 +951,76 @@ local function nextLine()
     b.phase = ns.BuyLine() and "idle" or "done"
 end
 
--- Not sold as a commodity (gear, a pattern): the button cannot buy it.
-local function byHand(id)
+-- Not sold as a commodity (gear, a pattern): bought as an auction of its own.
+local function notCommodity(id)
     local a = AH()
     if not a or not a.GetItemCommodityStatus then return false end
     local ok, status = pcall(a.GetItemCommodityStatus, id)
     return ok and status == 1
 end
+local function canBuyItems()
+    local a = AH()
+    return a and a.MakeItemKey and a.SendSearchQuery and a.GetNumItemSearchResults and a.GetItemSearchResultInfo
+        and a.PlaceBid and true or false
+end
+
+-- The cheapest auction of the line's item that has a buyout and is not the player's own: one
+-- that holds no more than the line needs first, by its whole price.
+function ns.ItemQuote(line)
+    local a = AH()
+    if not line or not line.key or not canBuyItems() then return nil end
+    local best
+    local ok, num = pcall(a.GetNumItemSearchResults, line.key)
+    for i = 1, ok and tonumber(num) or 0 do
+        local okr, r = pcall(a.GetItemSearchResultInfo, line.key, i)
+        if okr and type(r) == "table" and r.auctionID and (r.buyoutAmount or 0) > 0 and not r.containsOwnerItem then
+            local qty = math.max(1, r.quantity or 1)
+            local fits = qty <= line.n
+            local better = not best or (fits and not best.fits)
+                or (fits == best.fits and r.buyoutAmount < best.total)
+            if better then
+                best = { auction = r.auctionID, total = r.buyoutAmount, qty = qty, unit = r.buyoutAmount / qty, fits = fits }
+            end
+        end
+    end
+    return best
+end
+
+-- The answer to the search of the line's item: its price is known now, or nobody sells it.
+local function itemAnswer(final)
+    local b, line = ns.buy, ns.BuyLine()
+    if b.phase ~= "quote" or not line or not line.item then return end
+    local q = ns.ItemQuote(line)
+    if q then b.phase, b.quote = "ready", q
+    elseif final then b.phase, b.err = "idle", "BUY_ERR_SOLD" end
+end
 
 local function ask()
     local b, line = ns.buy, ns.BuyLine()
     if not line then b.phase = "done"; return end
-    if byHand(line.id) then
+    if (line.pattern or notCommodity(line.id)) and canBuyItems() then
+        local a = AH()
+        local okk, key = pcall(a.MakeItemKey, line.id)
+        line.item, line.key = true, okk and key or nil
+        b.phase, b.quote, b.err = "quote", nil, nil
+        local sort = { { sortOrder = 0, reverseSort = false } }
+        if not line.key or not pcall(a.SendSearchQuery, line.key, sort, true) then
+            b.phase, b.err = "idle", "BUY_ERR_START"
+            return
+        end
+        itemAnswer(false) -- the client may have the auctions already
+    elseif line.pattern or notCommodity(line.id) then
         line.hand = true
         b.byHand = b.byHand + 1
         nextLine()
         b.err = "BUY_ERR_HAND"
         return
+    else
+        b.phase, b.quote, b.err = "quote", nil, nil
+        local ok = pcall(AH().StartCommoditiesPurchase, line.id, line.n)
+        if not ok then b.phase, b.err = "idle", "BUY_ERR_START"; return end
     end
-    b.phase, b.quote, b.err = "quote", nil, nil
-    local ok = pcall(AH().StartCommoditiesPurchase, line.id, line.n)
-    if not ok then b.phase, b.err = "idle", "BUY_ERR_START"; return end
+    if b.phase ~= "quote" then return end
     local token = {}
     b.token = token
     C_Timer.After(QUOTE_WAIT, function()
@@ -988,7 +1039,9 @@ function ns.BuyClick()
     elseif b.phase == "ready" then
         local line = ns.BuyLine()
         b.phase = "buying"
-        local ok = pcall(AH().ConfirmCommoditiesPurchase, line.id, line.n)
+        local ok
+        if line.item then ok = pcall(AH().PlaceBid, b.quote.auction, b.quote.total)
+        else ok = pcall(AH().ConfirmCommoditiesPurchase, line.id, line.n) end
         if not ok then b.phase, b.err = "idle", "BUY_ERR_BUY" end
     end
     if ns.Refresh then ns.Refresh() end
@@ -1021,6 +1074,26 @@ function ns.OnBuy(event, a1, a2)
         end
     elseif event == "COMMODITY_PURCHASE_FAILED" then
         if b.phase == "buying" then b.phase, b.err = "idle", "BUY_ERR_BUY" end
+    elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
+        itemAnswer(true)
+    elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
+        local line = ns.BuyLine()
+        if b.phase == "buying" and line and line.item and b.quote and a1 == b.quote.auction then
+            b.spent = b.spent + b.quote.total
+            line.n = line.n - b.quote.qty
+            if line.n > 0 then
+                -- an auction held fewer than the line needs: the next click searches again
+                b.phase, b.quote = "idle", nil
+            else
+                b.bought = b.bought + 1
+                line.done = true
+                nextLine()
+            end
+        end
+    elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
+        -- the auction is gone or the game refused the bid
+        local line = ns.BuyLine()
+        if b.phase == "buying" and line and line.item then b.phase, b.quote, b.err = "idle", nil, "BUY_ERR_BUY" end
     end
     if ns.Refresh then ns.Refresh() end
 end
@@ -1123,6 +1196,49 @@ function ns.Craft(rid, n)
     return true
 end
 
+-- ---------- the profession window ----------
+-- Craft and CraftRecipe work only while the profession window is open, so a craft stop's first
+-- click opens it (C_TradeSkillUI.OpenTradeSkill with the profession's skill line from the
+-- spellbook) and shows the recipe once it is open; the next click crafts.
+
+ns.profOpen = false
+ns.pendingRecipe = nil
+
+local function skillLineOf(name)
+    if not name or not GetProfessions or not GetProfessionInfo then return nil end
+    local list = { GetProfessions() } -- may hold gaps (no second profession, no fishing)
+    for k = 1, 6 do
+        local i = list[k]
+        if i then
+            local n, _, _, _, _, _, line = GetProfessionInfo(i)
+            if n == name then return line end
+        end
+    end
+end
+
+-- The window of the current profession shows now.
+function ns.ProfessionShown()
+    if not ns.profOpen then return false end
+    local name = windowLine()
+    return name == nil or name == ns.char.current
+end
+
+-- The client can open the profession window from a click (else the stop keeps Make).
+function ns.CanOpenProfession()
+    return C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill and skillLineOf(ns.char.current) and true or false
+end
+
+-- Opens the current profession's window; `rid` is shown in it once it is open.
+function ns.OpenProfession(rid)
+    local line = skillLineOf(ns.char.current)
+    local T = C_TradeSkillUI
+    if not line or not T or not T.OpenTradeSkill then return false end
+    local ok, opened = pcall(T.OpenTradeSkill, line)
+    if not ok or opened == false then return false end
+    ns.pendingRecipe = rid
+    return true
+end
+
 -- ---------- the run log ----------
 
 function ns.StartRun()
@@ -1197,12 +1313,13 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.char.profs = ns.char.profs or {}
         ns.char.log = ns.char.log or {}
         for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
-        ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
+        ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
                           "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
                           "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
                           "AUCTION_ITEM_LIST_UPDATE", "MERCHANT_CLOSED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
                           "MAIL_SHOW", "MAIL_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
                           "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
+                          "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
                           "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
@@ -1224,6 +1341,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "MAIL_SHOW" then ns.atMail = true; ns.Arrive("mail"); return end
     if event == "MAIL_CLOSED" then ns.atMail = false; ns.Arrive(nil); return end
     if event == "TRAINER_SHOW" then learnTrainer(); return end
+    if event == "TRADE_SKILL_CLOSE" then
+        ns.profOpen, ns.pendingRecipe = false, nil
+        if ns.Refresh then ns.Refresh() end
+        return
+    end
+    if event == "TRADE_SKILL_SHOW" then ns.profOpen = true end
     if event == "MAIL_INBOX_UPDATE" then snapshotMail(); return end
     if event == "AUCTION_HOUSE_SHOW" then ns.atAH = true; ns.Arrive("ah"); return end
     if event == "AUCTION_HOUSE_CLOSED" then
@@ -1234,6 +1357,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         return
     end
     if event:sub(1, 10) == "COMMODITY_" and event ~= "COMMODITY_SEARCH_RESULTS_UPDATED" then ns.OnBuy(event, a1, a2); return end
+    if event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "AUCTION_HOUSE_PURCHASE_COMPLETED"
+        or event == "AUCTION_HOUSE_SHOW_ERROR" then ns.OnBuy(event, a1, a2); return end
     if event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "AUCTION_ITEM_LIST_UPDATE" then ns.OnLots(); return end
     -- the run's progress follows the bags at once; the plan itself only goes stale
     if event == "BAG_UPDATE_DELAYED" and ns.Refresh then ns.Refresh() end
@@ -1244,6 +1369,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if event ~= "BAG_UPDATE_DELAYED" then
             local name = ns.ScanProfession()
             if name and event == "TRADE_SKILL_SHOW" then ns.char.current = name end
+            -- the window a craft stop opened: show its recipe there
+            if ns.pendingRecipe and ns.profOpen then
+                local rid = ns.pendingRecipe
+                ns.pendingRecipe = nil
+                ns.OpenRecipe(rid)
+            end
         end
         ns.Rebuild(false, "event")
     end)

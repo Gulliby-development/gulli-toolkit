@@ -1598,7 +1598,7 @@ test("progress: a stop is done once its items are in the bags, in the stops' ord
     bags = 40
     p = c.Progress(route, st, have)
     eq(p[2].lines[1].done, true)
-    eq(p[2].done, false, "a pattern has no item to count: never done by itself")
+    eq(p[2].done, false, "a line with no item to count is never done by itself")
     eq(p[3].done, false); eq(p[4].done, false)
     -- where the player stands: the first stop of the open place that is not done
     eq(c.Here(route, p, nil), nil)
@@ -1763,6 +1763,103 @@ test("an item that is not a commodity is left to the player; no purchase API, no
     n.buy.sig = nil
     a = n.StopAction(ah)
     eq(a.primary[2], nil); eq(a.hint, n.L.HINT_AH_NOAPI)
+end)
+
+test("a pattern on the auction is bought by clicks: search, then the cheapest buyout", function()
+    local n = game({ itemAH = true, handOnly = { [6] = true } })
+    n.Toggle(); n.Calculate()
+    -- the route's pattern line carries the pattern's item and its name
+    n.Data.src[104] = { "v", 6, "Ally Gal|A" }
+    n.Data.spell[104] = { 150, 160, 170 }
+    n.db.vendor[6] = 9000
+    local st = n.State()
+    eq(st.recipes[104].src.t, "ah")
+    local line = { recipe = 104, name = "Thing", n = 1, src = "ah", price = 500, pattern = 6, pname = "Pattern: Thing" }
+    n.view.route = { { kind = "ah", title = "STOP_AH_BUY", index = 1, sig = "p", cost = 500, lines = { line } } }
+    local q, hand = n.BuyQueue(n.view.route[1], nil)
+    eq(#q, 1); eq(hand, 0); eq(q[1].id, 6); eq(q[1].pattern, true); eq(q[1].name, "Pattern: Thing")
+    eq(n.Shopping(n.view.route)[1].name, "Pattern: Thing", "the Auctionator list searches the pattern")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    n.Select(1)
+    W.calls = {}
+    -- first click: the search, no purchase
+    W.Click(n.ui.act1)
+    eq(W.calls[1][1], "search"); eq(W.calls[1][2], 6); eq(#W.calls, 1)
+    eq(n.buy.phase, "quote")
+    -- the answer: the player's own auction and a bid-only one never count, the cheapest buyout wins
+    W.itemLots[6] = {
+        { auctionID = 11, buyoutAmount = 700, quantity = 1 },
+        { auctionID = 12, buyoutAmount = 300, quantity = 1, containsOwnerItem = true },
+        { auctionID = 13, quantity = 1 },
+        { auctionID = 14, buyoutAmount = 450, quantity = 1 },
+    }
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = 6 })
+    eq(n.buy.phase, "ready"); eq(n.buy.quote.auction, 14); eq(n.buy.quote.total, 450)
+    local a = n.StopAction(1)
+    assert(a.primary[2] and a.primary[1]:find("Pattern: Thing", 1, true), a.primary[1])
+    -- second click: the buyout of that auction
+    W.Click(n.ui.act1)
+    eq(W.calls[2][1], "bid"); eq(W.calls[2][2], 14); eq(W.calls[2][3], 450)
+    W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 14)
+    eq(n.buy.bought, 1); eq(n.buy.spent, 450); eq(n.buy.phase, "done")
+    -- nobody sells it: told, and the button asks again
+    n.view.route[1].sig = "p2"
+    n.Refresh()
+    W.itemLots[6] = {}
+    W.Click(n.ui.act1)
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = 6 })
+    eq(n.buy.phase, "idle"); eq(n.StopAction(1).hint, n.L.BUY_ERR_SOLD)
+    -- the game refuses the bid
+    W.itemLots[6] = { { auctionID = 21, buyoutAmount = 500, quantity = 1 } }
+    W.Click(n.ui.act1)
+    W.Click(n.ui.act1)
+    W.Fire("AUCTION_HOUSE_SHOW_ERROR")
+    eq(n.StopAction(1).hint, n.L.BUY_ERR_BUY); eq(n.buy.bought, 0)
+end)
+
+test("a pattern a vendor sells is bought with the vendor stop's click", function()
+    local n = game({ vendor = { { 6, 6000 } } })
+    n.Toggle(); n.Calculate()
+    local line = { recipe = 104, name = "Thing", n = 1, src = "vendor", price = 6000, pattern = 6 }
+    local node = { kind = "vendor", title = "STOP_VENDOR_BUY", index = 1, sig = "v", cost = 6000, lines = { line } }
+    local plan = n.VendorPlan(node, nil, { { index = 1, id = 6, price = 6000, stack = 1 } }, 10000)
+    eq(#plan.buys, 1); eq(plan.buys[1].id, 6); eq(plan.missing, 0)
+    -- bought: the stop counts it from the bags
+    local st = { items = { [6] = { bags = 0 } } }
+    local p = n.Progress({ node }, st, function(id) return id == 6 and 1 or 0 end)
+    eq(p[1].done, true)
+end)
+
+test("a craft stop opens the profession window first, then crafts", function()
+    local n = game({ spellbook = { { "Tailoring", SKILL, 225, "picon", 197 } } })
+    local calls = {}
+    C_TradeSkillUI.OpenTradeSkill = function(line) calls[#calls + 1] = { "open", line }; return true end
+    C_TradeSkillUI.OpenRecipe = function(rid) calls[#calls + 1] = { "recipe", rid } end
+    C_TradeSkillUI.CraftRecipe = function(rid, k) calls[#calls + 1] = { "craft", rid, k } end
+    n.Toggle(); n.Calculate()
+    local cs
+    for i, node in ipairs(n.view.route) do if node.kind == "craft" then cs = cs or i end end
+    assert(cs, kinds(n.view.route))
+    n.Select(cs)
+    -- the window is closed: the button opens it, it does not craft
+    W.Fire("TRADE_SKILL_CLOSE")
+    local a = n.StopAction(cs)
+    eq(a.primary[1], n.L.OPEN_PROF_BTN:format("Tailoring")); eq(a.hint, n.L.HINT_CRAFT_OPEN)
+    assert(a.tools[1] and a.tools[1].skip, "Without this craft stays")
+    W.Click(n.ui.act1)
+    eq(calls[1][1], "open"); eq(calls[1][2], 197); eq(#calls, 1)
+    -- the window opens: the recipe shows in it and the button crafts
+    W.Fire("TRADE_SKILL_SHOW")
+    W.RunTimers()
+    eq(calls[2][1], "recipe")
+    a = n.StopAction(cs)
+    assert(a.primary[1]:find(n.L.MAKE_N:match("^[^%%]*"), 1, true) or a.primary[1]:find("%d"), a.primary[1])
+    eq(a.hint, n.L.HINT_CRAFT)
+    W.Click(n.ui.act1)
+    eq(calls[3][1], "craft")
+    -- closed again: back to Open
+    W.Fire("TRADE_SKILL_CLOSE")
+    eq(n.StopAction(cs).primary[1], n.L.OPEN_PROF_BTN:format("Tailoring"))
 end)
 
 test("the vendor stop buys everything in one click, whole stacks", function()
