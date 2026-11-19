@@ -64,6 +64,8 @@ ns.OTHERS = {
     { name = "XPForever", addons = { "XPForever" }, same = { XP = true } },
     { name = "XPBarIsland", addons = { "XPBarIsland" }, same = { XP = true } },
     { name = "ForeverXP", addons = { "ForeverChallengeXP" }, same = { XP = true } },
+    -- Fishing helpers.
+    { name = "Obvious Fishing", addons = { "ObviousFishing" }, same = { Fishing = true } },
     -- WoW Forever helpers.
     { name = "Legacy Navigator", addons = { "LegacyNavigator" }, same = { Legacy = true } },
     { name = "Waylaid Value", addons = { "WaylaidValue" }, same = { Crates = true } },
