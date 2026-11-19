@@ -42,10 +42,23 @@ end
 
 local TAG = { always = "TAG_ALWAYS", unusable = "TAG_UNUSABLE" }
 
+-- An item of the "always sell" list may not be loaded yet: ask for it and redraw when it comes.
+local waiting = {}
 local function itemName(id)
     local name, _, quality, _, _, _, _, _, _, icon = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
-    return name or ("item:" .. id), quality or 1, icon
+    if not name then
+        waiting[id] = true
+        if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+    end
+    return name or "...", quality or 1, icon
 end
+local loader = CreateFrame("Frame")
+loader:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+loader:SetScript("OnEvent", function(_, _, id)
+    if not (id and waiting[id]) then return end
+    waiting[id] = nil
+    if ns.Refresh then ns.Refresh() end
+end)
 
 local function fillRow(r, e)
     r.entry = e
