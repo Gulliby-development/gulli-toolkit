@@ -389,7 +389,78 @@ local function trainerWho(rid)
     t = t and t[UnitFactionGroup and UnitFactionGroup("player") or ""]
     if not t then return nil end
     local city = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(t[2])
-    return { (type(city) == "string" and city ~= "") and (t[1] .. ", " .. city) or t[1] }
+    return { (type(city) == "string" and city ~= "") and (t[1] .. ", " .. city) or t[1] }, { t[1] }
+end
+
+-- ---------- where an NPC stands ----------
+
+-- Data.npc has the place of every vendor and trainer the data names (area id, x, y in map
+-- percent). The area's name comes from the game, so it shows in the client's language.
+local MAP = C_Map or {}
+local KALIMDOR, EASTERN = 1414, 1415
+function ns.NpcSpot(name)
+    local d = name and ns.Data and ns.Data.npc and ns.Data.npc[name]
+    if not d then return nil end
+    local zone = MAP.GetAreaInfo and MAP.GetAreaInfo(d[1])
+    if type(zone) ~= "string" or zone == "" then zone = nil end
+    return { who = name, area = d[1], zone = zone, x = d[2], y = d[3], label = zone and (name .. ", " .. zone) or name }
+end
+
+-- The one of `names` to go to: the one in the player's zone, else the first with a known place,
+-- else only the first name. Returns { who, label, [area, zone, x, y] }.
+function ns.PickNpc(names)
+    if type(names) ~= "table" or not names[1] then return nil end
+    local id = MAP.GetBestMapForUnit and MAP.GetBestMapForUnit("player")
+    local info = id and MAP.GetMapInfo and MAP.GetMapInfo(id)
+    local here = info and info.name
+    local first
+    for _, name in ipairs(names) do
+        local s = ns.NpcSpot(name)
+        if s and s.zone then
+            if here and s.zone == here then return s end
+            first = first or s
+        end
+    end
+    return first or { who = names[1], label = names[1] }
+end
+
+-- A map pin on a spot of ns.PickNpc, through the world map's own waypoint (and TomTom's arrow
+-- when it is installed). With `open` the world map opens there too. Returns true when it is set.
+local mapOfZone
+function ns.SetPin(spot, open)
+    if not (spot and spot.zone and spot.x and MAP.SetUserWaypoint and UiMapPoint and MAP.GetMapChildrenInfo) then return false end
+    if not mapOfZone then
+        mapOfZone = {}
+        for _, c in ipairs({ KALIMDOR, EASTERN }) do
+            for _, m in ipairs(MAP.GetMapChildrenInfo(c, nil, true) or {}) do
+                if m.name and not mapOfZone[m.name] then mapOfZone[m.name] = m.mapID end
+            end
+        end
+    end
+    local id = mapOfZone[spot.zone]
+    if not id then return false end
+    MAP.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(id, spot.x / 100, spot.y / 100))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+    if TomTom and TomTom.AddWaypoint then
+        TomTom:AddWaypoint(id, spot.x / 100, spot.y / 100, { title = spot.who, from = CALLER })
+    end
+    if open then ns.OpenMap(id) end
+    return true
+end
+
+-- Opens the world map on a map id. The map can be taken out of combat only.
+function ns.OpenMap(id)
+    if not id or (InCombatLockdown and InCombatLockdown()) then return false end
+    if OpenWorldMap then
+        OpenWorldMap(id)
+    elseif WorldMapFrame and WorldMapFrame.SetMapID and ShowUIPanel then
+        ShowUIPanel(WorldMapFrame)
+        WorldMapFrame:SetMapID(id)
+    else
+        return false
+    end
+    if ns.BehindMap then ns.BehindMap() end
+    return true
 end
 
 -- ---------- reputation ----------
@@ -464,10 +535,11 @@ end
 local function recipeSource(state, rid, rec, skill)
     -- a recipe the trainer teaches is learned there, even when a vendor also sells its pattern
     local cost = rec.name and ns.db.trainer[rec.name]
-    local who = rid ~= rec.out and trainerWho(rid) or nil
-    if cost then return { t = "trainer", cost = cost, est = false, who = who } end
+    local who, npc
+    if rid ~= rec.out then who, npc = trainerWho(rid) end
+    if cost then return { t = "trainer", cost = cost, est = false, who = who, npc = npc } end
     local train = ns.Data and ns.Data.train and rid ~= rec.out and ns.Data.train[rid]
-    if train then return { t = "trainer", cost = train, est = false, who = who } end
+    if train then return { t = "trainer", cost = train, est = false, who = who, npc = npc } end
     local D = ns.Data and ns.Data.src
     local d = D and rid ~= rec.out and D[rid]
     if d then
@@ -485,7 +557,8 @@ local function recipeSource(state, rid, rec, skill)
         -- a vendor Wowhead names without a faction ("|AH") or with no name at all sells to both
         if d[1] == "v" and (#who > 0 or #d == 2) then
             local seen = ns.db.vendor[item]
-            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = #who > 0 and who or nil }
+            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = #who > 0 and who or nil,
+                    npc = #who > 0 and who or nil }
         end
         if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
         src = src or { t = d[1] == "q" and "quest" or "drop" }

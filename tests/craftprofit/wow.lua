@@ -172,7 +172,22 @@ function Fake(spec)
             return f and { name = f[1], reaction = f[2] }
         end,
     }
-    C_Map = { GetAreaInfo = function(id) return ({ [1497] = "Undercity", [1519] = "Stormwind City" })[id] end }
+    -- W.maps: map id -> { name, parent }; W.here: the player's map; W.pins: waypoints set
+    W.maps = { [84] = { "Stormwind City", 1415 }, [90] = { "Undercity", 1415 }, [1434] = { "Stranglethorn Vale", 1415 } }
+    W.here, W.pins, W.mapOpened = spec.here, {}, nil
+    C_Map = {
+        GetAreaInfo = function(id) return ({ [1497] = "Undercity", [1519] = "Stormwind City", [33] = "Stranglethorn Vale" })[id] end,
+        GetBestMapForUnit = function() return W.here end,
+        GetMapInfo = function(id) local m = W.maps[id]; return m and { mapID = id, name = m[1], parentMapID = m[2] } end,
+        GetMapChildrenInfo = function(parent)
+            local out = {}
+            for id, m in pairs(W.maps) do if m[2] == parent then out[#out + 1] = { mapID = id, name = m[1] } end end
+            return out
+        end,
+        SetUserWaypoint = function(p) W.pins[#W.pins + 1] = p end,
+    }
+    UiMapPoint = { CreateFromCoordinates = function(id, x, y) return { map = id, x = x, y = y } end }
+    OpenWorldMap = function(id) W.mapOpened = id end
     ITEM_REQ_REPUTATION = "Requires %s - %s"
     FACTION_STANDING_LABEL4, FACTION_STANDING_LABEL5, FACTION_STANDING_LABEL6 = "Neutral", "Friendly", "Honored"
     if spec.auctionator ~= false then

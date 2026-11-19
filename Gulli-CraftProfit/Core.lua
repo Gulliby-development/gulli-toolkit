@@ -809,7 +809,8 @@ function ns.Route(state, plan)
     local rids = sortedIds(plan.buyRecipes)
     for _, rid in ipairs(rids) do
         local r = state.recipes[rid]
-        local l = { recipe = rid, name = r.name, n = 1, src = r.src.t, price = r.src.cost }
+        local l = { recipe = rid, name = r.name, n = 1, src = r.src.t, price = r.src.cost,
+                    npc = r.src.t == "vendor" and r.src.npc or nil }
         if r.src.t == "ah" then ah[#ah + 1] = l elseif r.src.t == "vendor" then vend[#vend + 1] = l end
     end
     if #ah > 0 then push({ kind = "ah", title = "STOP_AH_BUY", lines = ah, cost = total(ah) }) end
@@ -844,7 +845,7 @@ function ns.Route(state, plan)
             local r = state.recipes[rid]
             if r.src.t == "trainer" and first[rid] == i then
                 ls[#ls + 1] = { recipe = rid, name = r.name, n = 1, src = "trainer", price = r.src.cost,
-                                 who = r.src.who and r.src.who[1] }
+                                 who = r.src.who and r.src.who[1], npc = r.src.npc }
             end
         end
         if #ls > 0 then

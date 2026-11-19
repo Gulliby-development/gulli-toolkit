@@ -617,6 +617,27 @@ S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofi
         for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
     end }
 
+-- A vendor stop whose patterns name who sells them, with Show on map (`trainer`: the trainer stop).
+local function cpPin(trainer)
+    return function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        ns.Data.npc["Quartermaster Miranda Breechlock"] = { 33, 50, 50 }
+        ns.view.route = {
+            { kind = "vendor", title = "STOP_VENDOR_BUY", index = 1, sig = "v", cost = 9000, lines = {
+                { recipe = 104, name = "Pattern: Black Swashbuckler's Shirt", n = 1, src = "vendor", price = 6000, npc = { "Narkk" } },
+                { recipe = 104, name = "Pattern: Crimson Silk Vest", n = 1, src = "vendor", price = 3000,
+                  npc = { "Quartermaster Miranda Breechlock" } },
+                { id = 5, name = "Fine Thread", n = 6, src = "vendor", price = 100 } } },
+            { kind = "trainer", title = "STOP_TRAINER", index = 2, sig = "t", cost = 5000, at = 175, lines = {
+                { recipe = 12052, name = "Shadoweave Pants", n = 1, src = "trainer", price = 5000, npc = { "Jalane Ayrole" } } } },
+        }
+        ns.atVendor = false
+        ns.Refresh(); ns.Select(trainer and 2 or 1)
+    end
+end
+S.craftprofit.pin = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, open = cpPin() }
+S.craftprofit.pintrainer = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, open = cpPin(true) }
+
 -- The run with nothing in the bags, so it has an auction stop of several lines.
 local function cpSpec(extra)
     local spec = {}

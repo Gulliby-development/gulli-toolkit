@@ -1956,4 +1956,67 @@ test("a recipe only one trainer teaches names that trainer and the city", functi
     for rid in pairs(n.TRAINERS) do assert(n.Data.train[rid], "trainer recipe " .. rid) end
 end)
 
+test("a vendor or trainer line names who to go to, and Show on map pins the map there", function()
+    local n = game({ prof = { name = "Tailoring", skill = 176, cap = 225, recipes = {
+        { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+        { id = 12052, name = "Shadoweave Pants", learned = false, out = 4, r = { [2] = 2 } },
+        { id = 104, name = "Pattern Thing", learned = false, out = 7, r = { [1] = 1 } },
+    } }, trainer = {} })
+    -- the data knows where the named NPCs stand
+    local spot = n.NpcSpot("Jalane Ayrole")
+    eq(spot.zone, "Stormwind City"); eq(spot.label, "Jalane Ayrole, Stormwind City"); assert(spot.x > 0 and spot.y > 0)
+    eq(n.NpcSpot("Nobody At All"), nil)
+    for rid in pairs(n.TRAINERS) do
+        for _, t in pairs(n.TRAINERS[rid]) do assert(n.Data.npc[t[1]], "no place for " .. t[1]) end
+    end
+    -- the sources carry the names: the trainer's, and the pattern's vendors of this faction
+    eq(n.State().recipes[12052].src.npc[1], "Jalane Ayrole")
+    n.Data.src[104] = { "v", 6, "Narkk|AH", "Jalane Ayrole|A" }
+    n.Data.train[104] = nil
+    local src = n.State().recipes[104].src
+    eq(src.t, "vendor"); eq(src.npc[1], "Narkk"); eq(src.npc[2], "Jalane Ayrole")
+    -- the first with a place, the one in the player's zone when there is one, a bare name else
+    eq(n.PickNpc(src.npc).who, "Narkk")
+    W.here = 84
+    eq(n.PickNpc(src.npc).who, "Jalane Ayrole")
+    W.here = nil
+    local bare = n.PickNpc({ "Nobody At All" })
+    eq(bare.label, "Nobody At All"); eq(bare.zone, nil)
+    eq(n.SetPin(bare, true), false, "no place, no pin"); eq(#W.pins, 0)
+    -- the stops: a tool with the pin of the first open line; the auction stop has none
+    n.Toggle(); n.Calculate()
+    n.view.route = {
+        { kind = "vendor", title = "STOP_VENDOR_BUY", index = 1, sig = "v",
+          lines = { { recipe = 104, name = "Pattern Thing", n = 1, src = "vendor", price = 100, npc = src.npc } } },
+        { kind = "trainer", title = "STOP_TRAINER", index = 2, sig = "t",
+          lines = { { recipe = 8489, name = "Plain", n = 1, src = "trainer", price = 100 },
+                    { recipe = 12052, name = "Shadoweave Pants", n = 1, src = "trainer", price = 100, npc = { "Jalane Ayrole" } } } },
+        { kind = "trainer", title = "STOP_TRAINER", index = 3, sig = "t2",
+          lines = { { recipe = 8489, name = "Plain", n = 1, src = "trainer", price = 100 } } },
+    }
+    local a = n.StopAction(1)
+    eq(a.tools[1][1], n.L.SHOW_ON_MAP); eq(a.tools[1].pin.who, "Narkk")
+    a.tools[1][2]()
+    eq(#W.pins, 1); eq(W.pins[1].map, 1434); eq(W.mapOpened, 1434)
+    assert(math.abs(W.pins[1].x - n.Data.npc["Narkk"][2] / 100) < 1e-9)
+    a = n.StopAction(2)
+    eq(a.tools[1].pin.who, "Jalane Ayrole")
+    a.tools[1][2]()
+    eq(W.pins[2].map, 84); eq(W.mapOpened, 84)
+    eq(#n.StopAction(3).tools, 0, "an ordinary trainer is anyone's: no pin")
+    -- in a fight the pin is set but the map stays shut
+    W.combat, W.mapOpened = true, nil
+    eq(n.SetPin(spot, true), true); eq(W.mapOpened, nil)
+    W.combat = nil
+    -- every vendor the data names for a pattern is a string the place table can be asked for
+    local known, all = 0, 0
+    for _, d in pairs(n.Data.src) do
+        for i = 3, #d do
+            all = all + 1
+            if n.Data.npc[d[i]:match("^(.-)|")] then known = known + 1 end
+        end
+    end
+    assert(all > 100 and known > all * 0.9, "places for " .. known .. " of " .. all)
+end)
+
 W.finish()
