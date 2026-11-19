@@ -39,7 +39,9 @@ function ns.ShowLink(url, title)
         linkBox = f
         f:SetSize(440, 104)
         f:SetPoint("CENTER")
-        f:SetFrameStrata("DIALOG")
+        -- over the hub and every window: they are in DIALOG and raise their own children
+        f:SetFrameStrata("FULLSCREEN_DIALOG")
+        if f.SetToplevel then f:SetToplevel(true) end
         f:EnableMouse(true)
         S.Box(f, S.SOLID, S.EDGE, S.R_LG)
         f.title = S.Text(f, 12, S.GOLD)
@@ -80,6 +82,7 @@ function ns.ShowLink(url, title)
     f.title:SetText(title and (L.WOWHEAD .. " " .. S.DOT .. " " .. title) or L.WOWHEAD)
     f.edit:SetText(url)
     f:Show()
+    if f.Raise then f:Raise() end
     if f.edit.SetFocus then f.edit:SetFocus() end
     if f.edit.HighlightText then f.edit:HighlightText() end
     return f
