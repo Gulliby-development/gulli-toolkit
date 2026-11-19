@@ -2019,4 +2019,44 @@ test("a vendor or trainer line names who to go to, and Show on map pins the map 
     assert(all > 100 and known > all * 0.9, "places for " .. known .. " of " .. all)
 end)
 
+test("a recipe of a specialization is offered only with that specialization", function()
+    local recipes = {
+        { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+        { id = 12899, name = "Gnomish Shrink Ray", learned = false, out = 4, r = { [2] = 2 } },
+        { id = 12716, name = "Goblin Mortar", learned = false, out = 6, r = { [2] = 2 } },
+        { id = 12897, name = "Gnomish Goggles", learned = false, out = 7, r = { [1] = 1 } },
+    }
+    local n = game({ prof = { name = "Engineering", skill = 210, cap = 225, recipes = recipes }, trainer = {} })
+    local st, P = n.State(), n.Prefs({})
+    -- no specialization: neither branch, and the Recipes tab says why
+    for _, rid in ipairs({ 12899, 12716, 12897 }) do
+        eq(st.recipes[rid].src.t, "spec", "recipe " .. rid); eq(n.CanGet(st.recipes[rid], P), false)
+    end
+    eq(st.recipes[12899].src.text, "Gnomish Engineer")
+    local listed
+    for _, row in ipairs(n.Recipes(st, P)) do if row.recipe == 12716 then listed = row.src end end
+    eq(listed, "spec")
+    -- the Gnomish Engineer: its recipes come back, the goblin ones stay out
+    W.spells[20219] = true
+    st = n.State()
+    eq(st.recipes[12899].src.t, "trainer"); eq(n.CanGet(st.recipes[12899], P), true)
+    eq(st.recipes[12716].src.t, "spec")
+    -- a client that names the spell otherwise: a learned recipe of the branch shows it too
+    W.spells = {}
+    recipes[4].learned = true
+    n = game({ prof = { name = "Engineering", skill = 210, cap = 225, recipes = recipes }, trainer = {} })
+    st = n.State()
+    eq(st.recipes[12899].src.t, "trainer", "knows Gnomish Goggles, so is a Gnomish Engineer")
+    eq(st.recipes[12716].src.t, "spec")
+    eq(st.recipes[12897].learned, true)
+    -- every recipe of the table is one WoW Forever has, and in one branch only
+    local seen = {}
+    for spec, list in pairs(n.SPECS) do
+        for _, rid in ipairs(list) do
+            assert((n.Data.spell[rid] or n.Data.train[rid]) and not n.Data.gone[rid], "recipe " .. rid .. " of " .. spec)
+            assert(not seen[rid], "recipe " .. rid .. " twice"); seen[rid] = true
+        end
+    end
+end)
+
 W.finish()

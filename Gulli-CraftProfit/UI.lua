@@ -1118,6 +1118,7 @@ local function listRows(which)
             if x.who then
                 tip[#tip + 1] = { (x.src == "trainer" and L.TIP_TAUGHT or L.TIP_VENDOR):format(table.concat(x.who, ", ")), nil, nil, nil, true }
             end
+            if x.src == "spec" then tip[#tip + 1] = { L.TIP_SPEC:format(x.text or L.WHERE_spec), nil, nil, nil, true } end
             if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
             if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
