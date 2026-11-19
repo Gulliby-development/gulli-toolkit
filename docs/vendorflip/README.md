@@ -1,0 +1,67 @@
+<p align="center"><img src="icon.png" alt="" width="96"></p>
+
+<h1 align="center">Gulli-VendorFlip</h1>
+
+<p align="center"><b>Buys what the auction house sells for less than a vendor pays, so you can sell it on.</b></p>
+
+<p align="center">
+  <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=VendorFlip-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
+  <img src="https://img.shields.io/badge/WoW-Forever-17302d?style=for-the-badge" alt="For WoW Forever">
+  <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
+</p>
+
+<p align="center"><img src="window.png" alt="The deals" width="380"> <img src="history.png" alt="The History tab" width="380"></p>
+
+---
+
+Players often put items on the auction house for less than a vendor pays for them. Vendor Flip finds them for you. Stand at the auction house, click down the list, then sell everything at the next vendor.
+
+## Features
+
+- **A scan every minute.** While the auction house is open, Vendor Flip looks at the whole market once a minute. The line at the top tells you when the next scan comes. The round arrow scans now.
+- **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many, what the auction house wants, what a vendor pays and your gain. The best gain is on top.
+- **Buy with clicks.** Each line has its own button. The big button at the bottom always buys the top line, so you can press it again and again.
+- **Two clicks for goods, one for gear.** Ore, herbs, leather and other goods are sold in stacks: the first click asks the auction house for the real price, the second buys. Gear is one lot, so one click buys it.
+- **Never at a loss.** If the price went up since the scan and a vendor would now pay less, the line says **Too dear** and nothing is bought. It only buys out: it never bids.
+- **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either.
+- **It waits for you.** When you search the auction house yourself, the scan waits, so your own results stay on screen.
+- **Sell at the vendor.** At any vendor a notice offers to sell what you bought here, with what the vendor pays. Turn on **Sell at once at a vendor** to sell without the notice. It sells only what Vendor Flip bought, never your own items and never items you protected in the toolkit.
+- **Keep one.** Right-click a line in the History tab to keep that item: it is not sold.
+- **History.** Everything you bought to sell, with what you paid and what the vendor pays, green once it is sold. Today, 7 days or all, with your gain on top.
+- **Beside the auction house.** The window opens beside the auction house. When Waylaid Crates or Craft Profit have work there too, the windows share that place as tabs. The number on the tab is how many lines are left to buy.
+
+## Install
+
+**With [Runeloader](https://github.com/Gulliby-development/runeloader)** (Android): install **Gulli Toolkit**. Vendor Flip comes with it.
+
+**By hand:** download `Gulli-VendorFlip-<version>-forever.zip` from the [releases](https://github.com/Gulliby-development/gulli-toolkit/releases) and unpack it into `Interface/AddOns`. Then type `/reload`.
+
+Vendor Flip works on its own. With the Gulli Toolkit hub it also shows in `/gulli`.
+
+## How to use it
+
+1. Go to the auction house. Vendor Flip opens beside it and scans.
+2. Press the big button, or a line's own button, until the list is done. Goods take two presses.
+3. Go to a vendor and press **Sell** on the notice.
+
+Type `/gvf` to open the window anywhere, `/gvf scan` to scan now.
+
+## FAQ
+
+<details>
+<summary><b>Why two presses for goods?</b></summary>
+
+The game lets an addon ask for a price and buy at the auction house only when you press a button yourself, for each step. So goods take two presses: one for the price, one to buy. It never buys without your press.
+</details>
+
+<details>
+<summary><b>Why not a scan every few seconds?</b></summary>
+
+The auction house limits how many questions an addon may ask. A scan a minute stays well inside the limit and leaves room for your own searches.
+</details>
+
+<details>
+<summary><b>Does it use Auctionator?</b></summary>
+
+No. It reads the auction house itself, and the vendor price comes from the game.
+</details>

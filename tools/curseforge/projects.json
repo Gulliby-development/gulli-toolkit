@@ -7,6 +7,7 @@
     "Crates": { "id": 1813374, "optional": ["auctionator"] },
     "DungeonPrep": { "id": 1813371 },
     "GroupBuffs": { "id": 1813373 },
-    "WorthIt": { "id": null }
+    "WorthIt": { "id": null },
+    "VendorFlip": { "id": null }
   }
 }

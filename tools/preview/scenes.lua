@@ -1372,5 +1372,79 @@ S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show
     lead = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.StartGuide(); ns.Refresh() end },
     settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(2) end },
     empty = { spec = { level = 60, bags = { 18, 18, 18, 18 } }, open = function(ns) ns.Toggle() end } }
+-- Vendor Flip: the market after a scan, the belt bought, a price asked for the copper ore.
+local VF_ICONS = { [2770] = "INV_Ore_Copper_01", [3300] = "INV_Misc_Bone_08", [5001] = "INV_Belt_03", [5002] = "INV_Misc_Cape_01",
+    [2318] = "INV_Misc_LeatherScrap_03", [765] = "INV_Misc_Herb_10", [2449] = "INV_Misc_Herb_07", [5003] = "INV_Staff_02",
+    [5004] = "INV_Gauntlets_04", [5005] = "INV_Bracer_07", [4234] = "INV_Misc_LeatherScrap_07", [2862] = "INV_Stone_SharpeningStone_01",
+    [5006] = "INV_Helmet_08", [5007] = "INV_Misc_Cape_02", [3667] = "INV_Misc_Ribbon_01", [4304] = "INV_Misc_Pelt_Wolf_01" }
+local function vfSpec(locale)
+    local items = {
+        [2770] = { "Copper Ore", 1, 10, 20 }, [3300] = { "Broken Fang", 0, 230, 10 }, [5001] = { "Chain Belt of the Warrior", 2, 11200, 1 },
+        [5002] = { "Cloak of the Dark Shore", 2, 3500, 1 }, [5003] = { "Woodland Staff", 2, 7100, 1 },
+        [2318] = { "Light Leather", 1, 15, 20 }, [765] = { "Silverleaf", 1, 5, 20 }, [2449] = { "Earthroot", 1, 10, 20 },
+        [5004] = { "Hunter's Leather Gloves", 2, 2600, 1 }, [5005] = { "Nighthaven Bracers", 2, 4100, 1 },
+        [4234] = { "Heavy Leather", 1, 150, 20 }, [2862] = { "Rough Sharpening Stone", 1, 50, 20 },
+        [5006] = { "Thelsamar Guard Helm", 2, 9400, 1 }, [3667] = { "Chitin Shard", 0, 155, 20 }, [4304] = { "Soft Fur", 0, 100, 10 } }
+    local browse = { { 2770, 4 }, { 3300, 75 }, { 5001, 4800 }, { 5003, 5500 }, { 765, 1 }, { 4234, 70 }, { 5004, 1900 },
+        { 3667, 47 }, { 2862, 12 }, { 5005, 3000 }, { 4304, 24 }, { 2449, 1 }, { 5006, 6200 }, { 5002, 2000 } }
+    return { locale = locale, items = items, browse = browse, money = 2340000, free = 11,
+        commodity = { [2770] = { { 4, 30 }, { 6, 12 } }, [3300] = { { 75, 12 } }, [765] = { { 1, 20 } }, [4234] = { { 70, 15 } },
+                      [3667] = { { 47, 31 } }, [2862] = { { 12, 20 } }, [4304] = { { 24, 8 } }, [2449] = { { 1, 10 } } },
+        lots = { [5001] = { { 901, 1, 4800 } }, [5003] = { { 902, 1, 5500 } }, [5004] = { { 903, 1, 1900 } },
+                 [5005] = { { 904, 1, 3000 } }, [5006] = { { 905, 1, 6200 } }, [5002] = { { 906, 1, 2000 } } },
+        db = { minGain = 100, history = {
+            { at = 99950, id = 5006, n = 1, paid = 6200, value = 9400, sold = 0, who = "Tester-Realm" },
+            { at = 99900, id = 2770, n = 40, paid = 168, value = 400, sold = 40, who = "Tester-Realm" },
+            { at = 98600, id = 3300, n = 12, paid = 900, value = 2760, sold = 12, who = "Tester-Realm" },
+            { at = 60000, id = 4304, n = 8, paid = 192, value = 800, sold = 8, keep = true, who = "Tester-Realm" } } } }
+end
+local function vfIcons()
+    local get = C_Item.GetItemInfo
+    C_Item.GetItemInfo = function(item)
+        local r = { get(item) }
+        local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
+        if r[1] then r[10] = "Interface\\Icons\\" .. (VF_ICONS[id] or "INV_Misc_QuestionMark") end
+        return unpack(r, 1, 11)
+    end
+end
+local function vfOpen(tab, quote)
+    return function(ns, W)
+        vfIcons()
+        AuctionHouseFrame = nil -- the preview has no auction window to stand beside
+        W.ScanAll(ns)
+        for _, line in ipairs(ns.lines) do
+            if line.id == 5006 then line.state = "bought" end
+            if line.id == 5002 then line.state = "gone" end
+        end
+        if quote then
+            for _, line in ipairs(ns.lines) do if line.id == 2770 then ns.Click(line) end end
+            W.Fire("COMMODITY_PRICE_UPDATED", 4, 168)
+        end
+        W.now = W.now + 42
+        ns.Window():Show()
+        ns.ShowTab(tab)
+        ns.Refresh()
+    end
+end
+S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
+    quote = { spec = vfSpec(), open = vfOpen(1, true) },
+    ru = { spec = vfSpec("ruRU"), open = vfOpen(1, true) },
+    history = { spec = vfSpec(), open = vfOpen(2) },
+    settings = { spec = vfSpec(), open = vfOpen(3) },
+    empty = { spec = { items = {} }, open = function(ns) ns.Window():Show(); ns.Refresh() end },
+    sidetabs = { spec = vfSpec("ruRU"), open = function(ns, W)
+        vfOpen(1)(ns, W)
+        local S2 = ns.Skin
+        local crates = S2.Window(nil, "Gulli Waylaid Crates", S2.NARROW_W, S2.DOCK_H)
+        local cp = S2.Window(nil, "Gulli Craft Profit", S2.NARROW_W, S2.DOCK_H)
+        S2.SideAdd({ key = "Crates", order = 10, title = "Ящики", icon = "Interface\\Icons\\INV_Crate_01",
+                     window = function() return crates end, badge = function() return 3 end })
+        S2.SideAdd({ key = "CraftProfit", order = 20, title = "Craft Profit", icon = "Interface\\Icons\\INV_Misc_Herb_10",
+                     window = function() return cp end })
+        S2.SideOpen("Crates")
+        S2.SideOpen("CraftProfit")
+        S2.SideOpen("VendorFlip", true)
+        ns.Refresh()
+    end } }
 
 return S

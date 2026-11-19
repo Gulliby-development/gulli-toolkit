@@ -1,0 +1,445 @@
+-- The window, narrow, with three tabs. Deals: the scan line (when the next scan runs, how many
+-- lots it saw, what the list is worth) over a dense list (12 pt, 24 px rows) of the lines that
+-- sell to a vendor for more than they cost, each with its own small button, and the big button
+-- in the footer that works on the top line. History: what was bought to sell. Settings: the
+-- switches and limits. At the auction house it opens beside the auction window, in the shared
+-- side tabs.
+
+local _, ns = ...
+local L = ns.L
+local S = ns.Skin
+
+local frame, tabs, pages = nil, nil, {}
+local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
+local histStats, histList, histEmpty, setCard, buyBtn, refreshBtn
+local tab, period = 1, "all"
+local ROW, HIST_ROW = 24, 24
+-- column widths from the right: button, gain, vendor, auction, quantity
+local W_BTN, W_GAIN, W_VEND, W_AH, W_N, COL_GAP = 72, 58, 62, 62, 34, 6
+ns.ROW_H = ROW
+
+local function money(c) return S.MoneyText(c, c >= 10000) end
+
+local function clock(sec)
+    sec = math.max(0, math.floor(sec or 0))
+    return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+end
+
+-- ---------- deal rows ----------
+
+local function col(r, width, right)
+    local t = S.Text(r, 12)
+    t:SetJustifyH("RIGHT")
+    t:SetWordWrap(false)
+    t:SetWidth(width)
+    t:SetPoint("RIGHT", r, "RIGHT", right, 0)
+    return t
+end
+
+local function makeDealRow(r)
+    r.icon = S.ItemIcon(r, 18)
+    r.icon:SetPoint("LEFT", 4, 0)
+    local x = -2
+    r.btn = S.Button(r, W_BTN, 20)
+    S.SetFont(r.btn.text, 12)
+    r.btn:SetPoint("RIGHT", x, 0)
+    r.btn:SetScript("OnClick", function(self) ns.Click(self:GetParent().line) end)
+    r.state = S.Text(r, 12)
+    r.state:SetJustifyH("CENTER")
+    r.state:SetWordWrap(false)
+    r.state:SetWidth(W_BTN)
+    r.state:SetPoint("RIGHT", x, 0)
+    x = x - W_BTN - COL_GAP
+    r.gain = col(r, W_GAIN, x)
+    x = x - W_GAIN - COL_GAP
+    r.vendor = col(r, W_VEND, x)
+    x = x - W_VEND - COL_GAP
+    r.ah = col(r, W_AH, x)
+    x = x - W_AH - COL_GAP
+    r.n = col(r, W_N, x)
+    r.n:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+    x = x - W_N - COL_GAP
+    r.name = S.Text(r, 12)
+    r.name:SetWordWrap(false)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
+    r.name:SetPoint("RIGHT", r, "RIGHT", x, 0)
+    -- the full name and the lot in the game's tooltip
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self)
+        local line = self.line
+        if not line or not GameTooltip or not GameTooltip.SetOwner then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetItemByID then GameTooltip:SetItemByID(line.id) else GameTooltip:SetText(self.full or "") end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+-- What a line's button says and does: text, primary, enabled; or the state word in its place.
+function ns.RowButton(line)
+    local b = ns.buy
+    if line.state == "bought" then return nil, L.BOUGHT, S.GOOD end
+    if line.state == "gone" then return nil, L.GONE, S.FAINT end
+    if line.state == "lose" then return nil, L.LOSE, S.BAD end
+    if b.line == line then
+        if b.phase == "quote" then return { text = L.PRICE_WAIT, on = false } end
+        if b.phase == "buying" then return { text = L.BUYING, on = false } end
+        if b.phase == "ready" then return { text = S.MoneyIcons(b.quote.total, b.quote.total >= 10000), primary = true, on = true } end
+    end
+    local busy = ns.Busy()
+    return { text = line.kind == "c" and L.PRICE or L.BUY, primary = line == ns.Top(), on = not busy and ns.atAH == true }
+end
+
+local function fillDealRow(r, line)
+    r.line = line
+    local name, q, icon = ns.ItemInfo(line.id)
+    r.full = name or ""
+    r.icon:Set(icon or "Interface\\Icons\\INV_Misc_QuestionMark", nil, q or 1)
+    local faint = line.state == "gone" or line.state == "bought"
+    r.name:SetText((faint and S.Hex(S.FAINT) or S.QualityHex(q or 1)) .. (name or "...") .. "|r")
+    r.n:SetText(tostring(line.n))
+    r.ah:SetText(money(line.cost))
+    r.vendor:SetText(money(line.value))
+    r.gain:SetText(S.Hex(faint and S.FAINT or S.GOOD) .. "+" .. "|r" .. money(line.gain))
+    r:SetAlpha(line.state == "bought" and 0.55 or 1)
+    local spec, word, color = ns.RowButton(line)
+    r.btn:SetShown(spec ~= nil)
+    r.state:SetShown(spec == nil)
+    if spec then
+        r.btn:SetText(spec.text)
+        r.btn:SetEnabled(spec.on)
+        if spec.primary then S.Primary(r.btn)
+        else
+            -- back to a plain button: the skin paints by kind on the next hover
+            r.btn.kind = "normal"
+            S.Fill(r.btn, S.RAISED)
+            S.SetBorder(r.btn, S.LINE)
+            local a = S.Accent()
+            r.btn.text:SetTextColor(a[1], a[2], a[3], 1)
+        end
+    else
+        r.state:SetText(S.Hex(color) .. word .. "|r")
+    end
+    -- the line the big button buys is lit
+    local cur = line == ns.Top() and not line.state
+    S.Fill(r, cur and { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 } or S.CLEAR)
+end
+
+-- ---------- history rows ----------
+
+local fmtDate = date or (os and os.date)
+
+local function makeHistRow(r)
+    r.when = S.Text(r, 12, S.FAINT)
+    r.when:SetPoint("LEFT", 4, 0)
+    r.when:SetWidth(84)
+    r.when:SetWordWrap(false)
+    r.icon = S.ItemIcon(r, 18)
+    r.icon:SetPoint("LEFT", r.when, "RIGHT", 4, 0)
+    r.got = col(r, 70, -2)
+    r.paid = col(r, 70, -2 - 70 - COL_GAP)
+    r.n = col(r, W_N, -2 - 140 - 2 * COL_GAP)
+    r.n:SetTextColor(S.MUTED[1], S.MUTED[2], S.MUTED[3], 1)
+    r.name = S.Text(r, 12)
+    r.name:SetWordWrap(false)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
+    r.name:SetPoint("RIGHT", r, "RIGHT", -2 - 140 - W_N - 3 * COL_GAP, 0)
+    r:EnableMouse(true)
+    r:SetScript("OnMouseUp", function(self, button) if button == "RightButton" then ns.Keep(self.e) end end)
+    r:SetScript("OnEnter", function(self)
+        if not GameTooltip or not GameTooltip.SetOwner or not self.e then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.full or "", 1, 1, 1)
+        if not self.e.keep and self.e.sold < self.e.n then GameTooltip:AddLine(L.KEEP_TIP, 0.8, 0.8, 0.8, true) end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+local function fillHistRow(r, e)
+    r.e = e
+    local name, q, icon = ns.ItemInfo(e.id)
+    r.full = name or ""
+    r.when:SetText(fmtDate and fmtDate(L.DATE, e.at) or "")
+    r.icon:Set(icon or "Interface\\Icons\\INV_Misc_QuestionMark", nil, q or 1)
+    r.name:SetText(S.QualityHex(q or 1) .. (name or "...") .. "|r")
+    r.n:SetText(tostring(e.n))
+    r.paid:SetText(money(e.paid))
+    if e.keep then r.got:SetText(S.Hex(S.FAINT) .. L.KEPT .. "|r")
+    elseif e.sold >= e.n then r.got:SetText(S.Hex(S.GOOD) .. "+|r" .. money(e.value))
+    else r.got:SetText(S.Hex(S.FAINT) .. money(e.value) .. "|r") end
+end
+
+-- ---------- refresh ----------
+
+local function label(b, text, min, max)
+    b:SetText(text)
+    local w = math.max(min, math.floor((b.text:GetStringWidth() or 0) + 28))
+    b:SetWidth(max and math.min(w, max) or w)
+    return w
+end
+
+-- The scan line: what runs now, or when the next scan comes, and the list's worth.
+function ns.ScanLine()
+    local s = ns.scan
+    if not ns.CanScan() then return L.NO_API, 0 end
+    if s.phase == "browse" then return L.SCAN_BROWSE:format(#s.results), math.min(1, s.pages / ns.MAX_PAGES) end
+    if s.phase == "detail" then return L.SCAN_DETAIL:format(math.min(s.done + 1, s.n), s.n), s.n > 0 and s.done / s.n or 0 end
+    if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
+    local left = ns.NextIn()
+    if not left then return L.SCAN_OFF, 0 end
+    local text = L.NEXT_SCAN:format(clock(left))
+    if s.at then text = text .. S.DOT .. L.LOTS:format(#s.results) end
+    return text, 1 - left / ns.INTERVAL
+end
+
+local function bigButton()
+    local line = ns.Top()
+    if not line then label(buyBtn, L.BUY_NONE, 140); buyBtn:SetEnabled(false); return end
+    local b = ns.buy
+    local text
+    if b.line == line and b.phase == "ready" then text = L.BUY_FOR:format(S.MoneyIcons(b.quote.total, b.quote.total >= 10000))
+    elseif b.line == line and b.phase == "quote" then text = L.PRICE_WAIT
+    elseif b.line == line and b.phase == "buying" then text = L.BUYING
+    else
+        local name = ns.ItemInfo(line.id) or "..."
+        text = L.BUY_TOP:format(name)
+        -- a long name gives way to the plain verb, never cut
+        buyBtn:SetText(text)
+        if (buyBtn.text:GetStringWidth() or 0) + 28 > 300 then text = L.BUY_TOP_PLAIN end
+    end
+    label(buyBtn, text, 140, 300)
+    buyBtn:SetEnabled(ns.atAH == true and b.phase ~= "quote" and b.phase ~= "buying")
+end
+
+local function refreshDeals()
+    local text, frac = ns.ScanLine()
+    scanText:SetText(text)
+    bar:Set(frac)
+    local shown = ns.Shown()
+    local open, worth = 0, 0
+    for _, line in ipairs(shown) do if not line.state then open, worth = open + 1, worth + line.gain end end
+    sumText:SetText(open > 0 and L.SUM:format(open, money(worth)) or "")
+    dealList:SetData(shown)
+    dealEmpty:SetShown(#shown == 0)
+    if not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
+    elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text, L.SCANNING_SUB)
+    else dealEmpty:Set(L.EMPTY, L.EMPTY_SUB) end
+    heads:SetShown(#shown > 0)
+    bigButton()
+    buyBtn:Show()
+    local b = ns.buy
+    if b.err then
+        frame.footer:SetStatus(L[b.err], S.BAD)
+    else
+        local _, sum = ns.History("day")
+        frame.footer:SetStatus(sum.count > 0 and L.STATUS:format(sum.count, money(sum.paid), ns.FreeSlots()) or L.HOW)
+    end
+end
+
+local function refreshHistory()
+    local list, sum = ns.History(period)
+    histList:SetData(list)
+    histEmpty:SetShown(#list == 0)
+    histStats.tiles[1]:Set(S.MoneyText(sum.profit, true))
+    histStats.tiles[2]:Set(tostring(sum.count))
+    histStats.tiles[3]:Set("+" .. sum.pct .. "%")
+    buyBtn:Hide()
+    frame.footer:SetStatus("")
+end
+
+function ns.Refresh()
+    if S.SideRefresh then S.SideRefresh() end -- the number on its tab beside the auction house
+    if not frame or not frame:IsShown() then return end
+    if tab == 1 then return refreshDeals() end
+    if tab == 2 then return refreshHistory() end
+    buyBtn:Hide()
+    for _, row in ipairs(setCard.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+    frame.footer:SetStatus("")
+end
+
+-- ---------- build ----------
+
+local function head(parent, text, width, right)
+    local t = S.Text(parent, 12, S.GOLD_DIM, nil, "bold")
+    t:SetText(S.Upper(text))
+    t:SetWordWrap(false)
+    if width then
+        t:SetWidth(width)
+        t:SetJustifyH("RIGHT")
+        t:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, 2)
+    end
+    return t
+end
+
+local function build()
+    frame = S.Window("GulliVendorFlipFrame", L.TITLE, S.NARROW_W, S.DOCK_H, { sub = "/gvf" })
+    local ft = S.Footer(frame)
+    buyBtn = S.Primary(S.Button(ft, 200, 32))
+    ft:Add(buyBtn)
+    buyBtn:SetScript("OnClick", function() ns.Click(ns.Top()) end)
+
+    refreshBtn = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
+    S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
+    refreshBtn.btnIcon:ClearAllPoints()
+    refreshBtn.btnIcon:SetPoint("CENTER")
+    refreshBtn:SetScript("OnClick", function() ns.Scan(true) end)
+    refreshBtn:HookScript("OnEnter", function(self)
+        if GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(L.REFRESH)
+            GameTooltip:AddLine(L.REFRESH_TIP, 1, 1, 1, true)
+            GameTooltip:Show()
+        end
+    end)
+    refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
+    tabs = S.PageTabs(frame.body, { L.TAB_DEALS, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
+        tab = i
+        for j, p in ipairs(pages) do p:SetShown(j == i) end
+        ns.Refresh()
+    end, nil, { "Interface\\Icons\\INV_Misc_Coin_02", S.TAB.recent, S.TAB.settings })
+    for i = 1, 3 do
+        local p = CreateFrame("Frame", nil, frame.body)
+        p:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+        p:SetPoint("BOTTOMRIGHT")
+        p:SetShown(i == 1)
+        pages[i] = p
+    end
+
+    -- Deals
+    local dp = pages[1]
+    scanIcon = S.IconBox(dp, 20, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+    scanIcon:SetPoint("TOPLEFT", 0, -2)
+    sumText = S.Text(dp, 12, S.MUTED)
+    sumText:SetPoint("TOPRIGHT", 0, -5)
+    sumText:SetJustifyH("RIGHT")
+    sumText:SetWordWrap(false)
+    scanText = S.Text(dp, 12, S.MUTED)
+    scanText:SetPoint("TOPLEFT", scanIcon, "TOPRIGHT", 8, -3)
+    scanText:SetPoint("RIGHT", sumText, "LEFT", -10, 0)
+    scanText:SetWordWrap(false)
+    scanText:SetJustifyH("LEFT")
+    bar = S.Progress(dp, 4)
+    bar:SetPoint("TOPLEFT", 0, -28)
+    bar:SetPoint("TOPRIGHT", 0, -28)
+
+    dealCard = S.Card(dp)
+    dealCard:SetPoint("TOPLEFT", 0, -28 - 4 - S.GAP)
+    dealCard:SetPoint("BOTTOMRIGHT")
+    heads = CreateFrame("Frame", nil, dealCard.body)
+    heads:SetPoint("TOPLEFT")
+    heads:SetPoint("TOPRIGHT", -10, 0)
+    heads:SetHeight(18)
+    local x = -2 - W_BTN - COL_GAP
+    head(heads, L.COL_GAIN, W_GAIN, x); x = x - W_GAIN - COL_GAP
+    head(heads, L.COL_VENDOR, W_VEND, x); x = x - W_VEND - COL_GAP
+    head(heads, L.COL_AH, W_AH, x); x = x - W_AH - COL_GAP
+    head(heads, L.COL_N, W_N, x); x = x - W_N - COL_GAP
+    local item = head(heads, L.COL_ITEM)
+    item:SetPoint("BOTTOMLEFT", 28, 2)
+    item:SetPoint("RIGHT", heads, "RIGHT", x, 0)
+    dealList = S.List(dealCard.body, ROW, makeDealRow, fillDealRow)
+    dealList:SetPoint("TOPLEFT", 0, -22)
+    dealList:SetPoint("BOTTOMRIGHT")
+    dealEmpty = S.Empty(dealCard.body)
+    dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
+
+    -- History
+    local hp = pages[2]
+    local st = S.Stack(hp)
+    local periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
+        period = ns.PERIODS[i]
+        ns.Refresh()
+    end, 28)
+    periodTabs:Select(3, true)
+    periodTabs.frame:ClearAllPoints()
+    periodTabs.frame:SetPoint("TOPLEFT")
+    st:Space(28 + S.GAP)
+    histStats = S.StatRow(hp, { L.ST_PROFIT, L.ST_COUNT, L.ST_PCT }, 62,
+        { "Interface\\Icons\\INV_Misc_Coin_02", "Interface\\Minimap\\Tracking\\Auctioneer", "Interface\\Icons\\INV_Misc_Coin_01" })
+    st:Add(histStats, 62)
+    histStats:Layout(frame.inner[1])
+    local histCard = S.Card(hp, L.HISTORY, "", S.TAB.recent)
+    histCard:SetPoint("TOPLEFT", 0, -st.y)
+    histCard:SetPoint("BOTTOMRIGHT")
+    local hh = CreateFrame("Frame", nil, histCard.body)
+    hh:SetPoint("TOPLEFT")
+    hh:SetPoint("TOPRIGHT", -10, 0)
+    hh:SetHeight(18)
+    local when = head(hh, L.COL_WHEN)
+    when:SetPoint("BOTTOMLEFT", 4, 2)
+    when:SetWidth(84)
+    head(hh, L.COL_GOT, 70, -2)
+    head(hh, L.COL_PAID, 70, -2 - 70 - COL_GAP)
+    head(hh, L.COL_N, W_N, -2 - 140 - 2 * COL_GAP)
+    histList = S.List(histCard.body, HIST_ROW, makeHistRow, fillHistRow)
+    histList:SetPoint("TOPLEFT", 0, -22)
+    histList:SetPoint("BOTTOMRIGHT")
+    histEmpty = S.Empty(histCard.body)
+    histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
+
+    -- Settings
+    local rows = {}
+    for _, key in ipairs({ "scan", "auto", "sell", "sound" }) do
+        rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
+                            function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
+    end
+    local sp = pages[3]
+    local page = S.ScrollPage(sp, frame.inner[1])
+    page:SetAllPoints()
+    rows[#rows + 1] = { L.OPT_minGain, L.TIP_minGain, icon = ns.OPT_ICON.minGain,
+        control = S.Stepper(page.inner, function() return ns.db.minGain end, function(v) ns.SetPref("minGain", v) end,
+                            100, 0, 100000, function(v) return S.MoneyText(v) end, 130) }
+    rows[#rows + 1] = { L.OPT_reserve, L.TIP_reserve, icon = ns.OPT_ICON.reserve,
+        control = S.Stepper(page.inner, function() return ns.db.reserve end, function(v) ns.SetPref("reserve", v) end,
+                            100000, 0, 100000000, function(v) return S.MoneyText(v, true) end, 130) }
+    rows[#rows + 1] = { L.OPT_keepFree, L.TIP_keepFree, icon = ns.OPT_ICON.keepFree,
+        control = S.Stepper(page.inner, function() return ns.db.keepFree end, function(v) ns.SetPref("keepFree", v) end,
+                            1, 0, 30, nil, 130) }
+    local h
+    setCard, h = S.SettingsCard(page.inner, nil, rows)
+    setCard:SetPoint("TOPLEFT")
+    setCard:SetPoint("TOPRIGHT")
+    setCard:SetHeight(h)
+    page:SetContent(h)
+
+    frame:SetScript("OnShow", function() ns.Refresh() end)
+end
+
+function ns.Toggle()
+    -- at the auction house its tab may be behind another module's: the command brings it up
+    local open, shown = S.SideIs("VendorFlip")
+    if open and not shown then S.SideOpen("VendorFlip", true); ns.Refresh(); return end
+    S.ToggleWindow(ns.Window())
+end
+
+-- Opens a tab: 1 deals, 2 history, 3 settings.
+function ns.ShowTab(i)
+    ns.Window()
+    tabs:Select(i)
+end
+
+-- The window, for the hub (/gulli) to show inside it.
+function ns.Window()
+    if not frame then build() end
+    return frame
+end
+
+-- At the auction house: beside its window, unless the window sits in the hub. The place is
+-- shared with the other modules that have work there (the skin's side tabs).
+function ns.ShowAtAH()
+    local w = ns.Window()
+    if w.docked then if w:IsShown() then ns.Refresh() end return end
+    S.SideOpen("VendorFlip")
+    ns.Refresh()
+end
+
+function ns.HideAtAH()
+    S.SideClose("VendorFlip")
+    ns.Refresh()
+end
+
+S.SideAdd({ key = "VendorFlip", order = 30, title = function() return L.TITLE end,
+            icon = "Interface\\AddOns\\Gulli-VendorFlip\\icon",
+            window = function() return ns.Window() end, badge = function() return ns.atAH and ns.Open() or 0 end })
