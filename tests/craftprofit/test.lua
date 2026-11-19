@@ -662,16 +662,57 @@ test("a pattern that asks for a reputation the character lacks is never planned"
     local where
     for _, row in ipairs(n.Recipes(n.State(), P)) do if row.recipe == 104 then where = row.src end end
     eq(where, "rep", "the Recipes tab still lists it, with why")
-    -- met (white line): bought as before
+    -- a white line before the reputation was read proves nothing: left out, and the banner asks for it
     W.tips[6][2] = { "Requires Cenarion Circle - Honored", 1, 1, 1 }
-    eq(n.State().recipes[104].src.t, "ah")
-    -- no colour from the client: the reputation list decides, and a faction it lacks is not met
+    eq(n.State().recipes[104].src.t, "rep")
+    eq(n.RepUnknown()[1], "Cenarion Circle")
+    -- no colour from the client: the reputation list decides
     W.tips[6][2] = { "Requires Cenarion Circle - Honored" }
     eq(n.State().recipes[104].src.t, "rep")
     W.factions = { { "Cenarion Circle", 5 } }
     eq(n.State().recipes[104].src.t, "rep", "Friendly is below Honored")
+    eq(#n.RepUnknown(), 0, "the standing is known now")
     W.factions = { { "Cenarion Circle", 6 } }
     eq(n.State().recipes[104].src.t, "ah")
+    W.tips[6][2] = { "Requires Cenarion Circle - Honored", 1, 1, 1 }
+    eq(n.State().recipes[104].src.t, "ah", "met (white line, standing known): bought as before")
+end)
+
+test("the reputation is saved per character; until it is read, reputation patterns stay out", function()
+    local n = game()
+    n.Data.src[104] = { "v", 6, "Ally Gal|A" }
+    n.Data.spell[104] = { 150, 160, 170 }
+    n.db.vendor[6] = 9000
+    W.tips[6] = { { "Pattern: Thing" }, { "Requires Thorium Brotherhood - Friendly", 1, 1, 1 } }
+    -- the game gave no list yet (the reputation window was never opened)
+    eq(n.State().recipes[104].src.t, "rep")
+    eq(n.RepUnknown()[1], "Thorium Brotherhood")
+    -- a folded group: what it shows is saved, the rest is still unknown
+    W.factions = { { "Classic", 0, true, true }, { "Darnassus", 6 } }
+    eq(n.State().recipes[104].src.t, "rep")
+    eq(n.char.rep["Darnassus"], 6, "saved in the character's saved variables")
+    eq(n.char.repFull, nil, "a folded group: not the whole list")
+    eq(n.RepUnknown()[1], "Thorium Brotherhood")
+    -- the reputation window opens the list: the plan goes stale and the banner has nothing to ask
+    n.Toggle(); n.Calculate()
+    eq(n.view.stale, nil)
+    n.Refresh()
+    assert(n.ui.repBanner:IsShown(), "the banner asks for the reputation window")
+    assert(n.ui.repBanner.text:GetText():find("Thorium Brotherhood", 1, true))
+    W.factions = { { "Classic", 0, true, false }, { "Darnassus", 6 }, { "Thorium Brotherhood", 5 } }
+    n.RepChanged()
+    eq(n.view.stale, true, "a new standing makes the plan outdated")
+    eq(#n.RepUnknown(), 0)
+    assert(not n.ui.repBanner:IsShown(), "read: the banner goes away")
+    eq(n.char.repFull, true)
+    eq(n.State().recipes[104].src.t, "ah", "Friendly is met")
+    -- after a reload the list is empty again, the saved standing still counts
+    W.factions = {}
+    eq(n.State().recipes[104].src.t, "ah")
+    -- a faction never met, once the whole list was read: not met, and nothing to ask for
+    W.tips[6][2] = { "Requires Cenarion Circle - Friendly", 1, 1, 1 }
+    eq(n.State().recipes[104].src.t, "rep")
+    eq(#n.RepUnknown(), 0)
 end)
 
 test("a pattern's source and price come from the data; no pattern: the trainer", function()

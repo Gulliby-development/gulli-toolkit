@@ -160,7 +160,7 @@ function Fake(spec)
         end
         return { lines = lines }
     end }
-    -- W.factions: { { name, reaction } } in the reputation list
+    -- W.factions: { { name, reaction, isHeader, isCollapsed } } in the reputation list
     W.factions = spec.factions or {}
     W.standing = spec.standing
     C_Reputation = {
@@ -169,7 +169,8 @@ function Fake(spec)
         GetFactionDataByID = function(id) return W.standing and W.standing[id] and { reaction = W.standing[id] } or nil end,
         GetFactionDataByIndex = function(i)
             local f = W.factions[i]
-            return f and { name = f[1], reaction = f[2] }
+            return f and { name = f[1], reaction = f[2], isHeader = f[3] or false, isCollapsed = f[4] or false,
+                           isHeaderWithRep = false }
         end,
     }
     -- W.maps: map id -> { name, parent }; W.here: the player's map; W.pins: waypoints set

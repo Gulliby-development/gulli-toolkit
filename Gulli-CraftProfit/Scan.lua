@@ -532,26 +532,57 @@ local function standingId(label)
     end
 end
 
--- The character's standing (1 Hated .. 8 Exalted) with a faction by name, or 0 when the list lacks it.
-local function standingOf(name)
+-- The reputation list as the game gives it now, merged into what this character saw before
+-- (GulliCraftProfitCharDB.rep: faction name -> 1 Hated .. 8 Exalted). Before the reputation
+-- window was opened the game may give a short list or none, so a pattern's line alone is no
+-- proof; a faction read once stays known. `repFull` is set when no group of the list was folded,
+-- so a faction missing from it then was never met. Returns whether anything changed.
+function ns.ReadRep()
+    local c = ns.char
+    if not c then return false end
+    c.rep = c.rep or {}
+    local rep, changed, seen, folded = c.rep, false, 0, false
+    local function note(name, reaction, header, collapsed, hasRep)
+        if header and collapsed then folded = true end
+        if type(name) ~= "string" or name == "" or type(reaction) ~= "number" or reaction < 1 then return end
+        if header and not hasRep then return end
+        seen = seen + 1
+        if rep[name] ~= reaction then rep[name], changed = reaction, true end
+    end
     local R = C_Reputation
     if R and R.GetNumFactions and R.GetFactionDataByIndex then
-        for i = 1, R.GetNumFactions() or 0 do
-            local d = R.GetFactionDataByIndex(i)
-            if d and d.name == name then return d.reaction or 0 end
+        local ok, num = pcall(R.GetNumFactions)
+        for i = 1, ok and tonumber(num) or 0 do
+            local okd, d = pcall(R.GetFactionDataByIndex, i)
+            if okd and type(d) == "table" then note(d.name, d.reaction, d.isHeader, d.isCollapsed, d.isHeaderWithRep) end
         end
     elseif GetNumFactions and GetFactionInfo then
         for i = 1, GetNumFactions() or 0 do
-            local n, _, s = GetFactionInfo(i)
-            if n == name then return s or 0 end
+            local n, _, s, _, _, _, _, _, header, collapsed, hasRep = GetFactionInfo(i)
+            note(n, s, header, collapsed, hasRep)
         end
     end
-    return 0
+    if seen > 0 and not folded and not c.repFull then c.repFull, changed = true, true end
+    return changed
 end
 
+-- The character's standing with a faction by name: a number, false when the whole list was read
+-- and the faction is not in it (never met), nil when Craft Profit cannot tell yet.
+local function standingOf(name)
+    local rep = ns.char and ns.char.rep
+    if rep and rep[name] then return rep[name] end
+    if ns.char and ns.char.repFull then return false end
+    return nil
+end
+
+-- Factions of patterns left out because their standing is not known yet (filled by ns.State).
+ns.repUnknown = {}
+
 -- Whether a pattern asks for a reputation the character does not have, and the tooltip line that
--- says so. The game paints that line red when it is not met; without a colour, the standing from
--- the reputation list decides. An item the client has not loaded yet counts as no requirement.
+-- says so. The game paints that line red when it is not met, but before the reputation window was
+-- opened it may leave it white, so the saved standing decides; a faction whose standing is not
+-- known yet counts as not met (and goes into ns.repUnknown for the banner). An item the client
+-- has not loaded yet counts as no requirement until its name loads (ns.repWaiting marks the plan).
 function ns.RepMissing(item)
     local T = C_TooltipInfo
     if not item or not T or not T.GetItemByID then return false end
@@ -569,15 +600,30 @@ function ns.RepMissing(item)
                 local err = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ErrorLine
                 if err and line.type == err then return true, text end
                 local c = line.leftColor
-                if type(c) == "table" and type(c.r) == "number" then
-                    return c.r > 0.9 and c.g < 0.3 and c.b < 0.3, text
-                end
+                local red = type(c) == "table" and type(c.r) == "number" and c.r > 0.9 and c.g < 0.3 and c.b < 0.3
+                if red then return true, text end
                 local need = standingId(label)
-                return need ~= nil and standingOf(fac) < need, text
+                if not need then return false, text end
+                local have = standingOf(fac)
+                if have == nil then
+                    ns.repUnknown[fac] = true
+                    return true, text
+                end
+                return (have or 0) < need, text
             end
         end
     end
     return false
+end
+
+-- The factions whose standing the window waits for: left out of the last plan and still not read.
+function ns.RepUnknown()
+    local out = {}
+    for fac in pairs(ns.repUnknown) do
+        if standingOf(fac) == nil then out[#out + 1] = fac end
+    end
+    table.sort(out)
+    return out
 end
 
 -- Where a recipe not learned yet comes from, and its price. Data.lua names the pattern and its
@@ -660,6 +706,8 @@ function ns.State()
     if not name then return nil end
     local state = ns.Skill()
     local gone = ns.Data and ns.Data.gone or {}
+    ns.ReadRep()
+    ns.repUnknown = {}
     for rid, rec in pairs(prof.recipes) do
         ns.Tick()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
@@ -1109,6 +1157,26 @@ function ns.Listen(frame, events)
     end
 end
 
+-- The reputation list was read again: a standing the plan did not know makes it outdated, and the
+-- banner that asks for the reputation window goes away.
+function ns.RepChanged()
+    local waited = #ns.RepUnknown() > 0
+    if not ns.ReadRep() then return end
+    if ns.view and ns.view.plan then ns.view.stale = true end
+    if (waited or ns.view) and ns.Refresh then ns.Refresh() end
+end
+
+-- Opening the reputation window is what makes the game give the whole list: read it then.
+function ns.HookRepWindow()
+    local rf = ReputationFrame
+    if rawget(ns, "repHooked") or type(rf) ~= "table" or not rf.HookScript then return end
+    ns.repHooked = true
+    rf:HookScript("OnShow", function()
+        ns.RepChanged()
+        if C_Timer and C_Timer.After then C_Timer.After(0.2, ns.RepChanged) end
+    end)
+end
+
 local pending = false
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -1134,7 +1202,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                           "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
                           "AUCTION_ITEM_LIST_UPDATE", "MERCHANT_CLOSED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
                           "MAIL_SHOW", "MAIL_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
-                          "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED" })
+                          "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
+                          "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
             pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
@@ -1143,6 +1212,11 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     if next(ns.nameWaiting) then ns.CheckNames() end
     if event == "GET_ITEM_INFO_RECEIVED" then return end
+    if event == "UPDATE_FACTION" or event == "PLAYER_ENTERING_WORLD" then
+        if event == "PLAYER_ENTERING_WORLD" then ns.HookRepWindow() end
+        ns.RepChanged()
+        return
+    end
     if event == "MERCHANT_SHOW" then learnVendor(); ns.atVendor = true; ns.Arrive("vendor"); return end
     if event == "MERCHANT_CLOSED" then ns.atVendor = false; ns.Arrive(nil); return end
     if event == "BANKFRAME_OPENED" then ns.atBank = true; ns.Arrive("bank"); return end

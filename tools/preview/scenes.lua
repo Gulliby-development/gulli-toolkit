@@ -637,6 +637,13 @@ local function cpPin(trainer)
 end
 S.craftprofit.pin = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, open = cpPin() }
 S.craftprofit.pintrainer = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, open = cpPin(true) }
+-- Patterns left out because the reputation was not read yet: the banner over the route.
+S.craftprofit.rep = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        ns.repUnknown = { ["Thorium Brotherhood"] = true, ["Cenarion Circle"] = true, ["Timbermaw Hold"] = true }
+        ns.Refresh()
+    end }
 
 -- The run with nothing in the bags, so it has an auction stop of several lines.
 local function cpSpec(extra)
