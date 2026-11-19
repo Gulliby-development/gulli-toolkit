@@ -529,6 +529,50 @@ function ns.Extras(class)
     return e
 end
 
+-- Is one of these spells the active form? true or false when the stance bar holds one of
+-- them; nil when it does not, since then the bar says nothing about the buff.
+function ns.FormOn(ids)
+    if not GetShapeshiftForm then return nil end
+    local n = GetNumShapeshiftForms and GetNumShapeshiftForms() or 0
+    if GetShapeshiftFormInfo then
+        local names = {}
+        for _, id in ipairs(ids) do
+            local s = spellName(id)
+            if s then names[s] = true end
+        end
+        local onBar
+        for i = 1, n do
+            local ok, _, active, _, sid = pcall(GetShapeshiftFormInfo, i)
+            if ok and sid and not secret(sid) and names[spellName(sid) or ""] then
+                onBar = true
+                if active and not secret(active) then return true end
+            end
+        end
+        if onBar then return false end
+        return nil
+    end
+    -- An old client without the form's spell: any form counts.
+    if n == 0 then return nil end
+    return (GetShapeshiftForm() or 0) > 0
+end
+
+-- The player's own casts in this fight by spell name, so a buff cast while the game hides
+-- auras is known to be on.
+local fightCasts = {}
+function ns.NoteCast(id)
+    if not id or secret(id) or not InCombatLockdown() then return end
+    local n = spellName(id)
+    if n then fightCasts[n] = true end
+end
+function ns.CastInFight(ids)
+    for _, id in ipairs(ids) do
+        local n = spellName(id)
+        if n and fightCasts[n] then return true end
+    end
+    return false
+end
+function ns.FightEnded() fightCasts = {} end
+
 -- What is missing now: { { key, text, icon, left } }, and as the second value why nothing is
 -- checked ("off", "combat", "dead", "rest") when that is so.
 function ns.Missing()
@@ -564,12 +608,15 @@ function ns.Missing()
                 elseif left == false then best = false; break
                 elseif left and (not best or left > best) then best = left end
             end
-            if b.stance and GetShapeshiftForm and (not GetNumShapeshiftForms or (GetNumShapeshiftForms() or 0) > 0) then
-                -- A stance is a form, not always an aura: any form counts, and the game always
-                -- tells the form, so no form is sure even in a fight.
-                local form = GetShapeshiftForm() or 0
-                if best == nil and form > 0 then best = false end
-                if best == nil and form == 0 then unsure = nil end
+            if b.stance and best == nil then
+                -- A stance is a form, not always an aura, and the game always tells the forms on the
+                -- stance bar, so there no form is sure even in a fight. A buff that is not on the bar
+                -- (Shadowform on some clients) is left to its aura.
+                local on = ns.FormOn(b.ids)
+                if on then best = false elseif on == false then unsure = nil end
+            end
+            if best == nil and unsure and ns.CastInFight(b.ids) then
+                best = false -- cast in this fight and the game hides the aura: it is on
             end
             local id1 = b.ids[1]
             if best ~= false and (ns.IsBounced(b.key) or ns.Covered("player", id1, soon)) then
@@ -932,7 +979,7 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1, a2)
+f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliRemindersDB = GulliRemindersDB or {}
@@ -945,14 +992,23 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                              "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_UPDATE_RESTING", "UNIT_PET",
                              "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SPELLS_CHANGED",
                              "GROUP_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "UPDATE_INVENTORY_DURABILITY",
-                             "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED", "UI_ERROR_MESSAGE" }) do
+                             "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED", "UI_ERROR_MESSAGE",
+                             "UNIT_SPELLCAST_SUCCEEDED" }) do
             self:RegisterEvent(e)
         end
         -- Buffs and weapon buffs run out without an event.
         C_Timer.NewTicker(10, soon)
         return
     end
-    if (event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED") and a1 ~= "player" then return end
+    if (event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED" or event == "UNIT_SPELLCAST_SUCCEEDED")
+        and a1 ~= "player" then return end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if not InCombatLockdown() then return end
+        ns.NoteCast(a3)
+        atOnce()
+        return
+    end
+    if event == "PLAYER_REGEN_ENABLED" then ns.FightEnded() end
     if event == "UI_ERROR_MESSAGE" then
         if not ns.OnError(a2) then return end
     end

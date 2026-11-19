@@ -132,8 +132,16 @@ function Fake(spec)
     W.offHand = spec.offHand
     W.form = spec.form or 0
     GetShapeshiftForm = function() return W.form end
+    -- W.formSpells: the spells on the stance bar (form i is formSpells[i]).
+    local BAR = { WARRIOR = { 2457, 71, 2458 }, PALADIN = { 465 }, PRIEST = { 15473 } }
+    W.formSpells = spec.formSpells or BAR[spec.class or "PRIEST"] or {}
     W.forms = spec.forms
-    GetNumShapeshiftForms = function() return W.forms or 1 end
+    GetNumShapeshiftForms = function() return W.forms or #W.formSpells end
+    GetShapeshiftFormInfo = function(i)
+        local id = W.formSpells[i]
+        if not id then return nil end
+        return 1, W.form == i, true, id
+    end
     IsPlayerSpell = function(id) for _, k in ipairs(W.known) do if k == id then return true end end return false end
     C_Spell = { GetSpellName = function(id) return "Spell" .. id end, GetSpellTexture = function() return 1 end }
     W.left, W.pet, W.dead = spec.left or {}, spec.pet or false, false

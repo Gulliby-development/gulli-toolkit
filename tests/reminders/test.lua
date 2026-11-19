@@ -206,6 +206,35 @@ test("Shadowform and paladin auras count as forms when the auras are hidden", fu
     eq(W.Keys(ns.Missing()), "", "an aura is a form on the stance bar")
 end)
 
+test("Shadowform off the stance bar: never guessed gone in a fight, a cast in the fight counts", function()
+    Fake({ class = "PRIEST", known = { 15473 }, formSpells = {} })
+    local ns = Load()
+    ns.SetPref("show", true)
+    ns.SetTracked("SHADOWFORM", true)
+    eq(W.Keys(ns.Refresh()), "SHADOWFORM", "out of a fight a missing Shadowform is shown")
+    W.combat, W.byName = true, false
+    W.auras = { "Spell15473" }
+    W.secret = { Spell15473 = true }
+    local list = ns.Missing()
+    eq(list[1] and list[1].unsure, true, "the game hides it: not sure")
+    eq(#ns.CombatView(list), 0, "never on the strip")
+    ns.NoteCast(15473)
+    eq(W.Keys(ns.Missing()), "", "cast in this fight: on")
+    ns.FightEnded()
+    eq(W.Keys(ns.Missing()), "SHADOWFORM", "the next fight starts unsure again")
+    -- A stance bar with other forms, but not Shadowform: form 0 says nothing about it.
+    Fake({ class = "PRIEST", known = { 15473 }, formSpells = { 9999 }, auras = { "Spell15473" } })
+    ns = Load()
+    ns.SetTracked("SHADOWFORM", true)
+    W.combat, W.byName = true, false
+    W.secret = { Spell15473 = true }
+    eq(#ns.CombatView(ns.Missing()), 0, "not on the bar: never a sure miss")
+    W.formSpells = { 15473 }
+    eq(W.Keys(ns.CombatView(ns.Missing())), "SHADOWFORM", "on the bar and not active: a sure miss")
+    W.form = 1
+    eq(W.Keys(ns.Missing()), "", "on the bar and active")
+end)
+
 test("in a fight the panel's secure icons only fade, and a new reminder goes on the plain strip", function()
     Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243" } })
     local ns = Load()
