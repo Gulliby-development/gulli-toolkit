@@ -1899,6 +1899,77 @@ function S.Stepper(parent, get, set, step, min, max, fmt, width)
     return f
 end
 
+-- Money split into gold, silver and copper, and back; silver and copper are kept to 0..99.
+function S.MoneyParts(copper)
+    copper = math.max(0, math.floor((tonumber(copper) or 0) + 0.5))
+    return math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+end
+function S.MoneyJoin(g, s, c)
+    local function n(v, cap)
+        v = math.max(0, math.floor(tonumber(v) or 0))
+        return cap and math.min(v, cap) or v
+    end
+    return n(g) * 10000 + n(s, 99) * 100 + n(c, 99)
+end
+
+-- An amount of money as three fields, gold, silver and copper, each with - and + and a box to type
+-- the number in. get() reads copper, set(copper) writes it, kept within min..max. A - or + moves
+-- by one coin of its field (a copper below 0 borrows from the silver). m:Refresh() redraws.
+S.MONEY_FIELD_W = 254
+function S.MoneyStepper(parent, get, set, min, max)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(S.MONEY_FIELD_W, 28)
+    min, max = min or 0, max or 99999999
+    local function put(v)
+        set(math.max(min, math.min(max, math.floor(v))))
+        f:Refresh()
+    end
+    f.fields = {}
+    local x = S.MONEY_FIELD_W
+    for i, def in ipairs({ { "Copper", 1, 34 }, { "Silver", 100, 34 }, { "Gold", 10000, 52 } }) do
+        local kind, unit, w = def[1], def[2], def[3]
+        local plus = S.Button(f, 20, 28)
+        plus:SetPoint("RIGHT", f, "RIGHT", x - S.MONEY_FIELD_W, 0)
+        plus:SetText("+")
+        local box = S.Edit(f, w, 28)
+        box:SetPoint("RIGHT", plus, "LEFT", -1, 0)
+        S.SetFont(box, 12)
+        box:SetTextInsets(3, 14, 0, 0)
+        box:SetJustifyH("RIGHT")
+        if box.SetNumeric then box:SetNumeric(true) end
+        if box.SetMaxLetters then box:SetMaxLetters(unit == 10000 and 5 or 2) end
+        local coin = box:CreateTexture(nil, "OVERLAY")
+        coin:SetSize(11, 11)
+        coin:SetPoint("RIGHT", -3, 0)
+        coin:SetTexture(COIN:format(kind))
+        local minus = S.Button(f, 20, 28)
+        minus:SetPoint("RIGHT", box, "LEFT", -1, 0)
+        minus:SetText("-")
+        local function typed(self)
+            local g, s, c = S.MoneyParts(get())
+            local v = tonumber(self:GetText()) or 0
+            if unit == 10000 then g = v elseif unit == 100 then s = v else c = v end
+            put(S.MoneyJoin(g, s, c))
+        end
+        box:SetScript("OnEnterPressed", function(self) typed(self); self:ClearFocus() end)
+        box:SetScript("OnEditFocusLost", function(self) S.SetBorder(self, S.EDGE); typed(self) end)
+        box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        minus:SetScript("OnClick", function() put(get() - unit) end)
+        plus:SetScript("OnClick", function() put(get() + unit) end)
+        f.fields[4 - i] = { box = box, minus = minus, plus = plus, unit = unit }
+        x = x - (w + 42 + 4)
+    end
+    function f:Refresh()
+        local g, s, c = S.MoneyParts(get())
+        for i, v in ipairs({ g, s, c }) do
+            local box = self.fields[i].box
+            if not (box.HasFocus and box:HasFocus() == true) then box:SetText(tostring(v)) end
+        end
+    end
+    f:Refresh()
+    return f
+end
+
 -- The module icon, from the addon folder.
 function S.Icon(parent, size)
     local t = parent:CreateTexture(nil, "ARTWORK")

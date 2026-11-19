@@ -11,7 +11,7 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, setCard, buyBtn, refreshBtn
+local histStats, histList, histEmpty, setCard, buyBtn, scanBtn
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
 -- column widths from the right: button, gain, vendor, auction, quantity
@@ -188,9 +188,7 @@ function ns.ScanLine()
     if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
     local left = ns.NextIn()
     if not left then return L.SCAN_OFF, 0 end
-    local text = L.NEXT_SCAN:format(clock(left))
-    if s.at then text = text .. S.DOT .. L.LOTS:format(#s.results) end
-    return text, 1 - left / ns.INTERVAL
+    return L.NEXT_SCAN:format(clock(left)), 1 - left / ns.INTERVAL
 end
 
 local function bigButton()
@@ -219,13 +217,15 @@ local function refreshDeals()
     local shown = ns.Shown()
     local open, worth = 0, 0
     for _, line in ipairs(shown) do if not line.state then open, worth = open + 1, worth + line.gain end end
-    sumText:SetText(open > 0 and L.SUM:format(open, money(worth)) or "")
+    -- while a scan runs its line needs the room
+    sumText:SetText((open > 0 and not ns.Scanning()) and L.SUM:format(open, money(worth)) or "")
     dealList:SetData(shown)
     dealEmpty:SetShown(#shown == 0)
     if not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
     elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text, L.SCANNING_SUB)
     else dealEmpty:Set(L.EMPTY, L.EMPTY_SUB) end
     heads:SetShown(#shown > 0)
+    scanBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
     bigButton()
     buyBtn:Show()
     local b = ns.buy
@@ -279,20 +279,6 @@ local function build()
     ft:Add(buyBtn)
     buyBtn:SetScript("OnClick", function() ns.Click(ns.Top()) end)
 
-    refreshBtn = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
-    S.SetButtonIcon(refreshBtn, "Interface\\Buttons\\UI-RefreshButton", 16)
-    refreshBtn.btnIcon:ClearAllPoints()
-    refreshBtn.btnIcon:SetPoint("CENTER")
-    refreshBtn:SetScript("OnClick", function() ns.Scan(true) end)
-    refreshBtn:HookScript("OnEnter", function(self)
-        if GameTooltip and GameTooltip.SetOwner then
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-            GameTooltip:SetText(L.REFRESH)
-            GameTooltip:AddLine(L.REFRESH_TIP, 1, 1, 1, true)
-            GameTooltip:Show()
-        end
-    end)
-    refreshBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
     tabs = S.PageTabs(frame.body, { L.TAB_DEALS, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
@@ -310,22 +296,34 @@ local function build()
     -- Deals
     local dp = pages[1]
     scanIcon = S.IconBox(dp, 20, "Interface\\Icons\\INV_Misc_PocketWatch_01")
-    scanIcon:SetPoint("TOPLEFT", 0, -2)
+    scanIcon:SetPoint("TOPLEFT", 0, -4)
+    scanBtn = S.Button(dp, 120, 28)
+    scanBtn:SetPoint("TOPRIGHT", 0, 0)
+    label(scanBtn, L.REFRESH, 96)
+    scanBtn:SetScript("OnClick", function() ns.Scan(true) end)
+    scanBtn:HookScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText(L.REFRESH, 1, 1, 1)
+        GameTooltip:AddLine(L.REFRESH_TIP, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    scanBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     sumText = S.Text(dp, 12, S.MUTED)
-    sumText:SetPoint("TOPRIGHT", 0, -5)
+    sumText:SetPoint("RIGHT", scanBtn, "LEFT", -10, 0)
     sumText:SetJustifyH("RIGHT")
     sumText:SetWordWrap(false)
     scanText = S.Text(dp, 12, S.MUTED)
-    scanText:SetPoint("TOPLEFT", scanIcon, "TOPRIGHT", 8, -3)
+    scanText:SetPoint("LEFT", scanIcon, "RIGHT", 8, 0)
     scanText:SetPoint("RIGHT", sumText, "LEFT", -10, 0)
     scanText:SetWordWrap(false)
     scanText:SetJustifyH("LEFT")
     bar = S.Progress(dp, 4)
-    bar:SetPoint("TOPLEFT", 0, -28)
-    bar:SetPoint("TOPRIGHT", 0, -28)
+    bar:SetPoint("TOPLEFT", 0, -34)
+    bar:SetPoint("TOPRIGHT", 0, -34)
 
     dealCard = S.Card(dp)
-    dealCard:SetPoint("TOPLEFT", 0, -28 - 4 - S.GAP)
+    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
     dealCard:SetPoint("BOTTOMRIGHT")
     heads = CreateFrame("Frame", nil, dealCard.body)
     heads:SetPoint("TOPLEFT")
@@ -389,11 +387,11 @@ local function build()
     local page = S.ScrollPage(sp, frame.inner[1])
     page:SetAllPoints()
     rows[#rows + 1] = { L.OPT_minGain, L.TIP_minGain, icon = ns.OPT_ICON.minGain,
-        control = S.Stepper(page.inner, function() return ns.db.minGain end, function(v) ns.SetPref("minGain", v) end,
-                            100, 0, 100000, function(v) return S.MoneyText(v) end, 130) }
+        control = S.MoneyStepper(page.inner, function() return ns.db.minGain end, function(v) ns.SetPref("minGain", v) end,
+                                 ns.MIN_GAIN, ns.MAX_MONEY) }
     rows[#rows + 1] = { L.OPT_reserve, L.TIP_reserve, icon = ns.OPT_ICON.reserve,
-        control = S.Stepper(page.inner, function() return ns.db.reserve end, function(v) ns.SetPref("reserve", v) end,
-                            100000, 0, 100000000, function(v) return S.MoneyText(v, true) end, 130) }
+        control = S.MoneyStepper(page.inner, function() return ns.db.reserve end, function(v) ns.SetPref("reserve", v) end,
+                                 0, ns.MAX_MONEY) }
     rows[#rows + 1] = { L.OPT_keepFree, L.TIP_keepFree, icon = ns.OPT_ICON.keepFree,
         control = S.Stepper(page.inner, function() return ns.db.keepFree end, function(v) ns.SetPref("keepFree", v) end,
                             1, 0, 30, nil, 130) }
