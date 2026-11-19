@@ -11,7 +11,7 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, setCard, buyBtn, scanBtn
+local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
 -- column widths from the right: button, gain, vendor, auction, quantity
@@ -24,6 +24,13 @@ local function clock(sec)
     sec = math.max(0, math.floor(sec or 0))
     return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
 end
+
+-- A gem of each quality's colour for its row on the Settings tab.
+local QUALITY_ICON = {
+    [0] = "Interface\\Icons\\INV_Stone_15", [1] = "Interface\\Icons\\INV_Misc_Gem_Pearl_01",
+    [2] = "Interface\\Icons\\INV_Misc_Gem_Emerald_01", [3] = "Interface\\Icons\\INV_Misc_Gem_Sapphire_01",
+    [4] = "Interface\\Icons\\INV_Misc_Gem_Amethyst_01",
+}
 
 -- ---------- deal rows ----------
 
@@ -188,7 +195,7 @@ function ns.ScanLine()
     if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
     local left = ns.NextIn()
     if not left then return L.SCAN_OFF, 0 end
-    return L.NEXT_SCAN:format(clock(left)), 1 - left / ns.INTERVAL
+    return L.NEXT_SCAN:format(clock(left)), 1 - left / ns.Interval()
 end
 
 local function bigButton()
@@ -254,7 +261,9 @@ function ns.Refresh()
     if tab == 1 then return refreshDeals() end
     if tab == 2 then return refreshHistory() end
     buyBtn:Hide()
-    for _, row in ipairs(setCard.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+    for _, card in ipairs({ setCard, filterCard }) do
+        for _, row in ipairs(card.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+    end
     frame.footer:SetStatus("")
 end
 
@@ -386,6 +395,17 @@ local function build()
     local sp = pages[3]
     local page = S.ScrollPage(sp, frame.inner[1])
     page:SetAllPoints()
+    -- the interval steps through ns.INTERVALS
+    local function slot()
+        for i, v in ipairs(ns.INTERVALS) do if v == ns.Interval() then return i end end
+        return 1
+    end
+    rows[#rows + 1] = { L.OPT_interval, L.TIP_interval, icon = ns.OPT_ICON.interval,
+        control = S.Stepper(page.inner, slot, function(i) ns.SetPref("interval", ns.INTERVALS[i]) end, 1, 1, #ns.INTERVALS,
+                            function(i)
+                                local v = ns.INTERVALS[i]
+                                return v < 60 and L.SECS:format(v) or L.MINS:format(v / 60)
+                            end, 130) }
     rows[#rows + 1] = { L.OPT_minGain, L.TIP_minGain, icon = ns.OPT_ICON.minGain,
         control = S.MoneyStepper(page.inner, function() return ns.db.minGain end, function(v) ns.SetPref("minGain", v) end,
                                  ns.MIN_GAIN, ns.MAX_MONEY) }
@@ -400,7 +420,31 @@ local function build()
     setCard:SetPoint("TOPLEFT")
     setCard:SetPoint("TOPRIGHT")
     setCard:SetHeight(h)
-    page:SetContent(h)
+
+    -- What to buy: the kinds and qualities a scan looks at, and the price limits of a line.
+    local frows = {}
+    local function switch(key, label, tip, icon)
+        frows[#frows + 1] = { label, tip, function() return ns.db[key] ~= false end,
+                              function(v) ns.SetPref(key, v and true or false) end, icon = icon }
+    end
+    switch("gear", L.OPT_gear, L.TIP_gear, ns.OPT_ICON.gear)
+    switch("goods", L.OPT_goods, L.TIP_goods, ns.OPT_ICON.goods)
+    for _, q in ipairs(ns.QUALITIES) do
+        switch("q" .. q, S.QualityHex(q) .. L["Q" .. q] .. "|r", nil, QUALITY_ICON[q])
+    end
+    frows[#frows + 1] = { L.OPT_maxPrice, L.TIP_maxPrice, icon = ns.OPT_ICON.maxPrice,
+        control = S.MoneyStepper(page.inner, function() return ns.db.maxPrice end, function(v) ns.SetPref("maxPrice", v) end,
+                                 0, ns.MAX_MONEY) }
+    frows[#frows + 1] = { L.OPT_minPct, L.TIP_minPct, icon = ns.OPT_ICON.minPct,
+        control = S.Stepper(page.inner, function() return ns.db.minPct end, function(v) ns.SetPref("minPct", v) end,
+                            5, 0, ns.MAX_PCT, function(v) return L.PCT:format(v) end, 130) }
+    local fh
+    filterCard, fh = S.SettingsCard(page.inner, L.FILTERS, frows, L.FILTERS_HINT)
+    filterCard:SetPoint("TOPLEFT", setCard, "BOTTOMLEFT", 0, -S.GAP)
+    filterCard:SetPoint("TOPRIGHT", setCard, "BOTTOMRIGHT", 0, -S.GAP)
+    filterCard:SetHeight(fh)
+    page:SetContent(h + S.GAP + fh)
+    frame.settingsPage = page
 
     frame:SetScript("OnShow", function() ns.Refresh() end)
 end

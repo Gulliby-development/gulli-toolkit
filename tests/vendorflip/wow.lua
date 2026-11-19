@@ -120,7 +120,7 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec.items = { [id] = { name, quality, sell, stack } }, spec.bags = { { id, count } } (one slot
+-- spec.items = { [id] = { name, quality, sell, stack, class } }, spec.bags = { { id, count } } (one slot
 -- each in bag 0), spec.free (free slots), spec.money (copper), spec.browse = { { id, minPrice } },
 -- spec.commodity = { [id] = { { unit, count, own } } }, spec.lots = { [id] = { { auction, n, buyout, own } } }.
 function Fake(spec)
@@ -154,7 +154,7 @@ function Fake(spec)
             local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
             local i = W.items[id]
             if not i then return nil end
-            return i[1], "item:" .. id, i[2] or 1, 10, 1, "Misc", "Misc", i[4] or 20, "", "icon" .. id, i[3] or 0
+            return i[1], "item:" .. id, i[2] or 1, 10, 1, "Misc", "Misc", i[4] or 20, "", "icon" .. id, i[3] or 0, i[5] or 15
         end,
         RequestLoadItemDataByID = function() end,
     }

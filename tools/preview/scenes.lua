@@ -1468,6 +1468,12 @@ S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
     ru = { spec = vfSpec("ruRU"), open = vfOpen(1, true) },
     history = { spec = vfSpec(), open = vfOpen(2) },
     settings = { spec = vfSpec(), open = vfOpen(3) },
+    filters = { spec = vfSpec(), open = function(ns, W)
+        vfOpen(3)(ns, W)
+        local sc = ns.Window().settingsPage.scroll
+        local sf = sc.scroll or sc
+        sf:SetVerticalScroll(560)
+    end },
     empty = { spec = { items = {} }, open = function(ns) ns.Window():Show(); ns.Refresh() end },
     sidetabs = { spec = vfSpec("ruRU"), open = function(ns, W)
         vfOpen(1)(ns, W)
