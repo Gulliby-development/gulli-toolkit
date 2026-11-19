@@ -14,6 +14,53 @@ local function itemName(id)
     if not n and GetItemInfo then n = GetItemInfo(id) end
     return n
 end
+-- An item whose name the client had not loaded when a state was built shows as "#<id>". It is
+-- asked for, and once the game has it every "#<id>" of the result is renamed and the window drawn again.
+ns.nameWaiting, ns.nameFound = {}, {}
+ns.repWaiting = {} -- patterns not loaded yet: their reputation line could not be read
+local function nameFor(id)
+    local n = ns.nameFound[id] or itemName(id)
+    if type(n) == "string" and n ~= "" then ns.nameFound[id] = n; return n end
+    ns.nameWaiting[id] = true
+    if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+    return "#" .. id
+end
+-- Renames every `name = "#<id>"` under `root` whose item is known by now.
+function ns.FixNames(root)
+    local seen = {}
+    local function walk(t)
+        if seen[t] then return end
+        seen[t] = true
+        local n = rawget(t, "name")
+        if type(n) == "string" then
+            local id = tonumber(n:match("^#(%d+)$"))
+            if id and ns.nameFound[id] then rawset(t, "name", ns.nameFound[id]) end
+        end
+        for _, v in pairs(t) do if type(v) == "table" then walk(v) end end
+    end
+    if type(root) == "table" then walk(root) end
+end
+-- Looks again for the names still missing; one redraw for a burst of them.
+local nameRedraw
+function ns.CheckNames()
+    local got
+    for id in pairs(ns.nameWaiting) do
+        local n = itemName(id)
+        if type(n) == "string" and n ~= "" then ns.nameFound[id] = n; ns.nameWaiting[id] = nil; got = true
+            -- the pattern's tooltip can be read now: the plan may have counted on a pattern it cannot learn
+            if ns.repWaiting[id] then ns.repWaiting[id] = nil; if ns.view then ns.view.stale = true end end
+        end
+    end
+    if not got or nameRedraw then return end
+    nameRedraw = true
+    local function redraw()
+        nameRedraw = nil
+        ns.FixNames(ns.view)
+        if ns.Busy and ns.Busy() then ns.nameLate = true end -- a result still being built has the old names
+        if ns.Refresh then ns.Refresh() end
+    end
+    if C_Timer and C_Timer.After then C_Timer.After(0.2, redraw) else redraw() end
+end
 function ns.ItemIcon(id)
     return (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)) or (GetItemIcon and GetItemIcon(id))
         or "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -233,7 +280,7 @@ local function itemFor(state, id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
     local alts, who = ns.AltCount(id)
-    state.items[id] = { name = itemName(id) or ("#" .. id), vend = sell, bop = bind == 1, quality = quality,
+    state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
                         ah = ah, age = age, buy = ns.db.vendor[id], bags = bags, bank = bank,
                         mail = ns.char.mail and ns.char.mail[id] or 0, alts = alts, altWho = who,
                         gather = ns.db.gather[id] == true, lots = ns.db.lots[id] }
@@ -385,6 +432,7 @@ local function recipeSource(state, rid, rec, skill)
         local item = d[2]
         itemFor(state, item)
         local it = state.items[item]
+        if ns.nameWaiting[item] then ns.repWaiting[item] = true end
         local fac = (UnitFactionGroup and UnitFactionGroup("player")) == "Horde" and "H" or "A"
         local who = {}
         for i = 3, #d do
@@ -902,13 +950,15 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                           "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
                           "AUCTION_ITEM_LIST_UPDATE", "MERCHANT_CLOSED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
                           "MAIL_SHOW", "MAIL_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
-                          "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED" })
+                          "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED" })
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
             pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
         end
         return
     end
+    if next(ns.nameWaiting) then ns.CheckNames() end
+    if event == "GET_ITEM_INFO_RECEIVED" then return end
     if event == "MERCHANT_SHOW" then learnVendor(); ns.atVendor = true; ns.Arrive("vendor"); return end
     if event == "MERCHANT_CLOSED" then ns.atVendor = false; ns.Arrive(nil); return end
     if event == "BANKFRAME_OPENED" then ns.atBank = true; ns.Arrive("bank"); return end

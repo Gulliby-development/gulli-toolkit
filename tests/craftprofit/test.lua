@@ -1836,4 +1836,43 @@ test("the buying settings: the guard stepper and the side window switch plan not
     eq(n.Prefs(n.db.prefs).guard, 10)
 end)
 
+test("an item the client had not loaded gets its name once the game sends it", function()
+    local n = game()
+    W.items[3].pending = true
+    n.Toggle(); n.Calculate()
+    eq(n.view.state.items[3].name, "#3")
+    assert(W.asked and W.asked[3], "the game is asked for it")
+    local function shown(t, seen)
+        seen = seen or {}
+        if seen[t] then return false end
+        seen[t] = true
+        if rawget(t, "name") == "#3" then return true end
+        for _, v in pairs(t) do if type(v) == "table" and shown(v, seen) then return true end end
+        return false
+    end
+    assert(shown(n.view), "the result carries the stand-in")
+    -- another item's event changes nothing; the item's own event renames every line
+    W.Fire("GET_ITEM_INFO_RECEIVED", 5, true); W.RunTimers()
+    eq(n.view.state.items[3].name, "#3")
+    W.items[3].pending = nil
+    W.Fire("GET_ITEM_INFO_RECEIVED", 3, true); W.RunTimers()
+    eq(n.view.state.items[3].name, "Blue Dye")
+    assert(not shown(n.view), "no line keeps #3")
+    eq(next(n.nameWaiting), nil)
+    -- a later calculation has the name at once
+    n.Calculate()
+    eq(n.view.state.items[3].name, "Blue Dye")
+    -- a pattern that was not loaded could not show its reputation line: once it is, the result is outdated
+    n = game()
+    n.Data.src[104] = { "v", 6, "Ally Gal|A" }
+    n.Data.spell[104] = { 150, 160, 170 }
+    W.items[6].pending = true
+    n.Toggle(); n.Calculate()
+    assert(n.repWaiting[6] and not n.view.stale)
+    W.items[6].pending = nil
+    W.Fire("GET_ITEM_INFO_RECEIVED", 6, true); W.RunTimers()
+    eq(n.repWaiting[6], nil)
+    eq(n.view.stale, true)
+end)
+
 W.finish()
