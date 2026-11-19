@@ -580,8 +580,25 @@ end
 local SRC = { bank = "SRC_bank", ah = "SRC_ah", vendor = "SRC_vendor", trainer = "SRC_trainer", prep = "SRC_prep",
               sellah = "SRC_sellah", sellv = "SRC_sellv", mail = "SRC_mail", alts = "SRC_alts", gather = "SRC_gather" }
 
+-- The pin of a stop: who sells or teaches the first line that is still open, when the data
+-- knows where that is.
+local function stopPin(n, p)
+    for k, l in ipairs(n.lines or {}) do
+        if l.npc and not (p and p.lines and p.lines[k] and p.lines[k].done) then
+            local spot = ns.PickNpc(l.npc)
+            if spot and spot.zone then return spot end
+        end
+    end
+end
+
+-- Pins the map on a spot and opens it there; says so, or that this map is not known.
+function ns.ShowOnMap(spot)
+    local text = (ns.SetPin(spot, true) and L.PIN_SET or L.PIN_FAIL):format(spot.label)
+    ns.Print(text); ns.Toast(text)
+end
+
 -- What the stop's buttons do now. Returns { primary = { text, run, warn = true }, second =
--- { text, run }, tools = { { text, run } }, counter = { text, at, of, right }, hint, bad (the
+-- { text, run }, tools = { { text, run } } (one with `pin` shows that spot on the map), counter = { text, at, of, right }, hint, bad (the
 -- hint is a warning), pill = { text, colour }, vendor = the vendor's plan }. A button without
 -- `run` is shown switched off: it says what the stop waits for. `aside`: the window beside the
 -- auction house, which has no other stop to go to.
@@ -651,6 +668,8 @@ function ns.StopAction(i, aside)
             end
         end
     elseif n.kind == "vendor" and n.title == "STOP_VENDOR_BUY" then
+        local spot = not done and stopPin(n, p)
+        if spot then a.tools[#a.tools + 1] = { L.SHOW_ON_MAP, function() ns.ShowOnMap(spot) end, pin = spot } end
         a.pill = done and { L.STOP_DONE, GOOD } or (ns.atVendor and { L.OPEN_vendor, GOOD } or { L.AWAY_vendor })
         if done then
             a.primary, a.second, a.hint = { L.BUY_DONE }, onward, L.HINT_BOUGHT
@@ -704,6 +723,8 @@ function ns.StopAction(i, aside)
         end
         a.hint = L.HINT_CRAFT
     elseif n.kind == "trainer" then
+        local spot = stopPin(n, p)
+        if spot then a.tools[#a.tools + 1] = { L.SHOW_ON_MAP, function() ns.ShowOnMap(spot) end, pin = spot } end
         a.hint = L.HINT_TRAINER
     elseif n.kind == "gather" then
         a.hint = L.HINT_GATHER
@@ -750,10 +771,14 @@ local function detailRows(n, i, a)
         local note = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
         if l.src == "alts" then note = L.SRC_alts:format(l.who or "?") end
         if l.src == "trainer" and l.who then note = l.who end -- only this trainer teaches it
+        -- who sells or teaches it, and where: a click on the line pins the map there
+        local spot = l.npc and ns.PickNpc(l.npc)
+        if spot then note = spot.label end
         if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then note = L.SRC_LADDER end
         local right = l.price and S.MoneyText(l.price * l.n) or ""
-        if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 then note = L.EACH:format(S.MoneyText(l.price)) end
+        if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 and not spot then note = L.EACH:format(S.MoneyText(l.price)) end
         local e = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, q = q,
+                    pin = spot and spot.zone and spot or nil, noteShort = spot and spot.who or nil,
                     text = name .. color(S.MUTED) .. " x" .. l.n .. "|r" }
         local q1 = byLine[k]
         e.done = (p and p.lines[k] and p.lines[k].done) or (q1 and q1.done) or false
@@ -776,7 +801,7 @@ local function detailRows(n, i, a)
         local vb = vend[k]
         if vb and vb.extra > 0 then note = L.NOTE_STACK:format(vb.need, vb.stack, vb.units) end
         if vb then right = S.MoneyText(vb.cost) end -- what the click pays, whole stacks
-        if a and a.vendor and not vb and not e.done then note = L.NOTE_NOT_HERE end
+        if a and a.vendor and not vb and not e.done and not spot then note = L.NOTE_NOT_HERE end -- else: who has it
         e.note, e.right = note, right
         rows[#rows + 1] = e
     end
@@ -796,6 +821,8 @@ local function makeLine(r)
             ns.SetGather(e.id, not ns.db.gather[e.id])
         elseif e.rid then
             if not ns.OpenRecipe(e.rid) then ns.Print(L.OPEN_PROF) end
+        elseif e.pin then
+            ns.ShowOnMap(e.pin)
         end
     end)
     r.click:SetScript("OnEnter", function(self)
@@ -807,6 +834,11 @@ local function makeLine(r)
             GameTooltip:AddLine(ns.db.gather[e.id] and L.GATHER_TIP_OFF or L.GATHER_TIP, 0.6, 0.6, 0.6, true)
         elseif e.rid then
             GameTooltip:SetText(L.RECIPE_TIP, 1, 1, 1, 1, true)
+        elseif e.pin then
+            GameTooltip:SetText(e.pin.label, 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L.PIN_TIP, 0.6, 0.6, 0.6, true)
+        else
+            return
         end
         GameTooltip:Show()
     end)
@@ -837,6 +869,11 @@ local function fillLine(r, e)
     r.text:SetText(e.text)
     r.note:SetText(e.note or "")
     r.right:SetText(e.right or "")
+    -- a long name with its zone gives way to the name alone (the tooltip has both)
+    if e.noteShort then
+        local room, w = tonumber((r.note:GetWidth())) or 0, tonumber((r.note:GetStringWidth())) or 0
+        if room > 0 and w > room then r.note:SetText(e.noteShort) end
+    end
     r.mark:SetText(e.mark and (color(e.markColor or S.TEXT) .. e.mark .. "|r") or "")
     r.tick:SetShown(e.done and true or false)
     S.Fill(r, e.now and NEXT_ROW or S.CLEAR)
@@ -1318,6 +1355,34 @@ local function buildRoute(route, height)
     ui.panel = makePanel(dcard, MAIN - STOPS_W - S.GAP)
     ui.detail, ui.act1, ui.act2, ui.tool1, ui.tool2 = ui.panel.list, ui.panel.act1, ui.panel.act2, ui.panel.tools[1], ui.panel.tools[2]
     ui.unknown = ui.panel.none
+end
+
+-- The world map opened from a stop must not hide behind the window: while that map shows, the
+-- window (and the hub around it) lies under the map, and comes back up when the map or the
+-- window closes. Only our own frames change strata, never the game's map.
+local lowered
+function ns.MapClosed()
+    if not lowered then return end
+    for _, e in ipairs(lowered) do e[1]:SetFrameStrata(e[2]) end
+    lowered = nil
+end
+
+function ns.BehindMap()
+    local map = _G.WorldMapFrame
+    if lowered or not frame or not frame:IsShown() or not map then return end
+    lowered = {}
+    local f = frame
+    while f and f ~= UIParent and #lowered < 6 do
+        local strata = f:GetFrameStrata()
+        lowered[#lowered + 1] = { f, type(strata) == "string" and strata or "DIALOG" }
+        f:SetFrameStrata("LOW")
+        f = f:GetParent()
+    end
+    if not rawget(ns, "mapHooked") and map.HookScript then
+        ns.mapHooked = true
+        map:HookScript("OnHide", ns.MapClosed)
+        frame:HookScript("OnHide", ns.MapClosed)
+    end
 end
 
 local function build()
