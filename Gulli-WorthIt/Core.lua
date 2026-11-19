@@ -349,6 +349,27 @@ function ns.Steps(e)
     return out
 end
 
+-- What to do for a reward, step by step (Tips.lua): the client's language, else English.
+function ns.Tips(quest)
+    local all = ns.TIPS or {}
+    local t = all[ns.lang]
+    return (t and t[quest]) or (all.en and all.en[quest]) or nil
+end
+
+-- The reward's page under its lines: "What to do" with its steps, then the chain with its quests.
+-- { head = text }, { tip = text, n = i } or a step of ns.Steps.
+function ns.DetailRows(e, chainHead, tipsHead)
+    local out = {}
+    local tips = ns.Tips(e.quest)
+    if tips and #tips > 0 then
+        out[#out + 1] = { head = tipsHead or ns.L.TIPS }
+        for i, text in ipairs(tips) do out[#out + 1] = { tip = text, n = i } end
+    end
+    out[#out + 1] = { head = chainHead or ns.L.CHAIN }
+    for _, st in ipairs(ns.Steps(e)) do out[#out + 1] = st end
+    return out
+end
+
 -- Where a reward sends the character now: { kind (take, work, turnin), who, area, zone, x, y,
 -- quest, reward, pin (the place is on a map) }. A quest in the log without a known work spot
 -- points to who takes it back (`at`).

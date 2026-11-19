@@ -24,6 +24,10 @@
    data gives and that is not in tools/worthit/seen.txt is news for Worth It: when players find
    its quest, it goes into EXTRA in tools/worthit/build_data.py. `--update-seen` marks them.
 
+5. Worth It's steps: every reward quest has its "what to do" steps in Gulli-WorthIt/Tips.lua, the
+   comments snapshot (tools/worthit/wowhead-comments.json) has every quest of its chain and is no
+   older than COMMENT_DAYS of tools/worthit/comments.py, whose report this is.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
@@ -238,6 +242,15 @@ def check_rewards(qdb):
     return ["- %d %s (%s)" % f for f in found], found
 
 
+def check_tips():
+    """What Worth It's "what to do" steps lack (tools/worthit/comments.py)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("worthit_comments", os.path.join(ROOT, "tools", "worthit", "comments.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.report()
+
+
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
@@ -249,6 +262,7 @@ def main(argv):
     area_lines, areas = check_areas(qdb, prep_areas)
     recipe_lines, recipes = check_recipes(qdb)
     reward_lines, bags = check_rewards(qdb)
+    tip_lines = check_tips()
     if "--update-seen" in argv:
         with open(os.path.join(ROOT, "tools", "worthit", "seen.txt"), "a", encoding="utf-8") as f:
             for iid, name, kind in bags:
@@ -284,6 +298,8 @@ def main(argv):
                    "A bag, quiver or pouch with no quest, drop or vendor in the data. If a quest gives it, "
                    "add it to EXTRA in tools/worthit/build_data.py; else run "
                    "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + reward_lines + [""]
+    if tip_lines:
+        report += ["### Worth It: what to do", ""] + tip_lines + [""]
     text = "\n".join(report)
     print(text or "Every module keeps up with the Forever data.")
     if out:
