@@ -29,8 +29,8 @@ Before a pull, somebody always misses Fortitude or Intellect. Gulli-GroupBuffs l
   - Priest: Power Word: Fortitude, Divine Spirit, Shadow Protection (off by default), Inner Fire, and the racial Touch of Weakness (Undead) and Shadowguard (Troll), only on yourself.
   - Mage: Arcane Intellect, and your armor (the best one you know, or the one you pick).
   - Druid: Mark of the Wild, Thorns on you, on your tanks or on everyone, and Omen of Clarity.
-  - Paladin: one blessing per class, one for tanks and one for healers, your aura, and Righteous Fury (off by default).
-  - Shaman: your shield and a weapon imbue you choose.
+  - Paladin: one blessing per class, one for tanks and one for healers, your aura (any aura you run counts, so it never asks you to swap), and Righteous Fury (off by default).
+  - Shaman: your shield (Lightning or Water, whichever is on) and a weapon imbue you choose.
   - Warrior: Battle Shout. Warlock: Demon Skin or Demon Armor. Hunter: the aspect you pick.
 - **Pets too.** Hunter and warlock pets get Fortitude and Mark of the Wild, and the mana buffs when they have mana. Turn **Buff pets** off if you do not want that.
 - **See it at a glance.** The big button shows how many buffs wait (**+3**). Its border is red when there is something to cast, yellow when the rest is out of range, green when everyone is done.

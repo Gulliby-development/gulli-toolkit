@@ -235,6 +235,15 @@ test("Shadowform off the stance bar: never guessed gone in a fight, a cast in th
     eq(W.Keys(ns.Missing()), "", "on the bar and active")
 end)
 
+test("a shaman with Water Shield is not asked for Lightning Shield", function()
+    Fake({ class = "SHAMAN", known = { 324, 24398 }, auras = { "Spell24398" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    eq(W.Keys(ns.Missing()), "")
+    W.auras = {}
+    eq(W.Keys(ns.Missing()), "SHIELD")
+end)
+
 test("in a fight the panel's secure icons only fade, and a new reminder goes on the plain strip", function()
     Fake({ class = "PRIEST", known = { 1243, 588 }, auras = { "Spell1243" } })
     local ns = Load()

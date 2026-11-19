@@ -9,6 +9,8 @@ local _, ns = ...
 --   group: the spell that buffs a whole party at once
 --   race:  a racial spell, shown only for that race
 --   ranks: the higher rank ids, for a client that knows only the rank it taught
+--   anyOf: one at a time and each a choice of the moment (paladin auras, shields): any one of
+--          the choice's list that is on counts, so the player is never asked to swap
 local B = {}
 ns.Buffs = B
 
@@ -35,7 +37,7 @@ B.CLASS = {
     },
     PALADIN = {
         { key = "blessing", who = "blessing" },
-        { key = "aura", who = "self", choice = "aura" },
+        { key = "aura", who = "self", choice = "aura", anyOf = true },
         { key = "fury", id = 25780, who = "self", off = true },
     },
     WARRIOR = {
@@ -48,7 +50,7 @@ B.CLASS = {
         { key = "aspect", who = "self", choice = "aspect" },
     },
     SHAMAN = {
-        { key = "shield", who = "self", choice = "shield" },
+        { key = "shield", who = "self", choice = "shield", anyOf = true },
         { key = "weapon", who = "self", choice = "weapon", weapon = true },
     },
 }
@@ -81,6 +83,7 @@ B.CHOICES = {
         { key = "shadowres", id = 19876 },
         { key = "frostres", id = 19888 },
         { key = "fireres", id = 19891 },
+        { key = "sanctity", id = 20218 },
     },
     aspect = {
         { key = "monkey", id = 13163 },

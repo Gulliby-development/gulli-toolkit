@@ -301,6 +301,25 @@ test("other classes: Battle Shout, the best armor known, an aura, Omen of Clarit
     eq(show(ns.Plan()), "Aspect of the Hawk@player")
 end)
 
+test("a paladin aura or a shaman shield of the moment counts: never asked to swap it", function()
+    local function pal(auras)
+        return { player = { name = "Me", class = "PALADIN", auras = auras } }
+    end
+    Fake { known = { [465] = true, [7294] = true, [20218] = true }, units = pal({ ["Retribution Aura"] = 0 }) }
+    local ns = Load()
+    eq(show(ns.Plan()), "", "Retribution Aura on, Devotion picked")
+    Fake { known = { [465] = true, [20218] = true }, units = pal({ ["Sanctity Aura"] = 0 }) }
+    ns = Load()
+    eq(show(ns.Plan()), "", "Sanctity Aura counts")
+    Fake { known = { [465] = true, [7294] = true }, units = pal({}) }
+    ns = Load()
+    eq(show(ns.Plan()), "Devotion Aura@player", "no aura: the picked one")
+    local sham = { player = { name = "Me", class = "SHAMAN", auras = { ["Water Shield"] = 0 } } }
+    Fake { known = { [324] = true, [24398] = true }, units = sham }
+    ns = Load()
+    eq(show(ns.Plan()), "", "Water Shield on, Lightning picked")
+end)
+
 test("pets get the buffs for everyone, mana ones only with mana, and can be switched off", function()
     local units = party({
         pet = { name = "Imp", class = "WARLOCK", auras = {}, powerType = 0 },
