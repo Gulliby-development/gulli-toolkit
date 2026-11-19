@@ -41,7 +41,7 @@ ns.BUFFS = {
         { key = "TRUESHOT", ids = { 19506 } },
     },
     SHAMAN = {
-        { key = "SHIELD", ids = { 324 } },
+        { key = "SHIELD", ids = { 324, 24398 } }, -- Lightning or Water Shield
     },
     WARRIOR = {
         { key = "SHOUT", ids = { 6673 }, on = false }, -- two minutes: off unless asked

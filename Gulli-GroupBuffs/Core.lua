@@ -319,6 +319,12 @@ function ns.Families()
                         fam.group, fam.groupId = spellName(f.group), f.group
                         fam.names[2] = fam.group
                     end
+                    if f.anyOf then
+                        for _, c in ipairs(B.CHOICES[f.choice]) do
+                            local n = known(c.id) and spellName(c.id)
+                            if n and n ~= fam.name then fam.names[#fam.names + 1] = n end
+                        end
+                    end
                     out[#out + 1] = fam
                 end
             end

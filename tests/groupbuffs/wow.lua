@@ -20,7 +20,7 @@ W.SPELLS = {
     [324] = "Lightning Shield", [8017] = "Rockbiter Weapon", [8024] = "Flametongue Weapon",
     [6673] = "Battle Shout", [168] = "Frost Armor", [7302] = "Ice Armor", [6117] = "Mage Armor",
     [687] = "Demon Skin", [706] = "Demon Armor", [16864] = "Omen of Clarity", [25780] = "Righteous Fury",
-    [465] = "Devotion Aura", [7294] = "Retribution Aura", [13165] = "Aspect of the Hawk",
+    [465] = "Devotion Aura", [7294] = "Retribution Aura", [20218] = "Sanctity Aura", [24398] = "Water Shield", [13165] = "Aspect of the Hawk",
 }
 
 -- A frame that remembers its attributes, scripts and wrapped snippets.
