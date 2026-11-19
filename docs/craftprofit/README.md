@@ -10,7 +10,9 @@
   <img src="https://img.shields.io/badge/languages-8-17302d?style=for-the-badge" alt="8 languages">
 </p>
 
-<p align="center"><img src="window.jpg" alt="The window" width="560"></p>
+<p align="center"><img src="window.png" alt="The window: the stops of the run, and the auction stop with its Buy button" width="720"></p>
+
+<p align="center"><img src="side.png" alt="The small window beside the auction house" width="420"></p>
 
 ---
 
@@ -18,17 +20,20 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 
 ## Features
 
-- **A route, not a table.** Each stop shows where to go, with the real game icons of what you buy, craft or sell there. A craft stop names the recipe, the skill it covers and how many crafts it takes. Tap a stop to see the list.
+- **A route, step by step.** The stops stand in a list on the left: bank, auction, vendor, crafts, selling, each with the real game icon. The stop you pick opens large on the right with its items and one main button. A stop gets a tick when its items are in your bags, and **You are here** marks the stop for the place you just opened.
+- **Buy at the auction from the route.** At the auction stop, press **Check price**, then **Buy**: two presses for each item, because the game lets an addon buy only when you click. A counter shows how far you are ("Click 3 of 4"). The button stays in one place, so you can just keep clicking.
+- **No bad surprises.** When the auction asks more than the plan, the button turns yellow and says **Buy anyway**, with **Skip item** beside it. You set how much more is still fine in Settings (10% at first).
+- **Buy at a vendor in one click.** At a vendor stop, **Buy all** buys everything this vendor sells for the run. Vendors sell whole stacks: when you need 4 and it comes in fives, you get 5.
+- **A small window beside the auction house.** Open the auction house with a run planned, and the buy stop opens next to it. When Waylaid Crates has work there too, both share that place as tabs, each with a number: what is left to buy. A switch in Settings turns it off.
 - **The real skill-up chances.** CraftProfit knows when each recipe turns yellow, green and grey in WoW Forever (Forever changed many of them, and added its own recipes), so it knows how often a craft raises your skill. When the game shows another colour, it trusts the game.
-- **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. Below the route you still see how far the whole way is.
-- **The whole way, run by run.** Small tabs over the route show every run up to your target skill: 150-155, 155-185 and so on, each with the gold it gains or loses. Tap one to see that run. A red tab with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on.
-- **The route fits on the screen.** You always see two rows of stops. When there are more, **All stops** opens the rest.
+- **One run at a time.** The route is your next run: one kind of craft, with only the shopping it needs. Craft it, and the route plans the next run from your new skill and the new prices. The bar over the stops still shows how far the whole way is.
+- **The whole way, run by run.** A bar over the stops shows every run up to your target skill: 150-155, 155-185 and so on, each with the gold it gains or loses. Tap one to see that run. A red one with a question mark is a stretch where no recipe you know raises the skill; learn a new one, and the route goes on. The target skill is at the end of the bar: change it with **-** and **+**.
 - **Routes side by side.** Up to four ways to level, from the cheapest to the fastest, and two ways to just make money: from what you already have, or also buying reagents and patterns when the craft still pays. A money run is one recipe, crafted while it still pays and the market still takes it. It does not raise your skill, and it buys at most a few stacks of one reagent at the auction (**Auction buy, at most**), because only a few sell at the cheapest price. Each tab shows the gold, the target skill and all the crafts of the whole way, so you can compare them.
 - **How many crafts at most.** **Crafts to the target, at most** keeps the levelling routes short. It starts on auto: the skill points you still need plus 5 (from 175 to 200 that is 30), and it follows the target skill when you change it. Set your own number with **-** and **+**; step back onto the auto number and it follows the target again. When no route keeps within it, you see the one with the fewest crafts, marked in red.
 - **How much you may lose.** Set **Ready to lose**, and CraftProfit picks the fastest way to level that stays within it. Ways that cost more are marked.
 - **Not levelling?** Switch off **Level the profession**, and you only see the crafts that make money. When your skill is at the top, the money routes open by themselves.
-- **You choose the rest.** Use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. After the first **Calculate**, the route changes on its own, and the changed stops light up.
-- **Honest money.** Over the route: what you buy, what your own materials are worth, what the sales bring and the result, red when you lose gold. The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
+- **You choose the rest.** On the **Settings** tab: use your bags and bank or not, buy at the auction or only at vendors, buy patterns, go to the trainer, sell at the auction or to a vendor. After the first **Calculate**, the route changes on its own, and the changed stops light up.
+- **Honest money.** Under the stops: what you buy, what your own materials are worth, what the sales bring and the result, red when you lose gold. The auction cut (5%, or 15% at a neutral auction), the deposit you lose when an item does not sell, and how many of one item the market will take. Your own cloth counts at what you could sell it for.
 - **Straight to Auctionator.** At the auction stop, **To Auctionator** puts everything the run buys there into an Auctionator shopping list, with the amounts.
 - **Real lot prices.** At the auction house, **Update prices** reads the lots of what the run buys. Buying 60 cloth then costs what the cheapest 60 really cost, not 60 times the first lot.
 - **Craft from the route.** At a craft stop, **Make 142** crafts the run in the open profession window, and **Recipe** shows it there. Tap the recipe row to show it too.
@@ -52,7 +57,7 @@ For auction prices, also install **Auctionator** and scan the auction once.
 
 1. Open your profession window once. CraftProfit reads your recipes.
 2. Open the bank once if you want it to count what is there.
-3. Type `/gcp`. Set the switches on the right and press **Calculate**. A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top (the arrows or the mouse wheel show more routes when they do not all fit) and follow the stops. Switching routes is instant. When your bags or prices change, press **Recalculate**.
+3. Type `/gcp`. Press **Calculate** (the switches are on the **Settings** tab). A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top (the arrows or the mouse wheel show more routes when they do not all fit) and follow the stops. Switching routes is instant. When your bags or prices change, press the round **Recalculate** button at the top right.
 
 ## FAQ
 
@@ -77,7 +82,7 @@ Crafts now counts one craft sold at the auction. A run makes many of one item, a
 <details>
 <summary><b>Why does the whole way take hundreds of crafts?</b></summary>
 
-Green and yellow recipes do not raise your skill every time, so one skill point can take more than one craft. The number under the route is for the whole way to your target. You do not need to plan it: follow one run, and the next one is planned for you.
+Green and yellow recipes do not raise your skill every time, so one skill point can take more than one craft. The number on a route tile is for the whole way to your target. You do not need to plan it: follow one run, and the next one is planned for you.
 </details>
 
 <details>

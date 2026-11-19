@@ -15,6 +15,8 @@ if Fake then Fake(spec) end
 R.Install(W)
 if s and s.before then s.before(W, R) end
 local mod = Load()
+-- the game has no Polish client: the preview shows that language by its tag
+if os.getenv("LOCALE") == "plPL" and mod.T and mod.T.pl then mod.lang = "pl" end
 if s and s.open then s.open(mod, W, R) else mod.Toggle() end
 if W.RunTimers then pcall(W.RunTimers) end
 local win = assert(mod.Window, name .. " has no ns.Window")()

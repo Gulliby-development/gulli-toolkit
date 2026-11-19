@@ -27,7 +27,11 @@ ns.DEFAULTS = {
     maxBuy = 40, -- units of one item a profit run buys at the auction: only a few sell at that price
     useMail = true, -- items waiting in the mailbox count as own
     useAlts = false, -- items on the other characters (Gulli Chores) count as own, sent by mail
+    guard = 10, -- percent an auction price may be above the plan before the Buy button asks first
+    side = true, -- at the auction house the run's buy stop opens in the window beside it
 }
+-- Settings that change no plan: the window only redraws.
+ns.NO_PLAN = { guard = true, side = true }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
 ns.FRESH_DAYS = 3
@@ -940,6 +944,126 @@ function ns.NextCraft(node)
     return sg.rid, ceil(sg.n)
 end
 
+-- ---------- how far the run is, and buying from its stops ----------
+
+-- Stops whose items arrive in the bags by taking or buying them.
+local function gets(node)
+    return node.kind == "mail" or node.kind == "bank" or (node.kind == "ah" and node.title == "STOP_AH_BUY")
+        or (node.kind == "vendor" and node.title == "STOP_VENDOR_BUY")
+end
+ns.Gets = gets
+
+-- How far the run is: for each stop { done, left, lines = { { got, left, done } } }. `have(id)`
+-- is what the bags hold now, `state` what they held when the plan was made: units that arrived
+-- since count for the stops in their order, so a stop is done once its items are in the bags.
+-- A line without an item (a pattern) is never done by itself. Other stops are never done.
+function ns.Progress(route, state, have)
+    local out, used = {}, {}
+    for i, node in ipairs(route or {}) do
+        local p = { lines = {}, left = 0, done = false }
+        if gets(node) then
+            for k, l in ipairs(node.lines or {}) do
+                local e = { got = 0, left = l.n, done = false }
+                if l.id then
+                    local base = ((state and state.items[l.id]) or {}).bags or 0
+                    local gained = math.max(0, (have(l.id) or 0) - base - (used[l.id] or 0))
+                    used[l.id] = (used[l.id] or 0) + l.n
+                    e.got = math.min(l.n, gained)
+                    e.left = l.n - e.got
+                    e.done = e.left <= 0
+                end
+                if not e.done then p.left = p.left + 1 end
+                p.lines[k] = e
+            end
+            p.done = #p.lines > 0 and p.left == 0
+        end
+        out[i] = p
+    end
+    return out
+end
+
+-- The stop the player stands at: the first one not done that the open place serves.
+-- `place`: "ah", "vendor", "bank" or "mail" (nil: nowhere).
+function ns.Here(route, prog, place)
+    if not place then return nil end
+    local later
+    for i, node in ipairs(route or {}) do
+        local kind = node.kind == "sell" and "ah" or node.kind
+        if kind == place then
+            if gets(node) then
+                if not (prog[i] and prog[i].done) then return i end
+            else
+                later = later or i
+            end
+        end
+    end
+    return later
+end
+
+-- What is left to buy of an auction stop, in its order: { { id, name, n, unit, line } }, and
+-- how many lines the button cannot buy (a pattern: no item id).
+function ns.BuyQueue(node, p)
+    local q, byHand = {}, 0
+    for k, l in ipairs(node and node.lines or {}) do
+        local e = p and p.lines[k]
+        if not (e and e.done) then
+            if l.id then q[#q + 1] = { id = l.id, name = l.name, n = e and e.left or l.n, unit = l.price, line = k }
+            else byHand = byHand + 1 end
+        end
+    end
+    return q, byHand
+end
+
+-- The auction asks more than the plan by more than the guard (percent): ask before buying.
+function ns.Dear(unit, planned, guard)
+    if not unit or not planned or planned <= 0 then return false end
+    return unit > planned * (1 + (guard or 0) / 100)
+end
+
+-- The clicks of an auction stop: two per line (ask the price, buy). Returns the click the
+-- button is at and how many there are in all.
+function ns.BuyClicks(lines, i, priced)
+    local all = 2 * lines
+    return math.min(all, 2 * ((i or 1) - 1) + (priced and 2 or 1)), all
+end
+
+-- What one click buys at the open vendor for a vendor stop. `goods`: what the vendor sells,
+-- { { index, id, price, stack, avail } } with the price of one stack and avail in stacks (nil or
+-- below 0: no limit). A vendor sells whole stacks only, so the need is rounded up: need 4, sold
+-- in fives, buys 5. Returns { buys = { { index, id, name, stacks, stack, units, need, extra,
+-- cost, line } }, cost, missing (lines this vendor does not sell), short (the money ran out) }.
+function ns.VendorPlan(node, p, goods, money)
+    local byId = {}
+    for _, g in ipairs(goods or {}) do if g.id and not byId[g.id] then byId[g.id] = g end end
+    local out = { buys = {}, cost = 0, missing = 0, short = false }
+    local left = money or math.huge
+    for k, l in ipairs(node and node.lines or {}) do
+        local e = p and p.lines[k]
+        if not (e and e.done) then
+            local g = l.id and byId[l.id]
+            if not g or not g.price or g.price <= 0 then
+                out.missing = out.missing + 1
+            else
+                local need = e and e.left or l.n
+                local stack = math.max(1, g.stack or 1)
+                local stacks = ceil(need / stack)
+                if g.avail and g.avail >= 0 and stacks > g.avail then stacks, out.missing = g.avail, out.missing + 1 end
+                if stacks * g.price > left then
+                    stacks, out.short = math.floor(left / g.price), true
+                end
+                if stacks > 0 then
+                    local units = stacks * stack
+                    out.buys[#out.buys + 1] = { index = g.index, id = l.id, name = l.name, stacks = stacks, stack = stack,
+                        units = units, need = need, extra = math.max(0, units - need), cost = stacks * g.price, line = k }
+                    out.cost = out.cost + stacks * g.price
+                    left = left - stacks * g.price
+                end
+            end
+        end
+    end
+    return out
+end
+
 -- A run in the log: what the plan promised when it started.
 function ns.LogStart(v, money, now)
     local plan = v and v.plan
@@ -1238,6 +1362,10 @@ function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
     ns.db.prefs = ns.db.prefs or {}
     ns.db.prefs[key] = value
+    if ns.NO_PLAN[key] then
+        if ns.Refresh then ns.Refresh() end
+        return
+    end
     ns.Rebuild(true)
 end
 
@@ -1290,6 +1418,7 @@ ns.OPT_ICON = {
     chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
     maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop", maxCrafts = "Interface\\Icons\\Spell_Nature_TimeStop",
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",
 }
 
 local function option(key)

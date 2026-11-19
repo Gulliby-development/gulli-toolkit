@@ -14,6 +14,8 @@ if Fake then Fake(spec) end
 R.Install(W)
 if s and s.before then s.before(W, R) end
 local ns = Load()
+-- the game has no Polish client: the preview shows that language by its tag
+if os.getenv("LOCALE") == "plPL" and ns.T and ns.T.pl then ns.lang = "pl" end
 if s and s.open then s.open(ns, W, R) else ns.Toggle() end
 if W.RunTimers then pcall(W.RunTimers) end
 
@@ -39,4 +41,10 @@ for _, o in ipairs(R.Overlaps(crop or R.UIParent)) do
 end
 for _, t in ipairs(R.Outside(crop or R.UIParent)) do
     io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
+end
+-- CUT=1: also the texts the game would cut with "..." (an item name may, with a tooltip)
+if os.getenv("CUT") then
+    for _, t in ipairs(R.Cut(crop or R.UIParent)) do
+        io.stderr:write(name .. ": cut: " .. t[1]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. " (" .. t[2] .. " > " .. t[3] .. ")\n")
+    end
 end

@@ -1,5 +1,6 @@
--- The window: professions and tabs on top, the settings column on the right, and on the left
--- the levelling route as a graph of stops (or the crafts, items and recipes lists). It only
+-- The window: the tabs on top (Route, the three lists, Settings). The Route tab shows the
+-- routes as tiles, the whole way as one bar of runs, the stops of the run under each other on
+-- the left and the chosen stop large on the right, with its items and one main button. It only
 -- shows what Core.lua planned; every setting goes through ns.SetPref, which rebuilds the plan.
 
 local _, ns = ...
@@ -7,20 +8,16 @@ local L = ns.L
 local S = ns.Skin
 
 local W, H = S.WIDE_W, S.DOCK_H
-local SIDE = 264
-local NODE_W, NODE_H, COL_W, ROW_H = 112, 70, 120, 76
--- Rows of stops the graph shows before **All stops** opens the rest.
-local SHOWN_ROWS = 2
-local STRIP = 3 -- item icons along the bottom of a stop
-local MAIN = W - 2 * S.PAD - SIDE - S.GAP
+local MAIN = W - 2 * S.PAD
+local TOP = 30 + S.GAP
 -- a route tile below this width cuts its name and numbers; past it the row pages with arrows
-local TILE_MIN, ARROW_W = 130, 24
--- the route tiles and the strip under the graph (skill bar and its line), kept tight so the
--- stop card below fits two of its rows without a scroll bar
-local TILE_H, GRAPH_FOOT = 58, 28
-local GRAPH_W = MAIN - 2 * S.INSET - 10
--- As many stops in a row as the graph is wide.
-local PER_ROW = math.max(2, math.floor((GRAPH_W - 8 + COL_W - NODE_W) / COL_W))
+local TILE_MIN, ARROW_W = 150, 24
+local TILE_H, WAY_H, ROW_GAP = 58, 44, 8
+-- the stops on the left, under them the money of the run
+local STOPS_W, STOP_H, STOP_GAP, LEDGER_H = 264, 56, 6, 72
+-- a row of the chosen stop, and the column at its right end for "Bought" or "Next"
+local LINE_H, MARK_W = 48, 76
+local STEP_W = 150
 
 -- Icons from the game for the stops; a craft stop shows the profession's own icon.
 ns.STOP_ICONS = {
@@ -31,15 +28,19 @@ ns.STOP_ICONS = {
 }
 local PATTERN_ICON = "Interface\\Icons\\INV_Scroll_03"
 local RANK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
+local REFRESH_ICON = "Interface\\Buttons\\UI-RefreshButton"
 local GOLD = S.WARN -- warnings (stale prices, no Auctionator); gold is for names only
 local GOOD, BAD = S.GOOD, S.BAD
-local NODE_EDGE = S.EDGE
+local CHOSEN = { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 }
+local NEXT_ROW = { S.FILL[1], S.FILL[2], S.FILL[3], 0.22 }
 
-local frame
-local ui = { checks = {}, modes = {}, nodes = {}, lines = {}, profs = {}, steppers = {} }
-ns.ui = ui
+local frame, side
+local ui = { checks = {}, modes = {}, nodes = {}, chips = {}, steppers = {} }
+local sui = {} -- the window beside the auction house
+ns.ui, ns.sui = ui, sui
 local tab = 1
 local selected = 1
+local flash -- one line for the chosen stop that an action left (lots read, a list sent)
 
 -- ---------- money ----------
 
@@ -82,7 +83,7 @@ end
 local function color(c) return S.Hex(c) end
 local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 
--- ---------- the settings column ----------
+-- ---------- the Settings tab ----------
 
 -- The loss budgets the stepper offers, in copper; 0 is no limit.
 -- count settings whose stepper ends in "no limit"
@@ -100,22 +101,13 @@ local function pref(key)
 end
 
 -- A switch row; ui.checks[key] is its switch.
-local function switchRow(key)
+local function sw(key)
     return { L["P_" .. key], nil, function() return pref(key) and true or false end,
-             function(on) ns.SetPref(key, on and true or false) end, icon = ns.OPT_ICON[key] }
+             function(on) ns.SetPref(key, on and true or false) end, icon = ns.OPT_ICON[key], key = key }
 end
 
--- A row with the label over a - value + stepper, so long labels keep the full width.
-local function stepRow(parent, key, step, min, max, fmt)
-    local row = CreateFrame("Frame", nil, parent)
-    row.height, row.isRow = 70, true
-    row.icon = S.IconBox(row, 26, ns.OPT_ICON[key])
-    row.icon:SetPoint("TOPLEFT", 0, -8)
-    row.label = S.Text(row, 12)
-    row.label:SetPoint("LEFT", row.icon, "RIGHT", 12, 0)
-    row.label:SetPoint("RIGHT", 0, 0)
-    row.label:SetWordWrap(false)
-    row.label:SetText(key == "target" and L.SIDE_TARGET or L["P_" .. key])
+-- What a stepper reads, writes and shows for a setting.
+local function stepper(parent, key, step, min, max, fmt, width)
     local get = function() return pref(key) or ns.DEFAULTS[key] end
     local set = function(v) ns.SetPref(key, v) end
     if key == "budget" then
@@ -155,15 +147,18 @@ local function stepRow(parent, key, step, min, max, fmt)
         fmt = function(v) return v > top and L.NO_LIMIT or show(v) end
         max = top + step
     end
-    local st = S.Stepper(row, get, set, step, min, max, fmt)
-    st:SetPoint("BOTTOMLEFT", 38, 8)
-    st:SetPoint("BOTTOMRIGHT", 0, 8)
-    row.line = S.Divider(row)
-    row.line:SetPoint("BOTTOMLEFT")
-    row.line:SetPoint("BOTTOMRIGHT")
-    row.line:SetHeight(1)
-    ui[key] = st
+    return S.Stepper(parent, get, set, step, min, max, fmt, width)
+end
+
+-- A row with the label on the left (two lines when it is long) and a - value + stepper.
+local function stepRow(parent, key, step, min, max, fmt)
+    local st = stepper(parent, key, step, min, max, fmt, STEP_W)
+    local row = S.SettingRow(parent, key == "target" and L.SIDE_TARGET or L["P_" .. key], nil, st, STEP_W, ns.OPT_ICON[key])
+    row.label:SetWordWrap(true)
+    row.label:SetMaxLines(2)
+    row.isRow = true
     ui.steppers[key] = st
+    if key ~= "target" then ui[key] = st end
     return row
 end
 
@@ -176,6 +171,8 @@ local function rowsCard(parent, title, rows)
         if r.isRow then r:SetParent(card.body) end
         if not r.isRow then
             row = S.SwitchRow(card.body, r[1], r[2], r[3], r[4], nil, r.icon)
+            row.label:SetWordWrap(true)
+            row.label:SetMaxLines(2)
             ui.checks[r.key] = row.switch
         end
         st:Add(row, row.height)
@@ -184,39 +181,49 @@ local function rowsCard(parent, title, rows)
     return card, card:Fit(st:Height() - 6)
 end
 
-local function sw(key) local r = switchRow(key); r.key = key; return r end
+local function buildSettings(box)
+    -- under the page: what the last change did to the plan, and the reset
+    ui.reset = S.FitButton(box, L.RESET, 32, 96)
+    ui.reset:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.reset:SetScript("OnClick", function() ns.ResetPrefs() end)
+    ui.toast = S.Text(box, 12, S.MUTED)
+    ui.toast:SetPoint("BOTTOMLEFT", 0, 0)
+    ui.toast:SetPoint("RIGHT", ui.reset, "LEFT", -S.GAP, 0)
+    ui.toast:SetHeight(32)
+    ui.toast:SetJustifyH("LEFT")
+    ui.toast:SetJustifyV("MIDDLE")
+    ui.toast:SetWordWrap(true)
+    ui.toast:SetMaxLines(2)
 
-local function buildSide(scroll)
-    local inner = SIDE - 10
-    local col = scroll.child
-    col:SetWidth(inner)
-    local st = S.Stack(col)
+    local page = S.ScrollPage(box, MAIN)
+    page:SetPoint("TOPLEFT", 0, 0)
+    page:SetPoint("BOTTOMRIGHT", 0, 32 + S.GAP)
+    ui.page = page
+    local colW = math.floor((MAIN - 10 - S.GAP) / 2)
+    local cols, stacks = {}, {}
+    for k = 1, 2 do
+        local c = CreateFrame("Frame", nil, page.inner)
+        c:SetPoint("TOPLEFT", (k - 1) * (colW + S.GAP), 0)
+        c:SetSize(colW, 10)
+        cols[k], stacks[k] = c, S.Stack(c)
+    end
+    local function add(k, card, h) stacks[k]:Add(card, h) end
 
-    -- the professions this character has seen
-    local prof = S.Card(col, L.SIDE_PROF)
-    ui.profCard = prof
-    st:Add(prof, prof:Fit(4 * 34 - 6))
+    add(1, rowsCard(cols[1], L.SIDE_TARGET, { sw("level"), stepRow(cols[1], "target", 5, 1, 300),
+        stepRow(cols[1], "maxCrafts", 5, 5, 500),
+        stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end) }))
+    add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side") }))
+    add(1, rowsCard(cols[1], L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") }))
 
-    local lv = sw("level")
-    local target = stepRow(col, "target", 5, 1, 300)
-    local budget = stepRow(col, "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end)
-    local crafts = stepRow(col, "maxCrafts", 5, 5, 500)
-    local c0, h0 = rowsCard(col, L.SIDE_TARGET, { lv, target, crafts, budget })
-    st:Add(c0, h0)
-
-    local c1, h1 = rowsCard(col, L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
-        stepRow(col, "maxBuy", 10, 10, 200, function(v) return L.UNITS:format(v) end), sw("buyVendor") })
-    st:Add(c1, h1)
-    local c2, h2 = rowsCard(col, L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") })
-    st:Add(c2, h2)
-    local c3, h3 = rowsCard(col, L.SIDE_SELL, { sw("sellAH"), sw("neutral"), sw("freshOnly"),
-        stepRow(col, "chance", 5, 30, 100, function(v) return v .. "%" end),
-        stepRow(col, "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end) })
-    st:Add(c3, h3)
+    add(2, rowsCard(cols[2], L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
+        stepRow(cols[2], "maxBuy", 10, 10, 200, function(v) return L.UNITS:format(v) end), sw("buyVendor") }))
+    add(2, rowsCard(cols[2], L.SIDE_SELL, { sw("sellAH"), sw("neutral"), sw("freshOnly"),
+        stepRow(cols[2], "chance", 5, 30, 100, function(v) return v .. "%" end),
+        stepRow(cols[2], "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end) }))
 
     -- the run log: what the plan promised against what the run really did
-    local log = S.Card(col, L.SIDE_LOG)
-    ui.logBtn = S.Button(log.body, inner - 2 * S.INSET, 30)
+    local log = S.Card(cols[1], L.SIDE_LOG)
+    ui.logBtn = S.Button(log.body, 180, 30)
     ui.logBtn:SetPoint("TOPLEFT")
     ui.logBtn:SetScript("OnClick", function()
         if ns.char.run then
@@ -232,21 +239,23 @@ local function buildSide(scroll)
     ui.logText:SetPoint("RIGHT", 0, 0)
     ui.logText:SetJustifyH("LEFT")
     ui.logText:SetWordWrap(true)
-    st:Add(log, log:Fit(38 + 4 * 30))
-    ui.sideCards = st.items
-    col:SetHeight(st:Height())
-    scroll:Update(st:Height())
+    add(1, log, log:Fit(38 + 4 * 30))
+
+    local h = math.max(stacks[1]:Height(), stacks[2]:Height())
+    cols[1]:SetHeight(h); cols[2]:SetHeight(h)
+    page:SetContent(h)
 end
 
-local function refreshSide()
+local function refreshSettings()
     local P = ns.Prefs(ns.db and ns.db.prefs)
     for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
-    for _, key in ipairs({ "target", "maxCrafts", "budget" }) do
-        ui[key].minus:SetEnabled(P.level and true or false)
-        ui[key].plus:SetEnabled(P.level and true or false)
+    for _, st in ipairs({ ui.target, ui.steppers.target, ui.steppers.maxCrafts, ui.steppers.budget }) do
+        st.minus:SetEnabled(P.level and true or false)
+        st.plus:SetEnabled(P.level and true or false)
     end
     for _, s in pairs(ui.steppers) do s:Refresh() end
-    if ui.logBtn and ns.char then
+    ui.target:Refresh()
+    if ns.char then
         local run = ns.char.run
         ui.logBtn:SetText(run and L.LOG_FINISH or L.LOG_START)
         local lines = {}
@@ -269,7 +278,7 @@ local function refreshSide()
     end
 end
 
--- ---------- the route graph ----------
+-- ---------- the stops of the run ----------
 
 local function stopIcon(n)
     if n.kind == "craft" and n.prep and n.lines[1] then
@@ -300,6 +309,22 @@ local function runName(n)
     return #ids > 1 and (name .. " +" .. (#ids - 1)) or name
 end
 
+-- What a stop is for, as "label: number", so no language needs plural forms.
+local SUB = { STOP_BANK = "SUB_TAKE", STOP_MAIL = "SUB_TAKE", STOP_AH_BUY = "SUB_BUY", STOP_VENDOR_BUY = "SUB_BUY",
+              STOP_PREP = "SUB_MAKE", STOP_TRAINER = "SUB_LEARN", STOP_RANK = "SUB_LEARN", STOP_AH_SELL = "SUB_LIST",
+              STOP_VENDOR_SELL = "SUB_SELL", STOP_GATHER = "SUB_GATHER" }
+local function stopSub(n)
+    if n.segs then return runName(n) .. " x" .. n.crafts end
+    return L[SUB[n.title] or "SUB_BUY"]:format(#(n.lines or {}))
+end
+-- The number at the right end of a waiting stop: the skill a craft covers, else its money.
+local function stopSide(n)
+    if n.segs then return n.to > n.from and (n.from .. "-" .. n.to) or "" end
+    if not n.cost or n.cost <= 0 then return "" end
+    if n.kind == "sell" or n.title == "STOP_VENDOR_SELL" then return color(GOOD) .. "+" .. ns.Short(n.cost) .. "|r" end
+    return ns.Short(n.cost)
+end
+
 local function lineIcon(l)
     if l.rank then return RANK_ICON, 1 end
     if l.id then return ns.ItemIcon(l.id), (ns.view.state.items[l.id] or {}).quality end
@@ -308,187 +333,347 @@ local function lineIcon(l)
     return PATTERN_ICON, 1
 end
 
+-- A small tick drawn from two lines (the game font has no check mark).
+local function tick(parent, c)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(12, 12)
+    for _, d in ipairs({ { 1.5, -6.5, 4.5, -9.5 }, { 4.5, -9.5, 10.5, -3 } }) do
+        local l = f:CreateLine(nil, "OVERLAY")
+        l:SetThickness(2)
+        l:SetColorTexture(c[1], c[2], c[3], 1)
+        l:SetStartPoint("TOPLEFT", f, d[1], d[2])
+        l:SetEndPoint("TOPLEFT", f, d[3], d[4])
+    end
+    return f
+end
+
+-- A small pill with a dot and a word: the state of a stop.
+local function statePill(parent)
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetHeight(22)
+    S.Box(p, S.CLEAR, S.EDGE, 11)
+    p.dot = S.Circle(p, 8, S.FAINT, "ARTWORK")
+    p.dot:SetPoint("LEFT", 9, 0)
+    p.text = S.Text(p, 12)
+    p.text:SetPoint("LEFT", 23, 0)
+    p.text:SetWordWrap(false)
+    function p:Set(text, c)
+        self:SetShown(text ~= nil)
+        if not text then return end
+        c = c or S.FAINT
+        self.text:SetText(text)
+        self.dot:SetVertexColor(c[1], c[2], c[3], 1)
+        self:SetWidth(math.floor((tonumber((self.text:GetStringWidth())) or 0) + 34))
+    end
+    return p
+end
+
 local function makeNode(parent, i)
     local b = CreateFrame("Button", nil, parent)
-    b:SetSize(NODE_W, NODE_H)
-    S.Box(b, S.RAISED, NODE_EDGE, S.R_LG)
-    b.stripe = S.Tex(b, "ARTWORK", 0, { 1, 1, 1, 1 })
-    b.stripe:SetPoint("TOPLEFT", 2, -S.R_LG)
-    b.stripe:SetPoint("BOTTOMLEFT", 2, S.R_LG)
-    b.stripe:SetWidth(3)
-    b.icon = S.ItemIcon(b, 28)
-    b.icon:SetPoint("TOPLEFT", 10, -7)
-    b.kind = S.Text(b, 12, S.MUTED, "")
-    b.kind:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 6, 0)
-    b.kind:SetPoint("RIGHT", -4, 0)
-    b.kind:SetWordWrap(false)
-    b.title = S.Text(b, 12)
-    b.title:SetPoint("TOPLEFT", b.kind, "BOTTOMLEFT", 0, -3)
-    b.title:SetPoint("RIGHT", -4, 0)
-    b.title:SetJustifyV("TOP")
-    b.title:SetWordWrap(false)
-    b.strip = {}
-    for k = 1, STRIP do
-        local ic = S.ItemIcon(b, 16)
-        ic:SetPoint("BOTTOMLEFT", 10 + (k - 1) * 18, 8)
-        b.strip[k] = ic
-    end
-    b.more = S.Text(b, 12, S.MUTED)
-    b.more:SetPoint("BOTTOMLEFT", 10 + STRIP * 18, 11)
-    b.money = S.Text(b, 12, S.MUTED)
-    b.money:SetPoint("BOTTOMRIGHT", -6, 4)
-    b.bar = {}
-    b:SetScript("OnClick", function() selected = i; ns.Refresh() end)
+    b:SetHeight(STOP_H)
+    S.Box(b, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    b.icon = S.IconBox(b, 36)
+    b.icon:SetPoint("LEFT", 10, 0)
+    -- at the right end: Done with a tick, "You are here", or what the stop costs
+    b.side = S.Text(b, 13)
+    b.side:SetPoint("RIGHT", -10, 0)
+    b.side:SetJustifyH("RIGHT")
+    b.tick = tick(b, GOOD)
+    b.tick:SetPoint("RIGHT", b.side, "LEFT", -4, 0)
+    b.here = CreateFrame("Frame", nil, b)
+    b.here:SetHeight(20)
+    b.here:SetPoint("RIGHT", -8, 0)
+    S.Box(b.here, S.FILL, S.FILL_EDGE, 10)
+    b.here.text = S.Text(b.here, 12, nil, nil, "bold")
+    b.here.text:SetPoint("CENTER")
+    b.here.text:SetText(L.STOP_HERE)
+    b.here:SetWidth(math.floor((tonumber((b.here.text:GetStringWidth())) or 0) + 18))
+    b.right = CreateFrame("Frame", nil, b) -- where the two lines of text end
+    b.right:SetSize(1, 1)
+    b.head = S.Text(b, 13, nil, nil, "bold")
+    b.head:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 10, -2)
+    b.head:SetPoint("RIGHT", b.right, "LEFT", -6, 0)
+    b.head:SetWordWrap(false)
+    b.sub = S.Text(b, 12, S.MUTED)
+    b.sub:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 10, 2)
+    b.sub:SetPoint("RIGHT", b.right, "LEFT", -6, 0)
+    b.sub:SetWordWrap(false)
+    b:SetScript("OnClick", function() ns.Select(i) end)
+    b:SetScript("OnEnter", function(self)
+        if selected ~= i and not rawget(self, "lit") then S.SetBorder(self, S.Accent()) end
+        if GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.head:GetText() or "", 1, 1, 1)
+            GameTooltip:AddLine(self.sub:GetText() or "", 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function(self)
+        if selected ~= i and not rawget(self, "lit") then S.SetBorder(self, S.CARD_EDGE) end
+        if GameTooltip then GameTooltip:Hide() end
+    end)
     return b
 end
 
-local function nodePos(i)
-    local row = math.floor((i - 1) / PER_ROW)
-    local c = (i - 1) % PER_ROW
-    local col = (row % 2 == 1) and (PER_ROW - 1 - c) or c
-    return 4 + col * COL_W, -(4 + row * ROW_H)
+local function fillNode(b, n, p, here)
+    local kc = (n.kind == "craft" and n.segs) and (ns.COLORS[n.segs[1].color or "gy"] or ns.COLORS.gy) or ns.STOPS[n.kind]
+    b.icon:SetIcon(stopIcon(n))
+    S.SetBorder(b.icon, kc)
+    b.icon:SetGlow(kc)
+    local done = p and p.done or false
+    b.icon:SetAlpha(done and 0.6 or 1)
+    b.head:SetText(n.index .. " · " .. (L["KIND_" .. n.kind] or n.kind))
+    b.sub:SetText(stopSub(n))
+    b.tick:SetShown(done)
+    b.here:SetShown(here and not done)
+    if done then b.side:SetText(color(GOOD) .. L.STOP_DONE .. "|r")
+    elseif here then b.side:SetText("")
+    else b.side:SetText(stopSide(n)) end
+    -- the text ends where the right part starts
+    b.right:ClearAllPoints()
+    b.here:ClearAllPoints()
+    b.sub:SetShown(true)
+    if here and not done then
+        -- "You are here" stands at the right; where the stop's texts need that room (a long
+        -- language), it takes the second line instead, and the chosen stop's card says the rest
+        local room = STOPS_W - 10 - 36 - 10 - 6 - (tonumber((b.here:GetWidth())) or 0) - 8
+        local need = math.max(tonumber((b.head:GetStringWidth())) or 0, tonumber((b.sub:GetStringWidth())) or 0)
+        if need > room then
+            b.here:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 10, 0)
+            b.sub:SetShown(false)
+            b.right:SetPoint("RIGHT", b, "RIGHT", -4, 0)
+        else
+            b.here:SetPoint("RIGHT", -8, 0)
+            b.right:SetPoint("RIGHT", b.here, "LEFT", 0, 0)
+        end
+    elseif done then b.right:SetPoint("RIGHT", b.tick, "LEFT", 0, 0)
+    else b.right:SetPoint("RIGHT", b.side, "LEFT", 0, 0) end
+    local on = n.index == selected
+    S.Fill(b, on and CHOSEN or S.SURFACE)
+    if not rawget(b, "lit") then S.SetBorder(b, on and S.Accent() or S.CARD_EDGE) end
 end
 
-local function fillNode(b, n)
-    local kc = (n.kind == "craft" and n.segs) and segColor(n.segs[1].color) or ns.STOPS[n.kind]
-    b.stripe:SetVertexColor(kc[1], kc[2], kc[3], 1)
-    b.icon:Set(stopIcon(n))
-    -- a craft stop: the skill it covers on top, the recipe below on up to two lines, the crafts
-    -- at the bottom; the item's icon is the stop's, so it needs no icons along the bottom
-    local kind = n.index .. ". " .. (n.segs and (n.from .. "-" .. n.to) or (L["KIND_" .. n.kind] or n.kind))
-    b.kind:SetText(color(kc) .. kind .. "|r")
-    b.title:SetWordWrap(n.segs and true or false)
-    b.title:SetMaxLines(n.segs and 2 or 1)
-    b.title:SetHeight(n.segs and 28 or 14)
-    b.title:SetText(n.segs and runName(n) or stopTitle(n))
-    local icons = {}
-    if not n.segs then
-        for _, l in ipairs(n.lines or {}) do
-            local t, q = lineIcon(l)
-            -- no counts on the small icons: they do not fit; the list under the graph has them
-            icons[#icons + 1] = { t, nil, q }
-        end
-    end
-    for k = 1, STRIP do
-        local ic = icons[k]
-        if ic then b.strip[k]:Set(ic[1], ic[2], ic[3]) else b.strip[k]:Hide() end
-    end
-    b.more:SetText(#icons > STRIP and ("+" .. (#icons - STRIP)) or "")
-    if n.segs then b.money:SetText(color(S.TEXT) .. L.CRAFTS_N:format(n.crafts) .. "|r")
-    elseif n.cost and n.cost > 0 then b.money:SetText(ns.Short(n.cost))
-    else b.money:SetText("") end
-    -- the recipe colours along the bottom of a craft stop
-    for _, t in ipairs(b.bar) do t:Hide() end
-    if n.segs then
-        local span = n.to - n.from
-        local x = 4
-        for k, sg in ipairs(n.segs) do
-            local t = b.bar[k] or S.Tex(b, "OVERLAY", 0, S.TEXT)
-            b.bar[k] = t
-            local w = math.max(1, (NODE_W - 5) * (sg.to - sg.from) / span)
-            local c = segColor(sg.color)
-            t:SetVertexColor(c[1], c[2], c[3], 1)
-            t:ClearAllPoints()
-            t:SetPoint("BOTTOMLEFT", x, 1)
-            t:SetSize(w, 3)
-            t:Show()
-            x = x + w
-        end
-    end
-    n.shownSelected = (n.index == selected)
-    S.SetBorder(b, n.shownSelected and S.Accent() or NODE_EDGE)
-end
-
-local function drawGraph()
+local function drawStops(prog, here)
     local route = ns.view.route or {}
-    local child = ui.graph.child
-    local rows = math.ceil(#route / PER_ROW)
-    local open = ui.expanded or rows <= SHOWN_ROWS
-    local shown = open and #route or SHOWN_ROWS * PER_ROW
+    local child = ui.stops.child
+    child:SetWidth(STOPS_W)
     for i, n in ipairs(route) do
         local b = ui.nodes[i] or makeNode(child, i)
         ui.nodes[i] = b
-        local x, y = nodePos(i)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", x, y)
-        fillNode(b, n)
-        b:SetShown(i <= shown)
-        if ns.view.changed and ns.view.changed[i] then
+        b:SetPoint("TOPLEFT", 0, -(i - 1) * (STOP_H + STOP_GAP))
+        b:SetPoint("TOPRIGHT", 0, -(i - 1) * (STOP_H + STOP_GAP))
+        fillNode(b, n, prog[i], here == i)
+        b:Show()
+        if ns.view.changed and ns.view.changed[i] and not rawget(b, "lit") then
             S.SetBorder(b, GOLD)
             b.lit = true
             C_Timer.After(1.4, function()
                 b.lit = nil
-                S.SetBorder(b, (selected == i) and S.Accent() or NODE_EDGE)
+                S.SetBorder(b, (selected == i) and S.Accent() or S.CARD_EDGE)
             end)
         end
     end
     for i = #route + 1, #ui.nodes do ui.nodes[i]:Hide() end
-    -- arrows between stops: across a row, then down at its end
-    for i = 2, #route do
-        local l = ui.lines[i]
-        if not l then
-            l = child:CreateLine(nil, "BACKGROUND")
-            l:SetColorTexture(0.35, 0.35, 0.38, 1)
-            l:SetThickness(2)
-            ui.lines[i] = l
-        end
-        local a, b = ui.nodes[i - 1], ui.nodes[i]
-        local ax = select(1, nodePos(i - 1))
-        local bx = select(1, nodePos(i))
-        if ax == bx then
-            l:SetStartPoint("BOTTOM", a, 0, 0); l:SetEndPoint("TOP", b, 0, 0)
-        elseif ax < bx then
-            l:SetStartPoint("RIGHT", a, 0, 0); l:SetEndPoint("LEFT", b, 0, 0)
-        else
-            l:SetStartPoint("LEFT", a, 0, 0); l:SetEndPoint("RIGHT", b, 0, 0)
-        end
-        l:SetShown(i <= shown)
-    end
-    for i = #route + 1, #ui.lines do if ui.lines[i] then ui.lines[i]:Hide() end end
-    -- the button shows how many stops wait below; open, it closes the list of the stop again
-    ui.expand:SetShown(rows > SHOWN_ROWS)
-    ui.money:ClearAllPoints()
-    if rows > SHOWN_ROWS then ui.money:SetPoint("RIGHT", ui.expand, "LEFT", -8, 0)
-    else ui.money:SetPoint("TOPRIGHT", ui.graphCard, "TOPRIGHT", -S.INSET, -13) end
-    ui.expand:SetText(ui.expanded and L.GRAPH_LESS or L.GRAPH_ALL:format(#route))
-    local h = 8 + (open and rows or SHOWN_ROWS) * ROW_H
-    child:SetSize(GRAPH_W, h)
-    ui.graph:Update(h)
+    local h = math.max(1, #route * (STOP_H + STOP_GAP) - STOP_GAP)
+    child:SetHeight(h)
+    ui.stops:Update(h)
 end
+
+-- ---------- the chosen stop ----------
 
 local SRC = { bank = "SRC_bank", ah = "SRC_ah", vendor = "SRC_vendor", trainer = "SRC_trainer", prep = "SRC_prep",
               sellah = "SRC_sellah", sellv = "SRC_sellv", mail = "SRC_mail", alts = "SRC_alts", gather = "SRC_gather" }
 
--- The rows under the graph for the chosen stop.
-local function detailRows(n)
+-- What the stop's buttons do now. Returns { primary = { text, run, warn = true }, second =
+-- { text, run }, tools = { { text, run } }, counter = { text, at, of, right }, hint, bad (the
+-- hint is a warning), pill = { text, colour }, vendor = the vendor's plan }. A button without
+-- `run` is shown switched off: it says what the stop waits for. `aside`: the window beside the
+-- auction house, which has no other stop to go to.
+function ns.StopAction(i, aside)
+    local v = ns.view
+    local n = v.route and v.route[i]
+    if not n then return nil end
+    local prog = ns.RunProgress()
+    local p = prog[i]
+    local now = (v.leg or 1) == 1 -- a later run of the way is only a plan
+    local done = p and p.done or false
+    local a = { tools = {} }
+    local onward = (not aside and v.route[i + 1]) and { L.NEXT_STOP, function() ns.Select(i + 1) end } or nil
+    local name = v.state.name or ""
+    if n.kind == "ah" and n.title == "STOP_AH_BUY" then
+        if ns.HasAuctionator() then
+            a.tools[#a.tools + 1] = { L.TO_AUCTIONATOR, function()
+                local k = ns.ExportShopping(v.route, L.LIST_NAME:format(name))
+                local text = k and L.LIST_DONE:format(k, L.LIST_NAME:format(name)) or L.LIST_FAIL
+                ns.Print(text); ns.Toast(text)
+            end }
+        end
+        if ns.atAH then
+            a.tools[#a.tools + 1] = { L.LOTS_UPDATE, function() ns.Toast(L.LOTS_BUSY:format(ns.ScanLots(v.route))) end }
+        end
+        a.pill = done and { L.STOP_DONE, GOOD } or (ns.atAH and { L.OPEN_ah, GOOD } or { L.AWAY_ah })
+        if done then
+            a.primary, a.second, a.hint = { L.BUY_DONE }, onward, L.HINT_BOUGHT
+        elseif not now then
+            a.primary, a.hint = { L.BUY_AH }, L.HINT_LATER
+        elseif not ns.atAH then
+            a.primary, a.hint = { L.BUY_AH }, L.HINT_AH_AWAY
+        elseif not ns.CanBuy() then
+            a.primary, a.hint = { L.BUY_AH }, L.HINT_AH_NOAPI
+        else
+            local b = ns.BuyFor(n, p)
+            local line, all = ns.BuyLine(), #b.queue
+            if b.phase == "done" or not line then
+                a.primary, a.second = { L.BUY_DONE }, onward
+                a.hint = b.byHand > 0 and L.HINT_HAND:format(b.byHand) or L.HINT_BOUGHT
+                a.bad = b.byHand > 0
+                if b.bought > 0 then a.counter = { text = L.BOUGHT_OF:format(b.bought, all), at = 2 * all + 1, of = 2 * all,
+                                                   right = L.PAID:format(S.MoneyText(b.spent)) } end
+            else
+                local at, of = ns.BuyClicks(all, b.i, b.phase == "ready" or b.phase == "buying")
+                a.counter = { text = L.CLICK_OF:format(at, of), at = at, of = of, right = L.ITEM_OF:format(b.i, all) }
+                a.second = { L.BUY_SKIP, ns.BuySkip }
+                if b.phase == "quote" then
+                    a.primary, a.hint = { L.BUY_WAIT }, L.HINT_AH_TWO
+                elseif b.phase == "buying" then
+                    a.primary, a.hint = { L.BUY_BUSY }, L.HINT_AH_TWO
+                elseif b.phase == "ready" then
+                    local dear = ns.BuyDear()
+                    a.primary = { (dear and L.BUY_ANYWAY or L.BUY_NOW):format(line.n, line.name, S.MoneyIcons(b.quote.total)),
+                                  ns.BuyClick, warn = dear,
+                                  short = (dear and L.BUY_ANYWAY_SHORT or L.BUY_NOW_SHORT):format(S.MoneyIcons(b.quote.total)) }
+                    if dear then
+                        local over = math.floor((b.quote.unit / line.unit - 1) * 100 + 0.5)
+                        a.hint, a.bad = L.HINT_DEAR:format(over, S.MoneyText(line.unit), S.MoneyText(b.quote.unit)), true
+                    else
+                        a.hint = L.HINT_PLANNED
+                    end
+                else
+                    a.primary, a.hint = { L.BUY_CHECK:format(line.n, line.name), ns.BuyClick, short = L.BUY_CHECK_SHORT }, L.HINT_AH_TWO
+                end
+                if b.err then a.hint, a.bad = L[b.err], true end
+            end
+        end
+    elseif n.kind == "vendor" and n.title == "STOP_VENDOR_BUY" then
+        a.pill = done and { L.STOP_DONE, GOOD } or (ns.atVendor and { L.OPEN_vendor, GOOD } or { L.AWAY_vendor })
+        if done then
+            a.primary, a.second, a.hint = { L.BUY_DONE }, onward, L.HINT_BOUGHT
+        elseif not now then
+            a.primary, a.hint = { L.BUY_VENDOR }, L.HINT_LATER
+        elseif not ns.atVendor then
+            a.primary, a.hint = { L.BUY_VENDOR }, L.HINT_V_AWAY
+        else
+            local plan = ns.VendorNow(n, p)
+            a.vendor = plan
+            if #plan.buys == 0 then
+                a.primary, a.hint, a.bad = { L.BUY_VENDOR }, plan.short and L.HINT_V_MONEY or L.HINT_V_NONE, true
+            else
+                a.primary = { L.BUY_ALL:format(#plan.buys, S.MoneyIcons(plan.cost)), function()
+                    ns.BuyVendor(n, ns.RunProgress()[i])
+                    ns.Refresh()
+                end }
+                a.hint = L.HINT_V_ONE
+                for _, e in ipairs(plan.buys) do
+                    if e.extra > 0 then a.hint = L.HINT_V_STACK:format(e.name, e.stack, e.need, e.units); break end
+                end
+                if plan.short then a.hint, a.bad = L.HINT_V_MONEY, true
+                elseif plan.missing > 0 then a.hint = a.hint .. " " .. L.HINT_V_MISSING:format(plan.missing) end
+            end
+        end
+    elseif n.kind == "bank" or n.kind == "mail" then
+        local open = (n.kind == "bank" and ns.atBank) or (n.kind == "mail" and ns.atMail)
+        a.pill = done and { L.STOP_DONE, GOOD } or (open and { L["OPEN_" .. n.kind], GOOD } or { L["AWAY_" .. n.kind] })
+        a.second = done and onward or nil
+        a.hint = done and L.HINT_TAKEN or L.HINT_TAKE
+    elseif n.kind == "craft" then
+        -- a craft waits for the stops before it that bring its items
+        local waits = 0
+        for k = 1, i - 1 do if ns.Gets(v.route[k]) and not (prog[k] and prog[k].done) then waits = waits + 1 end end
+        a.pill = (not now or waits == 0) and { L.CRAFT_READY, GOOD } or { L.CRAFT_WAITS:format(waits) }
+        local rid, k
+        if n.segs then rid, k = ns.NextCraft(n)
+        elseif n.lines and n.lines[1] then rid, k = n.lines[1].recipe, n.lines[1].n end
+        if rid then
+            a.primary = { L.MAKE_N:format(k), function() if not ns.Craft(rid, k) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
+            a.second = { L.OPEN_RECIPE, function() if not ns.OpenRecipe(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end end }
+        end
+        a.hint = L.HINT_CRAFT
+    elseif n.kind == "trainer" then
+        a.hint = L.HINT_TRAINER
+    elseif n.kind == "gather" then
+        a.hint = L.HINT_GATHER
+    else
+        a.hint = L.HINT_SELL
+    end
+    return a
+end
+
+-- The rows of the chosen stop: its items, each with where it stands.
+local function detailRows(n, i, a)
     local rows = {}
     if not n then return rows end
     local st = ns.view.state
+    local p = ns.RunProgress()[i]
     -- a craft: the recipe with its skill stretch, then each reagent on its own row
     for _, sg in ipairs(n.segs or {}) do
         local r = st.recipes[sg.rid]
+        local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
         rows[#rows + 1] = { rid = sg.rid, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
-                            text = color(segColor(sg.color)) .. r.name .. "|r x" .. ns.Ceil(sg.n),
-                            mid = sg.from .. " - " .. sg.to, right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
+                            text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
+                            note = sg.from .. " - " .. sg.to, right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
         local ids = {}
         for id in pairs(r.r) do ids[#ids + 1] = id end
-        table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
+        table.sort(ids, function(x, y) return tostring(x) < tostring(y) end)
         for _, id in ipairs(ids) do
             local it = st.items[id] or {}
             local k = ns.Ceil(r.r[id] * sg.n)
-            rows[#rows + 1] = { id = id, icon = ns.ItemIcon(id), q = it.quality, text = "   " .. (it.name or tostring(id)) .. " x" .. k,
-                                mid = it.gather and L.SRC_gather or L.REAGENT, right = "" }
+            rows[#rows + 1] = { id = id, icon = ns.ItemIcon(id), q = it.quality,
+                                text = (it.name or tostring(id)) .. color(S.MUTED) .. " x" .. k .. "|r",
+                                note = it.gather and L.SRC_gather or L.REAGENT, right = "" }
         end
     end
-    for _, l in ipairs(n.lines or {}) do
+    local buying = n.kind == "ah" and n.title == "STOP_AH_BUY" and ns.atAH and ns.buy.sig == n.sig and ns.buy
+    local cur = buying and ns.BuyLine()
+    local byLine = {}
+    for _, e in ipairs(buying and buying.queue or {}) do byLine[e.line] = e end
+    local vend = {}
+    for _, e in ipairs(a and a.vendor and a.vendor.buys or {}) do vend[e.line] = e end
+    local taken = n.kind == "bank" or n.kind == "mail"
+    for k, l in ipairs(n.lines or {}) do
         local icon, q = lineIcon(l)
         local name = l.rank and L.STOP_RANK:format(l.rank) or l.name
-        local mid = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
-        if l.src == "alts" then mid = L.SRC_alts:format(l.who or "?") end
-        if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then mid = L.SRC_LADDER end
-        rows[#rows + 1] = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, n = l.n, q = q,
-                            text = name .. " x" .. l.n, mid = mid,
-                            right = l.price and ns.Money(l.price * l.n) or "" }
+        local note = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
+        if l.src == "alts" then note = L.SRC_alts:format(l.who or "?") end
+        if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then note = L.SRC_LADDER end
+        local right = l.price and S.MoneyText(l.price * l.n) or ""
+        if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 then note = L.EACH:format(S.MoneyText(l.price)) end
+        local e = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, q = q,
+                    text = name .. color(S.MUTED) .. " x" .. l.n .. "|r" }
+        local q1 = byLine[k]
+        e.done = (p and p.lines[k] and p.lines[k].done) or (q1 and q1.done) or false
+        if e.done then
+            e.mark, e.markColor = taken and L.MARK_TAKEN or L.MARK_BOUGHT, GOOD
+        elseif q1 and q1.hand then
+            e.mark, e.markColor = L.MARK_HAND, GOLD
+        elseif q1 and q1.skipped then
+            e.mark, e.markColor = L.MARK_SKIPPED, S.MUTED
+        elseif cur and cur == q1 then
+            e.now, e.mark, e.markColor = true, L.MARK_NEXT, S.Accent()
+            -- the price the auction just answered, for this many
+            if buying.phase == "ready" and buying.quote then
+                local dear = ns.BuyDear()
+                note = L.EACH:format(S.MoneyText(buying.quote.unit)) .. "  ·  "
+                    .. color(dear and GOLD or GOOD) .. (dear and L.NOTE_DEAR or L.NOTE_PLANNED) .. "|r"
+                right = S.MoneyText(buying.quote.total)
+            end
+        end
+        local vb = vend[k]
+        if vb and vb.extra > 0 then note = L.NOTE_STACK:format(vb.need, vb.stack, vb.units) end
+        if vb then right = S.MoneyText(vb.cost) end -- what the click pays, whole stacks
+        if a and a.vendor and not vb and not e.done then note = L.NOTE_NOT_HERE end
+        e.note, e.right = note, right
+        rows[#rows + 1] = e
     end
     return rows
 end
@@ -522,26 +707,181 @@ local function makeLine(r)
     end)
     r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     r.entry = false
-    r.icon = S.ItemIcon(r, 20)
-    r.icon:SetPoint("LEFT", 4, 0)
-    r.right = S.Text(r, 12)
-    r.right:SetPoint("RIGHT", -6, 0)
+    r.icon = S.ItemIcon(r, 30)
+    r.icon:SetPoint("LEFT", 8, 0)
+    r.mark = S.Text(r, 12, nil, nil, "bold")
+    r.mark:SetPoint("RIGHT", -8, 0)
+    r.mark:SetJustifyH("RIGHT")
+    r.tick = tick(r, GOOD)
+    r.tick:SetPoint("RIGHT", r.mark, "LEFT", -4, 0)
+    r.right = S.Text(r, 13)
+    r.right:SetPoint("RIGHT", -(MARK_W + 16), 0)
     r.right:SetJustifyH("RIGHT")
-    r.mid = S.Text(r, 12, S.MUTED)
-    r.mid:SetPoint("RIGHT", -170, 0)
-    r.text = S.Text(r, 12)
-    r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
-    r.text:SetPoint("RIGHT", r.mid, "LEFT", -8, 0)
+    r.text = S.Text(r, 13, nil, nil, "bold")
+    r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 0)
+    r.text:SetPoint("RIGHT", r.right, "LEFT", -8, 0)
     r.text:SetWordWrap(false)
+    r.note = S.Text(r, 12, S.MUTED)
+    r.note:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 10, 0)
+    r.note:SetPoint("RIGHT", r.right, "LEFT", -8, 0)
+    r.note:SetWordWrap(false)
 end
 local function fillLine(r, e)
     r.entry = e
-    if e.icon then r.icon:Set(e.icon, e.n, e.q) else r.icon:Hide() end
+    if e.icon then r.icon:Set(e.icon, nil, e.q) else r.icon:Hide() end
     r.text:SetText(e.text)
-    r.mid:SetText(e.mid or "")
+    r.note:SetText(e.note or "")
     r.right:SetText(e.right or "")
+    r.mark:SetText(e.mark and (color(e.markColor or S.TEXT) .. e.mark .. "|r") or "")
+    r.tick:SetShown(e.done and true or false)
+    S.Fill(r, e.now and NEXT_ROW or S.CLEAR)
 end
 
+-- The chosen stop, large: its head with the state, its items, the counter of clicks, the main
+-- button with a second one beside it, and one line of what the button does. Built into `card`
+-- (a frame with a box), for the Route tab and for the window beside the auction house.
+-- `width`: how wide the card is, so its texts can be fitted before the game lays it out.
+local function makePanel(card, width)
+    local p = { pips = {}, tools = {}, width = width }
+    local pad = S.INSET
+    p.icon = S.IconBox(card, 40)
+    p.icon:SetPoint("TOPLEFT", pad, -pad)
+    p.pill = statePill(card)
+    p.pill:SetPoint("TOPRIGHT", -pad, -pad - 9)
+    p.title = S.Text(card, 20, S.GOLD, nil, "title")
+    p.title:SetPoint("TOPLEFT", p.icon, "TOPRIGHT", 10, 0)
+    p.title:SetPoint("RIGHT", p.pill, "LEFT", -8, 0)
+    p.title:SetWordWrap(false)
+    p.sub = S.Text(card, 12, S.MUTED)
+    p.sub:SetPoint("BOTTOMLEFT", p.icon, "BOTTOMRIGHT", 10, 0)
+    p.sub:SetPoint("RIGHT", p.pill, "LEFT", -8, 0)
+    p.sub:SetWordWrap(false)
+
+    -- from the bottom up: the hint, the buttons, the counter with its small buttons
+    p.hint = S.Text(card, 12, S.MUTED)
+    p.hint:SetPoint("BOTTOMLEFT", pad, pad)
+    p.hint:SetPoint("BOTTOMRIGHT", -pad, pad)
+    p.hint:SetHeight(30)
+    p.hint:SetJustifyH("LEFT")
+    p.hint:SetJustifyV("TOP")
+    p.hint:SetWordWrap(true)
+    p.hint:SetMaxLines(2)
+    p.act2 = S.Button(card, 100, 40)
+    p.act2:SetPoint("BOTTOMRIGHT", -pad, pad + 30 + 8)
+    p.act1 = S.Primary(S.Button(card, 100, 40))
+    p.act1:SetPoint("BOTTOMLEFT", pad, pad + 30 + 8)
+    S.SetFont(p.act1.text, 14, nil, "bold")
+    for _, b in ipairs({ p.act1, p.act2 }) do
+        b:SetScript("OnClick", function(self) flash = nil; if self.run then self.run() end end)
+    end
+    local rowY = pad + 30 + 8 + 40 + 8
+    p.counter = S.Text(card, 13, nil, nil, "bold")
+    p.counter:SetPoint("BOTTOMLEFT", pad, rowY + 6)
+    p.count2 = S.Text(card, 12, S.MUTED)
+    p.pipBox = CreateFrame("Frame", nil, card)
+    p.pipBox:SetSize(10, 6)
+    p.pipBox:SetPoint("LEFT", p.counter, "RIGHT", 10, 0)
+    p.count2:SetPoint("LEFT", p.pipBox, "RIGHT", 10, 0)
+    for k = 1, 2 do
+        local b = S.Ghost(S.FitButton(card, " ", 28, 60))
+        b:SetScript("OnClick", function(self) flash = nil; if self.run then self.run() end end)
+        p.tools[k] = b
+    end
+    p.tools[1]:SetPoint("BOTTOMRIGHT", -pad, rowY)
+    p.tools[2]:SetPoint("RIGHT", p.tools[1], "LEFT", -6, 0)
+
+    p.list = S.List(card, LINE_H, makeLine, fillLine)
+    p.list:SetPoint("TOPLEFT", pad, -(pad + 40 + 10))
+    p.list:SetPoint("BOTTOMRIGHT", -pad - 10, rowY + 28 + 8)
+    -- an unknown stretch of the way has no stops: the card says why
+    p.none = S.Text(card, 12, S.MUTED)
+    p.none:SetPoint("TOPLEFT", pad, -pad)
+    p.none:SetPoint("RIGHT", -pad, 0)
+    p.none:SetJustifyH("LEFT")
+    p.none:SetWordWrap(true)
+    p.none:Hide()
+    p.parts = { p.icon, p.pill, p.title, p.sub, p.hint, p.act1, p.act2, p.counter, p.count2, p.pipBox, p.list,
+                p.tools[1], p.tools[2] }
+
+    local function setButton(b, spec)
+        b:SetShown(spec ~= nil)
+        b.run = spec and spec[2] or nil
+        if not spec then return end
+        b:SetText(spec[1])
+        b:SetEnabled(spec[2] ~= nil)
+    end
+
+    -- Shows stop i of the route; `aside` for the window beside the auction house.
+    function p:Set(i, aside)
+        local n = ns.view.route and ns.view.route[i]
+        self.none:SetShown(not n)
+        for _, x in ipairs(self.parts) do x:SetShown(n ~= nil) end
+        if not n then return end
+        local a = ns.StopAction(i, aside)
+        self.action = a
+        self.icon:SetIcon(stopIcon(n))
+        self.title:SetText(L["KIND_" .. n.kind] or n.kind)
+        self.sub:SetText(n.segs and (stopTitle(n) .. "  ·  " .. L.CRAFTS_N:format(n.crafts)) or stopTitle(n))
+        self.pill:Set(a.pill and a.pill[1], a.pill and a.pill[2])
+        self.list:SetData(detailRows(n, i, a))
+        -- the counter: "Click 3 of 4" with a pip per click
+        local c = a.counter
+        self.counter:SetText(c and c.text or "")
+        self.count2:SetText(c and c.right or "")
+        local of = c and c.of or 0
+        local pw = of > 0 and math.max(4, math.min(22, math.floor((150 - (of - 1) * 4) / of))) or 0
+        if of > 24 then of = 0 end
+        for k = 1, math.max(of, #self.pips) do
+            local pip = self.pips[k]
+            if k <= of and not pip then
+                pip = CreateFrame("Frame", nil, self.pipBox)
+                S.Box(pip, S.OFF, S.OFF, 3)
+                self.pips[k] = pip
+            end
+            if pip then
+                pip:SetShown(k <= of)
+                if k <= of then
+                    pip:SetSize(pw, 6)
+                    pip:ClearAllPoints()
+                    pip:SetPoint("LEFT", (k - 1) * (pw + 4), 0)
+                    local col = (k < c.at and GOOD) or (k == c.at and S.Accent()) or S.OFF
+                    S.Fill(pip, col); S.SetBorder(pip, col)
+                end
+            end
+        end
+        self.pipBox:SetWidth(math.max(1, of * (pw + 4) - 4))
+        -- the buttons: the main one takes the width the second leaves
+        setButton(self.act1, a.primary)
+        setButton(self.act2, a.second)
+        if a.second then
+            self.act2:SetWidth(math.max(96, math.floor((tonumber((self.act2.text:GetStringWidth())) or 0) + 32)))
+        end
+        self.act1:ClearAllPoints()
+        self.act1:SetPoint("BOTTOMLEFT", pad, pad + 30 + 8)
+        if a.second then self.act1:SetPoint("RIGHT", self.act2, "LEFT", -8, 0)
+        else self.act1:SetPoint("RIGHT", card, "RIGHT", -pad, 0) end
+        -- a price above the plan: the button asks first, with a warning edge and a word
+        if a.primary and a.primary.warn then S.SetBorder(self.act1, GOLD) end
+        for k = 1, 2 do
+            local t = a.tools[k]
+            setButton(self.tools[k], t)
+            if t then self.tools[k]:SetWidth(math.floor((tonumber((self.tools[k].text:GetStringWidth())) or 0) + 24)) end
+        end
+        -- the counter's second text gives way when the row is full
+        local function sw(t) return tonumber((t:GetStringWidth())) or 0 end
+        local used = sw(self.counter) + 10 + self.pipBox:GetWidth() + 10 + sw(self.count2) + 12
+        for k = 1, 2 do if a.tools[k] then used = used + self.tools[k]:GetWidth() + 6 end end
+        if used > self.width - 2 * pad then self.count2:SetText("") end
+        -- the main button names the item while that fits; a long name leaves it to the row marked above
+        if a.primary and a.primary.short then
+            local room = self.width - 2 * pad - (a.second and (self.act2:GetWidth() + 8) or 0) - 24
+            if sw(self.act1.text) > room then self.act1:SetText(a.primary.short) end
+        end
+        local hint = flash or a.hint or ""
+        self.hint:SetText((a.bad and not flash) and (color(GOLD) .. hint .. "|r") or hint)
+    end
+    return p
+end
 -- ---------- the list tabs ----------
 
 -- Columns: { header key, width }, the name column first (it takes the room left), the others
@@ -557,6 +897,20 @@ local function colRight(spec, k)
     local x = 6
     for j = #spec.cols, k + 1, -1 do x = x + spec.cols[j][2] + COL_GAP end
     return x
+end
+-- A column is at least as wide as its head in this language, so no head is cut.
+local measured
+local function fitColumns(probe)
+    if measured then return end
+    measured = true
+    for _, spec in ipairs(LISTS) do
+        for k = 2, #spec.cols do
+            probe:SetText(L[spec.cols[k][1]])
+            local w = math.ceil(tonumber((probe:GetStringWidth())) or 0) + 4
+            if w > spec.cols[k][2] then spec.cols[k][2] = w end
+        end
+    end
+    probe:SetText("")
 end
 ns.LISTS = LISTS
 
@@ -693,53 +1047,54 @@ local function fillListRow(r, e)
     r.tip = e.tip
 end
 
--- ---------- building and refreshing ----------
+-- ---------- building ----------
 
+-- A levelling route's name by its place among n: the cheapest, the fastest, or an option between.
+local function routeName(mode, n, long)
+    if ns.EARN[mode] then return L[(long and "VAR_" or "TILE_") .. mode] end
+    local i = tonumber(mode:sub(2)) or 1
+    local key = (i == 1) and "cheap" or (i == n and "fast" or "mid")
+    return L[(long and "VAR_" or "TILE_") .. key]:format(i)
+end
 
-local function build()
-    frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
-    ui.frame = frame
-    ui.age = frame.sub
-    local footer = S.Footer(frame)
-    ui.toast = footer.status
-    ui.calc = footer:Add(S.Primary(S.FitButton(footer, L.RECALC, 32, 110)))
-    ui.calc:SetScript("OnClick", function() if ns.Busy() then ns.StopCalc() else ns.Calculate() end end)
-    ui.reset = footer:Add(S.FitButton(footer, L.RESET, 32, 96))
-    ui.reset:SetScript("OnClick", function() ns.ResetPrefs() end)
-    local body = frame.body
-    local bodyH = frame.inner[2]
+-- A round button with a game picture, for the row of the tabs.
+local function roundButton(parent, picture)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(28, 28)
+    S.Box(b, S.RAISED, S.EDGE, 14)
+    b.pic = b:CreateTexture(nil, "ARTWORK")
+    b.pic:SetSize(16, 16)
+    b.pic:SetPoint("CENTER")
+    b.pic:SetTexture(picture)
+    local a = S.Accent()
+    b.pic:SetVertexColor(a[1], a[2], a[3], 1)
+    b.label = ""
+    function b:SetText(s) self.label = s end
+    function b:GetText() return self.label end
+    b:SetScript("OnEnter", function(self)
+        S.SetBorder(self, S.Accent())
+        if GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(self.label or "", 1, 1, 1)
+            if self.tip then GameTooltip:AddLine(self.tip, 0.8, 0.8, 0.8, true) end
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function(self)
+        S.SetBorder(self, self.edge or S.EDGE)
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    b:SetScript("OnDisable", function(self) self.pic:SetAlpha(0.4) end)
+    b:SetScript("OnEnable", function(self) self.pic:SetAlpha(1) end)
+    return b
+end
 
-    -- the settings column on the right
-    local sideBox = CreateFrame("Frame", nil, body)
-    sideBox:SetPoint("TOPRIGHT", 0, 0)
-    sideBox:SetPoint("BOTTOMRIGHT", 0, 0)
-    sideBox:SetWidth(SIDE)
-    local side = S.Scroll(sideBox)
-    side:SetPoint("TOPLEFT", 0, 0)
-    side:SetPoint("BOTTOMRIGHT", -10, 0)
-    ui.side = side
-    buildSide(side)
-
-    local main = CreateFrame("Frame", nil, body)
-    main:SetPoint("TOPLEFT", 0, 0)
-    main:SetPoint("BOTTOMLEFT", 0, 0)
-    main:SetWidth(MAIN)
-    ui.main = main
-    local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES }
-    ui.tabs = S.PageTabs(main, labels, nil, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
-    local top = 30 + S.GAP
-
-    -- route tab: numbers, the graph with the skill bar, the chosen stop
-    local route = CreateFrame("Frame", nil, main)
-    route:SetPoint("TOPLEFT", 0, -top)
-    route:SetPoint("BOTTOMRIGHT", 0, 0)
-    ui.route = route
-    local st = S.Stack(route)
+local function buildRoute(route, height)
     -- the routes side by side: pick one, compare the result and the crafts
     local vars = CreateFrame("Frame", nil, route)
-    st:Add(vars, TILE_H, 6)
-    local nv = #ns.MODES
-    local vw = math.floor((MAIN - (nv - 1) * 8) / nv)
+    vars:SetPoint("TOPLEFT", 0, 0)
+    vars:SetPoint("TOPRIGHT", 0, 0)
+    vars:SetHeight(TILE_H)
     ui.varTiles = {}
     ui.varPrev = S.FitButton(vars, "<", TILE_H, ARROW_W)
     ui.varPrev:SetWidth(ARROW_W)
@@ -757,26 +1112,25 @@ local function build()
     end)
     for i, m in ipairs(ns.MODES) do
         local b = CreateFrame("Button", nil, vars)
-        b:SetSize(vw, TILE_H)
-        b:SetPoint("TOPLEFT", (i - 1) * (vw + 8), 0)
-        S.Box(b, S.SURFACE, S.EDGE, S.R_LG)
-        b.mark = S.Tex(b, "ARTWORK", 0, S.Accent())
-        b.mark:SetPoint("TOPLEFT", S.R_LG, -1)
-        b.mark:SetPoint("TOPRIGHT", -S.R_LG, -1)
-        b.mark:SetHeight(2)
-        b.icon = S.IconBox(b, 18, ns.EARN[m] and "Interface\\Icons\\INV_Misc_Coin_02" or ns.OPT_ICON.level)
-        b.icon:SetPoint("TOPRIGHT", -6, -5)
-        b.label = S.Text(b, 12, S.MUTED)
-        b.label:SetPoint("TOPLEFT", 8, -5)
-        b.label:SetPoint("RIGHT", b.icon, "LEFT", -4, 0)
+        b:SetSize(TILE_MIN, TILE_H)
+        b:SetPoint("TOPLEFT", (i - 1) * (TILE_MIN + 8), 0)
+        S.Box(b, S.SURFACE, S.CARD_EDGE, S.R_LG)
+        -- the result with its sign, top right; the kind of route left of it
+        b.value = S.Text(b, 16, nil, nil, "bold")
+        b.value:SetPoint("TOPRIGHT", -10, -4)
+        b.value:SetJustifyH("RIGHT")
+        b.kind = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
+        b.kind:SetPoint("TOPLEFT", 10, -6)
+        b.kind:SetPoint("RIGHT", b.value, "LEFT", -6, 0)
+        b.kind:SetWordWrap(false)
+        b.kind:SetText(S.Upper(ns.EARN[m] and L.KIND_PROFIT or L.KIND_LEVEL))
+        b.label = S.Text(b, 14, S.GOLD, nil, "bold")
+        b.label:SetPoint("TOPLEFT", 10, -22)
+        b.label:SetPoint("RIGHT", -10, 0)
         b.label:SetWordWrap(false)
-        b.value = S.Text(b, 14)
-        b.value:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", 0, -2)
-        b.value:SetPoint("RIGHT", -6, 0)
-        b.value:SetWordWrap(false)
         b.sub = S.Text(b, 12, S.MUTED)
-        b.sub:SetPoint("BOTTOMLEFT", 8, 5)
-        b.sub:SetPoint("RIGHT", -6, 0)
+        b.sub:SetPoint("BOTTOMLEFT", 10, 5)
+        b.sub:SetPoint("RIGHT", -10, 0)
         b.sub:SetWordWrap(false)
         b:SetScript("OnClick", function(self)
             if ns.EARN[m] then ns.ChooseMode(m); return end
@@ -784,77 +1138,131 @@ local function build()
             ns.ChooseMode((self.best and (ns.Prefs(ns.db.prefs).budget or 0) > 0) and "auto" or m)
         end)
         b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
-        b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.EDGE) end end)
+        b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.CARD_EDGE) end end)
         ui.varTiles[i] = b
         ui.modes[m] = b
     end
-    -- the whole way to the target as runs: one chip per run, the chosen one shown below
-    local chips = CreateFrame("Frame", nil, route)
-    st:Add(chips, 28, 6)
-    ui.chipBox, ui.chips = chips, {}
+
+    -- the whole way to the target as one bar: the skill now, a part per run, the target at its end
+    local way = CreateFrame("Frame", nil, route)
+    way:SetPoint("TOPLEFT", 0, -(TILE_H + ROW_GAP))
+    way:SetPoint("TOPRIGHT", 0, -(TILE_H + ROW_GAP))
+    way:SetHeight(WAY_H)
+    ui.way = way
+    local skillLabel = S.Text(way, 12, S.MUTED)
+    skillLabel:SetPoint("TOPLEFT", 0, -5)
+    skillLabel:SetText(L.R_SKILL)
+    ui.skillNow = S.Text(way, 16, nil, nil, "bold")
+    ui.skillNow:SetPoint("BOTTOMLEFT", 0, 5)
+    ui.target = stepper(way, "target", 5, 1, 300, nil, 110)
+    ui.target:SetPoint("RIGHT", 0, 0)
+    local targetLabel = S.Text(way, 12, S.MUTED)
+    targetLabel:SetPoint("RIGHT", ui.target, "LEFT", -8, 0)
+    targetLabel:SetText(L.WAY_TARGET)
+    local left = math.max(54, math.floor((tonumber((skillLabel:GetStringWidth())) or 0) + 12))
+    local right = 110 + 8 + math.floor((tonumber((targetLabel:GetStringWidth())) or 0)) + 10
+    ui.chipW = MAIN - left - right
+    local chips = CreateFrame("Frame", nil, way)
+    chips:SetPoint("TOPLEFT", left, 0)
+    chips:SetPoint("BOTTOMRIGHT", -right, 0)
+    ui.chipBox = chips
     ui.chipNote = S.Text(chips, 12, S.MUTED)
     ui.chipNote:SetPoint("LEFT", 2, 0)
     ui.chipNote:SetPoint("RIGHT", 0, 0)
     ui.chipNote:SetWordWrap(false)
-    local graphH = 36 + 8 + SHOWN_ROWS * ROW_H + GRAPH_FOOT + S.INSET
-    local gcard = S.Card(route, L.TAB_ROUTE)
-    st:Add(gcard, graphH)
-    local detailH = bodyH - top - st.y
-    ui.graphCard, ui.graphH, ui.graphOpenH, ui.detailH = gcard, graphH, graphH + S.GAP + detailH, detailH
-    ui.money = gcard.hint
-    ui.expand = S.FitButton(gcard, L.GRAPH_ALL:format(99), 28, 60)
-    ui.expand:SetPoint("TOPRIGHT", -S.INSET, -4)
-    ui.expand:SetScript("OnClick", function()
-        ui.expanded = not ui.expanded
-        gcard:SetHeight(ui.expanded and ui.graphOpenH or ui.graphH)
-        ui.detailCard:SetShown(not ui.expanded)
-        ns.Refresh()
-    end)
 
-    local graphBox = CreateFrame("Frame", nil, gcard.body)
-    graphBox:SetPoint("TOPLEFT", 0, 0)
-    graphBox:SetPoint("BOTTOMRIGHT", 0, GRAPH_FOOT)
-    ui.unknown = S.Text(graphBox, 12, S.MUTED)
-    ui.unknown:SetPoint("TOPLEFT", 8, -16)
-    ui.unknown:SetPoint("RIGHT", -8, 0)
-    ui.unknown:SetJustifyH("LEFT")
-    ui.unknown:Hide()
-    ui.graph = S.Scroll(graphBox)
-    ui.graph:SetPoint("TOPLEFT", 0, 0)
-    ui.graph:SetPoint("BOTTOMRIGHT", -10, 0)
-    local bar = CreateFrame("Frame", nil, gcard.body)
-    bar:SetPoint("BOTTOMLEFT", 0, 16)
-    bar:SetPoint("BOTTOMRIGHT", 0, 16)
-    bar:SetHeight(8)
-    S.Box(bar, S.INPUT, S.EDGE)
-    ui.bar, ui.barParts = bar, {}
-    ui.skillFrom = S.Text(gcard.body, 12, S.MUTED)
-    ui.skillFrom:SetPoint("BOTTOMLEFT", 0, 0)
-    ui.skillTo = S.Text(gcard.body, 12, S.MUTED)
-    ui.skillTo:SetPoint("BOTTOMRIGHT", 0, 0)
-    ui.skillTo:SetPoint("LEFT", ui.skillFrom, "RIGHT", 12, 0)
-    ui.skillTo:SetWordWrap(false)
-    ui.skillTo:SetJustifyH("RIGHT")
-    local dcard = S.Card(route, " ")
-    st:Add(dcard, detailH)
-    dcard:SetShown(not ui.expanded)
+    -- under them: the stops on the left with the money of the run, the chosen stop on the right
+    local top = TILE_H + ROW_GAP + WAY_H + ROW_GAP
+    ui.detailH = height - top
+    local stopsBox = CreateFrame("Frame", nil, route)
+    stopsBox:SetPoint("TOPLEFT", 0, -top)
+    stopsBox:SetPoint("BOTTOMLEFT", 0, LEDGER_H + STOP_GAP)
+    stopsBox:SetWidth(STOPS_W)
+    ui.stops = S.Scroll(stopsBox)
+    ui.stops:SetAllPoints()
+    ui.stops.step = STOP_H + STOP_GAP
+    local ledger = CreateFrame("Frame", nil, route)
+    ledger:SetPoint("BOTTOMLEFT", 0, 0)
+    ledger:SetSize(STOPS_W, LEDGER_H)
+    S.Box(ledger, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(ledger, S.R_LG)
+    ui.ledger = ledger
+    ui.net = S.Text(ledger, 16, nil, nil, "bold")
+    ui.net:SetPoint("TOPRIGHT", -S.INSET, -9)
+    ui.net:SetJustifyH("RIGHT")
+    local head = S.Text(ledger, 12, S.GOLD_DIM, nil, "bold")
+    head:SetPoint("TOPLEFT", S.INSET, -12)
+    head:SetPoint("RIGHT", ui.net, "LEFT", -8, 0)
+    head:SetWordWrap(false)
+    head:SetText(S.Upper(L.LEDGER))
+    ui.money = S.Text(ledger, 12, S.MUTED)
+    ui.money:SetPoint("TOPLEFT", S.INSET, -32)
+    ui.money:SetPoint("RIGHT", -S.INSET, 0)
+    ui.money:SetJustifyH("LEFT")
+    ui.money:SetWordWrap(true)
+    ui.money:SetMaxLines(2)
+
+    local dcard = CreateFrame("Frame", nil, route)
+    dcard:SetPoint("TOPLEFT", STOPS_W + S.GAP, -top)
+    dcard:SetPoint("BOTTOMRIGHT", 0, 0)
+    S.Box(dcard, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(dcard, S.R_LG)
     ui.detailCard = dcard
-    ui.detailTitle = dcard.title
-    -- the stop's action: an Auctionator list and the lots at the auction, Make at a craft stop
-    ui.act2 = S.FitButton(dcard, L.LOTS_UPDATE, 26, 60)
-    ui.act2:SetPoint("TOPRIGHT", -S.INSET, -5)
-    ui.act1 = S.FitButton(dcard, L.MAKE_N:format(999), 26, 60)
-    ui.act1:SetPoint("RIGHT", ui.act2, "LEFT", -6, 0)
-    dcard.title:SetPoint("RIGHT", ui.act1, "LEFT", -8, 0)
-    ui.act1:SetScript("OnClick", function(self) if self.run then self.run() end end)
-    ui.act2:SetScript("OnClick", function(self) if self.run then self.run() end end)
-    ui.detail = S.List(dcard.body, 28, makeLine, fillLine)
-    ui.detail:SetPoint("TOPLEFT", 0, 0)
-    ui.detail:SetPoint("BOTTOMRIGHT", -10, 0)
+    ui.panel = makePanel(dcard, MAIN - STOPS_W - S.GAP)
+    ui.detail, ui.act1, ui.act2, ui.tool1, ui.tool2 = ui.panel.list, ui.panel.act1, ui.panel.act2, ui.panel.tools[1], ui.panel.tools[2]
+    ui.unknown = ui.panel.none
+end
+
+local function build()
+    frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
+    ui.frame = frame
+    ui.age = frame.sub
+    local main = frame.body
+    local bodyH = frame.inner[2]
+    ui.main = main
+    local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES, L.TAB_SETTINGS }
+    ui.tabs = S.PageTabs(main, labels, nil, function(i) tab = i; if ns.Refresh then ns.Refresh() end end)
+
+    -- on the row of the tabs: the profession (a click takes the next one) and Recalculate
+    ui.calc = roundButton(main, REFRESH_ICON)
+    ui.calc:SetPoint("TOPRIGHT", 0, 3)
+    ui.calc:SetScript("OnClick", function() if ns.Busy() then ns.StopCalc() else ns.Calculate() end end)
+    ui.stale = S.Badge(main)
+    ui.stale:SetPoint("RIGHT", ui.calc, "LEFT", -8, 0)
+    ui.prof = S.Pill(main, 120, 28)
+    ui.prof:SetPoint("RIGHT", ui.calc, "LEFT", -8, 0)
+    ui.prof.icon = S.IconBox(ui.prof, 20)
+    ui.prof.icon:SetPoint("LEFT", 4, 0)
+    ui.prof.text:ClearAllPoints()
+    ui.prof.text:SetPoint("LEFT", ui.prof.icon, "RIGHT", 8, 0)
+    ui.prof.text:SetJustifyH("LEFT")
+    ui.prof:SetScript("OnClick", function()
+        local profs = ns.Professions()
+        if #profs < 2 then return end
+        local at = 1
+        for i, p in ipairs(profs) do if p.name == ns.char.current then at = i end end
+        ns.SetProfession(profs[at % #profs + 1].name)
+    end)
+    ui.prof:HookScript("OnEnter", function(self)
+        if not (GameTooltip and GameTooltip.SetOwner) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L.SIDE_PROF, 1, 1, 1)
+        for _, p in ipairs(ns.Professions()) do
+            GameTooltip:AddDoubleLine(p.name, p.skill .. "/" .. p.cap, 0.8, 0.8, 0.8, 1, 1, 1)
+        end
+        GameTooltip:Show()
+    end)
+    ui.prof:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
+    local route = CreateFrame("Frame", nil, main)
+    route:SetPoint("TOPLEFT", 0, -TOP)
+    route:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.route = route
+    buildRoute(route, bodyH - TOP)
 
     -- list tabs: one card with column heads and rows
     local list = S.Card(main)
-    list:SetPoint("TOPLEFT", 0, -top)
+    list:SetPoint("TOPLEFT", 0, -TOP)
     list:SetPoint("BOTTOMRIGHT", 0, 0)
     ui.listFrame = list
     -- the column heads sort the list: a click picks the column, a second click turns the order
@@ -873,80 +1281,79 @@ local function build()
         end)
         ui.listHead[k] = h
     end
+    ui.probe = S.Text(list.body, 12, S.MUTED)
+    ui.probe:Hide()
     ui.list = S.List(list.body, 32, makeListRow, fillListRow)
     ui.list:SetPoint("TOPLEFT", 0, -20)
     ui.list:SetPoint("BOTTOMRIGHT", -10, 0)
 
+    local settings = CreateFrame("Frame", nil, main)
+    settings:SetPoint("TOPLEFT", 0, -TOP)
+    settings:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.settings = settings
+    buildSettings(settings)
+
     local emptyBox = CreateFrame("Frame", nil, main)
-    emptyBox:SetPoint("TOPLEFT", 0, -top)
+    emptyBox:SetPoint("TOPLEFT", 0, -TOP)
     emptyBox:SetPoint("BOTTOMRIGHT", 0, 0)
+    ui.emptyBox = emptyBox
     ui.empty = S.Empty(emptyBox)
     -- the calculation in steps: how far it is
     ui.progress = S.Progress(emptyBox, 8)
     ui.progress:SetPoint("TOPLEFT", emptyBox, "LEFT", 80, -48)
     ui.progress:SetPoint("TOPRIGHT", emptyBox, "RIGHT", -80, -48)
+    ui.calcBig = S.Primary(S.FitButton(emptyBox, L.CALC, 36, 140))
+    ui.calcBig:SetPoint("TOP", emptyBox, "CENTER", 0, -72)
+    ui.calcBig:SetScript("OnClick", function() if ns.Busy() then ns.StopCalc() else ns.Calculate() end end)
 
     frame:SetScript("OnShow", function() ns.Rebuild(false, "open") end)
     ui.tabs:Select(1, true)
 end
 
-local function refreshProfessions()
+-- ---------- refreshing ----------
+
+local function refreshProfession()
     local profs = ns.Professions()
-    local body = ui.profCard.body
-    for i, p in ipairs(profs) do
-        local b = ui.profs[i]
-        if not b then
-            b = S.Pill(body, 10, 28)
-            b:SetPoint("TOPLEFT", 0, -(i - 1) * 34)
-            b:SetPoint("TOPRIGHT", 0, -(i - 1) * 34)
-            b.icon = S.IconBox(b, 20)
-            b.icon:SetPoint("LEFT", 4, 0)
-            b.text:ClearAllPoints()
-            b.text:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
-            b.text:SetPoint("RIGHT", -8, 0)
-            b.text:SetJustifyH("LEFT")
-            ui.profs[i] = b
-        end
-        b.icon:SetIcon(p.icon)
-        b:SetText(p.name .. "  " .. color(S.MUTED) .. p.skill .. "/" .. p.cap .. "|r")
-        b:SetScript("OnClick", function() ns.SetProfession(p.name) end)
-        b:SetSelected(ns.char.current == p.name)
-        b:Show()
-    end
-    for i = #profs + 1, #ui.profs do ui.profs[i]:Hide() end
-    local n = math.max(1, #profs)
-    local h = ui.profCard:Fit(n * 34 - 6)
-    if h ~= ui.profH then
-        -- the cards under it move with the card's height
-        ui.profH = h
-        local y = 0
-        for _, c in ipairs(ui.sideCards) do
-            c:ClearAllPoints()
-            c:SetPoint("TOPLEFT", 0, -y)
-            c:SetPoint("TOPRIGHT", 0, -y)
-            y = y + c:GetHeight() + S.GAP
-        end
-        ui.side.child:SetHeight(y - S.GAP)
-        ui.side:Update(y - S.GAP)
-    end
+    local cur
+    for _, p in ipairs(profs) do if ns.char and p.name == ns.char.current then cur = p end end
+    cur = cur or profs[1]
+    ui.prof:SetShown(cur ~= nil)
+    if not cur then return end
+    ui.prof.icon:SetIcon(cur.icon)
+    ui.prof:SetText(cur.name)
+    ui.prof:SetWidth(math.max(72, math.floor((tonumber((ui.prof.text:GetStringWidth())) or 0) + 46)))
 end
 
--- A levelling route's name by its place among n: the cheapest, the fastest, or an option between.
-local function routeName(mode, n, long)
-    if ns.EARN[mode] then return L[(long and "VAR_" or "TILE_") .. mode] end
-    local i = tonumber(mode:sub(2)) or 1
-    local key = (i == 1) and "cheap" or (i == n and "fast" or "mid")
-    return L[(long and "VAR_" or "TILE_") .. key]:format(i)
+-- The runs of the whole way as parts of one bar; an unknown stretch in red. When they do not
+-- all fit, the bar shows the ones around the chosen run.
+local CHIP_MIN = 96
+local function makeChip(parent)
+    local b = CreateFrame("Button", nil, parent)
+    S.Box(b, S.SURFACE, S.CARD_EDGE, S.R_MD)
+    b.bar = S.Tex(b, "ARTWORK", 0, S.TEXT)
+    b.bar:SetPoint("TOPLEFT", 10, -9)
+    b.bar:SetPoint("TOPRIGHT", -10, -9)
+    b.bar:SetHeight(4)
+    b.net = S.Text(b, 12, nil, nil, "bold")
+    b.net:SetPoint("BOTTOMRIGHT", -10, 8)
+    b.net:SetJustifyH("RIGHT")
+    b.text = S.Text(b, 12)
+    b.text:SetPoint("BOTTOMLEFT", 10, 8)
+    b.text:SetPoint("RIGHT", b.net, "LEFT", -6, 0)
+    b.text:SetJustifyH("LEFT")
+    b.text:SetWordWrap(false)
+    function b:GetText() return (self.text:GetText() or "") .. "  " .. (self.net:GetText() or "") end
+    b:SetScript("OnClick", function(self) ns.SelectLeg(self.leg) end)
+    b:SetScript("OnEnter", function(self) if not self.on then S.SetBorder(self, S.Accent()) end end)
+    b:SetScript("OnLeave", function(self) if not self.on then S.SetBorder(self, S.CARD_EDGE) end end)
+    return b
 end
-
--- The chips over the graph: each run of the whole way to the target, an unknown stretch in red.
--- When they do not all fit, the row shows the ones around the chosen run.
-local CHIP_MIN = 92
 local function refreshChips(v)
     local legs = v.legs or {}
     local n = #legs
-    local fit = math.min(n, math.floor((MAIN + 4) / (CHIP_MIN + 4)))
-    local cw = fit > 0 and math.floor((MAIN - (fit - 1) * 4) / fit) or 0
+    local room = ui.chipW
+    local fit = math.min(n, math.floor((room + 6) / (CHIP_MIN + 6)))
+    local cw = fit > 0 and math.floor((room - (fit - 1) * 6) / fit) or 0
     local sel = v.leg or 1
     local first = math.max(1, math.min(sel - math.floor(fit / 2), n - fit + 1))
     for k = 1, math.max(#ui.chips, fit) do
@@ -954,34 +1361,46 @@ local function refreshChips(v)
         local leg = k <= fit and legs[i]
         local b = ui.chips[k]
         if leg then
-            if not b then
-                b = S.Pill(ui.chipBox, cw, 28)
-                b:SetScript("OnClick", function(self) ns.SelectLeg(self.leg) end)
-                ui.chips[k] = b
-            end
-            b.leg = i
-            b:SetSize(cw, 28)
+            if not b then b = makeChip(ui.chipBox); ui.chips[k] = b end
+            b.leg, b.on = i, i == sel
             b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", (k - 1) * (cw + 4), 0)
+            b:SetPoint("TOPLEFT", (k - 1) * (cw + 6), 0)
+            b:SetSize(cw, WAY_H)
             -- each run with what it gains or loses, so the whole way reads at a glance
-            local text = leg.from .. "-" .. leg.to
-            if leg.unknown then text = color(BAD) .. text .. " ?|r"
-            elseif leg.plan then
-                local net = leg.plan.net
-                text = text .. "  " .. color(net >= 0 and GOOD or BAD) .. (net < 0 and "-" or "+") .. ns.Short(net) .. "|r"
+            local range = leg.from .. "-" .. leg.to
+            local c = BAD
+            if leg.unknown then
+                b.text:SetText(color(BAD) .. range .. " ?|r")
+                b.net:SetText("")
+            else
+                local plan, st = leg.plan, leg.state or v.state
+                local sg = plan and plan.segs and plan.segs[1]
+                c = sg and (ns.COLORS[sg.color or "gy"] or ns.COLORS.gy) or S.FAINT
+                local net = plan and plan.net or 0
+                b.net:SetText(plan and (color(net >= 0 and GOOD or BAD) .. (net < 0 and "-" or "+") .. ns.Short(net) .. "|r") or "")
+                -- the recipe of the run beside its skill, when the part is wide enough for it
+                local r = sg and st and st.recipes[sg.rid]
+                local long = r and (range .. "  " .. color(S.MUTED) .. r.name .. " x" .. ns.Ceil(plan.crafts or sg.n) .. "|r")
+                b.text:SetText(long or range)
+                if long then
+                    local need = (tonumber((b.text:GetStringWidth())) or 0) + (tonumber((b.net:GetStringWidth())) or 0) + 28
+                    if need > cw then b.text:SetText(range) end
+                end
             end
-            b:SetText(text)
-            b:SetSelected(i == sel)
+            b.bar:SetVertexColor(c[1], c[2], c[3], b.on and 1 or 0.35)
+            S.Fill(b, b.on and CHOSEN or S.SURFACE)
+            S.SetBorder(b, b.on and S.Accent() or S.CARD_EDGE)
             b:Show()
         elseif b then
             b:Hide()
         end
     end
-    if ns.BusyKind() == "legs" then
+    if ns.BusyKind() == "legs" and n == 0 then
         ui.chipNote:SetText(L.LEGS_BUSY:format(math.floor(ns.progress.done * 100)))
     else
         ui.chipNote:SetText(n == 0 and (v.plan and v.plan.earn and L.LEGS_EARN or "") or "")
     end
+    ui.legsBusy = ns.BusyKind() == "legs"
 end
 
 local function refreshRoute()
@@ -1031,11 +1450,10 @@ local function refreshRoute()
         b:SetSize(vw, TILE_H)
         local on = x.mode == v.mode
         local p = x.plan
-        b.best = x.best
-        S.Fill(b, on and S.RAISED or S.SURFACE)
-        S.SetBorder(b, on and S.Accent() or S.EDGE)
-        b.mark:SetShown(on)
-        b.label:SetText(j .. ". " .. routeName(x.mode, levels))
+        b.best, b.on = x.best, on
+        S.Fill(b, on and CHOSEN or S.SURFACE)
+        S.SetBorder(b, on and S.Accent() or S.CARD_EDGE)
+        b.label:SetText(routeName(x.mode, levels))
         if p then
             -- the whole way, so the tiles compare routes: its money, its target and all its crafts
             local full = p.full or p
@@ -1048,114 +1466,45 @@ local function refreshRoute()
             b.sub:SetText(sub)
             b:SetAlpha((x.over or x.many) and 0.55 or 1)
         else
-            b.label:SetText(j .. ". " .. L.TILE_cheap)
+            b.label:SetText(L.TILE_cheap)
             b.value:SetText(color(S.FAINT) .. "-|r")
             b.sub:SetText(v.prefs.level and L.VAR_MAXED or L.VAR_OFF)
             b:SetAlpha(0.6)
         end
     end
-    -- what is paid, what own stock is worth, what the sales bring, and the result with its sign
-    ui.money:SetText(L.HINT_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income),
-        color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
     refreshChips(v)
-    local title = routeName(v.mode, levels, true)
-    if leg and (v.leg or 1) > 1 then title = title .. "  ·  " .. leg.from .. "-" .. leg.to end
-    ui.graphCard:SetTitle(title)
-    ui.unknown:SetShown(leg and leg.unknown or false)
-    if leg and leg.unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
-    local w = plan.warn or (plan.full and plan.full.warn)
-    local warn = w and (color(GOLD) .. L[w[1]]:format(w[2], w[3]) .. "|r") or nil
-    if selected > #v.route then selected = 1 end
-    drawGraph()
-    -- the skill bar: one colour per recipe stretch, a mark at each rank cap
-    local start = (leg and (v.leg or 1) > 1) and leg.from or v.state.skill
-    local span = math.max(1, plan.target - start)
-    local width = math.max(1, ui.bar:GetWidth() - 2)
-    for _, t in ipairs(ui.barParts) do t:Hide() end
-    local x, k = 1, 0
-    for _, sg in ipairs(plan.segs) do
-        k = k + 1
-        local t = ui.barParts[k] or S.Tex(ui.bar, "ARTWORK", 0, S.TEXT)
-        ui.barParts[k] = t
-        local c = segColor(sg.color)
-        local wd = math.max(1, width * (sg.to - sg.from) / span)
-        t:SetVertexColor(c[1], c[2], c[3], 1)
-        t:ClearAllPoints()
-        t:SetPoint("TOPLEFT", x, -1)
-        t:SetSize(wd, 6)
-        t:Show()
-        x = x + wd
-    end
     local unknown = leg and leg.unknown
-    ui.bar:SetShown(not plan.earn and not unknown)
-    ui.skillFrom:SetText(L.SKILL_FROM:format(start))
+    local start = (leg and (v.leg or 1) > 1) and leg.from or v.state.skill
+    ui.skillNow:SetText(tostring(start))
+    -- what is paid, what own stock is worth, what the sales bring, and the result with its sign
+    local w = plan.warn or (plan.full and plan.full.warn)
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
     if unknown then
-        ui.skillFrom:SetText(L.SKILL_FROM:format(leg.from))
-        ui.skillTo:SetText(L.SKILL_TARGET:format(leg.to))
         ui.money:SetText("")
-    elseif plan.earn then
-        ui.skillTo:SetText(warn or "")
+        ui.net:SetText("")
     else
-        local full = plan.full or plan
-        local where
-        if full.reached < full.target then where = L.SKILL_SHORT:format(full.reached, full.target)
-        elseif full ~= plan then where = L.SKILL_ALL:format(full.target, ns.Ceil(full.crafts))
-        else where = L.SKILL_TARGET:format(plan.target) end
-        ui.skillTo:SetText((warn and (warn .. "  ·  ") or "") .. (guess and (L.GUESS .. "  ·  ") or "") .. where)
+        local text = L.LEDGER_MONEY:format(ns.Short(plan.spend), ns.Short(plan.own), ns.Short(plan.income))
+        if w then text = color(GOLD) .. L[w[1]]:format(w[2], w[3]) .. "|r"
+        elseif guess and not plan.earn then text = text .. "\n" .. L.GUESS end
+        ui.money:SetText(text)
+        ui.net:SetText(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r")
     end
-    local n = v.route[selected]
-    ui.detailCard:SetTitle(n and (n.index .. ". " .. (L["KIND_" .. n.kind] or "") .. ": " .. stopTitle(n)) or "")
-    ui.detail:SetData(detailRows(n))
-    ns.SetActions(n)
+    if selected > #v.route then selected = 1 end
+    local prog = ns.RunProgress()
+    drawStops(prog, (v.leg or 1) == 1 and ns.Here(v.route, prog, ns.Place()) or nil)
+    if unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
+    ui.panel:Set(selected)
+    if not v.route[selected] and not unknown then ui.unknown:SetText(plan.earn and L.WARN_EARN or "") end
 end
 
--- The buttons over the chosen stop's rows.
-local function setAct(b, text, run)
-    b:SetShown(text ~= nil)
-    if not text then b.run = nil; return end
-    b:SetText(text)
-    b:SetWidth(math.max(60, math.floor((b.text:GetStringWidth() or 0) + 28)))
-    b.run = run
+function ns.Toast(text)
+    flash = text
+    if ns.Refresh then ns.Refresh() end
 end
-function ns.SetActions(n)
-    local a1, a2
-    if n and n.kind == "ah" and n.title == "STOP_AH_BUY" then
-        if ns.HasAuctionator() then
-            a1 = { L.TO_AUCTIONATOR, function()
-                local k = ns.ExportShopping(ns.view.route, L.LIST_NAME:format(ns.view.state.name or ""))
-                ns.Print(k and L.LIST_DONE:format(k, L.LIST_NAME:format(ns.view.state.name or "")) or L.LIST_FAIL)
-            end }
-        end
-        if ns.atAH then
-            a2 = { L.LOTS_UPDATE, function()
-                local k = ns.ScanLots(ns.view.route)
-                ui.toast:SetText(L.LOTS_BUSY:format(k))
-            end }
-        end
-    elseif n and n.kind == "craft" and n.segs then
-        local rid, k = ns.NextCraft(n)
-        if rid then
-            a1 = { L.MAKE_N:format(k), function()
-                if not ns.Craft(rid, k) then ns.Print(L.OPEN_PROF) end
-            end }
-            a2 = { L.OPEN_RECIPE, function() if not ns.OpenRecipe(rid) then ns.Print(L.OPEN_PROF) end end }
-        end
-    end
-    setAct(ui.act1, a1 and a1[1], a1 and a1[2])
-    setAct(ui.act2, a2 and a2[1], a2 and a2[2])
-    if not a2 and a1 then
-        ui.act1:ClearAllPoints()
-        ui.act1:SetPoint("TOPRIGHT", -S.INSET, -5)
-    else
-        ui.act1:ClearAllPoints()
-        ui.act1:SetPoint("RIGHT", ui.act2, "LEFT", -6, 0)
-    end
-end
-function ns.Toast(text) if ui.toast then ui.toast:SetText(text) end end
 
 local function refreshList()
+    fitColumns(ui.probe)
     local spec = LISTS[tab - 1]
     local sort = ui.sort[tab] or { col = spec.sort, desc = true }
     for k = 1, 6 do
@@ -1181,9 +1530,10 @@ end
 function ns.Visible() return frame ~= nil and frame:IsShown() end
 
 function ns.Refresh()
+    if ns.SideRefresh then ns.SideRefresh() end
     if not ns.Visible() then return end
-    refreshProfessions()
-    refreshSide()
+    refreshProfession()
+    refreshSettings()
     local v = ns.view
     local age = ns.PriceAge(v.state)
     local slash = "/gcp  ·  "
@@ -1193,9 +1543,11 @@ function ns.Refresh()
     local busy = ns.BusyKind() == "all"
     local has = v.state ~= nil and v.plan ~= nil and not busy
     local known = ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current]
-    ui.calc:SetText((ns.Busy() and busy) and L.CALC_STOP or (v.plan and L.RECALC or L.CALC))
-    ui.calc:SetWidth(math.max(110, math.floor((ui.calc.text:GetStringWidth() or 0) + 28)))
+    local label = (ns.Busy() and busy) and L.CALC_STOP or (v.plan and L.RECALC or L.CALC)
+    ui.calc:SetText(label)
     ui.calc:SetEnabled(known and true or false)
+    ui.calcBig:SetText(label)
+    ui.calcBig:SetShown(known and true or false)
     ui.progress:SetShown(busy)
     if busy then
         local f = ns.progress.done
@@ -1204,21 +1556,174 @@ function ns.Refresh()
     elseif not known then ui.empty:Set(L.NO_PROF)
     elseif not v.plan then ui.empty:Set(L.CALC_TITLE, L.CALC_SUB)
     else ui.empty:Set("") end
-    if v.stale and not busy then ui.toast:SetText(color(GOLD) .. L.CALC_STALE .. "|r") end
-    ui.empty:SetShown(not has)
+    -- bags or prices changed since the plan: the button says so, in a word and on its edge
+    local stale = v.stale and not busy and v.plan ~= nil
+    ui.stale:Set(stale and L.STALE_TAG or nil, GOLD)
+    ui.calc.edge = stale and GOLD or nil
+    ui.calc.tip = stale and L.CALC_STALE or nil
+    S.SetBorder(ui.calc, stale and GOLD or S.EDGE)
+    ui.prof:ClearAllPoints()
+    ui.prof:SetPoint("RIGHT", stale and ui.stale or ui.calc, "LEFT", -8, 0)
+    if stale then ui.toast:SetText(color(GOLD) .. L.CALC_STALE .. "|r") end
+    ui.settings:SetShown(tab == 5)
+    ui.emptyBox:SetShown(not has and tab ~= 5)
     ui.route:SetShown(has and tab == 1)
-    ui.listFrame:SetShown(has and tab > 1)
-    if not has then return end
+    ui.listFrame:SetShown(has and tab > 1 and tab < 5)
+    if not has or tab == 5 then return end
     if tab == 1 then refreshRoute() else refreshList() end
 end
 
 -- The chosen stop and tab, for the tests.
-function ns.Select(i) selected = i; ns.Refresh() end
+function ns.Select(i) selected = i; flash = nil; ns.Refresh() end
 function ns.Tab(i) if ui.tabs then ui.tabs:Select(i) end end
 function ns.Selected() return selected, tab end
 
 function ns.Toggle()
     if S.ToggleWindow(ns.Window()) then ns.Rebuild(false, "open") end
+end
+
+-- ---------- beside the auction house ----------
+
+-- The stop the window beside the auction house shows: the first auction buy of the current
+-- run that is not done.
+local function sideStop()
+    local v = ns.view
+    if not v.route or not v.plan or (v.leg or 1) > 1 then return nil end
+    local prog = ns.RunProgress()
+    for i, n in ipairs(v.route) do
+        if n.kind == "ah" and n.title == "STOP_AH_BUY" and not (prog[i] and prog[i].done) then return i, prog[i] end
+    end
+    return nil
+end
+-- Lines of the run still to buy at the auction: the number on the window's tab.
+function ns.SideLeft()
+    local _, p = sideStop()
+    return p and p.left or 0
+end
+
+local STRIP_H = 36
+local function buildSide()
+    side = S.Window("GulliCraftProfitSide", L.TITLE, S.NARROW_W, S.DOCK_H)
+    sui.frame = side
+    local body = side.body
+    sui.run = S.Text(body, 12, S.GOLD_DIM, nil, "bold")
+    sui.run:SetPoint("TOPLEFT", 0, -3)
+    sui.net = S.Text(body, 13, nil, nil, "bold")
+    sui.net:SetPoint("TOPRIGHT", 0, -2)
+    sui.net:SetJustifyH("RIGHT")
+    sui.run:SetPoint("RIGHT", sui.net, "LEFT", -8, 0)
+    sui.run:SetWordWrap(false)
+    -- the stops of the run as a line of icons: done, here, to come
+    local strip = CreateFrame("Frame", nil, body)
+    strip:SetPoint("TOPLEFT", 0, -(18 + 8))
+    strip:SetPoint("TOPRIGHT", 0, -(18 + 8))
+    strip:SetHeight(STRIP_H)
+    sui.strip, sui.icons, sui.links = strip, {}, {}
+    local card = CreateFrame("Frame", nil, body)
+    card:SetPoint("TOPLEFT", 0, -(18 + 8 + STRIP_H + 8))
+    card:SetPoint("BOTTOMRIGHT", 0, 0)
+    S.Box(card, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(card, S.R_LG)
+    sui.panel = makePanel(card, S.NARROW_W - 2 * S.PAD)
+end
+
+function ns.SideWindow()
+    if not side then buildSide() end
+    return side
+end
+
+local STRIP_MAX = 9
+local function refreshSideWindow()
+    local v = ns.view
+    local i = sideStop() or sui.stop
+    local n = i and v.route and v.route[i]
+    if not n then return end
+    sui.stop = i
+    local plan, st = v.plan, v.state
+    local from, to = st.skill, plan.target or st.skill
+    for _, x in ipairs(v.route) do if x.segs then from, to = x.from, x.to end end
+    sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. "  ·  " .. L.SIDE_STOP:format(i, #v.route)))
+    sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
+    -- the icons around the stop shown, when the run has more than fit
+    local prog = ns.RunProgress()
+    local count = math.min(#v.route, STRIP_MAX)
+    local first = math.max(1, math.min(i - math.floor(count / 2), #v.route - count + 1))
+    local width = S.NARROW_W - 2 * S.PAD
+    local gap = count > 1 and (width - 34) / (count - 1) or 0
+    for k = 1, math.max(count, #sui.icons) do
+        local ic = sui.icons[k]
+        if k <= count and not ic then
+            ic = S.IconBox(sui.strip, 26)
+            sui.icons[k] = ic
+            local l = S.Tex(sui.strip, "BACKGROUND", 0, S.LINE)
+            l:SetHeight(2)
+            sui.links[k] = l
+        end
+        if ic then
+            local x = v.route[first + k - 1]
+            ic:SetShown(k <= count)
+            sui.links[k]:SetShown(k <= count and k > 1)
+            if k <= count then
+                local here = first + k - 1 == i
+                local done = prog[first + k - 1] and prog[first + k - 1].done
+                local size = here and 34 or 26
+                ic:SetSize(size, size)
+                ic.ring:SetSize(size, size); ic.bg:SetSize(size - 2, size - 2); ic.tex:SetSize(size - 2, size - 2)
+                ic:ClearAllPoints()
+                ic:SetPoint("CENTER", sui.strip, "LEFT", 17 + (k - 1) * gap, 0)
+                ic:SetIcon(stopIcon(x))
+                local c = done and GOOD or (here and S.Accent() or S.RING)
+                S.SetBorder(ic, c); ic:SetGlow(c)
+                ic:SetAlpha(done and 0.6 or 1)
+                if k > 1 then
+                    local l = sui.links[k]
+                    local lc = (prog[first + k - 2] and prog[first + k - 2].done) and GOOD or S.EDGE
+                    l:SetVertexColor(lc[1], lc[2], lc[3], lc[4] or 1)
+                    l:ClearAllPoints()
+                    l:SetPoint("LEFT", sui.strip, "LEFT", 17 + (k - 2) * gap + 20, 0)
+                    l:SetWidth(math.max(1, gap - 40))
+                end
+            end
+        end
+    end
+    sui.panel:Set(i, true)
+end
+
+function ns.SideRefresh()
+    if S.SideRefresh then S.SideRefresh() end
+    if side and side:IsShown() then refreshSideWindow() end
+end
+
+-- At the auction house: the buy stop of the run opens beside its window (a tab there when
+-- another Gulli window stands in the same place), unless the big window is on the screen.
+function ns.SideShow()
+    local P = ns.Prefs(ns.db and ns.db.prefs)
+    local big = frame and frame:IsShown() and not frame.docked
+    if not P.side or big or not S.SideOpen or not sideStop() then return false end
+    sui.stop = nil
+    ns.SideWindow()
+    S.SideOpen("CraftProfit")
+    refreshSideWindow()
+    return true
+end
+function ns.SideHide()
+    if S.SideClose then S.SideClose("CraftProfit") end
+end
+if S.SideAdd then
+    S.SideAdd({ key = "CraftProfit", order = 20, title = L.TITLE, icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
+                window = function() return ns.SideWindow() end, badge = function() return ns.SideLeft() end })
+end
+
+-- The player opened or left a place: the route goes to the stop for it, and the auction house
+-- gets the window beside it.
+function ns.Arrive(place)
+    local v = ns.view
+    if place and v.route and (v.leg or 1) == 1 then
+        local here = ns.Here(v.route, ns.RunProgress(), place)
+        if here then selected, flash = here, nil end
+    end
+    if place == "ah" then ns.SideShow() elseif not ns.atAH then ns.SideHide() end
+    ns.Refresh()
 end
 
 -- ---------- calculating without freezing the game ----------

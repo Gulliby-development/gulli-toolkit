@@ -354,6 +354,70 @@ test("the window opens at the auction house only with a crate and the switch on"
     assert(not ns.Window():IsShown(), "no crate")
 end)
 
+test("beside the auction house: one window stands alone, two share the place as tabs", function()
+    Fake({ bags = { [FLOWER] = 1 }, names = names() })
+    local ns = Load()
+    local S = ns.Skin
+    GulliToolkitDB = {}
+    local other, picked = W.stub(), 0
+    rawset(other, "docked", false); rawset(other, "bar", W.stub())
+    S.SideAdd({ key = "Other", order = 20, title = "Gulli Other", icon = "icon", window = function() return other end,
+                badge = function() return 2 end, picked = function() picked = picked + 1 end })
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local T = GulliHUD.side
+    assert(ns.Window():IsShown())
+    assert(not (T.strip and T.strip:IsShown()), "one tab: no strip, the window as it is")
+    -- a second module has work here: the strip comes, the first window stays in front
+    S.SideOpen("Other")
+    assert(T.strip:IsShown(), "two tabs")
+    assert(ns.Window():IsShown() and not other:IsShown(), "only one window shows")
+    eq(T.strip.tabs[1].key, "Crates"); eq(T.strip.tabs[2].key, "Other")
+    eq(T.strip.tabs[2].name:GetText(), "Other", "the short name, without Gulli")
+    eq(T.strip.tabs[2].badge.text:GetText(), "2")
+    assert(T.strip.tabs[1].on and not T.strip.tabs[2].on)
+    -- the badge is what the Buy button has left
+    ns.plan = ns.plan or { crates = {} }
+    local queue, at = ns.buy.queue, ns.buy.i
+    ns.buy.queue, ns.buy.i = { {}, {}, {} }, 2
+    eq(ns.LinesLeft(), 2)
+    S.SideRefresh()
+    eq(T.strip.tabs[1].badge.text:GetText(), "2")
+    ns.buy.i = 4
+    S.SideRefresh()
+    assert(not T.strip.tabs[1].badge:IsShown(), "nothing left: no number")
+    ns.buy.queue, ns.buy.i = queue, at
+    -- a click on a tab swaps the windows and is remembered
+    rawget(T.strip.tabs[2], "_OnClick")(T.strip.tabs[2])
+    assert(other:IsShown() and not ns.Window():IsShown())
+    eq(GulliToolkitDB.sideTab, "Other"); eq(picked, 1)
+    local open, shown = S.SideIs("Crates")
+    assert(open and not shown, "its tab is still there")
+    -- the slash command brings its own tab up instead of opening a second window
+    ns.Toggle()
+    assert(ns.Window():IsShown() and not other:IsShown())
+    eq(GulliToolkitDB.sideTab, "Crates")
+    -- the other module is done: the strip goes
+    S.SideClose("Other")
+    assert(not T.strip:IsShown() and ns.Window():IsShown())
+    -- the tab chosen last comes first the next time
+    GulliToolkitDB.sideTab = "Other"
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    assert(not ns.Window():IsShown())
+    W.Fire("AUCTION_HOUSE_SHOW")
+    S.SideOpen("Other")
+    assert(other:IsShown() and not ns.Window():IsShown(), "remembered")
+    -- the player closes the window that shows: its tab goes, the other one takes the place
+    other:Hide()
+    rawget(other, "_OnHide")(other)
+    assert(ns.Window():IsShown() and not T.strip:IsShown())
+    -- the strip's cross closes them all
+    S.SideOpen("Other")
+    rawget(T.strip.close, "_OnClick")(T.strip.close)
+    assert(not ns.Window():IsShown() and not other:IsShown())
+    eq(ns.byAH, false)
+    GulliToolkitDB = nil
+end)
+
 test("a paused module does nothing at the auction house", function()
     local reg
     Fake({ bags = { [FLOWER] = 1 }, names = names() })

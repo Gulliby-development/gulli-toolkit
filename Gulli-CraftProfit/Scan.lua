@@ -465,11 +465,11 @@ local function merchantInfo(i)
     if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
         local t = C_MerchantFrame.GetItemInfo(i)
         if not t then return nil end
-        return t.price, t.stackCount, t.hasExtendedCost
+        return t.price, t.stackCount, t.hasExtendedCost, t.numAvailable
     end
     if GetMerchantItemInfo then
-        local _, _, price, stack, _, _, _, extended = GetMerchantItemInfo(i)
-        return price, stack, extended
+        local _, _, price, stack, avail, _, _, extended = GetMerchantItemInfo(i)
+        return price, stack, extended, avail
     end
 end
 ns.MerchantInfo = merchantInfo
@@ -593,6 +593,189 @@ function ns.ScanLots(route)
     return n
 end
 
+-- ---------- the run as the player walks it ----------
+
+-- Where the player stands: the open place a stop can be done at.
+function ns.Place()
+    if ns.atAH then return "ah" end
+    if ns.atVendor then return "vendor" end
+    if ns.atBank then return "bank" end
+    if ns.atMail then return "mail" end
+    return nil
+end
+
+-- How far the current run is (ns.Progress on the bags as they are now). A later run of the
+-- way has no progress: its plan starts from bags that are not there yet.
+function ns.RunProgress()
+    local v = ns.view
+    if not v.route or not v.state or (v.leg or 1) > 1 then return {} end
+    return ns.Progress(v.route, v.state, count)
+end
+
+-- ---------- buying at the auction house ----------
+
+-- The game lets an addon buy only inside a click, and both steps are protected: asking the
+-- price (StartCommoditiesPurchase) and buying (ConfirmCommoditiesPurchase). So each line takes
+-- two clicks of the stop's button; nothing here runs from an event or a timer.
+local QUOTE_WAIT = 8
+ns.buy = { queue = {}, i = 1, phase = "done", byHand = 0, bought = 0, spent = 0 }
+
+local function AH() return C_AuctionHouse end
+function ns.CanBuy()
+    local a = AH()
+    return a and a.StartCommoditiesPurchase and a.ConfirmCommoditiesPurchase and true or false
+end
+local function cancelQuote()
+    local a = AH()
+    if ns.buy.phase == "ready" and a and a.CancelCommoditiesPurchase then pcall(a.CancelCommoditiesPurchase) end
+end
+
+-- The queue of a stop: what is left of it to buy. Built when the stop or the plan changes.
+function ns.BuyReset(node, p)
+    local b = ns.buy
+    cancelQuote()
+    b.queue, b.byHand = ns.BuyQueue(node, p)
+    b.sig, b.plan = node and node.sig, ns.view.plan
+    b.i, b.quote, b.err, b.spent, b.bought, b.token = 1, nil, nil, 0, 0, nil
+    b.phase = #b.queue > 0 and "idle" or "done"
+end
+-- The queue for this stop, built when it is another stop or another plan than before.
+function ns.BuyFor(node, p)
+    local b = ns.buy
+    if not node or b.sig ~= node.sig or b.plan ~= ns.view.plan then ns.BuyReset(node, p) end
+    return b
+end
+function ns.BuyLine() return ns.buy.queue[ns.buy.i] end
+
+-- The price the auction answered is above the plan by more than the guard.
+function ns.BuyDear()
+    local b, line = ns.buy, ns.BuyLine()
+    if b.phase ~= "ready" or not b.quote or not line then return false end
+    return ns.Dear(b.quote.unit, line.unit, ns.Prefs(ns.db and ns.db.prefs).guard)
+end
+
+local function nextLine()
+    local b = ns.buy
+    b.i, b.quote = b.i + 1, nil
+    b.phase = ns.BuyLine() and "idle" or "done"
+end
+
+-- Not sold as a commodity (gear, a pattern): the button cannot buy it.
+local function byHand(id)
+    local a = AH()
+    if not a or not a.GetItemCommodityStatus then return false end
+    local ok, status = pcall(a.GetItemCommodityStatus, id)
+    return ok and status == 1
+end
+
+local function ask()
+    local b, line = ns.buy, ns.BuyLine()
+    if not line then b.phase = "done"; return end
+    if byHand(line.id) then
+        line.hand = true
+        b.byHand = b.byHand + 1
+        nextLine()
+        b.err = "BUY_ERR_HAND"
+        return
+    end
+    b.phase, b.quote, b.err = "quote", nil, nil
+    local ok = pcall(AH().StartCommoditiesPurchase, line.id, line.n)
+    if not ok then b.phase, b.err = "idle", "BUY_ERR_START"; return end
+    local token = {}
+    b.token = token
+    C_Timer.After(QUOTE_WAIT, function()
+        if b.token == token and b.phase == "quote" then
+            b.phase, b.err = "idle", "BUY_ERR_SILENT"
+            if ns.Refresh then ns.Refresh() end
+        end
+    end)
+end
+
+-- The stop's button at the auction house: one step a click.
+function ns.BuyClick()
+    local b = ns.buy
+    if not ns.atAH or not ns.CanBuy() then return end
+    if b.phase == "idle" then ask()
+    elseif b.phase == "ready" then
+        local line = ns.BuyLine()
+        b.phase = "buying"
+        local ok = pcall(AH().ConfirmCommoditiesPurchase, line.id, line.n)
+        if not ok then b.phase, b.err = "idle", "BUY_ERR_BUY" end
+    end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Leaves the current line (too dear, sold out) and goes on with the next.
+function ns.BuySkip()
+    local b = ns.buy
+    if not ns.BuyLine() then return end
+    cancelQuote()
+    ns.BuyLine().skipped = true
+    b.err = nil
+    nextLine()
+    if ns.Refresh then ns.Refresh() end
+end
+
+function ns.OnBuy(event, a1, a2)
+    local b = ns.buy
+    if event == "COMMODITY_PRICE_UPDATED" then
+        if b.phase == "quote" then b.phase, b.quote = "ready", { unit = a1 or 0, total = a2 or 0 } end
+    elseif event == "COMMODITY_PRICE_UNAVAILABLE" then
+        if b.phase == "quote" then b.phase, b.err = "idle", "BUY_ERR_SOLD" end
+    elseif event == "COMMODITY_PURCHASE_SUCCEEDED" then
+        if b.phase == "buying" then
+            local line = ns.BuyLine()
+            b.spent = b.spent + (b.quote and b.quote.total or (line.unit or 0) * line.n)
+            b.bought = b.bought + 1
+            line.done = true
+            nextLine()
+        end
+    elseif event == "COMMODITY_PURCHASE_FAILED" then
+        if b.phase == "buying" then b.phase, b.err = "idle", "BUY_ERR_BUY" end
+    end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- ---------- buying at a vendor ----------
+
+local function goods()
+    local out = {}
+    for i = 1, (GetMerchantNumItems and GetMerchantNumItems() or 0) do
+        local id = GetMerchantItemID and GetMerchantItemID(i)
+        local price, stack, extended, avail = merchantInfo(i)
+        if id and price and price > 0 and not extended then
+            out[#out + 1] = { index = i, id = id, price = price, stack = stack or 1, avail = avail }
+        end
+    end
+    return out
+end
+
+-- What a click would buy from the open vendor for this stop (ns.VendorPlan).
+function ns.VendorNow(node, p)
+    return ns.VendorPlan(node, p, goods(), GetMoney and GetMoney() or 0)
+end
+
+-- Buys it: everything of the stop this vendor sells, in whole stacks. Runs from the click.
+function ns.BuyVendor(node, p)
+    if not ns.atVendor or not BuyMerchantItem then return nil end
+    local plan = ns.VendorNow(node, p)
+    for _, e in ipairs(plan.buys) do
+        if e.stack > 1 then
+            -- sold in fixed stacks: one stack a call
+            for _ = 1, e.stacks do BuyMerchantItem(e.index) end
+        else
+            local n = e.stacks
+            local max = math.max(1, GetMerchantItemMaxStack and GetMerchantItemMaxStack(e.index) or 20)
+            while n > 0 do
+                local k = math.min(n, max)
+                BuyMerchantItem(e.index, k)
+                n = n - k
+            end
+        end
+    end
+    return plan
+end
+
 -- ---------- Auctionator shopping list ----------
 
 -- Puts what the run buys at the auction into an Auctionator shopping list with the amounts.
@@ -673,6 +856,9 @@ end
 
 -- ---------- events ----------
 
+-- The player opened or left a place: the window shows the stop for it (UI.lua replaces this).
+function ns.Arrive(place) if ns.Refresh then ns.Refresh() end end
+
 -- Forever lacks some classic events (TRADE_SKILL_UPDATE, AUCTION_ITEM_LIST_UPDATE): an unknown
 -- name must not stop the rest of the list.
 function ns.Listen(frame, events)
@@ -685,7 +871,7 @@ end
 local pending = false
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1)
+f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliCraftProfitDB = GulliCraftProfitDB or {}
@@ -703,23 +889,35 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
                           "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
                           "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
-                          "AUCTION_ITEM_LIST_UPDATE" })
+                          "AUCTION_ITEM_LIST_UPDATE", "MERCHANT_CLOSED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
+                          "MAIL_SHOW", "MAIL_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
+                          "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED" })
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
             pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
         end
         return
     end
-    if event == "MERCHANT_SHOW" then learnVendor(); return end
+    if event == "MERCHANT_SHOW" then learnVendor(); ns.atVendor = true; ns.Arrive("vendor"); return end
+    if event == "MERCHANT_CLOSED" then ns.atVendor = false; ns.Arrive(nil); return end
+    if event == "BANKFRAME_OPENED" then ns.atBank = true; ns.Arrive("bank"); return end
+    if event == "BANKFRAME_CLOSED" then ns.atBank = false; ns.Arrive(nil); return end
+    if event == "MAIL_SHOW" then ns.atMail = true; ns.Arrive("mail"); return end
+    if event == "MAIL_CLOSED" then ns.atMail = false; ns.Arrive(nil); return end
     if event == "TRAINER_SHOW" then learnTrainer(); return end
     if event == "MAIL_INBOX_UPDATE" then snapshotMail(); return end
-    if event == "AUCTION_HOUSE_SHOW" then ns.atAH = true; if ns.Refresh then ns.Refresh() end return end
+    if event == "AUCTION_HOUSE_SHOW" then ns.atAH = true; ns.Arrive("ah"); return end
     if event == "AUCTION_HOUSE_CLOSED" then
+        cancelQuote()
+        if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
         ns.atAH, scan.queue, scan.busy = false, {}, nil
-        if ns.Refresh then ns.Refresh() end
+        ns.Arrive(nil)
         return
     end
+    if event:sub(1, 10) == "COMMODITY_" and event ~= "COMMODITY_SEARCH_RESULTS_UPDATED" then ns.OnBuy(event, a1, a2); return end
     if event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "AUCTION_ITEM_LIST_UPDATE" then ns.OnLots(); return end
+    -- the run's progress follows the bags at once; the plan itself only goes stale
+    if event == "BAG_UPDATE_DELAYED" and ns.Refresh then ns.Refresh() end
     if pending then return end
     pending = true
     C_Timer.After(0.5, function()

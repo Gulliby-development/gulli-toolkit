@@ -752,7 +752,7 @@ test("each leg chip shows what the run gains or loses; craft reagents get their 
     for k, s in ipairs(v.route) do if s.segs then i = k end end
     n.Select(i)
     local rows = n.ui.detail.rows
-    assert(rows[2] and rows[2].mid:GetText() == n.L.REAGENT, "a reagent row under the recipe")
+    assert(rows[2] and rows[2].note:GetText() == n.L.REAGENT, "a reagent row under the recipe")
 end)
 
 test("the classic API works too", function()
@@ -793,7 +793,7 @@ test("open window: route stops, a setting click rebuilds and lights what changed
     local route = n.view.route
     assert(#route >= 3, "stops: " .. #route)
     for i = 1, #route do assert(n.ui.nodes[i]:IsShown()) end
-    assert(n.ui.nodes[1].title:GetText())
+    assert(n.ui.nodes[1].head:GetText() and n.ui.nodes[1].sub:GetText())
     local hadBank = has(route, "STOP_BANK") ~= nil
     assert(hadBank)
     W.Click(n.ui.checks.useBank)
@@ -843,9 +843,12 @@ test("every switch in the column rebuilds the plan", function()
     local n = game()
     n.Toggle(); n.Calculate()
     for key, c in pairs(n.ui.checks) do
-        local before = n.view.prefs[key]
+        -- a setting of the buying itself (n.NO_PLAN) changes at once and plans nothing
+        local function cur() if n.NO_PLAN[key] then return n.Prefs(n.db.prefs)[key] end return n.view.prefs[key] end
+        local before, plan = cur(), n.view.plan
         W.Click(c)
-        eq(n.view.prefs[key], not before, key)
+        eq(cur(), not before, key)
+        if n.NO_PLAN[key] then eq(n.view.plan, plan, key .. " keeps the plan") end
         eq(c:GetChecked(), not before, key .. " switch")
         W.Click(c)
     end
@@ -891,7 +894,7 @@ test("the levelling switch and the route tiles", function()
     W.Click(n.ui.modes.l1)
     eq(n.db.prefs.level, true, "a levelling tile turns levelling on")
     eq(n.view.mode, "l1")
-    eq(n.ui.graphCard.title:GetText(), n.Skin.Upper(n.L.VAR_cheap), "card titles are capitals")
+    eq(n.ui.varTiles[1].kind:GetText(), n.Skin.Upper(n.L.KIND_LEVEL), "a tile says what its route is for, in capitals")
     assert(n.ui.varTiles[1].label:GetText():find(n.L.TILE_cheap, 1, true))
 end)
 
@@ -962,7 +965,7 @@ test("the crafts stepper starts on auto and binds to it again", function()
     eq(st.value:GetText(), n.L.NO_LIMIT)
 end)
 
-test("the leg chips pick a later run; the graph shows two rows and opens the rest", function()
+test("the leg chips pick a later run; many stops scroll beside the chosen stop", function()
     local n = game()
     n.Toggle(); n.Calculate()
     local v = n.view
@@ -971,25 +974,20 @@ test("the leg chips pick a later run; the graph shows two rows and opens the res
     eq(v.leg, 1)
     W.Click(n.ui.chips[2])
     eq(v.leg, 2)
-    assert(n.ui.graphCard.title:GetText():find(v.legs[2].from .. "-" .. v.legs[2].to, 1, true), "the title names the leg")
+    assert(rawget(n.ui.chips[2], "on") and not rawget(n.ui.chips[1], "on"), "the chosen run is marked")
+    eq(n.ui.skillNow:GetText(), tostring(v.legs[2].from), "the way starts where that run starts")
     if v.legs[2].unknown then eq(#v.route, 0); assert(n.ui.unknown:IsShown()) else assert(#v.route > 0) end
     -- a setting change keeps the chosen leg while it starts at the same skill
     W.Click(n.ui.checks.neutral)
     eq(v.leg, 2)
     W.Click(n.ui.checks.neutral)
     W.Click(n.ui.chips[1])
-    -- many stops: two rows, then the button opens the graph and hides the stop list
+    -- many stops: every one has its row in the list, which scrolls; the chosen stop stays beside it
     n.view.route = {}
-    for i = 1, 10 do n.view.route[i] = { kind = "vendor", title = "STOP_VENDOR_BUY", lines = {}, index = i } end
+    for i = 1, 10 do n.view.route[i] = { kind = "vendor", title = "STOP_VENDOR_BUY", lines = {}, index = i, sig = "s" .. i } end
     n.Refresh()
-    -- Refresh rebuilds nothing: the route stays the ten stops
-    assert(n.ui.expand:IsShown())
-    assert(not n.ui.nodes[10]:IsShown(), "the third row waits")
-    W.Click(n.ui.expand)
-    assert(n.ui.nodes[10]:IsShown())
-    assert(not n.ui.detailCard:IsShown())
-    W.Click(n.ui.expand)
-    assert(n.ui.detailCard:IsShown())
+    for i = 1, 10 do assert(n.ui.nodes[i]:IsShown(), "stop " .. i) end
+    assert(n.ui.act1:IsShown(), "the chosen stop keeps its button")
 end)
 
 test("a stop click shows its lines; tabs show the lists", function()
@@ -1014,10 +1012,11 @@ test("a craft stop names its recipe and the crafts; the head shows the result wi
     local i
     for k, s in ipairs(n.view.route) do if s.segs then i = k end end
     local s, b = n.view.route[i], n.ui.nodes[i]
-    eq(b.title:GetText(), n.view.state.recipes[s.segs[1].rid].name)
-    assert(b.kind:GetText():find(s.from .. "-" .. s.to, 1, true))
-    assert(b.money:GetText():find(n.L.CRAFTS_N:format(s.crafts), 1, true))
-    local head = n.ui.money:GetText()
+    assert(b.sub:GetText():find(n.view.state.recipes[s.segs[1].rid].name, 1, true))
+    assert(b.sub:GetText():find("x" .. s.crafts, 1, true))
+    n.Select(1) -- the skill stretch shows on a stop that is neither chosen nor "here"
+    if not rawget(b.here, "shown") then assert((b.side:GetText() .. b.sub:GetText()) ~= "") end
+    local head = n.ui.net:GetText()
     local net = n.view.plan.net
     assert(head:find((net < 0 and "-" or "+") .. n.Short(net), 1, true), head)
 end)
@@ -1148,12 +1147,13 @@ test("the auction stop sends the list to Auctionator; a craft stop makes the cra
     end
     assert(ah, kinds(n.view.route))
     n.Select(ah)
-    assert(n.ui.act1:IsShown()); assert(not n.ui.act2:IsShown(), "no lots button away from the auction")
-    W.Click(n.ui.act1)
+    assert(n.ui.tool1:IsShown()); assert(not n.ui.tool2:IsShown(), "no lots button away from the auction")
+    assert(n.ui.act1:IsShown() and not n.ui.act1:IsEnabled(), "the Buy button waits for the auction house")
+    W.Click(n.ui.tool1)
     assert(list and #list.terms > 0 and list.terms[1]:find(";", 1, true))
     n.atAH = true
     n.Select(ah)
-    assert(n.ui.act2:IsShown())
+    assert(n.ui.tool2:IsShown())
     n.atAH = false
     n.Select(craft)
     W.Click(n.ui.act1)
@@ -1453,6 +1453,310 @@ test("an event the client does not know never stops the others from registering"
     ok, err = pcall(game)
     W.unknownEvents, C_EventUtils = nil, nil
     assert(ok, err)
+end)
+
+-- ---------- the run as stops, and buying from them ----------
+
+test("progress: a stop is done once its items are in the bags, in the stops' order", function()
+    local c = core()
+    local route = {
+        { kind = "bank", title = "STOP_BANK", lines = { { id = 1, n = 10 } } },
+        { kind = "ah", title = "STOP_AH_BUY", lines = { { id = 1, n = 20, price = 100, name = "Cloth" }, { n = 1, name = "Pattern" } } },
+        { kind = "craft", title = "STOP_CRAFT", lines = {} },
+        { kind = "sell", title = "STOP_AH_SELL", lines = { { id = 4, n = 2 } } },
+    }
+    local st = { items = { [1] = { bags = 5 } } }
+    local bags = 5
+    local function have() return bags end
+    local p = c.Progress(route, st, have)
+    eq(p[1].done, false); eq(p[1].lines[1].left, 10)
+    bags = 15
+    p = c.Progress(route, st, have)
+    eq(p[1].done, true, "the bank's ten arrived")
+    eq(p[2].lines[1].got, 0, "the same item of the next stop still waits")
+    bags = 27
+    p = c.Progress(route, st, have)
+    eq(p[2].lines[1].left, 8)
+    bags = 40
+    p = c.Progress(route, st, have)
+    eq(p[2].lines[1].done, true)
+    eq(p[2].done, false, "a pattern has no item to count: never done by itself")
+    eq(p[3].done, false); eq(p[4].done, false)
+    -- where the player stands: the first stop of the open place that is not done
+    eq(c.Here(route, p, nil), nil)
+    eq(c.Here(route, p, "bank"), nil, "the bank stop is done")
+    eq(c.Here(route, p, "ah"), 2)
+    eq(c.Here(route, p, "vendor"), nil)
+    p[2].done = true
+    eq(c.Here(route, p, "ah"), 4, "then the selling stop")
+    -- what is left to buy
+    p = c.Progress(route, st, function() return 27 end)
+    local q, hand = c.BuyQueue(route[2], p[2])
+    eq(#q, 1); eq(q[1].n, 8); eq(q[1].unit, 100); eq(q[1].line, 1); eq(hand, 1)
+end)
+
+test("the price guard and the click counter", function()
+    local c = core()
+    eq(c.Dear(110, 100, 10), false, "at the guard: fine")
+    eq(c.Dear(111, 100, 10), true)
+    eq(c.Dear(100, 0, 10), false, "no planned price: nothing to compare")
+    eq(c.Dear(500, 100, 0), true)
+    local at, of = c.BuyClicks(2, 1, false)
+    eq(at, 1); eq(of, 4)
+    eq((c.BuyClicks(2, 1, true)), 2)
+    eq((c.BuyClicks(2, 2, false)), 3)
+    eq((c.BuyClicks(2, 2, true)), 4)
+end)
+
+test("a vendor sells whole stacks: need 4, sold in fives, buys 5", function()
+    local c = core()
+    local node = { kind = "vendor", title = "STOP_VENDOR_BUY", lines = {
+        { id = 3, n = 4, name = "Blue Dye" }, { id = 5, n = 7, name = "Fine Thread" }, { id = 9, n = 1, name = "Elsewhere" } } }
+    local goods = { { index = 1, id = 3, price = 250, stack = 5 }, { index = 2, id = 5, price = 100, stack = 1 } }
+    local plan = c.VendorPlan(node, nil, goods, 100000)
+    eq(#plan.buys, 2)
+    local dye = plan.buys[1]
+    eq(dye.stacks, 1); eq(dye.units, 5); eq(dye.need, 4); eq(dye.extra, 1); eq(dye.cost, 250)
+    eq(plan.buys[2].units, 7); eq(plan.buys[2].extra, 0)
+    eq(plan.cost, 950); eq(plan.missing, 1, "one line this vendor does not sell"); eq(plan.short, false)
+    -- need 6 of fives is two stacks; what is in the bags already is not bought again
+    local p = { lines = { { left = 6 }, { done = true, left = 0 }, { left = 1 } } }
+    plan = c.VendorPlan(node, p, goods, 100000)
+    eq(#plan.buys, 1); eq(plan.buys[1].stacks, 2); eq(plan.buys[1].units, 10)
+    -- not enough money: as many stacks as it covers, and it says so
+    plan = c.VendorPlan(node, nil, goods, 300)
+    eq(plan.short, true); eq(plan.cost, 250); eq(#plan.buys, 1)
+    -- a limited stock
+    goods[2].avail = 3
+    plan = c.VendorPlan(node, nil, goods, 100000)
+    eq(plan.buys[2].units, 3); eq(plan.missing, 2)
+end)
+
+local function stopOf(n, title)
+    for i, s in ipairs(n.view.route) do if s.title == title then return i end end
+end
+
+test("the auction stop buys by clicks: two a line, never from an event", function()
+    local n = game()
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle(); n.Calculate()
+    local ah = stopOf(n, "STOP_AH_BUY")
+    assert(ah, kinds(n.view.route))
+    n.Select(1)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq((n.Selected()), ah, "arriving chooses the stop to do here")
+    assert(rawget(n.ui.nodes[ah].here, "_shown"), "You are here")
+    local node = n.view.route[ah]
+    local all = #node.lines
+    local line = node.lines[1]
+    local a = n.StopAction(ah)
+    eq(a.counter.at, 1); eq(a.counter.of, 2 * all)
+    assert(n.ui.act1:IsEnabled())
+    eq(#W.calls, 0, "nothing is asked before a click")
+    W.Click(n.ui.act1)
+    eq(W.calls[1][1], "start"); eq(W.calls[1][2], line.id); eq(W.calls[1][3], line.n)
+    assert(not n.ui.act1:IsEnabled(), "waits for the price")
+    W.Click(n.ui.act1)
+    eq(#W.calls, 1, "a click while waiting does nothing")
+    W.Fire("COMMODITY_PRICE_UPDATED", line.price, line.price * line.n)
+    eq(#W.calls, 1, "the price coming in buys nothing")
+    a = n.StopAction(ah)
+    eq(a.counter.at, 2)
+    assert(a.primary[2] and not a.primary.warn, "at the planned price: plain Buy")
+    W.Click(n.ui.act1)
+    eq(W.calls[2][1], "confirm"); eq(W.calls[2][2], line.id); eq(W.calls[2][3], line.n)
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(#W.calls, 2)
+    eq(n.buy.bought, 1); eq(n.buy.spent, line.price * line.n)
+    a = n.StopAction(ah)
+    if all > 1 then
+        eq(a.counter.at, 3)
+        assert(n.ui.detail.rows[1].mark:GetText():find(n.L.MARK_BOUGHT, 1, true))
+    else
+        eq(a.primary[2], nil, "all bought: the button rests")
+    end
+    -- leaving the auction house ends the buying; the button waits again
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    a = n.StopAction(ah)
+    eq(a.primary[2], nil); eq(a.hint, n.L.HINT_AH_AWAY)
+end)
+
+test("a price above the plan asks first; Skip leaves the line; a refusal is told", function()
+    local n = game()
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle(); n.Calculate()
+    local ah = stopOf(n, "STOP_AH_BUY")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local node = n.view.route[ah]
+    local line = node.lines[1]
+    W.Click(n.ui.act1)
+    local dear = math.floor(line.price * 1.5)
+    W.Fire("COMMODITY_PRICE_UPDATED", dear, dear * line.n)
+    local a = n.StopAction(ah)
+    assert(a.primary.warn and a.bad, "the button turns into Buy anyway")
+    assert(a.primary[1]:find(n.L.BUY_ANYWAY:match("^[^%%]+"), 1, true), a.primary[1])
+    -- a wider guard takes the same price without asking, and plans nothing
+    local plan = n.view.plan
+    n.SetPref("guard", 60)
+    eq(n.view.plan, plan)
+    assert(not n.StopAction(ah).primary.warn)
+    n.SetPref("guard", 10)
+    -- Skip: the price asked is given up, the next line comes
+    local calls = #W.calls
+    W.Click(n.ui.act2)
+    eq(W.calls[calls + 1][1], "cancel")
+    assert(n.ui.detail.rows[1].mark:GetText():find(n.L.MARK_SKIPPED, 1, true))
+    if #node.lines > 1 then
+        eq(n.buy.i, 2)
+        -- sold out: the button asks again, with the reason under it
+        W.Click(n.ui.act1)
+        W.Fire("COMMODITY_PRICE_UNAVAILABLE")
+        a = n.StopAction(ah)
+        eq(a.hint, n.L.BUY_ERR_SOLD); assert(a.bad and a.primary[2])
+        -- the game refused the purchase
+        W.Click(n.ui.act1)
+        local l2 = node.lines[2]
+        W.Fire("COMMODITY_PRICE_UPDATED", l2.price, l2.price * l2.n)
+        W.Click(n.ui.act1)
+        W.Fire("COMMODITY_PURCHASE_FAILED")
+        a = n.StopAction(ah)
+        eq(a.hint, n.L.BUY_ERR_BUY); eq(n.buy.bought, 0)
+        -- no answer at all: after a while the button is free again
+        W.Click(n.ui.act1)
+        W.RunTimers()
+        eq(n.StopAction(ah).hint, n.L.BUY_ERR_SILENT)
+    end
+end)
+
+test("an item that is not a commodity is left to the player; no purchase API, no button", function()
+    local n = game({ handOnly = { [1] = true, [2] = true, [3] = true, [5] = true } })
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle(); n.Calculate()
+    local ah = stopOf(n, "STOP_AH_BUY")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local lines = #n.view.route[ah].lines
+    for _ = 1, lines do W.Click(n.ui.act1) end
+    eq(#W.calls, 0, "never asked for")
+    local a = n.StopAction(ah)
+    eq(a.primary[2], nil); assert(a.bad)
+    eq(a.hint, n.L.HINT_HAND:format(lines))
+    assert(n.ui.detail.rows[1].mark:GetText():find(n.L.MARK_HAND, 1, true))
+    C_AuctionHouse = nil
+    n.buy.sig = nil
+    a = n.StopAction(ah)
+    eq(a.primary[2], nil); eq(a.hint, n.L.HINT_AH_NOAPI)
+end)
+
+test("the vendor stop buys everything in one click, whole stacks", function()
+    local n = game({ vendor = { { 3, 250, 5 }, { 5, 100 } } })
+    n.Toggle(); n.Calculate()
+    local vs = stopOf(n, "STOP_VENDOR_BUY")
+    assert(vs, kinds(n.view.route))
+    local node = n.view.route[vs]
+    W.Fire("MERCHANT_CLOSED")
+    n.Select(vs)
+    local a = n.StopAction(vs)
+    eq(a.primary[2], nil); eq(a.hint, n.L.HINT_V_AWAY)
+    W.Fire("MERCHANT_SHOW")
+    eq((n.Selected()), vs)
+    a = n.StopAction(vs)
+    assert(a.primary[2], "one button")
+    local want, cost = {}, 0
+    for _, l in ipairs(node.lines) do
+        if l.id == 3 then want[1] = math.ceil(l.n / 5) * 5; cost = cost + want[1] / 5 * 250 end
+        if l.id == 5 then want[2] = l.n; cost = cost + l.n * 100 end
+    end
+    assert(want[1] or want[2])
+    eq(a.vendor.cost, cost)
+    local money = W.money
+    W.Click(n.ui.act1)
+    eq(W.bought[1], want[1]); eq(W.bought[2], want[2])
+    eq(W.money, money - cost)
+    -- the items are in the bags: the stop is done and the button rests
+    W.Fire("BAG_UPDATE_DELAYED")
+    a = n.StopAction(vs)
+    eq(a.primary[2], nil); eq(a.pill[1], n.L.STOP_DONE)
+    assert(rawget(n.ui.nodes[vs].tick, "_shown"), "a tick on the stop")
+    W.Click(n.ui.act1)
+    eq(W.bought[1], want[1], "nothing is bought twice")
+end)
+
+test("a vendor without the money buys what it covers and says so", function()
+    local n = game({ vendor = { { 3, 250, 5 }, { 5, 100 } }, money = 120 })
+    n.Toggle(); n.Calculate()
+    local vs = stopOf(n, "STOP_VENDOR_BUY")
+    n.Select(vs)
+    local a = n.StopAction(vs)
+    assert(a.bad and a.hint == n.L.HINT_V_MONEY)
+    if a.primary[2] then
+        W.Click(n.ui.act1)
+        assert(W.money >= 0, "never more than the money")
+    end
+end)
+
+test("at the auction house the buy stop opens in the window beside it; its tab counts what is left", function()
+    local n = game()
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Recalc(false)
+    local ah = stopOf(n, "STOP_AH_BUY")
+    assert(ah)
+    local lines = #n.view.route[ah].lines
+    eq(n.SideLeft(), lines)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local side = n.SideWindow()
+    assert(side:IsShown(), "the big window is closed: the small one comes")
+    local T = GulliHUD.side
+    assert(T.open.CraftProfit and not (T.strip and T.strip:IsShown()), "alone there: no tabs")
+    assert(n.sui.run:GetText():find(n.Skin.Upper(n.L.SIDE_STOP:format(ah, #n.view.route)), 1, true), n.sui.run:GetText())
+    -- its button is the stop's button
+    local p = n.sui.panel
+    eq(p.act1:GetText(), n.StopAction(ah, true).primary[1])
+    W.Click(p.act1)
+    eq(W.calls[1][1], "start")
+    local line = n.view.route[ah].lines[1]
+    W.Fire("COMMODITY_PRICE_UPDATED", line.price, line.price * line.n)
+    W.Click(p.act1)
+    eq(W.calls[2][1], "confirm")
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(n.buy.bought, 1)
+    -- the bags got them: one line less on the tab
+    W.items[line.id].bags = (W.items[line.id].bags or 0) + line.n
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(n.SideLeft(), lines - 1)
+    -- with another module's window in the same place there are tabs
+    local other = W.stub()
+    rawset(other, "docked", false); rawset(other, "bar", W.stub())
+    n.Skin.SideAdd({ key = "Crates", order = 10, title = "Gulli Waylaid Crates", icon = "i", window = function() return other end })
+    n.Skin.SideOpen("Crates")
+    assert(T.strip:IsShown())
+    eq(T.strip.tabs[2].key, "CraftProfit")
+    if lines > 1 then eq(T.strip.tabs[2].badge.text:GetText(), tostring(lines - 1)) end
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    assert(not side:IsShown(), "it leaves with the auction house")
+    -- the switch in Settings keeps it away, and so does the big window
+    n.SetPref("side", false)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    assert(not side:IsShown())
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    n.SetPref("side", true)
+    n.Toggle()
+    W.Fire("AUCTION_HOUSE_SHOW")
+    assert(not side:IsShown(), "the big window shows the stop itself")
+end)
+
+test("the buying settings: the guard stepper and the side window switch plan nothing", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local plan = n.view.plan
+    local st = n.ui.steppers.guard
+    assert(st and n.ui.checks.side)
+    W.Click(st.plus)
+    eq(n.db.prefs.guard, 15)
+    W.Click(st.minus); W.Click(st.minus)
+    eq(n.db.prefs.guard, 5)
+    eq(n.view.plan, plan)
+    W.Click(n.ui.reset)
+    eq(n.Prefs(n.db.prefs).guard, 10)
 end)
 
 W.finish()
