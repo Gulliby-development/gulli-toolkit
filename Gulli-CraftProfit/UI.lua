@@ -82,7 +82,7 @@ local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 20000
 local function pref(key)
     local P = ns.Prefs(ns.db and ns.db.prefs)
     if key == "target" then
-        local st = ns.view.state or (ns.State and ns.State())
+        local st = ns.view.state or (ns.Skill and ns.Skill())
         if st then return ns.Target(st, P) end
     end
     return P[key]
@@ -120,7 +120,7 @@ local function stepRow(parent, key, step, min, max, fmt)
         -- binds it to the target again; one step past the top is "no limit" (-1)
         local top = max
         local function auto()
-            local st = ns.view.state or (ns.State and ns.State())
+            local st = ns.view.state or (ns.Skill and ns.Skill())
             local P = ns.Prefs(ns.db and ns.db.prefs)
             P.maxCrafts = 0
             return st and ns.CraftCap(st, P) or ns.CRAFTS_SPARE
