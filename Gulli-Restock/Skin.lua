@@ -3123,3 +3123,266 @@ function S.TipProvider(kind, key, fn)
     if (T.v or 0) < TIP_V then T.v, T.run = TIP_V, tipRun end
     tipHook(T)
 end
+
+-- Side tabs ------------------------------------------------------------------------------------
+--
+-- One place beside the auction house for every module that has work there. A module gives its
+-- window with S.SideAdd and asks for it with S.SideOpen(key) when it has something to do at the
+-- auction house; S.SideClose(key) takes it away. One window: it stands there as it is. Two or
+-- more: only one shows, and a strip of tabs like a browser's lies over its header (icon, name,
+-- a badge with what is left to do). The tab chosen last is remembered. The state is shared by
+-- every copy of the skin (GulliHUD.side); the newest copy lays it out.
+local SIDE_V = 1
+local SIDE_GAP = 8
+local SIDE_TAB_H = S.HEADER_H - 8
+
+local function sideState()
+    GulliHUD = GulliHUD or {}
+    local T = GulliHUD.side
+    if not T then
+        T = { tabs = {}, open = {}, shown = {}, hooked = setmetatable({}, { __mode = "k" }) }
+        GulliHUD.side = T
+    end
+    return T
+end
+
+-- The open tabs in their order; a window that sits in the hub has no tab.
+local function sideList(T)
+    local list = {}
+    for key in pairs(T.open) do
+        local t = T.tabs[key]
+        local w = t and t.window and t.window()
+        if w and not w.docked then list[#list + 1] = t end
+    end
+    table.sort(list, function(a, b)
+        if (a.order or 50) ~= (b.order or 50) then return (a.order or 50) < (b.order or 50) end
+        return a.key < b.key
+    end)
+    return list
+end
+
+local function sideSaved() return GulliToolkitDB and GulliToolkitDB.sideTab or nil end
+local function sidePick(T, key)
+    T.current, T.last, T.auto = key, key, false
+    if GulliToolkitDB then GulliToolkitDB.sideTab = key end
+end
+
+local function sideText(v) if type(v) == "function" then return v() end return v end
+
+local function sideTab(strip)
+    local b = CreateFrame("Button", nil, strip)
+    b:SetHeight(SIDE_TAB_H)
+    S.Box(b, S.CLEAR, S.CLEAR, S.R_MD, "top")
+    b.icon = S.IconBox(b, 24)
+    b.icon:SetPoint("LEFT", 10, 0)
+    b.name = S.Text(b, 16, S.MUTED, nil, "title")
+    b.name:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
+    b.name:SetWordWrap(false)
+    b.name:SetJustifyH("LEFT")
+    -- what is left to do there: a gold pill with a dark number
+    b.badge = CreateFrame("Frame", nil, b)
+    b.badge:SetHeight(18)
+    S.Box(b.badge, S.GOLD, S.GOLD, 9)
+    b.badge.text = S.Text(b.badge, 12, S.SIDE, nil, "bold")
+    b.badge.text:SetPoint("CENTER")
+    b.badge:SetPoint("LEFT", b.name, "RIGHT", 8, 0)
+    b:SetScript("OnEnter", function(self)
+        if not self.on then S.Fill(self, S.SURFACE) end
+        if self.cut and GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(self.full or "", 1, 1, 1)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function(self)
+        if not self.on then S.Fill(self, S.CLEAR) end
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    return b
+end
+
+local function sideStrip(T)
+    if T.strip and T.stripV == SIDE_V then return T.strip end
+    if T.strip then T.strip:Hide() end
+    local strip = CreateFrame("Frame", nil, UIParent)
+    S.Box(strip, S.HEAD, S.CLEAR, S.R_XL - 1, "top")
+    strip:EnableMouse(true)
+    local line = S.Divider(strip, S.HEAD_LINE)
+    line:SetPoint("BOTTOMLEFT")
+    line:SetPoint("BOTTOMRIGHT")
+    line:SetHeight(1)
+    strip.tabs = {}
+    strip.close = closeButton(strip, function() T.closeAll(T) end)
+    strip.close:SetPoint("RIGHT", -8, 0)
+    strip:Hide()
+    T.strip, T.stripV = strip, SIDE_V
+    return strip
+end
+
+-- The tabs' texts, badges and widths; names give way together when the strip is too narrow.
+local function sideDraw(T, list, w)
+    local strip = sideStrip(T)
+    local bar = w.bar or w
+    strip:SetParent(bar)
+    strip:ClearAllPoints()
+    strip:SetAllPoints(bar)
+    strip:SetFrameLevel((tonumber((bar:GetFrameLevel())) or 1) + 20)
+    -- dragging the strip moves the window under it, like its header does
+    strip:RegisterForDrag("LeftButton")
+    strip:SetScript("OnDragStart", function() if w.StartMoving and not w.docked then w:StartMoving() end end)
+    strip:SetScript("OnDragStop", function() if w.StopMovingOrSizing then w:StopMovingOrSizing() end end)
+    local room = (tonumber((w:GetWidth())) or S.NARROW_W) - 10 - 44
+    local fixed, names = 0, 0
+    for i, t in ipairs(list) do
+        local b = strip.tabs[i] or sideTab(strip)
+        strip.tabs[i] = b
+        b.key, b.on = t.key, t.key == T.current
+        b.full = shortTitle(tostring(sideText(t.title) or t.key))
+        b.icon:SetIcon(sideText(t.icon))
+        b.name:SetWidth(0)
+        b.name:SetText(b.full)
+        local c = b.on and S.GOLD or S.MUTED
+        b.name:SetTextColor(c[1], c[2], c[3], 1)
+        local n = t.badge and t.badge()
+        local count = (type(n) == "number" and n > 0) and n or false
+        b.count = count
+        b.badge:SetShown(count ~= false)
+        b.badge.text:SetText(count and tostring(count) or "")
+        b.badgeW = count and math.max(18, math.floor(strw(b.badge.text) + 14)) or 0
+        b.badge:SetWidth(math.max(18, b.badgeW))
+        b.nameW = math.ceil(strw(b.name))
+        b.fixedW = 10 + 24 + 8 + (count and (8 + b.badgeW) or 0) + 12
+        fixed, names = fixed + b.fixedW + 4, names + b.nameW
+        S.Fill(b, b.on and S.BG or S.CLEAR)
+        S.SetBorder(b, b.on and S.HEAD_LINE or S.CLEAR)
+        b:SetScript("OnClick", function(self) T.pick(T, self.key) end)
+    end
+    local cut = names > 0 and math.min(1, math.max(0.2, (room - fixed) / names)) or 1
+    local x = 10
+    for i = 1, #list do
+        local b = strip.tabs[i]
+        local nw = math.floor(b.nameW * cut)
+        b.cut = cut < 1
+        b.name:SetWidth(b.cut and nw or 0)
+        b:SetWidth(b.fixedW + (b.cut and nw or b.nameW))
+        b:ClearAllPoints()
+        b:SetPoint("BOTTOMLEFT", x, 0)
+        b:Show()
+        x = x + b.fixedW + (b.cut and nw or b.nameW) + 4
+    end
+    for i = #list + 1, #strip.tabs do strip.tabs[i]:Hide() end
+    strip:Show()
+end
+
+-- Shows the chosen tab's window beside the auction house and hides the others.
+local function sideLayout(T)
+    local list = sideList(T)
+    local keys = {}
+    for _, t in ipairs(list) do keys[t.key] = t end
+    -- the tab chosen last comes up as soon as it is there, until the player picks one this visit
+    local saved = sideSaved() or T.last
+    if not keys[T.current] or (T.auto and saved and keys[saved]) then
+        T.current = (saved and keys[saved] and saved) or (list[1] and list[1].key) or nil
+        T.auto = true
+    end
+    T.switching = true
+    for key, t in pairs(T.tabs) do
+        local w = T.shown[key] and t.window and t.window()
+        if w and key ~= T.current then
+            T.shown[key] = nil
+            if not w.docked then w:Hide() end
+        end
+    end
+    local cur = T.current and keys[T.current]
+    local w = cur and cur.window()
+    if w then
+        if not T.hooked[w] then
+            T.hooked[w] = true
+            -- closed by the player (its cross, its slash command, Escape): its tab goes
+            w:HookScript("OnHide", function()
+                local S2 = GulliHUD and GulliHUD.side
+                if not S2 or S2.switching or not S2.open[cur.key] or S2.current ~= cur.key then return end
+                S2.open[cur.key], S2.shown[cur.key] = nil, nil
+                if cur.closed then cur.closed() end
+                S2.layout(S2)
+            end)
+        end
+        local ah = AuctionHouseFrame or AuctionFrame
+        if ah then
+            w:ClearAllPoints()
+            w:SetPoint("TOPLEFT", ah, "TOPRIGHT", SIDE_GAP, 0)
+        end
+        T.shown[cur.key] = true
+        w:Show()
+    end
+    T.switching = false
+    if w and #list > 1 then sideDraw(T, list, w)
+    elseif T.strip then T.strip:Hide() end
+end
+
+local function sideImpl(T)
+    if (T.v or 0) >= SIDE_V then return end
+    T.v, T.layout = SIDE_V, sideLayout
+    T.pick = function(t, key)
+        if not t.open[key] then return end
+        sidePick(t, key)
+        t.layout(t)
+        local tab = t.tabs[key]
+        if tab and tab.picked then tab.picked() end
+    end
+    T.closeAll = function(t)
+        for key, tab in pairs(t.tabs) do
+            if t.open[key] then
+                t.open[key] = nil
+                if tab.closed then tab.closed() end
+            end
+        end
+        t.layout(t)
+    end
+end
+
+-- A module's place beside the auction house: o = { key, order, title, icon (texts or functions),
+-- window = function() return its S.Window end, badge = function() return what is left to do
+-- (a number, nil or 0 for none) end, picked = function() end (its tab was chosen), closed =
+-- function() end (the player closed it) }.
+function S.SideAdd(o)
+    local T = sideState()
+    sideImpl(T)
+    T.tabs[o.key] = o
+end
+
+-- Asks for the module's tab (it has work at the auction house). pick: choose it too.
+function S.SideOpen(key, pick)
+    local T = sideState()
+    sideImpl(T)
+    if not T.tabs[key] then return false end
+    T.open[key] = true
+    if pick then sidePick(T, key) end
+    T.layout(T)
+    return T.current == key
+end
+
+-- Takes the module's tab away (nothing left to do, the auction house closed); nil: every tab.
+function S.SideClose(key)
+    local T = sideState()
+    sideImpl(T)
+    if key then T.open[key] = nil else T.open = {} end
+    T.layout(T)
+end
+
+-- Is the module's tab open, and is it the one that shows.
+function S.SideIs(key)
+    local T = sideState()
+    return T.open[key] == true, T.current == key and T.open[key] == true
+end
+
+-- The badges and names changed: draws the strip again, when there is one.
+function S.SideRefresh()
+    local T = sideState()
+    if not T.strip or not T.strip:IsShown() or not T.current then return end
+    sideImpl(T)
+    local list = sideList(T)
+    local cur = T.tabs[T.current]
+    local w = cur and cur.window and cur.window()
+    if w and #list > 1 then sideDraw(T, list, w) end
+end

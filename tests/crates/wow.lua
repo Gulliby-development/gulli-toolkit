@@ -125,6 +125,7 @@ end
 -- spec.tooltips = { [item id] = { lines } }, spec.ah = false for a client without the commodity API.
 function Fake(spec)
     W.Base(spec)
+    if GulliHUD then GulliHUD.side = nil end -- the tabs beside the auction house start anew
     W.bags, W.bank = spec.bags or {}, spec.bank or {}
     W.names, W.prices, W.tooltips = spec.names or {}, spec.prices or {}, spec.tooltips or {}
     W.order = spec.order

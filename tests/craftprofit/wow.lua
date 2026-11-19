@@ -1,5 +1,5 @@
 -- A fake WoW client for the Gulli-CraftProfit tests: the shared basics plus items, bags and bank,
--- Auctionator, the profession window, a vendor and a trainer.
+-- Auctionator, the profession window, a vendor (with buying), the commodity purchase and a trainer.
 local W = {}
 
 local function stub()
@@ -131,6 +131,7 @@ end
 -- spec.trainer: { { name, cost } }.
 function Fake(spec)
     W.Base(spec)
+    if GulliHUD then GulliHUD.side = nil end -- the tabs beside the auction house start anew
     W.items = spec.items or {}
     C_Item = {
         GetItemNameByID = function(id) return W.items[id] and W.items[id].name or ("Item" .. id) end,
@@ -247,6 +248,27 @@ function Fake(spec)
         return { name = "Item" .. v[1], price = v[2], stackCount = v[3] or 1, numAvailable = -1,
                  hasExtendedCost = v[4] or false }
     end }
+    -- Buying: W.money, W.bought (vendor index -> units), and the commodity calls as W.calls.
+    -- spec.handOnly: item id -> true, not sold as a commodity.
+    W.money, W.bought, W.calls = spec.money or 1000000, {}, {}
+    GetMoney = function() return W.money end
+    GetMerchantItemMaxStack = function() return 20 end
+    BuyMerchantItem = function(i, n)
+        local v = W.vendor[i]
+        local units = (v[3] or 1) > 1 and v[3] or (n or 1)
+        local cost = (v[3] or 1) > 1 and v[2] or v[2] * units
+        W.money = W.money - cost
+        W.bought[i] = (W.bought[i] or 0) + units
+        W.items[v[1]] = W.items[v[1]] or {}
+        W.items[v[1]].bags = (W.items[v[1]].bags or 0) + units
+    end
+    local hand = spec.handOnly or {}
+    C_AuctionHouse = spec.noBuy and nil or {
+        GetItemCommodityStatus = function(id) return hand[id] and 1 or 2 end,
+        StartCommoditiesPurchase = function(id, n) W.calls[#W.calls + 1] = { "start", id, n } end,
+        ConfirmCommoditiesPurchase = function(id, n) W.calls[#W.calls + 1] = { "confirm", id, n } end,
+        CancelCommoditiesPurchase = function() W.calls[#W.calls + 1] = { "cancel" } end,
+    }
     W.trainer = spec.trainer or {}
     GetNumTrainerServices = function() return #W.trainer end
     GetTrainerServiceInfo = function(i) return W.trainer[i][1], "available" end

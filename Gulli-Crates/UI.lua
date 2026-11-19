@@ -304,6 +304,7 @@ local function refreshTokens()
 end
 
 function ns.Refresh()
+    S.SideRefresh() -- the number on its tab beside the auction house
     if not frame or not frame:IsShown() then return end
     local onFill, onTokens = tab == 1, tab == 2
     buyBtn:SetShown(onFill or onTokens)
@@ -511,6 +512,9 @@ local function build()
 end
 
 function ns.Toggle()
+    -- at the auction house its tab may be behind another module's: the command brings it up
+    local open, shown = S.SideIs("Crates")
+    if open and not shown then S.SideOpen("Crates", true); ns.Refresh(); return end
     S.ToggleWindow(ns.Window())
 end
 
@@ -526,22 +530,30 @@ function ns.Window()
     return frame
 end
 
--- At the auction house: beside its window, unless the window sits in the hub.
+-- At the auction house: beside its window, unless the window sits in the hub. The place is
+-- shared with the other modules that have work there (the skin's side tabs).
 function ns.ShowAtAH()
     local w = ns.Window()
     if w.docked then if w:IsShown() then ns.Refresh() end return end
-    local ah = AuctionHouseFrame or AuctionFrame
-    if ah then
-        w:ClearAllPoints()
-        w:SetPoint("TOPLEFT", ah, "TOPRIGHT", 8, 0)
-    end
     ns.byAH = true
-    w:Show()
+    S.SideOpen("Crates")
     ns.Refresh()
 end
 
 function ns.HideAtAH()
-    if frame and ns.byAH and not frame.docked then frame:Hide() end
     ns.byAH = false
+    S.SideClose("Crates")
     ns.Refresh()
 end
+
+-- The lines the Buy button still has to buy: the number on the tab.
+function ns.LinesLeft()
+    local b = ns.buy
+    if not ns.ActivePlan() or not b or not b.queue then return 0 end
+    return math.max(0, #b.queue - (b.i or 1) + 1)
+end
+
+S.SideAdd({ key = "Crates", order = 10, title = function() return L.TITLE end,
+            icon = "Interface\\AddOns\\Gulli-Crates\\icon",
+            window = function() return ns.Window() end, badge = function() return ns.LinesLeft() end,
+            closed = function() ns.byAH = false end })

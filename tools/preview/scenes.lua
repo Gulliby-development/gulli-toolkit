@@ -617,6 +617,78 @@ S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofi
         for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
     end }
 
+-- The run with nothing in the bags, so it has an auction stop of several lines.
+local function cpSpec(extra)
+    local spec = {}
+    for k, v in pairs(S.craftprofit.default.spec) do spec[k] = v end
+    spec.db = { prefs = { useBags = false, useBank = false } }
+    -- the thread comes from the auction too, so the auction stop has two lines
+    spec.items = {}
+    for id, it in pairs(S.craftprofit.default.spec.items) do
+        spec.items[id] = {}
+        for k, v in pairs(it) do spec.items[id][k] = v end
+    end
+    spec.items[5].ah = 90
+    spec.vendor = { { 3, 50 } }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    return spec
+end
+local function cpStop(ns, title)
+    for i, n in ipairs(ns.view.route) do if n.title == title then return i end end
+end
+-- At the auction house: the first line bought, the second priced (`over`: that much above the plan).
+local function cpBuying(ns, W, over)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    local node = ns.view.route[cpStop(ns, "STOP_AH_BUY")]
+    local l = node.lines[1]
+    ns.BuyClick()
+    local first = math.floor(l.price * ((#node.lines == 1 and over) or 1))
+    W.Fire("COMMODITY_PRICE_UPDATED", first, first * l.n)
+    if #node.lines > 1 then
+        ns.BuyClick()
+        W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+        l = node.lines[2]
+        ns.BuyClick()
+        local unit = math.floor(l.price * (over or 1))
+        W.Fire("COMMODITY_PRICE_UPDATED", unit, unit * l.n)
+    end
+end
+S.craftprofit.buy = { spec = cpSpec(), before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); cpBuying(ns, W) end }
+S.craftprofit.dear = { spec = cpSpec(), before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); cpBuying(ns, W, 1.4) end }
+S.craftprofit.away = { spec = cpSpec(), before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        W.Fire("MERCHANT_CLOSED")
+        ns.Select(cpStop(ns, "STOP_AH_BUY"))
+    end }
+S.craftprofit.vendor = { spec = cpSpec({ vendor = { { 3, 50 }, { 5, 500, 5 } }, items = S.craftprofit.default.spec.items }), before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Select(cpStop(ns, "STOP_VENDOR_BUY")) end }
+S.craftprofit.settings = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(5) end }
+-- The window beside the auction house, alone and as a tab next to another module's.
+local function cpSide(ns, W, over)
+    AuctionHouseFrame = nil -- the preview has no auction window to stand beside
+    W.Fire("MERCHANT_SHOW"); W.Fire("TRADE_SKILL_SHOW"); W.RunTimers()
+    ns.Recalc(false)
+    cpBuying(ns, W, over)
+end
+S.craftprofit.side = { spec = cpSpec(), before = S.craftprofit.default.before, crop = "GulliCraftProfitSide",
+    open = function(ns, W) cpSide(ns, W) end }
+S.craftprofit.sidedear = { spec = cpSpec(), before = S.craftprofit.default.before, crop = "GulliCraftProfitSide",
+    open = function(ns, W) cpSide(ns, W, 1.4) end }
+S.craftprofit.sidetabs = { spec = cpSpec(), before = S.craftprofit.default.before, crop = "GulliCraftProfitSide",
+    open = function(ns, W)
+        cpSide(ns, W)
+        local other = ns.Skin.Window(nil, "Gulli Waylaid Crates", ns.Skin.NARROW_W, ns.Skin.DOCK_H)
+        ns.Skin.SideAdd({ key = "Crates", order = 10, title = "Gulli Waylaid Crates",
+                          icon = "Interface\\Icons\\INV_Crate_01", window = function() return other end,
+                          badge = function() return 1 end })
+        ns.Skin.SideOpen("Crates")
+        ns.Skin.SideOpen("CraftProfit", true)
+    end }
+
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
                        { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
@@ -1212,6 +1284,17 @@ local function ftPlay(ns, W)
     end
     ns.Refresh()
 end
+-- Beside the auction house with another module's work there: the strip of tabs over the header.
+S.crates.tabs = { spec = crSpec(), open = function(ns, W)
+    crOpen(true)(ns, W)
+    local other = ns.Skin.Window(nil, "Gulli Craft Profit", ns.Skin.NARROW_W, ns.Skin.DOCK_H)
+    ns.Skin.SideAdd({ key = "CraftProfit", order = 20, title = "Gulli Craft Profit",
+                      icon = "Interface\\Icons\\Trade_Tailoring", window = function() return other end,
+                      badge = function() return 2 end })
+    ns.Skin.SideOpen("CraftProfit")
+    ns.Refresh()
+end }
+
 S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle() end },
     settings = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(2) end },
     panel = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.AddTarget("item", 3858) ; ns.Refresh() end,

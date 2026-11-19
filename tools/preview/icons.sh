@@ -21,9 +21,9 @@ grep -ohE 'Interface\\\\+GossipFrame\\\\+[A-Za-z0-9_]+' Gulli-*/*.lua | sed -E '
   curl -fsS -o "$dir/gossip/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/GossipFrame/$n.PNG" ||
     { rm -f "$dir/gossip/$low.png"; echo "no quest mark: $n" >&2; }
 done
-# the game's button pictures (the loot roll dice, coin and pass)
+# the game's button pictures (the loot roll dice, coin and pass, the refresh arrows)
 mkdir -p "$dir/buttons"
-grep -ohE 'Interface\\\\+Buttons\\\\+UI-GroupLoot-[A-Za-z-]+' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
+grep -ohE 'Interface\\\\+Buttons\\\\+UI-(GroupLoot-[A-Za-z-]+|RefreshButton)' Gulli-*/*.lua | sed -E 's/.*\\//' | sort -u | while read -r n; do
   low=$(echo "$n" | tr 'A-Z' 'a-z')
   [ -s "$dir/buttons/$low.png" ] && continue
   curl -fsS -o "$dir/buttons/$low.png" "https://raw.githubusercontent.com/Gethe/wow-ui-textures/classic/Buttons/$n.PNG" ||

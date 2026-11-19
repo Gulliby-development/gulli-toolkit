@@ -795,4 +795,33 @@ function R.Outside(root)
     return found
 end
 
+-- Every shown one-line text that is wider than the room it has (the game cuts it with "..."),
+-- and every wrapped text that needs more lines than it may take: { text, need, room }.
+function R.Cut(root)
+    local found = {}
+    local function walk(f)
+        if not f.__shown then return end
+        for _, r in ipairs(f.__regions) do
+            if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" then
+                local c = R.Rect(r)
+                local room = c.r - c.l
+                local size = r.__fontSize or 12
+                local need = textWidth(r.__text, size, r.__face)
+                if r.__wrap == false then
+                    if need > room + 1 then found[#found + 1] = { r.__text, need, math.floor(room) } end
+                elseif r.__maxLines and r.__maxLines > 0 and room > 0 then
+                    local lines = 0
+                    for line in (plain(r.__text) .. "\n"):gmatch("(.-)\n") do
+                        lines = lines + math.max(1, math.ceil(textWidth(line, size, r.__face) / room))
+                    end
+                    if lines > r.__maxLines then found[#found + 1] = { r.__text, lines, r.__maxLines } end
+                end
+            end
+        end
+        for _, c in ipairs(f.__children) do walk(c) end
+    end
+    walk(root)
+    return found
+end
+
 return R
