@@ -105,6 +105,10 @@ T.en = {
     TIP_interval = "The shorter, the fewer lots each scan reads.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "Queue %d",
+    QUEUE_LINE = "%d in the queue: each click of the big button buys the next",
+    SCAN_HELD = "The scan waits while you buy",
+    ERR_WAIT = "The auction house is still busy: click again in a moment",
 }
 
 T.de = {
@@ -203,6 +207,10 @@ T.de = {
     TIP_interval = "Je kürzer, desto weniger Angebote je Scan.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "Wartet %d",
+    QUEUE_LINE = "%d in der Warteschlange: jeder Klick auf die große Taste kauft den nächsten",
+    SCAN_HELD = "Der Scan wartet, solange du kaufst",
+    ERR_WAIT = "Das Auktionshaus ist noch beschäftigt: gleich noch einmal klicken",
 }
 
 T.es = {
@@ -301,6 +309,10 @@ T.es = {
     TIP_interval = "Cuanto más corto, menos lotes por escaneo.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "Cola %d",
+    QUEUE_LINE = "%d en cola: cada clic en el botón grande compra el siguiente",
+    SCAN_HELD = "El escaneo espera mientras compras",
+    ERR_WAIT = "La casa de subastas sigue ocupada: vuelve a hacer clic en un momento",
 }
 
 T.fr = {
@@ -399,6 +411,10 @@ T.fr = {
     TIP_interval = "Plus c'est court, moins chaque scan lit de lots.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "File %d",
+    QUEUE_LINE = "%d en file : chaque clic sur le grand bouton achète le suivant",
+    SCAN_HELD = "Le scan attend pendant que vous achetez",
+    ERR_WAIT = "L'hôtel des ventes est encore occupé : recliquez dans un instant",
 }
 
 T.pl = {
@@ -497,6 +513,10 @@ T.pl = {
     TIP_interval = "Im krócej, tym mniej ofert na skan.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "Czeka %d",
+    QUEUE_LINE = "%d w kolejce: każde kliknięcie dużego przycisku kupuje następny",
+    SCAN_HELD = "Skan czeka, gdy kupujesz",
+    ERR_WAIT = "Dom aukcyjny jest jeszcze zajęty: kliknij ponownie za chwilę",
 }
 
 T.pt = {
@@ -595,6 +615,10 @@ T.pt = {
     TIP_interval = "Quanto mais curto, menos lotes por escaneamento.",
     SECS = "%d s",
     MINS = "%d min",
+    QUEUED = "Fila %d",
+    QUEUE_LINE = "%d na fila: cada clique no botão grande compra o próximo",
+    SCAN_HELD = "O escaneamento espera enquanto você compra",
+    ERR_WAIT = "A casa de leilões ainda está ocupada: clique de novo em um instante",
 }
 
 T.ru = {
@@ -693,6 +717,10 @@ T.ru = {
     TIP_interval = "Чем чаще, тем меньше лотов за один скан.",
     SECS = "%d с",
     MINS = "%d мин",
+    QUEUED = "Ждёт %d",
+    QUEUE_LINE = "В очереди %d: каждый клик большой кнопки покупает следующий",
+    SCAN_HELD = "Скан ждёт, пока вы покупаете",
+    ERR_WAIT = "Аукцион ещё занят: кликните снова через миг",
 }
 
 T.zh = {
@@ -791,6 +819,10 @@ T.zh = {
     TIP_interval = "间隔越短，每次扫描读取的拍卖越少。",
     SECS = "%d 秒",
     MINS = "%d 分钟",
+    QUEUED = "排队 %d",
+    QUEUE_LINE = "排队中 %d 个：每次点击大按钮购买下一个",
+    SCAN_HELD = "购买时扫描暂停",
+    ERR_WAIT = "拍卖行仍在忙：稍后再点一次",
 }
 
 ns.T = T
