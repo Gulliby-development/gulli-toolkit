@@ -918,6 +918,18 @@ test("a levelling tile shows the target and the crafts of the whole way, not of 
     eq(n.ui.varTiles[1].sub:GetText(), n.L.VAR_RUN:format(run.full.target, 69))
 end)
 
+test("list money drops copper with gold and silver from 100 gold", function()
+    local n = game()
+    local real = GetCoinTextureString
+    GetCoinTextureString = nil
+    eq(n.Brief(4567), "45s 67c")
+    eq(n.Brief(26 * 10000 + 87 * 100 + 53, true), "+26g 88s")
+    eq(n.Brief(-(1 * 10000 + 5 * 100 + 77)), "-1g 6s")
+    eq(n.Brief(123 * 10000 + 45 * 100 + 6), "123g")
+    eq(n.Brief(0), "0c")
+    GetCoinTextureString = real
+end)
+
 test("settings before Calculate never read the whole profession", function()
     local n = game()
     n.Toggle()
