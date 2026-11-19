@@ -18,12 +18,12 @@ Players often put items on the auction house for less than a vendor pays for the
 
 ## Features
 
-- **A scan every minute.** While the auction house is open, Vendor Flip looks at the whole market once a minute. The line at the top tells you when the next scan comes. The round arrow scans now.
+- **A scan every minute.** While the auction house is open, Vendor Flip looks at the whole market once a minute. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once.
 - **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many, what the auction house wants, what a vendor pays and your gain. The best gain is on top.
 - **Buy with clicks.** Each line has its own button. The big button at the bottom always buys the top line, so you can press it again and again.
 - **Two clicks for goods, one for gear.** Ore, herbs, leather and other goods are sold in stacks: the first click asks the auction house for the real price, the second buys. Gear is one lot, so one click buys it.
 - **Never at a loss.** If the price went up since the scan and a vendor would now pay less, the line says **Too dear** and nothing is bought. It only buys out: it never bids.
-- **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either.
+- **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either. Set the least gain and the gold you keep in gold, silver and copper: press - or + on each, or type the number. The least gain goes down to 1 copper.
 - **It waits for you.** When you search the auction house yourself, the scan waits, so your own results stay on screen.
 - **Sell at the vendor.** At any vendor a notice offers to sell what you bought here, with what the vendor pays. Turn on **Sell at once at a vendor** to sell without the notice. It sells only what Vendor Flip bought, never your own items and never items you protected in the toolkit.
 - **Keep one.** Right-click a line in the History tab to keep that item: it is not sold.

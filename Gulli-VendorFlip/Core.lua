@@ -8,6 +8,8 @@ local ADDON, ns = ...
 local L = ns.L
 
 ns.DEFAULTS = { scan = true, auto = true, sell = false, sound = false, minGain = 500, reserve = 0, keepFree = 2 }
+-- The money settings: the least gain per line goes down to one copper.
+ns.MIN_GAIN, ns.MAX_MONEY = 1, 99999 * 10000 + 9999
 
 ns.INTERVAL = 60      -- seconds between two scans
 ns.QUIET = 20         -- seconds the scan waits after a search of the player (or another addon)
