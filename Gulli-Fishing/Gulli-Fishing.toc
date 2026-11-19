@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-Fishing
+## Notes: Fishing made easy: double right-click to cast, a loud splash, the catch looted at once and a lure reminder. /gfi
+## Notes-ruRU: Рыбалка проще: заброс двойным кликом, громкий всплеск, улов сразу в сумку и напоминание о приманке. /gfi
+## Notes-deDE: Angeln leicht gemacht: Auswerfen per Doppelklick, lautes Platschen, Fang sofort geplündert, Köder-Erinnerung. /gfi
+## Notes-esES: Pesca fácil: doble clic para lanzar, chapoteo fuerte, captura recogida al instante y aviso de cebo. /gfi
+## Notes-esMX: Pesca fácil: doble clic para lanzar, chapoteo fuerte, captura recogida al instante y aviso de cebo. /gfi
+## Notes-frFR: La pêche facile : double-clic pour lancer, plouf bien fort, prise ramassée aussitôt et rappel d'appât. /gfi
+## Notes-ptBR: Pesca fácil: clique duplo para lançar, respingo alto, captura saqueada na hora e aviso de isca. /gfi
+## Notes-zhCN: 轻松钓鱼：双击右键抛竿，响亮的水花声，立刻拾取渔获，鱼饵提醒。 /gfi
+## Notes-zhTW: 轻松钓鱼：双击右键抛竿，响亮的水花声，立刻拾取渔获，鱼饵提醒。 /gfi
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-Fishing\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: Fishing
+## SavedVariables: GulliFishingDB
+## SavedVariablesPerCharacter: GulliFishingCharDB
+## AddonCompartmentFunc: GulliFishing_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

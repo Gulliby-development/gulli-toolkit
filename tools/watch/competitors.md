@@ -31,6 +31,7 @@ one that is dead. Links are where releases or changelogs are read.
 | Legacy | Wowhead Forever guides, Questie |
 | Crates | wowforever.ninja crate guides, Auctionator shopping lists |
 | FarmTrack | FarmHud, Farmer (Retail), Lootamatic, Gold Tracker (curseforge) |
+| Fishing | Obvious Fishing (github.com/tehwave/wow-obvious-fishing), Fishing Buddy, Angleur, Fishing Ace! (curseforge) |
 
 ## Runeloader
 
