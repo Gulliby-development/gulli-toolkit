@@ -10,6 +10,7 @@ local S = ns.Skin
 local W, H = S.WIDE_W, S.DOCK_H
 local MAIN = W - 2 * S.PAD
 local TOP = 30 + S.GAP
+local REP_ICON = "Interface\\Icons\\Achievement_Reputation_01"
 -- a route tile below this width cuts its name and numbers; past it the row pages with arrows
 local TILE_MIN, ARROW_W = 150, 24
 local TILE_H, WAY_H, ROW_GAP = 58, 44, 8
@@ -1386,6 +1387,13 @@ function ns.BehindMap()
     end
 end
 
+-- The factions the banner names: two, then how many more.
+local function repNames(list)
+    local out = table.concat(list, ", ", 1, math.min(2, #list))
+    if #list > 2 then out = out .. " +" .. (#list - 2) end
+    return out
+end
+
 local function build()
     frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
     ui.frame = frame
@@ -1459,6 +1467,12 @@ local function build()
     ui.list = S.List(list.body, 32, makeListRow, fillListRow)
     ui.list:SetPoint("TOPLEFT", 0, -20)
     ui.list:SetPoint("BOTTOMRIGHT", -10, 0)
+
+    -- over the route and the lists: the reputation the plan could not read (like Crates' old prices)
+    ui.repBanner = S.Banner(main, REP_ICON)
+    ui.repBanner:SetPoint("TOPLEFT", 0, -TOP)
+    ui.repBanner:SetPoint("TOPRIGHT", 0, -TOP)
+    ui.repBanner.onClose = function() ns.repClosed = true; ns.Refresh() end
 
     local settings = CreateFrame("Frame", nil, main)
     settings:SetPoint("TOPLEFT", 0, -TOP)
@@ -1739,6 +1753,14 @@ function ns.Refresh()
     ui.prof:SetPoint("RIGHT", stale and ui.stale or ui.calc, "LEFT", -8, 0)
     if stale then ui.toast:SetText(color(GOLD) .. L.CALC_STALE .. "|r") end
     ui.settings:SetShown(tab == 5)
+    -- patterns left out because the reputation was not read yet: ask for the reputation window
+    local unknown = ns.RepUnknown()
+    local rep = has and tab < 5 and #unknown > 0 and not ns.repClosed
+    ui.repBanner:SetShown(rep and true or false)
+    if rep then ui.repBanner:Set(L.REP_BANNER:format(repNames(unknown))) end
+    local top = TOP + (rep and S.BANNER_H + S.GAP or 0)
+    ui.route:SetPoint("TOPLEFT", 0, -top)
+    ui.listFrame:SetPoint("TOPLEFT", 0, -top)
     ui.emptyBox:SetShown(not has and tab ~= 5)
     ui.route:SetShown(has and tab == 1)
     ui.listFrame:SetShown(has and tab > 1 and tab < 5)
