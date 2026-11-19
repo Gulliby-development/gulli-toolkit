@@ -10,7 +10,7 @@
 ## Notes-zhCN: 轻松钓鱼：双击右键抛竿，响亮的水花声，立刻拾取渔获，鱼饵提醒。 /gfi
 ## Notes-zhTW: 轻松钓鱼：双击右键抛竿，响亮的水花声，立刻拾取渔获，鱼饵提醒。 /gfi
 ## Author: Gulliby
-## Version: 1.0.0
+## Version: 1.0.1
 ## IconTexture: Interface\AddOns\Gulli-Fishing\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: Fishing
