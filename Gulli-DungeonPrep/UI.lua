@@ -746,11 +746,66 @@ local function setStar(t)
     if has then t:SetAtlas(STAR) else t:SetTexture(WISH_ICON) end
 end
 
+-- An item's tooltip beside a row, with what is worn in that slot: the item pointed at always on
+-- the left, the worn one (the game's "Equipped") to its right. The game picks the side by the
+-- room on the screen, so the worn item could stand first and read as the one pointed at.
+local function placeCompare()
+    local tip = GameTooltip
+    local owner = tip and tip.GetOwner and tip:GetOwner()
+    if type(owner) ~= "table" or not rawget(owner, "gulliCompare") then return end
+    local a, b = ShoppingTooltip1, ShoppingTooltip2
+    a = a and a:IsShown() and a or nil
+    b = a and b and b:IsShown() and b or nil
+    local function num(v) return tonumber(v) or 0 end
+    local worn = (a and num(a:GetWidth()) or 0) + (b and num(b:GetWidth()) or 0)
+    local scale = num(tip.GetEffectiveScale and tip:GetEffectiveScale())
+    local oscale = num(owner.GetEffectiveScale and owner:GetEffectiveScale())
+    local screen = num(UIParent and UIParent.GetRight and UIParent:GetRight())
+        * num(UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale())
+    local right = num(owner.GetRight and owner:GetRight()) * oscale + (num(tip:GetWidth()) + worn + 4) * scale
+    tip:ClearAllPoints()
+    if screen > 0 and right > screen then
+        -- no room to the right of the row: both stand to its left, in the same order
+        tip:SetPoint("TOPRIGHT", owner, "TOPLEFT", -(worn + 4), 0)
+    else
+        tip:SetPoint("TOPLEFT", owner, "TOPRIGHT", 4, 0)
+    end
+    if a then
+        a:ClearAllPoints()
+        a:SetPoint("TOPLEFT", tip, "TOPRIGHT", 0, 0)
+    end
+    if b then
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", a, "TOPRIGHT", 0, 0)
+    end
+end
+local compareHooked
+-- Open the tooltip of an item for a row; ns.ItemTip for the tests.
+local function itemTip(owner, id)
+    if not (GameTooltip and id) then return false end
+    rawset(owner, "gulliCompare", true)
+    GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+    if GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) end
+    return true
+end
+-- Show it, with the worn item beside it. The game lays the two out again when Shift goes down
+-- or up, so the order is set after each of its own passes too.
+local function showItemTip()
+    GameTooltip:Show()
+    if not compareHooked and hooksecurefunc and GameTooltip_ShowCompareItem then
+        compareHooked = true
+        hooksecurefunc("GameTooltip_ShowCompareItem", placeCompare)
+    end
+    if GameTooltip_ShowCompareItem then pcall(GameTooltip_ShowCompareItem, GameTooltip) end
+    placeCompare()
+end
+function ns.ItemTip(owner, id)
+    if itemTip(owner, id) then showItemTip() end
+end
+
 -- The hover card of a loot line: the game's item tooltip, then where and how often it drops.
 local function lootTooltip(owner, l)
-    if not (GameTooltip and l) then return end
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    if GameTooltip.SetItemByID then GameTooltip:SetItemByID(l.item) end
+    if not (l and itemTip(owner, l.item)) then return end
     GameTooltip:AddLine(" ")
     if l.zone then
         GameTooltip:AddLine(L.ZONE_DROP, 1, 0.82, 0)
@@ -759,7 +814,7 @@ local function lootTooltip(owner, l)
         GameTooltip:AddLine(l.boss .. ":  " .. chance, 1, 0.82, 0)
     end
     GameTooltip:AddLine(l.wish and L.WISH_REMOVE or L.WISH_ADD, 0.7, 0.7, 0.7)
-    GameTooltip:Show()
+    showItemTip()
 end
 
 local function onLootClick(self, button)
@@ -1545,10 +1600,7 @@ local function buildDetail(parent)
         row.name:SetWordWrap(false)
         row:EnableMouse(true)
         row:SetScript("OnEnter", function(self)
-            if not (GameTooltip and self.id) then return end
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.id) end
-            GameTooltip:Show()
+            ns.ItemTip(self, self.id)
         end)
         row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         d.rewards[i] = row

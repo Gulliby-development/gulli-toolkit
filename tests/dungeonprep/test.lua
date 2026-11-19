@@ -1029,6 +1029,55 @@ test("a pin button near the giver targets them, out of combat only, and never se
     SetRaidTarget = nil
 end)
 
+test("an item's tooltip stands left of the worn item it is compared with", function()
+    local W = Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [2100] = "Maraudon" } })
+    local ns = Load()
+    local function tip(width, right)
+        local t = W.stub()
+        rawset(t, "points", {})
+        rawset(t, "SetPoint", function(self, ...) self.points[#self.points + 1] = { ... } end)
+        rawset(t, "ClearAllPoints", function(self) self.points = {} end)
+        rawset(t, "GetWidth", function() return width end)
+        rawset(t, "GetRight", function() return right end)
+        rawset(t, "GetEffectiveScale", function() return 1 end)
+        return t
+    end
+    local owner
+    GameTooltip = tip(300)
+    rawset(GameTooltip, "SetOwner", function(_, o) owner = o end)
+    rawset(GameTooltip, "GetOwner", function() return owner end)
+    ShoppingTooltip1, ShoppingTooltip2 = tip(280), tip(280)
+    UIParent = tip(1920, 1920)
+    local compared = 0
+    GameTooltip_ShowCompareItem = function() compared = compared + 1; ShoppingTooltip1:Show() end
+    local hooks = {}
+    hooksecurefunc = function(name, fn) hooks[name] = fn end
+    local row = tip(300, 900)
+    ns.ItemTip(row, 17191)
+    eq(compared, 1, "the worn item is asked for")
+    local p = GameTooltip.points[1]
+    eq(p[1], "TOPLEFT"); eq(p[2], row); eq(p[3], "TOPRIGHT")
+    p = ShoppingTooltip1.points[1]
+    eq(p[1], "TOPLEFT", "the worn item starts where the tooltip ends"); eq(p[2], GameTooltip); eq(p[3], "TOPRIGHT")
+    eq(#ShoppingTooltip2.points, 0, "a second worn item only when the game shows one")
+    -- at the screen's right edge both go left of the row, in the same order
+    local edge = tip(300, 1800)
+    ns.ItemTip(edge, 17191)
+    p = GameTooltip.points[1]
+    eq(p[1], "TOPRIGHT"); eq(p[2], edge); eq(p[3], "TOPLEFT"); eq(p[4], -284, "room for the worn item")
+    p = ShoppingTooltip1.points[1]
+    eq(p[1], "TOPLEFT"); eq(p[2], GameTooltip); eq(p[3], "TOPRIGHT")
+    -- the game laid them out again (Shift): the order is put back, but only for our rows
+    ShoppingTooltip1.points = { { "TOPRIGHT", GameTooltip, "TOPLEFT" } }
+    hooks.GameTooltip_ShowCompareItem()
+    eq(ShoppingTooltip1.points[1][1], "TOPLEFT")
+    owner = tip(100, 100)
+    ShoppingTooltip1.points = { { "TOPRIGHT", GameTooltip, "TOPLEFT" } }
+    hooks.GameTooltip_ShowCompareItem()
+    eq(ShoppingTooltip1.points[1][1], "TOPRIGHT", "another addon's tooltip is left alone")
+    GameTooltip_ShowCompareItem, hooksecurefunc, ShoppingTooltip1, ShoppingTooltip2 = nil, nil, nil, nil
+end)
+
 test("Wowhead on a quest's page shows the quest's link in a box to copy", function()
     Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [2100] = "Maraudon" },
            active = { [93404] = true } })
