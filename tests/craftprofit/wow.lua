@@ -172,6 +172,7 @@ function Fake(spec)
             return f and { name = f[1], reaction = f[2] }
         end,
     }
+    C_Map = { GetAreaInfo = function(id) return ({ [1497] = "Undercity", [1519] = "Stormwind City" })[id] end }
     ITEM_REQ_REPUTATION = "Requires %s - %s"
     FACTION_STANDING_LABEL4, FACTION_STANDING_LABEL5, FACTION_STANDING_LABEL6 = "Neutral", "Friendly", "Honored"
     if spec.auctionator ~= false then

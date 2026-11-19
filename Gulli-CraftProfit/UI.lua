@@ -749,6 +749,7 @@ local function detailRows(n, i, a)
         local name = l.rank and L.STOP_RANK:format(l.rank) or l.name
         local note = l.over and L.SRC_OVER:format(ns.view.prefs.maxSell) or L[SRC[l.src] or ""] or ""
         if l.src == "alts" then note = L.SRC_alts:format(l.who or "?") end
+        if l.src == "trainer" and l.who then note = l.who end -- only this trainer teaches it
         if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then note = L.SRC_LADDER end
         local right = l.price and S.MoneyText(l.price * l.n) or ""
         if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 then note = L.EACH:format(S.MoneyText(l.price)) end
@@ -1077,7 +1078,9 @@ local function listRows(which)
             -- an estimated vendor price gets "~"; the trainer's price is known after one visit
             local price = x.cost and ((x.est and "~" or "") .. ns.Brief(x.cost)) or (x.src == "trainer" and "?" or "-")
             local tip = recipeTip(r)
-            if x.who then tip[#tip + 1] = { L.TIP_VENDOR:format(table.concat(x.who, ", ")), nil, nil, nil, true } end
+            if x.who then
+                tip[#tip + 1] = { (x.src == "trainer" and L.TIP_TAUGHT or L.TIP_VENDOR):format(table.concat(x.who, ", ")), nil, nil, nil, true }
+            end
             if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
             if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end

@@ -1931,4 +1931,29 @@ test("the skill a trainer asks for wins over the data's learning level", functio
     eq(n.State().recipes[103].skill[1] ~= nil, true)
 end)
 
+test("a recipe only one trainer teaches names that trainer and the city", function()
+    local n = game({ prof = { name = "Tailoring", skill = 176, cap = 225, recipes = {
+        { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+        { id = 12052, name = "Shadoweave Pants", learned = false, out = 4, r = { [2] = 2 } },
+        { id = 104, name = "Pattern Thing", learned = false, out = 7, r = { [1] = 1 } },
+    } }, trainer = {} })
+    local src = n.State().recipes[12052].src
+    eq(src.t, "trainer"); eq(src.cost, 5000)
+    eq(src.who[1], "Jalane Ayrole, Stormwind City")
+    local saw
+    for _, row in ipairs(n.Recipes(n.State(), n.Prefs({}))) do
+        if row.recipe == 12052 then saw = row.who and row.who[1] end
+    end
+    eq(saw, "Jalane Ayrole, Stormwind City", "the Recipes tab has it for the tooltip")
+    -- the Horde's own trainer; an ordinary trainer recipe names nobody
+    n = game({ faction = "Horde", prof = { name = "Tailoring", skill = 176, cap = 225, recipes = {
+        { id = 12052, name = "Shadoweave Pants", learned = false, out = 4, r = { [2] = 2 } },
+        { id = 8489, name = "Red Swashbuckler's Shirt", learned = false, out = 6, r = { [2] = 2 } },
+    } }, trainer = {} })
+    eq(n.State().recipes[12052].src.who[1], "Josephine Lister, Undercity")
+    eq(n.State().recipes[8489].src.t, "trainer"); eq(n.State().recipes[8489].src.who, nil)
+    -- every such recipe is one the data gives to a trainer
+    for rid in pairs(n.TRAINERS) do assert(n.Data.train[rid], "trainer recipe " .. rid) end
+end)
+
 W.finish()
