@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-VendorFlip
+## Notes: Scans the auction house every minute while it is open and lists the lots that cost less than a vendor pays for them. Buy them with a click, sell them at the next vendor. /gvf
+## Notes-ruRU: Пока открыт аукцион, раз в минуту сканирует рынок и показывает лоты дешевле цены торговца. Купите их кликом и продайте ближайшему торговцу. /gvf
+## Notes-deDE: Scannt das Auktionshaus jede Minute, solange es offen ist, und listet Angebote, die weniger kosten, als ein Händler zahlt. Per Klick kaufen, beim nächsten Händler verkaufen. /gvf
+## Notes-esES: Mientras la casa de subastas está abierta, la escanea cada minuto y lista los lotes que cuestan menos de lo que paga un vendedor. Cómpralos con un clic y véndelos al siguiente vendedor. /gvf
+## Notes-esMX: Mientras la casa de subastas está abierta, la escanea cada minuto y lista los lotes que cuestan menos de lo que paga un vendedor. Cómpralos con un clic y véndelos al siguiente vendedor. /gvf
+## Notes-frFR: Tant que l'hôtel des ventes est ouvert, le scanne chaque minute et liste les lots moins chers que ce que paie un marchand. Achetez-les d'un clic, revendez-les au marchand suivant. /gvf
+## Notes-ptBR: Com a casa de leilões aberta, escaneia a cada minuto e lista os lotes que custam menos do que um vendedor paga. Compre com um clique e venda ao próximo vendedor. /gvf
+## Notes-zhCN: 拍卖行打开时每分钟扫描一次，列出比商人收购价还便宜的拍品。点击购买，卖给下一个商人。 /gvf
+## Notes-zhTW: 拍卖行打开时每分钟扫描一次，列出比商人收购价还便宜的拍品。点击购买，卖给下一个商人。 /gvf
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-VendorFlip\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: VendorFlip
+## SavedVariables: GulliVendorFlipDB
+## AddonCompartmentFunc: GulliVendorFlip_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Core.lua
+Skin.lua
+UI.lua

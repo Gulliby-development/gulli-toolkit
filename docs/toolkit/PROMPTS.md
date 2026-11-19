@@ -63,6 +63,8 @@ Wide 2:1 preview banner, flat minimal vector style, for Gulli-`<Name>`, a World 
 | Restock | keeps reagents, ammo, food and water stocked | a brown quiver of arrows, a cream bread loaf and a water flask, circled by a gold refill arrow |
 | Social | handles group and guild invites | two cream head-and-shoulder figure silhouettes side by side under a small gold banner ribbon |
 | Tooltip | adds stack price and quest use to item tooltips | a cream rectangular tooltip panel with a gold coin and a small magnifying glass over its corner |
+| VendorFlip | scans the auction house for lots cheaper than a vendor pays and buys them to sell to a vendor | a small gold auctioneer's gavel leaning on a short stack of gold coins, with a curved cream arrow looping from the gavel over to a small brown leather coin pouch on the right, and two tiny gold sparkles above the pouch |
+| WorthIt | lists the quests that reward a bag, a quiver or an ammo pouch and leads the player to them | a brown leather backpack with a gold buckle standing on a cream parchment quest scroll, a small cream quiver with gold-tipped arrows leaning on it, and a curved gold dotted path leading up to the backpack from a small gold map pin |
 | XP | shows XP per hour and time to the next level | a gold star above a cream progress bar that is two thirds filled with gold |
 | GroupBuffs | shows which party members miss which buffs | five small round cream portrait frames in an arc with small glowing gold buff auras (a sun, a shield, a leaf) above them |
 | MobFinder | finds named mobs nearby by their nameplates | a gold crosshair compass ring over a cream wolf head silhouette, with a small magnifying glass |
