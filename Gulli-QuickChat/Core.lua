@@ -284,9 +284,62 @@ local function leaderName()
     end
 end
 
--- {target}, {zone}, {me}, {level}, {targetclass}, {targetlevel}, {hp}, {mana}, {leader} and
--- {item} (the item the player last Shift-clicked).
+---- Items in a phrase ---------------------------------------------------------------------------
+
+-- {item:ID} and a bare {ID} stand for that item's link, made fresh on each send.
+local ITEM_TOKENS = { "{[Ii][Tt][Ee][Mm]:(%d+)}", "{(%d+)}" }
+
+local function itemInfo(id)
+    if C_Item and C_Item.GetItemInfo then return C_Item.GetItemInfo(id) end
+    if GetItemInfo then return GetItemInfo(id) end
+end
+
+-- The item ids a phrase names.
+function ns.ItemIds(text)
+    local ids, seen = {}, {}
+    for _, pat in ipairs(ITEM_TOKENS) do
+        for id in tostring(text or ""):gmatch(pat) do
+            id = tonumber(id)
+            if id and id > 0 and not seen[id] then seen[id] = true; ids[#ids + 1] = id end
+        end
+    end
+    return ids
+end
+
+-- The ids of a phrase the client has not loaded yet; asks the game for each of them.
+function ns.RequestItems(text)
+    local missing = {}
+    for _, id in ipairs(ns.ItemIds(text)) do
+        local _, link = itemInfo(id)
+        if not link then
+            missing[#missing + 1] = id
+            if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+        end
+    end
+    return missing
+end
+
+local function itemTokens(text, show)
+    for _, pat in ipairs(ITEM_TOKENS) do
+        text = text:gsub(pat, function(id)
+            local name, link = itemInfo(tonumber(id))
+            if show then return link or name or ("[" .. L.ITEM_ID:format(tonumber(id)) .. "]") end
+            return link or name or L.ITEM_ID:format(tonumber(id))
+        end)
+    end
+    return text
+end
+
+-- A phrase as the window shows it: its items as their links, the other tokens as typed.
+function ns.Show(text)
+    if type(text) ~= "string" then return text end
+    return (itemTokens(text, true))
+end
+
+-- {target}, {zone}, {me}, {level}, {targetclass}, {targetlevel}, {hp}, {mana}, {leader},
+-- {item} (the item the player last Shift-clicked) and {item:ID} or {ID} (that item).
 function ns.Fill(text)
+    text = itemTokens(text, false)
     local target = UnitName("target")
     if secret(target) then target = nil end
     local tclass = target and UnitClass and UnitClass("target") or nil
@@ -326,7 +379,29 @@ function ns.NeedsPress(text)
     return kind ~= nil and ns.ToBox(kind)
 end
 
-function ns.Say(text)
+-- A phrase whose items the client has not loaded waits for them (GET_ITEM_INFO_RECEIVED), at most
+-- ns.ITEM_WAIT seconds, then goes with what is known.
+ns.ITEM_WAIT = 2
+
+function ns.FlushWaiting(force)
+    local w = ns.waiting
+    if not w then return end
+    if not force and #ns.RequestItems(w) > 0 then return end
+    ns.waiting = nil
+    ns.Say(w, true)
+end
+
+function ns.Say(text, loaded)
+    if not loaded and #ns.RequestItems(text) > 0 and C_Timer and C_Timer.After then
+        local key = ns.Route(text)
+        if not key then
+            print("|cff9ad0ffGulli Quick Chat|r: " .. L.NO_CHANNEL)
+            return false
+        end
+        ns.waiting = text
+        C_Timer.After(ns.ITEM_WAIT, function() if ns.waiting == text then ns.FlushWaiting(true) end end)
+        return key
+    end
     local msg = ns.Fill(text)
     if msg == "" then return false end
     local key, kind, to = ns.Route(text)
@@ -384,6 +459,18 @@ function ns.ResetSettings()
     if ns.Refresh then ns.Refresh() end
 end
 
+function ns.OnLink(link)
+    if type(link) ~= "string" then return end
+    local id = link:match("|Hitem:(%d+)")
+    if not id then return end
+    local now = GetTime and GetTime() or 0
+    if ns.linkSeen and ns.linkSeen.link == link and ns.linkSeen.t == now then return end
+    ns.linkSeen = { link = link, t = now }
+    ns.lastLink = link
+    local box = ns.phraseBox
+    if box and box.HasFocus and box:HasFocus() then box:Insert("{item:" .. id .. "}") end
+end
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1, a2)
@@ -394,13 +481,30 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.Defaults()
         self:RegisterEvent("CHAT_MSG_WHISPER")
         self:RegisterEvent("PLAYER_REGEN_ENABLED")
-        -- {item}: the last item link the player Shift-clicked.
-        if hooksecurefunc and ChatEdit_InsertLink then
-            hooksecurefunc("ChatEdit_InsertLink", function(link)
-                if type(link) == "string" and link:find("|Hitem:") then ns.lastLink = link end
+        -- Shift-click on an item: {item} keeps it, and while the phrase box has the focus its
+        -- {item:ID} goes into the box. The retail client links through ChatFrameUtil.InsertLink;
+        -- an older one through ChatEdit_InsertLink. One click may pass both, so a repeat is skipped.
+        if hooksecurefunc then
+            if ChatFrameUtil and ChatFrameUtil.InsertLink then
+                hooksecurefunc(ChatFrameUtil, "InsertLink", ns.OnLink)
+            end
+            if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", ns.OnLink) end
+        end
+        self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        for _, p in ipairs(ns.Phrases()) do ns.RequestItems(p) end
+        if ns.Setup then ns.Setup() end
+        return
+    end
+    if event == "GET_ITEM_INFO_RECEIVED" then
+        if ns.waiting then ns.FlushWaiting(false) end
+        -- A burst of loads redraws the window once.
+        if not ns.redraw and C_Timer and C_Timer.After then
+            ns.redraw = true
+            C_Timer.After(0.3, function()
+                ns.redraw = nil
+                if ns.Refresh then ns.Refresh() end
             end)
         end
-        if ns.Setup then ns.Setup() end
         return
     end
     if event == "CHAT_MSG_WHISPER" then

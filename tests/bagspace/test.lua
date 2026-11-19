@@ -327,74 +327,113 @@ test("disenchant: nothing without Enchanting, with the switch off or in combat",
     GulliToolkit = nil
 end)
 
-test("disenchant: the secure button lies over the slot and takes only the middle button", function()
-    local ns = deFake()
-    local slotButton = W.stub()
-    ns.OnBagTip(slotButton, 0, 2)
+-- A bag item button as the game's bags make it.
+local function slotButton(bag, slot)
+    local b = W.stub()
+    rawset(b, "GetBagID", function() return bag end)
+    rawset(b, "GetID", function() return slot end)
+    return b
+end
+local function tipFor(owner)
+    rawset(GameTooltip, "_owner", owner)
+    return GameTooltip
+end
+
+test("disenchant: the key is bound only while a bag item that can go shows its tooltip", function()
+    local ns = deFake(true, { deKey = "N" })
+    eq(W.Bound("N"), nil, "nothing bound before")
+    local lines = ns.DisenchantTip(61, tipFor(slotButton(0, 2)))
+    eq(W.Bound("N"), "GulliBagSpaceDisenchant")
     local b = ns.DisenchantButton()
-    assert(b and b:IsShown(), "the button shows over a blue sword")
-    eq(b:GetAttribute("type3"), "spell"); eq(b:GetAttribute("spell3"), 13262)
-    eq(b:GetAttribute("target-bag3"), 0); eq(b:GetAttribute("target-slot3"), 2)
-    eq(b:GetAttribute("type"), nil, "left and right clicks do nothing of ours")
-    eq(b:GetAttribute("type1"), nil); eq(b:GetAttribute("type2"), nil)
-    ns.OnBagTip(slotButton, 0, 3)
-    assert(not b:IsShown(), "a white cap hides it")
-    ns.OnBagTip(slotButton, 0, 1)
-    assert(b:IsShown())
+    eq(b:GetAttribute("type"), "spell"); eq(b:GetAttribute("spell"), 13262)
+    eq(b:GetAttribute("target-bag"), 0); eq(b:GetAttribute("target-slot"), 2)
+    assert(lines[1] and lines[1].left:match("^N"), "the line names the key: " .. tostring(lines[1] and lines[1].left))
+    ns.DisenchantTip(62, tipFor(slotButton(0, 3)))
+    eq(W.Bound("N"), nil, "a white cap lets go of the key")
+    ns.DisenchantTip(61, tipFor(slotButton(0, 2)))
+    ns.HideDisenchant()
+    eq(W.Bound("N"), nil, "the tooltip hid")
+    GulliToolkit = nil
+end)
+
+test("disenchant: no key set, no binding", function()
+    local ns = deFake()
+    eq(#ns.DisenchantTip(61, tipFor(slotButton(0, 2))), 0)
+    eq(ns.Armed(), nil)
+    GulliToolkit = nil
+end)
+
+test("disenchant: a fight lets go first, and nothing is bound in one", function()
+    local ns = deFake(true, { deKey = "N" })
+    ns.DisenchantTip(61, tipFor(slotButton(0, 2)))
     W.Fire("PLAYER_REGEN_DISABLED")
-    assert(not b:IsShown(), "it hides before a fight")
-    ns.OnBagTip(slotButton, 0, 1)
+    eq(W.Bound("N"), nil, "let go before the lockdown")
     W.combat = true
-    W.Fire("PLAYER_REGEN_DISABLED")
-    assert(b:IsShown(), "a secure frame is never hidden in combat lockdown")
-    W.combat = false
-    -- the item left the slot (disenchanted): the button goes
-    W.bags[0].slots[1] = nil
-    b:GetScript("OnUpdate")(b)
-    assert(not b:IsShown(), "an empty slot hides it")
+    ns.DisenchantTip(61, tipFor(slotButton(0, 2)))
+    eq(W.Bound("N"), nil, "never bound in a fight")
+    GulliToolkit = nil
+end)
+
+test("disenchant: the item leaving its slot lets go of the key", function()
+    local ns = deFake(true, { deKey = "N" })
+    ns.DisenchantTip(61, tipFor(slotButton(0, 2)))
+    W.bags[0].slots[2] = nil
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(W.Bound("N"), nil)
+    GulliToolkit = nil
+end)
+
+test("disenchant: a bag addon's button without a bag id is found by its bag frame", function()
+    local ns = deFake(true, { deKey = "ALT-B" })
+    local frame = W.stub()
+    rawset(frame, "GetName", function() return "Baganator_BackpackViewFrame" end)
+    local button = W.stub()
+    rawset(button, "GetParent", function() return frame end)
+    rawset(button, "GetName", function() return nil end)
+    rawset(button, "GetBagID", nil)
+    ns.DisenchantTip(60, tipFor(button))
+    eq(W.Bound("ALT-B"), "GulliBagSpaceDisenchant")
+    eq(ns.DisenchantButton():GetAttribute("target-slot"), 1)
+    -- an item shown anywhere else (a link, the auction house) never arms the key
+    local other = W.stub()
+    rawset(other, "GetName", function() return "AuctionHouseFrame" end)
+    rawset(other, "GetParent", function() return nil end)
+    ns.DisenchantTip(60, tipFor(other))
+    eq(W.Bound("ALT-B"), nil)
+    GulliToolkit = nil
+end)
+
+test("disenchant: the key button takes a key or a mouse button, right-click clears", function()
+    local ns = deFake()
+    local b = ns.KeyButton(W.stub())
+    b:GetScript("OnClick")(b, "LeftButton")
+    eq(b:GetText(), ns.L.KEY_PRESS)
+    W.alt = true
+    b:GetScript("OnKeyDown")(b, "N")
+    W.alt = false
+    eq(ns.db.deKey, "ALT-N")
+    b:GetScript("OnClick")(b, "LeftButton")
+    b:GetScript("OnClick")(b, "Button4")
+    eq(ns.db.deKey, "BUTTON4")
+    b:GetScript("OnClick")(b, "RightButton")
+    eq(ns.db.deKey, nil)
+    eq(b:GetText(), ns.L.KEY_NONE)
     GulliToolkit = nil
 end)
 
 test("disenchant: the switch in the hub turns it off at once", function()
     local opts
-    Fake({ bags = deBags(), items = DE_ITEMS, known = { [13262] = true } })
+    Fake({ bags = deBags(), items = DE_ITEMS, known = { [13262] = true }, db = { deKey = "N" } })
     GulliToolkit = { Register = function(m) opts = m.options end }
     local ns = Load()
     local sw
     for _, o in ipairs(opts) do if o.icon == ns.OPT_ICON.disenchant then sw = o end end
     assert(sw and sw.get(), "on by default")
-    local owner = W.stub()
-    ns.OnBagTip(owner, 0, 1)
-    assert(ns.DisenchantButton():IsShown())
+    ns.DisenchantTip(60, tipFor(slotButton(0, 1)))
+    eq(W.Bound("N"), "GulliBagSpaceDisenchant")
     sw.set(false)
-    assert(not ns.DisenchantButton():IsShown(), "off hides the button")
+    eq(W.Bound("N"), nil, "off lets go of the key")
     eq(ns.DisenchantTarget(0, 1), nil)
-    GulliToolkit = nil
-end)
-
-test("disenchant: a client that cannot pass clicks through gets no button", function()
-    Fake({ bags = deBags(), items = DE_ITEMS, known = { [13262] = true } })
-    local make = CreateFrame
-    CreateFrame = function(...)
-        local f = make(...)
-        rawset(f, "SetPassThroughButtons", false)
-        return f
-    end
-    local ns = Load()
-    ns.OnBagTip(W.stub(), 0, 1)
-    eq(ns.DisenchantButton(), nil)
-end)
-
-test("disenchant: the tooltip line names the middle click", function()
-    local ns = deFake()
-    local owner = W.stub()
-    ns.OnBagTip(owner, 0, 2)
-    local tip = W.stub()
-    rawset(tip, "_owner", owner)
-    local l = ns.DisenchantTip(61, tip)[1]
-    assert(l and l.left:match("^%u"), "a line with a capital")
-    eq(l.group, "note")
-    eq(#ns.DisenchantTip(60, tip), 0, "another item")
     GulliToolkit = nil
 end)
 

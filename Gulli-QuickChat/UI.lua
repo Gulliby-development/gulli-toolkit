@@ -155,7 +155,7 @@ local function refreshRing()
         slot.phrase = text or nil
         slot.icon:SetIcon(text and phraseIcon(text) or nil)
         slot.icon.tex:SetShown(text ~= nil and text ~= false)
-        slot.label:SetText(text or (S.Hex(S.FAINT) .. L.RING_EMPTY .. "|r"))
+        slot.label:SetText(ns.Show(text) or (S.Hex(S.FAINT) .. L.RING_EMPTY .. "|r"))
         local lit = (chosen == i) or (held ~= nil)
         slot.icon:SetRing((chosen == i or (held and not text)) and S.Accent() or S.EDGE)
         slot.icon:SetAlpha(text and 1 or (lit and 0.9 or 0.5))
@@ -276,7 +276,7 @@ local function startDrag(text)
             self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / s + 12, y / s - 14)
         end)
     end
-    ghost.text:SetText(text)
+    ghost.text:SetText(ns.Show(text))
     ghost:Show()
     ns.Refresh()
 end
@@ -387,7 +387,7 @@ end
 local function fillPhrase(r, text)
     r.phrase = text
     r.icon.tex:SetTexture(phraseIcon(text))
-    r.text:SetText(text)
+    r.text:SetText(ns.Show(text))
     local place = ns.RingPlace(text)
     r.place:SetText(place and tostring(place) or "")
     local fav = ns.db.fav[text] and true or false
@@ -434,13 +434,15 @@ local function buildPhrases(page, width)
     addBtn:SetScript("OnClick", doAdd)
     add:SetScript("OnEnterPressed", doAdd)
     page.add = add
+    -- Shift-click on an item while typing puts {item:ID} into the box (ns.OnLink).
+    ns.phraseBox = add
     local list = S.List(listView, 36, makePhrase, fillPhrase)
     list:SetPoint("TOPLEFT", 0, -38)
-    list:SetPoint("BOTTOMRIGHT", -10, 54)
+    list:SetPoint("BOTTOMRIGHT", -10, 92)
     page.list = list
     page.empty = S.Empty(list)
     page.empty:Set(L.NO_PHRASES)
-    local reset = S.Ghost(S.Button(listView, 100, 30))
+    local reset = S.Ghost(S.Button(listView, 140, 30))
     reset:SetPoint("BOTTOMRIGHT")
     reset:SetText(L.RESET)
     reset:SetScript("OnClick", function()
@@ -448,10 +450,11 @@ local function buildPhrases(page, width)
         ns.Refresh()
         if ns.Panel then ns.Panel() end
     end)
+    -- The tokens take the whole width over the reset button: the item part makes them long.
     local hint = S.Note(listView, 12)
-    hint:SetPoint("BOTTOMLEFT")
-    hint:SetPoint("RIGHT", reset, "LEFT", -10, 0)
-    hint:SetHeight(46)
+    hint:SetPoint("BOTTOMLEFT", 0, 36)
+    hint:SetPoint("RIGHT")
+    hint:SetHeight(50)
     hint:SetMaxLines(3)
     hint:SetText(L.TOKENS)
 
@@ -790,7 +793,7 @@ function ns.OpenWheel(hold)
         if text then
             any = true
             slot.icon:SetIcon(phraseIcon(text))
-            slot.label:SetText(text)
+            slot.label:SetText(ns.Show(text))
         end
     end
     if not any then return false end
@@ -878,7 +881,7 @@ local function phraseButton(parent)
     b:SetScript("OnEnter", function(self) S.Fill(self, S.HOVER) end)
     b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR) end)
     function b:SetPhrase(text)
-        self.text:SetText(text or "")
+        self.text:SetText(ns.Show(text) or "")
         self.icon.tex:SetTexture(phraseIcon(text))
     end
     return b

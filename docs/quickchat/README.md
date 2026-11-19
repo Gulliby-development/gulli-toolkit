@@ -26,6 +26,7 @@ Typing on a phone or a handheld is slow. Gulli Quick Chat gives you big buttons 
 - **Where it goes.** In **Setup**, put the channels in your order: raid, party, guild, say, yell, LookingForGroup, Trade, General, whisper. A phrase goes to the first one you can write in now. Each row shows where its phrase goes: **As in Setup** uses that order, a channel name in blue means the phrase has its own order. Click it to change it.
 - **Favourites panel.** A small panel on the screen with the phrases you marked with the star (or the ring's). Pick how many buttons, the size, a row or a column. It starts hidden: turn it on and place it in **Unlock frames** in `/gulli` (not in the module's window).
 - **Smart words.** {target}, {targetclass}, {targetlevel}, {zone}, {me}, {level}, {hp}, {mana}, {leader} and {item} (the last item you linked).
+- **Items in a phrase.** While you type a phrase, Shift+click an item in your bags: it goes into the phrase as {item:ID}. You can also type {item:10009} or just {10009}. Each time the phrase is sent, it becomes the item's link, like "WTS [Mageweave Cloth] 90s". You can find an item's ID on Wowhead, in its address.
 - **No double posts.** Two taps on the same phrase send it once.
 
 The busy auto-reply is now in Gulli Social.

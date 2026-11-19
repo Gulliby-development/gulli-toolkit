@@ -1467,6 +1467,14 @@ S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
     quote = { spec = vfSpec(), open = vfOpen(1, true) },
     ru = { spec = vfSpec("ruRU"), open = vfOpen(1, true) },
     history = { spec = vfSpec(), open = vfOpen(2) },
+    queue = { spec = vfSpec(), open = function(ns, W)
+        vfOpen(1, true)(ns, W)
+        local n = 0
+        for _, line in ipairs(ns.Shown()) do
+            if not line.state and line ~= ns.buy.line and n < 2 then n = n + 1; ns.Click(line) end
+        end
+        ns.Refresh()
+    end },
     settings = { spec = vfSpec(), open = vfOpen(3) },
     filters = { spec = vfSpec(), open = function(ns, W)
         vfOpen(3)(ns, W)
