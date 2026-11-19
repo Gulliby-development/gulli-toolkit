@@ -50,10 +50,10 @@ class Targets(unittest.TestCase):
         with self.assertRaises(SystemExit):
             U.targets("bundle", CONFIG)
 
-    def test_the_real_config_reads_and_has_the_four_separate_projects(self):
+    def test_the_real_config_reads_and_has_the_separate_projects(self):
         with open(U.CONFIG) as f:
             config = json.load(f)
-        self.assertEqual(sorted(config["separate"]), ["CraftProfit", "Crates", "DungeonPrep", "GroupBuffs", "VendorFlip"])
+        self.assertEqual(sorted(config["separate"]), ["CraftProfit", "Crates", "DungeonPrep", "GroupBuffs", "VendorFlip", "WorthIt"])
         for name in config["separate"]:
             self.assertTrue(os.path.isdir("Gulli-" + name), name)
 

@@ -1229,4 +1229,20 @@ test("experience: the game's number for a quest in the log, else the data's, cut
     assert(not ns.XPText(168, 18):find("~", 1, true), "the game's number is not")
 end)
 
+test("one guide at a time: Lead me stops another module's guide, and can be stopped by one", function()
+    local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
+        map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },
+                                      [1436] = { "Westfall", 3, 1415 } }, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    local stopped = 0
+    GulliHUD = GulliHUD or {}
+    GulliHUD.guide = { owner = "WorthIt", stop = function() stopped = stopped + 1 end }
+    eq(ns.StartGuide("DM"), true)
+    eq(stopped, 1)
+    eq(GulliHUD.guide.owner, "DungeonPrep")
+    GulliHUD.guide.stop()
+    eq(ns.guide, nil, "another module's guide ends ours")
+    eq(GulliHUD.guide, nil)
+end)
+
 W.finish()

@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-WorthIt
+## Notes: Quests whose reward is worth the walk: bags, quivers and pouches against what you wear, with a guide that leads you to them. /gwi
+## Notes-ruRU: Задания, награда за которые того стоит: сумки, колчаны и подсумки в сравнении с вашими, и маршрут, который к ним ведёт. /gwi
+## Notes-deDE: Quests, deren Belohnung den Weg lohnt: Taschen, Köcher und Beutel im Vergleich zu deinen, mit einer Führung dorthin. /gwi
+## Notes-esES: Misiones cuya recompensa vale el viaje: bolsas, carcajes y bolsas de munición frente a las tuyas, con una guía hasta ellas. /gwi
+## Notes-esMX: Misiones cuya recompensa vale el viaje: bolsas, carcajes y bolsas de munición frente a las tuyas, con una guía hasta ellas. /gwi
+## Notes-frFR: Les quêtes dont la récompense vaut le détour : sacs, carquois et gibernes comparés aux vôtres, avec un guide pour y aller. /gwi
+## Notes-ptBR: Missões cuja recompensa vale a viagem: bolsas, aljavas e bolsas de munição comparadas às suas, com um guia até elas. /gwi
+## Notes-zhCN: 奖励值得跑一趟的任务：背包、箭袋和弹药包，与你身上的对比，并引导你前往。 /gwi
+## Notes-zhTW: 奖励值得跑一趟的任务：背包、箭袋和弹药包，与你身上的对比，并引导你前往。 /gwi
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-WorthIt\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: WorthIt
+## SavedVariables: GulliWorthItDB
+## SavedVariablesPerCharacter: GulliWorthItCharDB
+## AddonCompartmentFunc: GulliWorthIt_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Data.lua
+Core.lua
+Skin.lua
+UI.lua

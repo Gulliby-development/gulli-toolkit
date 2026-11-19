@@ -134,7 +134,11 @@ function Fake(spec)
     if GulliHUD then GulliHUD.side = nil end -- the tabs beside the auction house start anew
     W.items = spec.items or {}
     C_Item = {
-        GetItemNameByID = function(id) return W.items[id] and W.items[id].name or ("Item" .. id) end,
+        GetItemNameByID = function(id) -- `pending`: the client has not loaded the item yet
+            if W.items[id] and W.items[id].pending then return nil end
+            return W.items[id] and W.items[id].name or ("Item" .. id)
+        end,
+        RequestLoadItemDataByID = function(id) W.asked = W.asked or {}; W.asked[id] = true end,
         GetItemIconByID = function(id) return W.items[id] and W.items[id].icon or ("icon" .. id) end,
         GetItemInfo = function(id)
             local it = W.items[id] or {}
@@ -158,8 +162,11 @@ function Fake(spec)
     end }
     -- W.factions: { { name, reaction } } in the reputation list
     W.factions = spec.factions or {}
+    W.standing = spec.standing
     C_Reputation = {
         GetNumFactions = function() return #W.factions end,
+        -- W.standing: faction id -> reaction
+        GetFactionDataByID = function(id) return W.standing and W.standing[id] and { reaction = W.standing[id] } or nil end,
         GetFactionDataByIndex = function(i)
             local f = W.factions[i]
             return f and { name = f[1], reaction = f[2] }
@@ -273,6 +280,7 @@ function Fake(spec)
     GetNumTrainerServices = function() return #W.trainer end
     GetTrainerServiceInfo = function(i) return W.trainer[i][1], "available" end
     GetTrainerServiceCost = function(i) return W.trainer[i][2] end
+    GetTrainerServiceSkillReq = function(i) return "Tailoring", W.trainer[i][3] or 0 end
     GetCoinTextureString = nil
     GulliCraftProfitDB, GulliCraftProfitCharDB = spec.db, spec.char
     return W

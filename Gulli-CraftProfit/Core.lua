@@ -1291,6 +1291,7 @@ local function apply(out)
     v.route = v.route or {}
     v.changed = v.changed or {}
     v.stale = nil
+    if ns.nameLate then ns.nameLate = nil; ns.FixNames(v) end
     return v
 end
 
@@ -1342,6 +1343,7 @@ function ns.LegsJob(mode)
     end, function(legs)
         if ns.view.state ~= state then return end
         ns.view.legsBy[mode] = legs
+        if ns.nameLate then ns.nameLate = nil; ns.FixNames(legs) end
         if ns.view.mode == mode then ns.view.legs, ns.view.leg = legs, 1 end
     end)
 end

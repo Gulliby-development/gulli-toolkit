@@ -356,6 +356,11 @@ end
 -- next one; with nothing left to take, who takes back a finished quest, one after another as
 -- they are handed in; then the entrance. ns.guide = { key, last }.
 function ns.StartGuide(key)
+    -- One guide leads at a time, whatever module it is of (GulliHUD.guide = { owner, stop }).
+    GulliHUD = GulliHUD or {}
+    local other = GulliHUD.guide
+    if other and other.owner ~= "DungeonPrep" and other.stop then pcall(other.stop) end
+    GulliHUD.guide = { owner = "DungeonPrep", stop = function() ns.StopGuide() end }
     ns.guide = { key = key }
     if ns.ShowTracker then ns.ShowTracker(key) end
     return ns.StepGuide()
@@ -363,6 +368,7 @@ end
 
 function ns.StopGuide()
     ns.guide = nil
+    if GulliHUD and GulliHUD.guide and GulliHUD.guide.owner == "DungeonPrep" then GulliHUD.guide = nil end
     if ns.Refresh then ns.Refresh() end
 end
 

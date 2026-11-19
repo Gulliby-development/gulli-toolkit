@@ -1836,4 +1836,99 @@ test("the buying settings: the guard stepper and the side window switch plan not
     eq(n.Prefs(n.db.prefs).guard, 10)
 end)
 
+test("an item the client had not loaded gets its name once the game sends it", function()
+    local n = game()
+    W.items[3].pending = true
+    n.Toggle(); n.Calculate()
+    eq(n.view.state.items[3].name, "#3")
+    assert(W.asked and W.asked[3], "the game is asked for it")
+    local function shown(t, seen)
+        seen = seen or {}
+        if seen[t] then return false end
+        seen[t] = true
+        if rawget(t, "name") == "#3" then return true end
+        for _, v in pairs(t) do if type(v) == "table" and shown(v, seen) then return true end end
+        return false
+    end
+    assert(shown(n.view), "the result carries the stand-in")
+    -- another item's event changes nothing; the item's own event renames every line
+    W.Fire("GET_ITEM_INFO_RECEIVED", 5, true); W.RunTimers()
+    eq(n.view.state.items[3].name, "#3")
+    W.items[3].pending = nil
+    W.Fire("GET_ITEM_INFO_RECEIVED", 3, true); W.RunTimers()
+    eq(n.view.state.items[3].name, "Blue Dye")
+    assert(not shown(n.view), "no line keeps #3")
+    eq(next(n.nameWaiting), nil)
+    -- a later calculation has the name at once
+    n.Calculate()
+    eq(n.view.state.items[3].name, "Blue Dye")
+    -- a pattern that was not loaded could not show its reputation line: once it is, the result is outdated
+    n = game()
+    n.Data.src[104] = { "v", 6, "Ally Gal|A" }
+    n.Data.spell[104] = { 150, 160, 170 }
+    W.items[6].pending = true
+    n.Toggle(); n.Calculate()
+    assert(n.repWaiting[6] and not n.view.stale)
+    W.items[6].pending = nil
+    W.Fire("GET_ITEM_INFO_RECEIVED", 6, true); W.RunTimers()
+    eq(n.repWaiting[6], nil)
+    eq(n.view.stale, true)
+end)
+
+test("a trade supply has its vendor price before the player saw it at a vendor", function()
+    local n = game({ vendor = {} })
+    local P = n.Prefs({})
+    -- Blue Dye (3) has no auction price and was never seen at a vendor: nowhere to buy it
+    eq(n.State().items[3].buy, nil)
+    n.VENDOR_ITEMS[3], n.VENDOR_ITEMS[5] = true, true
+    local st = n.State()
+    eq(st.items[3].buy, 48, "four times what a vendor pays"); eq(st.items[3].buyEst, true)
+    local v, how = n.BuyOption(st, P, 3)
+    eq(v, 48); eq(how, "vendor")
+    -- the auction wins only when it is cheaper than the vendor
+    W.items[5].ah = 150
+    v, how = n.BuyOption(n.State(), P, 5)
+    eq(v, 100); eq(how, "vendor")
+    W.items[5].ah = 90
+    v, how = n.BuyOption(n.State(), P, 5)
+    eq(v, 90); eq(how, "ah")
+    -- the standing with the best capital takes its share off: Honored 10%, so the vendor beats the auction
+    W.items[5].ah = 95
+    W.standing = { [72] = 6, [47] = 5 }
+    near(n.VendorDiscount(), 0.10)
+    st = n.State()
+    eq(st.items[5].buy, 90)
+    v, how = n.BuyOption(st, P, 5)
+    eq(v, 90); eq(how, "vendor")
+    W.standing = { [72] = 8 }
+    near(n.VendorDiscount(), 0.20)
+    W.standing = { [72] = 2 }
+    near(n.VendorDiscount(), 0, "no surcharge below Neutral")
+    W.standing = nil
+    -- the list comes from Data.lua: threads and dyes, never what vendors keep a few of
+    local c = core()
+    assert(c.Data.vend[8343] and c.Data.vend[2324] and c.Data.vend[2320] and c.Data.vend[3371], "supplies")
+    assert(not c.Data.vend[10940] and not c.Data.vend[2319] and not c.Data.vend[765], "limited supply")
+    for id in pairs(c.Data.vend) do assert(not c.Data.item[id], "a made item is no supply: " .. id) end
+    -- a price seen at a vendor replaces the estimate
+    n.db.vendor[3] = 50
+    st = n.State()
+    eq(st.items[3].buy, 50); eq(st.items[3].buyEst, nil)
+end)
+
+test("the skill a trainer asks for wins over the data's learning level", function()
+    local n = game({ trainer = { { "Pattern Thing", 300, 150 } } })
+    n.Data.spell[104] = { 120, 130, 140 }
+    n.Data.item[7] = { 105, 120, 130, 140 }
+    local was = n.State().recipes[104].skill
+    eq(was[1], 105, "the data alone")
+    W.Fire("TRAINER_SHOW")
+    eq(n.db.trainerReq["Pattern Thing"], 150)
+    local sk = n.State().recipes[104].skill
+    eq(sk[1], 150, "the trainer's skill")
+    for i = 2, #was do eq(sk[i], was[i] + 45, "the other levels move with it") end
+    -- a learned recipe keeps what the game shows for it
+    eq(n.State().recipes[103].skill[1] ~= nil, true)
+end)
+
 W.finish()
