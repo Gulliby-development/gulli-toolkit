@@ -1149,8 +1149,9 @@ local SIDE_ICON = { A = "Interface\\Icons\\INV_BannerPVP_02", H = "Interface\\Ic
 local STATE_COLOR = { log = S.Accent and S.Accent() or S.TEXT, take = S.GOOD, done = S.MUTED, later = S.WARN,
                       closed = S.MUTED, hidden = S.MUTED }
 
-function ns.OpenQuest(id)
-    ns.openQuest = id
+-- `from` is the dungeon quest whose chain a step outside the dungeon was opened from.
+function ns.OpenQuest(id, from)
+    ns.openQuest, ns.openFrom = id, from
     ns.Refresh()
 end
 
@@ -1175,20 +1176,23 @@ local function makeStep(r)
     r.sub:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
+    r.click.row = r
     r.click:SetScript("OnClick", function(self)
-        local st = self:GetParent().step
+        local st = self.row.step
         if not st then return end
-        if st.dungeon and not st.this then ns.OpenQuest(st.id) return end
-        ns.PinAt(st.who, st.area, st.x, st.y, true)
+        -- A step opens its own page; the map is only on the page's Show on map.
+        if st.this then return end
+        local shown = detail and detail.q
+        ns.OpenQuest(st.id, shown and (shown.from or shown.id))
     end)
     r.click:SetScript("OnEnter", function(self)
-        local st = self:GetParent().step
+        local st = self.row.step
         if not (GameTooltip and st) then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("[" .. (st.level or "?") .. "] " .. st.name, 1, 0.82, 0)
         local where = ns.Where({ who = st.who or "", area = st.area or 0 })
         if where ~= "" then GameTooltip:AddLine(L.TT_FROM:format(where), 1, 1, 1) end
-        GameTooltip:AddLine(st.dungeon and not st.this and L.TT_CLICK_OPEN or L.CHAIN_PIN, 0.6, 0.6, 0.6)
+        if not st.this then GameTooltip:AddLine(L.TT_CLICK_OPEN, 0.6, 0.6, 0.6) end
         GameTooltip:Show()
     end)
     r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -1506,15 +1510,17 @@ end
 -- Fills the page of ns.openQuest.
 function ns.FillDetail(level)
     local d = detail
-    local q = ns.Quest(ns.openQuest, level)
+    local q = ns.Quest(ns.openQuest, level, ns.openFrom)
     d.q = q
     if not q then ns.openQuest = nil return end
     local diff = ns.Difficulty(q.level, level)
     d.title:SetText("[" .. q.level .. "] " .. q.name)
     d.title:SetTextColor(unpack(ns.DiffColor(diff)))
-    local sub = { L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) }
+    -- A step outside the dungeon: the data has neither its level to take nor its faction.
+    local sub = {}
+    if not q.outside then sub[1] = L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) end
     if q.steps and q.steps > 1 then sub[#sub + 1] = L.STEP:format(q.step, q.steps) end
-    sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"]
+    if not q.outside then sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"] end
     sub[#sub + 1] = ns.XPText(q.id, level)
     d.sub:SetText(table.concat(sub, "  ·  "))
     local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state
@@ -1612,6 +1618,15 @@ function ns.FillDetail(level)
     if hasChain then
         chain:SetTitle(L.DETAIL_CHAIN, tostring(#q.chain))
         d.chain:SetData(q.chain)
+        -- keep the shown step in sight
+        local bar, view = rawget(d.chain, "bar"), tonumber(d.chain:GetHeight()) or 0
+        for i, st in ipairs(q.chain) do
+            if st.this and bar and view > 0 then
+                local top, at = (i - 1) * CHAIN_ROW, tonumber(bar:GetValue()) or 0
+                if top < at then bar:SetValue(top)
+                elseif top + CHAIN_ROW > at + view then bar:SetValue(top + CHAIN_ROW - view) end
+            end
+        end
     end
     if hasOthers then
         others:SetTitle(L.DETAIL_OTHERS, tostring(#rest))
@@ -1727,6 +1742,7 @@ function ns.FillDetail(level)
     d.track:SetEnabled(inLog)
     d.share:SetEnabled(inLog)
     fitIcon(d.hide, ns.Hidden(q.id) and L.UNHIDE or L.HIDE)
+    d.hide:SetEnabled(not q.outside)
     local others = inLog and ns.GroupOn(q.id) or {}
     d.status:SetText(#others > 0 and L.TT_GROUP:format(table.concat(others, ", ")) or "")
     if not d.note:HasFocus() then d.note:SetText(ns.Note("q" .. q.id)) end

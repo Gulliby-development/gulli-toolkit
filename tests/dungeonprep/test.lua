@@ -1029,6 +1029,41 @@ test("a pin button near the giver targets them, out of combat only, and never se
     SetRaidTarget = nil
 end)
 
+test("a click on a chain step opens that step's page and sets no pin, also for a step outside the dungeon", function()
+    local W = Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [2100] = "Maraudon" },
+                     active = { [93404] = true },
+                     done = { [92914] = true, [96010] = true, [96018] = true, [93016] = true, [93394] = true,
+                              [93341] = true, [93594] = true } })
+    local opened
+    OpenWorldMap = function(id) opened = id end
+    local ns = Load()
+    ns.home, ns.selected = false, "MARA"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(93404)
+    local d = ns.DetailFrame()
+    local function click(n)
+        local row = d.chain.rows[n]
+        row.click:GetScript("OnClick")(row.click)
+    end
+    click(8)
+    eq(ns.openQuest, 93404, "the step shown stays")
+    click(9)
+    eq(ns.openQuest, 93601, "Passing the Blame opens")
+    eq(#W.pins, 0, "no pin")
+    eq(opened, nil, "and no map")
+    local q = d.q
+    eq(q.outside, true); eq(q.name, "Passing the Blame"); eq(q.state, "later", "Rot and Regret comes first")
+    eq(q.step, 9); eq(#q.chain, 11, "the same chain, at its own step")
+    eq(q.chain[9].this, true); eq(q.chain[8].this, false)
+    click(11)
+    eq(ns.openQuest, 93606, "from a step outside to the next one")
+    eq(d.q.step, 11)
+    click(8)
+    eq(ns.openQuest, 93404, "and back to the dungeon quest")
+    eq(d.q.outside, nil)
+    eq(#ns.Quest(93601).chain, 0, "without the quest it was opened from, a step outside has no chain")
+    OpenWorldMap = nil
+end)
+
 test("inside the dungeon: the data's flags, the stages of a quest's way, the tracker's mark", function()
     local W = Fake({ level = 48, raceID = 6, faction = "Horde", areas = { [405] = "Desolace", [215] = "Mulgore", [2100] = "Maraudon" },
                      active = { [96776] = true }, done = { [7044] = true } })

@@ -420,9 +420,35 @@ end
 
 -- One dungeon quest with everything its page shows, or nil: the list entry plus `state`
 -- (see stateOf), `chain` (ns.Chain) and `objectives` (ns.Objectives).
-function ns.Quest(id, level)
+-- A chain step outside the dungeon (D.pre) has a page too, opened from the chain of the dungeon
+-- quest `from`: the data has only its name, level and giver, so the page shows those, its place
+-- in that chain and whether the step before it is done.
+local function outsideQuest(id, from)
+    local D = data()
+    local p = D.pre and D.pre[id]
+    if not p then return nil end
+    local entry = { id = id, name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or p[1], level = p[2],
+                    minLevel = 0, who = p[3], area = p[4], side = "", x = p[5] or 0, y = p[6] or 0,
+                    step = 0, steps = 0, outside = true, from = from }
+    entry.chain = (from and D.quest[from]) and ns.Chain(from, id) or {}
+    local before
+    for _, s in ipairs(entry.chain) do
+        if s.this then entry.step, entry.steps = s.n, #entry.chain break end
+        before = s
+    end
+    if questDone(id) then entry.state = "done"
+    elseif onQuest(id) then entry.state = "log"
+    elseif before and not before.done then
+        entry.state, entry.why = "later", "WHY_EARLIER"
+        entry.need = { id = before.id, name = before.name, who = before.who, area = before.area, x = before.x, y = before.y }
+    else entry.state = "take" end
+    entry.objectives = ns.Objectives(entry)
+    return entry
+end
+
+function ns.Quest(id, level, from)
     local q = data().quest[id]
-    if not q then return nil end
+    if not q then return outsideQuest(id, from) end
     local entry = entryOf(id, q)
     entry.state = stateOf(entry, q, level or UnitLevel("player") or 1)
     entry.chain = ns.Chain(id)
@@ -460,11 +486,13 @@ end
 -- The whole chain a quest is in, first step first: { id, n, name, level, who, area, x, y,
 -- done, active, this, missing, dungeon }. `missing` marks the first step before this quest
 -- that is neither done nor in the log.
-function ns.Chain(id)
+-- `this` marks another step of id's chain as the one shown (a step outside the dungeon).
+function ns.Chain(id, this)
     local D = data()
     local out = {}
+    this = this or id
     for i, c in ipairs((D.chain and D.chain[id]) or {}) do
-        local s = { id = c, n = i, this = c == id, x = 0, y = 0, area = 0, who = "" }
+        local s = { id = c, n = i, this = c == this, x = 0, y = 0, area = 0, who = "" }
         local q, p = D.quest[c], D.pre and D.pre[c]
         if q then
             s.name, s.level, s.who, s.area, s.x, s.y, s.dungeon = q[1], q[2], q[6], q[7], q[12] or 0, q[13] or 0, true
