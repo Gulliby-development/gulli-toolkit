@@ -1341,4 +1341,36 @@ S.fishing = { default = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end 
     settings = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
     empty = { spec = { pole = false }, open = function(ns) ns.Toggle() end } }
 
+-- Worth It: a level 20 hunter in Westfall with small bags, one chain in the log.
+local wiNames = { [1537] = "Old Blanchy's Feed Pouch", [3343] = "Captain Sander's Booty Bag", [1729] = "Gunnysack of the Night Watch",
+    [3604] = "Bandolier of the Night Watch", [3605] = "Quiver of the Night Watch", [918] = "Deviate Hide Pack",
+    [3573] = "Hunting Quiver", [3574] = "Hunting Ammo Sack", [270017] = "Hunting Satchel", [2082] = "Wizbang's Gunnysack",
+    [277977] = "Canvas Latchbag", [279936] = "Book Bag", [280088] = "Soft Saber Sack", [286734] = "Ban'ethil Quiver",
+    [277332] = "Scuffed Shipping Crate", [3352] = "Ooze-covered Bag", [221498] = "Old Toolbox", [11324] = "Explorer's Knapsack",
+    [9587] = "Thawpelt Sack", [10959] = "Demon Hide Sack", [226697] = "Red Bag", [282286] = "Shipwright's Satchel" }
+local wiSpec = { level = 20, class = "HUNTER", zone = 40, x = 52, y = 30, bags = { 6, 6, 8, 8 }, family = { [4] = 1 },
+    done = { [136] = true, [138] = true, [97277] = true, [87288] = true }, log = { [139] = true, [151] = true }, ready = { [151] = true },
+    slots = { [1537] = 8, [3343] = 8, [1729] = 10, [3604] = 12, [3605] = 12, [918] = 10, [3573] = 10, [3574] = 10, [270017] = 8,
+              [2082] = 8, [277977] = 6, [279936] = 6, [280088] = 6, [286734] = 8, [277332] = 8, [3352] = 10, [221498] = 10,
+              [11324] = 14, [9587] = 14, [10959] = 16, [226697] = 16, [282286] = 12 } }
+local function wiOpen(ns)
+    local icons = { ammo = "INV_Misc_Quiver_03", bag = "INV_Misc_Bag_10" }
+    C_Item.GetItemNameByID = function(id) return wiNames[id] or ("Bag " .. id) end
+    C_Item.GetItemIconByID = function(id)
+        local n = wiNames[id] or ""
+        return "Interface\\Icons\\" .. ((n:find("Quiver") and "INV_Misc_Quiver_03") or (n:find("Bandolier") and "INV_Misc_AmmoSack_02")
+            or (id > 5000 and id < 5100 and "INV_Misc_Bag_09") or "INV_Misc_Bag_10")
+    end
+    C_Item.GetItemQualityByID = function(id) return (id == 3604 or id == 3605 or id == 918) and 2 or 1 end
+    C_Map.GetAreaInfo = function(id)
+        return ({ [40] = "Westfall", [10] = "Duskwood", [12] = "Elwynn Forest", [38] = "Loch Modan", [17] = "The Barrens",
+                  [141] = "Teldrassil", [148] = "Darkshore", [1] = "Dun Morogh", [1519] = "Stormwind City" })[id] or ("Area " .. id)
+    end
+    ns.Toggle()
+end
+S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show(140) end },
+    lead = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.StartGuide(); ns.Refresh() end },
+    settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(2) end },
+    empty = { spec = { level = 60, bags = { 18, 18, 18, 18 } }, open = function(ns) ns.Toggle() end } }
+
 return S

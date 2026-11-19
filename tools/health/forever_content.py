@@ -20,6 +20,10 @@
    lacks: Wowhead's profession pages changed since they were collected. Wowhead refuses servers,
    so the snapshot is collected on a player's computer; one older than WOWHEAD_DAYS is news too.
 
+4. Forever bags: a bag, quiver or pouch of WoW Forever's own that no quest, drop or vendor of the
+   data gives and that is not in tools/worthit/seen.txt is news for Worth It: when players find
+   its quest, it goes into EXTRA in tools/worthit/build_data.py. `--update-seen` marks them.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
@@ -224,6 +228,16 @@ def check_recipes(qdb, today=None):
     return lines, missing
 
 
+def check_rewards(qdb):
+    """Forever bags without a source that Worth It has not looked at: (lines, [(id, name, kind)])."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("worthit_data", os.path.join(ROOT, "tools", "worthit", "build_data.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    found = mod.unlinked(mod.questie.load_forever(qdb)[3])
+    return ["- %d %s (%s)" % f for f in found], found
+
+
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
@@ -234,7 +248,12 @@ def main(argv):
     dungeon_lines, prep_areas = check_dungeons()
     area_lines, areas = check_areas(qdb, prep_areas)
     recipe_lines, recipes = check_recipes(qdb)
+    reward_lines, bags = check_rewards(qdb)
     if "--update-seen" in argv:
+        with open(os.path.join(ROOT, "tools", "worthit", "seen.txt"), "a", encoding="utf-8") as f:
+            for iid, name, kind in bags:
+                f.write("%d # %s (%s)\n" % (iid, name, kind))
+        reward_lines = []
         seen = read_seen(RECIPES_SEEN)
         with open(RECIPES_SEEN, "a", encoding="utf-8") as f:
             for iid, name in recipes:
@@ -260,6 +279,11 @@ def main(argv):
                    "A new or changed Forever profession recipe. Give CraftProfit its skill levels and "
                    "source (tools/craftprofit/build_data.py), or note why not, then run "
                    "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + recipe_lines + [""]
+    if reward_lines:
+        report += ["### Forever bags Worth It does not list", "",
+                   "A bag, quiver or pouch with no quest, drop or vendor in the data. If a quest gives it, "
+                   "add it to EXTRA in tools/worthit/build_data.py; else run "
+                   "`python3 tools/health/forever_content.py <questiedb> --update-seen`.", ""] + reward_lines + [""]
     text = "\n".join(report)
     print(text or "Every module keeps up with the Forever data.")
     if out:

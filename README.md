@@ -46,6 +46,7 @@
 | [Waylaid Crates](docs/crates/README.md) | The cheapest way to fill each Waylaid Crate from your bags, bank and the auction house, the missing items bought at a press of a button, a history of the crates you filled, and the cheapest crates to reach a Merchant's Favor goal. | `/gcr` |
 | [Farm Tracker](docs/farmtrack/README.md) | A small panel that counts what you farm this session (cloth, ore, herbs or gold), the rate per hour and the time to your goal. | `/gft` |
 | [Fishing](docs/fishing/README.md) | Double right-click on the water to cast, a loud bobber splash, the catch looted at once and a note when your lure is gone. | `/gfi` |
+| [Worth It](docs/worthit/README.md) | The quests that reward a bag, a quiver or an ammo pouch, how many slots each adds to what you wear, and a guide that leads you to them. | `/gwi` |
 
 ## Features
 
