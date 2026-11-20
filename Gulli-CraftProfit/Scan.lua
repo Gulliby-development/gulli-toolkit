@@ -111,62 +111,10 @@ end
 local function auctionator()
     return Auctionator and Auctionator.API and Auctionator.API.v1
 end
-local function num(v) return type(v) == "number" and v > 0 and v or nil end
-local function days(at) return at and math.max(0, (time() - at) / 86400) or 0 end
-
--- The addons that know auction prices, each read only through its public calls: `on()` says it
--- is loaded, `price(id)` gives copper and the age in days. A new one is a row here (and its
--- folder in the TOC's OptionalDeps), with a case in the test.
-ns.PRICE_SOURCES = {
-    { name = "Auctionator", on = function() return auctionator() end, price = function(id)
-        local api = auctionator()
-        if not api.GetAuctionPriceByItemID then return nil end
-        local price = api.GetAuctionPriceByItemID(CALLER, id)
-        local age = api.GetAuctionAgeByItemID and api.GetAuctionAgeByItemID(CALLER, id)
-        return price, age
-    end },
-    { name = "auxForever", on = function() return AuxForeverAPI and AuxForeverAPI.GetLatestPrice end, price = function(id)
-        if AuxForeverAPI.IsReady and not AuxForeverAPI.IsReady() then return nil end
-        return AuxForeverAPI.GetLatestPrice(id)
-    end },
-    -- Naowh Forever ships every auction house's prices and adds the player's own scans; its
-    -- second value is when the price was seen (time())
-    { name = "Naowh Forever", on = function() return NaowhForever and NaowhForever.AuctionPrice end, price = function(id)
-        local price, at = NaowhForever.AuctionPrice(id)
-        return price, days(num(at))
-    end },
-    { name = "TradeSkillMaster", on = function() return TSM_API and TSM_API.GetCustomPriceValue end, price = function(id)
-        return TSM_API.GetCustomPriceValue("DBMinBuyout", "i:" .. id), 0
-    end },
-    { name = "Hammerprice", on = function() return Hammerprice and Hammerprice.GetPrice end, price = function(id)
-        return Hammerprice.GetPrice(id), 0
-    end },
-}
-
--- The auction price (copper) and its age in days: the first source with a fresh price, else the
--- first with any price; nil when no loaded addon knows the item.
-function ns.AuctionPrice(id)
-    local first, firstAge
-    for _, src in ipairs(ns.PRICE_SOURCES) do
-        if src.on() then
-            local ok, price, age = pcall(src.price, id)
-            price = ok and num(price)
-            if price then
-                age = type(age) == "number" and age >= 0 and age or 0
-                if age <= (ns.FRESH_DAYS or 7) then return price, age end
-                if not first then first, firstAge = price, age end
-            end
-        end
-    end
-    return first, firstAge
-end
--- The names of the loaded price addons, in order.
-function ns.PriceAddons()
-    local out = {}
-    for _, src in ipairs(ns.PRICE_SOURCES) do if src.on() then out[#out + 1] = src.name end end
-    return out
-end
-function ns.HasPrices() return #ns.PriceAddons() > 0 end
+-- Auction prices come from every price addon through the shared reader (S.AuctionPrice in Skin.lua).
+function ns.AuctionPrice(id) return ns.Skin.AuctionPrice(id, ns.FRESH_DAYS) end
+function ns.PriceAddons() return ns.Skin.PriceAddons() end
+function ns.HasPrices() return ns.Skin.HasPrices() end
 function ns.HasAuctionator() return auctionator() ~= nil end
 
 -- ---------- the profession window ----------

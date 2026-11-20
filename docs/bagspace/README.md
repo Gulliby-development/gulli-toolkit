@@ -26,7 +26,7 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 - **Nothing lost on the way.** The game deletes one item per click, so each **OK** away from a vendor deletes one item; the rest stay ticked for the next **OK**. At a vendor one **OK** sells them all.
 - **Remembers your choice.** Untick an item and it is not offered again. `/gbs reset` brings those items back.
 - **Your junk list.** Alt+click an item in your bags to always count it as junk. Gulli Merchant uses the same list.
-- **Auction prices.** With Auctionator, an item that sells for much more at the auction house is shown unticked, with its price.
+- **Auction prices.** With a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice), an item that sells for much more at the auction house is shown unticked, with its price.
 - **Gear you cannot use.** Bound armour and weapons your class can never wear are offered with the white gear.
 - **Free 1 slot.** When the game says your bags are full, a button offers to sell or delete the cheapest junk item with one tap.
 - **Disenchant with a key.** If you know Enchanting, pick a key in `/gbs` (for example `N`, or `Alt-D`). Point at a green, blue or purple weapon or armour in your bags and press the key: it is disenchanted. It works with any bag addon. While you do not point at such an item, the key does what it always does. It does nothing in a fight, on items it cannot disenchant, or on items you protected or keep in an equipment set. A switch turns it off.

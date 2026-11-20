@@ -92,11 +92,9 @@ local function extra(key)
     return ns.db[key] and (not ns.db.shift or shiftDown())
 end
 
+-- From any price addon (Auctionator, auxForever, Naowh Forever, ...), through the shared reader.
 local function auctionPrice(id)
-    local api = Auctionator and Auctionator.API and Auctionator.API.v1
-    if not (api and api.GetAuctionPriceByItemID) then return nil end
-    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-Tooltip", id)
-    return ok and tonumber(price) or nil
+    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
 end
 
 -- How many the other characters hold, from Gulli Chores' snapshots (read only):

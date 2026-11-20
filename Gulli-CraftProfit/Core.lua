@@ -1319,6 +1319,9 @@ end
 local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta", "legsBy" }
 local function apply(out)
     local v = ns.view
+    -- a result of another profession than the one chosen now never shows (a switch while it ran)
+    local cur = ns.char and ns.char.current
+    if out.state and cur and out.state.name ~= cur then return v end
     for _, k in ipairs(FIELDS) do v[k] = out[k] end
     v.route = v.route or {}
     v.changed = v.changed or {}

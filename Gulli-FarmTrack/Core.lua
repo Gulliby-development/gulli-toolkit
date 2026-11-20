@@ -341,11 +341,9 @@ function ns.ItemFacts(id)
     return { quality = quality or 1, ilvl = ilvl or 0, sell = sell or 0, class = class, bind = bind }
 end
 
+-- From any price addon (Auctionator, auxForever, Naowh Forever, ...), through the shared reader.
 function ns.AuctionPrice(id)
-    local api = Auctionator and Auctionator.API and Auctionator.API.v1
-    if not (api and api.GetAuctionPriceByItemID) then return nil end
-    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-FarmTrack", id)
-    return ok and type(price) == "number" and price > 0 and price or nil
+    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
 end
 
 -- The player knows Enchanting (skill line 333).

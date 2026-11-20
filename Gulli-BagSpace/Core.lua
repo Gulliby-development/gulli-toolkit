@@ -26,12 +26,9 @@ local function cursorItem()
     return kind == "item" and id or nil
 end
 local protected = J.Protected
--- The auction price of one item from Auctionator, when it is loaded.
+-- The auction price of one item from any price addon (Auctionator, auxForever, Naowh Forever, ...).
 local function ahPrice(id)
-    local api = Auctionator and Auctionator.API and Auctionator.API.v1
-    if not (api and api.GetAuctionPriceByItemID) then return nil end
-    local ok, price = pcall(api.GetAuctionPriceByItemID, "Gulli-BagSpace", id)
-    return ok and price or nil
+    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
 end
 local function sortBags() local fn = C.SortBags or SortBags if fn then fn() return true end end
 

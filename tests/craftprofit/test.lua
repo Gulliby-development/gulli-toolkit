@@ -640,6 +640,39 @@ test("another player's profession (a trade link) is never saved; one the spellbo
     eq(st and st.name, "Tailoring")
 end)
 
+test("Enchanting: enchants make no item, so they only level; a wand can also earn", function()
+    local n = game({ auctionator = false,
+        items = { [8] = { name = "Strange Dust", sell = 10 }, [9] = { name = "Lesser Magic Wand", sell = 100 } },
+        prof = { name = "Enchanting", skill = 100, cap = 150, recipes = {
+            { id = 201, name = "Enchant Bracer - Minor Health", learned = true, diff = 0, grey = 125, r = { [8] = 1 } },
+            { id = 202, name = "Lesser Magic Wand", learned = true, diff = 1, grey = 130, out = 9, r = { [8] = 1 } },
+        } },
+        spellbook = { { "Enchanting", 100, 150 } } })
+    n.Toggle(); n.Calculate()
+    local v = n.view
+    eq(v.state.name, "Enchanting")
+    assert(v.plan and v.plan.reached > 100, "an Enchanting route with guessed dust prices")
+    for _, x in ipairs(v.variants) do
+        if x.plan and n.EARN[x.mode] then
+            for _, sg in ipairs(x.plan.segs) do assert(sg.rid ~= 201, "an enchant is never a profit run") end
+        end
+    end
+end)
+
+test("a result of the profession chosen before never shows after a switch", function()
+    local n = game({ spellbook = { { "Tailoring", SKILL, 225 }, { "Cooking", 50, 75 } } })
+    n.char.profs.Cooking = { skill = 50, cap = 75, recipes = {} }
+    n.Toggle()
+    local t = 0
+    debugprofilestop = function() t = t + 3; return t end
+    local job = n.RecalcJob(false)
+    assert(not job:Step(1), "the Tailoring job runs in steps")
+    n.char.current = "Cooking"
+    while not job:Step(1) do end
+    debugprofilestop = nil
+    eq(n.view.plan, nil, "the Tailoring result is dropped")
+end)
+
 test("switching the profession never calculates: its last result, outdated, or Calculate", function()
     local n = game({ spellbook = { { "Tailoring", SKILL, 225 }, { "Cooking", 50, 75 } } })
     n.char.profs.Cooking = { skill = 50, cap = 75, recipes = {} }

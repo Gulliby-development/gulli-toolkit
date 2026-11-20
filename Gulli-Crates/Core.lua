@@ -72,13 +72,11 @@ local function auctionator()
     return Auctionator and Auctionator.API and Auctionator.API.v1
 end
 function ns.HasAuctionator() return auctionator() ~= nil end
--- Auctionator's lowest price of one (copper), or nil.
+-- A price addon is loaded (Auctionator, auxForever, Naowh Forever, ...).
+function ns.HasPrices() return ns.Skin and ns.Skin.HasPrices and ns.Skin.HasPrices() or false end
+-- The lowest price of one (copper) from any price addon, through the shared reader, or nil.
 function ns.AuctionPrice(id)
-    local api = auctionator()
-    if not api or not api.GetAuctionPriceByItemID then return nil end
-    local ok, price = pcall(api.GetAuctionPriceByItemID, CALLER, id)
-    if not ok or type(price) ~= "number" or price <= 0 then return nil end
-    return price
+    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
 end
 
 -- How old Auctionator's prices are, in seconds, or nil when it cannot tell. Its saved state keeps

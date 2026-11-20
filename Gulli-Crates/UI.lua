@@ -244,7 +244,7 @@ end
 local function buyStatus(plan, how)
     local b, queue = ns.buy, ns.buy.queue
     if ns.Scanning() then return L.SCANNING:format(math.min(ns.scan.done + 1, ns.scan.n), ns.scan.n), S.Accent()
-    elseif not ns.HasAuctionator() then return L.NO_AUCTIONATOR, S.WARN
+    elseif not ns.HasPrices() then return L.NO_AUCTIONATOR, S.WARN
     elseif not plan then return how
     elseif #queue == 0 then return L.NOTHING_TO_BUY, S.GOOD
     elseif b.phase == "done" then return L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD
