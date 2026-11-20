@@ -723,10 +723,11 @@ function ns.StopAction(i, aside)
         local rid, k
         if n.segs then rid, k = ns.NextCraft(n)
         elseif n.lines and n.lines[1] then rid, k = n.lines[1].recipe, n.lines[1].n end
-        local closed = rid and not ns.ProfessionShown() and ns.CanOpenProfession()
+        -- a reagent made in another profession (bars by Smelting) is crafted in that one's window
+        local prof = rid and ns.ProfOf(rid) or ns.char.current or ""
+        local closed = rid and not ns.ProfessionShown(prof) and ns.CanOpenProfession(prof)
         if closed then
             -- the game crafts only with the profession window open: the first click opens it
-            local prof = ns.char.current or ""
             a.primary = { L.OPEN_PROF_BTN:format(prof), function()
                 if not ns.OpenProfession(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end
             end, short = L.OPEN_PROF_SHORT }
@@ -800,6 +801,9 @@ local function detailRows(n, i, a)
         if spot then note = spot.label end
         if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then note = L.SRC_LADDER end
         if l.guess then note = L.SRC_GUESS end
+        -- made in another profession of the character (bars by Smelting): name it
+        local made = l.src == "prep" and l.recipe and st.recipes[l.recipe]
+        if made and made.other then note = made.other end
         local right = l.price and ((l.guess and "~" or "") .. S.MoneyText(l.price * l.n)) or ""
         if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 and not spot and not l.guess then note = L.EACH:format(S.MoneyText(l.price)) end
         local e = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, q = q,
