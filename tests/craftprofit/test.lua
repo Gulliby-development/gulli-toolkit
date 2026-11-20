@@ -1724,6 +1724,63 @@ test("a big profession is planned in reasonable time", function()
     assert(secs < 4, "took " .. secs .. " s")
 end)
 
+-- The fastest route weighs each craft heavily. A bought recipe whose reagents take many crafts
+-- of a second profession (smelting) once cost more in that weight than falling short of the
+-- target, so the plan dropped the recipe and stopped: a "?" in the middle of the bar.
+test("a plan never drops a bought recipe it needs to reach the target, however heavy the time weight", function()
+    local ns = core()
+    local st = {
+        skill = 171, cap = 300, level = 60,
+        items = {
+            ore = { name = "Ore", ah = 10, age = 0.1, vend = 2 },
+            bar = { name = "Bar", vend = 5 },
+            out = { name = "Bracers", ah = 100, age = 0.1, vend = 50 },
+        },
+        recipes = {
+            smelt = { name = "Smelt Bar", r = { ore = 1 }, out = "bar", learned = true, other = "Mining" },
+            bracer = { name = "Bracers", skill = { 160, 185, 210 }, r = { bar = 10 }, out = "out",
+                       src = { t = "trainer", cost = 500 } },
+        },
+    }
+    local P = prefs({ target = 175 })
+    P.w = 1e6
+    local plan = ns.Plan(st, P)
+    eq(plan.reached, 175, "the plan reaches the target")
+    P.only = "bracer"
+    eq(ns.Plan(st, P).reached, 175, "a run of that one recipe reaches it too")
+end)
+
+-- The runs follow the route the tile shows: a stretch the route crafts through is never "?",
+-- whatever the limits, the prices or the stock (a run planned anew from what the runs before
+-- left could miss a recipe the whole way had, and left a hole in the middle of the bar).
+test("the runs of every route cover the whole way it goes", function()
+    local ns = core()
+    for _, start in ipairs({ 150, 165, 175, 190 }) do
+        for _, mc in ipairs({ 0, 30, 100, -1 }) do
+            for _, noBags in ipairs({ false, true }) do
+                local st = state()
+                st.skill = start
+                if noBags then for _, it in pairs(st.items) do it.bags, it.bank = 0, 0 end end
+                local P = ns.Prefs({ target = math.min(225, start + 40), maxCrafts = mc, useBags = not noBags })
+                for _, x in ipairs(ns.Variants(st, P)) do
+                    if x.plan and not ns.EARN[x.mode] then
+                        local whole = x.plan.full or x.plan
+                        local legs = ns.Legs(st, P, x.plan)
+                        local at = st.skill
+                        for _, l in ipairs(legs) do
+                            eq(l.from, at, "runs follow each other")
+                            assert(not (l.unknown and l.from < whole.reached),
+                                ("a hole at %d-%d in %s (from %d, limit %d), the route goes to %d"):format(l.from, l.to, x.mode, start, mc, whole.reached))
+                            at = l.to
+                        end
+                        assert(at >= whole.reached, "the runs reach where the route goes")
+                    end
+                end
+            end
+        end
+    end
+end)
+
 test("a route tile switches at once from the result; the runs of each route are kept", function()
     local n = game()
     n.Toggle(); n.Calculate()
@@ -2143,6 +2200,32 @@ test("the vendor stop buys everything in one click, whole stacks", function()
     assert(rawget(n.ui.nodes[vs].tick, "_shown"), "a tick on the stop")
     W.Click(n.ui.act1)
     eq(W.bought[1], want[1], "nothing is bought twice")
+end)
+
+test("at a vendor that sells what the run needs, the small window comes beside it and buys", function()
+    local n = game({ vendor = { { 3, 250, 5 }, { 5, 100 } } })
+    n.Toggle(); n.Calculate()
+    local vs = stopOf(n, "STOP_VENDOR_BUY")
+    assert(vs, kinds(n.view.route))
+    n.Toggle() -- the big window closes: the small one takes its place at the vendor
+    W.Fire("MERCHANT_CLOSED")
+    local side = n.SideWindow()
+    side:Hide()
+    W.Fire("MERCHANT_SHOW")
+    assert(side:IsShown(), "the small window comes at the vendor")
+    assert(n.sui.run:GetText():find(n.Skin.Upper(n.L.SIDE_STOP:format(vs, #n.view.route)), 1, true), n.sui.run:GetText())
+    local p = n.sui.panel
+    eq(p.act1:GetText(), n.StopAction(vs, true).primary[1])
+    local money = W.money
+    W.Click(p.act1)
+    assert(W.money < money, "its button buys from the vendor")
+    W.Fire("MERCHANT_CLOSED")
+    assert(not side:IsShown(), "it leaves with the vendor")
+    -- a vendor that sells nothing of the stop gets no window
+    W.vendor = {}
+    n.Recalc(false)
+    W.Fire("MERCHANT_SHOW")
+    assert(not side:IsShown(), "nothing to buy here")
 end)
 
 test("a vendor without the money buys what it covers and says so", function()

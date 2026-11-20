@@ -442,6 +442,8 @@ end
 
 -- The plan for the profession in `state` with settings P. Buying a recipe is a one-time cost the
 -- per-point choice cannot see, so each bought recipe is dropped while that makes the plan better.
+-- Reach comes first: with a heavy time weight the crafts can cost more than the shortfall's
+-- penalty, and a drop must never trade skill points for fewer crafts.
 function ns.Plan(state, P)
     local allowed = {}
     for rid, r in pairs(state.recipes) do if (r.skill or r.other) and ns.CanGet(r, P) then allowed[rid] = true end end
@@ -455,7 +457,8 @@ function ns.Plan(state, P)
             allowed[rid] = nil
             local p = planWith(state, P, allowed)
             allowed[rid] = true
-            if p.score < (better or best).score - 1 then better, drop = p, rid end
+            local cur = better or best
+            if p.reached >= cur.reached and p.score < cur.score - 1 then better, drop = p, rid end
         end
         if not better then break end
         best = better
@@ -698,25 +701,35 @@ function ns.Legs(state, P, first)
     for k, v in pairs(P) do Q[k] = v end
     Q.w = (first and first.full and first.full.w) or P.w
     Q.target = target
+    -- the way the route's tile shows: the runs follow it, so a run is never missing where it goes
+    local whole = first and (first.full or first)
     local legs, s = {}, state.skill
     while s < target and #legs < ns.MAX_LEGS do
         ns.Part((s - state.skill) / math.max(1, target - state.skill))
         st.skill = s
         local run = (#legs == 0 and first) or nil
         if not run then
-            local full = ns.Plan(st, Q)
-            local sg = full.segs[1]
-            if sg and full.reached > s then
-                -- the first recipe of the way from here, as far as the way keeps it
+            local way = (whole and whole.reached > s) and whole or ns.Plan(st, Q)
+            local sg
+            for _, x in ipairs(way.segs) do
+                if x.from <= s and s < x.to then sg = x; break end
+            end
+            if sg and way.reached > s then
+                -- the recipe of the way from here, as far as the way keeps it
                 local to = sg.to
-                for i = 2, #full.segs do
-                    if full.segs[i].rid ~= sg.rid or full.segs[i].from ~= to then break end
-                    to = full.segs[i].to
+                for _, x in ipairs(way.segs) do
+                    if x.from >= to and x.from == to and x.rid == sg.rid then to = x.to end
                 end
                 local R = {}
                 for k, v in pairs(Q) do R[k] = v end
                 R.target, R.only = to, sg.rid
                 run = ns.Plan(st, R)
+                if run.reached <= s then
+                    -- that recipe alone does not get there from what the runs before left (stock
+                    -- used up, a pattern dropped as not worth it for so short a run): any recipe
+                    R.only = nil
+                    run = ns.Plan(st, R)
+                end
             end
         end
         if not run or #run.segs == 0 or run.reached <= s then
