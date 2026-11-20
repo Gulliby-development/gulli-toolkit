@@ -3218,13 +3218,13 @@ end
 
 -- Side tabs ------------------------------------------------------------------------------------
 --
--- One place beside the auction house for every module that has work there. A module gives its
+-- One place beside the auction house (or a vendor's window) for every module that has work there. A module gives its
 -- window with S.SideAdd and asks for it with S.SideOpen(key) when it has something to do at the
 -- auction house; S.SideClose(key) takes it away. One window: it stands there as it is. Two or
 -- more: only one shows, and a strip of tabs like a browser's lies over its header (icon, name,
 -- a badge with what is left to do). The tab chosen last is remembered. The state is shared by
 -- every copy of the skin (GulliHUD.side); the newest copy lays it out.
-local SIDE_V = 2
+local SIDE_V = 3
 local SIDE_GAP = 8
 local SIDE_TAB_H = S.HEADER_H - 8
 
@@ -3399,7 +3399,11 @@ local function sideLayout(T)
                 S2.layout(S2)
             end)
         end
+        -- beside the auction house, or beside a vendor's window when only that is open
         local ah = AuctionHouseFrame or AuctionFrame
+        local shownAH = ah and ah.IsShown and ah:IsShown()
+        local vendor = MerchantFrame and MerchantFrame.IsShown and MerchantFrame:IsShown() and MerchantFrame
+        if not shownAH and vendor then ah = vendor end
         if ah then
             w:ClearAllPoints()
             w:SetPoint("TOPLEFT", ah, "TOPRIGHT", SIDE_GAP, 0)

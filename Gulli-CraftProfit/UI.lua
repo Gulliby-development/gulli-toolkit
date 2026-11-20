@@ -15,7 +15,7 @@ local REP_ICON = "Interface\\Icons\\Achievement_Reputation_01"
 local TILE_MIN, ARROW_W = 150, 24
 local TILE_H, WAY_H, ROW_GAP = 58, 44, 8
 -- the stops on the left, under them the money of the run
-local STOPS_W, STOP_H, STOP_GAP, LEDGER_H = 264, 56, 6, 72
+local STOPS_W, STOP_H, STOP_GAP, LEDGER_H = 264, 56, 6, 90
 -- a row of the chosen stop, and the column at its right end for "Bought" or "Next"
 local LINE_H, MARK_W = 48, 76
 local STEP_W = 150
@@ -1375,6 +1375,12 @@ local function buildRoute(route, height)
     ui.money:SetJustifyH("LEFT")
     ui.money:SetWordWrap(true)
     ui.money:SetMaxLines(2)
+    -- how many crafts the chosen run takes, bottom left
+    ui.crafts = S.Text(ledger, 12, S.MUTED)
+    ui.crafts:SetPoint("BOTTOMLEFT", S.INSET, 9)
+    ui.crafts:SetPoint("RIGHT", -S.INSET, 0)
+    ui.crafts:SetJustifyH("LEFT")
+    ui.crafts:SetWordWrap(false)
 
     local dcard = CreateFrame("Frame", nil, route)
     dcard:SetPoint("TOPLEFT", STOPS_W + S.GAP, -top)
@@ -1584,8 +1590,9 @@ local function refreshChips(v)
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", (k - 1) * (cw + 6), 0)
             b:SetSize(cw, WAY_H)
-            -- each run with what it gains or loses, so the whole way reads at a glance
-            local range = leg.from .. "-" .. leg.to
+            -- each run named by the skill it ends at (the bar starts at the skill now), with what
+            -- it gains or loses, so the whole way reads at a glance
+            local range = tostring(leg.to)
             local c = BAD
             if leg.unknown then
                 b.text:SetText(color(BAD) .. range .. " ?|r")
@@ -1700,6 +1707,8 @@ local function refreshRoute()
     local w = plan.warn or (plan.full and plan.full.warn)
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
+    ui.crafts:SetText((not unknown and (plan.crafts or 0) > 0)
+        and L.LEDGER_CRAFTS:format(S.Emph(tostring(ns.Ceil(plan.crafts)))) or "")
     if unknown then
         ui.money:SetText("")
         ui.net:SetText("")
@@ -1822,14 +1831,18 @@ end
 
 -- ---------- beside the auction house ----------
 
--- The stop the window beside the auction house shows: the first auction buy of the current
--- run that is not done.
+-- The stop the small window shows: the first buy of the current run that is not done, at the
+-- place that is open (the auction house, or a vendor that sells something of that stop).
+local SIDE_STOPS = { ah = "STOP_AH_BUY", vendor = "STOP_VENDOR_BUY" }
 local function sideStop()
     local v = ns.view
     if not v.route or not v.plan or (v.leg or 1) > 1 then return nil end
+    local place = ns.sidePlace or "ah"
     local prog = ns.RunProgress()
     for i, n in ipairs(v.route) do
-        if n.kind == "ah" and n.title == "STOP_AH_BUY" and not (prog[i] and prog[i].done) then return i, prog[i] end
+        if n.kind == place and n.title == SIDE_STOPS[place] and not (prog[i] and prog[i].done) then
+            if place ~= "vendor" or #ns.VendorNow(n, prog[i]).buys > 0 then return i, prog[i] end
+        end
     end
     return nil
 end
@@ -1932,11 +1945,13 @@ function ns.SideRefresh()
     if side and side:IsShown() then refreshSideWindow() end
 end
 
--- At the auction house: the buy stop of the run opens beside its window (a tab there when
--- another Gulli window stands in the same place), unless the big window is on the screen.
-function ns.SideShow()
+-- At the auction house or a vendor: the buy stop of the run opens beside its window (a tab
+-- there when another Gulli window stands in the same place), unless the big window is on the
+-- screen. A vendor gets it only when it sells something the stop still needs.
+function ns.SideShow(place)
     local P = ns.Prefs(ns.db and ns.db.prefs)
     local big = frame and frame:IsShown() and not frame.docked
+    ns.sidePlace = place or "ah"
     if not P.side or big or not S.SideOpen or not sideStop() then return false end
     sui.stop = nil
     ns.SideWindow()
@@ -1953,14 +1968,17 @@ if S.SideAdd then
 end
 
 -- The player opened or left a place: the route goes to the stop for it, and the auction house
--- gets the window beside it.
+-- or the vendor gets the small window beside it.
 function ns.Arrive(place)
     local v = ns.view
     if place and v.route and (v.leg or 1) == 1 then
         local here = ns.Here(v.route, ns.RunProgress(), place)
         if here then selected, flash = here, nil end
     end
-    if place == "ah" then ns.SideShow() elseif not ns.atAH then ns.SideHide() end
+    local shown
+    if place == "ah" or place == "vendor" then shown = ns.SideShow(place)
+    elseif ns.atAH then shown = ns.SideShow("ah") end
+    if not shown then ns.SideHide() end
     ns.Refresh()
 end
 
