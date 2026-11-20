@@ -186,13 +186,15 @@ function Fake(spec)
             return out
         end,
         SetUserWaypoint = function(p) W.pins[#W.pins + 1] = p end,
+        OpenWorldMap = function(id) W.mapOpened = id end,
     }
     -- W.spells: spell id -> true for the spells the character knows
     W.spells = spec.spells or {}
     C_SpellBook = { IsSpellKnown = function(id) return W.spells[id] == true end }
     C_Spell = { GetSpellName = function(id) return ({ [20219] = "Gnomish Engineer", [20222] = "Goblin Engineer" })[id] end }
     UiMapPoint = { CreateFromCoordinates = function(id, x, y) return { map = id, x = x, y = y } end }
-    OpenWorldMap = function(id) W.mapOpened = id end
+    -- the addon's own call taints the map's pins (SetPassThroughButtons is blocked)
+    OpenWorldMap = function(id) W.tainted = id end
     ITEM_REQ_REPUTATION = "Requires %s - %s"
     FACTION_STANDING_LABEL4, FACTION_STANDING_LABEL5, FACTION_STANDING_LABEL6 = "Neutral", "Friendly", "Honored"
     if spec.auctionator ~= false then

@@ -189,10 +189,12 @@ function Fake(spec)
         end,
         SetUserWaypoint = function(p) W.pins[#W.pins + 1] = p end,
         ClearUserWaypoint = function() W.cleared = W.cleared + 1 end,
+        OpenWorldMap = function(id) W.maps[#W.maps + 1] = id end,
     }
     UiMapPoint = { CreateFromCoordinates = function(id, x, y) return { map = id, x = x, y = y } end }
     C_SuperTrack = { SetSuperTrackedUserWaypoint = function() end }
-    OpenWorldMap = function(id) W.maps[#W.maps + 1] = id end
+    -- the addon's own call taints the map's pins (SetPassThroughButtons is blocked)
+    OpenWorldMap = function(id) W.tainted = id end
     WorldMapFrame = nil
     TomTom = nil
     GulliHUD = nil

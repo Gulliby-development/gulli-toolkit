@@ -896,10 +896,14 @@ function ns.SetPin(stop, open)
     return true
 end
 
--- Opens the world map on a map id. The map can be taken out of combat only.
+-- Opens the world map on a map id, out of combat only. C_Map.OpenWorldMap lets the game open it
+-- from its own event, so the map's pins are made in secure code: an addon's call of
+-- OpenWorldMap or SetMapID taints them and the game blocks SetPassThroughButtons.
 function ns.OpenMap(id)
     if not id or (InCombatLockdown and InCombatLockdown()) then return false end
-    if OpenWorldMap then
+    if C_Map and C_Map.OpenWorldMap then
+        C_Map.OpenWorldMap(id)
+    elseif OpenWorldMap then
         OpenWorldMap(id)
     elseif WorldMapFrame and WorldMapFrame.SetMapID and ShowUIPanel then
         ShowUIPanel(WorldMapFrame)

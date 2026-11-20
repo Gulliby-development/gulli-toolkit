@@ -2572,6 +2572,7 @@ test("a vendor or trainer line names who to go to, and Show on map pins the map 
     W.combat, W.mapOpened = true, nil
     eq(n.SetPin(spot, true), true); eq(W.mapOpened, nil)
     W.combat = nil
+    eq(W.tainted, nil, "the map opens through C_Map.OpenWorldMap, never the addon's OpenWorldMap call")
     -- every vendor the data names for a pattern is a string the place table can be asked for
     local known, all = 0, 0
     for _, d in pairs(n.Data.src) do
