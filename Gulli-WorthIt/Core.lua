@@ -178,11 +178,30 @@ local function usable(kind)
     return not class or class == select(2, UnitClass("player"))
 end
 
+-- A reward's chain for this character: a step of the other side gives way to the quest that
+-- stands for it on this side (`D.alt`, the choices of an "any one of" earlier quest).
+function ns.ChainOf(quest)
+    local D = ns.Data
+    local base = D.chain[quest] or { quest }
+    local out = {}
+    for i, id in ipairs(base) do
+        local q = D.quest[id]
+        if q and not forMe(q) and D.alt and D.alt[id] then
+            for _, other in ipairs(D.alt[id]) do
+                local o = D.quest[other]
+                if o and forMe(o) then id = other break end
+            end
+        end
+        out[i] = id
+    end
+    return out
+end
+
 -- Whether every step of a reward's chain is for this character (a chain of the other side
 -- can end in a quest both sides may hand in).
 local function wholeChain(quest)
     local D = ns.Data
-    for _, id in ipairs(D.chain[quest] or { quest }) do
+    for _, id in ipairs(ns.ChainOf(quest)) do
         local q = D.quest[id]
         if q and not forMe(q) then return false end
     end
@@ -220,7 +239,7 @@ function ns.Rewards()
         end)
         local best = e.options[1]
         e.item, e.kind, e.slots, e.gain = best.item, best.kind, best.slots, best.gain
-        local chain = D.chain[e.quest] or { e.quest }
+        local chain = ns.ChainOf(e.quest)
         e.chain, e.steps = chain, #chain
         local progress = 0
         if questDone(e.quest) then

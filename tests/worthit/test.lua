@@ -42,6 +42,28 @@ test("the data: every reward has its quest, a kind and a chain that ends in it",
     end
 end)
 
+test("quest bags the data does not link: the Hyjal Postal Satchel and the Old Toolbox's other choice", function()
+    Fake({})
+    local D = Load().Data
+    local has = {}
+    for _, r in ipairs(D.rewards) do has[r[1] .. ":" .. r[3]] = r[2] end
+    eq(has["260307:93269"], "bag", "Hyjal Postal Satchel from Top of the Post")
+    eq(has["1652:79192"], "bag", "Sturdy Lunchbox from Stepping Stones")
+    eq(D.chain[93269][1], 93197, "the satchel's chain starts at Sebelia")
+end)
+
+test("a chain whose first step differs by side shows each side its own step", function()
+    -- Stepping Stones (79192) follows ...and that note you found: 79007 for the Horde, 79008 for the Alliance.
+    for _, side in ipairs({ { "Horde", 2, 79007 }, { "Alliance", 1, 79008 } }) do
+        Fake({ level = 30, faction = side[1], raceId = side[2] })
+        local ns = Load()
+        local e = find((ns.Rewards()), 79192)
+        assert(e, side[1] .. " sees the Old Toolbox quest")
+        eq(e.chain[1], side[3], side[1] .. "'s first step")
+        eq(e.cur, side[3], side[1] .. " starts at its own step")
+    end
+end)
+
 test("a quest an item starts is taken where that item lies or drops", function()
     Fake({})
     local D = Load().Data
