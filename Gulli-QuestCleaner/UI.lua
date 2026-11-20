@@ -504,7 +504,7 @@ local function build()
             local mod = (IsShiftKeyDown and IsShiftKeyDown() and "SHIFT-" or "") ..
                         (IsControlKeyDown and IsControlKeyDown() and "CTRL-" or "") ..
                         (IsAltKeyDown and IsAltKeyDown() and "ALT-" or "")
-            ns.db().key = mod .. key
+            ns.db().key = S.KeyBase(mod .. key)
         end
         ns.ApplyKey()
         showKey()

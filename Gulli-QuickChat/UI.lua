@@ -567,7 +567,7 @@ function ns.SetKey(key)
         if IsControlKeyDown and IsControlKeyDown() then key = "CTRL-" .. key end
         if IsShiftKeyDown and IsShiftKeyDown() then key = "SHIFT-" .. key end
     end
-    ns.db.wheelKey = key
+    ns.db.wheelKey = S.KeyBase(key)
     ns.ApplyKey()
 end
 
@@ -904,9 +904,7 @@ function ns.ApplyKey()
     end
     if InCombatLockdown and InCombatLockdown() then return false end
     if ClearOverrideBindings then ClearOverrideBindings(wheelButton) end
-    if ns.db.wheelKey and SetOverrideBindingClick then
-        SetOverrideBindingClick(wheelButton, true, ns.db.wheelKey, "GulliQuickChatWheelButton")
-    end
+    if ns.db.wheelKey then S.BindKey(wheelButton, true, ns.db.wheelKey, "GulliQuickChatWheelButton") end
     return true
 end
 

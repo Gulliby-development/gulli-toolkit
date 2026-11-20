@@ -200,7 +200,7 @@ function ns.ApplyKey()
     pendingKey = false
     ClearOverrideBindings(bar)
     local key = ns.DB().key
-    if key then SetOverrideBindingClick(bar, true, key, BUTTON, "LeftButton") end
+    if key then S.BindKey(bar, true, key, BUTTON, "LeftButton") end
 end
 
 ---- Showing the plan ------------------------------------------------------------
@@ -791,7 +791,7 @@ local function makeKeyButton(parent)
         if key ~= "ESCAPE" then
             local mods = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
                 .. (IsShiftKeyDown() and "SHIFT-" or "")
-            ns.DB().key = mods .. key
+            ns.DB().key = S.KeyBase(mods .. key)
             ns.ApplyKey()
             if InCombatLockdown() then print("|cff9ad0ffGulli-GroupBuffs|r: " .. L.AFTER_COMBAT) end
         end

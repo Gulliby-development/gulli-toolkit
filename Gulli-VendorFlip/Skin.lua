@@ -3488,6 +3488,70 @@ function S.SideRefresh()
     if w and #list > 1 then sideDraw(T, list, w) end
 end
 
+---- Keys on every keyboard layout ------------------------------------------------
+
+-- The game names a key by the letter the layout gives it: the "]" key is "Ъ" on a Russian
+-- layout, so a binding made on one layout does nothing on the other. Each Cyrillic letter
+-- names its key on a US keyboard; Latin letters that other layouts move (Y and Z on German)
+-- cannot be told apart, so only letters outside ASCII get a second name.
+local LAYOUT_KEYS = {
+    ["Q"] = "Йй", ["W"] = "Цц", ["E"] = "Уу", ["R"] = "Кк", ["T"] = "Ее", ["Y"] = "Нн",
+    ["U"] = "Гг", ["I"] = "Шш", ["O"] = "ЩщЎў", ["P"] = "Зз", ["["] = "Хх", ["]"] = "ЪъЇї",
+    ["A"] = "Фф", ["S"] = "ЫыІі", ["D"] = "Вв", ["F"] = "Аа", ["G"] = "Пп", ["H"] = "Рр",
+    ["J"] = "Оо", ["K"] = "Лл", ["L"] = "Дд", [";"] = "Жж", ["'"] = "ЭэЄє", ["Z"] = "Яя",
+    ["X"] = "Чч", ["C"] = "Сс", ["V"] = "Мм", ["B"] = "Ии", ["N"] = "Тт", ["M"] = "Ьь",
+    [","] = "Бб", ["."] = "Юю", ["`"] = "Ёё",
+}
+local KEY_ALIASES, KEY_BASE = {}, {}
+for us, letters in pairs(LAYOUT_KEYS) do
+    local list = {}
+    for ch in letters:gmatch("[\192-\255][\128-\191]*") do
+        if not KEY_BASE[ch] then
+            KEY_BASE[ch] = us
+            list[#list + 1] = ch
+        end
+    end
+    KEY_ALIASES[us] = list
+end
+S.KEY_ALIASES = KEY_ALIASES
+
+-- "CTRL-SHIFT-Ъ" -> "CTRL-SHIFT-", "Ъ"
+local function splitKey(key)
+    local mods, rest = "", key
+    while true do
+        local m, word, r = rest:match("^((%u+)%-)(.+)$")
+        if not m then break end
+        if word ~= "ALT" and word ~= "CTRL" and word ~= "SHIFT" and word ~= "META" then break end
+        mods, rest = mods .. m, r
+    end
+    return mods, rest
+end
+
+-- The key as a US keyboard names it: "CTRL-Ъ" -> "CTRL-]". Other keys stay as they are.
+function S.KeyBase(key)
+    if type(key) ~= "string" or key == "" then return key end
+    local mods, k = splitKey(key)
+    return mods .. (KEY_BASE[k] or k)
+end
+
+-- Every name of the same physical key: the US one first, then its letters on other layouts.
+function S.KeyVariants(key)
+    if type(key) ~= "string" or key == "" then return {} end
+    local mods, k = splitKey(S.KeyBase(key))
+    local out = { mods .. k }
+    for _, ch in ipairs(KEY_ALIASES[k] or {}) do out[#out + 1] = mods .. ch end
+    return out
+end
+
+-- SetOverrideBindingClick for a key on every layout. The extra names never stop the first one.
+function S.BindKey(owner, priority, key, button, mouse)
+    if not SetOverrideBindingClick then return end
+    for i, k in ipairs(S.KeyVariants(key)) do
+        if i == 1 then SetOverrideBindingClick(owner, priority, k, button, mouse)
+        else pcall(SetOverrideBindingClick, owner, priority, k, button, mouse) end
+    end
+end
+
 ---- Minimap buttons ---------------------------------------------------------------
 -- A round button on the minimap's edge, the same for the hub and for a module alone.
 -- o: name, icon, click(self, mouseButton), drag(angle) while the player drags it around the

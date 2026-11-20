@@ -812,7 +812,10 @@ function ns.ApplyKey()
     if ClearOverrideBindings then ClearOverrideBindings(ns.keyButton) end
     local key = db().key
     if key and key ~= "" and SetOverrideBindingClick then
-        SetOverrideBindingClick(ns.keyButton, true, key, "GulliQuestCleanerKey")
+        -- On every keyboard layout (Skin.lua loads after this file, so it is looked up here).
+        local S = ns.Skin
+        if S and S.BindKey then S.BindKey(ns.keyButton, true, key, "GulliQuestCleanerKey")
+        else SetOverrideBindingClick(ns.keyButton, true, key, "GulliQuestCleanerKey") end
     end
 end
 

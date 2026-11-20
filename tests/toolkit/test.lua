@@ -2060,5 +2060,27 @@ test("an item name the client has not loaded yet is asked for, never shown as it
     C_Item = nil
 end)
 
+test("a bound key works on every keyboard layout", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    eq(S.KeyBase("Ъ"), "]", "a Russian letter names its US key")
+    eq(S.KeyBase("CTRL-SHIFT-ж"), "CTRL-SHIFT-;", "modifiers stay")
+    eq(S.KeyBase("F5"), "F5")
+    eq(S.KeyBase("SHIFT--"), "SHIFT--", "the minus key")
+    eq(table.concat(S.KeyVariants("]"), " "), "] Ъ ъ Ї ї")
+    eq(table.concat(S.KeyVariants("ALT-Ъ"), " "), "ALT-] ALT-Ъ ALT-ъ ALT-Ї ALT-ї", "a key saved on another layout")
+    eq(table.concat(S.KeyVariants("BUTTON4"), " "), "BUTTON4", "mouse buttons have one name")
+    eq(#S.KeyVariants(nil), 0)
+    for us, list in pairs(S.KEY_ALIASES) do
+        for _, ch in ipairs(list) do eq(S.KeyBase(ch), us, "every letter names one key: " .. ch) end
+    end
+    local bound = {}
+    local old = SetOverrideBindingClick
+    SetOverrideBindingClick = function(_, _, key, button) bound[key] = button end
+    S.BindKey(CreateFrame("Frame"), true, "Q", "B")
+    SetOverrideBindingClick = old
+    eq(bound.Q, "B"); eq(bound["Й"], "B"); eq(bound["й"], "B")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)
