@@ -1158,6 +1158,16 @@ local function cdTip(tip, r)
     if r.cdReady and r.cdReady > now then tip[#tip + 1] = { L.TIP_CD_WAIT:format(ns.CdText(r.cdReady - now)), nil, nil, nil, true } end
 end
 
+-- How the item's value is worked out from the auction price: the cut and the share that sells.
+local function valueTip(tip, st, P, r, x)
+    local it = r.out and st.items[r.out]
+    if x.how ~= "ah" or not (it and it.ah) then return end
+    local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
+    tip[#tip + 1] = { L.TIP_VALUE:format(S.MoneyText(it.ah), math.floor(cut * 100 + 0.5), P.chance,
+                                         S.MoneyText(math.floor(x.value / (r.count or 1) + 0.5))), nil, nil, nil, true }
+end
+ns.ValueTip = valueTip
+
 local function listRows(which)
     local st, P = ns.view.state, ns.view.prefs
     local rows = {}
@@ -1174,6 +1184,7 @@ local function listRows(which)
                          x.can > 0 and ("x" .. x.can) or "-" },
                 keys = { x.name, x.cost, x.value, x.how, x.profit, x.can }, tip = recipeTip(r) }
             cdTip(rows[#rows].tip, r)
+            valueTip(rows[#rows].tip, st, P, r, x)
         end
     elseif which == 3 then
         for _, x in ipairs(ns.Items(st, P)) do

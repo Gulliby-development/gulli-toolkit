@@ -2709,6 +2709,18 @@ test("a craft with a cooldown is taken once, only while ready; runs after it wai
     assert(total <= 1, "the runs after the first wait for the cooldown: " .. total)
     -- the Crafts now list: at most one, none while it waits
     for _, row in ipairs(c.Crafts(st, prefs())) do if row.recipe == "moon" then assert(row.can <= 1); eq(row.cd, 4 * c.DAY) end end
+    -- the value tooltip names the auction price, the cut and the share that sells
+    do
+        local tip = {}
+        local it = { ah = 10000 }
+        local fst = { items = { cloth = it } }
+        c.ValueTip(tip, fst, { chance = 80 }, { out = "cloth", count = 1 }, { how = "ah", value = 7600 })
+        eq(#tip, 1)
+        assert(tip[1][1]:find("80") and tip[1][1]:find("5"), tip[1][1])
+        local none = {}
+        c.ValueTip(none, fst, { chance = 80 }, { out = "cloth" }, { how = "vendor", value = 1 })
+        eq(#none, 0, "a vendor price has no auction line")
+    end
     -- the lists name the time left in red beside the recipe
     eq(c.CdLeftText({ cd = 4 * c.DAY, cdReady = 1000 + 3 * c.DAY + 4 * 3600 }, 1000), c.L.CD_DH:format(3, 4))
     eq(c.CdLeftText({ cd = 4 * c.DAY, cdReady = 1000 + 5 * 3600 }, 1000), c.L.CD_HOURS:format(5))
