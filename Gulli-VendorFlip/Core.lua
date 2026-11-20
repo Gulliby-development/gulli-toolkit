@@ -90,10 +90,10 @@ function ns.Wanted(quality, class, prefs)
     return prefs["q" .. math.max(0, math.min(4, quality or 1))] ~= false
 end
 
--- Within the price limits: a line costs at most maxPrice (0: any) and gains at least minPct
--- percent of its cost.
+-- Within the price limits: one purchase of the line costs at most maxPrice (0: any) and the line
+-- gains at least minPct percent of its cost.
 function ns.PriceOK(line, maxPrice, minPct)
-    if (maxPrice or 0) > 0 and line.cost > maxPrice then return false end
+    if (maxPrice or 0) > 0 and (line.pay or line.cost) > maxPrice then return false end
     return line.gain * 100 >= line.cost * (minPct or 0)
 end
 
@@ -176,18 +176,23 @@ function ns.CommodityDeal(lots, sell, money, room, stack, minPct)
     end
     if n <= 0 then return nil end
     local value = n * sell
-    return { n = n, cost = cost, value = value, gain = value - cost }
+    -- one click buys every unit: what it pays is the whole cost
+    return { n = n, cost = cost, value = value, gain = value - cost, pay = cost, per = n, each = cost / n, sellEach = sell }
 end
 
--- An item's lots ({ auctionID, quantity, buyout, sell of one, own }): one line per lot bought
--- out below its vendor price.
+-- An item's search results ({ auctionID, quantity, buyout, sell of one, own }). The auction house
+-- shows the same item at the same price as one result: quantity is how many are on sale, the
+-- buyout is the price of one, and PlaceBid buys one. So a line is one price with its count, and
+-- each click buys one of them. So an item line is always one item (n 1) and its prices and gain
+-- are for that one; `left` is how many are on sale at that price, and the line stays until the
+-- last of them is bought.
 function ns.ItemDeals(lots)
     local out = {}
     for _, l in ipairs(lots or {}) do
         local id, q, buyout, sell, own = l[1], l[2] or 1, l[3], l[4], l[5]
-        if buyout and buyout > 0 and sell and not own then
-            local value = sell * q
-            if value > buyout then out[#out + 1] = { auction = id, n = q, cost = buyout, value = value, gain = value - buyout } end
+        if buyout and buyout > 0 and sell and not own and sell > buyout then
+            out[#out + 1] = { auction = id, n = 1, left = q, cost = buyout, value = sell, gain = sell - buyout,
+                              pay = buyout, per = 1, each = buyout, sellEach = sell }
         end
     end
     return out
@@ -195,7 +200,7 @@ end
 
 -- Can the player take this line now: money above the reserve, slots above the ones kept free.
 function ns.Fits(line, money, reserve, free, keepFree)
-    if line.cost > money - (reserve or 0) then return false end
+    if (line.pay or line.cost) > money - (reserve or 0) then return false end
     return (line.slots or 1) <= free - (keepFree or 0)
 end
 
@@ -275,14 +280,15 @@ local function publish(c, deals)
     local old, keep = {}, {}
     for _, line in ipairs(ns.lines) do
         local mine = line.key == c.key or line.id == c.id
-        if mine and not (line == ns.buy.line and ns.Busy()) then old[line.uid] = line else keep[#keep + 1] = line end
+        if mine and line.state ~= "bought" and not (line == ns.buy.line and ns.Busy()) then old[line.uid] = line
+        else keep[#keep + 1] = line end
     end
     for _, d in ipairs(deals) do
         local was = old[d.uid]
         local line = was and merge(was, d) or d
         if not was and d.gain >= ns.SOUND_AT then scan.ring = true end
         keep[#keep + 1] = line
-        scan.found[line.uid] = true
+        if scan.found then scan.found[line.uid] = true end
     end
     ns.lines = keep
     if scan.ring and not scan.rang and ns.db.sound and PlaySound and SOUNDKIT and SOUNDKIT.AUCTION_WINDOW_OPEN then
@@ -370,9 +376,15 @@ end
 -- An answer to a search: COMMODITY_SEARCH_RESULTS_UPDATED (item id) or
 -- ITEM_SEARCH_RESULTS_UPDATED (item key).
 function ns.OnSearch(event, arg)
+    local id = type(arg) == "table" and arg.itemID or arg
+    local r = ns.refetch
+    if r and r.id == id then
+        ns.refetch = nil
+        if event == "COMMODITY_SEARCH_RESULTS_UPDATED" then readCommodity(r) else readItems(r) end
+        refreshSoon()
+    end
     local c = scan.busy
     if scan.phase ~= "detail" or not c then return end
-    local id = type(arg) == "table" and arg.itemID or arg
     if id ~= c.id then return end
     scan.busy = nil
     if event == "COMMODITY_SEARCH_RESULTS_UPDATED" then readCommodity(c) else readItems(c) end
@@ -584,17 +596,45 @@ local function bought(line, paid)
     local b = ns.buy
     if b.line == line then b.phase, b.line, b.quote, b.err = "idle", nil, nil, nil end
     if line.state == "bought" then return refresh() end
-    line.state = "bought"
     ns.Log(line.id, line.n, paid, line.value)
     ns.session = (ns.session or 0) + (line.value - paid)
+    if (line.left or 1) > 1 then
+        -- one of an item's lot is bought: the rest stays, under a new auction id the next search gives
+        line.left = line.left - 1
+        line.stale = true
+        ns.Refetch(line)
+    else
+        line.state = "bought"
+    end
     refresh()
+end
+
+-- Search one item again after a purchase, so the rest of its lot can be bought: the auction id
+-- just bought is gone. It waits while a purchase or a scan search runs.
+function ns.Refetch(line)
+    ns.refetchWant = { id = line.id, key = line.key, sell = line.sellEach }
+    local function try()
+        local c = ns.refetchWant
+        if not c or not ns.atAH or ns.refetch then return end
+        local a = A()
+        if ns.Busy() or scan.busy or not ready() or not (a and a.SendSearchQuery) then
+            return C_Timer.After(ns.HOLD_STEP, try)
+        end
+        ns.refetchWant, ns.refetch = nil, c
+        ours = true
+        local ok = pcall(a.SendSearchQuery, c.key, { { sortOrder = 0, reverseSort = false } }, true)
+        ours = false
+        if not ok then ns.refetch = nil; return end
+        C_Timer.After(ns.SEARCH_WAIT, function() if ns.refetch == c then ns.refetch = nil end end)
+    end
+    try()
 end
 
 -- A click on a line (or the big button on the top line). While another purchase runs or waits
 -- for its second click, a click on a line queues it (again: takes it out of the queue).
 function ns.Click(line)
     local b = ns.buy
-    if not line or line.state or not ns.atAH or ns.paused or not A() then return end
+    if not line or line.state or line.stale or not ns.atAH or ns.paused or not A() then return end
     ns.holdUntil = time() + ns.HOLD
     if ns.Busy() and b.line ~= line then
         local pos = ns.QueuePos(line)
@@ -616,12 +656,17 @@ function ns.Click(line)
         refresh()
         return
     end
+    -- the last guard: an item's click pays for one, and that one must sell to a vendor for more
+    if line.kind == "i" and (line.pay or line.cost) >= (line.sellEach or line.value) then
+        line.state = "lose"
+        return refresh()
+    end
     local token = {}
     b.token = token
     if line.kind == "i" then
         if not A().PlaceBid then return end
         b.phase, b.line = "buying", line
-        if not pcall(A().PlaceBid, line.auction, line.cost) then b.phase, b.err = "idle", "ERR_BUY"
+        if not pcall(A().PlaceBid, line.auction, line.pay) then b.phase, b.err = "idle", "ERR_BUY"
         else ns.pending[line.auction] = line; wait(token) end
     elseif b.phase == "ready" then
         b.phase = "buying"
@@ -663,7 +708,7 @@ function ns.OnAuction(event, a1, a2)
         if p and b.phase == "buying" and line == p.line then b.phase, b.err, b.errLine = "idle", "ERR_BUY", line end
     elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
         local l = a1 and ns.pending[a1]
-        if l then ns.pending[a1] = nil; bought(l, l.cost) end
+        if l then ns.pending[a1] = nil; bought(l, l.pay or l.cost) end
     elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
         -- the lot is gone or cannot be bought
         if b.phase == "buying" and line and line.kind == "i" then
@@ -752,6 +797,7 @@ function ns.Sell()
 end
 
 function ns.OfferSale()
+    ns.FixGroupedHistory()
     local list, worth = ns.ToSell()
     if #list == 0 then return end
     if ns.db.sell then return ns.Sell() end
@@ -765,7 +811,38 @@ end
 ns.PERIODS = { "day", "week", "all" }
 local PERIOD_SECONDS = { day = 86400, week = 7 * 86400 }
 -- The history in a period and its totals: profit (value less paid), paid, count.
+-- Before 1.4.1 a click on an item's lot (one item bought) was logged as the whole lot: n of them,
+-- worth n at a vendor. An item that does not stack was bought one at a time, so such an entry is
+-- one item, worth one, and the owed count drops by the rest. Runs until every such item's
+-- data was there (`db.groupFix`).
+function ns.FixGroupedHistory()
+    local db = ns.db
+    if not db or db.groupFix then return end
+    local done = true
+    for _, e in ipairs(db.history or {}) do
+        if (e.n or 1) > 1 and not e.fixed then
+            local name, _, _, _, stack = ns.ItemInfo(e.id)
+            if not name then done = false
+            else
+                if stack == 1 then
+                    local extra = e.n - 1
+                    e.value = math.floor(e.value / e.n + 0.5)
+                    e.n, e.sold = 1, math.min(e.sold or 0, 1)
+                    local o = db.owed and db.owed[e.who]
+                    if o and o[e.id] then
+                        o[e.id] = o[e.id] - extra
+                        if o[e.id] <= 0 then o[e.id] = nil end
+                    end
+                end
+                e.fixed = true
+            end
+        end
+    end
+    if done then db.groupFix = 1 end
+end
+
 function ns.History(period)
+    ns.FixGroupedHistory()
     local out, paid, value = {}, 0, 0
     local since = PERIOD_SECONDS[period] and (time() - PERIOD_SECONDS[period]) or nil
     for _, e in ipairs(ns.db and ns.db.history or {}) do
@@ -843,6 +920,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         local b = ns.buy
         b.phase, b.line, b.quote = "idle", nil, nil
         ns.queue, ns.holdUntil = {}, 0
+        ns.refetch, ns.refetchWant = nil, nil
         if ns.HideAtAH then ns.HideAtAH() end
     elseif event == "MERCHANT_SHOW" then
         ns.atVendor = true

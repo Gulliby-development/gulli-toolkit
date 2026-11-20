@@ -66,12 +66,100 @@ test("an item is bought lot by lot, never a bid-only or an own lot", function()
     Fake({})
     local ns = Load()
     local d = ns.ItemDeals({ { 1, 1, 4800, 11200 }, { 2, 1, 20000, 11200 }, { 3, 1, nil, 11200 }, { 4, 1, 100, 11200, true },
-                             { 5, 2, 1000, 600 } })
+                             { 5, 2, 400, 600 } })
     eq(#d, 2)
     eq(d[1].auction, 1)
     eq(d[1].gain, 6400)
     eq(d[2].auction, 5)
-    eq(d[2].value, 1200)
+    eq(d[2].value, 600)
+    eq(d[2].left, 2)
+end)
+
+test("an item result's buyout is the price of one: 41 at 25s with a vendor at 20s is no deal", function()
+    Fake({})
+    local ns = Load()
+    eq(#ns.ItemDeals({ { 7, 41, 2500, 2000 } }), 0, "dearer than the vendor, however many there are")
+    local d = ns.ItemDeals({ { 8, 3, 1500, 2000 } })[1]
+    eq(d.n, 1, "a line is one item")
+    eq(d.left, 3)
+    eq(d.pay, 1500, "one click pays for one")
+    eq(d.cost, 1500)
+    eq(d.value, 2000)
+    eq(d.gain, 500, "the gain of one")
+end)
+
+test("a lot of many bags dearer than a vendor pays is never shown or bought", function()
+    local PACK = 4245
+    local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 } }
+    -- 41 bags at 25s and 30s each, a vendor pays 20s: the old sum (41 x 20s against one 25s) was +7g 95s
+    local w = Fake({ items = items, money = 1000000, free = 10, browse = { { PACK, 1900 } },
+                     lots = { [PACK] = { { 601, 41, 2500 }, { 602, 32, 3000 } } }, db = { minGain = 0 } })
+    local ns = Load()
+    w.ScanAll(ns)
+    eq(find(ns, PACK), nil, "no line")
+    -- a line that got dear since the scan: the click refuses and says so
+    local line = { kind = "i", id = PACK, auction = 603, n = 1, left = 5, cost = 2500, pay = 2500, value = 2000,
+                   sellEach = 2000, gain = -500, uid = "i603" }
+    ns.lines[#ns.lines + 1] = line
+    ns.Click(line)
+    for _, c in ipairs(w.calls) do assert(not c:find("^bid"), "bought at a loss: " .. c) end
+    eq(line.state, "lose")
+end)
+
+test("old history entries of one bag logged as the whole lot are put right", function()
+    local PACK, ORE2 = 4245, 2770
+    local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 }, [ORE2] = { "Copper Ore", 1, 10, 20, 7 } }
+    local who
+    local w = Fake({ items = items })
+    local ns = Load()
+    who = ns.db and next(ns.Owed() and ns.db.owed)
+    ns.db.history = { { at = 1, id = PACK, n = 41, paid = 2500, value = 82000, sold = 0, who = who },
+                      { at = 1, id = ORE2, n = 30, paid = 120, value = 300, sold = 0, who = who } }
+    ns.db.owed[who] = { [PACK] = 41, [ORE2] = 30 }
+    ns.db.groupFix = nil
+    ns.History("all")
+    eq(ns.db.history[1].n, 1)
+    eq(ns.db.history[1].value, 2000)
+    eq(ns.db.owed[who][PACK], 1)
+    eq(ns.db.history[2].n, 30, "a stack stays as it was")
+    eq(ns.db.owed[who][ORE2], 30)
+    eq(ns.db.groupFix, 1)
+end)
+
+test("a click buys one of an item's lot; the rest stays and is searched again", function()
+    local PACK = 4245
+    local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 } }
+    local w = Fake({ items = items, money = 1000000, free = 10, browse = { { PACK, 1500 } },
+                     lots = { [PACK] = { { 501, 3, 1500 } } }, db = { minGain = 0 } })
+    local ns = Load()
+    w.ScanAll(ns)
+    local line = find(ns, PACK)
+    eq(line.n, 1)
+    eq(line.left, 3)
+    local tip = ns.LineTip(line)
+    eq(#tip, 2)
+    ns.Click(line)
+    eq(w.calls[#w.calls], "bid 501 1500", "one bag at its own price")
+    -- the game sells one; the result now has two under a new auction id
+    w.lots[PACK] = { { 502, 2, 1500 } }
+    local sent = #w.searches
+    w.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 501)
+    eq(ns.db.history[1].n, 1, "one bought")
+    eq(ns.db.history[1].paid, 1500)
+    eq(ns.db.history[1].value, 2000)
+    eq(line.left, 2)
+    eq(line.state, nil, "not marked bought while more are on sale")
+    eq(line.stale, true)
+    eq(ns.RowButton(line).on, false, "waits for the new auction id")
+    ns.Click(line)
+    eq(w.calls[#w.calls], "bid 501 1500", "no click on a sold auction")
+    assert(#w.searches > sent, "the item is searched again")
+    w.Fire("ITEM_SEARCH_RESULTS_UPDATED", w.searches[#w.searches])
+    local fresh = find(ns, PACK)
+    eq(fresh.auction, 502)
+    eq(fresh.left, 2)
+    ns.Click(fresh)
+    eq(w.calls[#w.calls], "bid 502 1500")
 end)
 
 test("a scan at the auction house finds the lines, best gain first", function()

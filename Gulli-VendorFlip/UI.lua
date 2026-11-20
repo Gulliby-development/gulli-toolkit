@@ -15,7 +15,7 @@ local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
 -- column widths from the right: button, gain, vendor, auction, quantity
-local W_BTN, W_GAIN, W_VEND, W_AH, W_N, COL_GAP = 72, 58, 62, 62, 34, 6
+local W_BTN, W_GAIN, W_VEND, W_AH, W_N, COL_GAP = 72, 58, 74, 66, 34, 6
 ns.ROW_H = ROW
 
 local function money(c) return S.MoneyText(c, c >= 10000) end
@@ -77,9 +77,23 @@ local function makeDealRow(r)
         if not line or not GameTooltip or not GameTooltip.SetOwner then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if GameTooltip.SetItemByID then GameTooltip:SetItemByID(line.id) else GameTooltip:SetText(self.full or "") end
+        -- what the columns mean for this line: prices of one, and what a click buys
+        if GameTooltip.AddLine then
+            for _, text in ipairs(ns.LineTip(line)) do GameTooltip:AddLine(text, 1, 1, 1, true) end
+        end
         GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+-- The tooltip lines of a deal: how many at what price of one, and what one click buys.
+function ns.LineTip(line)
+    local each = line.each or line.cost / math.max(1, line.n)
+    local sellEach = line.sellEach or line.value / math.max(1, line.n)
+    local out = { L.TIP_LOT:format(line.left or line.n, S.MoneyText(math.floor(each + 0.5)), S.MoneyText(sellEach)) }
+    if line.left then out[2] = L.TIP_ONE:format(S.MoneyText(line.gain))
+    else out[2] = L.TIP_ALL:format(line.n, S.MoneyText(line.gain)) end
+    return out
 end
 
 -- What a line's button says and does: text, primary, enabled; or the state word in its place.
@@ -88,6 +102,8 @@ function ns.RowButton(line)
     if line.state == "bought" then return nil, L.BOUGHT, S.GOOD end
     if line.state == "gone" then return nil, L.GONE, S.FAINT end
     if line.state == "lose" then return nil, L.LOSE, S.BAD end
+    -- one of the lot was just bought: the rest waits for its new auction id
+    if line.stale then return { text = L.PRICE_WAIT, on = false } end
     if b.line == line then
         if b.phase == "quote" then return { text = L.PRICE_WAIT, on = false } end
         if b.phase == "buying" then return { text = L.BUYING, on = false } end
@@ -107,8 +123,9 @@ local function fillDealRow(r, line)
     local faint = line.state == "gone" or line.state == "bought"
     r.name:SetText((faint and S.Hex(S.FAINT) or S.QualityHex(q or 1)) .. (name or "...") .. "|r")
     r.n:SetText(tostring(line.n))
-    r.ah:SetText(money(line.cost))
-    r.vendor:SetText(money(line.value))
+    -- both prices are for one, so they compare at a glance; the gain is for the whole line
+    r.ah:SetText(money(math.floor((line.each or line.cost / math.max(1, line.n)) + 0.5)))
+    r.vendor:SetText(money(line.sellEach or line.value / math.max(1, line.n)))
     r.gain:SetText(S.Hex(faint and S.FAINT or S.GOOD) .. "+" .. "|r" .. money(line.gain))
     r:SetAlpha(line.state == "bought" and 0.55 or 1)
     local spec, word, color = ns.RowButton(line)
