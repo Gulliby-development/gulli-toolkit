@@ -178,11 +178,30 @@ local function usable(kind)
     return not class or class == select(2, UnitClass("player"))
 end
 
+-- A reward's chain for this character: a step of the other side gives way to the quest that
+-- stands for it on this side (`D.alt`, the choices of an "any one of" earlier quest).
+function ns.ChainOf(quest)
+    local D = ns.Data
+    local base = D.chain[quest] or { quest }
+    local out = {}
+    for i, id in ipairs(base) do
+        local q = D.quest[id]
+        if q and not forMe(q) and D.alt and D.alt[id] then
+            for _, other in ipairs(D.alt[id]) do
+                local o = D.quest[other]
+                if o and forMe(o) then id = other break end
+            end
+        end
+        out[i] = id
+    end
+    return out
+end
+
 -- Whether every step of a reward's chain is for this character (a chain of the other side
 -- can end in a quest both sides may hand in).
 local function wholeChain(quest)
     local D = ns.Data
-    for _, id in ipairs(D.chain[quest] or { quest }) do
+    for _, id in ipairs(ns.ChainOf(quest)) do
         local q = D.quest[id]
         if q and not forMe(q) then return false end
     end
@@ -220,7 +239,7 @@ function ns.Rewards()
         end)
         local best = e.options[1]
         e.item, e.kind, e.slots, e.gain = best.item, best.kind, best.slots, best.gain
-        local chain = D.chain[e.quest] or { e.quest }
+        local chain = ns.ChainOf(e.quest)
         e.chain, e.steps = chain, #chain
         local progress = 0
         if questDone(e.quest) then
@@ -346,6 +365,27 @@ function ns.Steps(e)
         out[i] = { id = id, n = i, name = questTitle(id), level = q and q[2] or e.level,
                    done = e.state == "done" or questDone(id), now = e.state ~= "done" and id == e.cur }
     end
+    return out
+end
+
+-- What to do for a reward, step by step (Tips.lua): the client's language, else English.
+function ns.Tips(quest)
+    local all = ns.TIPS or {}
+    local t = all[ns.lang]
+    return (t and t[quest]) or (all.en and all.en[quest]) or nil
+end
+
+-- The reward's page under its lines: "What to do" with its steps, then the chain with its quests.
+-- { head = text }, { tip = text, n = i } or a step of ns.Steps.
+function ns.DetailRows(e, chainHead, tipsHead)
+    local out = {}
+    local tips = ns.Tips(e.quest)
+    if tips and #tips > 0 then
+        out[#out + 1] = { head = tipsHead or ns.L.TIPS }
+        for i, text in ipairs(tips) do out[#out + 1] = { tip = text, n = i } end
+    end
+    out[#out + 1] = { head = chainHead or ns.L.CHAIN }
+    for _, st in ipairs(ns.Steps(e)) do out[#out + 1] = st end
     return out
 end
 

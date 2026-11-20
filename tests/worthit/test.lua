@@ -42,6 +42,28 @@ test("the data: every reward has its quest, a kind and a chain that ends in it",
     end
 end)
 
+test("quest bags the data does not link: the Hyjal Postal Satchel and the Old Toolbox's other choice", function()
+    Fake({})
+    local D = Load().Data
+    local has = {}
+    for _, r in ipairs(D.rewards) do has[r[1] .. ":" .. r[3]] = r[2] end
+    eq(has["260307:93269"], "bag", "Hyjal Postal Satchel from Top of the Post")
+    eq(has["1652:79192"], "bag", "Sturdy Lunchbox from Stepping Stones")
+    eq(D.chain[93269][1], 93197, "the satchel's chain starts at Sebelia")
+end)
+
+test("a chain whose first step differs by side shows each side its own step", function()
+    -- Stepping Stones (79192) follows ...and that note you found: 79007 for the Horde, 79008 for the Alliance.
+    for _, side in ipairs({ { "Horde", 2, 79007 }, { "Alliance", 1, 79008 } }) do
+        Fake({ level = 30, faction = side[1], raceId = side[2] })
+        local ns = Load()
+        local e = find((ns.Rewards()), 79192)
+        assert(e, side[1] .. " sees the Old Toolbox quest")
+        eq(e.chain[1], side[3], side[1] .. "'s first step")
+        eq(e.cur, side[3], side[1] .. " starts at its own step")
+    end
+end)
+
 test("a quest an item starts is taken where that item lies or drops", function()
     Fake({})
     local D = Load().Data
@@ -60,6 +82,52 @@ test("the Wowhead link box lies over the hub", function()
     local box = ns.ShowLink(ns.WowheadURL("quest", 624), "Cortello's Riddle")
     eq(box:IsShown(), true)
     eq(box.edit:GetText(), "https://www.wowhead.com/forever/quest=624")
+end)
+
+test("every reward has two to four steps of what to do, in every language", function()
+    Fake({})
+    local ns = Load()
+    local seen, n = {}, 0
+    for _, r in ipairs(ns.Data.rewards) do
+        local q = r[3]
+        if not seen[q] then
+            seen[q], n = true, n + 1
+            local en = ns.TIPS.en[q]
+            assert(en and #en >= 2 and #en <= 4, "steps of quest " .. q)
+            for _, tag in ipairs(ns.TAGS) do
+                local t = ns.TIPS[tag] and ns.TIPS[tag][q]
+                assert(t and #t == #en, tag .. ": steps of quest " .. q)
+                for _, line in ipairs(t) do
+                    assert(#line > 10 and #line <= (tag == "en" and 220 or 440), tag .. ": length, quest " .. q)
+                    assert(not line:find("[|\n]"), tag .. ": plain text, quest " .. q)
+                end
+            end
+        end
+    end
+    for tag, t in pairs(ns.TIPS) do
+        for q in pairs(t) do assert(seen[q], tag .. ": steps for " .. q .. ", which gives no reward") end
+    end
+    assert(n >= 20, "rewards")
+end)
+
+test("the reward's page says what to do, then lists the chain; English when the language has none", function()
+    Fake({ level = 20, slots = { [GUNNYSACK] = 10 } })
+    local ns = Load()
+    local e = find(ns.Rewards(), WATCH)
+    local rows = ns.DetailRows(e, "CHAIN", "DO")
+    eq(rows[1].head, "DO")
+    eq(rows[2].tip, ns.TIPS.en[WATCH][1])
+    eq(rows[2].n, 1)
+    local tips = #ns.TIPS.en[WATCH]
+    eq(rows[tips + 2].head, "CHAIN")
+    eq(rows[tips + 3].id, WATCH_1)
+    eq(#rows, tips + 2 + 3)
+    ns.lang = "ru"
+    eq(ns.Tips(WATCH)[1], ns.TIPS.ru[WATCH][1])
+    ns.lang = "xx"
+    eq(ns.Tips(WATCH)[1], ns.TIPS.en[WATCH][1], "the fallback")
+    ns.TIPS.en[WATCH] = nil
+    eq(ns.DetailRows(e, "CHAIN", "DO")[1].head, "CHAIN", "no steps, no head")
 end)
 
 test("a bag's slots are read from its tooltip, in the client's wording, and kept", function()

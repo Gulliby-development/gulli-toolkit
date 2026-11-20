@@ -18,9 +18,10 @@ Some quests give a bag. Most players find out too late, or never. Worth It lists
 
 ## Features
 
-- **Every reward that lasts.** Bags for everyone, quivers and ammo pouches for hunters, soul bags for warlocks, profession bags. Also the ones WoW Forever added. Only quests your faction, race and class can do.
+- **Every reward that lasts.** Bags for everyone, quivers and ammo pouches for hunters, soul bags for warlocks, profession bags. Also the ones WoW Forever added, such as the 18-slot Hyjal Postal Satchel. Only quests your faction, race and class can do; a chain that starts in another place for each faction shows your faction's start.
 - **Compared with your bags.** The window shows the bags you wear and marks the smallest one. Each reward says what it adds: `+4 over your smallest bag`. The switch **Only better than mine** hides the rest.
 - **Open now, later, got.** Rewards you can go for now come first. Then the ones that wait for a level. Then the ones you already have.
+- **What to do, step by step.** Each reward has two to four short steps: where the quest items are, which way to go, what to watch out for. They come from the tips of players on Wowhead, in your game's language.
 - **The whole chain.** When a bag is the end of a quest chain, you see every step and where you are in it.
 - **Lead to the reward.** One button puts a pin on the map: first on who gives the quest, then on the place of its work, then on who takes it back. **Lead through all** does this for every open reward, the nearest first.
 - **A tracker on the screen.** While the guide leads, a small panel shows what to do now and where. Place it with the toolkit's **Unlock frames**.
@@ -52,6 +53,12 @@ The game tells a bag's size a moment after it first hears of the item. Open the 
 </details>
 
 <details>
+<summary><b>Where do the steps under "What to do" come from?</b></summary>
+
+We write them by hand from the quest text and from the best comments of players on Wowhead's WoW Forever pages. We read the new comments again from time to time. Names of NPCs, quests and items stay in English.
+</details>
+
+<details>
 <summary><b>The map pin did not appear.</b></summary>
 
 Some quests start from an item or inside a dungeon. These places are on no map, so there is no pin. The window still says who or what starts the quest.
@@ -79,4 +86,10 @@ Not yet in WoW Forever itself. It is tested on a fake game client. If something 
 <summary><b>Where does the data come from?</b></summary>
 
 `Data.lua` is built by `tools/worthit/build_data.py` from the [QuestieDB](https://github.com/Questie/QuestieDB) data for WoW Forever (GPLv3). Bag sizes are read from the game.
+</details>
+
+<details>
+<summary><b>A bag quest is missing.</b></summary>
+
+Some quests give a bag, but the game data does not say so. We add those by hand, and every day we compare the list with the bag quests that other players found. Tell us in an issue if you know one we lack.
 </details>

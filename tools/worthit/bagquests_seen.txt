@@ -1,0 +1,2 @@
+# Items of BagQuests (tools/worthit/bagquests.py) that Worth It leaves out on purpose.
+211527 # Cozy Sleeping Bag: a toy, not a bag (the Old Toolbox and Sturdy Lunchbox of the same chain are listed)

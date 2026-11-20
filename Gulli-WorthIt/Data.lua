@@ -30,6 +30,7 @@ D.rewards = {
 {22243,"soul",1513}, -- Small Soul Pouch
 {22243,"soul",1739}, -- Small Soul Pouch
 {3352,"bag",470}, -- Ooze-covered Bag
+{1652,"bag",79192}, -- Sturdy Lunchbox
 {221498,"bag",79192}, -- Old Toolbox
 {276891,"bag",96260}, -- Spidersilk Pouch
 {276892,"prof",96260}, -- Spidersilk Sack
@@ -41,6 +42,7 @@ D.rewards = {
 {9587,"bag",2439}, -- Thawpelt Sack
 {9587,"bag",2440}, -- Thawpelt Sack
 {11324,"bag",626}, -- Explorer's Knapsack
+{260307,"bag",93269}, -- Hyjal Postal Satchel
 {10959,"bag",3628}, -- Demon Hide Sack
 {226697,"bag",84146}, -- Red Bag
 }
@@ -91,6 +93,7 @@ D.quest = {
 [1795]={"The Binding",30,30,0,256,"","Strahad Farsan",17,62.6,35.5,"Strahad Farsan",17,62.6,35.5,0,0,0},
 [1801]={"Tome of the Cabal",30,30,8589934770,256,"H","Strahad Farsan",17,62.6,35.5,"Jorah Annison",1497,75.9,37.9,0,0,0},
 [1803]={"Tome of the Cabal",30,30,8589934770,256,"H","Jorah Annison",1497,75.9,37.9,"Jorah Annison",1497,75.9,37.9,267,27.8,72.8},
+[1804]={"Tome of the Cabal",30,30,4294967373,256,"A","Krom Stoutarm",1537,74.2,9.4,"Strahad Farsan",17,62.6,35.5,11,49.9,47.8},
 [1805]={"Tome of the Cabal",30,30,8589934770,256,"H","Jorah Annison",1497,75.9,37.9,"Strahad Farsan",17,62.6,35.5,11,49.9,47.8},
 [2278]={"The Platinum Discs",47,40,0,0,"","The Discs of Norgannon",1337,0,0,"The Discs of Norgannon",1337,0,0,0,0,0},
 [2279]={"The Platinum Discs",47,40,4294967373,0,"A","The Discs of Norgannon",1337,0,0,"High Explorer Magellas",1537,69.9,18.6,0,0,0},
@@ -113,9 +116,10 @@ D.quest = {
 [3627]={"Uniting the Shattered Amulet",60,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,4,40.8,30},
 [3628]={"You Are Rakh'likh, Demon",60,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,0,0,0},
 [79007]={"... and that note you found",22,14,8589934770,0,"H","Burned-Out Remains",17,46.4,73.9,"Burned-Out Remains",40,37.4,50.7,0,0,0},
+[79008]={"... and that note you found",22,14,4294967373,0,"A","Burned-Out Remains",40,37.4,50.7,"Burned-Out Remains",17,46.4,73.9,0,0,0},
 [79192]={"Stepping Stones",24,14,0,0,"","Nailed Plank",17,46.4,73.8,"Pocket Litter",406,40.8,52.6,0,0,0},
 [84146]={"Red Bag Blues",60,55,0,0,"","Nami",618,61.3,36.9,"Red Bag",46,53,24.4,0,0,0},
-[86784]={"Sticks and Bones",7,4,50,0,"H","Deathguard Bartholomew",85,58.5,51.4,"Eleanor Shackleton",85,57.3,55.5,85,56.1,53.4},
+[86784]={"Sticks and Bones",7,4,50,0,"H","Deathguard Bartholomew",85,58.5,51.4,"Eleanor Shackleton",85,57.3,55.5,85,56.1,53.5},
 [87288]={"Soft Saber Pelts",7,4,4294967373,0,"A","Aldia",141,55.5,57.1,"Aldia",141,55.5,57.1,141,58.7,58.3},
 [91741]={"Nibbled-On Book",2,1,4294967373,0,"A","Nibbled-On Book (Kobold Worker)",12,51.5,38,"Brother Paxton",12,49.6,40.4,0,0,0},
 [91743]={"Rascally Rodents",2,1,4294967373,0,"A","Brother Paxton",12,49.6,40.4,"Brother Paxton",12,49.6,40.4,12,48.7,33.8},
@@ -127,12 +131,16 @@ D.quest = {
 [92124]={"Book Inventory",2,1,4294967373,0,"A","Brother Paxton",12,49.6,40.4,"Daniel",12,49.5,40.7,0,0,0},
 [92514]={"Welcome to Shen'dar Village",6,4,8589934770,0,"H","Constable Aonda",16593,45.7,45.5,"Constable Aonda",16593,45.7,45.5,16593,43,43.2},
 [92515]={"The Problem With Prideclaws",6,4,0,0,"","Indari Sunseam",16593,44.7,44.5,"Indari Sunseam",16593,44.7,44.5,16593,45.7,52.7},
+[93197]={"Mending Communications",58,0,0,0,"","Sebelia",616,70.9,51.5,"Innkeeper Vizzie",618,61.4,38.8,0,0,0},
+[93269]={"Top of the Post",58,0,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Sebelia",616,70.9,51.5,0,0,0},
+[93406]={"Unfrozen Deliveries",56,56,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Innkeeper Vizzie",618,61.4,38.8,618,64,39.8},
+[93461]={"Welcome to Shen'dar Village",6,4,4294967373,0,"A","Constable Aonda",16593,45.7,45.5,"Constable Aonda",16593,45.7,45.5,16593,45,46.4},
 [95805]={"Grace of An'she and Mu'sha",4,1,48,0,"H","Seer Graytongue",215,42.5,90.1,"Ritual Fire",215,56.6,88.7,0,0,0},
-[96107]={"Feathers for Fletching",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,63.5,55.8},
-[96108]={"Poison Tips",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,62.3,58.4},
-[96109]={"A Hunter's Quiver",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,59.4,53.5},
-[96260]={"Stronger than Steel",29,23,8589934770,0,"H","Yorn Grimtotem",215,32.5,20,"Yorn Grimtotem",215,32.5,20,215,33.5,10.6},
-[97253]={"Parts and Pieces",15,9,0,0,"","Wrenix the Wretched",17,63.1,36.3,"Wrenix the Wretched",17,63.1,36.3,17,62,45.9},
+[96107]={"Feathers for Fletching",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,63.5,56},
+[96108]={"Poison Tips",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,62.2,58.6},
+[96109]={"A Hunter's Quiver",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,59.5,53.4},
+[96260]={"Stronger than Steel",29,23,8589934770,0,"H","Yorn Grimtotem",215,32.5,20,"Yorn Grimtotem",215,32.5,20,215,33.7,11.3},
+[97253]={"Parts and Pieces",15,9,0,0,"","Wrenix the Wretched",17,63.1,36.3,"Wrenix the Wretched",17,63.1,36.3,17,62.3,46.2},
 [97277]={"Grund and Gozwin",6,4,4294967373,0,"A","Grund Drokda",1,28.7,67.5,"Grund Drokda",1,28.7,67.5,1,27.3,62.9},
 [97914]={"Expanding Horizons",17,13,4294967373,0,"A","Thundris Windweaver",148,37.4,40.1,"Baros Alexston",1519,57.7,47.9,0,0,0},
 [97926]={"Making Do",17,13,4294967373,0,"A","Baros Alexston",1519,57.7,47.9,"Thundris Windweaver",148,37.4,40.1,0,0,0},
@@ -156,9 +164,20 @@ D.chain = {
 [79192]={79007,79192},
 [91775]={91741,92124,91743,91745,91752,91758,91772,91775},
 [92515]={92514,92515},
+[93269]={93197,93406,93269},
 [95805]={752,753,755,95805},
 [96109]={96107,96108,96109},
 [97926]={97914,97926},
+}
+
+-- Step -> the quests that may stand for it (an "any one of" earlier quest, one per side).
+D.alt = {
+[1804]={1805},
+[1805]={1804},
+[79007]={79008},
+[79008]={79007},
+[92514]={93461},
+[93461]={92514},
 }
 
 -- Areas on Kalimdor; the others are in the Eastern Kingdoms.
