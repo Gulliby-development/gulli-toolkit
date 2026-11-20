@@ -543,6 +543,119 @@ local function game(extra)
     return n
 end
 
+-- Blacksmithing at 170 with no auction addon: iron and steel come only from the auction, so
+-- without a price no recipe could be priced and the route stopped at once ("no known recipe").
+local function smith()
+    local items = {
+        iron = { name = "Iron Bar", vend = 200 },
+        steel = { name = "Steel Bar", vend = 250 },
+        stone = { name = "Heavy Grinding Stone", vend = 200 },
+        dye = { name = "Green Dye", buy = 200, vend = 50 },
+        buckle = { name = "Green Iron Bracers", vend = 900 },
+        helm = { name = "Green Iron Helm", vend = 1500 },
+        boots = { name = "Steel Plate Boots", vend = 1800 },
+        soul = { name = "Soulbound Thing", vend = 300, bop = true },
+    }
+    local recipes = {
+        bracers = { name = "Green Iron Bracers", skill = { 165, 180, 200 }, r = { iron = 6, dye = 1 }, out = "buckle", learned = true },
+        helm = { name = "Green Iron Helm", skill = { 170, 190, 210 }, r = { iron = 12, stone = 1, dye = 1 }, out = "helm", learned = true },
+        boots = { name = "Steel Plate Boots", skill = { 185, 205, 225 }, r = { steel = 8, stone = 2 }, out = "boots",
+                  src = { t = "trainer", cost = 3000 } },
+    }
+    return { skill = 170, cap = 225, level = 40, items = items, recipes = recipes }
+end
+
+test("no auction prices at all: the route still goes on, at guessed auction prices", function()
+    local c, st = core(), smith()
+    local P = prefs({ target = 225 })
+    local plan = c.Plan(st, P)
+    eq(plan.reached, 225, "the whole way, not a stop at 170")
+    eq(plan.warn, nil)
+    local ah = has(c.Route(st, plan), "STOP_AH_BUY")
+    assert(ah, "the bars come from the auction")
+    for _, l in ipairs(ah.lines) do
+        if l.id then
+            eq(l.guess, true, l.name .. " is a guess")
+            eq(l.price, st.items[l.id].vend * c.AH_GUESS)
+        end
+    end
+    -- the way as runs has no unknown stretch either
+    for _, l in ipairs(c.Legs(st, P)) do eq(l.unknown, nil) end
+    -- a guess is no plan to guard: the real price decides
+    for _, q in ipairs(c.BuyQueue(ah)) do if q.id then eq(q.unit, nil) end end
+end)
+
+test("a guessed price: an old price first, else the sell price times AH_GUESS; never for soulbound items", function()
+    local c, st = core(), smith()
+    local P = prefs()
+    eq(c.Guess(st.items.iron, P), 200 * c.AH_GUESS)
+    eq(c.Guess(st.items.soul, P), nil)
+    eq(c.Guess({ vend = 0 }, P), nil)
+    eq(c.Guess({ ah = 700, age = 30, vend = 10 }, P), 700)
+    eq(c.Guess({ ah = 700, age = 0, vend = 10 }, P), nil, "a fresh price is no guess")
+    -- a real price wins over the guess
+    st.items.iron.ah, st.items.iron.age = 500, 0
+    local plan = c.Plan(st, prefs({ target = 225 }))
+    for _, l in ipairs(has(c.Route(st, plan), "STOP_AH_BUY").lines) do
+        if l.id == "iron" then eq(l.guess, nil); eq(l.price, 500) end
+    end
+end)
+
+test("every price addon is read: auxForever, Naowh Forever, TSM, Hammerprice; a fresh price wins", function()
+    local n = game({ auctionator = false })
+    eq(n.AuctionPrice(1), nil)
+    eq(n.HasPrices(), false)
+    W.now = 1700000000
+    local now = W.now
+    NaowhForever = { AuctionPrice = function(id) if id == 1 then return 150, now - 10 * 86400 end end }
+    local p, age = n.AuctionPrice(1)
+    eq(p, 150); assert(age > 9.9 and age < 10.1, "age from the time it was seen")
+    AuxForeverAPI = { IsReady = function() return true end, GetLatestPrice = function(id) if id == 1 then return 170, 1 end end }
+    eq(n.AuctionPrice(1), 170, "aux has the fresher price")
+    AuxForeverAPI.IsReady = function() return false end
+    eq(n.AuctionPrice(1), 150, "aux before its prices loaded knows nothing")
+    AuxForeverAPI = nil
+    TSM_API = { GetCustomPriceValue = function(src, s) eq(src, "DBMinBuyout"); eq(s, "i:1"); return 160 end }
+    eq(n.AuctionPrice(1), 160)
+    TSM_API = nil
+    Hammerprice = { GetPrice = function() error("broken") end }
+    eq(n.AuctionPrice(1), 150, "an addon that fails is skipped")
+    eq(table.concat(n.PriceAddons(), ","), "Naowh Forever,Hammerprice")
+    eq(n.HasPrices(), true)
+    NaowhForever, Hammerprice = nil, nil
+end)
+
+test("another player's profession (a trade link) is never saved; one the spellbook lacks is not listed", function()
+    local n = game({ linked = true, spellbook = { { "Blacksmithing", 170, 225 } } })
+    eq(n.char.profs.Tailoring, nil, "a linked window is not this character's")
+    -- an older save that holds a profession the character does not have
+    n = game({ spellbook = { { "Tailoring", SKILL, 225 } } })
+    n.char.profs.Enchanting = { skill = 270, cap = 300, recipes = {} }
+    n.char.current = "Enchanting"
+    local names = {}
+    for _, p in ipairs(n.Professions()) do names[#names + 1] = p.name end
+    eq(table.concat(names, ","), "Tailoring")
+    n.SetProfession("Enchanting")
+    local st = n.State()
+    eq(st and st.name, "Tailoring")
+end)
+
+test("switching the profession never calculates: its last result, outdated, or Calculate", function()
+    local n = game({ spellbook = { { "Tailoring", SKILL, 225 }, { "Cooking", 50, 75 } } })
+    n.char.profs.Cooking = { skill = 50, cap = 75, recipes = {} }
+    n.Toggle(); n.Calculate()
+    local plan = n.view.plan
+    assert(plan, "Tailoring calculated")
+    n.SetProfession("Cooking")
+    eq(n.char.current, "Cooking")
+    eq(n.view.plan, nil, "Cooking waits for Calculate")
+    eq(n.Busy(), false)
+    n.SetProfession("Tailoring")
+    eq(n.view.plan, plan, "the last Tailoring result comes back")
+    eq(n.view.stale, "pick")
+    eq(n.Busy(), false)
+end)
+
 test("the route is the next run: the first recipe of the whole way, planned again to there", function()
     local c, st = core(), state()
     st.cap = 300
@@ -860,9 +973,15 @@ test("mode buttons, the target stepper and reset", function()
     eq(n.view.mode, "l1")
     W.Click(n.ui.budget.plus)
     eq(n.view.prefs.budget, 10000)
+    -- the target only marks the plan outdated: Recalculate plans it (owner's decision)
     W.Click(n.ui.target.minus)
     eq(n.db.prefs.target, 220)
+    eq(n.view.plan.full.target, 225)
+    eq(n.view.stale, "target")
+    assert(n.ui.calc.tip == n.L.CALC_STALE_SET)
+    n.Calculate()
     eq(n.view.plan.full.target, 220)
+    eq(n.view.stale, nil)
     W.Click(n.ui.chance.minus)
     eq(n.view.prefs.chance, 75)
     W.Click(n.ui.maxSell.plus)

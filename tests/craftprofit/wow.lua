@@ -215,6 +215,7 @@ function Fake(spec)
     C_TradeSkillUI, GetTradeSkillLine, GetNumTradeSkills = nil, nil, nil
     if prof and not spec.classic then
         C_TradeSkillUI = {
+            IsTradeSkillLinked = function() return spec.linked == true end,
             GetChildProfessionInfo = function()
                 if prof.window0 then return { professionName = prof.name, skillLevel = 0, maxSkillLevel = 0 } end
                 return { professionName = prof.name, skillLevel = prof.skill, maxSkillLevel = prof.cap }

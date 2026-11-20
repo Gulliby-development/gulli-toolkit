@@ -2,7 +2,7 @@
 
 <h1 align="center">Gulli-CraftProfit</h1>
 
-<p align="center"><b>Profitable crafts and the cheapest way to level a profession, from your bags, your bank and Auctionator prices.</b></p>
+<p align="center"><b>Profitable crafts and the cheapest way to level a profession, from your bags, your bank and auction prices.</b></p>
 
 <p align="center">
   <a href="https://github.com/Gulliby-development/gulli-toolkit/releases"><img src="https://img.shields.io/github/v/release/Gulliby-development/gulli-toolkit?filter=CraftProfit-*&label=download&color=d9a441&style=for-the-badge" alt="Download the latest release"></a>
@@ -53,20 +53,26 @@ Want to level Tailoring without losing your gold? Gulli CraftProfit looks at wha
 
 **By hand:** download `Gulli-CraftProfit-<version>-forever.zip` from the [releases](https://github.com/Gulliby-development/gulli-toolkit/releases) and unpack it into `Interface/AddOns`. Then type `/reload`.
 
-For auction prices, also install **Auctionator** and scan the auction once.
+For auction prices, also install one of these and scan the auction once: **Auctionator**, **auxForever**, **Naowh Forever** (it already has prices from every auction house), **TradeSkillMaster** or **Hammerprice**. CraftProfit reads the first one that knows the item, a fresh price before an old one.
 
 ## How to use it
 
 1. Open your profession window once. CraftProfit reads your recipes.
 2. Open the bank once if you want it to count what is there.
-3. Type `/gcp`. Press **Calculate** (the switches are on the **Settings** tab). A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top (the arrows or the mouse wheel show more routes when they do not all fit) and follow the stops. Switching routes is instant. When your bags or prices change, press the round **Recalculate** button at the top right.
+3. Type `/gcp`. Press **Calculate** (the switches are on the **Settings** tab). A big profession takes a few seconds: a bar shows how far it is, and the game does not freeze. Then pick a route at the top (the arrows or the mouse wheel show more routes when they do not all fit) and follow the stops. Switching routes is instant. Switching the profession at the top right or changing the target calculates nothing: the window shows the last result, marked **Outdated**, until you press **Calculate**. When your bags or prices change, press the round **Recalculate** button at the top right.
 
 ## FAQ
 
 <details>
 <summary><b>Do I need Auctionator?</b></summary>
 
-No, but without it only vendor prices count, and the route never buys or sells at the auction.
+No. Any of the price addons above works. Without any of them, the route still goes on: what only the auction sells (ore, bars, cloth) gets a guessed price, marked "price guessed" with a `~`, from an old price or five times what a vendor pays for it. The window then says that auction prices are guesses. The real price is the one you see at the auction.
+</details>
+
+<details>
+<summary><b>Does it work with another profession window, such as Naowh Forever's?</b></summary>
+
+Yes. CraftProfit reads your recipes from the game, not from the window, so any profession window works. It reads only your own professions: a profession you open from another player's link is not saved.
 </details>
 
 <details>

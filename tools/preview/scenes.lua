@@ -594,6 +594,24 @@ S.craftprofit.many = { spec = S.craftprofit.default.spec, before = S.craftprofit
         for _, x in ipairs(ns.view.variants) do x.plan = x.plan or ns.view.plan end
         ns.Refresh()
     end }
+-- no auction addon: the auction stop buys at guessed prices
+do
+    local spec = {}
+    for k, v in pairs(S.craftprofit.default.spec) do spec[k] = v end
+    spec.auctionator = false
+    spec.items = {}
+    for id, it in pairs(S.craftprofit.default.spec.items) do
+        local c = {}
+        for k, v in pairs(it) do c[k] = v end
+        c.bags, c.bank = nil, nil
+        spec.items[id] = c
+    end
+    S.craftprofit.noprices = { spec = spec, before = S.craftprofit.default.before,
+        open = function(ns, W)
+            S.craftprofit.default.open(ns, W)
+            for i, n in ipairs(ns.view.route or {}) do if n.kind == "ah" then ns.Select(i) end end
+        end }
+end
 S.craftprofit.legs = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SelectLeg(2) end }
 S.craftprofit.nolimit = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,

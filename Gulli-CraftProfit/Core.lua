@@ -121,7 +121,22 @@ function ns.BuyOption(state, P, id)
     -- `ahBought`: what this run already bought there; buying stops once it reaches maxBuy
     local room = not P.ahBought or (P.ahBought[id] or 0) < ns.Limit(P.maxBuy)
     if P.buyAH and room and ns.Fresh(it, P) and (not v or it.ah < v) then v, how = it.ah, "ah" end
+    -- no usable auction price: a guess, so a route always exists (the line says it is a guess)
+    if P.buyAH and room and not v then
+        local g = ns.Guess(it, P)
+        if g then v, how = g, "ah" end
+    end
     return v, how
+end
+
+-- The auction price of an item no fresh price is known for: an old price when there is one,
+-- else its vendor sell price times ns.AH_GUESS (trade goods sell for several times that).
+-- Nil for an item that cannot be traded or has no sell price.
+ns.AH_GUESS = 5
+function ns.Guess(it, P)
+    if ns.Fresh(it, P) or it.bop then return nil end
+    if it.ah and it.ah > 0 then return it.ah end
+    if (it.vend or 0) > 0 then return it.vend * ns.AH_GUESS end
 end
 
 -- Own items the plan may use: { [id] = { bags = n, bank = n } }.
@@ -316,6 +331,10 @@ local function take(state, P, st, known, acc, id, n, depth)
         return
     end
     if not b then acc.missing[id] = true; return end
+    if how == "ah" and not ns.Fresh(state.items[id] or {}, P) then
+        acc.guess = acc.guess or {}
+        acc.guess[id] = b
+    end
     add(how == "ah" and acc.ahBuy or acc.vendorBuy, id, n)
     acc.spend = acc.spend + n * b
 end
@@ -805,6 +824,10 @@ function ns.Route(state, plan)
     local bank = lines(state, plan.bank, "bank")
     if #bank > 0 then push({ kind = "bank", title = "STOP_BANK", lines = bank }) end
     local ah = lines(state, plan.ahBuy, "ah", function(it) return it.ah end)
+    for _, l in ipairs(ah) do
+        local g = plan.guess and plan.guess[l.id]
+        if g then l.price, l.guess = g, true end
+    end
     local vend = lines(state, plan.vendorBuy, "vendor", function(it) return it.buy end)
     local rids = sortedIds(plan.buyRecipes)
     for _, rid in ipairs(rids) do
@@ -1017,7 +1040,8 @@ function ns.BuyQueue(node, p)
         local e = p and p.lines[k]
         if not (e and e.done) then
             local id = l.id or l.pattern
-            if id then q[#q + 1] = { id = id, name = l.pname or l.name, n = e and e.left or l.n, unit = l.price, line = k,
+            -- a guessed price is no plan to guard: the real one decides
+            if id then q[#q + 1] = { id = id, name = l.pname or l.name, n = e and e.left or l.n, unit = not l.guess and l.price or nil, line = k,
                                      pattern = l.pattern and not l.id or nil }
             else byHand = byHand + 1 end
         end
@@ -1303,6 +1327,23 @@ local function apply(out)
     return v
 end
 
+-- One result per profession for the session: a switch shows that profession's last result,
+-- outdated, or nothing until Calculate. A switch never calculates (owner's decision of 2026-11-20).
+ns.views = {}
+function ns.SwitchView(from, to)
+    local v = ns.view
+    if from and from ~= to and v.state and v.state.name == from then
+        local keep = {}
+        for _, k in ipairs(FIELDS) do keep[k] = v[k] end
+        ns.views[from] = keep
+    end
+    local saved = to and ns.views[to]
+    for _, k in ipairs(FIELDS) do v[k] = saved and saved[k] or nil end
+    v.route = v.route or {}
+    v.changed, v.delta = {}, nil
+    v.stale = saved and saved.plan and "pick" or nil
+end
+
 -- Rebuilds the plan at once. `flash`: light up what changed.
 function ns.Recalc(flash)
     if job then job = nil end
@@ -1415,7 +1456,8 @@ function ns.SetPref(key, value)
         if ns.Refresh then ns.Refresh() end
         return
     end
-    ns.Rebuild(true)
+    -- the target only marks the result outdated: the player presses Recalculate
+    ns.Rebuild(true, key == "target" and "target" or nil)
 end
 
 -- Several settings in one rebuild, so the change summary compares the right two plans.

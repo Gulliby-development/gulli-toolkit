@@ -785,8 +785,9 @@ local function detailRows(n, i, a)
         local spot = l.npc and ns.PickNpc(l.npc)
         if spot then note = spot.label end
         if l.id and (st.items[l.id] or {}).ladder and l.src == "ah" then note = L.SRC_LADDER end
-        local right = l.price and S.MoneyText(l.price * l.n) or ""
-        if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 and not spot then note = L.EACH:format(S.MoneyText(l.price)) end
+        if l.guess then note = L.SRC_GUESS end
+        local right = l.price and ((l.guess and "~" or "") .. S.MoneyText(l.price * l.n)) or ""
+        if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 and not spot and not l.guess then note = L.EACH:format(S.MoneyText(l.price)) end
         local e = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, q = q,
                     pin = spot and spot.zone and spot or nil, noteShort = spot and spot.who or nil,
                     text = name .. color(S.MUTED) .. " x" .. l.n .. "|r" }
@@ -1733,7 +1734,7 @@ function ns.Refresh()
     local v = ns.view
     local age = ns.PriceAge(v.state)
     local slash = "/gcp  ·  "
-    if not ns.HasAuctionator() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
+    if not ns.HasPrices() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
     elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
     else ui.age:SetText("/gcp") end
     local busy = ns.BusyKind() == "all"
@@ -1756,11 +1757,12 @@ function ns.Refresh()
     local stale = v.stale and not busy and v.plan ~= nil
     ui.stale:Set(stale and L.STALE_TAG or nil, GOLD)
     ui.calc.edge = stale and GOLD or nil
-    ui.calc.tip = stale and L.CALC_STALE or nil
+    local staleText = (v.stale == "target" or v.stale == "pick") and L.CALC_STALE_SET or L.CALC_STALE
+    ui.calc.tip = stale and staleText or nil
     S.SetBorder(ui.calc, stale and GOLD or S.EDGE)
     ui.prof:ClearAllPoints()
     ui.prof:SetPoint("RIGHT", stale and ui.stale or ui.calc, "LEFT", -8, 0)
-    if stale then ui.toast:SetText(color(GOLD) .. L.CALC_STALE .. "|r") end
+    if stale then ui.toast:SetText(color(GOLD) .. staleText .. "|r") end
     ui.settings:SetShown(tab == 5)
     -- patterns left out because the reputation was not read yet: ask for the reputation window
     local unknown = ns.RepUnknown()
@@ -1996,7 +1998,11 @@ function ns.Rebuild(flash, why)
     if why == "open" then
         -- nothing new: the last result stays
     elseif why == "event" then
-        if v.plan then v.stale = true end
+        if v.plan then v.stale = v.stale or true end
+    elseif why == "pick" or why == "target" then
+        -- another profession or target: nothing is calculated until the player asks
+        if runner then runner:Cancel(); runner = nil; driver:Hide() end
+        if why == "target" and v.plan then v.stale = "target" end
     elseif v.plan or runner then
         ns.Calculate(flash)
         return
