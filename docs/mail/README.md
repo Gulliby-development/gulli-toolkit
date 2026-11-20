@@ -19,6 +19,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 ## Features
 
 - **Take all.** Money and items from every letter, one after the other.
+- **Take one kind.** Under **Take all**, the same tiles as for sending: cloth, herbs, ore, leather, elemental, dust, gems or all goods. Tap one and only those items come out of every letter, and no money. Each tile shows how many wait in the mail; hover it to see the list.
 - **Safe.** Letters with cash on delivery are left alone. It stops when your bags are full. An item the game will not give you (a unique item you already have) stays in its letter, and you are told how many.
 - **More than 50 letters.** The game shows 50 letters at a time. When more wait on the server, Take all asks for them and goes on (the server sends them about once a minute).
 - **Choose what to take.** Switches for money, auction sales, auction purchases, expired auctions and letters from players, and how many bag slots to keep free.
@@ -38,7 +39,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 ## How to use it
 
 1. Open a mailbox. The panel opens next to it.
-2. Tap **Take all**, or **Take** on one letter.
+2. Tap **Take all**, a tile under it (such as **Herbs**) for only that kind, or **Take** on one letter.
 3. To write, open **Write** and tap a name. Use the buttons under the names to fill the letter, then press **Send**.
 4. Type `/gml` away from a mailbox for the switches, the mailing rules and the log.
 

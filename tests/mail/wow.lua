@@ -171,6 +171,9 @@ function Fake(spec)
     C_Item = { GetItemInfo = function(id)
         local c = W.classes[id] or {}
         return "Item" .. id, nil, 1, nil, nil, nil, nil, 1, nil, nil, 1, c[1], c[2]
+    end, GetItemInfoInstant = function(id)
+        local c = W.classes[id] or {}
+        return id, nil, nil, nil, "icon" .. id, c[1], c[2]
     end, GetItemIconByID = function(id) return "icon" .. id end, IsBound = function(loc) local x = W.bags[loc.bag][loc.slot] return x and x.bound end }
     ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
     SendMailFrame = W.stub()

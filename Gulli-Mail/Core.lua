@@ -97,6 +97,15 @@ local function itemClass(id)
     local _, _, _, _, _, _, _, _, _, _, _, classID, subclassID = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
     return classID, subclassID
 end
+-- The class of an item the client may not have loaded yet (mail items often are not):
+-- GetItemInfoInstant knows it at once.
+local function classNow(id)
+    if C_Item and C_Item.GetItemInfoInstant then
+        local _, _, _, _, _, classID, subclassID = C_Item.GetItemInfoInstant(id)
+        if classID then return classID, subclassID end
+    end
+    return itemClass(id)
+end
 local function bound(bag, slot)
     if C_Item and C_Item.IsBound and ItemLocation and ItemLocation.CreateFromBagAndSlot then
         return C_Item.IsBound(ItemLocation:CreateFromBagAndSlot(bag, slot)) and true or false
@@ -186,8 +195,12 @@ end
 -- The next thing to take, from the last letter back: { i, j, kind = "money"|"item", key,
 -- amount, letter }, "full" when the next one is an item and the bags are full (or at the
 -- free slots to keep), or nil. `skip` holds the keys the game refused; `only` limits it to
--- one letter (its index), `force` takes from it whatever the switches say.
-function ns.Next(skip, only, force)
+-- one letter (its index), `force` takes from it whatever the switches say. `kind` (a key of
+-- ns.ATTACH_KINDS) takes only the items of that kind, from every letter, and no money.
+function ns.Next(skip, only, force, kind)
+    local want = kind and ns.KindOf(kind)
+    if kind and not want then return nil end
+    if want then force = true end
     skip = skip or {}
     local from, to = numMail(), 1
     if only then
@@ -199,12 +212,16 @@ function ns.Next(skip, only, force)
         local kind = ns.Kind(i, h)
         if h.cod == 0 and not h.gm and (force or ns.Allowed(kind, h)) then
             local k, what = takeKey(i, h, "money")
-            if h.money > 0 and (force or ns.db.money) and not skip[k] then
+            if h.money > 0 and not want and (force or ns.db.money) and not skip[k] then
                 return { i = i, kind = "money", key = k, what = what, amount = h.money, letter = kind, sender = h.sender }
             end
             if h.items > 0 then
                 for j = 1, ATTACH do
                     local name, id, _, count = GetInboxItem(i, j)
+                    if name and want then
+                        local class, sub = classNow(id)
+                        if not (id and ns.KindHas(want, class, sub)) then name = nil end
+                    end
                     if name then
                         k, what = takeKey(i, h, j .. ":" .. tostring(id or name))
                         if not skip[k] then
@@ -262,10 +279,11 @@ end
 -- TIMEOUT). A thing the game refuses (a unique item the bags already hold) is tried TRIES
 -- times, then left in its letter and counted. When the mailbox shows fewer letters than the
 -- server holds, it asks for the rest and goes on. `letters` (indices, any order) limits it to
--- those letters, whatever the switches say.
-function ns.TakeAll(letters)
+-- those letters, whatever the switches say. `kind` (a key of ns.ATTACH_KINDS) takes only
+-- the items of that kind from every letter, whatever the switches say, and no money.
+function ns.TakeAll(letters, kind)
     if ns.taking then return end
-    local t = { items = 0, failed = 0, skip = {}, refused = {}, start = money(), tries = 0 }
+    local t = { items = 0, failed = 0, skip = {}, refused = {}, start = money(), tries = 0, kind = kind }
     if letters then
         t.queue = {}
         for _, i in ipairs(letters) do t.queue[#t.queue + 1] = i end
@@ -309,7 +327,7 @@ function ns.TakeAll(letters)
                 table.remove(t.queue, 1)
             end
         else
-            c = ns.Next(t.skip)
+            c = ns.Next(t.skip, nil, nil, t.kind)
         end
         -- The last take is done once something else comes next; the same thing again means
         -- the game did not take it.
@@ -485,9 +503,10 @@ end
 
 -- Sending ------------------------------------------------------------------------------------
 
-local function kindOf(key)
+function ns.KindOf(key)
     for _, k in ipairs(ns.ATTACH_KINDS) do if k.key == key then return k end end
 end
+local kindOf = ns.KindOf
 
 -- Whether an item of this class and subclass belongs to the kind (`all`: to any kind).
 function ns.KindHas(k, class, sub)
@@ -539,6 +558,42 @@ function ns.KindInfo(key)
     info.top = top and top.name
     info.icon = k.icon or (top and itemIcon(top.id)) or ns.KindIcon(key)
     info.going = math.min(info.stacks, sendOpen() and ns.Room() or SEND_MAX)
+    return info
+end
+
+-- What a take-by-kind tile shows: the items of that kind in the letters Take all can open
+-- (no cash on delivery, no GM letters), { icon, stacks, total, items } like ns.KindInfo.
+function ns.InboxKindInfo(key)
+    local k = kindOf(key)
+    local info = { stacks = 0, total = 0, items = {} }
+    if not k then return info end
+    local by = {}
+    for i = 1, (numMail()) do
+        local h = header(i)
+        if h.cod == 0 and not h.gm and h.items > 0 then
+            for j = 1, ATTACH do
+                local name, id, _, count = GetInboxItem(i, j)
+                if name and id then
+                    local class, sub = classNow(id)
+                    if ns.KindHas(k, class, sub) then
+                        count = count or 1
+                        local e = by[id]
+                        if not e then
+                            e = { id = id, name = name, count = 0, stacks = 0 }
+                            by[id] = e
+                            info.items[#info.items + 1] = e
+                        end
+                        e.count, e.stacks = e.count + count, e.stacks + 1
+                        info.stacks, info.total = info.stacks + 1, info.total + count
+                    end
+                end
+            end
+        end
+    end
+    table.sort(info.items, function(a, b) if a.count ~= b.count then return a.count > b.count end return a.id < b.id end)
+    local top = info.items[1]
+    info.top = top and top.name
+    info.icon = k.icon or (top and itemIcon(top.id)) or ns.KindIcon(key)
     return info
 end
 

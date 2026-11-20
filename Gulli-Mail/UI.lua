@@ -9,12 +9,12 @@ local L = ns.L
 local S = ns.Skin
 
 local panel, tabs, pages = nil, nil, {}
-local summary, stats, takeBtn, letters, noLetters, takeSel
+local summary, stats, takeBtn, takeRow, letters, noLetters, takeSel
 local names, noNames, search, attachRow, goldBtn, ruleBtn
 local settings, rulesList, logList
 local selected = {}
 
-local PANEL_W, PANEL_H = 380, 560
+local PANEL_W, PANEL_H = 380, 670
 local TILE_H = 52
 local GOLD_ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 
@@ -36,6 +36,43 @@ local function kindTip(self)
         end
     end
     GameTooltip:Show()
+end
+
+-- The tooltip of a take-by-kind tile: what the letters hold of that kind, most first.
+local function takeTip(self)
+    if not (GameTooltip and GameTooltip.SetOwner) then return end
+    local info = self.info or ns.InboxKindInfo(self.kind)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["KIND_" .. self.kind:upper()])
+    if info.stacks == 0 then
+        GameTooltip:AddLine(L.TILE_MAIL_NONE, 0.6, 0.6, 0.6)
+    else
+        for i, it in ipairs(info.items) do
+            if i > 10 then break end
+            GameTooltip:AddDoubleLine(it.name, "x" .. it.count, 1, 1, 1, 1, 1, 1)
+        end
+        GameTooltip:AddLine(L.TILE_MAIL_TAKE, 1, 0.82, 0)
+    end
+    GameTooltip:Show()
+end
+
+-- Four tiles a row, one per quick-attach kind, the same on both tabs.
+local function kindTiles(parent, onClick, tip)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetHeight(TILE_H * 2 + 6)
+    row.buttons = {}
+    local bw = math.floor((PANEL_W - 2 * S.PAD - 3 * 6) / 4)
+    for k, kind in ipairs(ns.ATTACH_KINDS) do
+        local b = S.IconTile(row, bw, TILE_H, true)
+        local r, col = math.floor((k - 1) / 4), (k - 1) % 4
+        b:SetPoint("TOPLEFT", col * (bw + 6), -r * (TILE_H + 6))
+        b.kind = kind.key
+        b:SetScript("OnClick", function() onClick(kind.key); ns.Refresh() end)
+        b:HookScript("OnEnter", tip)
+        b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        row.buttons[#row.buttons + 1] = b
+    end
+    return row
 end
 
 -- Letters tab ---------------------------------------------------------------------------------
@@ -142,6 +179,12 @@ function ns.Refresh()
     summary:SetShown(#lines > 0)
     takeBtn:SetEnabled(not ns.taking and (s.items > 0 or s.money > 0 or s.more > 0))
     takeBtn:SetText(ns.taking and L.TAKING or L.TAKE_ALL)
+    for _, b in ipairs(takeRow.buttons) do
+        local info = ns.InboxKindInfo(b.kind)
+        b.info = info
+        b:Set({ icon = info.icon, title = L["KIND_" .. b.kind:upper()], count = info.total })
+        b:SetEnabled(not ns.taking and info.stacks > 0)
+    end
 
     local list = ns.Letters()
     local n, keep = 0, {}
@@ -193,9 +236,12 @@ local function buildPanel()
     takeBtn:SetPoint("TOPLEFT")
     takeBtn:SetPoint("TOPRIGHT")
     takeBtn:SetScript("OnClick", function() ns.TakeAll(); ns.Refresh() end)
+    takeRow = kindTiles(p, function(key) ns.TakeAll(nil, key) end, takeTip)
+    takeRow:SetPoint("TOPLEFT", takeBtn, "BOTTOMLEFT", 0, -6)
+    takeRow:SetPoint("TOPRIGHT", takeBtn, "BOTTOMRIGHT", 0, -6)
     stats = S.StatRow(p, { "", "" }, 56, { "Interface\\Icons\\INV_Letter_15", "Interface\\Icons\\INV_Misc_Coin_01" })
-    stats:SetPoint("TOPLEFT", takeBtn, "BOTTOMLEFT", 0, -8)
-    stats:SetPoint("TOPRIGHT", takeBtn, "BOTTOMRIGHT", 0, -8)
+    stats:SetPoint("TOPLEFT", takeRow, "BOTTOMLEFT", 0, -8)
+    stats:SetPoint("TOPRIGHT", takeRow, "BOTTOMRIGHT", 0, -8)
     stats:Layout(PANEL_W - 2 * S.PAD)
     summary = S.Note(p, 12)
     summary:SetPoint("TOPLEFT", stats, "BOTTOMLEFT", 0, -6)
@@ -232,22 +278,9 @@ local function buildPanel()
     tools:SetPoint("BOTTOMLEFT")
     tools:SetPoint("BOTTOMRIGHT")
     tools:SetHeight(TILE_H * 2 + 6 + 2 * (30 + 6) + 18)
-    attachRow = CreateFrame("Frame", nil, tools)
+    attachRow = kindTiles(tools, ns.AttachKind, kindTip)
     attachRow:SetPoint("TOPLEFT")
     attachRow:SetPoint("TOPRIGHT")
-    attachRow:SetHeight(TILE_H * 2 + 6)
-    attachRow.buttons = {}
-    local bw = math.floor((PANEL_W - 2 * S.PAD - 3 * 6) / 4)
-    for k, kind in ipairs(ns.ATTACH_KINDS) do
-        local b = S.IconTile(attachRow, bw, TILE_H, true)
-        local row, col = math.floor((k - 1) / 4), (k - 1) % 4
-        b:SetPoint("TOPLEFT", col * (bw + 6), -row * (TILE_H + 6))
-        b.kind = kind.key
-        b:SetScript("OnClick", function() ns.AttachKind(kind.key); ns.Refresh() end)
-        b:HookScript("OnEnter", kindTip)
-        b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        attachRow.buttons[#attachRow.buttons + 1] = b
-    end
     goldBtn = S.Button(tools, 1, 30)
     S.SetButtonIcon(goldBtn, GOLD_ICON)
     goldBtn:SetPoint("TOPLEFT", attachRow, "BOTTOMLEFT", 0, -6)

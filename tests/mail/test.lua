@@ -369,4 +369,37 @@ test("random inboxes: never take from cash on delivery or GM letters", function(
     assert(taken > 100, "the rounds took too little to prove anything: " .. taken)
 end)
 
+test("take by kind takes only the items of that kind, from every letter, and no money", function()
+    Fake({ classes = { [10] = { 7, 9 }, [11] = { 7, 9 }, [20] = { 7, 5 }, [30] = { 4, 1 }, [40] = { 7, 9 } },
+           inbox = { { sender = "A", money = 50, items = { 10, 20 } }, { sender = "AH", invoice = "buyer", items = { 11 } },
+                     { sender = "C", cod = 100, items = { 40 } }, { sender = "D", items = { 30 } } } })
+    local ns = Load()
+    ns.db.bought = false -- the kind tiles take whatever the switches say
+    W.Fire("MAIL_SHOW")
+    local info = ns.InboxKindInfo("herb")
+    eq(info.stacks, 2, "cash on delivery left out")
+    eq(ns.InboxKindInfo("cloth").stacks, 1)
+    eq(ns.InboxKindInfo("ore").stacks, 0)
+    ns.TakeAll(nil, "herb")
+    W.Drain()
+    table.sort(W.taken)
+    eq(#W.taken, 2); eq(W.taken[1], 10); eq(W.taken[2], 11)
+    eq(W.money, 0, "no money")
+    eq(ns.InboxKindInfo("herb").stacks, 0)
+    ns.TakeAll(nil, "all")
+    W.Drain()
+    eq(#W.taken, 3, "all goods: the cloth too, not the armour")
+    eq(W.taken[3], 20)
+end)
+
+test("take by kind stops when the bags are full", function()
+    Fake({ free = 1, classes = { [10] = { 7, 9 }, [11] = { 7, 9 } }, inbox = { { sender = "A", items = { 10, 11 } } } })
+    local ns = Load()
+    W.Fire("MAIL_SHOW")
+    ns.TakeAll(nil, "herb")
+    W.Drain()
+    eq(#W.taken, 1)
+    assert(W.printed[#W.printed]:find("bags are full", 1, true))
+end)
+
 W.finish()
