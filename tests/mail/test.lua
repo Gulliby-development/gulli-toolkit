@@ -402,4 +402,32 @@ test("take by kind stops when the bags are full", function()
     assert(W.printed[#W.printed]:find("bags are full", 1, true))
 end)
 
+test("walking away from the mailbox closes the panel, once", function()
+    Fake({ inbox = { { sender = "AH", invoice = "seller", money = 300 } } })
+    local fed = {}
+    GulliToolkit = { Notify = function(_, text) fed[#fed + 1] = text end }
+    local ns = Load()
+    local hidden = 0
+    local hide = ns.HidePanel
+    ns.HidePanel = function() hidden = hidden + 1; hide() end
+    W.Fire("MAIL_SHOW")
+    ns.TakeAll()
+    W.Drain()
+    W.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 5) -- another window: stays
+    eq(hidden, 0, "another interaction leaves it")
+    eq(ns.open, true)
+    W.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 17)
+    eq(hidden, 1, "walking away hides it")
+    eq(ns.open, false)
+    W.Fire("MAIL_CLOSED")
+    eq(#fed, 1, "the visit is told once")
+    eq(hidden, 1, "and hidden once")
+    -- next visit: the mailbox frame hides (walked away) with no event at all
+    W.Fire("MAIL_SHOW")
+    eq(ns.open, true)
+    if MailFrame and MailFrame.Hide then MailFrame:Show(); MailFrame:Hide() end
+    if MailFrame then eq(hidden, 2, "the mailbox frame hiding closes it too") end
+    GulliToolkit = nil
+end)
+
 W.finish()

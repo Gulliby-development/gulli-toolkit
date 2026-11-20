@@ -3492,6 +3492,74 @@ function S.SideRefresh()
     if w and #list > 1 then sideDraw(T, list, w) end
 end
 
+---- Closing with a place ------------------------------------------------------------------
+
+-- A window that opens at a place (the mailbox, the auction house, a vendor, the bank, a
+-- trainer) closes with it. Walking away closes the game's window through the interaction
+-- manager, and the client does not always send the place's own _CLOSED event then, so each of
+-- three signals counts: that event, PLAYER_INTERACTION_MANAGER_FRAME_HIDE of the place's kind,
+-- and the OnHide of the game's own frame. fn runs once per visit, whichever comes first.
+S.PLACES = {
+    mail = { open = "MAIL_SHOW", close = "MAIL_CLOSED", kind = "MailInfo", id = 17, frames = { "MailFrame" } },
+    auction = { open = "AUCTION_HOUSE_SHOW", close = "AUCTION_HOUSE_CLOSED", kind = "Auctioneer", id = 21,
+                frames = { "AuctionHouseFrame", "AuctionFrame" } },
+    merchant = { open = "MERCHANT_SHOW", close = "MERCHANT_CLOSED", kind = "Merchant", id = 5, frames = { "MerchantFrame" } },
+    bank = { open = "BANKFRAME_OPENED", close = "BANKFRAME_CLOSED", kind = "Banker", id = 8, frames = { "BankFrame" } },
+    trainer = { open = "TRAINER_SHOW", close = "TRAINER_CLOSED", kind = "Trainer", id = 7, frames = { "ClassTrainerFrame" } },
+}
+
+local function safeEvent(f, e)
+    if C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e) then return end
+    pcall(f.RegisterEvent, f, e)
+end
+
+-- The interaction type of a place, as the client numbers it.
+function S.PlaceKind(place)
+    local p = S.PLACES[place]
+    if not p then return nil end
+    local E = Enum and Enum.PlayerInteractionType
+    return (E and E[p.kind]) or p.id
+end
+
+-- Runs fn(place) when the place closes, once per visit. Returns false for an unknown place.
+function S.ClosesWith(place, fn)
+    local p = S.PLACES[place]
+    if not p or type(fn) ~= "function" then return false end
+    local f = CreateFrame("Frame")
+    local open = false -- a visit starts with the place's open event or the interaction's show
+    local hooked = {}
+    local function close()
+        if not open then return end
+        open = false
+        fn(place)
+    end
+    local function hook()
+        for _, name in ipairs(p.frames) do
+            local g = _G[name]
+            if g and not hooked[g] and g.HookScript then
+                hooked[g] = true
+                g:HookScript("OnHide", close)
+            end
+        end
+    end
+    safeEvent(f, p.open)
+    safeEvent(f, p.close)
+    safeEvent(f, "PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
+    safeEvent(f, "PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
+    f:SetScript("OnEvent", function(_, event, kind)
+        if event == p.open or (event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" and kind == S.PlaceKind(place)) then
+            open = true
+            hook()
+            -- a window the game loads on demand (the auction house) exists a moment later
+            if C_Timer and C_Timer.After then C_Timer.After(0, hook) end
+        elseif event == p.close or (event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" and kind == S.PlaceKind(place)) then
+            close()
+        end
+    end)
+    hook()
+    return true
+end
+
 ---- Keys on every keyboard layout ------------------------------------------------
 
 -- The game names a key by the letter the layout gives it: the "]" key is "Ъ" on a Russian

@@ -401,8 +401,9 @@ test("beside the auction house: one window stands alone, two share the place as 
     assert(not T.strip:IsShown() and ns.Window():IsShown())
     -- the tab chosen last comes first the next time
     GulliToolkitDB.sideTab = "Other"
-    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 21) -- walked away: no AUCTION_HOUSE_CLOSED
     assert(not ns.Window():IsShown())
+    eq(ns.atAH, false)
     W.Fire("AUCTION_HOUSE_SHOW")
     S.SideOpen("Other")
     assert(other:IsShown() and not ns.Window():IsShown(), "remembered")

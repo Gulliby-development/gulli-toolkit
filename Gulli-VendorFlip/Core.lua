@@ -885,6 +885,18 @@ local function hookQueries()
 end
 
 local ticker
+-- The auction house closed (or the player walked away): scanning and buying stop, the window goes.
+function ns.AuctionClosed()
+    ns.atAH = false
+    ns.StopScan()
+    if ticker then ticker:Cancel(); ticker = nil end
+    local b = ns.buy
+    b.phase, b.line, b.quote = "idle", nil, nil
+    ns.queue, ns.holdUntil = {}, 0
+    ns.refetch, ns.refetchWant = nil, nil
+    if ns.HideAtAH then ns.HideAtAH() end
+end
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1, a2)
@@ -895,7 +907,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.history = ns.db.history or {}
         ns.db.owed = ns.db.owed or {}
-        listen(self, { "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "MERCHANT_SHOW", "MERCHANT_CLOSED",
+        listen(self, { "AUCTION_HOUSE_SHOW", "MERCHANT_SHOW",
                        "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "AUCTION_HOUSE_BROWSE_RESULTS_ADDED",
                        "AUCTION_HOUSE_THROTTLED_SYSTEM_READY",
                        "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED",
@@ -903,9 +915,14 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                        "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED",
                        "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
                        "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "GET_ITEM_INFO_RECEIVED" })
+        -- every way a place closes, walking away too; also while paused
+        if ns.Skin and ns.Skin.ClosesWith then
+            ns.Skin.ClosesWith("auction", ns.AuctionClosed)
+            ns.Skin.ClosesWith("merchant", function() ns.atVendor = false end)
+        end
         return
     end
-    if ns.paused and event ~= "AUCTION_HOUSE_CLOSED" and event ~= "MERCHANT_CLOSED" then return end
+    if ns.paused then return end
     if event == "AUCTION_HOUSE_SHOW" then
         ns.atAH = true
         hookQueries()
@@ -913,20 +930,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if not ticker and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, ns.Tick) end
         if ns.db.auto and ns.ShowAtAH then ns.ShowAtAH() end
         refresh()
-    elseif event == "AUCTION_HOUSE_CLOSED" then
-        ns.atAH = false
-        ns.StopScan()
-        if ticker then ticker:Cancel(); ticker = nil end
-        local b = ns.buy
-        b.phase, b.line, b.quote = "idle", nil, nil
-        ns.queue, ns.holdUntil = {}, 0
-        ns.refetch, ns.refetchWant = nil, nil
-        if ns.HideAtAH then ns.HideAtAH() end
     elseif event == "MERCHANT_SHOW" then
         ns.atVendor = true
         ns.OfferSale()
-    elseif event == "MERCHANT_CLOSED" then
-        ns.atVendor = false
     elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then
         ns.OnBrowse()
     elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_ADDED" then

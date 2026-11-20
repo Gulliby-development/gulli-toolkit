@@ -2082,5 +2082,41 @@ test("a bound key works on every keyboard layout", function()
     eq(bound.Q, "B"); eq(bound["Й"], "B"); eq(bound["й"], "B")
 end)
 
+test("a window that opens at a place closes with it, walking away too, once per visit", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local made, hooks = {}, {}
+    local oldCF, oldMail = CreateFrame, MailFrame
+    CreateFrame = function()
+        local f = { events = {} }
+        function f:RegisterEvent(e) self.events[e] = true end
+        function f:SetScript(_, fn) self.on = fn end
+        made[#made + 1] = f
+        return f
+    end
+    MailFrame = { HookScript = function(_, name, fn) hooks[name] = fn end }
+    local closed = 0
+    eq(S.ClosesWith("nowhere", function() end), false, "an unknown place")
+    eq(S.ClosesWith("mail", function(place) eq(place, "mail"); closed = closed + 1 end), true)
+    CreateFrame, MailFrame = oldCF, oldMail
+    local f = made[#made]
+    assert(f.events.MAIL_CLOSED and f.events.PLAYER_INTERACTION_MANAGER_FRAME_HIDE, "listens for both")
+    assert(hooks.OnHide, "the mailbox frame's OnHide is hooked")
+    f.on(f, "MAIL_CLOSED")
+    eq(closed, 0, "no visit yet: nothing to close")
+    f.on(f, "MAIL_SHOW")
+    f.on(f, "PLAYER_INTERACTION_MANAGER_FRAME_HIDE", S.PlaceKind("merchant"))
+    eq(closed, 0, "another place")
+    f.on(f, "PLAYER_INTERACTION_MANAGER_FRAME_HIDE", S.PlaceKind("mail"))
+    eq(closed, 1, "walking away")
+    f.on(f, "MAIL_CLOSED")
+    hooks.OnHide()
+    eq(closed, 1, "once per visit")
+    f.on(f, "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", S.PlaceKind("mail"))
+    hooks.OnHide()
+    eq(closed, 2, "the game's frame hiding closes it too")
+    for place in pairs(S.PLACES) do assert(S.PlaceKind(place), place) end
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

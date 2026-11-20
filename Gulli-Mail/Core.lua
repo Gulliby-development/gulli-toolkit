@@ -371,6 +371,18 @@ function ns.TakeAll(letters, kind)
 end
 
 -- The inbox changed: the take is through, go on after a short breath.
+-- The mailbox interaction type (Enum.PlayerInteractionType.MailInfo).
+
+-- The mailbox closed (left, walked away, or its frame hid): tell the visit once, stop taking
+-- and hide the panel. Every way of closing comes here; a second call does nothing new.
+function ns.Closed()
+    if ns.open and ns.visit and (ns.visit.money > 0 or ns.visit.items > 0) then
+        notify(L.VISIT:format(ns.visit.items, ns.Money(ns.visit.money), ns.Money(ns.visit.sold)))
+    end
+    ns.open, ns.taking = false, nil
+    if ns.HidePanel then ns.HidePanel() end
+end
+
 function ns.InboxChanged()
     local t = ns.taking
     if not t then return end
@@ -677,7 +689,8 @@ f:SetScript("OnEvent", function(self, event, a1)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         self:RegisterEvent("PLAYER_LOGIN")
         self:RegisterEvent("MAIL_SHOW")
-        self:RegisterEvent("MAIL_CLOSED")
+        -- every way the mailbox closes, walking away too (the client may send no MAIL_CLOSED then)
+        if ns.Skin and ns.Skin.ClosesWith then ns.Skin.ClosesWith("mail", function() ns.Closed() end) end
         self:RegisterEvent("MAIL_INBOX_UPDATE")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         if SendMail then hooksecurefunc("SendMail", function(name) if not ns.paused then ns.Remember(name) end end) end
@@ -696,12 +709,6 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.visit = { money = 0, sold = 0, items = 0 }
         ns.warned = false
         if ns.db.panel and ns.ShowPanel then ns.ShowPanel() end
-    elseif event == "MAIL_CLOSED" then
-        if ns.open and (ns.visit.money > 0 or ns.visit.items > 0) then
-            notify(L.VISIT:format(ns.visit.items, ns.Money(ns.visit.money), ns.Money(ns.visit.sold)))
-        end
-        ns.open, ns.taking = false, nil
-        if ns.HidePanel then ns.HidePanel() end
     elseif event == "MAIL_INBOX_UPDATE" then
         ns.InboxChanged()
         if ns.open then

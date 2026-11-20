@@ -1942,8 +1942,8 @@ test("an event the client does not know never stops the others from registering"
     W.unknownEvents = nil
     assert(ok, err)
     local f
-    for _, x in ipairs(W.frames) do if rawget(x, "_events").MERCHANT_SHOW then f = x end end
-    assert(f, "MERCHANT_SHOW registered")
+    for _, x in ipairs(W.frames) do if rawget(x, "_events").TRADE_SKILL_SHOW then f = x end end
+    assert(f, "the events registered")
     local ev = rawget(f, "_events")
     assert(ev.AUCTION_HOUSE_SHOW and ev.COMMODITY_SEARCH_RESULTS_UPDATED and ev.TRAINER_SHOW)
     assert(not ev.TRADE_SKILL_UPDATE)
@@ -2354,8 +2354,12 @@ test("at the auction house the buy stop opens in the window beside it; its tab c
     assert(T.strip:IsShown())
     eq(T.strip.tabs[2].key, "CraftProfit")
     if lines > 1 then eq(T.strip.tabs[2].badge.text:GetText(), tostring(lines - 1)) end
-    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 8) -- the bank: not this place
+    assert((n.Skin.SideIs("CraftProfit")), "another place leaves its tab")
+    W.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 21) -- walked away: no AUCTION_HOUSE_CLOSED
     assert(not side:IsShown(), "it leaves with the auction house")
+    assert(not (n.Skin.SideIs("CraftProfit")), "and its tab with it")
+    eq(n.atAH, false)
     -- the switch in Settings keeps it away, and so does the big window
     n.SetPref("side", false)
     W.Fire("AUCTION_HOUSE_SHOW")
