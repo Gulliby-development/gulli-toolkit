@@ -298,6 +298,7 @@ local function buildSettings(body)
         row("autoShare", L.OPT_AUTOSHARE, L.OPT_AUTOSHARE_D, ns.OPT_ICON.autoShare),
         row("track", L.OPT_TRACK, L.OPT_TRACK_D, "Interface\\Icons\\INV_Misc_Spyglass_02"),
         row("tooltip", L.OPT_TOOLTIP, L.OPT_TOOLTIP_D, ns.OPT_ICON.tooltip),
+        row("escort", L.OPT_ESCORT, L.OPT_ESCORT_D, ns.OPT_ICON.escort),
     })
     local half = (S.WIDE_W - 2 * S.PAD - S.GAP) / 2
     group:SetPoint("TOPLEFT")
@@ -432,6 +433,38 @@ function ns.ShowRequest()
     local buttons = mine and { { text = L.SHARE, primary = true, onClick = function() ns.Share(req.id) end } } or nil
     return S.Toast({ key = "request", icon = "Interface\\Icons\\INV_Letter_15", title = L.REQUEST_TITLE:format(req.from),
         text = req.title, buttons = buttons, seconds = 30 })
+end
+
+-- An escort or event quest about to start: who the group still waits for, and Ask the group.
+function ns.ShowEscort()
+    local e = ns.escort
+    if not e then return end
+    local st = ns.EscortState(e.id)
+    local buttons
+    if not st.allReady then
+        buttons = { { text = e.asked and L.ESC_ASK_AGAIN or L.ESC_ASK_BTN, primary = not e.asked, keep = true,
+                      onClick = function() ns.AskEscort(); ns.ShowEscort() end } }
+    end
+    ns.escortCard = S.Toast({ key = "escort", icon = ns.OPT_ICON.escort, kind = st.allReady and "good" or "warn",
+        title = L.ESC_TITLE:format(e.title or ""), text = ns.EscortText(st), buttons = buttons, seconds = 0,
+        onClose = function() if ns.escort == e then ns.escort = nil end end })
+    return ns.escortCard
+end
+
+function ns.HideEscort()
+    local t = ns.escortCard
+    if t and t:IsShown() then t:Dismiss() end
+end
+
+-- A member asks whether I am ready for their escort or event quest.
+function ns.ShowEscortAsk()
+    local a = ns.escortAsk
+    if not a then return end
+    return S.Toast({ key = "escortAsk", icon = ns.OPT_ICON.escort, title = L.ESC_ASKED:format(a.from),
+        text = a.title, seconds = 60, buttons = {
+            { text = L.ESC_NOT_YET, onClick = function() ns.AnswerEscort(a.id, false) end },
+            { text = L.ESC_IM_READY, primary = true, onClick = function() ns.AnswerEscort(a.id, true) end },
+        } })
 end
 
 -- Opens one tab (1 my quests, 2 theirs, 3 settings).

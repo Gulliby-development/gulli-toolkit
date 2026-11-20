@@ -21,6 +21,7 @@ ns.DEFAULTS = {
     tooltip = true,       -- group progress in the tooltip of a mob or an item
     sound = true,
     nAccept = true, nObjective = false, nComplete = true, nTurnin = true, nAll = true,
+    escort = true,        -- an escort or event quest in a group: who is ready before it starts
 }
 
 local function db()
@@ -355,6 +356,8 @@ end
 -- versions read only "B", "Q" and "E" and skip the rest. Outside a list: "R<id>:<name>"
 -- asks <name> to share a quest, "T<id>" asks everyone to track it. Never change a type; add one.
 -- "Z<zone>|id:level,id:level" (since 1.13) names the zone and level of quests of the list.
+-- "X<id>:<title>" (since 1.16) asks the group whether it is ready for an event quest,
+-- "Y<id>:1" or "Y<id>:0" answers ready or not yet.
 local ZONE_MAX = 60
 local function pack(parts, kind, tokens, sep)
     local cur = kind
@@ -506,6 +509,12 @@ function ns.Receive(msg, sender)
     elseif kind == "R" then
         local id, target = rest:match("^(%d+):(.+)$")
         if id and short(target) == UnitName("player") then ns.OnRequest(who, tonumber(id)) end
+    elseif kind == "X" then
+        local id, title = rest:match("^(%d+):(.*)$")
+        if id then ns.OnEscortAsk(who, tonumber(id), title) end
+    elseif kind == "Y" then
+        local id, yes = rest:match("^(%d+):([01])$")
+        if id then ns.OnEscortAnswer(who, tonumber(id), yes == "1") end
     elseif kind == "T" then
         local id = tonumber(rest)
         if id and ns.Get("track") then
@@ -525,6 +534,94 @@ function ns.SoonBroadcast()
     if pending then return end
     pending = true
     C_Timer.After(3, function() pending = false; ns.Broadcast() end)
+end
+
+-- Escort and event quests ----------------------------------------------------------------------
+
+-- Once one player starts such a quest its NPC walks off or starts a scene, and a member who did
+-- not have it yet is left out. ns.EVENT_QUESTS (Events.lua) lists them.
+ns.escort = nil -- { id, title, answers = { [name] = true|false } }, the one I am about to start
+
+function ns.IsEvent(id) return id ~= nil and ns.EVENT_QUESTS ~= nil and ns.EVENT_QUESTS[id] == true end
+
+-- Who the group is waiting for: { ready = names, wait = names, lack = names, noAddon, allReady }.
+-- Ready is a member who has the quest, did it before or said ready; wait said not yet; lack has
+-- not answered and does not have it. noAddon counts the members in lack without this module.
+function ns.EscortState(id)
+    local st = { ready = {}, wait = {}, lack = {}, noAddon = 0 }
+    local answers = ns.escort and ns.escort.id == id and ns.escort.answers or {}
+    for _, m in ipairs(members()) do
+        if m.online then
+            local c = cell(m, id)
+            local said = answers[short(m.name)]
+            if c.state == "has" or c.state == "done" or c.state == "turned" or said == true then
+                st.ready[#st.ready + 1] = m.name
+            elseif said == false then
+                st.wait[#st.wait + 1] = m.name
+            else
+                st.lack[#st.lack + 1] = m.name
+                if ns.Status(m) == "none" then st.noAddon = st.noAddon + 1 end
+            end
+        end
+    end
+    st.allReady = #st.wait == 0 and #st.lack == 0
+    return st
+end
+
+-- The quest page of an event quest opened while in a group: show who it waits for, unless
+-- every member has it already. Returns the state when the card shows.
+function ns.OnEventDetail(id, title)
+    if not ns.Get("escort") or not ns.IsEvent(id) or #members() == 0 then return end
+    if not (ns.escort and ns.escort.id == id) then ns.escort = { id = id, title = title or titleOf(id), answers = {} } end
+    local st = ns.EscortState(id)
+    if st.allReady and not next(ns.escort.answers) then ns.escort = nil; return end
+    if ns.ShowEscort then ns.ShowEscort() end
+    return st
+end
+
+-- Asks the group: the members with this module get a card, the others one line in the chat.
+function ns.AskEscort()
+    local e = ns.escort
+    if not e then return end
+    local title = (e.title or ""):gsub("[\r\n|]", ""):sub(1, 200)
+    sendAddon("X" .. e.id .. ":" .. title, "PARTY")
+    if ns.EscortState(e.id).noAddon > 0 and SendChatMessage then
+        SendChatMessage(L.ESC_CHAT:format(title), "PARTY")
+    end
+    e.asked = true
+end
+
+function ns.AnswerEscort(id, yes)
+    sendAddon("Y" .. id .. ":" .. (yes and "1" or "0"), "PARTY")
+end
+
+-- A member asks: with the quest in my log the answer is ready at once, else a card asks me.
+ns.escortAsk = nil -- { from, id, title }
+function ns.OnEscortAsk(from, id, title)
+    for _, q in ipairs(ns.MyQuests()) do
+        if q.id == id then ns.AnswerEscort(id, true); return "has" end
+    end
+    if title == nil or title == "" then title = titleOf(id) end
+    ns.escortAsk = { from = from, id = id, title = title }
+    if ns.ShowEscortAsk then ns.ShowEscortAsk() end
+    return "asked"
+end
+
+function ns.OnEscortAnswer(from, id, yes)
+    local e = ns.escort
+    if not e or e.id ~= id then return end
+    e.answers[short(from)] = yes and true or false
+    if ns.ShowEscort then ns.ShowEscort() end
+end
+
+-- The card's two lines: who is ready, who still has to say or take it.
+function ns.EscortText(st)
+    if st.allReady then return L.ESC_ALL_READY end
+    local parts = {}
+    if #st.lack > 0 then parts[#parts + 1] = L.ESC_LACK:format(table.concat(st.lack, ", ")) end
+    if #st.wait > 0 then parts[#parts + 1] = L.ESC_WAIT:format(table.concat(st.wait, ", ")) end
+    if #st.ready > 0 then parts[#parts + 1] = L.ESC_READY:format(table.concat(st.ready, ", ")) end
+    return table.concat(parts, "  ")
 end
 
 -- Sharing -------------------------------------------------------------------------------------
@@ -681,7 +778,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         db()
         if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then C_ChatInfo.RegisterAddonMessagePrefix(PREFIX) end
         for _, e in ipairs({ "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED",
-                             "CHAT_MSG_SYSTEM", "QUEST_DATA_LOAD_RESULT", "ZONE_CHANGED_NEW_AREA" }) do
+                             "CHAT_MSG_SYSTEM", "QUEST_DATA_LOAD_RESULT", "ZONE_CHANGED_NEW_AREA",
+                             "QUEST_DETAIL", "QUEST_ACCEPTED" }) do
             self:RegisterEvent(e)
         end
         hookTooltip()
@@ -691,6 +789,18 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
     if event == "CHAT_MSG_ADDON" then
         if a1 == PREFIX then ns.Receive(a2, a4) end
         return
+    end
+    if event == "QUEST_DETAIL" then
+        local id = GetQuestID and GetQuestID()
+        ns.OnEventDetail(id, GetTitleText and GetTitleText())
+        return
+    end
+    if event == "QUEST_ACCEPTED" then
+        local id = a2 or a1 -- classic sends (index, questID), retail (questID)
+        if ns.escort and ns.escort.id == id then
+            ns.escort = nil
+            if ns.HideEscort then ns.HideEscort() end
+        end
     end
     if event == "CHAT_MSG_SYSTEM" then
         if ns.ShareReply(a1) and ns.Refresh then ns.Refresh() end
@@ -729,6 +839,7 @@ function GulliPartyQuests_Toggle() ns.Toggle() end
 ns.OPT_ICON = {
     autoShare = "Interface\\Icons\\INV_Letter_15",
     tooltip = "Interface\\Icons\\INV_Misc_Note_01",
+    escort = "Interface\\Icons\\Ability_Warrior_RallyingCry",
 }
 
 -- With the hub: its row and button there; alone: its own minimap button (Skin.lua).

@@ -38,6 +38,7 @@ jobs:
           python3 tools/mobfinder/build_data.py /tmp/questiedb
           python3 tools/craftprofit/build_data.py /tmp/SkillLevelData1.lua /tmp/questiedb
           python3 tools/worthit/build_data.py /tmp/questiedb
+          python3 tools/partyquests/build_events.py /tmp/questiedb
 
       - name: Attune chains against the data
         id: attune

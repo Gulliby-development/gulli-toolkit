@@ -346,4 +346,70 @@ test("without a group the note goes to the footer, never over my quests", functi
     eq(made.footer.status:GetText(), ns.L.NO_GROUP)
 end)
 
+test("an escort in a group: who it waits for, the ask and the answers", function()
+    Fake({ quests = LOG, party = {
+        { name = "Ann", quests = { [155] = true } },
+        { name = "Bob", quests = {} },
+        { name = "Cid", quests = {} },
+    } })
+    local ns = Load()
+    eq(ns.EVENT_QUESTS[155], true)
+    W.party[1].quests[155] = nil
+    W.party[2].quests = {}
+    -- Ann runs the module, Bob and Cid do not (yet)
+    for _, m in ipairs({ "B", "Q153", "E" }) do ns.Receive(m, "Ann-Realm") end
+    GetQuestID = function() return 155 end
+    GetTitleText = function() return "The Defias Brotherhood" end
+    W.Fire("QUEST_DETAIL")
+    assert(ns.escort and ns.escort.id == 155, "the card shows")
+    local st = ns.EscortState(155)
+    eq(#st.lack, 3); eq(st.noAddon, 2); eq(st.allReady, false)
+    ns.AskEscort()
+    eq(W.sent[#W.sent][2], "X155:The Defias Brotherhood")
+    eq(W.chat[#W.chat][2], "PARTY", "members without the module get a chat line")
+    ns.Receive("Y155:1", "Ann-Realm")
+    ns.Receive("Y155:0", "Bob-Realm")
+    W.party[3].quests[155] = true
+    st = ns.EscortState(155)
+    eq(table.concat(st.ready, ","), "Ann,Cid"); eq(table.concat(st.wait, ","), "Bob"); eq(#st.lack, 0)
+    assert(ns.EscortText(st):find("Bob"), "the card names who is not ready")
+    ns.Receive("Y155:1", "Bob-Realm")
+    eq(ns.EscortState(155).allReady, true)
+    eq(ns.EscortText(ns.EscortState(155)), ns.L.ESC_ALL_READY)
+    W.Fire("QUEST_ACCEPTED", 155)
+    eq(ns.escort, nil, "taking the quest closes the card")
+end)
+
+test("an escort: no card when everyone has it, off with its switch, solo nothing", function()
+    Fake({ quests = LOG, party = PARTY })
+    local ns = Load()
+    GetQuestID = function() return 155 end
+    W.Fire("QUEST_DETAIL")
+    eq(ns.escort, nil, "Ann and Bob have it already")
+    W.party[2].quests = {}
+    ns.Set("escort", false)
+    W.Fire("QUEST_DETAIL")
+    eq(ns.escort, nil, "switched off")
+    ns.Set("escort", true)
+    GetQuestID = function() return 153 end
+    W.Fire("QUEST_DETAIL")
+    eq(ns.escort, nil, "not an event quest")
+    Fake({ quests = LOG })
+    ns = Load()
+    GetQuestID = function() return 155 end
+    W.Fire("QUEST_DETAIL")
+    eq(ns.escort, nil, "alone")
+end)
+
+test("a member asks: ready at once with the quest in my log, else a card", function()
+    Fake({ quests = LOG, party = PARTY })
+    local ns = Load()
+    ns.Receive("X155:The Defias Brotherhood", "Ann-Realm")
+    eq(W.sent[#W.sent][2], "Y155:1", "I have it")
+    eq(ns.Receive("X1234:Some Escort", "Ann-Realm"), nil)
+    eq(ns.escortAsk.id, 1234); eq(ns.escortAsk.title, "Some Escort"); eq(ns.escortAsk.from, "Ann")
+    ns.AnswerEscort(1234, false)
+    eq(W.sent[#W.sent][2], "Y1234:0")
+end)
+
 W.finish()
