@@ -325,7 +325,7 @@ test("leaving a dungeon: finished quests and where to hand them in, unless switc
     W.Fire("PLAYER_ENTERING_WORLD")
     W.instance = "none"
     W.Fire("ZONE_CHANGED_NEW_AREA")
-    eq(#W.printed, 2, "the hand-in line and the map pin line")
+    eq(#W.printed, 1, "the hand-in line; the pin itself says nothing in chat")
     assert(W.printed[1]:find("Collecting Memories: Wilder Thistlenettle, Stormwind City", 1, true), W.printed[1])
     eq(notes[1], "1 dungeon quests to hand in")
     eq(W.pins[1].map, 1453)
@@ -666,6 +666,27 @@ test("the guide pins the first stop, then the next after a quest is taken, and e
         W.Fire("QUEST_ACCEPTED")
     end
     eq(ns.guide, nil, "done at the entrance")
+end)
+
+test("the guide keeps its stop while the player walks nearer to another one", function()
+    local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
+        map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },
+                                      [1436] = { "Westfall", 3, 1415 } }, pos = { 0.5, 0.5 } } })
+    local ns = Load()
+    eq(ns.StartGuide("DM"), true)
+    local first, pins = ns.guide.last, #W.pins
+    local route = ns.Route
+    ns.Route = function(...)
+        local out, rev = route(...), {}
+        for i = #out, 1, -1 do rev[#rev + 1] = out[i] end
+        return rev
+    end
+    assert(#route(ns.Quests("DM", 18).take, ns.Here(), ns.Dungeons(18)[1]) > 1, "more than one stop")
+    W.Fire("QUEST_ACCEPTED")
+    eq(ns.guide.last, first, "the same stop")
+    eq(#W.pins, pins, "no new pin")
+    eq(#W.printed, 0, "and nothing in chat")
+    ns.Route = route
 end)
 
 test("Lead me with only quests in the log: who takes back a finished one, then the entrance", function()

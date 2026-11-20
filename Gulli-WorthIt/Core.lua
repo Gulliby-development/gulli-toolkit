@@ -588,11 +588,19 @@ function ns.StepGuide()
         ns.StopGuide()
         return false
     end
-    local stop = rows[1].stop
+    -- The stop the guide leads to stays while it is still among the nearest group, so walking
+    -- nearer to another one never moves the pin back and forth.
+    local pick = rows[1]
+    for _, row in ipairs(rows) do
+        if row.tier ~= pick.tier then break end
+        local st = row.stop
+        if st and (st.kind .. "@" .. st.quest) == ns.cdb.guide.last then pick = row break end
+    end
+    local stop = pick.stop
     local key = stop and (stop.kind .. "@" .. stop.quest) or ""
     if key ~= ns.cdb.guide.last then
         ns.cdb.guide.last = key
-        if stop and stop.pin and rows[1].tier < 5 then ns.SetPin(stop) end
+        if stop and stop.pin and pick.tier < 5 then ns.SetPin(stop) end
     end
     ns.stop = stop
     if ns.RefreshTracker then ns.RefreshTracker() end

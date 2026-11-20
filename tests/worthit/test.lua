@@ -315,6 +315,13 @@ test("the guide goes to the nearest stop of the player's zone first", function()
     eq(#items, 3); eq(items[1].first, true)
     eq(items[1].what, "Take: Near70"); eq(items[1].where, "GiverNear70, Area40")
     eq(items[3].what, "From level 45"); eq(items[3].pin, nil)
+    eq(ns.stop.quest, 2)
+    local pins = #W.pins
+    W.x = 10
+    eq(ns.GuideRows()[1].entry.quest, 1, "the other giver is nearer now")
+    ns.StepGuide()
+    eq(ns.stop.quest, 2, "but the guide keeps the stop it leads to")
+    eq(#W.pins, pins, "and sets no new pin")
 end)
 
 test("leading through all takes the open rewards that beat the bags", function()
