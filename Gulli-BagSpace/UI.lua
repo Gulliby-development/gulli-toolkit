@@ -240,7 +240,7 @@ function ns.ArmDisenchant(bag, slot)
     b:SetAttribute("target-bag", bag)
     b:SetAttribute("target-slot", slot)
     ClearOverrideBindings(deOwner)
-    SetOverrideBindingClick(deOwner, true, key, "GulliBagSpaceDisenchant", "LeftButton")
+    S.BindKey(deOwner, true, key, "GulliBagSpaceDisenchant", "LeftButton")
     deBag, deSlot, deId = bag, slot, it.id
 end
 
@@ -291,7 +291,7 @@ end
 
 function ns.SetDeKey(key)
     ns.HideDisenchant()
-    ns.db.deKey = key
+    ns.db.deKey = S.KeyBase(key)
 end
 
 function ns.KeyButton(parent)

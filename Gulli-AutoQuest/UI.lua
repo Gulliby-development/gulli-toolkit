@@ -203,7 +203,7 @@ function ns.ApplyTargetKey()
     if key and not ns.paused then
         targetButton()
         ns.UpdateTargetMacro()
-        SetOverrideBindingClick(keyOwner, true, key, BUTTON, "LeftButton")
+        S.BindKey(keyOwner, true, key, BUTTON, "LeftButton")
     end
 end
 
@@ -227,7 +227,7 @@ local function capture(b, on)
 end
 
 function ns.SetTargetKey(key)
-    ns.db.targetKey = key
+    ns.db.targetKey = S.KeyBase(key)
     ns.ApplyTargetKey()
 end
 

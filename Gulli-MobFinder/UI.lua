@@ -256,7 +256,7 @@ function ns.ApplyKey()
     if not card then buildCard() end
     keyOwner = keyOwner or CreateFrame("Frame")
     ClearOverrideBindings(keyOwner)
-    if ns.db.key then SetOverrideBindingClick(keyOwner, true, ns.db.key, BUTTON, "LeftButton") end
+    if ns.db.key then S.BindKey(keyOwner, true, ns.db.key, BUTTON, "LeftButton") end
 end
 
 local MODIFIER = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
@@ -290,7 +290,7 @@ local function makeKeyButton(parent)
         if key ~= "ESCAPE" then
             local mods = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
                 .. (IsShiftKeyDown() and "SHIFT-" or "")
-            ns.db.key = mods .. key
+            ns.db.key = S.KeyBase(mods .. key)
             ns.ApplyKey()
         end
         capture(self, false)
