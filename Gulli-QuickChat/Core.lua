@@ -68,6 +68,25 @@ function ns.AddPhrase(text)
     return true
 end
 
+local ownRing -- below, with the ring
+
+-- Changes a phrase's text in place: it keeps its row, its ring place, its star and its own order.
+-- False for an empty text or one another phrase has.
+function ns.EditPhrase(old, text)
+    text = strtrim(text or "")
+    if text == "" or not old then return false end
+    if text == old then return true end
+    for _, p in ipairs(ns.Phrases()) do if p == text then return false end end
+    local list, found = own(), false
+    for i, p in ipairs(list) do if p == old then list[i] = text; found = true end end
+    if not found then return false end
+    local place = ns.RingPlace(old)
+    if place then ownRing()[place] = text end
+    ns.db.fav[text], ns.db.fav[old] = ns.db.fav[old], nil
+    ns.db.orderOf[text], ns.db.orderOf[old] = ns.db.orderOf[old], nil
+    return true
+end
+
 -- Removes a phrase from the list, the ring, the favourites and its own channel order.
 function ns.RemovePhrase(text)
     local list = own()
@@ -109,7 +128,7 @@ function ns.Ring()
     return ns.db.ring
 end
 
-local function ownRing()
+ownRing = function()
     if not ns.db.ring then
         local ring = {}
         for i = 1, ns.RING_MAX do ring[i] = L["P" .. i] end

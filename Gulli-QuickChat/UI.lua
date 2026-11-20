@@ -10,6 +10,7 @@ local S = ns.Skin
 local frame, tabs, pages = nil, nil, {}
 local current = 1
 local held        -- a phrase picked on the right, waiting for a place on the ring
+local renaming    -- the phrase whose text is in the box to be changed
 local chosen      -- the ring place picked in the editor
 local editing     -- the phrase whose channel order the right card shows
 local wheel, wheelButton, panel, ghost
@@ -294,6 +295,24 @@ function ns.PickPhrase(text)
     ns.Refresh()
 end
 
+-- Puts a phrase into the box to change it; Save (Enter) keeps the change, Escape or a second
+-- click on its pencil drops it.
+function ns.StartEdit(text)
+    local page = pages[1]
+    if not page or not page.add then return end
+    if renaming == text then
+        renaming = nil
+        page.add:SetText("")
+        page.add:ClearFocus()
+    else
+        renaming = text
+        page.add:SetText(text or "")
+        page.add:SetFocus()
+        if page.add.SetCursorPosition then page.add:SetCursorPosition(#(text or "")) end
+    end
+    ns.Refresh()
+end
+
 -- Shows a phrase's channel order in the right card (nil: back to the list).
 function ns.EditOrder(text)
     editing = text
@@ -328,6 +347,7 @@ function ns.OrderLabel(text)
 end
 
 local STAR = "Interface\\Common\\FavoritesIcon"
+local PEN = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"
 
 local function makePhrase(r)
     r.btn = CreateFrame("Button", nil, r)
@@ -370,8 +390,17 @@ local function makePhrase(r)
         if ns.Panel then ns.Panel() end
     end)
     tip(r.fav, function() return L.TIP_FAV end)
+    r.edit = S.Ghost(S.Button(r, 26, 26))
+    r.edit:SetPoint("RIGHT", r.fav, "LEFT", -2, 0)
+    r.edit:SetText("")
+    r.edit.pen = r.edit:CreateTexture(nil, "ARTWORK")
+    r.edit.pen:SetSize(16, 16)
+    r.edit.pen:SetPoint("CENTER")
+    r.edit.pen:SetTexture(PEN)
+    r.edit:SetScript("OnClick", function(self) ns.StartEdit(self:GetParent().phrase) end)
+    tip(r.edit, function() return L.TIP_EDIT end)
     r.place = S.Text(r, 12, S.Accent())
-    r.place:SetPoint("RIGHT", r.fav, "LEFT", -4, 0)
+    r.place:SetPoint("RIGHT", r.edit, "LEFT", -4, 0)
     r.place:SetWidth(18)
     r.place:SetJustifyH("CENTER")
     r.text = S.Text(r, 12)
@@ -381,7 +410,7 @@ local function makePhrase(r)
     -- The row's own click area lies under its buttons, so they take their clicks.
     local base = r:GetFrameLevel()
     r.btn:SetFrameLevel(base + 1)
-    for _, b in ipairs({ r.del, r.chan, r.fav }) do b:SetFrameLevel(base + 3) end
+    for _, b in ipairs({ r.del, r.chan, r.fav, r.edit }) do b:SetFrameLevel(base + 3) end
 end
 
 local function fillPhrase(r, text)
@@ -394,7 +423,8 @@ local function fillPhrase(r, text)
     r.fav.star:SetDesaturated(not fav)
     r.fav.star:SetAlpha(fav and 1 or 0.3)
     r.chan:SetText((ns.OrderLabel(text)))
-    S.Fill(r, text == held and S.RAISED or S.CLEAR)
+    r.edit.pen:SetAlpha(text == renaming and 1 or 0.6)
+    S.Fill(r, (text == held or text == renaming) and S.RAISED or S.CLEAR)
 end
 
 local function buildPhrases(page, width)
@@ -424,7 +454,15 @@ local function buildPhrases(page, width)
     addBtn:SetText(L.ADD)
     local function doAdd()
         local text = add:GetText()
-        if ns.AddPhrase(text) then
+        if renaming then
+            -- Saving a changed phrase: it keeps its place on the ring, its star and its order.
+            if ns.EditPhrase(renaming, text) then
+                if held == renaming then held = strtrim(text) end
+                renaming = nil
+                add:SetText("")
+                if ns.Panel then ns.Panel() end
+            end
+        elseif ns.AddPhrase(text) then
             add:SetText("")
             held, chosen = strtrim(text), nil
         end
@@ -433,7 +471,12 @@ local function buildPhrases(page, width)
     end
     addBtn:SetScript("OnClick", doAdd)
     add:SetScript("OnEnterPressed", doAdd)
-    page.add = add
+    add:SetScript("OnEscapePressed", function(self)
+        if renaming then renaming = nil; self:SetText("") end
+        self:ClearFocus()
+        ns.Refresh()
+    end)
+    page.add, page.addBtn = add, addBtn
     -- Shift-click on an item while typing puts {item:ID} into the box (ns.OnLink).
     ns.phraseBox = add
     local list = S.List(listView, 36, makePhrase, fillPhrase)
@@ -498,6 +541,7 @@ local function buildPhrases(page, width)
                 (ns.HasOwnOrder(editing) and "" or ("\n" .. S.Hex(S.MUTED) .. L.ORDER_FROM_SETUP .. "|r")))
         else
             card:SetTitle(L.SEC_PHRASES)
+            page.addBtn:SetText(renaming and L.SAVE or L.ADD)
             local items = ns.Phrases()
             list:SetData(items)
             page.empty:SetShown(#items == 0)
@@ -620,7 +664,10 @@ local function build()
         pages[i] = page
     end
     frame:SetScript("OnShow", function() tabs:Select(current) end)
-    frame:HookScript("OnHide", function() held, chosen, editing = nil, nil, nil end)
+    frame:HookScript("OnHide", function()
+        held, chosen, editing = nil, nil, nil
+        if renaming then renaming = nil; local a = pages[1] and pages[1].add; if a then a:SetText("") end end
+    end)
 end
 
 -- Picks a page (1 Phrases, 2 Setup), for the previews and the tests.
