@@ -31,9 +31,14 @@
 6. BagQuests: every quest bag the BagQuests addon (pmgower/bagquests-forever) offers is in
    Worth It, or in tools/worthit/bagquests_seen.txt (tools/worthit/bagquests.py).
 
+7. Dungeon Journal: every dungeon has its bosses in Gulli-DungeonPrep/JournalData.lua, and every
+   boss of WoW Forever's own (npc id from FOREVER_NPCS) has a level: Wowhead and QuestieDB give
+   none, so it goes into LEVELS in tools/dungeonprep/build_journal.py as the game shows it.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
+import json
 import os
 import re
 import sys
@@ -47,6 +52,8 @@ WOWHEAD = os.path.join(ROOT, "tools", "craftprofit", "wowhead-professions.json")
 WOWHEAD_DAYS = 60
 PATTERN = re.compile(r"^(Pattern|Plans|Recipe|Formula|Schematic|Manual): ")
 FOREVER_ITEMS = 245000  # SOD_ITEMS in tools/craftprofit/build_data.py ends here
+JOURNAL = os.path.join(ROOT, "Gulli-DungeonPrep", "JournalData.lua")
+FOREVER_NPCS = 240000   # WoW Forever's own NPCs start about here
 I_NAME, I_SOURCES = 1, (2, 3, 4, 6, 14)
 sys.path.insert(0, os.path.join(ROOT, "tools", "questcleaner"))
 
@@ -263,6 +270,30 @@ def check_bagquests():
     return mod.report()
 
 
+def check_journal(path=JOURNAL):
+    """Dungeons with no boss in the journal, and Forever bosses without a level."""
+    dungeons, _ = prep_dungeons()
+    text = open(path, encoding="utf-8").read()
+    start = text.find("D.boss = {")
+    body = text[start:text.find("\n}\n", start)] if start >= 0 else ""
+    # A skull boss has level 0 on purpose (Wowhead's level 9999).
+    snap = json.load(open(os.path.join(ROOT, "tools", "dungeonprep", "wowhead-dungeons.json"), encoding="utf-8"))
+    skull = {str(b.get("id")) for d in (snap.get("dungeons") or {}).values()
+             for b in (d.get("bosses") or []) + (d.get("rares") or []) if (b.get("minLevel") or 0) >= 9999}
+    lines = []
+    for key, _, name, _, _ in dungeons:
+        m = re.search(r"\n%s = \{\n(.*?)\n\}," % key, body, re.S)
+        rows = re.findall(r'^\{(\d+),"((?:[^"\\]|\\.)*)",[^,]*,(\d+),', m.group(1), re.M) if m else []
+        if not rows:
+            lines.append("- No bosses for **%s** (`%s`)." % (name, key))
+            continue
+        nolevel = [n for npc, n, lvl in rows if int(npc) >= FOREVER_NPCS and int(lvl) == 0
+                   and npc not in skull]
+        if nolevel:
+            lines.append("- %s: no level for %s." % (name, ", ".join(n.replace("\\\"", "\"") for n in nolevel)))
+    return lines
+
+
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
@@ -276,6 +307,7 @@ def main(argv):
     reward_lines, bags = check_rewards(qdb)
     tip_lines = check_tips()
     bagquest_lines = check_bagquests()
+    journal_lines = check_journal()
     if "--update-seen" in argv:
         with open(os.path.join(ROOT, "tools", "worthit", "seen.txt"), "a", encoding="utf-8") as f:
             for iid, name, kind in bags:
@@ -316,6 +348,11 @@ def main(argv):
                    "Add the quest to EXTRA in tools/worthit/build_data.py (its Wowhead page as the source) "
                    "and its steps to Gulli-WorthIt/Tips.lua, or note why not in "
                    "tools/worthit/bagquests_seen.txt.", ""] + bagquest_lines + [""]
+    if journal_lines:
+        report += ["### Dungeon Journal bosses", "",
+                   "Wowhead and QuestieDB have no level for WoW Forever's own bosses: put the level the "
+                   "game shows into LEVELS (a boss neither source lists into EXTRA) in "
+                   "tools/dungeonprep/build_journal.py and run it.", ""] + journal_lines + [""]
     if tip_lines:
         report += ["### Worth It: what to do", ""] + tip_lines + [""]
     text = "\n".join(report)

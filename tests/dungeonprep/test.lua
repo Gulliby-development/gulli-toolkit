@@ -534,7 +534,10 @@ test("the journal data: bosses in the order of the way, the skull boss at level 
             assert(b[10] == "" or L["WING_" .. b[10]], key .. ": a wing without a name: " .. tostring(b[10]))
             assert(#b[8] <= 6, key .. ": more abilities than the page shows")
             for _, sp in ipairs(b[8]) do assert(sp ~= 5101 and sp ~= 13496 and sp ~= 15571, "Dazed is no boss spell") end
-            for _, l in ipairs(b[9]) do assert(l[2] >= 2, key .. ": " .. b[2] .. " lists a white item") end
+            for _, l in ipairs(b[9]) do
+                -- Quality 0 with no chance: an item known only from AllTheThings, the game says.
+                assert(l[2] >= 2 or (l[2] == 0 and l[3] == 0), key .. ": " .. b[2] .. " lists a white item")
+            end
         end
     end
     for key, zone in pairs(ns.Data.zone) do
@@ -552,12 +555,22 @@ test("the journal data: bosses in the order of the way, the skull boss at level 
             seen[b[2]] = true
             for _, l in ipairs(b[9]) do
                 assert(l[1] ~= 1210 and l[1] ~= 7909, key .. ": " .. b[2] .. " has a world drop")
-                assert(l[3] >= 1 and l[3] <= 100, key .. ": a chance out of range")
+                assert((l[3] >= 1 or (l[2] == 0 and l[3] == 0)) and l[3] <= 100, key .. ": a chance out of range")
             end
             for _, s in ipairs(b[8]) do assert(s ~= 1604, "Dazed is no boss spell") end
         end
     end
-    eq(ns.Data.boss.THANES[1][4], 0, "a Forever boss of skull level")
+    eq(ns.Data.boss.THANES[1][4], 16, "a Forever boss has the level the game shows")
+    -- Dungeons Wowhead's zone pages had no NPC of take their bosses from AllTheThings.
+    for _, key in ipairs({ "DALARAN", "KROLDOK", "SHAPERS" }) do
+        assert(#(ns.Data.boss[key] or {}) >= 6, key .. " has its bosses")
+    end
+    eq(ns.Data.boss.DALARAN[1][2], "Atrexis the Grave Knight", "Dalaran in the order of the way")
+    local kd = ns.Bosses("KROLDOK")
+    eq(kd[#kd].name, "Kroog", "the rare last")
+    eq(kd[#kd].rare, true)
+    for _, b in ipairs(kd) do if b.name == "Overlord Mugg" then eq(b.min, 45) end end
+    eq(ns.Data.walk.SHAPERS, true)
 end)
 
 -- A corpse with these items: { { link, quality } }, from one creature GUID.

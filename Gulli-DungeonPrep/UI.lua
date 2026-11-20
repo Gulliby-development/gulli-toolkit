@@ -813,7 +813,8 @@ local function lootTooltip(owner, l)
     if l.zone then
         GameTooltip:AddLine(L.ZONE_DROP, 1, 0.82, 0)
     else
-        local chance = l.pct > 0 and (L.CHANCE:format(l.pct) .. (l.own and ("  " .. L.CHANCE_OWN) or "")) or L.SEEN
+        local chance = l.pct > 0 and (L.CHANCE:format(l.pct) .. (l.own and ("  " .. L.CHANCE_OWN) or ""))
+            or (l.seen and L.SEEN or L.CHANCE_NONE)
         GameTooltip:AddLine(l.boss .. ":  " .. chance, 1, 0.82, 0)
     end
     GameTooltip:AddLine(l.wish and L.WISH_REMOVE or L.WISH_ADD, 0.7, 0.7, 0.7)

@@ -182,7 +182,9 @@ function ns.Bosses(key)
         local known = {}
         for _, l in ipairs(b[9] or {}) do
             known[l[1]] = true
-            x.loot[#x.loot + 1] = lootLine(x.npc, x.name, l[1], l[2], l[3], false)
+            local line = lootLine(x.npc, x.name, l[1], l[2], l[3], false)
+            -- Quality 0: the data does not know it (an ATT item); a white one the game names stays out.
+            if l[2] > 0 or not line.name or (line.quality or 0) >= 2 then x.loot[#x.loot + 1] = line end
         end
         for item in pairs(ownDrops(x.npc)) do
             if not known[item] then x.loot[#x.loot + 1] = lootLine(x.npc, x.name, item, 2, 0, true) end

@@ -11,7 +11,12 @@ wrong for WoW Forever's own quests, so the generator takes both.
 ATT also lists an instance's NPCs in the order a group meets them, under a header for each wing,
 and the drops of its ordinary mobs under ZONE_DROPS: the journal takes the order from there.
 
-    walk(path) -> {"order": [[npc id, wing key or ""]], "zone": [item id]}
+    walk(path) -> {"order": [[npc id, wing key or ""]], "zone": [item id],
+                   "names": {npc id: name}, "loot": {npc id: [item id]}}
+
+`names` comes from the comment after each NPC id, `loot` from the items listed under each boss
+(an encounter's creatureID, or an n(<npc id>) of its own): the journal falls back to them where
+the Wowhead snapshot has no NPC of the instance.
 
 The file is Lua, read as text: never run.
 """
@@ -113,6 +118,7 @@ def walk(path):
     # A frame per open bracket: what opened it (a call's name and first arguments, or "{").
     stack = [{"fn": "", "args": []}]
     order, zone, seen = [], [], set()
+    loot = {}
 
     def wing():
         for f in reversed(stack):
@@ -143,6 +149,11 @@ def walk(path):
             first = args[0] if args else ""
             if fn == "n" and first.isdigit() and not aside():
                 add(int(first))
+                stack[-1]["owner"] = int(first)
+            elif fn == "i" and first.isdigit() and not aside():
+                owner = next((f["owner"] for f in reversed(stack[:-1]) if "owner" in f), None)
+                if owner and int(first) not in loot.setdefault(owner, []):
+                    loot[owner].append(int(first))
             elif fn == "i" and first.isdigit():
                 # A drop of the ordinary mobs: straight under ZONE_DROPS, not inside an NPC there.
                 calls = [f for f in stack[:-1] if f["fn"] in ("n", "e", "i")]
@@ -163,11 +174,20 @@ def walk(path):
                     while j < len(toks) and toks[j] != "}":
                         if toks[j].isdigit():
                             add(int(toks[j]))
+                            stack[-2].setdefault("owner", int(toks[j]))
                         j += 1
                 elif toks[j].isdigit():
                     add(int(toks[j]))
+                    stack[-2].setdefault("owner", int(toks[j]))
         i += 1
-    return {"order": order, "zone": zone}
+    wanted = {npc for npc, _ in order}
+    names = {}
+    for line in text.splitlines():
+        m = re.match(r"\s*(?:creatureID\s*=\s*|n\(\s*)?(\d+)[\s,{(]*--\s*(.+?)\s*$", line)
+        if m and int(m.group(1)) in wanted and int(m.group(1)) not in names:
+            names[int(m.group(1))] = re.sub(r"\s*<.*$", "", m.group(2))
+    return {"order": order, "zone": zone, "names": {str(k): v for k, v in sorted(names.items())},
+            "loot": {str(k): v for k, v in sorted(loot.items()) if k in wanted}}
 
 
 if __name__ == "__main__":
