@@ -594,8 +594,10 @@ SlashCmdList.GULLIFARMTRACK = function(msg) ns.Slash(msg) end
 
 function GulliFarmTrack_Toggle() ns.Toggle() end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "FarmTrack",
         icon = "Interface\\AddOns\\Gulli-FarmTrack\\icon",
         slash = "/gft",

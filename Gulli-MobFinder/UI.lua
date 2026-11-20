@@ -632,8 +632,10 @@ end
 function GulliMobFinder_Toggle() ns.Toggle() end
 
 -- A module of Gulli Toolkit: the hub lists it when the core is loaded.
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "MobFinder",
         title = L.TITLE,
         desc = L.DESC,

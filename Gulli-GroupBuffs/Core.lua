@@ -841,8 +841,10 @@ function GulliGroupBuffs_Toggle()
     if ns.Toggle then ns.Toggle() end
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "GroupBuffs",
         desc = ns.L.DESC,
         icon = "Interface\\AddOns\\Gulli-GroupBuffs\\icon",

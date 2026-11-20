@@ -491,13 +491,26 @@ function ns.AngleTo(cx, cy, px, py)
     return math.deg(math.atan2(py - cy, px - cx)) % 360
 end
 
--- Module buttons at the minimap: GulliToolkitDB.pins = { [module key] = angle }. Nothing is
--- pinned until the player asks for it; a module's button shows only while the module runs.
+-- Module buttons at the minimap: GulliToolkitDB.pins = { [module key] = angle, or false when
+-- the player took the button away }; pinRings = { [module key] = 2 } for a button on the second
+-- ring. A module the player never switched follows ns.PIN_DEFAULT (owner's decision of
+-- 2026-11-20: a module shows its button unless the player turned it off); a module's button
+-- shows only while the module runs.
 ns.PIN_TRIES = 40
+-- The modules whose button shows until the player turns it off; true: every module.
+ns.PIN_DEFAULT = { CraftProfit = true, Crates = true, DungeonPrep = true, GroupBuffs = true,
+                   WorthIt = true, VendorFlip = true }
+
+function ns.PinDefault(key)
+    return ns.PIN_DEFAULT == true or (type(ns.PIN_DEFAULT) == "table" and ns.PIN_DEFAULT[key] == true)
+end
 
 function ns.Pinned(key)
     local p = GulliToolkitDB and GulliToolkitDB.pins
-    return p ~= nil and p[key] ~= nil
+    local v = p and p[key]
+    if v == false then return false end
+    if v ~= nil then return true end
+    return ns.PinDefault(key)
 end
 
 function ns.PinAngle(key)
@@ -505,22 +518,37 @@ function ns.PinAngle(key)
     return p and tonumber(p[key]) or nil
 end
 
+function ns.PinRing(key)
+    local r = GulliToolkitDB and GulliToolkitDB.pinRings
+    return r and tonumber(r[key]) or 1
+end
+
 -- The first place beside the hub's button that no button has: steps of `step` degrees away
--- from it, up the left side first.
-function ns.FreeAngle(step)
+-- from it, up the left side first; when the ring is full, the second ring (steps of `step2`).
+-- Returns the angle and the ring.
+function ns.FreeAngle(step, step2)
     step = step or 26
-    local used = { ns.MinimapAngle() }
-    for _, a in pairs(GulliToolkitDB and GulliToolkitDB.pins or {}) do used[#used + 1] = tonumber(a) or 0 end
-    for i = 1, ns.PIN_TRIES do
-        local a = (ns.MinimapAngle() - i * step) % 360
-        local free = true
-        for _, u in ipairs(used) do
-            local d = math.abs(a - u) % 360
-            if math.min(d, 360 - d) < step - 0.5 then free = false end
+    local hub = ns.MinimapAngle()
+    local function try(ring, st)
+        local used = ring == 1 and { hub } or {}
+        for key, a in pairs(GulliToolkitDB and GulliToolkitDB.pins or {}) do
+            if tonumber(a) and ns.PinRing(key) == ring then used[#used + 1] = tonumber(a) end
         end
-        if free then return a end
+        for i = 1, math.min(ns.PIN_TRIES, math.floor(360 / st) - 1) do
+            local a = (hub - i * st) % 360
+            local free = true
+            for _, u in ipairs(used) do
+                local d = math.abs(a - u) % 360
+                if math.min(d, 360 - d) < st - 0.5 then free = false end
+            end
+            if free then return a end
+        end
     end
-    return (ns.MinimapAngle() - step) % 360
+    local a = try(1, step)
+    if a then return a, 1 end
+    a = try(2, step2 or math.max(1, math.floor(step * 0.7)))
+    if a then return a, 2 end
+    return (hub - step) % 360, 1
 end
 
 function ns.SetPinned(key, on, step)
@@ -528,17 +556,29 @@ function ns.SetPinned(key, on, step)
     GulliToolkitDB = GulliToolkitDB or {}
     GulliToolkitDB.pins = GulliToolkitDB.pins or {}
     if on then
-        if GulliToolkitDB.pins[key] == nil then GulliToolkitDB.pins[key] = ns.FreeAngle(step or ns.pinStep) end
+        if not tonumber(GulliToolkitDB.pins[key]) then
+            local a, ring = ns.FreeAngle(step or ns.pinStep, ns.pinStep2)
+            ns.SetPinAngle(key, a, ring, true)
+        end
     else
-        GulliToolkitDB.pins[key] = nil
+        GulliToolkitDB.pins[key] = false
+        if GulliToolkitDB.pinRings then GulliToolkitDB.pinRings[key] = nil end
     end
     if ns.PlacePins then ns.PlacePins() end
     if ns.Refresh then ns.Refresh() end
 end
 
-function ns.SetPinAngle(key, angle)
-    if not ns.Pinned(key) then return end
+-- Moves a module's button: an angle, and the ring when it changes. force: also when the
+-- player had taken it away (SetPinned puts it back).
+function ns.SetPinAngle(key, angle, ring, force)
+    if not force and not ns.Pinned(key) then return end
+    GulliToolkitDB = GulliToolkitDB or {}
+    GulliToolkitDB.pins = GulliToolkitDB.pins or {}
     GulliToolkitDB.pins[key] = angle
+    if ring then
+        GulliToolkitDB.pinRings = GulliToolkitDB.pinRings or {}
+        GulliToolkitDB.pinRings[key] = ring > 1 and ring or nil
+    end
 end
 
 -- The module buttons the minimap shows now: the pinned modules that run and can be opened.

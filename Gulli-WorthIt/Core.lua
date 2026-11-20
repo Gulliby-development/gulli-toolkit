@@ -734,14 +734,16 @@ SlashCmdList.GULLIWORTHIT = function(msg) ns.Slash(msg) end
 
 function GulliWorthIt_Toggle() ns.Toggle() end
 
-if GulliToolkit and GulliToolkit.Register then
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     local function opt(key)
         local up = key:upper()
         return { label = L["OPT_" .. up], tip = L["OPT_" .. up .. "_TIP"], icon = ns.OPT_ICON[key],
                  get = function() return ns.db ~= nil and ns.db[key] == true end,
                  set = function(v) ns.SetPref(key, v) end }
     end
-    GulliToolkit.Register({
+    register({
         key = "WorthIt",
         icon = ns.ICON,
         slash = "/gwi",

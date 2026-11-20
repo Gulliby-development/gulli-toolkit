@@ -1177,8 +1177,10 @@ local function option(key)
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "Crates",
         icon = "Interface\\AddOns\\Gulli-Crates\\icon",
         slash = "/gcr",

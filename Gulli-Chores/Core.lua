@@ -577,8 +577,10 @@ local function option(key, task)
 end
 ns.Option = option
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "Chores",
         icon = "Interface\\AddOns\\Gulli-Chores\\icon",
         slash = "/gch",

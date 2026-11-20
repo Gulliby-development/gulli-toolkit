@@ -817,8 +817,10 @@ function ns.ApplyKey()
 end
 
 -- In the Gulli Toolkit hub when it is installed; the addon works the same without it.
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "QuestCleaner",
         icon = "Interface\\AddOns\\Gulli-QuestCleaner\\icon",
         slash = "/gqc",

@@ -637,8 +637,10 @@ ns.OPT_ICON = {
     hideEmpty = "Interface\\Icons\\INV_Box_01",
 }
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "Attune",
         icon = "Interface\\AddOns\\Gulli-Attune\\icon",
         slash = "/gat",
