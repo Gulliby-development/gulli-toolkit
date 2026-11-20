@@ -90,6 +90,8 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 -- count settings whose stepper ends in "no limit"
 local UNLIMITED = { maxSell = true, maxBuy = true }
 local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
+-- The least gain of one profit craft the stepper offers, in copper; 0 is any gain.
+local GAINS = { 0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 }
 
 -- The saved settings, not the ones of the last result: a calculation may still be running.
 local function pref(key)
@@ -119,6 +121,13 @@ local function stepper(parent, key, step, min, max, fmt, width)
             return at
         end
         set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+    elseif key == "minGain" then
+        get = function()
+            local g, at = pref("minGain") or 0, 1
+            for i, x in ipairs(GAINS) do if x <= g then at = i end end
+            return at
+        end
+        set = function(i) ns.SetPref("minGain", GAINS[i]) end
     elseif key == "maxCrafts" then
         -- auto (0) shows and steps from the limit it stands for; stepping back onto that value
         -- binds it to the target again; one step past the top is "no limit" (-1)
@@ -314,7 +323,8 @@ local function buildSettings(box)
         stepRow(cols[2], "maxBuy", 10, 10, 200, function(v) return L.UNITS:format(v) end), sw("buyVendor") }))
     add(2, rowsCard(cols[2], L.SIDE_SELL, { sw("sellAH"), sw("neutral"), sw("freshOnly"),
         stepRow(cols[2], "chance", 5, 30, 100, function(v) return v .. "%" end),
-        stepRow(cols[2], "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end) }))
+        stepRow(cols[2], "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end),
+        stepRow(cols[2], "minGain", 1, 1, #GAINS, function(i) return GAINS[i] == 0 and L.GAIN_ANY or ns.Money(GAINS[i]) end) }))
 
     -- the run log: what the plan promised against what the run really did
     local log = S.Card(cols[1], L.SIDE_LOG)
@@ -343,7 +353,7 @@ end
 
 -- The settings that need auction prices.
 local AH_SWITCH = { buyAH = true, sellAH = true, neutral = true, freshOnly = true }
-local AH_STEP = { maxBuy = true, chance = true, maxSell = true }
+local AH_STEP = { maxBuy = true, chance = true, maxSell = true, minGain = true }
 
 local function refreshSettings()
     local P = ns.Prefs(ns.db and ns.db.prefs)

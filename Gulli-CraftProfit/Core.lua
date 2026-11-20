@@ -30,6 +30,7 @@ ns.DEFAULTS = {
     useAlts = false, -- items on the other characters (Gulli Chores) count as own, sent by mail
     guard = 10, -- percent an auction price may be above the plan before the Buy button asks first
     side = true, -- at the auction house the run's buy stop opens in the window beside it
+    minGain = 500, -- copper a profit craft must gain at least; 0: any gain
 }
 -- Settings that change no plan: the window only redraws.
 ns.NO_PLAN = { guard = true, side = true }
@@ -50,8 +51,9 @@ ns.OLD_MODES = { money = "l1", balance = "auto", speed = "l4" }
 ns.EARN = { own = true, earn = true }
 -- A change of recipe costs a little, so the plan does not hop between two recipes for a point.
 ns.SWITCH = 600
--- The most crafts one profit run plans, intermediates included, so one cheap recipe cannot run away.
-ns.EARN_MAX = 200
+-- The most crafts of the product one profit run plans, fixed (owner's decision of 2026-11-20):
+-- crafted, the next run is planned anew, so a cheap recipe never asks for thousands.
+ns.EARN_MAX = 50
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
 
@@ -100,12 +102,26 @@ function ns.Deposit(it) return math.floor((it.vend or 0) * 0.3 + 0.5) end
 -- A count setting where 0 (or none) means no limit.
 function ns.Limit(v) return (v and v > 0) and v or math.huge end
 
--- Value of one unit put up for sale. `sold`: how many the plan already lists; past maxSell the
--- market is full and the rest goes to a vendor. Returns the value and "ah" or "vendor".
+-- How many of one item the auction takes: maxSell, and never more than are on sale there now
+-- when the lots were read (a market of 12 does not take 300 more).
+function ns.MarketTake(state, P, id)
+    local m = ns.Limit(P.maxSell)
+    local it = state.items[id]
+    local lots = it and it.lots
+    if lots and lots.l and (not state.now or state.now - (lots.t or 0) <= ns.LOTS_FRESH) then
+        local n = 0
+        for _, l in ipairs(lots.l) do n = n + (l[2] or 0) end
+        if n > 0 then m = math.min(m, n) end
+    end
+    return m
+end
+
+-- Value of one unit put up for sale. `sold`: how many the plan already lists; past what the
+-- market takes the rest goes to a vendor. Returns the value and "ah" or "vendor".
 function ns.SellValue(state, P, id, sold)
     local it = state.items[id] or {}
     local vend = it.vend or 0
-    if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.Limit(P.maxSell) then return vend, "vendor" end
+    if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.MarketTake(state, P, id) then return vend, "vendor" end
     local p = P.chance / 100
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
     local ev = p * it.ah * (1 - cut) + (1 - p) * (vend - ns.Deposit(it))
@@ -436,7 +452,7 @@ local function planWith(state, P, allowed)
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
-        local toAH = how == "ah" and math.min(n, ns.Limit(P.maxSell)) or 0
+        local toAH = how == "ah" and math.min(n, ns.MarketTake(state, P, id)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
         add(acc.sellVendor, id, n - toAH)
@@ -489,12 +505,7 @@ local function earnWith(state, P, known, rid)
     Q.ahBought = acc.ahBuy
     P = Q
     local bySeg = {}
-    local function made()
-        local n = acc.crafts
-        for _, k in pairs(acc.prep) do n = n + k end
-        return n
-    end
-    while made() < ns.EARN_MAX do
+    while acc.crafts < ns.EARN_MAX do
         ns.Tick()
         local best
         for _, rid in ipairs(ids) do
@@ -503,7 +514,7 @@ local function earnWith(state, P, known, rid)
             if cost < math.huge then
                 local value = ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1)
                 local gain = value - cost
-                if gain >= 1 and (not best or gain > best.gain) then best = { rid = rid, gain = gain } end
+                if gain >= math.max(1, P.minGain or 0) and (not best or gain > best.gain) then best = { rid = rid, gain = gain } end
             end
         end
         if not best then break end
@@ -527,7 +538,7 @@ local function earnWith(state, P, known, rid)
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
-        local toAH = how == "ah" and math.min(n, ns.Limit(P.maxSell)) or 0
+        local toAH = how == "ah" and math.min(n, ns.MarketTake(state, P, id)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
         add(acc.sellVendor, id, n - toAH)
@@ -1532,7 +1543,7 @@ ns.OPT_ICON = {
     sellAH = "Interface\\Icons\\INV_Misc_Coin_02", neutral = "Interface\\Icons\\INV_Misc_Coin_04",
     freshOnly = "Interface\\Icons\\INV_Misc_PocketWatch_01", level = "Interface\\Icons\\Spell_ChargePositive", target = "Interface\\Icons\\INV_Misc_Note_01",
     budget = "Interface\\Icons\\INV_Misc_Coin_01",
-    chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop",
+    chance = "Interface\\Icons\\INV_Misc_Coin_02", maxSell = "Interface\\Icons\\Spell_Nature_TimeStop", minGain = "Interface\\Icons\\INV_Misc_Coin_01",
     maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop", maxCrafts = "Interface\\Icons\\Spell_Nature_TimeStop",
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",

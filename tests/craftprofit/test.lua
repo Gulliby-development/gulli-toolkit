@@ -395,16 +395,56 @@ test("a profit run buys at most maxBuy of one item at the auction, and stops at 
         bolt = { name = "Bolt of Linen Cloth", skill = { 1, 25, 50 }, r = { cloth = 2 }, out = "bolt", learned = true },
         bag = { name = "Linen Bag", skill = { 45, 70, 95 }, r = { bolt = 3 }, out = "bag", learned = true },
     } }
-    local e = c.Earn(st, prefs({ maxBuy = 40 }))
+    local e = c.Earn(st, prefs({ maxBuy = 40, minGain = 0 }))
     assert(e.net > 0)
     assert((e.ahBuy.cloth or 0) <= 40 + 6, "cloth bought: " .. tostring(e.ahBuy.cloth))
-    local more = c.Earn(st, prefs({ maxBuy = 200 }))
+    local more = c.Earn(st, prefs({ maxBuy = 200, minGain = 0 }))
     assert(more.crafts > e.crafts)
-    assert(more.crafts <= c.EARN_MAX + 3, "crafts with the bolts: " .. more.crafts)
+    -- 50 bags at most; the bolts for them are preparation, beside them
+    eq(c.EARN_MAX, 50)
+    assert(c.LevelCrafts(more) <= c.EARN_MAX, "bags: " .. c.LevelCrafts(more))
+    assert(more.prepCrafts > 0, "the bolts")
     -- without the auction, only own cloth counts
     st.items.cloth.bags = 12
     local own = c.Earn(st, prefs({}), true)
     eq(own.ahBuy.cloth, nil)
+end)
+
+-- A profit craft must gain at least minGain (5 silver at first), and the auction never takes
+-- more of one item than are on sale there now (when the lots were read).
+test("a profit run keeps to the least gain per craft and to what the market takes", function()
+    local c = core()
+    local function st()
+        return { skill = 100, cap = 150, level = 30, items = {
+            cloth = { name = "Linen Cloth", ah = 1, age = 0, vend = 1, bags = 1000 },
+            bag = { name = "Linen Bag", ah = 400, age = 0, vend = 100 },
+            good = { name = "Good Bag", ah = 5000, age = 0, vend = 100 },
+        }, recipes = {
+            bag = { name = "Linen Bag", skill = { 45, 70, 95 }, r = { cloth = 3 }, out = "bag", learned = true },
+            good = { name = "Good Bag", skill = { 45, 70, 95 }, r = { cloth = 4 }, out = "good", learned = true },
+        } }
+    end
+    eq(c.DEFAULTS.minGain, 500, "5 silver at first")
+    local s1 = st()
+    s1.recipes.good = nil
+    local e = c.Earn(s1, prefs({ maxSell = 0 }), true)
+    eq(e.crafts, 0, "a bag that gains under 5 silver is no profit run")
+    local any = c.Earn(s1, prefs({ maxSell = 0, minGain = 0 }), true)
+    assert(any.crafts > 0, "with any gain it is")
+    -- no market depth known: up to EARN_MAX
+    local s2 = st()
+    local free = c.Earn(s2, prefs({ maxSell = 0 }), true)
+    eq(c.LevelCrafts(free), c.EARN_MAX)
+    -- 7 on sale: the auction takes 7, the rest would go to a vendor at a loss
+    s2.items.good.lots = { t = 1000, l = { { 5000, 4 }, { 5100, 3 } } }
+    s2.now = 1000 + 60
+    eq(c.MarketTake(s2, prefs({ maxSell = 0 }), "good"), 7)
+    eq(c.MarketTake(s2, prefs({ maxSell = 5 }), "good"), 5, "maxSell when smaller")
+    local held = c.Earn(s2, prefs({ maxSell = 0 }), true)
+    eq(c.LevelCrafts(held), 7)
+    -- lots older than a day say nothing
+    s2.now = 1000 + c.LOTS_FRESH + 1
+    eq(c.MarketTake(s2, prefs({ maxSell = 0 }), "good"), math.huge)
 end)
 
 test("from my stock buys nothing at the auction and no recipe", function()
@@ -1817,6 +1857,8 @@ end)
 
 test("a route tile switches at once from the result; the runs of each route are kept", function()
     local n = game()
+    n.db.prefs = n.db.prefs or {}
+    n.db.prefs.minGain = 0
     n.Toggle(); n.Calculate()
     local calls = { v = 0, l = 0 }
     local V, Lg = n.Variants, n.Legs

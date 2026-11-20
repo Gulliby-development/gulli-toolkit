@@ -757,6 +757,7 @@ function ns.State()
     local state = ns.Skill()
     -- no auction price addon: reagents at a guessed price, and no profit routes
     state.noPrices = not ns.HasPrices() or nil
+    state.now = time and time() or nil -- how old the lots read at the auction are (ns.MarketTake)
     local gone = ns.Data and ns.Data.gone or {}
     ns.ReadRep()
     ns.repUnknown = {}
@@ -950,7 +951,15 @@ end
 function ns.ScanLots(route)
     if not ns.atAH then return 0 end
     scan.queue = {}
-    for _, e in ipairs(ns.Shopping(route)) do if e.id then scan.queue[#scan.queue + 1] = e.id end end
+    local seen = {}
+    for _, e in ipairs(ns.Shopping(route)) do
+        if e.id and not seen[e.id] then seen[e.id] = true; scan.queue[#scan.queue + 1] = e.id end
+    end
+    -- and what the run sells there: how many are on sale caps what the market takes (ns.MarketTake)
+    local plan = ns.view and ns.view.plan
+    for id, k in pairs(plan and plan.sellAH or {}) do
+        if k > 0 and not seen[id] then seen[id] = true; scan.queue[#scan.queue + 1] = id end
+    end
     local n = #scan.queue
     if n > 0 and not scan.busy then nextSearch() end
     return n
