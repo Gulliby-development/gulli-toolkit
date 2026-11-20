@@ -458,19 +458,20 @@ test("the crafts limit: auto follows the target, routes over it go", function()
     eq(c.CraftCap(st, c.Prefs({ maxCrafts = 40 })), 40)
     eq(c.CraftCap(st, c.Prefs({ maxCrafts = -1 })), nil)
     local all = c.Frontier(st, prefs({ maxSell = 5 }))
-    local cheap, fast = all[1].crafts, all[#all].crafts
+    local L = c.LevelCrafts
+    local cheap, fast = L(all[1]), L(all[#all])
     assert(cheap > fast + 2)
     -- a limit between them: every route keeps within it, and the cheapest one within it is found
     local cap = math.floor((cheap + fast) / 2)
     local f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = cap }))
     assert(#f >= 1)
-    for _, p in ipairs(f) do assert(p.crafts <= cap + 0.5, "crafts " .. p.crafts .. " over " .. cap); assert(not p.many) end
+    for _, p in ipairs(f) do assert(L(p) <= cap + 0.5, "crafts " .. L(p) .. " over " .. cap); assert(not p.many) end
     for _, p in ipairs(all) do
-        if p.crafts <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
+        if L(p) <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
     end
     -- a limit nobody keeps: only the route with the fewest crafts, marked
     f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
-    eq(#f, 1); assert(f[1].many); eq(f[1].crafts, fast)
+    eq(#f, 1); assert(f[1].many); eq(L(f[1]), fast)
     local v = c.Variants(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
     assert(v[1].many and v[1].best, "still shown, marked")
 end)
@@ -1748,6 +1749,39 @@ test("a plan never drops a bought recipe it needs to reach the target, however h
     eq(plan.reached, 175, "the plan reaches the target")
     P.only = "bracer"
     eq(ns.Plan(st, P).reached, 175, "a run of that one recipe reaches it too")
+end)
+
+-- The crafts limit counts only the crafts that raise the skill. Smelting the bars for them is
+-- preparation: shown beside them ("4 + 40 prep"), never limited (owner's decision of 2026-11-20).
+test("the crafts limit counts only the crafts that raise the skill, not the preparation", function()
+    local ns = core()
+    local st = {
+        skill = 171, cap = 300, level = 60,
+        items = {
+            ore = { name = "Ore", ah = 10, age = 0.1, vend = 2 },
+            bar = { name = "Bar", vend = 5 },
+            out = { name = "Bracers", ah = 100, age = 0.1, vend = 50 },
+        },
+        recipes = {
+            smelt = { name = "Smelt Bar", r = { ore = 1 }, out = "bar", learned = true, other = "Mining" },
+            bracer = { name = "Bracers", skill = { 160, 185, 210 }, r = { bar = 10 }, out = "out", learned = true },
+        },
+    }
+    local P = prefs({ target = 175, maxCrafts = 0 })
+    eq(ns.CraftCap(st, P), 9, "auto: 4 points + 5")
+    local routes = ns.Frontier(st, P)
+    eq(#routes > 0, true, "a route")
+    local p = routes[1]
+    eq(p.reached, 175, "it reaches the target")
+    eq(p.many, nil, "within the limit")
+    eq(ns.LevelCrafts(p), 4, "4 crafts raise the skill")
+    eq(p.prepCrafts, 40, "40 bars smelted beside them")
+    eq(p.crafts, 44, "the time counts both")
+    -- a limit below the skill crafts still gives the way, marked over the limit
+    local Q = prefs({ target = 175, maxCrafts = 2 })
+    local over = ns.Frontier(st, Q)
+    eq(over[1].reached, 175, "the way is still planned")
+    eq(over[1].many, true, "marked over the limit")
 end)
 
 -- The runs follow the route the tile shows: a stretch the route crafts through is never "?",

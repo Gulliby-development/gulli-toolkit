@@ -1605,7 +1605,7 @@ local function refreshChips(v)
                 b.net:SetText(plan and (color(net >= 0 and GOOD or BAD) .. (net < 0 and "-" or "+") .. ns.Short(net) .. "|r") or "")
                 -- the recipe of the run beside its skill, when the part is wide enough for it
                 local r = sg and st and st.recipes[sg.rid]
-                local long = r and (range .. "  " .. color(S.MUTED) .. r.name .. " x" .. ns.Ceil(plan.crafts or sg.n) .. "|r")
+                local long = r and (range .. "  " .. color(S.MUTED) .. r.name .. " x" .. ns.Ceil(plan.crafts and ns.LevelCrafts(plan) or sg.n) .. "|r")
                 b.text:SetText(long or range)
                 if long then
                     local need = (tonumber((b.text:GetStringWidth())) or 0) + (tonumber((b.net:GetStringWidth())) or 0) + 28
@@ -1686,7 +1686,7 @@ local function refreshRoute()
             local full = p.full or p
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
-                or (p.earn and L.VAR_GOLD:format(ns.Ceil(p.crafts)) or L.VAR_RUN:format(full.target, ns.Ceil(full.crafts)))
+                or (p.earn and L.VAR_GOLD:format(ns.Ceil(ns.LevelCrafts(p))) or L.VAR_RUN:format(full.target, ns.Ceil(ns.LevelCrafts(full))))
             if x.many then sub = color(BAD) .. L.VAR_MANY .. "|r"
             elseif x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
@@ -1707,8 +1707,11 @@ local function refreshRoute()
     local w = plan.warn or (plan.full and plan.full.warn)
     local guess = false
     for _, r in pairs(v.state.recipes) do if r.guess and r.learned then guess = true end end
+    -- the crafts the limit counts, and the preparation (smelting, cutting) beside them
+    local prep = ns.Ceil(plan.prepCrafts or 0)
+    local made = S.Emph(tostring(ns.Ceil(ns.LevelCrafts(plan))))
     ui.crafts:SetText((not unknown and (plan.crafts or 0) > 0)
-        and L.LEDGER_CRAFTS:format(S.Emph(tostring(ns.Ceil(plan.crafts)))) or "")
+        and L.LEDGER_CRAFTS:format(prep > 0 and L.CRAFTS_PREP:format(made, S.Emph(tostring(prep))) or made) or "")
     if unknown then
         ui.money:SetText("")
         ui.net:SetText("")

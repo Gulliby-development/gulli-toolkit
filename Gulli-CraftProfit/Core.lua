@@ -357,8 +357,13 @@ function ns.Target(state, P)
 end
 
 -- The most crafts a levelling route may take, or nil for no limit. Auto follows the target:
--- the skill points to go plus ns.CRAFTS_SPARE.
+-- the skill points to go plus ns.CRAFTS_SPARE. Only the crafts that raise the skill count
+-- (ns.LevelCrafts): smelting and other preparation is shown beside them, never limited.
 ns.CRAFTS_SPARE = 5
+function ns.LevelCrafts(p)
+    return p.level or (p.crafts - (p.prepCrafts or 0))
+end
+
 function ns.CraftCap(state, P)
     local m = P.maxCrafts or 0
     if m < 0 then return nil end
@@ -413,6 +418,7 @@ local function planWith(state, P, allowed)
             for id, k in pairs(r.r) do take(state, P, st, allowed, acc, id, k * best.n) end
             if r.out then add(acc.made, r.out, best.n * (r.count or 1)) end
             acc.crafts = acc.crafts + best.n
+            acc.level = (acc.level or 0) + best.n
             if not r.learned then acc.buyRecipes[best.rid] = true end
             if last and last.rid == best.rid and last.to == s then
                 last.to = s + 1; last.n = last.n + best.n
@@ -424,7 +430,8 @@ local function planWith(state, P, allowed)
     end
     acc.reached, acc.target = s, target
     for rid in pairs(acc.buyRecipes) do acc.spend = acc.spend + (state.recipes[rid].src.cost or 0) end
-    for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n end
+    acc.level, acc.prepCrafts = acc.level or 0, 0
+    for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n; acc.prepCrafts = acc.prepCrafts + n end
     acc.income, acc.sellAH, acc.sellVendor = 0, {}, {}
     for id, n in pairs(acc.made) do
         n = ceil(n)
@@ -514,7 +521,8 @@ local function earnWith(state, P, known, rid)
         sg.n = sg.n + 1
     end
     for rid in pairs(acc.buyRecipes) do acc.spend = acc.spend + (state.recipes[rid].src.cost or 0) end
-    for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n end
+    acc.level, acc.prepCrafts = acc.crafts, 0 -- the crafts of the product itself
+    for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n; acc.prepCrafts = acc.prepCrafts + n end
     acc.income, acc.sellAH, acc.sellVendor = 0, {}, {}
     for id, n in pairs(acc.made) do
         n = ceil(n)
@@ -585,7 +593,7 @@ function ns.Frontier(state, P)
     -- weights of the sweep; when none fits, the one with the fewest crafts, marked `many`
     local cap = ns.CraftCap(state, P)
     if cap then
-        local fits = function(p) return p.reached == top and p.crafts <= cap + 0.5 end
+        local fits = function(p) return p.reached == top and ns.LevelCrafts(p) <= cap + 0.5 end
         local lo, hi
         for _, p in ipairs(plans) do
             if fits(p) then hi = (not hi or p.w < hi) and p.w or hi end
@@ -605,7 +613,7 @@ function ns.Frontier(state, P)
         if #kept == 0 then
             local few
             for _, p in ipairs(plans) do
-                if p.reached == top and (not few or p.crafts < few.crafts) then few = p end
+                if p.reached == top and (not few or ns.LevelCrafts(p) < ns.LevelCrafts(few)) then few = p end
             end
             few = few or plans[#plans]
             few.many = true
