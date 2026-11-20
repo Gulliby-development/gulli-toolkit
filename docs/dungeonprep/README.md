@@ -44,7 +44,7 @@ You are about to run a dungeon. Who is inside, what can drop for you, and did yo
 - **Quest colours.** Each quest shows its level in the same colours, and says if it is hard or easy for you.
 - **Three lists of quest cards.** Quests in your log, quests to pick up on the way, and quests for later. Each card shows the quest's level, the level it opens at, its step in the chain, a clear tag (**In log**, **Can take**, **Later**, **Done**) and what comes next: the earlier quest you need first and where it starts, or who takes it back.
 - **Ready to go?** Repairs, free bag slots, food, water, the hearthstone, ammo and reagents moved to the **Ready** card on the home page of `/gulli`, so you see them without opening the journal.
-- **Data built in.** The quests come from the QuestieDB data for WoW Forever, checked against the AllTheThings list of every dungeon's quests, the levelling chains from the Guidelime DungeonQuests guides, the bosses and drop chances from Wowhead's WoW Forever pages, the order of the bosses from AllTheThings (and the bosses and loot of the dungeons Wowhead lacks), the levels of WoW Forever's own bosses as the game shows them.
+- **Data built in.** The quests come from the QuestieDB data for WoW Forever, checked against the AllTheThings list of every dungeon's quests, the levelling chains from the Guidelime DungeonQuests guides, the bosses and drop chances from Wowhead's WoW Forever pages, the order of the bosses from AllTheThings (and the bosses of the dungeons Wowhead files elsewhere), the levels of WoW Forever's own bosses as the game shows them.
 
 ## Install
 
@@ -82,7 +82,7 @@ From Wowhead's WoW Forever pages, counted from many players' kills. After 10 kil
 <details>
 <summary><b>A boss has no drop chance or shows ?? as its level</b></summary>
 
-Wowhead has no boss list for the City of Dalaran, Krol'dok Stronghold and Shaper's Terrace, so their bosses and loot come from AllTheThings, without drop chances. After 10 kills of a boss the journal shows your own chances. Wowhead has no levels for the bosses of WoW Forever's new dungeons, so their levels are the ones the game shows. A boss whose level is not known yet shows **??**.
+Wowhead files the bosses of the City of Dalaran, Krol'dok Stronghold and Shaper's Terrace under other zones, so their pages were read one by one. A boss Wowhead has no kills of yet shows its loot without a chance. After 10 kills of a boss the journal shows your own chances. Wowhead has no levels for the bosses of WoW Forever's new dungeons, so their levels are the ones the game shows. A boss whose level is not known yet shows **??**.
 </details>
 
 <details>

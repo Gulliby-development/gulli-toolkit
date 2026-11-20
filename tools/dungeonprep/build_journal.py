@@ -32,6 +32,8 @@ Wowhead gives no level for WoW Forever's own NPCs and neither does QuestieDB, so
 levels read in the game (a level the snapshot has wins), RARES marks the rares ATT lists among
 the bosses, NAMES renames an encounter the game shows under another name, SKIP drops an NPC that
 is part of another one's encounter, and EXTRA adds a boss or rare neither source lists.
+merge_npcs.py adds the NPC pages of bosses Wowhead files under another zone (read one by one)
+to the snapshot, with their models and drop chances.
 The snapshot is untrusted text: it is only read as JSON, never run.
 """
 import json
