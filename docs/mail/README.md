@@ -26,7 +26,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 - **Every letter in a list.** Who sent it, what is in it, how many days are left. **Take** one letter, **Return** a player's letter, or tick several and **Take selected**.
 - **A total.** What this visit brought, with the auction sales apart. It also goes to the toolkit's Recent feed.
 - **No lost mail.** A warning when letters with items or money run out within three days, also for your other characters when you log in.
-- **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to, your friends and your guild. Type to search.
+- **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to or took a letter from, your friends and your guild. Type to search.
 - **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust or gems (or all of them) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; fill in all your gold but what you keep; mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
 - **A log** of the last 50 letters you took from.
 
@@ -48,7 +48,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 <details>
 <summary><b>The list of names is empty</b></summary>
 
-It fills by itself. Your other characters on the realm show up after you log in with each of them once, with the addon on. Players you send mail to show up too. Until then the list says **No names yet**.
+It fills by itself. Your other characters on the realm show up after you log in with each of them once, with the addon on. Players you send mail to, and players whose letters you take, show up too. Until then the list says **No names yet**.
 </details>
 
 <details>

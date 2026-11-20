@@ -89,6 +89,31 @@ test("names: own characters of this faction first, then recent recipients", func
     eq(W.to, "Bank"); eq(W.tab, 2)
 end)
 
+test("names: a player whose letter was taken is someone to write back to", function()
+    Fake({ inbox = { { sender = "Pen Pal", items = { 1 } } } })
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    W.Fire("MAIL_SHOW")
+    ns.TakeAll()
+    W.Drain()
+    local found = false
+    for _, n in ipairs(ns.Names()) do if n.name == "Pen Pal" then found = n.group == "recent" end end
+    assert(found, "the sender is listed with the recent names")
+    eq(ns.db.recent.Realm[1], "Pen Pal")
+end)
+
+test("names: an empty realm finds the saved names even when the normalized realm name differs", function()
+    Fake({ name = "Hero", faction = "Horde", db = {
+        alts = { ["R 4"] = { Horde = { Hero = true, Dali = true } } }, recent = { ["R 4"] = { "Niviera" } } } })
+    GetRealmName = function() return "" end
+    GetNormalizedRealmName = function() return "R4" end
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    local names = ns.Names()
+    GetNormalizedRealmName = nil
+    eq(names[1].name, "Dali"); eq(names[2].name, "Niviera")
+end)
+
 test("a new character has no names yet and the panel says how the list fills", function()
     Fake({ inbox = { { sender = "Auction House", money = 5 } } })
     local ns = Load()

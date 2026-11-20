@@ -134,7 +134,6 @@ end
 -- the one realm saved, so one realm never splits into two.
 local function realm()
     local r = GetRealmName and GetRealmName()
-    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
     if type(r) == "string" and r ~= "" then
         if ns.db then ns.db.realm = r end
         return r
@@ -273,6 +272,8 @@ end
 ns.visit = { money = 0, sold = 0, items = 0 }
 
 local function logTake(c)
+    -- a player who sent a letter is someone to write back to
+    if c.letter == "player" and type(c.sender) == "string" then ns.Remember(c.sender) end
     local log = ns.db.log
     local last = log[1]
     -- One line per letter: the takes of one letter join.
@@ -538,6 +539,10 @@ function ns.Names(filter)
     table.sort(sorted)
     for _, name in ipairs(sorted) do add(name, "alt") end
     for _, name in ipairs(ns.db.recent[realm()] or {}) do add(name, "recent") end
+    -- players whose letters were taken here, newest first
+    for _, e in ipairs(ns.db.log or {}) do
+        if e.kind == "player" and type(e.sender) == "string" then add(e.sender, "recent") end
+    end
     local friends = {}
     if C_FriendList and C_FriendList.GetNumFriends then
         for i = 1, C_FriendList.GetNumFriends() or 0 do

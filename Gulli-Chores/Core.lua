@@ -121,7 +121,6 @@ end
 -- The realm the game gives now, or nil: some WoW Forever sessions give an empty realm name.
 local function liveRealm()
     local r = GetRealmName and GetRealmName()
-    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
     if type(r) == "string" and r ~= "" then return r end
 end
 
