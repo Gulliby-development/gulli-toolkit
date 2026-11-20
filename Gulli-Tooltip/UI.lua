@@ -37,7 +37,7 @@ local function exampleLines()
     if d.price and not shift then
         add({ group = "price", icon = I.price, left = L.VENDOR .. faint(" ×20"), right = S.MoneyText(260), color = S.MUTED })
     end
-    if d.auction and not shift then
+    if d.auction and not shift and S.HasPrices() then
         add({ group = "price", icon = I.auction, left = L.AUCTION .. faint(" ×20"), right = S.MoneyText(2100), color = S.MUTED })
     end
     if d.reagent then add({ group = "craft", icon = I.reagent, left = L.EX_PROF, color = S.MUTED }) end
@@ -109,7 +109,15 @@ function ns.Refresh()
     example.box:SetHeight(20 + #lines * ROW_H)
     local q = ns.db.quality and { 0.64, 0.21, 0.93, 1 } or { 0.3, 0.3, 0.33, 1 }
     S.SetBorder(example.box, q)
-    for _, r in ipairs(frame.rows) do if r.SetChecked and r.key then r:SetChecked(ns.db[r.key]) end end
+    -- without a price addon the auction line can show nothing: off and grey, the choice kept
+    local priced = S.HasPrices()
+    for _, r in ipairs(frame.rows) do
+        if r.SetChecked and r.key then
+            local grey = r.key == "auction" and not priced
+            r:SetChecked(not grey and ns.db[r.key])
+            if r.switch then r.switch:SetEnabled(not grey) end
+        end
+    end
 end
 
 local function build()

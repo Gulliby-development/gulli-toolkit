@@ -341,14 +341,28 @@ local function buildSettings(box)
     page:SetContent(h)
 end
 
+-- The settings that need auction prices.
+local AH_SWITCH = { buyAH = true, sellAH = true, neutral = true, freshOnly = true }
+local AH_STEP = { maxBuy = true, chance = true, maxSell = true }
+
 local function refreshSettings()
     local P = ns.Prefs(ns.db and ns.db.prefs)
-    for k, c in pairs(ui.checks) do c:SetChecked(P[k] and true or false) end
+    local priced = ns.HasPrices()
+    for k, c in pairs(ui.checks) do
+        -- without a price addon the auction switches can do nothing: off and grey
+        local ah = AH_SWITCH[k] and not priced
+        c:SetChecked(not ah and P[k] and true or false)
+        c:SetEnabled(not ah)
+    end
     for _, st in ipairs({ ui.target, ui.steppers.target, ui.steppers.maxCrafts, ui.steppers.budget }) do
         st.minus:SetEnabled(P.level and true or false)
         st.plus:SetEnabled(P.level and true or false)
     end
     for _, s in pairs(ui.steppers) do s:Refresh() end
+    for k in pairs(AH_STEP) do
+        local st = ui.steppers[k]
+        if st then st.minus:SetEnabled(priced); st.plus:SetEnabled(priced); st:SetAlpha(priced and 1 or 0.4) end
+    end
     ui.target:Refresh()
     refreshSkip()
     if ns.char then
@@ -1483,6 +1497,9 @@ local function build()
     ui.repBanner:SetPoint("TOPLEFT", 0, -TOP)
     ui.repBanner:SetPoint("TOPRIGHT", 0, -TOP)
     ui.repBanner.onClose = function() ns.repClosed = true; ns.Refresh() end
+    -- no auction price addon: the prices are guesses and only levelling routes show
+    ui.priceBanner = S.Banner(main, "Interface\\Minimap\\Tracking\\Auctioneer")
+    ui.priceBanner.onClose = function() ns.priceClosed = true; ns.Refresh() end
 
     local settings = CreateFrame("Frame", nil, main)
     settings:SetPoint("TOPLEFT", 0, -TOP)
@@ -1615,6 +1632,8 @@ local function refreshRoute()
         b:SetShown(visible)
         if visible then shown[#shown + 1] = { b = b, x = x } end
     end
+    -- fewer routes than tiles (no profit routes without prices): the rest hide
+    for i = #(v.variants or {}) + 1, #ui.varTiles do ui.varTiles[i]:Hide() end
     -- as many tiles as fit at a readable width; arrows page through the rest, and the chosen
     -- route stays in view when it changes
     local k = #shown
@@ -1769,7 +1788,16 @@ function ns.Refresh()
     local rep = has and tab < 5 and #unknown > 0 and not ns.repClosed
     ui.repBanner:SetShown(rep and true or false)
     if rep then ui.repBanner:Set(L.REP_BANNER:format(repNames(unknown))) end
+    local noPrices = has and tab < 5 and v.state.noPrices and not ns.priceClosed
+    ui.priceBanner:SetShown(noPrices and true or false)
     local top = TOP + (rep and S.BANNER_H + S.GAP or 0)
+    if noPrices then
+        ui.priceBanner:Set(L.NO_PRICES_BANNER:format(ns.AH_GUESS))
+        ui.priceBanner:ClearAllPoints()
+        ui.priceBanner:SetPoint("TOPLEFT", 0, -top)
+        ui.priceBanner:SetPoint("TOPRIGHT", 0, -top)
+        top = top + S.BANNER_H + S.GAP
+    end
     ui.route:SetPoint("TOPLEFT", 0, -top)
     ui.listFrame:SetPoint("TOPLEFT", 0, -top)
     ui.emptyBox:SetShown(not has and tab ~= 5)

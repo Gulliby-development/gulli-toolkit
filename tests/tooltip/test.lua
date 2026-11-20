@@ -284,6 +284,27 @@ test("the window builds and the example follows the switches", function()
     ns.Toggle()
 end)
 
+test("without a price addon the auction switch is off and grey; the choice comes back with one", function()
+    Fake({})
+    local ns = Load()
+    Auctionator = nil
+    ns.db.auction = true
+    local f = ns.Window()
+    f:Show()
+    ns.Refresh()
+    local r
+    for _, x in ipairs(f.rows) do if x.key == "auction" then r = x end end
+    eq(r:GetChecked(), false, "shows off")
+    eq(r.switch:IsEnabled(), false, "grey")
+    eq(ns.db.auction, true, "the player's choice stays")
+    Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return nil end } } }
+    ns.Refresh()
+    eq(r:GetChecked(), true, "on again with a price addon")
+    eq(r.switch:IsEnabled(), true)
+    Auctionator = nil
+    ns.Toggle()
+end)
+
 test("the auction line gives a full stack for stack items", function()
     Fake({ items = { [1] = { "Linen", 20, 13 } } })
     local ns = Load()

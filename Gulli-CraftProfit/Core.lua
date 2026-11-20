@@ -778,8 +778,9 @@ function ns.Variants(state, P)
     end
     if front[1] and not best then best = 1 end
     if best then out[best].best = true end
+    -- profit from guessed prices would only mislead: without a price addon only levelling shows
     for _, m in ipairs(ns.MODES) do
-        if ns.EARN[m] then out[#out + 1] = { mode = m, plan = ns.Earn(state, P, m == "own") } end
+        if ns.EARN[m] and not state.noPrices then out[#out + 1] = { mode = m, plan = ns.Earn(state, P, m == "own") } end
     end
     return out
 end
@@ -1517,7 +1518,11 @@ ns.OPT_ICON = {
 
 local function option(key)
     return { label = ns.L["P_" .. key], icon = ns.OPT_ICON[key], tip = ns.L["TIP_" .. key],
-             get = function() return ns.Prefs(ns.db and ns.db.prefs)[key] == true end,
+             get = function()
+                 -- an auction switch shows off while no price addon is loaded; the choice is kept
+                 if (key == "buyAH" or key == "sellAH") and ns.HasPrices and not ns.HasPrices() then return false end
+                 return ns.Prefs(ns.db and ns.db.prefs)[key] == true
+             end,
              set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
 end
 
