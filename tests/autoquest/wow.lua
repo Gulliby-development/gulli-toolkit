@@ -6,6 +6,7 @@ local function stub()
         if k == "GetWidth" then return function() return 400 end end
         if k == "GetHeight" then return function() return 300 end end
         if k == "GetStringWidth" or k == "GetValue" then return function() return 0 end end
+        if k == "GetFrameLevel" then return function() return 1 end end
         if k == "IsShown" then return function() return rawget(t, "_shown") == true end end
         if k == "Show" then return function() rawset(t, "_shown", true) end end
         if k == "Hide" then return function() rawset(t, "_shown", false) end end
