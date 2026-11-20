@@ -235,22 +235,48 @@ test("an escort or event quest waits for the player while others are in the grou
     IsInGroup, GetNumGroupMembers = nil, nil
 end)
 
--- The quest mob macro: an optional nameplate line, then each name behind [noexists].
-local function mac(unit, ...)
-    local l = { "/cleartarget" }
-    if unit then l[#l + 1] = "/target " .. unit; l[#l + 1] = "/cleartarget [dead]" end
-    for _, n in ipairs({ ... }) do l[#l + 1] = "/targetexact [noexists] " .. n; l[#l + 1] = "/cleartarget [dead]" end
+-- The quest mob macro: no target out of a fight, then the names from the first on; keep leaves
+-- the target for a press on a living mob of the first name.
+local function mac(keep, ...)
+    local l = {}
+    if not keep then l[1] = "/cleartarget [nocombat]" end
+    for i, n in ipairs({ ... }) do
+        l[#l + 1] = (i == 1 and "/targetexact " or "/targetexact [noexists] ") .. n
+        l[#l + 1] = "/cleartarget [dead]"
+    end
     return table.concat(l, "\n")
 end
 
-test("quest mob key: names from the objectives, the zone's last, bound to the secure button", function()
+local function made(name)
+    local found
+    local create = CreateFrame
+    CreateFrame = function(kind, n, ...)
+        local f = create(kind, n, ...)
+        if n == name then found = f end
+        return f
+    end
+    return function() CreateFrame = create; return found end
+end
+
+-- A click as the game makes it: the press half, then the release that runs the macro.
+local function click(b)
+    for _, down in ipairs({ true, false }) do
+        local pre, post = rawget(b, "_PreClick"), rawget(b, "_PostClick")
+        if pre then pre(b, "LeftButton", down) end
+        local text = b:GetAttribute("macrotext")
+        if post then post(b, "LeftButton", down) end
+        if not down then return text end
+    end
+end
+
+test("quest mob key: names and counts from the objectives, the zone's first, bound to the secure button", function()
     Fake({ qlog = {
         { title = "Elwynn Forest", isHeader = true },
         { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
                                 { type = "item", text = "Linen Cloth: 1/5" } } },
         { questID = 2, obj = { { type = "monster", text = "Murloc slain: 10/10", finished = true } } },
         { title = "Westfall", isHeader = true },
-        { questID = 3, obj = { { type = "monster", text = "0/8 Harvest Watcher slain" },
+        { questID = 3, obj = { { type = "monster", text = "0/8 Harvest Watcher slain", numFulfilled = 2, numRequired = 8 },
                                 { type = "monster", text = "Kobold Vermin slain: 0/2" } } },
     } })
     local ns = Load()
@@ -259,21 +285,18 @@ test("quest mob key: names from the objectives, the zone's last, bound to the se
     eq(ns.MobName(nil), nil)
     local mobs = ns.QuestMobs()
     eq(table.concat(mobs, ","), "Kobold Vermin,Harvest Watcher", "finished and item objectives left out, the zone's first")
-    eq(ns.TargetMacro(mobs), mac(nil, "Kobold Vermin", "Harvest Watcher"))
-    eq(ns.TargetMacro(mobs, "nameplate2"), mac("nameplate2", "Kobold Vermin", "Harvest Watcher"))
+    local list = ns.QuestMobList()
+    eq(list[1].have .. "/" .. list[1].need, "3/10", "read from the text")
+    eq(list[2].have .. "/" .. list[2].need, "2/8", "the game's numbers win")
+    eq(ns.TargetMacro(mobs), mac(false, "Kobold Vermin", "Harvest Watcher"))
+    eq(ns.TargetMacro(mobs, 2), mac(false, "Harvest Watcher", "Kobold Vermin"), "from the second, round the list")
+    eq(ns.TargetMacro(mobs, 2, true), mac(true, "Harvest Watcher", "Kobold Vermin"))
     eq(ns.TargetMacro({}), nil)
-    ns.TARGET_MAX = 80
-    eq(ns.TargetMacro(mobs), mac(nil, "Kobold Vermin"), "cut from the end, the zone's mobs stay")
+    ns.TARGET_MAX = 90
+    eq(ns.TargetMacro(mobs), mac(false, "Kobold Vermin"), "cut from the end, the first stays")
     ns.TARGET_MAX = 255
     ns.SetTargetKey("F")
     eq(W.bindings.F, "GulliAutoQuestTarget")
-    W.qlog[3].obj = {}
-    W.Fire("QUEST_LOG_UPDATE")
-    W.combat = true
-    W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
-    W.Fire("QUEST_LOG_UPDATE")
-    W.combat = false
-    W.Fire("PLAYER_REGEN_ENABLED")
     ns.SetTargetKey(nil)
     eq(W.bindings.F, nil, "no key, no binding")
 end)
@@ -286,104 +309,102 @@ test("quest mob key: the macro follows the quest log, waits for the end of a fig
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     GulliToolkit = nil
-    local made
-    local create = CreateFrame
-    CreateFrame = function(kind, name, ...)
-        local f = create(kind, name, ...)
-        if name == "GulliAutoQuestTarget" then made = f end
-        return f
-    end
+    local got = made("GulliAutoQuestTarget")
     ns.SetTargetKey("F")
-    eq(made:GetAttribute("macrotext"), mac(nil, "Kobold Vermin"))
+    local b = got()
+    eq(b:GetAttribute("type"), "macro")
+    eq(b:GetAttribute("useOnKeyDown"), false, "the macro runs on the release")
+    eq(b:GetAttribute("macrotext"), mac(false, "Kobold Vermin"))
     W.combat = true
     W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
     W.Fire("QUEST_LOG_UPDATE")
-    eq(made:GetAttribute("macrotext"), mac(nil, "Kobold Vermin"), "no secure change in a fight")
+    eq(b:GetAttribute("macrotext"), mac(false, "Kobold Vermin"), "no secure change in a fight")
     W.combat = false
     W.Fire("PLAYER_REGEN_ENABLED")
-    eq(made:GetAttribute("macrotext"), mac(nil, "Murloc"), "after the fight")
+    eq(b:GetAttribute("macrotext"), mac(false, "Murloc"), "after the fight")
     reg.pause(true)
     eq(W.bindings.F, nil, "paused from the hub")
     reg.pause(false)
     eq(W.bindings.F, "GulliAutoQuestTarget")
-    CreateFrame = create
 end)
 
-test("quest mob key: each press goes to the next living quest mob, never a corpse", function()
+test("quest mob key: a press on a living quest mob goes to the next of it, else the next kind", function()
     Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
-                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" } } } } })
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
+                                           { type = "monster", text = "Young Wolf slain: 0/5" },
+                                           { type = "monster", text = "Forest Spider slain: 1/4" } } } } })
     local ns = Load()
-    local made
+    local got = made("GulliAutoQuestTarget")
+    ns.SetTargetKey("F")
+    local b = got()
+    local tgt
+    UnitExists = function(u) return u == "target" and tgt ~= nil end
+    UnitIsDead = function(u) return u == "target" and tgt and tgt.dead or false end
+    UnitName = function(u) if u == "player" then return "Tester" end if u == "target" then return tgt and tgt.name end end
+    eq(click(b), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider"), "no target: the first kind, the others behind it")
+    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "the next kind comes first")
+    tgt = { name = "Young Wolf" }
+    eq(click(b), mac(true, "Young Wolf", "Forest Spider", "Kobold Vermin"), "a living wolf: the next wolf, the target stays")
+    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "the macro back, no kind skipped")
+    tgt = { name = "Kobold Vermin" }
+    eq(click(b), mac(true, "Kobold Vermin", "Young Wolf", "Forest Spider"), "a living kobold: the next kobold")
+    tgt.dead = true
+    eq(click(b), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "a corpse is no reason to stay")
+    tgt = { name = "Stormwind Guard" }
+    eq(click(b), mac(false, "Forest Spider", "Kobold Vermin", "Young Wolf"), "another unit: cleared, the next kind")
+    -- A name the game hides counts as no target.
+    tgt = { name = "Young Wolf" }
+    issecretvalue = function(v) return v == "Young Wolf" end
+    eq(ns.CycleIndex(ns.QuestMobs()), nil)
+    issecretvalue = nil
+    -- In a fight nothing secure changes: the press runs the macro set before it.
+    W.Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    local before = b:GetAttribute("macrotext")
+    eq(click(b), before)
+    eq(b:GetAttribute("macrotext"), before)
+    W.combat = false
+    UnitExists, UnitIsDead = nil, nil
+end)
+
+test("quest mob list: a row per kind with its count, a click targets that kind, its face once seen", function()
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
+                                           { type = "monster", text = "Young Wolf slain: 0/5" } } } } })
+    local ns = Load()
+    local rows = {}
     local create = CreateFrame
-    CreateFrame = function(kind, name, ...)
-        local f = create(kind, name, ...)
-        if name == "GulliAutoQuestTarget" then made = f end
+    CreateFrame = function(kind, n, ...)
+        local f = create(kind, n, ...)
+        local i = n and tonumber(n:match("^GulliAutoQuestTargetRow(%d+)$"))
+        if i then rows[i] = f end
         return f
     end
-    -- Five plates: a corpse nearest, two living kobolds, one tagged by another player, a wolf.
-    local plates = {
-        nameplate1 = { name = "Kobold Vermin", guid = "C-1", dead = true },
-        nameplate2 = { name = "Kobold Vermin", guid = "C-3" },
-        nameplate3 = { name = "Kobold Vermin", guid = "C-2" },
-        nameplate4 = { name = "Kobold Vermin", guid = "C-4", tapped = true },
-        nameplate5 = { name = "Young Wolf", guid = "C-5" },
-    }
-    local target
-    C_NamePlate = { GetNamePlates = function()
-        local list = {}
-        for i = 1, 5 do if plates["nameplate" .. i] then list[#list + 1] = { namePlateUnitToken = "nameplate" .. i } end end
-        return list
-    end }
-    UnitName = function(u) if u == "player" then return "Tester" end return plates[u] and plates[u].name end
-    UnitGUID = function(u)
-        if u == "target" then return target end
-        return plates[u] and plates[u].guid
-    end
-    UnitIsDead = function(u) return plates[u] and plates[u].dead or false end
-    UnitIsTapDenied = function(u) return plates[u] and plates[u].tapped or false end
-    UnitCanAttack = function() return true end
-    local live = ns.LiveQuestMobs(ns.QuestMobs())
-    eq(#live, 2, "the corpse, the tagged mob and the wolf are left out")
-    eq(live[1].unit, "nameplate3", "a fixed order")
-    ns.SetTargetKey("F")
-    local function unit() return made:GetAttribute("macrotext"):match("/target (nameplate%d)") end
-    eq(made:GetAttribute("type"), "macro")
-    eq(made:GetAttribute("macrotext"), mac("nameplate3", "Kobold Vermin"), "no target: the first, the names behind it")
-    target = "C-2"
-    W.Fire("PLAYER_TARGET_CHANGED")
-    eq(unit(), "nameplate2", "the next one")
-    target = "C-3"
-    W.Fire("PLAYER_TARGET_CHANGED")
-    eq(unit(), "nameplate3", "round the list")
-    target = "C-1"
-    W.Fire("PLAYER_TARGET_CHANGED")
-    eq(unit(), "nameplate3", "from the corpse to a living one")
-    -- A name the game hides is skipped, not an error.
-    issecretvalue = function(v) return v == "C-3" end
-    eq(#ns.LiveQuestMobs(ns.QuestMobs()), 1, "a secret guid is left out")
-    issecretvalue = nil
-    -- Without GetNamePlates the plates are read by their tokens.
-    local get = C_NamePlate.GetNamePlates
-    C_NamePlate.GetNamePlates = nil
-    UnitExists = function(u) return plates[u] ~= nil end
-    eq(#ns.LiveQuestMobs(ns.QuestMobs()), 2, "nameplate1..40")
-    C_NamePlate.GetNamePlates, UnitExists = get, nil
-    -- The fight: only the names.
-    W.Fire("PLAYER_REGEN_DISABLED")
-    eq(made:GetAttribute("macrotext"), mac(nil, "Kobold Vermin"))
+    ns.SetTargetButton(true)
+    eq(#rows, 2)
+    eq(rows[1]:IsShown() and rows[2]:IsShown(), true)
+    eq(rows[2]:GetAttribute("macrotext"), mac(false, "Young Wolf"))
+    eq(rows[1].count:GetText():find("10") ~= nil, true, "the count of the kind")
+    local tgt
+    UnitExists = function(u) return u == "target" and tgt ~= nil end
+    UnitName = function(u) if u == "player" then return "Tester" end if u == "target" or u == "nameplate1" then return tgt and tgt.name end end
+    tgt = { name = "Young Wolf" }
+    eq(click(rows[2]), mac(true, "Young Wolf"), "again: the next wolf")
+    eq(rows[2]:GetAttribute("macrotext"), mac(false, "Young Wolf"))
+    local faced
+    SetPortraitTexture = function(tex, unit) faced = unit end
+    W.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    eq(faced, "nameplate1", "the wolf's face")
+    -- A kind done in a fight keeps its row, dimmed; after the fight the rows follow the log.
     W.combat = true
-    target = "C-2"
-    W.Fire("PLAYER_TARGET_CHANGED")
-    eq(made:GetAttribute("macrotext"), mac(nil, "Kobold Vermin"), "no secure change in a fight")
+    W.qlog[2].obj[2].finished = true
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(rows[2]:IsShown(), true, "a secure row waits for the end of the fight")
     W.combat = false
     W.Fire("PLAYER_REGEN_ENABLED")
-    eq(unit(), "nameplate2", "cycling again after the fight")
-    -- Every quest mob dead: the names alone.
-    plates.nameplate2.dead, plates.nameplate3.dead = true, true
-    W.Fire("NAME_PLATE_UNIT_REMOVED")
-    eq(unit(), nil)
-    C_NamePlate, UnitIsDead, UnitIsTapDenied, UnitCanAttack = nil, nil, nil, nil
-    CreateFrame = create
+    eq(rows[2]:IsShown(), false)
+    eq(rows[2]:GetAttribute("macrotext"), nil)
+    CreateFrame, UnitExists, SetPortraitTexture = create, nil, nil
 end)
 
 test("quest mob button: shows from the hub's switch while a quest needs a mob, clicks like the key", function()
