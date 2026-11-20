@@ -4703,6 +4703,85 @@
    "name": "The Problem With Prideclaws",
    "objective": "Collect 10 Prideclaw Pelts from the Prideclaws in Shen'dar Highlands."
   },
+  "93197": {
+   "comments": [],
+   "description": "With all of the fighting and the retreat from the Nordrassil Lodge, we've been terribly shorthanded out here.\nIf you are traveling back and forth between here and Everlook, I have some mail that needs to go to the town for distribution, and we need any waiting mail brought back up. I have a stack of parcels ready for transport, if you would be so good as to help.",
+   "name": "Mending Communications",
+   "objective": "Take mail parcels from Sebelia at the summit camp on Mount Hyjal to Innkeeper Vizzie in Everlook."
+  },
+  "93269": {
+   "comments": [],
+   "description": "Now that you've recovered all the mail, you can take it all back with you to Mount Hyjal!\nShould be no problem, right?",
+   "name": "Top of the Post",
+   "objective": "Take mail from Everlook up to Innkeeper Sebelia on the summit of Mount Hyjal."
+  },
+  "93406": {
+   "comments": [
+    {
+     "body": "Even though the quest-text says north of Everlook, it does drop from the yeti's in the southeast",
+     "date": "2026-11-13T10:20:16-06:00",
+     "rating": 8,
+     "user": "beansauce"
+    },
+    {
+     "body": "Drops from Ice Thistle Yeti leads to follow up : Top of the Post which rewards an 18 slot bag and a minor speed trinket.",
+     "date": "2026-11-09T23:59:05-06:00",
+     "rating": 7,
+     "user": "bananapally"
+    },
+    {
+     "body": "Drop only from Ice Thistle Yeti",
+     "date": "2026-11-16T16:57:10-06:00",
+     "rating": 4,
+     "user": "Zalka"
+    },
+    {
+     "body": "Just a confirmation (as you can see on the page from the quest item itself) - these ONLY drop from [url=https://www.wowhead.com/forever/npc=7458/ice-thistle-yeti#map]\"Ice Thistle Yeti\"[/url] mobs. NOT Rogue ones, not Matriarchs and Patriarchs. You can find them north of Everlook on the hills and in the vale behind it, or to the southeast near and inside the cave. You can combine it with the [url=https://www.wowhead.com/forever/quest=3783/are-we-there-yeti]Yeti quest chain[/url].",
+     "date": "2026-11-19T04:58:08-06:00",
+     "rating": 3,
+     "user": "Mals"
+    },
+    {
+     "body": "I killed a pretty even distribution of Yetis in the Yeti cave and although it's a small sample size, I only got drops from the \"Ice Thistle Yetis\".  Not the Matriarchs or Patriarchs.",
+     "date": "2026-11-14T21:19:10-06:00",
+     "rating": 2,
+     "user": "Laag"
+    },
+    {
+     "body": "Small sample size but I killed 20 Rogue Ice Thistles, and did not get any drops.",
+     "date": "2026-11-15T20:31:42-06:00",
+     "rating": 2,
+     "user": "brunsar"
+    },
+    {
+     "body": "Kill Ice Thistle Yeti's  \r\n\r\nYou need 4x Missing Mail, \r\n\r\nI received my mail following kill count\r\n\r\n1st piece at 1st kill\r\n2nd piece at 3rd kill\r\n3rd piece at 7th kill\r\n4th piece at 10th kill\r\n\r\nSo they have like 40 % drop chance in my experience.",
+     "date": "2026-11-19T02:23:58-06:00",
+     "rating": 2,
+     "user": "CritchicEmma"
+    },
+    {
+     "body": "Weird drop rate. I got the first 3 in about 6-7 kills. The last one came 20 minutes later.",
+     "date": "2026-11-18T23:35:23-06:00",
+     "rating": 1,
+     "user": "Kraxiloth"
+    },
+    {
+     "body": "They drop from Ice Thistle Yetis in southern Winterspring. Drop rate seems very good, got all 4 drops within 6 kills.",
+     "date": "2026-11-19T18:06:12-06:00",
+     "rating": 1,
+     "user": "snusdr"
+    },
+    {
+     "body": "It all took about 10-12 kills at ice thistle hills for me.\r\nI had a \"Are we There, Yeti\" quest when I had started doing this one already halfway. Mails finished before I got 10 Yeti Fur.",
+     "date": "2026-11-20T06:09:06-06:00",
+     "rating": 1,
+     "user": "Noravus"
+    }
+   ],
+   "description": "So you need to bring the return mail back to Mount Hyjal, eh? There's a little problem...\nY'see, someone came through here and ransacked the outgoing mail just a few days ago! Probably looking for money in the mail. Ran off into the hills somewhere north of here and never came back. Probably got torn apart by a yeti or something!\nAnyway, if you wanna bring back the mail, you're gonna have to go get it first!",
+   "name": "Unfrozen Deliveries",
+   "objective": "Find 4 pieces of Missing Mail in the hills north of Everlook and bring it back to Innkeeper Vizzie."
+  },
   "95805": {
    "comments": [
     {
