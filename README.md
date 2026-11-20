@@ -35,7 +35,7 @@
 | [Restock](docs/restock/README.md) | Keeps reagents, ammo, food and water at your amount and buys them at a vendor. | `/grs` |
 | [Merchant](docs/merchant/README.md) | Sells gray items and repairs at a vendor, with guild money when allowed. | `/gmc` |
 | [Mail](docs/mail/README.md) | Take all from the mailbox, and your characters and recent recipients as names to tap. | `/gml` |
-| [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. | `/gaq` |
+| [Auto Quest](docs/autoquest/README.md) | Takes and hands in quests. Rewards with a choice stay your pick. One key targets the mobs your quests need. | `/gaq` |
 | [Tooltip](docs/tooltip/README.md) | The quests that need an item, how many you hold, stack and auction prices, where it drops, ids. | `/gtt` |
 | [XP](docs/xp/README.md) | XP per hour, time and kills to the next level. | `/gxp` |
 | [Loot](docs/loot/README.md) | Rolls Need, Greed or Pass by your rules for each quality and item. | `/glt` |

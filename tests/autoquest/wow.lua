@@ -18,6 +18,8 @@ local function stub()
         if k == "SetScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "HookScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "GetScript" then return function(_, n) return rawget(t, "_" .. n) end end
+        if k == "SetAttribute" then return function(_, n, v) rawset(t, "@" .. n, v) end end
+        if k == "GetAttribute" then return function(_, n) return rawget(t, "@" .. n) end end
         if k == "RegisterEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
         if k == "UnregisterEvent" then return function(_, e) rawget(t, "_events")[e] = nil end end
         return function() return stub() end
@@ -185,6 +187,20 @@ function Fake(spec)
     ConfirmAcceptQuest = function() did("confirm") end
     C_GossipInfo.GetOptions = function() return W.options end
     C_GossipInfo.SelectOption = function(id) did("option:" .. id) end
+    -- The quest log for the quest mob key: W.qlog = { { title, isHeader } or { questID, obj = { ... } } }.
+    W.qlog = spec.qlog or {}
+    C_QuestLog.GetInfo = function(i) return W.qlog[i] end
+    C_QuestLog.GetQuestObjectives = function(id)
+        for _, q in ipairs(W.qlog) do if q.questID == id then return q.obj end end
+        return {}
+    end
+    local count = C_QuestLog.GetNumQuestLogEntries
+    C_QuestLog.GetNumQuestLogEntries = function() if #W.qlog > 0 then return #W.qlog end return count() end
+    GetRealZoneText = function() return W.zone or "Elwynn Forest" end
+    W.bindings = {}
+    SetOverrideBindingClick = function(_, _, key, button) W.bindings[key] = button end
+    ClearOverrideBindings = function() W.bindings = {} end
+    GetBindingText = function(k) return k end
     GulliAutoQuestDB = spec.db
     return W
 end
