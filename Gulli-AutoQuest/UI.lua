@@ -175,7 +175,11 @@ end
 
 local BUTTON = "GulliAutoQuestTarget"
 local SIZE = 44
+local ROW_W, ROW_H = 190, 28
+ns.LIST_MAX = 5 -- rows of the mob list under the button
 local target, holder, keyOwner, waiting, moving
+local rows = {}
+ns.cycle = 1 -- the name the button's next press tries first
 
 -- The key and the screen button work while either is set.
 local function active()
@@ -201,6 +205,81 @@ local function tip(self)
     GameTooltip:Show()
 end
 
+local function set(b, k, v)
+    if b:GetAttribute(k) ~= v then b:SetAttribute(k, v) end
+end
+
+-- A press on a living mob of one of the button's names goes on to the next mob of that name: the
+-- macro loses its clear for that one press (ns.TargetMacro's keep), and PostClick puts it back.
+-- The action runs on the release (useOnKeyDown false), so the press half does nothing here.
+-- A press of the big button that found no living target first moves the next name to the front.
+local function wire(b, main)
+    b:RegisterForClicks("AnyUp", "AnyDown")
+    b:SetAttribute("useOnKeyDown", false)
+    b:SetAttribute("type", "macro")
+    b:HookScript("PreClick", function(self, _, down)
+        if down or InCombatLockdown() or not self.names then return end
+        local i = ns.CycleIndex(self.names)
+        self.kept = i ~= nil
+        if i then set(self, "macrotext", ns.TargetMacro(self.names, i, true)) end
+    end)
+    b:HookScript("PostClick", function(self, _, down)
+        if down then return end
+        if self.flash then
+            self.flash:Show()
+            C_Timer.After(0.15, function() self.flash:Hide() end)
+        end
+        if InCombatLockdown() or not self.names then return end
+        if main and not self.kept and #self.names > 1 then ns.cycle = ns.cycle % #self.names + 1 end
+        self.kept = nil
+        set(self, "macrotext", ns.TargetMacro(self.names, main and ns.cycle or 1))
+    end)
+end
+
+-- A light on each use (the key's too), and the icon darkens while the mouse holds it.
+local function flash(b, icon)
+    b.flash = b:CreateTexture(nil, "OVERLAY")
+    b.flash:SetAllPoints(icon or b)
+    b.flash:SetColorTexture(1, 0.9, 0.6, 0.35)
+    S.RoundMask(b, b.flash, S.ROUND_SQ)
+    b.flash:Hide()
+end
+
+local function rowTip(self)
+    if not GameTooltip or not self.mob then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(self.mob)
+    GameTooltip:AddLine(L.TARGET_ROW, 0.55, 0.55, 0.58, true)
+    GameTooltip:Show()
+end
+
+-- One row of the list: the mob's face once it was seen (else the button's icon), its name and
+-- how many of it the quest has; a click targets that one, the next click the next of it.
+local function row(i)
+    if rows[i] then return rows[i] end
+    local r = CreateFrame("Button", BUTTON .. "Row" .. i, holder, "SecureActionButtonTemplate")
+    r:SetSize(ROW_W, ROW_H)
+    r:SetPoint("TOPLEFT", holder, "BOTTOMLEFT", 0, -4 - (i - 1) * (ROW_H + 2))
+    S.Box(r, S.HUD_GLASS, S.GLASS_EDGE, S.R_MD)
+    r.face = S.IconBox(r, ROW_H - 6)
+    r.face:SetPoint("LEFT", 3, 0)
+    r.count = S.Text(r, 12, S.MUTED)
+    r.count:SetPoint("RIGHT", -8, 0)
+    r.label = S.Text(r, 12, S.TEXT)
+    r.label:SetPoint("LEFT", r.face, "RIGHT", 6, 0)
+    r.label:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
+    r.label:SetJustifyH("LEFT")
+    r.label:SetWordWrap(false)
+    flash(r)
+    wire(r, false)
+    r:HookScript("OnMouseDown", function(self) self.face.tex:SetVertexColor(0.6, 0.6, 0.6, 1) end)
+    r:HookScript("OnMouseUp", function(self) self.face.tex:SetVertexColor(1, 1, 1, 1) end)
+    r:SetScript("OnEnter", rowTip)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    rows[i] = r
+    return r
+end
+
 -- One secure button: the key clicks it, and on the screen it is the quest mob button.
 local function targetButton()
     if target then return target end
@@ -221,50 +300,84 @@ local function targetButton()
     S.HudIcon(target, SIZE)
     target:SetPoint("CENTER")
     target:SetIcon(ns.OPT_ICON.targetKey)
-    target:RegisterForClicks("AnyUp", "AnyDown")
-    target:SetAttribute("type", "macro")
-    -- A press shows: the icon darkens while held, and a light flashes on each use (also the key's).
-    local flash = target:CreateTexture(nil, "OVERLAY")
-    flash:SetAllPoints()
-    flash:SetColorTexture(1, 0.9, 0.6, 0.35)
-    S.RoundMask(target, flash, S.ROUND_SQ)
-    flash:Hide()
+    flash(target)
+    wire(target, true)
     target:HookScript("OnMouseDown", function(self) self.icon:SetVertexColor(0.6, 0.6, 0.6, 1) end)
     target:HookScript("OnMouseUp", function(self) self:SetDone(rawget(self, "doneNow")) end)
-    target:HookScript("PostClick", function()
-        flash:Show()
-        C_Timer.After(0.15, function() flash:Hide() end)
-    end)
     target:SetScript("OnEnter", tip)
     target:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     return target
 end
 
-local function set(b, k, v)
-    if b:GetAttribute(k) ~= v then b:SetAttribute(k, v) end
+-- The texts of the rows; in a fight too, since they are only texts. A mob done in a fight keeps
+-- its row (the rows are secure) and dims.
+local function paintRows(list)
+    local by = {}
+    for _, m in ipairs(list) do by[m.name] = m end
+    for _, r in ipairs(rows) do
+        local m = r.mob and by[r.mob]
+        r.label:SetText(r.mob or "")
+        if m then
+            r.count:SetText(m.need > 0 and (S.Emph(tostring(m.have)) .. "/" .. m.need) or "")
+            r:SetAlpha(1)
+        else
+            r.count:SetText("")
+            r:SetAlpha(0.45)
+        end
+    end
 end
 
--- Aims the button; secure attributes change only out of combat. Out of a fight it targets the
--- next living quest mob on the nameplates, of every kind the log asks for, so each press cycles.
--- In a fight (and without nameplates) the names stand alone. A corpse never stays targeted.
-function ns.UpdateTargetMacro(fight)
+-- The mob's face on its row, once the game shows that mob (target, mouseover, a nameplate).
+function ns.SeeMob(unit)
+    if not unit or not SetPortraitTexture then return end
+    local ok, name = pcall(UnitName, unit)
+    if not ok or name == nil or (issecretvalue and issecretvalue(name)) then return end
+    for _, r in ipairs(rows) do
+        if r.mob == name and r.faceOf ~= name then
+            SetPortraitTexture(r.face.tex, unit)
+            r.faceOf = name
+        end
+    end
+end
+
+-- Aims the buttons; secure attributes change only out of combat (the macros of a fight are the
+-- ones set just before it). The big button tries every name from ns.cycle on, a row its own.
+function ns.UpdateTargetMacro()
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
-    if InCombatLockdown() then waiting = true; return end
+    local list = ns.QuestMobList()
+    if InCombatLockdown() then
+        waiting = true
+        paintRows(list)
+        return
+    end
     waiting = nil
     local b = targetButton()
-    local names = ns.QuestMobs()
-    local cur = UnitGUID("target")
-    if not cur or (issecretvalue and issecretvalue(cur)) then cur = nil end
-    local live = fight and {} or ns.LiveQuestMobs(names)
-    local mob = ns.PickNext(live, cur)
-    -- Always a macro: the nameplate's line first, the names behind it in case the game refuses it.
-    set(b, "type", "macro")
-    set(b, "macrotext", ns.TargetMacro(names, mob and mob.unit))
-    -- The screen button: shown while it is on and a quest needs a mob, or in the Unlock mode.
-    b:SetCount(#live > 0 and tostring(#live) or "")
+    local names = {}
+    for i, m in ipairs(list) do names[i] = m.name end
+    if ns.cycle > #names then ns.cycle = 1 end
+    b.names = names
+    set(b, "macrotext", ns.TargetMacro(names, ns.cycle))
+    b:SetCount(#names > 1 and tostring(#names) or "")
     b:SetKey(ns.db.targetKey)
     rawset(b, "doneNow", #names == 0)
     b:SetDone(#names == 0)
+    -- The list: one row per name while the button shows.
+    for i = 1, math.max(#rows, math.min(#names, ns.LIST_MAX)) do
+        local name = i <= ns.LIST_MAX and names[i] or nil
+        local r = (name or rows[i]) and row(i)
+        if r then
+            if r.mob ~= name then
+                r.faceOf = nil
+                r.face:SetIcon(ns.OPT_ICON.targetKey)
+            end
+            r.mob = name
+            r.names = name and { name } or nil
+            set(r, "macrotext", name and ns.TargetMacro(r.names) or nil)
+            r:SetShown(name ~= nil)
+        end
+    end
+    paintRows(list)
+    -- The screen button: shown while it is on and a quest needs a mob, or in the Unlock mode.
     local show = moving or (ns.db.targetButton and not ns.paused and #names > 0)
     if holder:IsShown() ~= (show and true or false) then holder:SetShown(show and true or false) end
     holder:SetMoving(moving and true or false)
@@ -360,21 +473,19 @@ end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "QUEST_LOG_UPDATE",
-                     "ZONE_CHANGED_NEW_AREA", "PLAYER_TARGET_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }) do
+                     "ZONE_CHANGED_NEW_AREA", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
     ev:RegisterEvent(e)
 end
-ev:SetScript("OnEvent", function(_, event)
+local SEE = { PLAYER_TARGET_CHANGED = "target", UPDATE_MOUSEOVER_UNIT = "mouseover" }
+ev:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_REGEN_ENABLED" and waiting and ns.db then return ns.ApplyTargetKey() end
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
     if event == "PLAYER_LOGIN" then
         ns.ApplyTargetKey()
+    elseif SEE[event] or event == "NAME_PLATE_UNIT_ADDED" then
+        if not ns.paused then ns.SeeMob(SEE[event] or unit) end
     elseif not ns.paused then
-        -- PLAYER_REGEN_DISABLED comes just before the lockdown: the last chance to set the macro.
-        ns.UpdateTargetMacro(event == "PLAYER_REGEN_DISABLED")
+        -- PLAYER_REGEN_DISABLED comes just before the lockdown: the last chance to set the macros.
+        ns.UpdateTargetMacro()
     end
-end)
-
--- A mob that another player tags or that dies off a nameplate event: look again each second.
-C_Timer.NewTicker(1, function()
-    if active() and not InCombatLockdown() then ns.UpdateTargetMacro() end
 end)
