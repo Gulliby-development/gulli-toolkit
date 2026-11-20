@@ -180,7 +180,8 @@ local BUTTON = "GulliAutoQuestTarget"
 local SIZE = 44
 local ROW_W, ROW_H = 190, 28
 ns.LIST_MAX = 8 -- the most rows the mob list can have (the setting mobRows, 3 at first)
-local target, holder, keyOwner, waiting, moving
+local target, holder, keyOwner, waiting, moving, asking
+local askTries = 0
 local rows = {}
 ns.cycle = 1 -- the name the button's next press tries first
 
@@ -422,7 +423,13 @@ end
 -- ones set just before it). The big button tries every name from ns.cycle on, a row its own.
 function ns.UpdateTargetMacro()
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
-    local list = ns.QuestMobList()
+    local list, pending = ns.QuestMobList()
+    -- A dropper whose name the client still fetches joins a moment later.
+    if not pending then askTries = 0
+    elseif not asking and askTries < 15 and C_Timer then
+        asking, askTries = true, askTries + 1
+        C_Timer.After(2, function() asking = false; if ns.db then ns.UpdateTargetMacro() end end)
+    end
     ns.NoteProgress(list, GetTime())
     if InCombatLockdown() then
         waiting = true

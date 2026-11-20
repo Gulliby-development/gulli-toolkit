@@ -377,23 +377,38 @@ local function count(o)
     return have or 0, need or 0
 end
 
+-- The row of ns.DROPS for an item objective: the one whose item the text names, else the k-th.
+local function dropRow(rows, o, k)
+    local name = C_Item and C_Item.GetItemNameByID
+    for _, r in ipairs(name and rows or {}) do
+        local ok, item = pcall(name, r[1])
+        if ok and type(item) == "string" and item ~= "" and not (issecretvalue and issecretvalue(item))
+            and type(o.text) == "string" and o.text:find(item, 1, true) then return r end
+    end
+    return rows[k]
+end
+
 -- The mobs the quests of the player's zone still need (the quest log header is the zone):
--- { { name, have, need }, ... }; a mob that two quests ask for is one entry. Quests of other
--- zones stay out, so the key never reaches for a mob of a zone far away.
+-- { { name, have, need, id, item }, ... }: the mobs to kill, then the mobs that drop an item to
+-- collect (ns.DROPS, with the item's count). A mob that two quests ask for is one entry. Quests of
+-- other zones stay out, so the key never reaches for a mob of a zone far away. The second value
+-- is true while a dropper's name is still asked from the client.
 function ns.QuestMobList()
     local Q = C_QuestLog or {}
     if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
     local here = GetRealZoneText and GetRealZoneText() or nil
-    local near, seen = {}, {}
+    local near, seen, drops, pending = {}, {}, {}, false
     local zone
     local n = (Q.GetNumQuestLogEntries or GetNumQuestLogEntries)()
     for i = 1, n or 0 do
         local info = Q.GetInfo(i)
         if info and info.isHeader then
             zone = info.title
-        elseif info and info.questID and not info.isHidden then
+        elseif info and info.questID and not info.isHidden and here and zone == here then
+            local k = 0
             for _, o in ipairs(Q.GetQuestObjectives(info.questID) or {}) do
-                if here and zone == here and o.type == "monster" and not o.finished then
+                if o.type == "item" then k = k + 1 end
+                if o.type == "monster" and not o.finished then
                     local name = ns.MobName(o.text)
                     if name and not seen[name] then
                         local have, need = count(o)
@@ -401,11 +416,25 @@ function ns.QuestMobList()
                         near[#near + 1] = { name = name, have = have, need = need,
                                             id = ns.db and ns.db.mobIds and ns.db.mobIds[name] }
                     end
+                elseif o.type == "item" and not o.finished and ns.DROPS and ns.DROPS[info.questID] then
+                    local row = dropRow(ns.DROPS[info.questID], o, k)
+                    local have, need = count(o)
+                    for j = 2, row and #row or 0 do
+                        local name = ns.CreatureName(row[j])
+                        if not name then pending = true
+                        elseif not seen[name] then
+                            seen[name] = true
+                            drops[#drops + 1] = { name = name, have = have, need = need, id = row[j], item = row[1] }
+                            local ids = ns.db and ns.db.mobIds
+                            if ids and not ids[name] then ids[name] = row[j] end
+                        end
+                    end
                 end
             end
         end
     end
-    return near
+    for _, m in ipairs(drops) do near[#near + 1] = m end
+    return near, pending
 end
 
 -- Only the names of ns.QuestMobList.
@@ -490,21 +519,39 @@ function ns.RowOrder(list)
     return out
 end
 
--- Whether the client has a creature in its cache: a model drawn from an unknown one stays empty.
--- Asking for its link's tooltip makes the client fetch it. nil when the client cannot tell.
+-- A creature's name in the client's language, from its link's tooltip; nil while the client
+-- does not have it (asking makes it fetch the creature), false when the client cannot tell.
 local known = {}
-function ns.CreatureKnown(id)
-    if not id then return false end
-    if known[id] then return true end
+local function clientName(id)
+    if known[id] then return known[id] end
     local get = C_TooltipInfo and C_TooltipInfo.GetHyperlink
-    if not get then return nil end
+    if not get then return false end
     local ok, data = pcall(get, ("unit:Creature-0-0-0-0-%d-0000000000"):format(id))
     local line = ok and type(data) == "table" and type(data.lines) == "table" and data.lines[1]
     local text = type(line) == "table" and line.leftText
     if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) or text == ""
-        or text == UNKNOWNOBJECT or text == RETRIEVING_DATA then return false end
-    known[id] = true
-    return true
+        or text == UNKNOWNOBJECT or text == RETRIEVING_DATA then return nil end
+    known[id] = text
+    return text
+end
+
+-- Whether the client has a creature in its cache: a model drawn from an unknown one stays empty.
+-- nil when the client cannot tell.
+function ns.CreatureKnown(id)
+    if not id then return false end
+    local name = clientName(id)
+    if name == false then return nil end
+    return name ~= nil
+end
+
+-- The name /targetexact needs for an npc id: the client's own, else on an English client the
+-- data's. nil while it is not known yet.
+function ns.CreatureName(id)
+    local name = clientName(id)
+    if name then return name end
+    local loc = GetLocale and GetLocale() or "enUS"
+    if loc:sub(1, 2) == "en" and ns.NPC_NAME then return ns.NPC_NAME[id] end
+    return nil
 end
 
 -- One line for the hub's home page, or nil.

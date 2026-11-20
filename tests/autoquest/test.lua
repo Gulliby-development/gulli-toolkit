@@ -508,6 +508,46 @@ test("quest mob list: the kinds worked on last come first, the faces are models 
     CreateFrame, C_TooltipInfo = create, nil
 end)
 
+test("quest mob list: the mobs that drop an item to collect join it, with the item's count", function()
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 50, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
+                                            { type = "item", text = "Gnoll Paw: 2/8", numFulfilled = 2, numRequired = 8 },
+                                            { type = "item", text = "Wolf Fang: 8/8", finished = true } } } } })
+    local ns = Load()
+    ns.DROPS = { [50] = { { 900, 7001, 7002 }, { 901, 7003 } } }
+    ns.NPC_NAME = { [7001] = "Riverpaw Gnoll", [7002] = "Kobold Vermin", [7003] = "Gray Wolf" }
+    local list = ns.QuestMobList()
+    local t = {}
+    for i, m in ipairs(list) do t[i] = m.name .. " " .. m.have .. "/" .. m.need end
+    eq(table.concat(t, ","), "Kobold Vermin 3/10,Riverpaw Gnoll 2/8",
+       "a dropper with the item's count; a mob to kill once; a finished item's droppers left out")
+    eq(list[2].id, 7001)
+    eq(ns.db.mobIds["Riverpaw Gnoll"], 7001, "its face by id")
+    -- The item named by the text wins over the order.
+    C_Item.GetItemNameByID = function(id) return id == 901 and "Gnoll Paw" or "Wolf Fang" end
+    list = ns.QuestMobList()
+    eq(list[2] and list[2].name, "Gray Wolf", "the row of the item the text names")
+    C_Item.GetItemNameByID = nil
+    -- Another client language: the client's own name by id, once it has the creature.
+    GetLocale = function() return "ruRU" end
+    local cached = false
+    C_TooltipInfo = { GetHyperlink = function(link)
+        if cached and link:find("%-7001%-") then return { lines = { { leftText = "Гнолл Речной Лапы" } } } end
+    end }
+    local l2, pending = ns.QuestMobList()
+    eq(#l2, 1, "no English name on a Russian client")
+    eq(pending, true)
+    W.timers = {}
+    local got = made("GulliAutoQuestTarget")
+    ns.SetTargetButton(true)
+    local b = got()
+    eq(#W.timers > 0, true, "asked again later")
+    cached = true
+    W.RunTimers()
+    eq(b:GetAttribute("macrotext"), mac(false, "Kobold Vermin", "Гнолл Речной Лапы"), "the button looks for it too")
+    C_TooltipInfo = nil
+end)
+
 test("quest mob button: shows from the hub's switch while a quest needs a mob, clicks like the key", function()
     local reg
     GulliToolkit = { Register = function(t) reg = t end }
