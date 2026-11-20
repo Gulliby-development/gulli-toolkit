@@ -253,6 +253,10 @@ function Fake(spec)
                     end
                 end
             end,
+            GetRecipeCooldown = function(id)
+                for _, r in ipairs(prof.recipes) do if r.id == id then return r.cooldown or 0, false end end
+                return 0, false
+            end,
             GetRecipeSourceText = function(id)
                 for _, r in ipairs(prof.recipes) do if r.id == id then return r.source end end
             end,

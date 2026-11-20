@@ -242,6 +242,16 @@ local function belongs(rid, name)
 end
 ns.RecipeBelongs = belongs
 
+-- A cooldown the game shows (seconds left): when the craft is ready again, and for a recipe
+-- ns.COOLDOWNS does not know, that it has one at all (at least as long as what is left, in hours).
+local function noteCooldown(rec, left)
+    left = tonumber(left)
+    if not left or left <= 0 then rec.cdReady = nil; return end
+    rec.cdReady = time() + math.ceil(left)
+    rec.cd = math.max(rec.cd or 0, math.ceil(left / 3600) * 3600)
+end
+ns.NoteCooldown = noteCooldown
+
 -- The modern API: every recipe of the profession, learned or not.
 local function scanModern(prof, skill, name)
     local T = C_TradeSkillUI
@@ -276,6 +286,10 @@ local function scanModern(prof, skill, name)
                 end
             end
             if not rec.learned and T.GetRecipeSourceText then rec.source = T.GetRecipeSourceText(rid) end
+            if rec.learned and T.GetRecipeCooldown then
+                local ok, left = pcall(T.GetRecipeCooldown, rid)
+                noteCooldown(rec, ok and left)
+            end
             prof.recipes[rid] = rec
             n = n + 1
         end
@@ -302,6 +316,7 @@ local function scanClassic(prof, skill)
                 if id then rec.r[id] = need or 1 end
             end
             remember(rec, skill, diff)
+            if GetTradeSkillCooldown then noteCooldown(rec, GetTradeSkillCooldown(i)) end
             prof.recipes[key] = rec
             n = n + 1
         end
@@ -782,7 +797,8 @@ function ns.State()
             if spec and not ns.HasSpec(spec) then src = { t = "spec", spec = spec, text = ns.SpecName(spec) } end
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
-                                   skip = ns.db.skip and ns.db.skip[rid] == true or nil }
+                                   skip = ns.db.skip and ns.db.skip[rid] == true or nil,
+                                   cd = ns.COOLDOWNS[rid] or rec.cd, cdReady = rec.cdReady }
             for id in pairs(rec.r or {}) do itemFor(state, id) end
             if rec.out then itemFor(state, rec.out) end
         end
