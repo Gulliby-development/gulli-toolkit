@@ -656,6 +656,11 @@ function ns.Click(line)
         refresh()
         return
     end
+    -- the last guard: an item's click pays for one, and that one must sell to a vendor for more
+    if line.kind == "i" and (line.pay or line.cost) >= (line.sellEach or line.value) then
+        line.state = "lose"
+        return refresh()
+    end
     local token = {}
     b.token = token
     if line.kind == "i" then
@@ -792,6 +797,7 @@ function ns.Sell()
 end
 
 function ns.OfferSale()
+    ns.FixGroupedHistory()
     local list, worth = ns.ToSell()
     if #list == 0 then return end
     if ns.db.sell then return ns.Sell() end
@@ -805,7 +811,38 @@ end
 ns.PERIODS = { "day", "week", "all" }
 local PERIOD_SECONDS = { day = 86400, week = 7 * 86400 }
 -- The history in a period and its totals: profit (value less paid), paid, count.
+-- Before 1.4.1 a click on an item's lot (one item bought) was logged as the whole lot: n of them,
+-- worth n at a vendor. An item that does not stack was bought one at a time, so such an entry is
+-- one item, worth one, and the owed count drops by the rest. Runs until every such item's
+-- data was there (`db.groupFix`).
+function ns.FixGroupedHistory()
+    local db = ns.db
+    if not db or db.groupFix then return end
+    local done = true
+    for _, e in ipairs(db.history or {}) do
+        if (e.n or 1) > 1 and not e.fixed then
+            local name, _, _, _, stack = ns.ItemInfo(e.id)
+            if not name then done = false
+            else
+                if stack == 1 then
+                    local extra = e.n - 1
+                    e.value = math.floor(e.value / e.n + 0.5)
+                    e.n, e.sold = 1, math.min(e.sold or 0, 1)
+                    local o = db.owed and db.owed[e.who]
+                    if o and o[e.id] then
+                        o[e.id] = o[e.id] - extra
+                        if o[e.id] <= 0 then o[e.id] = nil end
+                    end
+                end
+                e.fixed = true
+            end
+        end
+    end
+    if done then db.groupFix = 1 end
+end
+
 function ns.History(period)
+    ns.FixGroupedHistory()
     local out, paid, value = {}, 0, 0
     local since = PERIOD_SECONDS[period] and (time() - PERIOD_SECONDS[period]) or nil
     for _, e in ipairs(ns.db and ns.db.history or {}) do

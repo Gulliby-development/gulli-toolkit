@@ -88,6 +88,44 @@ test("an item result's buyout is the price of one: 41 at 25s with a vendor at 20
     eq(d.gain, 500, "the gain of one")
 end)
 
+test("a lot of many bags dearer than a vendor pays is never shown or bought", function()
+    local PACK = 4245
+    local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 } }
+    -- 41 bags at 25s and 30s each, a vendor pays 20s: the old sum (41 x 20s against one 25s) was +7g 95s
+    local w = Fake({ items = items, money = 1000000, free = 10, browse = { { PACK, 1900 } },
+                     lots = { [PACK] = { { 601, 41, 2500 }, { 602, 32, 3000 } } }, db = { minGain = 0 } })
+    local ns = Load()
+    w.ScanAll(ns)
+    eq(find(ns, PACK), nil, "no line")
+    -- a line that got dear since the scan: the click refuses and says so
+    local line = { kind = "i", id = PACK, auction = 603, n = 1, left = 5, cost = 2500, pay = 2500, value = 2000,
+                   sellEach = 2000, gain = -500, uid = "i603" }
+    ns.lines[#ns.lines + 1] = line
+    ns.Click(line)
+    for _, c in ipairs(w.calls) do assert(not c:find("^bid"), "bought at a loss: " .. c) end
+    eq(line.state, "lose")
+end)
+
+test("old history entries of one bag logged as the whole lot are put right", function()
+    local PACK, ORE2 = 4245, 2770
+    local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 }, [ORE2] = { "Copper Ore", 1, 10, 20, 7 } }
+    local who
+    local w = Fake({ items = items })
+    local ns = Load()
+    who = ns.db and next(ns.Owed() and ns.db.owed)
+    ns.db.history = { { at = 1, id = PACK, n = 41, paid = 2500, value = 82000, sold = 0, who = who },
+                      { at = 1, id = ORE2, n = 30, paid = 120, value = 300, sold = 0, who = who } }
+    ns.db.owed[who] = { [PACK] = 41, [ORE2] = 30 }
+    ns.db.groupFix = nil
+    ns.History("all")
+    eq(ns.db.history[1].n, 1)
+    eq(ns.db.history[1].value, 2000)
+    eq(ns.db.owed[who][PACK], 1)
+    eq(ns.db.history[2].n, 30, "a stack stays as it was")
+    eq(ns.db.owed[who][ORE2], 30)
+    eq(ns.db.groupFix, 1)
+end)
+
 test("a click buys one of an item's lot; the rest stays and is searched again", function()
     local PACK = 4245
     local items = { [PACK] = { "Small Silk Pack", 1, 2000, 1, 1 } }
