@@ -187,12 +187,15 @@ local function savePoint()
     ns.db.buttonPoint = { p, x, y, rel }
 end
 
+ns.TIP_MOBS = 3
+
 local function tip(self)
     if not GameTooltip then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(L.TARGET_BTN)
     local names = ns.QuestMobs()
-    for i = #names, math.max(1, #names - 9), -1 do GameTooltip:AddLine(names[i], 1, 1, 1) end
+    for i = 1, math.min(#names, ns.TIP_MOBS) do GameTooltip:AddLine(names[i], 1, 1, 1) end
+    if #names > ns.TIP_MOBS then GameTooltip:AddLine(L.TARGET_MORE:format(#names - ns.TIP_MOBS), 0.6, 0.6, 0.6) end
     if #names == 0 then GameTooltip:AddLine(L.TARGET_NONE, 0.6, 0.6, 0.6) end
     GameTooltip:AddLine(L.TARGET_TIP, 0.55, 0.55, 0.58, true)
     GameTooltip:Show()
@@ -220,6 +223,18 @@ local function targetButton()
     target:SetIcon(ns.OPT_ICON.targetKey)
     target:RegisterForClicks("AnyUp", "AnyDown")
     target:SetAttribute("type", "macro")
+    -- A press shows: the icon darkens while held, and a light flashes on each use (also the key's).
+    local flash = target:CreateTexture(nil, "OVERLAY")
+    flash:SetAllPoints()
+    flash:SetColorTexture(1, 0.9, 0.6, 0.35)
+    S.RoundMask(target, flash, S.ROUND_SQ)
+    flash:Hide()
+    target:HookScript("OnMouseDown", function(self) self.icon:SetVertexColor(0.6, 0.6, 0.6, 1) end)
+    target:HookScript("OnMouseUp", function(self) self:SetDone(rawget(self, "doneNow")) end)
+    target:HookScript("PostClick", function()
+        flash:Show()
+        C_Timer.After(0.15, function() flash:Hide() end)
+    end)
     target:SetScript("OnEnter", tip)
     target:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     return target
@@ -230,9 +245,8 @@ local function set(b, k, v)
 end
 
 -- Aims the button; secure attributes change only out of combat. Out of a fight it targets the
--- next living quest mob on the nameplates, of every kind the log asks for, so each press cycles
--- and a corpse is never taken. In a fight (and without nameplates) the names macro stands,
--- which drops a dead target.
+-- next living quest mob on the nameplates, of every kind the log asks for, so each press cycles.
+-- In a fight (and without nameplates) the names stand alone. A corpse never stays targeted.
 function ns.UpdateTargetMacro(fight)
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
     if InCombatLockdown() then waiting = true; return end
@@ -243,16 +257,13 @@ function ns.UpdateTargetMacro(fight)
     if not cur or (issecretvalue and issecretvalue(cur)) then cur = nil end
     local live = fight and {} or ns.LiveQuestMobs(names)
     local mob = ns.PickNext(live, cur)
-    if mob then
-        set(b, "type", "target")
-        set(b, "unit", mob.unit)
-    else
-        set(b, "type", "macro")
-        set(b, "macrotext", ns.TargetMacro(names))
-    end
+    -- Always a macro: the nameplate's line first, the names behind it in case the game refuses it.
+    set(b, "type", "macro")
+    set(b, "macrotext", ns.TargetMacro(names, mob and mob.unit))
     -- The screen button: shown while it is on and a quest needs a mob, or in the Unlock mode.
     b:SetCount(#live > 0 and tostring(#live) or "")
     b:SetKey(ns.db.targetKey)
+    rawset(b, "doneNow", #names == 0)
     b:SetDone(#names == 0)
     local show = moving or (ns.db.targetButton and not ns.paused and #names > 0)
     if holder:IsShown() ~= (show and true or false) then holder:SetShown(show and true or false) end

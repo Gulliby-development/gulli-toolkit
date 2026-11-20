@@ -346,7 +346,7 @@ end
 -- quest in the log still needs to kill (UI.lua sets it out of combat). Each /targetexact line
 -- that finds its mob wins over the lines before it, so the quests of the zone the player is in
 -- come last.
-ns.TARGET_MAX = 900 -- characters of the macro, well under the game's limit
+ns.TARGET_MAX = 255 -- characters of the macro: a macro text longer than that may be cut by the game
 
 local function escape(w) return (w:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")) end
 local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
@@ -367,7 +367,7 @@ function ns.MobName(text)
     return name
 end
 
--- The mobs the quest log still needs, the ones of the player's zone last: { name, ... }.
+-- The mobs the quest log still needs, the ones of the player's zone first: { name, ... }.
 function ns.QuestMobs()
     local Q = C_QuestLog or {}
     if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
@@ -391,25 +391,30 @@ function ns.QuestMobs()
             end
         end
     end
-    for _, name in ipairs(near) do other[#other + 1] = name end
-    return other
+    for _, name in ipairs(other) do near[#near + 1] = name end
+    return near
 end
 
--- /targetexact takes the nearest of a name, a corpse too: the macro drops a dead target after it.
-local CLEAR_DEAD = "/cleartarget [dead]"
-
--- The macro for a list of names, cut at ns.TARGET_MAX from the front (the zone's mobs stay).
--- It is the fallback in a fight and without enemy nameplates.
-function ns.TargetMacro(names)
-    local lines, len = {}, #CLEAR_DEAD
-    for i = #names, 1, -1 do
-        local line = "/targetexact " .. names[i]
-        if len + #line + 1 > ns.TARGET_MAX then break end
-        table.insert(lines, 1, line)
-        len = len + #line + 1
+-- The macro of the key. It starts with no target, then each line runs only while nothing living
+-- is targeted yet ([noexists]), and a corpse a line found is dropped at once: so the first name
+-- with a living mob in range wins and a corpse never stays. unit is a nameplate token of the
+-- next living quest mob (out of a fight); its line comes first, the names stand behind it.
+function ns.TargetMacro(names, unit)
+    local lines = { "/cleartarget" }
+    if unit then
+        lines[2] = "/target " .. unit
+        lines[3] = "/cleartarget [dead]"
     end
-    if #lines == 0 then return nil end
-    lines[#lines + 1] = CLEAR_DEAD
+    local len = #table.concat(lines, "\n")
+    local found = false
+    for _, name in ipairs(names) do
+        local add = "\n/targetexact [noexists] " .. name .. "\n/cleartarget [dead]"
+        if len + #add > ns.TARGET_MAX then break end
+        lines[#lines + 1] = "/targetexact [noexists] " .. name
+        lines[#lines + 1] = "/cleartarget [dead]"
+        len, found = len + #add, true
+    end
+    if not found and not unit then return nil end
     return table.concat(lines, "\n")
 end
 
@@ -417,15 +422,29 @@ local function readable(v)
     return v ~= nil and not (issecretvalue and issecretvalue(v))
 end
 
+-- The unit tokens of the nameplates shown: from the plates, else nameplate1..40.
+function ns.PlateUnits()
+    local units, seen = {}, {}
+    local ok, plates = pcall(function() return C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates() end)
+    for _, p in ipairs(ok and type(plates) == "table" and plates or {}) do
+        local unit = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
+        if type(unit) == "string" and not seen[unit] then seen[unit] = true; units[#units + 1] = unit end
+    end
+    if #units == 0 and UnitExists then
+        for i = 1, 40 do
+            if UnitExists("nameplate" .. i) then units[#units + 1] = "nameplate" .. i end
+        end
+    end
+    return units
+end
+
 -- The living quest mobs on the enemy nameplates, in a fixed order: { { unit, guid }, ... }.
 -- Corpses, mobs another player tagged and units the game hides (secret values) are left out.
 function ns.LiveQuestMobs(names)
     local want, found = {}, {}
     for _, n in ipairs(names or {}) do want[n] = true end
-    local plates = C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates()
-    if not plates or next(want) == nil then return found end
-    for _, p in ipairs(plates) do
-        local unit = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
+    if next(want) == nil then return found end
+    for _, unit in ipairs(ns.PlateUnits()) do
         local okName, name = pcall(UnitName, unit or "none")
         local okGuid, guid = pcall(UnitGUID, unit or "none")
         if unit and okName and okGuid and readable(name) and readable(guid) and want[name]
