@@ -118,19 +118,89 @@ local function countItems(bags)
     return out
 end
 
+-- The realm the game gives now, or nil: some WoW Forever sessions give an empty realm name.
+local function liveRealm()
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then return r end
+end
+
+-- The one realm saved for this name, or nil when there is none or more than one.
+local function savedRealm(chars, name)
+    local found
+    for key in pairs(chars or {}) do
+        local n, r = key:match("^(.-)%-(.+)$")
+        if n == name then
+            if found and found ~= r then return nil end
+            found = r
+        end
+    end
+    return found
+end
+
+-- This character's realm: the game's, else the one saved for this name, else the last one seen.
+function ns.Realm()
+    local realm = liveRealm()
+    if realm then
+        if ns.db then ns.db.realm = realm end
+        return realm
+    end
+    return ns.db and (savedRealm(ns.db.chars, UnitName("player")) or ns.db.realm) or nil
+end
+
 function ns.CharKey()
-    return UnitName("player") .. "-" .. (GetRealmName() or "")
+    return (UnitName("player") or "?") .. "-" .. (ns.Realm() or "")
+end
+
+-- Moves entries saved with an empty realm ("Name-") onto that name's realm: the newer snapshot
+-- wins and keeps what only the older one has; hidden and told marks move with it.
+function ns.MergeRealmless()
+    local chars = ns.db and ns.db.chars
+    if not chars then return end
+    ns.Realm() -- notes the realm the game gives now
+    local moves = {}
+    for key, c in pairs(chars) do
+        local name = key:match("^(.-)%-$")
+        local realm = name and (savedRealm(chars, name) or ns.db.realm)
+        if realm then moves[#moves + 1] = { key, name .. "-" .. realm, c, realm } end
+    end
+    for _, m in ipairs(moves) do
+        local from, to, c, realm = m[1], m[2], m[3], m[4]
+        local other = chars[to]
+        if other then
+            local new, old = c, other
+            if (other.t or 0) > (c.t or 0) then new, old = other, c end
+            for k, v in pairs(old) do if new[k] == nil then new[k] = v end end
+            chars[to] = new
+        else
+            chars[to] = c
+        end
+        chars[to].realm = realm
+        chars[from] = nil
+        local hidden = ns.db.hidden
+        if hidden and hidden[from] then hidden[to], hidden[from] = true, nil end
+        local told, renamed = ns.db.alerted or {}, {}
+        for id, v in pairs(told) do
+            if id:sub(1, #from + 1) == from .. ":" then renamed[id] = v end
+        end
+        for id, v in pairs(renamed) do
+            local nid = to .. id:sub(#from + 1)
+            if (told[nid] or 0) < v then told[nid] = v end
+            told[id] = nil
+        end
+    end
 end
 
 -- Takes this character's snapshot. What the game only shows at the mailbox or the bank, and
 -- what the player wrote, stays from the last one.
 function ns.Snapshot()
+    ns.MergeRealmless()
     local key = ns.CharKey()
     local old = ns.db.chars[key] or {}
     local _, class = UnitClass("player")
     local now, clock = time(), GetTime()
     local c = { name = UnitName("player"), class = class, level = UnitLevel("player"), t = now,
-                realm = GetRealmName and GetRealmName() or nil, faction = faction(),
+                realm = ns.Realm(), faction = faction(),
                 trainer = old.trainer, note = old.note, bank = old.bank, mailUntil = old.mailUntil,
                 mailItems = old.mailItems, cod = old.cod, played = old.played, lockouts = old.lockouts,
                 money = GetMoney and GetMoney() or 0 }
@@ -284,7 +354,7 @@ end
 -- Does a character pass the realm or faction filter?
 function ns.Passes(c, filter)
     filter = filter or pref("filter")
-    if filter == "realm" then return c.realm == nil or c.realm == (GetRealmName and GetRealmName()) end
+    if filter == "realm" then return c.realm == nil or c.realm == ns.Realm() end
     if filter == "faction" then return c.faction == nil or c.faction == faction() end
     return true
 end
@@ -514,6 +584,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.chars = ns.db.chars or {}
         ns.db.off, ns.db.hidden, ns.db.alerted = ns.db.off or {}, ns.db.hidden or {}, ns.db.alerted or {}
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+        ns.MergeRealmless()
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "TRAINER_SHOW", "PLAYER_LEVEL_UP",
                              "UPDATE_PENDING_MAIL", "MAIL_CLOSED", "BAG_UPDATE_DELAYED", "PLAYER_UPDATE_RESTING",
                              "UPDATE_INVENTORY_DURABILITY", "TRADE_SKILL_CLOSE", "PLAYER_MONEY",

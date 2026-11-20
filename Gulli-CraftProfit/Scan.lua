@@ -397,10 +397,14 @@ ns.SnapshotMail = snapshotMail
 function ns.AltCount(id)
     local db = GulliChoresDB
     if type(db) ~= "table" or type(db.chars) ~= "table" then return 0, nil end
-    local me = (UnitName("player") or "") .. "-" .. (GetRealmName and GetRealmName() or "")
+    -- this character: an empty realm name from the game means the realm Chores saved last
+    local name = UnitName("player") or ""
+    local realm = GetRealmName and GetRealmName() or ""
+    if realm == "" then realm = type(db.realm) == "string" and db.realm or "" end
+    local me, bare = name .. "-" .. realm, name .. "-"
     local n, who, most = 0, nil, 0
     for key, c in pairs(db.chars) do
-        if key ~= me and type(c) == "table" then
+        if key ~= me and key ~= bare and type(c) == "table" then
             local k = (c.items and c.items[id] or 0) + (c.bank and c.bank[id] or 0)
             n = n + k
             if k > most then who, most = c.name or key, k end

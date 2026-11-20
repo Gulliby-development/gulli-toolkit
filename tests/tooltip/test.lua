@@ -145,6 +145,13 @@ test("who holds the item: you from the game, the others from Gulli Chores", func
     eq(lines[3], "Vault=bank 8", "the others by how many they hold")
     eq(lines[4], "Alt=3 · bank 2")
     eq(lines[5], "Bob=1")
+    -- the game gives no realm name: this character is still not one of the others
+    local realmName = GetRealmName
+    GetRealmName = function() return "" end
+    GulliChoresDB.realm = "Realm"
+    GulliChoresDB.chars["Tester-"] = { name = "Tester", items = { [7] = 50 } }
+    eq(#W.HoverItem(7), 5)
+    GetRealmName = realmName
     GulliChoresDB = nil
     lines = W.HoverItem(7)
     eq(lines[1], "You have=10")

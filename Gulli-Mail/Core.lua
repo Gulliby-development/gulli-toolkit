@@ -117,7 +117,31 @@ local function money() return GetMoney and GetMoney() or 0 end
 local function checkInbox() if CheckInbox then CheckInbox() end end
 local function say(msg) print("|cff9ad0ffGulli Mail|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Mail", msg) end end
-local function realm() return GetRealmName() or "" end
+-- The one realm saved in the tables per realm, or nil when there is none or more than one.
+local function savedRealm()
+    local found
+    for _, t in ipairs({ ns.db.alts, ns.db.chars, ns.db.recent }) do
+        for r in pairs(t or {}) do
+            if r ~= "" then
+                if found and found ~= r then return nil end
+                found = r
+            end
+        end
+    end
+    return found
+end
+-- Some WoW Forever sessions give an empty realm name: then the last realm seen stands in, else
+-- the one realm saved, so one realm never splits into two.
+local function realm()
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then
+        if ns.db then ns.db.realm = r end
+        return r
+    end
+    return ns.db and (ns.db.realm or savedRealm()) or ""
+end
+ns.Realm = realm
 local function me() return UnitName("player") or "?" end
 local function protected(id)
     return GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id) or false
@@ -413,6 +437,43 @@ function ns.Expiring()
     return n, soonest
 end
 
+-- Moves what was saved under an empty realm name onto the realm.
+function ns.MergeRealmless()
+    local r = realm()
+    if r == "" then return end
+    local alts = ns.db.alts[""]
+    if alts then
+        ns.db.alts[r] = ns.db.alts[r] or {}
+        for faction, names in pairs(alts) do
+            ns.db.alts[r][faction] = ns.db.alts[r][faction] or {}
+            for name in pairs(names) do ns.db.alts[r][faction][name] = true end
+        end
+        ns.db.alts[""] = nil
+    end
+    local chars = ns.db.chars[""]
+    if chars then
+        ns.db.chars[r] = ns.db.chars[r] or {}
+        for name, c in pairs(chars) do
+            local other = ns.db.chars[r][name]
+            if not other or (other.seen or 0) < (c.seen or 0) then ns.db.chars[r][name] = c end
+        end
+        ns.db.chars[""] = nil
+    end
+    local recent = ns.db.recent[""]
+    if recent then
+        -- the names sent to without a realm are the newer ones
+        local list, have = {}, {}
+        for _, part in ipairs({ recent, ns.db.recent[r] or {} }) do
+            for _, name in ipairs(part) do
+                if not have[name:lower()] and #list < RECENT_MAX then
+                    list[#list + 1] = name; have[name:lower()] = true
+                end
+            end
+        end
+        ns.db.recent[r], ns.db.recent[""] = list, nil
+    end
+end
+
 -- Saves when this character's letters with things in them run out, for the other characters'
 -- warnings: chars[realm][name] = { ends = { time, ... } }.
 function ns.Snapshot()
@@ -687,6 +748,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.log = ns.db.log or {}
         ns.db.rules = ns.db.rules or {}
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
+        ns.MergeRealmless()
         self:RegisterEvent("PLAYER_LOGIN")
         self:RegisterEvent("MAIL_SHOW")
         -- every way the mailbox closes, walking away too (the client may send no MAIL_CLOSED then)
@@ -699,6 +761,7 @@ f:SetScript("OnEvent", function(self, event, a1)
     -- Paused from the hub: only the closing events still run, so nothing stays open.
     if ns.paused and not event:find("_CLOSED$") then return end
     if event == "PLAYER_LOGIN" then
+        ns.MergeRealmless()
         local r, faction = realm(), UnitFactionGroup("player") or "?"
         ns.db.alts[r] = ns.db.alts[r] or {}
         ns.db.alts[r][faction] = ns.db.alts[r][faction] or {}
@@ -766,7 +829,7 @@ do
         summary = function()
             if not ns.db or not ns.db.chars then return nil end
             local n, soonest = 0, nil
-            for _, c in pairs(ns.db.chars[GetRealmName and GetRealmName() or ""] or {}) do
+            for _, c in pairs(ns.db.chars[realm()] or {}) do
                 for _, e in ipairs(c.ends or {}) do
                     local days = (e - time()) / 86400
                     if days > 0 and days < 7 then n = n + 1; soonest = math.min(soonest or days, days) end

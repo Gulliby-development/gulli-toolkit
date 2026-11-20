@@ -893,8 +893,27 @@ end
 ns.HISTORY_MAX = 300
 local MATCH_WAIT = 5 -- seconds a crate drop and an item drop may lie apart
 
+-- The realm the game gives now; some WoW Forever sessions give an empty name, and then the last
+-- realm seen, else the one realm saved for this name, stands in, so one character keeps one key.
 local function charKey()
-    return (UnitName and UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "?")
+    local name = UnitName and UnitName("player") or "?"
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then
+        if ns.db then ns.db.realm = r end
+    else
+        r = ns.db and ns.db.realm
+        if not r and ns.db then
+            for key in pairs(ns.db.lots or {}) do
+                local n, kr = key:match("^(.-)%-(.+)$")
+                if n == name then
+                    if r and r ~= kr then r = nil; break end
+                    r = kr
+                end
+            end
+        end
+    end
+    return name .. "-" .. (r or "?")
 end
 
 -- Units bought at the auction house and not used yet: db.lots[char][item] = { { n, total } }.
@@ -1113,6 +1132,19 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.picked = ns.db.picked
         ns.db.history = ns.db.history or {}
         ns.db.lots = ns.db.lots or {}
+        -- lots saved under an empty realm name join this character's
+        local key = charKey()
+        local name = key:match("^(.-)%-")
+        local stray = ns.db.lots[name .. "-"]
+        if stray and key ~= name .. "-" then
+            local mine = ns.db.lots[key] or {}
+            ns.db.lots[key] = mine
+            for id, list in pairs(stray) do
+                mine[id] = mine[id] or {}
+                for _, lot in ipairs(list) do table.insert(mine[id], lot) end
+            end
+            ns.db.lots[name .. "-"] = nil
+        end
         listen(self, { "AUCTION_HOUSE_SHOW", "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
                        "PLAYER_ENTERING_WORLD",
                        "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",

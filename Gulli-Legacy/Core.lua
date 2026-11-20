@@ -279,8 +279,66 @@ end
 
 -- Characters ----------------------------------------------------------------------------------
 
+-- The realm the game gives now, or nil: some WoW Forever sessions give an empty realm name.
+local function liveRealm()
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then return r end
+end
+
+-- The one realm saved for this name, or nil when there is none or more than one.
+local function savedRealm(chars, name)
+    local found
+    for key in pairs(chars or {}) do
+        local n, r = key:match("^(.-)%-(.+)$")
+        if n == name then
+            if found and found ~= r then return nil end
+            found = r
+        end
+    end
+    return found
+end
+
+-- This character's realm: the game's, else the one saved for this name, else the last one seen.
+function ns.Realm()
+    local realm = liveRealm()
+    if realm then
+        if ns.db then ns.db.realm = realm end
+        return realm
+    end
+    return ns.db and (savedRealm(ns.db.chars, UnitName("player")) or ns.db.realm) or nil
+end
+
 function ns.CharKey()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "")
+    return (UnitName("player") or "?") .. "-" .. (ns.Realm() or "")
+end
+
+-- Moves entries saved with an empty realm ("Name-") onto that name's realm: the newer entry wins
+-- and keeps what only the older one has.
+function ns.MergeRealmless()
+    local chars = ns.db and ns.db.chars
+    if not chars then return end
+    ns.Realm() -- notes the realm the game gives now
+    local moves = {}
+    for key, c in pairs(chars) do
+        local name = key:match("^(.-)%-$")
+        local realm = name and (savedRealm(chars, name) or ns.db.realm)
+        if realm then moves[#moves + 1] = { key, name .. "-" .. realm, c, realm } end
+    end
+    for _, m in ipairs(moves) do
+        local from, to, c, realm = m[1], m[2], m[3], m[4]
+        local other = chars[to]
+        if other then
+            local new, old = c, other
+            if (other.t or 0) > (c.t or 0) then new, old = other, c end
+            for k, v in pairs(old) do if new[k] == nil then new[k] = v end end
+            chars[to] = new
+        else
+            chars[to] = c
+        end
+        chars[to].realm = realm
+        chars[from] = nil
+    end
 end
 
 -- The pace from the XP module when its session is long enough: XP per hour, or nil.
@@ -294,10 +352,11 @@ end
 -- Saves this character: class, level, XP, skills, pace and points.
 function ns.Snapshot()
     if not ns.db then return end
+    ns.MergeRealmless()
     local key = ns.CharKey()
     local c = ns.db.chars[key] or {}
     local _, class = UnitClass("player")
-    c.name, c.realm, c.class = UnitName("player"), GetRealmName and GetRealmName() or "", class
+    c.name, c.realm, c.class = UnitName("player"), ns.Realm() or "", class
     local lvl = UnitLevel("player")
     if not secret(lvl) then c.level = lvl end
     c.xp = playerXP()
@@ -989,6 +1048,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         if not ns.db.hudHidden then ns.db.tracker, ns.db.hudHidden = false, true end
         ns.db.locked = nil
         ns.db.chars = ns.db.chars or {}
+        ns.MergeRealmless()
         ns.db.pins = ns.db.pins or {}
         ns.db.skillNames = ns.db.skillNames or {}
         -- An event the client does not know must not stop the rest.

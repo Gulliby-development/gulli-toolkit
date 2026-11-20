@@ -134,8 +134,27 @@ local function protected(id)
     return GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id) or false
 end
 
+-- The realm the game gives now; some WoW Forever sessions give an empty name, and then the last
+-- realm seen, else the one realm saved for this name, stands in, so one character keeps one key.
 local function charKey()
-    return (UnitName and UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "?")
+    local name = UnitName and UnitName("player") or "?"
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then
+        if ns.db then ns.db.realm = r end
+    else
+        r = ns.db and ns.db.realm
+        if not r and ns.db then
+            for key in pairs(ns.db.owed or {}) do
+                local n, kr = key:match("^(.-)%-(.+)$")
+                if n == name then
+                    if r and r ~= kr then r = nil; break end
+                    r = kr
+                end
+            end
+        end
+    end
+    return name .. "-" .. (r or "?")
 end
 
 -- ---------- the rules ----------
@@ -907,6 +926,20 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.history = ns.db.history or {}
         ns.db.owed = ns.db.owed or {}
+        -- what was saved under an empty realm name joins this character's
+        local key = charKey()
+        local name = key:match("^(.-)%-")
+        local strayKey = name .. "-"
+        if key ~= strayKey then
+            local stray = ns.db.owed[strayKey]
+            if stray then
+                local mine = ns.db.owed[key] or {}
+                ns.db.owed[key] = mine
+                for id, n in pairs(stray) do mine[id] = (mine[id] or 0) + n end
+                ns.db.owed[strayKey] = nil
+            end
+            for _, e in ipairs(ns.db.history) do if e.who == strayKey then e.who = key end end
+        end
         listen(self, { "AUCTION_HOUSE_SHOW", "MERCHANT_SHOW",
                        "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "AUCTION_HOUSE_BROWSE_RESULTS_ADDED",
                        "AUCTION_HOUSE_THROTTLED_SYSTEM_READY",

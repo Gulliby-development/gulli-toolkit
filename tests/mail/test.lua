@@ -430,4 +430,21 @@ test("walking away from the mailbox closes the panel, once", function()
     GulliToolkit = nil
 end)
 
+test("an empty realm name never splits one realm into two", function()
+    Fake({ db = { alts = { [""] = { Alliance = { Tester = true } }, Realm = { Alliance = { Alt = true } } },
+                  chars = { [""] = { Tester = { ends = { 5 }, seen = 20 } },
+                            Realm = { Tester = { ends = {}, seen = 10 }, Alt = { ends = {}, seen = 1 } } },
+                  recent = { [""] = { "Bob" }, Realm = { "Ann", "bob" } } } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    eq(ns.db.alts[""], nil); eq(ns.db.chars[""], nil); eq(ns.db.recent[""], nil)
+    eq(ns.db.alts.Realm.Alliance.Tester, true)
+    eq(ns.db.alts.Realm.Alliance.Alt, true)
+    eq(ns.db.chars.Realm.Tester.seen, 20, "the newer snapshot wins")
+    eq(table.concat(ns.db.recent.Realm, ","), "Bob,Ann")
+    eq(ns.Realm(), "Realm", "the one realm saved stands in")
+    ns.Snapshot()
+    eq(ns.db.chars[""], nil, "a snapshot without a realm keeps the saved realm")
+end)
+
 W.finish()

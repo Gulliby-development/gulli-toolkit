@@ -236,8 +236,64 @@ function ns.Where(step)
     return zone and L.WHERE:format(step[3], zone) or step[3]
 end
 
+-- The realm the game gives now, or nil: some WoW Forever sessions give an empty realm name.
+local function liveRealm()
+    local r = GetRealmName and GetRealmName()
+    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
+    if type(r) == "string" and r ~= "" then return r end
+end
+
+-- The one realm saved for this name, or nil when there is none or more than one.
+local function savedRealm(chars, name)
+    local found
+    for key in pairs(chars or {}) do
+        local n, r = key:match("^(.-)%-(.+)$")
+        if n == name then
+            if found and found ~= r then return nil end
+            found = r
+        end
+    end
+    return found
+end
+
+-- Name-Realm. Without a realm from the game, the realm saved for this name stands in, then the
+-- last one seen, so one character never gets a second entry.
 function ns.CharKey()
-    return UnitName("player") .. "-" .. (GetRealmName() or "")
+    local name = UnitName("player") or "?"
+    local realm = liveRealm()
+    if realm then
+        if ns.db then ns.db.realm = realm end
+    elseif ns.db then
+        realm = savedRealm(ns.db.chars, name) or ns.db.realm
+    end
+    return name .. "-" .. (realm or "")
+end
+
+-- Moves entries saved with an empty realm ("Name-") onto that name's realm: the newer entry wins
+-- and keeps what only the older one has.
+function ns.MergeRealmless()
+    local chars = ns.db and ns.db.chars
+    if not chars then return end
+    ns.CharKey() -- notes the realm the game gives now
+    local moves = {}
+    for key, c in pairs(chars) do
+        local name = key:match("^(.-)%-$")
+        local realm = name and (savedRealm(chars, name) or ns.db.realm)
+        if realm then moves[#moves + 1] = { key, name .. "-" .. realm, c } end
+    end
+    for _, m in ipairs(moves) do
+        local from, to, c = m[1], m[2], m[3]
+        local other = chars[to]
+        if other then
+            local new, old = c, other
+            if (other.t or 0) > (c.t or 0) then new, old = other, c end
+            for k, v in pairs(old) do if new[k] == nil then new[k] = v end end
+            chars[to] = new
+        else
+            chars[to] = c
+        end
+        chars[from] = nil
+    end
 end
 
 -- Saves this character's progress.
@@ -251,6 +307,7 @@ function ns.Scan()
         if r.item and itemCount(r.item) > 0 then items[r.item] = true end
     end
     local _, class = UnitClass("player")
+    ns.MergeRealmless()
     local old = ns.db.chars[ns.CharKey()]
     ns.db.chars[ns.CharKey()] = { name = UnitName("player"), class = class, level = UnitLevel("player"),
                                   faction = UnitFactionGroup("player"), done = done, active = active,
@@ -574,6 +631,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db = GulliAttuneDB
         ns.db.chars = ns.db.chars or {}
         ns.db.settings = ns.db.settings or {}
+        ns.MergeRealmless()
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "QUEST_TURNED_IN", "QUEST_ACCEPTED", "BAG_UPDATE_DELAYED",
                              "PLAYER_LEVEL_UP", "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_LOGIN" }) do
             self:RegisterEvent(e)

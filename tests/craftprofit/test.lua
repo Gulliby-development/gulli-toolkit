@@ -1619,6 +1619,14 @@ test("the mailbox and other characters are read", function()
                                 ["Alt-Realm"] = { name = "Alt", items = { [1] = 5 }, bank = { [1] = 10 } } } }
     local alts, who = n.AltCount(1)
     eq(alts, 15); eq(who, "Alt")
+    -- the game gives no realm name: this character is still not one of the others
+    GetRealmName = function() return "" end
+    GulliChoresDB.realm = "Realm"
+    eq((n.AltCount(1)), 15)
+    GulliChoresDB.chars["Tester-"] = { name = "Tester", items = { [1] = 50 } }
+    eq((n.AltCount(1)), 15, "an entry without a realm is this character too")
+    GulliChoresDB.chars["Tester-"] = nil
+    GetRealmName = function() return "Realm" end
     local it = n.State().items[1]
     eq(it.mail, 7); eq(it.alts, 15)
     GulliChoresDB, GetInboxNumItems, GetInboxHeaderInfo, GetInboxItem = nil, nil, nil, nil
