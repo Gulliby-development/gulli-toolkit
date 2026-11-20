@@ -110,7 +110,7 @@ T.en = {
 [93269] = {
     "Sebelia at the top of Mount Hyjal, 71, 52, gives Mending Communications. The way up is closed: Evie Whirlbrew in Everlook, 61, 38, makes the Potion of Winterspring Shrouding that gets you there.",
     "Bring the parcels down to Innkeeper Vizzie in Everlook, 61, 39.",
-    "Unfrozen Deliveries: the 4 Missing Mail drop only from Ice Thistle Yetis (not the Rogue ones, Matriarchs or Patriarchs), in the hills north of Everlook and near the yeti cave to the southeast. Do it with Are We There, Yeti?",
+    "Unfrozen Deliveries: the Missing Mail drops only from Ice Thistle Yetis (not Rogue ones, Matriarchs or Patriarchs), north of Everlook and by the yeti cave to the southeast. Do it with Are We There, Yeti?",
     "Top of the Post: carry the mail back up to Sebelia. She gives the 18-slot Hyjal Postal Satchel.",
 },
 [96260] = {
