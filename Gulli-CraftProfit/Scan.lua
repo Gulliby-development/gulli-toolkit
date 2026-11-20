@@ -1412,6 +1412,19 @@ function ns.HookRepWindow()
 end
 
 local pending = false
+-- A place closed (or the player walked away from it).
+ns.PLACE_CLOSED = {
+    merchant = function() ns.atVendor = false; ns.Arrive(nil) end,
+    bank = function() ns.atBank = false; ns.Arrive(nil) end,
+    mail = function() ns.atMail = false; ns.Arrive(nil) end,
+    auction = function()
+        cancelQuote()
+        if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
+        ns.atAH, scan.queue, scan.busy = false, {}, nil
+        ns.Arrive(nil)
+    end,
+}
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1, a2)
@@ -1433,12 +1446,16 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
         ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
                           "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",
-                          "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
-                          "AUCTION_ITEM_LIST_UPDATE", "MERCHANT_CLOSED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
-                          "MAIL_SHOW", "MAIL_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
+                          "AUCTION_HOUSE_SHOW", "COMMODITY_SEARCH_RESULTS_UPDATED",
+                          "AUCTION_ITEM_LIST_UPDATE", "BANKFRAME_OPENED",
+                          "MAIL_SHOW", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
                           "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
                           "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
                           "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
+        -- every way a place closes, walking away too: the stop and the window beside it follow
+        if ns.Skin and ns.Skin.ClosesWith then
+            for place, fn in pairs(ns.PLACE_CLOSED) do ns.Skin.ClosesWith(place, fn) end
+        end
         local api = auctionator()
         if api and api.RegisterForDBUpdate then
             pcall(api.RegisterForDBUpdate, CALLER, function() ns.Rebuild(false, "event") end)
@@ -1453,11 +1470,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         return
     end
     if event == "MERCHANT_SHOW" then learnVendor(); ns.atVendor = true; ns.Arrive("vendor"); return end
-    if event == "MERCHANT_CLOSED" then ns.atVendor = false; ns.Arrive(nil); return end
     if event == "BANKFRAME_OPENED" then ns.atBank = true; ns.Arrive("bank"); return end
-    if event == "BANKFRAME_CLOSED" then ns.atBank = false; ns.Arrive(nil); return end
     if event == "MAIL_SHOW" then ns.atMail = true; ns.Arrive("mail"); return end
-    if event == "MAIL_CLOSED" then ns.atMail = false; ns.Arrive(nil); return end
     if event == "TRAINER_SHOW" then learnTrainer(); return end
     if event == "TRADE_SKILL_CLOSE" then
         ns.profOpen, ns.pendingRecipe, ns.helperOpen = false, nil, nil
@@ -1467,13 +1481,6 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "TRADE_SKILL_SHOW" then ns.profOpen = true end
     if event == "MAIL_INBOX_UPDATE" then snapshotMail(); return end
     if event == "AUCTION_HOUSE_SHOW" then ns.atAH = true; ns.Arrive("ah"); return end
-    if event == "AUCTION_HOUSE_CLOSED" then
-        cancelQuote()
-        if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
-        ns.atAH, scan.queue, scan.busy = false, {}, nil
-        ns.Arrive(nil)
-        return
-    end
     if event:sub(1, 10) == "COMMODITY_" and event ~= "COMMODITY_SEARCH_RESULTS_UPDATED" then ns.OnBuy(event, a1, a2); return end
     if event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "AUCTION_HOUSE_PURCHASE_COMPLETED"
         or event == "AUCTION_HOUSE_SHOW_ERROR" then ns.OnBuy(event, a1, a2); return end

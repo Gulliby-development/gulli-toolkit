@@ -38,7 +38,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 
 ## How to use it
 
-1. Open a mailbox. The panel opens next to it.
+1. Open a mailbox. The panel opens next to it, and closes by itself when you close the mailbox or walk away.
 2. Tap **Take all**, a tile under it (such as **Herbs**) for only that kind, or **Take** on one letter.
 3. To write, open **Write** and tap a name. Use the buttons under the names to fill the letter, then press **Send**.
 4. Type `/gml` away from a mailbox for the switches, the mailing rules and the log.

@@ -586,6 +586,18 @@ GulliRestock.Missing = function() return ns.char and ns.Missing() or {} end
 ns.DEFAULTS = { auto = false, deposit = false, reserve = 0, forecast = true, lower = false }
 
 local pending = false
+-- The vendor or the bank closed (or the player walked away): its windows close too.
+function ns.VendorClosed()
+    ns.atVendor = false
+    if ns.HidePlan then ns.HidePlan() end
+    if ns.HideQuick then ns.HideQuick() end
+    if ns.Refresh then ns.Refresh() end
+end
+function ns.BankClosed()
+    ns.atBank = false
+    if ns.HideBank then ns.HideBank() end
+end
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1)
@@ -607,11 +619,15 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.char.use = ns.char.use or {}
         ns.char.played = ns.char.played or 0
         self:RegisterEvent("MERCHANT_SHOW")
-        self:RegisterEvent("MERCHANT_CLOSED")
         self:RegisterEvent("BANKFRAME_OPENED")
-        self:RegisterEvent("BANKFRAME_CLOSED")
         self:RegisterEvent("MAIL_SHOW")
-        self:RegisterEvent("MAIL_CLOSED")
+        -- every way a place closes, walking away too: its windows go with it
+        local S = ns.Skin
+        if S and S.ClosesWith then
+            S.ClosesWith("merchant", ns.VendorClosed)
+            S.ClosesWith("bank", ns.BankClosed)
+            S.ClosesWith("mail", function() ns.atMail = false end)
+        end
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         self:RegisterEvent("PLAYER_LOGOUT")
         if MerchantItemButton_OnModifiedClick then
@@ -637,23 +653,13 @@ f:SetScript("OnEvent", function(self, event, a1)
         elseif ns.ShowPlan then
             ns.ShowPlan(plan, total)
         end
-    elseif event == "MERCHANT_CLOSED" then
-        ns.atVendor = false
-        if ns.HidePlan then ns.HidePlan() end
-        if ns.HideQuick then ns.HideQuick() end
-        if ns.Refresh then ns.Refresh() end
     elseif event == "BANKFRAME_OPENED" then
         ns.atBank = true
         if IsShiftKeyDown and IsShiftKeyDown() then return end
         local moves, sum = ns.BankPlan()
         if #moves > 0 and ns.ShowBank then ns.ShowBank(moves, sum) end
-    elseif event == "BANKFRAME_CLOSED" then
-        ns.atBank = false
-        if ns.HideBank then ns.HideBank() end
     elseif event == "MAIL_SHOW" then
         ns.atMail = true
-    elseif event == "MAIL_CLOSED" then
-        ns.atMail = false
     elseif event == "PLAYER_LOGOUT" then
         ns.char.played = ns.Played()
     elseif event == "BAG_UPDATE_DELAYED" then

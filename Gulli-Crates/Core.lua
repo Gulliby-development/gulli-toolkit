@@ -1091,6 +1091,15 @@ local function listen(frame, events)
     end
 end
 
+-- The auction house closed (or the player walked away): reading and buying stop, the window goes.
+function ns.AuctionClosed()
+    ns.atAH = false
+    ns.StopScan()
+    if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
+    ns.Tidy()
+    if ns.HideAtAH then ns.HideAtAH() end
+end
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1, a2)
@@ -1104,12 +1113,14 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.picked = ns.db.picked
         ns.db.history = ns.db.history or {}
         ns.db.lots = ns.db.lots or {}
-        listen(self, { "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
+        listen(self, { "AUCTION_HOUSE_SHOW", "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
                        "PLAYER_ENTERING_WORLD",
                        "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
                        "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED",
                        "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED" })
         nameIndex() -- asks the client for the bundle names early
+        -- every way the auction house closes, walking away too; also while paused
+        if ns.Skin and ns.Skin.ClosesWith then ns.Skin.ClosesWith("auction", ns.AuctionClosed) end
         return
     end
     if ns.paused then return end
@@ -1124,12 +1135,6 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         end
         if ns.db.auto and #ns.Crates() > 0 and ns.ShowAtAH then ns.ShowAtAH() end
         if ns.Refresh then ns.Refresh() end
-    elseif event == "AUCTION_HOUSE_CLOSED" then
-        ns.atAH = false
-        ns.StopScan()
-        if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
-        ns.Tidy()
-        if ns.HideAtAH then ns.HideAtAH() end
     elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_UPDATED" then
         ns.OnSearch(a1)
     elseif event == "GET_ITEM_INFO_RECEIVED" then

@@ -18,7 +18,7 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 
 ## Features
 
-- **Opens at the auction house.** Carry a crate and open the auction house: the window opens beside it. A switch on the Settings tab turns this off. When Craft Profit has a run to buy for too, both windows share that place as tabs, like in a browser; the number on a tab is how many lines are left to buy.
+- **Opens at the auction house.** Carry a crate and open the auction house: the window opens beside it, and closes by itself when you close the auction house or walk away. A switch on the Settings tab turns this off. When Craft Profit has a run to buy for too, both windows share that place as tabs, like in a browser; the number on a tab is how many lines are left to buy.
 - **Pick the crates.** Every crate in your bags is listed. Untick the ones you want to keep for later, and tick them again at any time: the price follows at once.
 - **The cheapest bundle.** **Calculate** prices every bundle of every crate. What you already have costs nothing. At the auction house, it reads every listing of what you buy, so buying 100 of something pays for the dearer lots too, and a cheaper bundle or crate takes over when the cheap lots run out. Away from the auction house it uses Auctionator's lowest price, and the total starts with **~** to show it is an estimate.
 - **Your bank counts.** Items in your bank are used too, and the list says so in orange: take them out before you fill the crate. A switch on the Settings tab turns this off.

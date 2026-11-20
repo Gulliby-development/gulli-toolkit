@@ -30,7 +30,7 @@ Players often put items on the auction house for less than a vendor pays for the
 - **Sell at the vendor.** At any vendor a notice offers to sell what you bought here, with what the vendor pays. Turn on **Sell at once at a vendor** to sell without the notice. It sells only what Vendor Flip bought, never your own items and never items you protected in the toolkit.
 - **Keep one.** Right-click a line in the History tab to keep that item: it is not sold.
 - **History.** Everything you bought to sell, with what you paid and what the vendor pays, green once it is sold. Today, 7 days or all, with your gain on top.
-- **Beside the auction house.** The window opens beside the auction house. When Waylaid Crates or Craft Profit have work there too, the windows share that place as tabs. The number on the tab is how many lines are left to buy.
+- **Beside the auction house.** The window opens beside the auction house and closes by itself when you close it or walk away. When Waylaid Crates or Craft Profit have work there too, the windows share that place as tabs. The number on the tab is how many lines are left to buy.
 
 ## Install
 

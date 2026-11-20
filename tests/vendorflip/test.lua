@@ -511,6 +511,14 @@ test("at the auction house its tab opens beside it, unless the switch is off", f
     eq((ns.Skin.SideIs("VendorFlip")), true)
     w.Fire("AUCTION_HOUSE_CLOSED")
     eq((ns.Skin.SideIs("VendorFlip")), false)
+    -- walking away: the client may send only the interaction manager's hide
+    w.Fire("AUCTION_HOUSE_SHOW")
+    eq((ns.Skin.SideIs("VendorFlip")), true)
+    w.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 5) -- a vendor: not this place
+    eq((ns.Skin.SideIs("VendorFlip")), true)
+    w.Fire("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", 21)
+    eq((ns.Skin.SideIs("VendorFlip")), false, "walking away closes it")
+    eq(ns.atAH, false)
     w = Fake(market({ db = { auto = false } }))
     ns = Load()
     w.Fire("AUCTION_HOUSE_SHOW")

@@ -22,7 +22,7 @@ Out of candles before a raid? Gulli Restock remembers how many reagents, arrows 
 - **Add things your way.** Drop an item on the window, Shift-click its link into the box, type its number, or type `/grs add <item> 20`.
 - **"Best for my level".** Water, food, arrows and bullets: Restock buys and counts only the newest kind for your level. A vendor that sells only old water sells you nothing. Turn on **Also buy water, food and ammo one level lower** to take the kind one step below too.
 - **Class reagents in one tap.** Candles, powders, runes, symbols, seeds and more, for your class and level.
-- **A list before it buys.** At a vendor you see what it would buy and the cost. Untick a line or change the number. Only **Buy** buys. Or tick the box to buy at once. Hold **Shift** to skip one visit.
+- **A list before it buys.** At a vendor you see what it would buy and the cost. Untick a line or change the number. Only **Buy** buys. Or tick the box to buy at once. Hold **Shift** to skip one visit. The list closes by itself when you close the vendor or walk away.
 - **It knows your limits.** It buys only what fits in your bags, and it keeps the gold you set aside.
 - **This vendor tab.** Food, drink, reagents and ammo the open vendor sells, one tap to add them to the list.
 - **Quick buy.** Alt+click an item at the vendor: buy up to what fits in your bags and your purse.
