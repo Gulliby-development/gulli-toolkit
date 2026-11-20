@@ -579,4 +579,20 @@ test("the Challenges tab sorts by progress by default, or by type or name", func
     ns.ShowTab(3)
 end)
 
+test("an empty realm name never makes a second entry for one character", function()
+    Fake({ db = { chars = {
+        ["Tester-"] = { name = "Tester", class = "PRIEST", level = 50, realm = "", skills = {}, t = 200 },
+        ["Tester-Realm"] = { name = "Tester", class = "PRIEST", level = 49, realm = "Realm", skills = {}, t = 100,
+                             rate = 7 } } } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    eq(ns.db.chars["Tester-"], nil, "merged on load")
+    eq(ns.db.chars["Tester-Realm"].level, 50, "the newer entry wins")
+    eq(ns.db.chars["Tester-Realm"].rate, 7, "and keeps what only the older one had")
+    ns.Snapshot()
+    eq(ns.db.chars["Tester-"], nil, "a snapshot without a realm keeps the saved realm")
+    eq(ns.db.chars["Tester-Realm"].realm, "Realm")
+    eq(#ns.Chars(), 1)
+end)
+
 W.finish()

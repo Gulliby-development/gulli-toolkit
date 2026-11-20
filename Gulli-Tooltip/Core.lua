@@ -103,11 +103,15 @@ function ns.AltCounts(id)
     local out = {}
     local db = GulliChoresDB
     if type(db) ~= "table" or type(db.chars) ~= "table" then return out end
-    local me = UnitName("player") .. "-" .. (GetRealmName and GetRealmName() or "")
+    -- this character: an empty realm name from the game means the realm Chores saved last
+    local name = UnitName("player") or ""
+    local realm = GetRealmName and GetRealmName() or ""
+    if realm == "" then realm = type(db.realm) == "string" and db.realm or "" end
+    local me, bare = name .. "-" .. realm, name .. "-"
     for key, c in pairs(db.chars) do
         local bags = c.items and c.items[id] or 0
         local bank = c.bank and c.bank[id] or 0
-        if key ~= me and bags + bank > 0 then
+        if key ~= me and key ~= bare and bags + bank > 0 then
             out[#out + 1] = { name = c.name or key, class = c.class, bags = bags, bank = bank }
         end
     end

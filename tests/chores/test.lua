@@ -362,4 +362,26 @@ test("the window has three tabs and the hub gets a summary and options", functio
     ns.SortBy("money")
 end)
 
+test("an empty realm name never makes a second entry for one character", function()
+    Fake({ db = { chars = {
+        ["Tester-"] = { name = "Tester", level = 50, realm = "", t = 200, money = 5 },
+        ["Tester-Realm"] = { name = "Tester", level = 49, realm = "Realm", t = 100, note = "bank" } },
+        hidden = { ["Tester-"] = true },
+        alerted = { ["Tester-:CD_MOONCLOTH"] = 300, ["Tester-Realm:CD_MOONCLOTH"] = 100 } } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    eq(ns.db.chars["Tester-"], nil, "merged on load")
+    local c = ns.db.chars["Tester-Realm"]
+    eq(c.money, 5, "the newer snapshot wins")
+    eq(c.note, "bank", "and keeps what only the older one had")
+    eq(c.realm, "Realm")
+    eq(ns.db.hidden["Tester-Realm"], true)
+    eq(ns.db.alerted["Tester-Realm:CD_MOONCLOTH"], 300)
+    eq(ns.db.alerted["Tester-:CD_MOONCLOTH"], nil)
+    ns.Snapshot()
+    eq(ns.db.chars["Tester-"], nil, "a snapshot without a realm keeps the saved realm")
+    eq(ns.db.chars["Tester-Realm"].realm, "Realm")
+    eq(ns.Passes(ns.db.chars["Tester-Realm"], "realm"), true)
+end)
+
 W.finish()

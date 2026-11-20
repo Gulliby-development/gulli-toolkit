@@ -62,6 +62,44 @@ test("other characters stay; this one comes first; forget removes one", function
     eq(#ns.Chars(), 2)
 end)
 
+test("an empty realm name never makes a second entry for one character", function()
+    Fake({ level = 50, db = { chars = {
+        ["Tester-"] = { name = "Tester", level = 50, faction = "Alliance", done = { [1] = true }, active = {}, t = 200 },
+        ["Tester-Realm"] = { name = "Tester", level = 49, faction = "Alliance", done = {}, active = {}, t = 100,
+                             old = true },
+        ["Alt-Realm"] = { name = "Alt", level = 5, faction = "Alliance", done = {}, active = {}, t = 50 } } } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    eq(ns.db.chars["Tester-"], nil, "the entry without a realm is merged on load")
+    local c = ns.db.chars["Tester-Realm"]
+    eq(c.done[1], true, "the newer entry wins")
+    eq(c.old, true, "and keeps what only the older one had")
+    ns.Scan()
+    eq(ns.db.chars["Tester-"], nil, "a scan without a realm keeps the saved realm")
+    eq(#ns.Chars(), 2)
+    eq(ns.Chars()[1].key, "Tester-Realm")
+    -- a new character while the game gives no realm takes the last realm seen
+    GetRealmName = function() return "Realm" end
+    ns.CharKey()
+    GetRealmName = function() return "" end
+    UnitName = function() return "Fresh" end
+    eq(ns.CharKey(), "Fresh-Realm")
+end)
+
+test("a character saved only without a realm moves to it once the game gives one", function()
+    Fake({ db = { chars = { ["Tester-"] = { name = "Tester", level = 60, faction = "Alliance", done = {}, active = {},
+                                            t = 1 } } } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    ns.Scan()
+    eq(ns.CharKey(), "Tester-")
+    GetRealmName = function() return "Realm" end
+    ns.Scan()
+    eq(ns.db.chars["Tester-"], nil)
+    assert(ns.db.chars["Tester-Realm"])
+    eq(#ns.Chars(), 1)
+end)
+
 test("names: the game's quest and zone names first, then English", function()
     Fake({ titles = { [4182] = "Угроза драконов" }, areas = { [46] = "Пылающие степи" } })
     local ns = Load()
