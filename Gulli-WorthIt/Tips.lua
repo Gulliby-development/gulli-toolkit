@@ -110,7 +110,7 @@ T.en = {
 [93269] = {
     "Sebelia at the top of Mount Hyjal, 71, 52, gives Mending Communications. The way up is closed: Evie Whirlbrew in Everlook, 61, 38, makes the Potion of Winterspring Shrouding that gets you there.",
     "Bring the parcels down to Innkeeper Vizzie in Everlook, 61, 39.",
-    "Unfrozen Deliveries: find 4 Missing Mail in the hills north of Everlook and bring them to Vizzie.",
+    "Unfrozen Deliveries: the 4 Missing Mail drop only from Ice Thistle Yetis (not the Rogue ones, Matriarchs or Patriarchs), in the hills north of Everlook and near the yeti cave to the southeast. Do it with Are We There, Yeti?",
     "Top of the Post: carry the mail back up to Sebelia. She gives the 18-slot Hyjal Postal Satchel.",
 },
 [96260] = {
@@ -270,7 +270,7 @@ T.de = {
 [93269] = {
     "Sebelia auf dem Gipfel des Hyjal, 71, 52, gibt Mending Communications. Der Weg hinauf ist versperrt: Evie Whirlbrew in Ewige Warte, 61, 38, braut den Potion of Winterspring Shrouding, der euch hinaufbringt.",
     "Bringt die Pakete hinunter zu Innkeeper Vizzie in Ewige Warte, 61, 39.",
-    "Unfrozen Deliveries: Sucht 4 Missing Mail in den Hügeln nördlich von Ewige Warte und bringt sie zu Vizzie.",
+    "Unfrozen Deliveries: Die 4 Missing Mail droppen nur Ice Thistle Yetis (nicht die Rogue, Matriarchs oder Patriarchs), in den Hügeln nördlich von Ewige Warte und bei der Yetihöhle im Südosten. Erledigt es zusammen mit Are We There, Yeti?",
     "Top of the Post: Bringt die Post wieder hinauf zu Sebelia. Sie gibt die Hyjal Postal Satchel mit 18 Plätzen.",
 },
 [96260] = {
@@ -430,7 +430,7 @@ T.es = {
 [93269] = {
     "Sebelia, en la cima del monte Hyjal, 71, 52, da Mending Communications. El camino está cerrado: Evie Whirlbrew en Vista Eterna, 61, 38, prepara la Potion of Winterspring Shrouding que te lleva arriba.",
     "Baja los paquetes a Innkeeper Vizzie en Vista Eterna, 61, 39.",
-    "Unfrozen Deliveries: busca 4 Missing Mail en las colinas al norte de Vista Eterna y llévalos a Vizzie.",
+    "Unfrozen Deliveries: los 4 Missing Mail solo caen de Ice Thistle Yetis (no de los Rogue, Matriarchs ni Patriarchs), en las colinas al norte de Vista Eterna y junto a la cueva de yetis del sureste. Hazla junto con Are We There, Yeti?",
     "Top of the Post: sube el correo otra vez a Sebelia. Ella da la Hyjal Postal Satchel de 18 casillas.",
 },
 [96260] = {
@@ -590,7 +590,7 @@ T.fr = {
 [93269] = {
     "Sebelia, au sommet du mont Hyjal, 71, 52, donne Mending Communications. Le chemin est fermé : Evie Whirlbrew à Long-Guet, 61, 38, prépare la Potion of Winterspring Shrouding qui vous y mène.",
     "Descendez les colis à Innkeeper Vizzie à Long-Guet, 61, 39.",
-    "Unfrozen Deliveries : trouvez 4 Missing Mail dans les collines au nord de Long-Guet et rapportez-les à Vizzie.",
+    "Unfrozen Deliveries : les 4 Missing Mail ne tombent que des Ice Thistle Yetis (pas des Rogue, Matriarchs ni Patriarchs), dans les collines au nord de Long-Guet et près de la grotte des yétis au sud-est. Faites-la avec Are We There, Yeti?",
     "Top of the Post : remontez le courrier à Sebelia. Elle donne la Hyjal Postal Satchel de 18 emplacements.",
 },
 [96260] = {
@@ -750,7 +750,7 @@ T.pl = {
 [93269] = {
     "Sebelia na szczycie góry Hyjal, 71, 52, daje Mending Communications. Droga na górę jest zamknięta: Evie Whirlbrew w Everlook, 61, 38, warzy Potion of Winterspring Shrouding, która cię tam zabierze.",
     "Zanieś paczki do Innkeeper Vizzie w Everlook, 61, 39.",
-    "Unfrozen Deliveries: znajdź 4 Missing Mail na wzgórzach na północ od Everlook i zanieś je Vizzie.",
+    "Unfrozen Deliveries: 4 Missing Mail wypadają tylko z Ice Thistle Yeti (nie z Rogue, Matriarch ani Patriarch), na wzgórzach na północ od Everlook i przy jaskini yeti na południowym wschodzie. Zrób to razem z Are We There, Yeti?",
     "Top of the Post: zanieś pocztę z powrotem na górę do Sebelii. Daje ona Hyjal Postal Satchel na 18 miejsc.",
 },
 [96260] = {
@@ -910,7 +910,7 @@ T.pt = {
 [93269] = {
     "Sebelia, no topo do monte Hyjal, 71, 52, dá Mending Communications. O caminho está fechado: Evie Whirlbrew em Visteterna, 61, 38, faz a Potion of Winterspring Shrouding que leva você lá.",
     "Leve os pacotes até Innkeeper Vizzie em Visteterna, 61, 39.",
-    "Unfrozen Deliveries: ache 4 Missing Mail nas colinas ao norte de Visteterna e leve a Vizzie.",
+    "Unfrozen Deliveries: os 4 Missing Mail caem só de Ice Thistle Yetis (não dos Rogue, Matriarchs nem Patriarchs), nas colinas ao norte de Visteterna e perto da caverna dos yetis a sudeste. Faça junto com Are We There, Yeti?",
     "Top of the Post: leve a correspondência de volta a Sebelia. Ela dá a Hyjal Postal Satchel de 18 espaços.",
 },
 [96260] = {
@@ -1070,7 +1070,7 @@ T.ru = {
 [93269] = {
     "Sebelia на вершине горы Хиджал, 71, 52, даёт Mending Communications. Наверх так просто не пройти: Evie Whirlbrew в Круговзоре, 61, 38, варит Potion of Winterspring Shrouding, которое туда переносит.",
     "Отнесите посылки вниз, Innkeeper Vizzie в Круговзоре, 61, 39.",
-    "Unfrozen Deliveries: найдите 4 Missing Mail на холмах к северу от Круговзора и отнесите их Vizzie.",
+    "Unfrozen Deliveries: 4 Missing Mail падают только с Ice Thistle Yeti (не с Rogue, Matriarch и Patriarch), на холмах к северу от Круговзора и у пещеры йети на юго-востоке. Удобно делать вместе с Are We There, Yeti?",
     "Top of the Post: поднимите почту обратно к Sebelia. Она даёт почтовую сумку Хиджала (Hyjal Postal Satchel) на 18 ячеек.",
 },
 [96260] = {
@@ -1230,7 +1230,7 @@ T.zh = {
 [93269] = {
     "海加尔山顶的 Sebelia（71, 52）给出 Mending Communications。上山的路是封闭的：永望镇的 Evie Whirlbrew（61, 38）会做 Potion of Winterspring Shrouding，能把你送上去。",
     "把包裹带下山交给永望镇的 Innkeeper Vizzie（61, 39）。",
-    "Unfrozen Deliveries：在永望镇北边的山丘上找到 4 个 Missing Mail，交给 Vizzie。",
+    "Unfrozen Deliveries：4 个 Missing Mail 只从 Ice Thistle Yeti 身上掉落（Rogue、Matriarch 和 Patriarch 不掉），在永望镇北边的山丘和东南的雪人洞附近。可以和 Are We There, Yeti? 一起做。",
     "Top of the Post：把邮件送回山顶给 Sebelia。她给 18 格的 Hyjal Postal Satchel。",
 },
 [96260] = {
