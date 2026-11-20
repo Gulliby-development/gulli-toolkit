@@ -78,6 +78,10 @@ local function rulesPage(body)
     local page = S.ScrollPage(body, frame.inner[1])
     local p = page.inner
     local st = S.Stack(p)
+    local mobs, mh = S.SettingsCard(p, nil, {
+        { L.TARGET_KEY, L.TARGET_KEY_D, control = ns.KeyButton(p), icon = ns.OPT_ICON.targetKey },
+    })
+    st:Add(mobs, mh)
     local free = S.Stepper(p, function() return ns.db.minFree end, function(v) ns.db.minFree = v end, 1, 0, 10,
         function(v) return v == 0 and L.OFF or tostring(v) end)
     local card, h = S.SettingsCard(p, nil, {
@@ -166,3 +170,101 @@ function ns.Window()
     if not frame then build() end
     return frame
 end
+
+-- Quest mob key ------------------------------------------------------------------------------
+
+local BUTTON = "GulliAutoQuestTarget"
+local target, keyOwner, waiting
+
+local function targetButton()
+    if target then return target end
+    target = CreateFrame("Button", BUTTON, UIParent, "SecureActionButtonTemplate")
+    target:SetSize(1, 1)
+    target:Hide()
+    target:RegisterForClicks("AnyUp", "AnyDown")
+    target:SetAttribute("type", "macro")
+    return target
+end
+
+-- The macro follows the quest log; secure attributes change only out of combat.
+function ns.UpdateTargetMacro()
+    if not ns.db or not ns.db.targetKey then return end
+    if InCombatLockdown() then waiting = true; return end
+    waiting = nil
+    targetButton():SetAttribute("macrotext", ns.TargetMacro(ns.QuestMobs()))
+end
+
+-- Binds the key to the button, or frees it (no key, or paused from the hub).
+function ns.ApplyTargetKey()
+    if InCombatLockdown() then waiting = true; return end
+    keyOwner = keyOwner or CreateFrame("Frame")
+    ClearOverrideBindings(keyOwner)
+    local key = ns.db and ns.db.targetKey
+    if key and not ns.paused then
+        targetButton()
+        ns.UpdateTargetMacro()
+        SetOverrideBindingClick(keyOwner, true, key, BUTTON, "LeftButton")
+    end
+end
+
+local MODIFIER = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
+local MOUSE = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
+
+local function mods()
+    return (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "")
+end
+
+local function keyText()
+    local key = ns.db and ns.db.targetKey
+    return key and (GetBindingText and GetBindingText(key) or key) or L.KEY_NONE
+end
+
+local function capture(b, on)
+    b.capturing = on
+    b:EnableKeyboard(on)
+    if b.SetPropagateKeyboardInput and not InCombatLockdown() then b:SetPropagateKeyboardInput(not on) end
+    b:SetText(on and L.KEY_PRESS or keyText())
+end
+
+function ns.SetTargetKey(key)
+    ns.db.targetKey = key
+    ns.ApplyTargetKey()
+end
+
+-- The key button of the window: a click waits for a key or a mouse button, a right-click clears it.
+function ns.KeyButton(parent)
+    local b = S.Button(parent, 150, 28)
+    b:RegisterForClicks("AnyUp")
+    b:SetScript("OnClick", function(self, mouse)
+        if self.capturing and MOUSE[mouse] then
+            ns.SetTargetKey(mods() .. MOUSE[mouse])
+            capture(self, false)
+        elseif mouse == "RightButton" then
+            ns.SetTargetKey(nil)
+            capture(self, false)
+        elseif mouse == "LeftButton" then
+            capture(self, not self.capturing)
+        end
+    end)
+    b:SetScript("OnKeyDown", function(self, key)
+        if not self.capturing or MODIFIER[key] then return end
+        if key ~= "ESCAPE" then ns.SetTargetKey(mods() .. key) end
+        capture(self, false)
+    end)
+    b:SetScript("OnShow", function(self) capture(self, false) end)
+    capture(b, false)
+    return b
+end
+
+local ev = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA" }) do
+    ev:RegisterEvent(e)
+end
+ev:SetScript("OnEvent", function(_, event)
+    if not ns.db or not ns.db.targetKey then return end
+    if event == "PLAYER_LOGIN" or (event == "PLAYER_REGEN_ENABLED" and waiting) then
+        ns.ApplyTargetKey()
+    elseif not ns.paused then
+        ns.UpdateTargetMacro()
+    end
+end)

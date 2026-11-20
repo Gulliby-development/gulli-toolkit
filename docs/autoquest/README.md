@@ -25,6 +25,7 @@ Talking to a quest giver takes four or five taps. On a phone that adds up. Gulli
 - **No surprise costs.** A quest that asks for gold is never handed in on its own, and a quest that takes cloth, ore or other non-quest items waits for you (a switch changes that).
 - **Pause without a keyboard.** A **Pause** switch (also in `/gulli`), a **5 min** button, and a pause key you choose: Shift, Ctrl, Alt or none.
 - **Ignore list.** Ignore an NPC or a quest with one tap in the **Ignored** tab, or `/gaq ignore` at an NPC. Remove them from the list there too.
+- **A key for quest mobs.** Set a key on the Rules tab, and one press targets a mob a quest in your log still needs to kill, the ones of your zone first. It reads the names from your quest objectives, so it follows your log by itself. Right-click the key button to clear it.
 - **Escorts wait for you in a group.** An escort or event quest ties up its NPC once one player starts it, so in a group Auto Quest leaves it for you to take when everyone is ready (Gulli Party Quests shows who is). Alone it takes them as before.
 - **Quests from your group** are accepted only when you turn that on (escorts can start without warning).
 - **Rules.** Skip elite, dungeon and raid, or group quests; keep some quest log places free; pick the only dialogue line of an NPC.

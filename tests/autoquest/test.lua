@@ -235,4 +235,69 @@ test("an escort or event quest waits for the player while others are in the grou
     IsInGroup, GetNumGroupMembers = nil, nil
 end)
 
+test("quest mob key: names from the objectives, the zone's last, bound to the secure button", function()
+    Fake({ qlog = {
+        { title = "Elwynn Forest", isHeader = true },
+        { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
+                                { type = "item", text = "Linen Cloth: 1/5" } } },
+        { questID = 2, obj = { { type = "monster", text = "Murloc slain: 10/10", finished = true } } },
+        { title = "Westfall", isHeader = true },
+        { questID = 3, obj = { { type = "monster", text = "0/8 Harvest Watcher slain" },
+                                { type = "monster", text = "Kobold Vermin slain: 0/2" } } },
+    } })
+    local ns = Load()
+    eq(ns.MobName("Defias Pillager slain: 3/8"), "Defias Pillager")
+    eq(ns.MobName("3/8 Defias Pillager slain"), "Defias Pillager")
+    eq(ns.MobName(nil), nil)
+    local mobs = ns.QuestMobs()
+    eq(table.concat(mobs, ","), "Harvest Watcher,Kobold Vermin", "finished and item objectives left out, the zone's last")
+    eq(ns.TargetMacro(mobs), "/targetexact Harvest Watcher\n/targetexact Kobold Vermin")
+    eq(ns.TargetMacro({}), nil)
+    ns.TARGET_MAX = 30
+    eq(ns.TargetMacro(mobs), "/targetexact Kobold Vermin", "cut from the front")
+    ns.TARGET_MAX = 900
+    ns.SetTargetKey("F")
+    eq(W.bindings.F, "GulliAutoQuestTarget")
+    W.qlog[3].obj = {}
+    W.Fire("QUEST_LOG_UPDATE")
+    W.combat = true
+    W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
+    W.Fire("QUEST_LOG_UPDATE")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    ns.SetTargetKey(nil)
+    eq(W.bindings.F, nil, "no key, no binding")
+end)
+
+test("quest mob key: the macro follows the quest log, waits for the end of a fight, and pausing frees the key", function()
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" } } } } })
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local made
+    local create = CreateFrame
+    CreateFrame = function(kind, name, ...)
+        local f = create(kind, name, ...)
+        if name == "GulliAutoQuestTarget" then made = f end
+        return f
+    end
+    ns.SetTargetKey("F")
+    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin")
+    W.combat = true
+    W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin", "no secure change in a fight")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    eq(made:GetAttribute("macrotext"), "/targetexact Murloc", "after the fight")
+    reg.pause(true)
+    eq(W.bindings.F, nil, "paused from the hub")
+    reg.pause(false)
+    eq(W.bindings.F, "GulliAutoQuestTarget")
+    CreateFrame = create
+end)
+
 W.finish()

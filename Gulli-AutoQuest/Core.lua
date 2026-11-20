@@ -12,6 +12,7 @@ ns.DEFAULTS = {
     skipElite = false, skipDungeon = false, skipGroup = false,
     minFree = 0,          -- keep this many quest log places free (0: off)
     pickBest = false,     -- take the reward with the best vendor price
+    targetKey = nil,      -- the key that targets a mob the quest log needs (none: off)
     gossip = false,       -- pick the only gossip line of an NPC
     chat = false,         -- a chat line for each quest taken or handed in
     paused = false, pauseUntil = 0, pauseKey = "SHIFT",
@@ -339,6 +340,73 @@ function ns.OnEvent(event, ...)
     end
 end
 
+-- Quest mob key ------------------------------------------------------------------------------
+
+-- A key the player sets (targetKey) clicks one secure button whose macro targets a mob that a
+-- quest in the log still needs to kill (UI.lua sets it out of combat). Each /targetexact line
+-- that finds its mob wins over the lines before it, so the quests of the zone the player is in
+-- come last.
+ns.TARGET_MAX = 900 -- characters of the macro, well under the game's limit
+
+local function escape(w) return (w:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")) end
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+-- "Kobold Vermin slain: 3/10" or "3/10 Kobold Vermin slain" -> "Kobold Vermin". The words
+-- around the name come from the client's own QUEST_MONSTERS_KILLED, so it works in every language.
+function ns.MobName(text)
+    if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return nil end
+    local name = text:gsub("%d+%s*/%s*%d+", " "):gsub("[:：]", " ")
+    local tpl = type(QUEST_MONSTERS_KILLED) == "string" and QUEST_MONSTERS_KILLED or "%s slain: %d/%d"
+    tpl = tpl:gsub("%%%d*%$?[sd]", " "):gsub("[:：/]", " ")
+    name = " " .. trim(name) .. " "
+    for w in tpl:gmatch("%S+") do
+        name = name:gsub("^%s*" .. escape(w) .. "%s", " "):gsub("%s" .. escape(w) .. "%s*$", " ")
+    end
+    name = trim(name)
+    if name == "" or name:find("[\r\n]") then return nil end
+    return name
+end
+
+-- The mobs the quest log still needs, the ones of the player's zone last: { name, ... }.
+function ns.QuestMobs()
+    local Q = C_QuestLog or {}
+    if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
+    local here = GetRealZoneText and GetRealZoneText() or nil
+    local other, near, seen = {}, {}, {}
+    local zone
+    local n = (Q.GetNumQuestLogEntries or GetNumQuestLogEntries)()
+    for i = 1, n or 0 do
+        local info = Q.GetInfo(i)
+        if info and info.isHeader then
+            zone = info.title
+        elseif info and info.questID and not info.isHidden then
+            for _, o in ipairs(Q.GetQuestObjectives(info.questID) or {}) do
+                if o.type == "monster" and not o.finished then
+                    local name = ns.MobName(o.text)
+                    if name and not seen[name] then
+                        seen[name] = true
+                        table.insert((here and zone == here) and near or other, name)
+                    end
+                end
+            end
+        end
+    end
+    for _, name in ipairs(near) do other[#other + 1] = name end
+    return other
+end
+
+-- The macro for a list of names, cut at ns.TARGET_MAX from the front (the zone's mobs stay).
+function ns.TargetMacro(names)
+    local lines, len = {}, 0
+    for i = #names, 1, -1 do
+        local line = "/targetexact " .. names[i]
+        if len + #line + 1 > ns.TARGET_MAX then break end
+        table.insert(lines, 1, line)
+        len = len + #line + 1
+    end
+    return #lines > 0 and table.concat(lines, "\n") or nil
+end
+
 -- One line for the hub's home page, or nil.
 function ns.Summary()
     if not ns.db then return nil end
@@ -428,6 +496,7 @@ ns.OPT_ICON = {
     pickBest = "Interface\\Icons\\INV_Misc_Coin_02",
     gossip = "Interface\\Icons\\INV_Misc_Note_01",
     chat = "Interface\\Icons\\INV_Letter_02",
+    targetKey = "Interface\\Icons\\Ability_Hunter_SniperShot",
 }
 
 local function option(key, label, tip)
@@ -442,7 +511,7 @@ end
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
-        pause = function(on) ns.paused = on end,
+        pause = function(on) ns.paused = on; if ns.ApplyTargetKey then ns.ApplyTargetKey() end end,
         key = "AutoQuest",
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",
         slash = "/gaq",
