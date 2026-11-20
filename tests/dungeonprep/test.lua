@@ -1148,6 +1148,8 @@ test("inside the dungeon: the data's flags, the stages of a quest's way, the tra
     eq(ns.Inside("GNOMER", 2842).work, false, "Chief Engineer Scooty is in Booty Bay")
     eq(ns.Inside("MARA", 1).work, false, "an unknown quest has no flag")
     eq(ns.Inside(nil, 96776).work, false)
+    -- Agamaggan's Blood: the game moved its work out of Razorfen Downs (OUTSIDE_WORK).
+    eq(ns.Inside("RFD", 93604).work, false, "Agamaggan's Blood is done outside too")
     -- The way of a quest in the log: taken, its work now, the hand-in waits.
     local function states(id)
         local out = {}

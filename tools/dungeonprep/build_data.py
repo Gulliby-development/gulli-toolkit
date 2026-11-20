@@ -119,6 +119,12 @@ MAIN_EXTRA = {
     "DALARAN": [92459, 97287],  # Friend of the Kirin Tor, Shrewd Negotiations
 }
 
+# Quests whose work the game moved out of the dungeon: the data still ties it there, so the
+# "inside" mark of that part is dropped by hand (the quest stays in the dungeon's list).
+OUTSIDE_WORK = {
+    93604: "d",  # Agamaggan's Blood: the elite area outside Razorfen Downs too (hotfix of 2026-11-17)
+}
+
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
 # the levels): the quest chains a player takes for it while levelling, for each faction.
 GDQ_FILES = {
@@ -500,7 +506,7 @@ def main(root, att_root=None, gdq_root=None):
             flags += "d"
         if handed:
             flags += "h"
-        return flags
+        return "".join(f for f in flags if f not in OUTSIDE_WORK.get(qid, ""))
 
     def pres(qid):
         q = quests.get(qid) or {}
