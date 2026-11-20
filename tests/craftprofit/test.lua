@@ -2656,4 +2656,68 @@ test("the lists' search keeps the rows whose name has the text, and a row shows 
     GameTooltip = W.stub()
 end)
 
+test("a craft with a cooldown is taken once, only while ready; runs after it wait for it", function()
+    local c = core()
+    local function moonState()
+        local st = state()
+        st.items.moon = { name = "Mooncloth", ah = 90000, age = 0.1, vend = 1000 }
+        st.recipes.moon = { name = "Mooncloth", skill = { 150, 200, 210 }, r = { silk = 2 }, out = "moon", learned = true }
+        st.now = 1000
+        return st
+    end
+    local function uses(plan)
+        local n = 0
+        for _, sg in ipairs(plan.segs) do if sg.rid == "moon" then n = n + sg.n end end
+        return n
+    end
+    -- without a cooldown it gains so much that every skill point takes it
+    local free = c.Plan(moonState(), prefs({ target = 160 }))
+    assert(uses(free) >= 5, "without a cooldown: " .. uses(free))
+    -- with one: a single craft, and the plan still reaches the target with other crafts
+    local st = moonState()
+    st.recipes.moon.cd = 4 * c.DAY
+    local p = c.Plan(st, prefs({ target = 160 }))
+    eq(uses(p), 1); eq(p.reached, 160)
+    -- not ready yet: none
+    st.recipes.moon.cdReady = st.now + 3600
+    eq(uses(c.Plan(st, prefs({ target = 160 }))), 0)
+    eq(c.CdLeft(st, st.recipes.moon), 0)
+    st.recipes.moon.cdReady = st.now - 1
+    eq(c.CdLeft(st, st.recipes.moon), 1, "ready again")
+    -- a profit run: one craft of it at most
+    st.recipes.moon.cdReady = nil
+    local e = c.Earn(st, prefs({ minGain = 0 }))
+    local moonRun = e.segs[1] and e.segs[1].rid == "moon"
+    if moonRun then eq(e.segs[1].n, 1); eq(e.cd, 4 * c.DAY) end
+    for _, sg in ipairs(e.segs) do if sg.rid == "moon" then eq(sg.n, 1) end end
+    -- the whole way: only the first run may take it
+    local legs = c.Legs(st, prefs({ target = 175 }), nil)
+    local total = 0
+    for _, leg in ipairs(legs) do if leg.plan then total = total + uses(leg.plan) end end
+    assert(total <= 1, "the runs after the first wait for the cooldown: " .. total)
+    -- the Crafts now list: at most one, none while it waits
+    for _, row in ipairs(c.Crafts(st, prefs())) do if row.recipe == "moon" then assert(row.can <= 1); eq(row.cd, 4 * c.DAY) end end
+    -- Mooncloth and the transmutes are known
+    assert(c.COOLDOWNS[18560] and c.COOLDOWNS[17187] and c.COOLDOWNS[19047])
+end)
+
+test("the game's cooldown of a recipe is saved: when it is ready, and that it has one", function()
+    local rec = {}
+    local n = core()
+    n.NoteCooldown(rec, 7200)
+    eq(rec.cdReady, time() + 7200); eq(rec.cd, 7200)
+    n.NoteCooldown(rec, 0)
+    eq(rec.cdReady, nil); eq(rec.cd, 7200, "it still has a cooldown")
+    -- read at the profession window: the plan of that character waits for it
+    local g = game({ prof = { name = "Tailoring", skill = SKILL, cap = 225, recipes = {
+        { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+        { id = 103, name = "Silk Headband", learned = true, diff = 0, grey = 185, out = 6, r = { [2] = 3, [5] = 2 }, cooldown = 90000 },
+    } } })
+    local st = g.State()
+    eq(st.recipes[103].cdReady, time() + 90000)
+    eq(st.recipes[103].cd, 25 * 3600)
+    eq(g.CdLeft(st, st.recipes[103]), 0)
+    eq(st.recipes[101].cd, nil)
+end)
+
 W.finish()

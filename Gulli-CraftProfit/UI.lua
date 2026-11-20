@@ -781,7 +781,8 @@ local function detailRows(n, i, a)
         local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
         rows[#rows + 1] = { rid = sg.rid, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
-                            note = sg.from .. " - " .. sg.to, right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
+                            note = sg.from .. " - " .. sg.to .. (r.cd and ("  ·  " .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
+                            right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
         local ids = {}
         for id in pairs(r.r) do ids[#ids + 1] = id end
         table.sort(ids, function(x, y) return tostring(x) < tostring(y) end)
@@ -1125,6 +1126,20 @@ local function recipeTip(r)
     return tip
 end
 
+-- A cooldown as "4 d" or "20 h".
+function ns.CdText(sec)
+    sec = math.max(0, sec or 0)
+    if sec >= ns.DAY then return L.CD_DAYS:format(math.floor(sec / ns.DAY + 0.5)) end
+    return L.CD_HOURS:format(math.max(1, math.ceil(sec / 3600)))
+end
+-- The tooltip lines of a recipe with a cooldown: how often, and when it is ready again.
+local function cdTip(tip, r)
+    if not (r and r.cd) then return end
+    tip[#tip + 1] = { L.TIP_CD:format(ns.CdText(r.cd)), nil, nil, nil, true }
+    local now = time and time() or 0
+    if r.cdReady and r.cdReady > now then tip[#tip + 1] = { L.TIP_CD_WAIT:format(ns.CdText(r.cdReady - now)), nil, nil, nil, true } end
+end
+
 local function listRows(which)
     local st, P = ns.view.state, ns.view.prefs
     local rows = {}
@@ -1140,6 +1155,7 @@ local function listRows(which)
                          color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r",
                          x.can > 0 and ("x" .. x.can) or "-" },
                 keys = { x.name, x.cost, x.value, x.how, x.profit, x.can }, tip = recipeTip(r) }
+            cdTip(rows[#rows].tip, r)
         end
     elseif which == 3 then
         for _, x in ipairs(ns.Items(st, P)) do
@@ -1163,6 +1179,7 @@ local function listRows(which)
             if x.est then tip[#tip + 1] = { L.TIP_EST, nil, nil, nil, true } end
             if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
+            cdTip(tip, r)
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name, item = r.out,
                 cols = { where, price, x.skill and tostring(x.skill) or "-",
                          x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r") or L.NO_PRICE,

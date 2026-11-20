@@ -54,6 +54,28 @@ ns.SWITCH = 600
 -- The most crafts of the product one profit run plans, fixed (owner's decision of 2026-11-20):
 -- crafted, the next run is planned anew, so a cheap recipe never asks for thousands.
 ns.EARN_MAX = 50
+-- Crafts the game allows once per cooldown, recipe spell -> seconds (Classic's cooldowns; a
+-- cooldown the game shows for another recipe is learned in Scan.lua). A route takes such a craft
+-- at most once, and only while it is ready: levelling on them would take days.
+local DAY = 86400
+ns.DAY = DAY
+ns.COOLDOWNS = {
+    [18560] = 4 * DAY,                               -- Mooncloth
+    [19047] = 3 * DAY,                               -- Cured Rugged Hide
+    [11479] = 2 * DAY, [11480] = 2 * DAY,            -- Transmute: Iron to Gold, Mithril to Truesilver
+    [17187] = 2 * DAY,                               -- Transmute: Arcanite
+    [17559] = DAY, [17560] = DAY, [17561] = DAY, [17562] = DAY, -- the elemental transmutes
+    [17563] = DAY, [17564] = DAY, [17565] = DAY, [17566] = DAY,
+    [25146] = DAY,                                   -- Transmute: Elemental Fire
+    [1317279] = DAY,                                 -- Transmute: Legionite (WoW Forever)
+}
+-- How many crafts of a recipe the game allows now: all for a recipe without a cooldown, else one
+-- while it is ready (`cdReady`: when it is, from the game) and none before.
+function ns.CdLeft(state, r)
+    if not r.cd then return math.huge end
+    if r.cdReady and r.cdReady > (state.now or 0) then return 0 end
+    return 1
+end
 -- Rank caps: the cap, the skill the trainer teaches it from, the level it needs, its cost.
 ns.RANKS = { { 75, 0, 5, 10 }, { 150, 50, 10, 500 }, { 225, 125, 20, 10000 }, { 300, 200, 35, 50000 } }
 
@@ -183,7 +205,8 @@ local function maker(state, known, id)
     if not idx then
         idx = {}
         for rid, r in pairs(state.recipes) do
-            if r.out and (r.count or 1) == 1 and r.learned then
+            -- a cooldown craft never makes intermediates: one a few days is no supply
+            if r.out and (r.count or 1) == 1 and r.learned and not r.cd then
                 idx[r.out] = idx[r.out] or {}
                 table.insert(idx[r.out], rid)
             end
@@ -392,7 +415,7 @@ end
 local function planWith(state, P, allowed)
     local st = ns.Stock(state, P)
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
-                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0 }
+                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, cdUsed = {} }
     local s, cap, target = state.skill, ns.Cap(state), ns.Target(state, P)
     local w = P.w or ns.TIME[P.mode] or 0
     -- a sorted list keeps the plan the same from run to run
@@ -419,6 +442,8 @@ local function planWith(state, P, allowed)
                 local r = state.recipes[rid]
                 -- `only`: a run of one recipe; the others still make its intermediates
                 local ch = (not P.only or P.only == rid) and ns.Chance(r, s) or 0
+                -- a cooldown craft: once, and only a skill point it makes for sure
+                if ch > 0 and r.cd and 1 / ch > ns.CdLeft(state, r) - (acc.cdUsed[rid] or 0) + 1e-9 then ch = 0 end
                 if ch > 0 then
                     local n = 1 / ch
                     local value = r.out and ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1) or 0
@@ -435,6 +460,7 @@ local function planWith(state, P, allowed)
             if r.out then add(acc.made, r.out, best.n * (r.count or 1)) end
             acc.crafts = acc.crafts + best.n
             acc.level = (acc.level or 0) + best.n
+            if r.cd then acc.cdUsed[best.rid] = (acc.cdUsed[best.rid] or 0) + best.n end
             if not r.learned then acc.buyRecipes[best.rid] = true end
             if last and last.rid == best.rid and last.to == s then
                 last.to = s + 1; last.n = last.n + best.n
@@ -498,7 +524,7 @@ local function earnWith(state, P, known, rid)
     local st = ns.Stock(state, P)
     local ids = { rid }
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
-                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true,
+                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true, cdUsed = {},
                   reached = state.skill, target = state.skill }
     local Q = {}
     for k, v in pairs(P) do Q[k] = v end
@@ -511,6 +537,7 @@ local function earnWith(state, P, known, rid)
         for _, rid in ipairs(ids) do
             local r = state.recipes[rid]
             local cost = reagentCost(state, P, st, known, rid)
+            if (acc.cdUsed[rid] or 0) >= ns.CdLeft(state, r) then cost = math.huge end
             if cost < math.huge then
                 local value = ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1)
                 local gain = value - cost
@@ -522,6 +549,7 @@ local function earnWith(state, P, known, rid)
         for id, k in pairs(r.r) do take(state, P, st, known, acc, id, k) end
         add(acc.made, r.out, r.count or 1)
         acc.crafts = acc.crafts + 1
+        if r.cd then acc.cdUsed[best.rid] = (acc.cdUsed[best.rid] or 0) + 1; acc.cd = r.cd end
         if not r.learned then acc.buyRecipes[best.rid] = true end
         local sg = bySeg[best.rid]
         if not sg then
@@ -695,6 +723,8 @@ local function after(st, run)
         local c = {}
         for k, v in pairs(r) do c[k] = v end
         if run.buyRecipes[rid] then c.learned = true end
+        -- a cooldown craft the run made waits for its cooldown in the runs after it
+        if c.cd and (run.cdUsed or {})[rid] then c.cdReady = (st.now or 0) + c.cd end
         nst.recipes[rid] = c
     end
     if run.rank then nst.cap = run.rank.cap end
@@ -1176,10 +1206,11 @@ function ns.Crafts(state, P)
         value = value * (r.count or 1)
         local can = math.huge
         for id, n in pairs(r.r) do can = math.min(can, math.floor(left(st, id) / n)) end
+        can = math.min(can, ns.CdLeft(state, r))
         -- another profession's recipe only makes reagents here; it is no row of this list
         if cost < math.huge and not r.other then
             rows[#rows + 1] = { recipe = rid, name = r.name, cost = cost, value = value, how = how,
-                                profit = value - cost, can = can == math.huge and 0 or can,
+                                profit = value - cost, can = can == math.huge and 0 or can, cd = r.cd, cdReady = r.cdReady,
                                 color = ns.Color(r, state.skill), stale = ((state.items[r.out] or {}).age or 0) > ns.FRESH_DAYS }
         end
     end
@@ -1226,7 +1257,7 @@ function ns.Recipes(state, P)
             local profit = cost < math.huge
                 and (r.out and ns.SellValue(state, P, r.out, 0) or 0) * (r.count or 1) - cost or nil
             local pay = (profit and profit > 0 and r.src.cost and r.src.cost > 0) and math.max(1, math.ceil(r.src.cost / profit)) or nil
-            rows[#rows + 1] = { recipe = rid, name = r.name, src = r.src.t, text = r.src.text, cost = r.src.cost,
+            rows[#rows + 1] = { recipe = rid, name = r.name, cd = r.cd, src = r.src.t, text = r.src.text, cost = r.src.cost,
                                 est = r.src.est, who = r.src.who,
                                 skill = r.skill and r.skill[1],
                                 profit = profit, pay = pay }
