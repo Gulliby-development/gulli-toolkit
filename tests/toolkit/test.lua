@@ -1864,14 +1864,14 @@ test("a right-click on the minimap button starts the Unlock mode, the next one s
     InCombatLockdown = function() return false end
 end)
 
-test("a module gets its own minimap button only when the player pins it", function()
+test("a small module gets its own minimap button only when the player pins it", function()
     local W = Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
     local ns = Load()
     local opened, paused = 0, false
     GulliToolkit.Register({ key = "QuestCleaner", open = function() opened = opened + 1 end,
                             summary = function() return "4 grey quests" end })
     GulliToolkit.Register({ key = "Loot", open = function() end, pause = function(on) paused = on end })
-    eq(#ns.Pins(), 0, "nothing is pinned by default")
+    eq(#ns.Pins(), 0, "a small module has no button by default")
     eq(ns.PinButton("QuestCleaner"), nil, "and no button is made")
     eq(ns.MinimapButton():IsShown(), true, "only the hub's own button shows")
 
@@ -1906,7 +1906,105 @@ test("a module gets its own minimap button only when the player pins it", functi
 
     ns.SetPinned("QuestCleaner", false)
     eq(b:IsShown(), false, "unpinned: the button is gone")
-    eq(GulliToolkitDB.pins.QuestCleaner, nil)
+    eq(GulliToolkitDB.pins.QuestCleaner, false, "and the player's choice is kept")
+end)
+
+local function crates() return { name = "Gulli-Crates", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Crates" } } end
+
+test("a module of ns.PIN_DEFAULT shows its button until the player turns it off", function()
+    Fake({ addons = { crates(), QC } })
+    local ns = Load()
+    GulliToolkit.Register({ key = "Crates", open = function() end })
+    GulliToolkit.Register({ key = "QuestCleaner", open = function() end })
+    eq(ns.Pinned("Crates"), true, "nobody switched it: it shows")
+    eq(ns.Pinned("QuestCleaner"), false, "a module not in the list does not")
+    local b = ns.PinButton("Crates")
+    assert(b and b:IsShown(), "the button is there without a click")
+    eq(GulliToolkitDB.pins.Crates, 225 - ns.pinStep, "it took the first free place and keeps it")
+    ns.SetPinned("Crates", false)
+    eq(b:IsShown(), false)
+    eq(GulliToolkitDB.pins.Crates, false, "turned off is remembered")
+
+    Fake({ addons = { crates() } })
+    GulliToolkitDB = { setup = true, pins = { Crates = false } }
+    ns = Load()
+    GulliToolkit.Register({ key = "Crates", open = function() end })
+    eq(ns.Pinned("Crates"), false, "after a reload it stays off")
+    eq(ns.PinButton("Crates"), nil)
+    ns.SetPinned("Crates", true)
+    eq(ns.PinButton("Crates"):IsShown(), true, "and the switch brings it back")
+end)
+
+test("a full ring of minimap buttons goes on to the second ring", function()
+    Fake({})
+    local ns = Load()
+    local step = 30
+    GulliToolkitDB.pins = {}
+    for i = 1, 11 do GulliToolkitDB.pins["M" .. i] = (225 - i * step) % 360 end
+    local a, ring = ns.FreeAngle(step, 20)
+    eq(ring, 2, "no place left beside the hub's button")
+    eq(a, 225 - 20, "the second ring starts beside it again")
+    ns.SetPinAngle("M1", a, ring)
+    eq(ns.PinRing("M1"), 2)
+    eq(select(2, ns.FreeAngle(step, 20)), 1, "the place M1 left on the first ring is free again")
+end)
+
+-- A module's Skin.lua alone: GulliToolkit is not there, the module handed its table to ns.alone.
+local function loadAlone(folder, info)
+    local ns = { alone = info, L = { TITLE = folder } }
+    local before = #W.frames
+    assert(loadfile(folder .. "/Skin.lua"))(folder, ns)
+    for i = before + 1, #W.frames do
+        local on = rawget(W.frames[i], "_OnEvent")
+        if on then on(W.frames[i], "PLAYER_LOGIN") end
+    end
+    return ns
+end
+
+test("a module without the hub shows its own minimap button, always", function()
+    W = Fake({ addons = { { name = "Gulli-Crates", meta = { SavedVariables = "GulliCratesDB" } },
+                          { name = "Gulli-VendorFlip", meta = { SavedVariables = "GulliVendorFlipDB" } } } })
+    GulliToolkit, GulliHUD, GulliCratesDB, GulliVendorFlipDB = nil, nil, nil, nil
+    local opened = 0
+    local ns = loadAlone("Gulli-Crates", { key = "Crates", icon = "x", open = function() opened = opened + 1 end,
+                                           summary = function() return "2 crates" end })
+    local b = ns.aloneButton
+    assert(b and b:IsShown(), "the button shows with no switch to ask")
+    b:GetScript("OnClick")(b, "LeftButton")
+    eq(opened, 1, "a click opens the module")
+    eq(GulliCratesDB.gulliMap.angle, 200, "its place is kept in the module's own saved variable")
+    local other = loadAlone("Gulli-VendorFlip", { key = "VendorFlip", open = function() end })
+    assert(other.aloneButton, "a second module alone has its button too")
+    eq(GulliVendorFlipDB.gulliMap.angle, 200 - ns.Skin.MapStep(1), "beside the first, not on it")
+    W.cursor = { 100, 0 }
+    b:GetScript("OnDragStart")(b)
+    b:GetScript("OnUpdate")(b)
+    b:GetScript("OnDragStop")(b)
+    eq(GulliCratesDB.gulliMap.angle, 270, "a drag moves it")
+
+    GulliToolkit = { Register = function() return true end }
+    eq(loadAlone("Gulli-Crates", { key = "Crates", open = function() end }).aloneButton, nil,
+       "with the hub there the module draws no button: the hub does")
+    GulliToolkit = nil
+end)
+
+test("every module hands its Register table to ns.alone when the hub is not there", function()
+    local p = io.popen("ls -d Gulli-*/")
+    for d in p:lines() do
+        d = d:gsub("/$", "")
+        if d ~= "Gulli-Toolkit" then
+            local found = false
+            for _, f in ipairs({ "Core.lua", "UI.lua" }) do
+                local h = io.open(d .. "/" .. f)
+                if h then
+                    local text = h:read("*a"); h:close()
+                    if text:find("function(info) ns.alone = info end", 1, true) then found = true end
+                end
+            end
+            assert(found, d .. " registers through `register` with the ns.alone fallback")
+        end
+    end
+    p:close()
 end)
 
 test("pinned buttons come back after a reload, and the module page has the switch", function()

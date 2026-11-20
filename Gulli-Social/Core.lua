@@ -408,8 +408,10 @@ local function option(key, label, tip)
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         pause = function(on) ns.paused = on end,
         key = "Social",
         icon = "Interface\\AddOns\\Gulli-Social\\icon",

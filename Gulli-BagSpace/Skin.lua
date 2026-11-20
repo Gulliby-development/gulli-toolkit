@@ -3487,3 +3487,185 @@ function S.SideRefresh()
     local w = cur and cur.window and cur.window()
     if w and #list > 1 then sideDraw(T, list, w) end
 end
+
+---- Minimap buttons ---------------------------------------------------------------
+-- A round button on the minimap's edge, the same for the hub and for a module alone.
+-- o: name, icon, click(self, mouseButton), drag(angle) while the player drags it around the
+-- minimap, tip() -> { { title = text } or { text = text } } and dense(on) around the tooltip.
+
+-- How far from the minimap's centre a button of ring 1, 2, ... sits.
+S.MAP_RING = 36
+
+function S.MapRadius(ring)
+    local w = Minimap and Minimap.GetWidth and Minimap:GetWidth() or 140
+    return (w or 140) / 2 + 6 + ((ring or 1) - 1) * S.MAP_RING
+end
+
+function S.MapSquare()
+    return GetMinimapShape ~= nil and GetMinimapShape() == "SQUARE"
+end
+
+-- A point at `angle` degrees (0 is right, counter-clockwise) on a round or square minimap.
+function S.MapOffset(angle, radius, square)
+    local a = math.rad(angle)
+    local x, y = math.cos(a), math.sin(a)
+    if square then
+        local m = math.max(math.abs(x), math.abs(y))
+        x, y = x / m, y / m
+    end
+    return x * radius, y * radius
+end
+
+-- Two buttons side by side on this ring are this many degrees apart.
+function S.MapStep(ring)
+    return math.ceil(math.deg(34 / S.MapRadius(ring)))
+end
+
+local function mapCursorAngle()
+    local cx, cy = Minimap:GetCenter()
+    local px, py = GetCursorPosition()
+    local scale = Minimap:GetEffectiveScale()
+    if not cx or not px then return nil end
+    return math.floor(math.deg(math.atan2(py / scale - cy, px / scale - cx)) % 360 + 0.5)
+end
+
+function S.MapButton(o)
+    local b = CreateFrame("Button", o.name, Minimap)
+    b:SetSize(32, 32)
+    b:SetFrameStrata("MEDIUM")
+    b:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 8)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:RegisterForDrag("LeftButton")
+    local icon = b:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetTexture(o.icon)
+    -- The icon is square with dark corners: a round mask fits it to the minimap.
+    if not S.RoundMask(b, icon) and icon.SetMask then icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
+    b.icon = icon
+    local glow = b:CreateTexture(nil, "HIGHLIGHT")
+    glow:SetAllPoints()
+    glow:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    glow:SetBlendMode("ADD")
+    b:SetScript("OnMouseDown", function() icon:SetPoint("TOPLEFT", 1, -1); icon:SetPoint("BOTTOMRIGHT", -1, 1) end)
+    b:SetScript("OnMouseUp", function() icon:SetAllPoints() end)
+    b:SetScript("OnClick", o.click)
+    local function follow()
+        local a = mapCursorAngle()
+        if a then o.drag(a) end
+    end
+    b:SetScript("OnDragStart", function(self)
+        self.dragging = true
+        self:SetScript("OnUpdate", follow)
+        GameTooltip:Hide()
+    end)
+    b:SetScript("OnDragStop", function(self)
+        self.dragging = nil
+        self:SetScript("OnUpdate", nil)
+        icon:SetAllPoints()
+    end)
+    b:SetScript("OnEnter", function(self)
+        if self.dragging or not o.tip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        for _, l in ipairs(o.tip()) do
+            if l.title then GameTooltip:SetText(l.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
+            else GameTooltip:AddLine(l.text, 1, 1, 1) end
+        end
+        GameTooltip:Show()
+        if o.dense then o.dense(true) end
+    end)
+    b:SetScript("OnLeave", function()
+        if o.dense then o.dense(false) end
+        GameTooltip:Hide()
+    end)
+    return b
+end
+
+-- A module alone, without the hub, keeps its own button at the minimap: always shown, since
+-- only the hub has the switch for it. The module hands its Register table to ns.alone when
+-- the hub is not there (see AGENTS.md); its place is kept in the module's own saved variable
+-- (`gulliMap`), and the buttons of several modules alone take free places beside each other.
+local function aloneDB()
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or rawget(_G, "GetAddOnMetadata")
+    for _, field in ipairs({ "SavedVariables", "SavedVariablesPerCharacter" }) do
+        local list = get and get(addon, field)
+        local name = type(list) == "string" and list:match("^%s*([%w_]+)")
+        if name then
+            if type(_G[name]) ~= "table" then _G[name] = {} end
+            return _G[name]
+        end
+    end
+end
+
+-- The first angle from 200 degrees, down the left side, that no other button of a module
+-- alone holds; then the next ring.
+function S.AloneAngle(used, ring)
+    ring = ring or 1
+    local step = S.MapStep(ring)
+    for i = 0, math.floor(360 / step) - 1 do
+        local a = (200 - i * step) % 360
+        local free = true
+        for _, u in ipairs(used) do
+            if (u.ring or 1) == ring then
+                local d = math.abs(a - u.angle) % 360
+                if math.min(d, 360 - d) < step - 0.5 then free = false end
+            end
+        end
+        if free then return a, ring end
+    end
+    if ring < 3 then return S.AloneAngle(used, ring + 1) end
+    return 200, 1
+end
+
+function S.AloneButton(info)
+    if not info or type(info.open) ~= "function" or not rawget(_G, "Minimap") then return nil end
+    GulliHUD = GulliHUD or {}
+    GulliHUD.alone = GulliHUD.alone or {}
+    local db = aloneDB() or {}
+    local used = {}
+    for _, u in pairs(GulliHUD.alone) do used[#used + 1] = u end
+    local place = type(db.gulliMap) == "table" and db.gulliMap or nil
+    if not place or not tonumber(place.angle) then
+        local a, ring = S.AloneAngle(used, 1)
+        place = { angle = a, ring = ring }
+        db.gulliMap = place
+    end
+    GulliHUD.alone[addon] = place
+    local L = ns.L or {}
+    local title = info.title or L.TITLE or tostring(addon):gsub("^Gulli%-", "")
+    local b
+    local function put()
+        local x, y = S.MapOffset(place.angle, S.MapRadius(place.ring), S.MapSquare())
+        b:ClearAllPoints()
+        b:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    end
+    b = S.MapButton({
+        name = "Gulli" .. tostring(addon):gsub("^Gulli%-", "") .. "MinimapButton",
+        icon = info.icon or "Interface\\Icons\\INV_Misc_QuestionMark",
+        click = function() info.open() end,
+        drag = function(a) place.angle = a; put() end,
+        tip = function()
+            local lines = { { title = title } }
+            local ok, text = pcall(info.summary or function() end)
+            if ok and type(text) == "string" and text ~= "" then lines[#lines + 1] = { text = text } end
+            return lines
+        end,
+    })
+    put()
+    b:Show()
+    return b
+end
+
+-- At login, a module whose hub is not there gets its button. The hub's own folder has no ns.alone.
+do
+    local ok, ev = pcall(CreateFrame, "Frame")
+    if ok and ev and ev.RegisterEvent then
+        pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+        ev:SetScript("OnEvent", function(self, event)
+            if event ~= "PLAYER_LOGIN" then return end
+            self:UnregisterAllEvents()
+            if ns.alone and not (GulliToolkit and GulliToolkit.Register) then
+                ns.aloneButton = S.AloneButton(ns.alone)
+            end
+        end)
+    end
+end

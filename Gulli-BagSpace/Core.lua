@@ -450,8 +450,10 @@ local function option(key, label)
              end }
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
                     option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT) },
         key = "BagSpace",

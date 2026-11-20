@@ -1074,8 +1074,10 @@ ns.OPT_ICON = {
     learn = "Interface\\Icons\\INV_Misc_Book_09",
 }
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "DungeonPrep",
         icon = "Interface\\AddOns\\Gulli-DungeonPrep\\icon",
         slash = "/gdj",

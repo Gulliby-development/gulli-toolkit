@@ -2543,13 +2543,9 @@ end
 -- around the minimap, and the switch in the hub or under Options hides it.
 local mapButton
 
-local function minimapRadius()
-    return (Minimap:GetWidth() or 140) / 2 + 6
-end
+local function minimapRadius(ring) return S.MapRadius(ring) end
 
-local function squareMinimap()
-    return GetMinimapShape ~= nil and GetMinimapShape() == "SQUARE"
-end
+local function squareMinimap() return S.MapSquare() end
 
 function ns.PlaceMinimap()
     for _, sw in ipairs(mapSwitches) do sw:SetChecked(ns.MinimapShown()) end
@@ -2560,62 +2556,9 @@ function ns.PlaceMinimap()
     mapButton:SetShown(ns.MinimapShown())
 end
 
-local function cursorAngle()
-    local cx, cy = Minimap:GetCenter()
-    local px, py = GetCursorPosition()
-    local scale = Minimap:GetEffectiveScale()
-    if not cx or not px then return nil end
-    return math.floor(ns.AngleTo(cx, cy, px / scale, py / scale) + 0.5)
-end
-
--- A round button on the minimap's edge. o: name, icon, click(self, mouseButton), drag(angle)
--- while the player drags it around the minimap, and tip() for its tooltip lines.
 local function mapRound(o)
-    local b = CreateFrame("Button", o.name, Minimap)
-    b:SetSize(32, 32)
-    b:SetFrameStrata("MEDIUM")
-    b:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 8)
-    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    b:RegisterForDrag("LeftButton")
-    local icon = b:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    icon:SetTexture(o.icon)
-    -- The icon is square with dark corners: a round mask fits it to the minimap.
-    if not S.RoundMask(b, icon) and icon.SetMask then icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
-    b.icon = icon
-    local glow = b:CreateTexture(nil, "HIGHLIGHT")
-    glow:SetAllPoints()
-    glow:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-    glow:SetBlendMode("ADD")
-    b:SetScript("OnMouseDown", function() icon:SetPoint("TOPLEFT", 1, -1); icon:SetPoint("BOTTOMRIGHT", -1, 1) end)
-    b:SetScript("OnMouseUp", function() icon:SetAllPoints() end)
-    b:SetScript("OnClick", o.click)
-    local function follow()
-        local a = cursorAngle()
-        if a then o.drag(a) end
-    end
-    b:SetScript("OnDragStart", function(self)
-        self.dragging = true
-        self:SetScript("OnUpdate", follow)
-        GameTooltip:Hide()
-    end)
-    b:SetScript("OnDragStop", function(self)
-        self.dragging = nil
-        self:SetScript("OnUpdate", nil)
-        icon:SetAllPoints()
-    end)
-    b:SetScript("OnEnter", function(self)
-        if self.dragging then return end
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        for _, l in ipairs(o.tip()) do
-            if l.title then GameTooltip:SetText(l.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
-            else GameTooltip:AddLine(l.text, 1, 1, 1) end
-        end
-        GameTooltip:Show()
-        denseTip(true)
-    end)
-    b:SetScript("OnLeave", function() denseTip(false); GameTooltip:Hide() end)
-    return b
+    o.dense = denseTip
+    return S.MapButton(o)
 end
 
 -- A right-click on the hub's button starts the Unlock mode at once (and saves it again).
@@ -2660,9 +2603,10 @@ end
 -- Shows the buttons of ns.Pins and hides the others. moved: only the places changed (a drag).
 function ns.PlacePins(moved)
     if not mapButton then return end
-    local radius, square = minimapRadius(), squareMinimap()
+    local square = squareMinimap()
     -- Two buttons side by side on this minimap are this many degrees apart.
-    ns.pinStep = math.ceil(math.deg(34 / radius))
+    ns.pinStep = S.MapStep(1)
+    ns.pinStep2 = S.MapStep(2)
     local want = {}
     for _, row in ipairs(moved and {} or ns.Pins()) do want[row.key] = row end
     if moved then for key, b in pairs(pinButtons) do if b:IsShown() then want[key] = b.row end end end
@@ -2670,7 +2614,12 @@ function ns.PlacePins(moved)
         local b = pinButton(key)
         b.row = row
         b.icon:SetTexture(row.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        local x, y = ns.MinimapOffset(ns.PinAngle(key) or ns.MinimapAngle(), radius, square)
+        -- A module shown by default gets its place the first time it is drawn.
+        if not ns.PinAngle(key) and not moved then
+            local a, ring = ns.FreeAngle(ns.pinStep, ns.pinStep2)
+            ns.SetPinAngle(key, a, ring)
+        end
+        local x, y = ns.MinimapOffset(ns.PinAngle(key) or ns.MinimapAngle(), minimapRadius(ns.PinRing(key)), square)
         b:ClearAllPoints()
         b:SetPoint("CENTER", Minimap, "CENTER", x, y)
         b:Show()

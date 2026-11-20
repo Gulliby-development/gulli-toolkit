@@ -430,8 +430,10 @@ local function option(key, label, tip)
              end }
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         pause = function(on) ns.paused = on end,
         key = "AutoQuest",
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",

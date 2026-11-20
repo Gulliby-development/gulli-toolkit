@@ -731,8 +731,10 @@ ns.OPT_ICON = {
     tooltip = "Interface\\Icons\\INV_Misc_Note_01",
 }
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "PartyQuests",
         icon = "Interface\\AddOns\\Gulli-PartyQuests\\icon",
         slash = "/gpq",

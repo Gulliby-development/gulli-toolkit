@@ -414,8 +414,10 @@ local function option(key)
              set = function(on) if ns.db then ns.Set(key, on) end end }
 end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "Tooltip",
         icon = "Interface\\AddOns\\Gulli-Tooltip\\icon",
         slash = "/gtt",

@@ -1021,8 +1021,10 @@ end
 
 function GulliLegacy_Toggle() ns.Toggle() end
 
-if GulliToolkit and GulliToolkit.Register then
-    GulliToolkit.Register({
+-- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
+do
+    local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
+    register({
         key = "Legacy",
         icon = "Interface\\AddOns\\Gulli-Legacy\\icon",
         slash = "/glg",
