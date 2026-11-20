@@ -472,16 +472,19 @@ test("quest mob list: the kinds worked on last come first, the faces are models 
     eq(ns.db.mobIds["Young Wolf"], 299, "the id kept by name")
     local wolf = rows[2].model
     eq(rawget(wolf, "creature"), nil, "not in the client's cache yet")
+    eq(rows[2].face.tex:IsShown(), true, "the icon stays while there is no model")
     eq(#W.timers > 0, true, "tried again later")
     cached = true
     W.RunTimers()
     eq(rawget(wolf, "creature"), 299, "drawn once the client has it")
     eq(wolf:IsShown(), true)
+    eq(rows[2].face.tex:IsShown(), false, "no icon behind the model")
     -- The big button shows the mob its next press tries first.
     ns.db.mobIds["Kobold Vermin"] = 300
     cached = true
     ns.PaintFaces()
     eq(rawget(btn.model, "creature"), 300)
+    eq(btn.icon:IsShown(), false, "no icon behind the button's model")
     UnitName = function(u) if u == "player" then return "Tester" end end
     eq(click(btn), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider", "Murloc"))
     eq(rawget(btn.model, "creature"), 299, "the next kind's face")
