@@ -241,9 +241,10 @@ local function wire(b, main)
     end)
 end
 
--- A mob's face: a model of the creature over its icon. SetCreature draws a creature only from
--- the client's cache (an unknown one stays empty and is not tried again), so it is drawn once
--- ns.CreatureKnown says the client has it. Kept while hidden, or a hidden model drops it.
+-- A mob's face: a model of the creature in its round frame. SetCreature draws a creature only
+-- from the client's cache (an unknown one stays empty and is not tried again), so it is drawn once
+-- ns.CreatureKnown says the client has it. Kept while hidden, or a hidden model drops it. While
+-- the model shows, the icon under it hides, so only the frame's dark disc is behind the face.
 local drawn = setmetatable({}, { __mode = "k" })
 local function faceModel(parent, anchor, inset)
     local m = CreateFrame("PlayerModel", nil, parent)
@@ -254,13 +255,18 @@ local function faceModel(parent, anchor, inset)
     return m
 end
 
+local function showModel(m, under, on)
+    m:SetShown(on)
+    if under then under:SetShown(not on) end
+end
+
 -- true when drawn or nothing to draw, false while the client still fetches the creature.
-local function paintModel(m, id)
-    if not id then drawn[m] = nil; m:Hide(); return true end
-    if drawn[m] == id then m:Show(); return true end
-    if ns.CreatureKnown(id) == false then drawn[m] = nil; m:Hide(); return false end
+local function paintModel(m, id, under)
+    if not id then drawn[m] = nil; showModel(m, under, false); return true end
+    if drawn[m] == id then showModel(m, under, true); return true end
+    if ns.CreatureKnown(id) == false then drawn[m] = nil; showModel(m, under, false); return false end
     drawn[m] = id
-    m:Show()
+    showModel(m, under, true)
     m:SetCreature(id)
     if m.SetPortraitZoom then m:SetPortraitZoom(1) end
     return true
@@ -283,8 +289,9 @@ local function rowTip(self)
     GameTooltip:Show()
 end
 
--- One row of the list: the mob's face once it was seen (else the button's icon), its name and
--- how many of it the quest has; a click targets that one, the next click the next of it.
+-- One row of the list: the mob's face once it was seen (its model, else its portrait, else the
+-- button's icon), its name and how many of it the quest has; a click targets that one, the next
+-- click the next of it.
 local function row(i)
     if rows[i] then return rows[i] end
     local r = CreateFrame("Button", BUTTON .. "Row" .. i, holder, "SecureActionButtonTemplate")
@@ -293,7 +300,7 @@ local function row(i)
     S.Box(r, S.HUD_GLASS, S.GLASS_EDGE, S.R_MD)
     r.face = S.IconBox(r, ROW_H - 6)
     r.face:SetPoint("LEFT", 3, 0)
-    r.model = faceModel(r, r.face, 2)
+    r.model = faceModel(r, r.face, 3)
     r.count = S.Text(r, 12, S.MUTED)
     r.count:SetPoint("RIGHT", -8, 0)
     r.label = S.Text(r, 12, S.TEXT)
@@ -372,11 +379,11 @@ function ns.PaintFaces()
     local ids, ok = ns.db.mobIds, true
     for _, r in ipairs(rows) do
         local name = r:IsShown() and rawget(r, "mob")
-        ok = paintModel(r.model, name and ids[name]) and ok
+        ok = paintModel(r.model, name and ids[name], r.face.tex) and ok
     end
     local names = rawget(target, "names")
     local first = names and names[ns.cycle]
-    ok = paintModel(target.model, first and ids[first]) and ok
+    ok = paintModel(target.model, first and ids[first], target.icon) and ok
     if ok then tries = 0 elseif tries < 15 and C_Timer then
         tries = tries + 1
         C_Timer.After(2, ns.PaintFaces)
