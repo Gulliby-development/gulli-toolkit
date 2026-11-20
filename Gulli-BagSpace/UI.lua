@@ -185,17 +185,45 @@ function ns.UpdateCounter()
     b.gulliFree:SetTextColor(c[1], c[2], c[3], 1)
 end
 
--- "Inventory is full": a Gulli HUD notice whose button sells or deletes the cheapest junk item
--- in one click (the game lets an addon delete only inside a click).
-local popup
-function ns.ShowPopup()
-    local it = ns.OneItem()
-    if not it then return end
-    popup = S.Toast({ key = "full", icon = it.icon, kind = "warn", title = L.POPUP_TITLE,
-        text = L.POPUP_TEXT:format(it.name or "?"), seconds = 10,
-        buttons = { { text = ns.atMerchant and L.SELL or L.DELETE, primary = true, onClick = function() ns.FreeOne() end } } })
+-- "Inventory is full": a Gulli HUD notice whose button sells or deletes the cheapest junk.
+-- With a loot window open it offers as many slots as the loot needs (two items that fit no stack
+-- are two slots). A vendor sells them all in one click; elsewhere each click deletes one, and the
+-- notice stays with what is still missing until everything fits.
+local popup, left, forLoot
+local function shown() return popup and popup:IsShown() end
+
+function ns.ShowPopup(n)
+    local short = ns.LootShort()
+    forLoot = short ~= nil
+    n = math.max(1, n or short or 1)
+    local items = ns.FreeItems(n)
+    if #items == 0 then return end
+    local names = {}
+    for i = 1, math.min(2, #items) do names[#names + 1] = items[i].name or "?" end
+    if #items > 2 then names[#names] = names[#names] .. ", ..." end
+    local text = #items == 1 and L.POPUP_TEXT:format(names[1])
+        or L.POPUP_TEXT_N:format(#items, table.concat(names, ", "))
+    left = #items
+    local many = #items > 1 and not ns.atMerchant
+    popup = S.Toast({ key = "full", icon = items[1].icon, kind = "warn", title = L.POPUP_TITLE,
+        text = text, seconds = many and 30 or 10,
+        buttons = { { text = ns.atMerchant and L.SELL or L.DELETE, primary = true, keep = many, onClick = function()
+            local sold, deleted = ns.FreeSome(ns.FreeItems(left))
+            left = math.max(0, left - (sold or 0) - (deleted or 0))
+            if left == 0 and popup then popup:Hide() end
+        end } } })
     return popup
 end
+
+-- After a bag change: show what is still missing, or go when the loot fits.
+function ns.UpdatePopup()
+    if not shown() then return end
+    local short = forLoot and ns.LootShort() or left
+    if not short or short <= 0 or InCombatLockdown() then popup:Hide(); return end
+    ns.ShowPopup(short)
+end
+
+function ns.LootClosed() if forLoot and shown() then popup:Hide() end end
 
 function ns.HidePopup() if popup then popup:Hide() end end
 

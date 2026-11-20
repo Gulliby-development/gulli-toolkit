@@ -28,7 +28,7 @@ Your bags are full in the middle of a dungeon. Tell Gulli Bag Space how many slo
 - **Your junk list.** Alt+click an item in your bags to always count it as junk. Gulli Merchant uses the same list.
 - **Auction prices.** With a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice), an item that sells for much more at the auction house is shown unticked, with its price.
 - **Gear you cannot use.** Bound armour and weapons your class can never wear are offered with the white gear.
-- **Free 1 slot.** When the game says your bags are full, a button offers to sell or delete the cheapest junk item with one tap.
+- **Free a slot for every item.** When the game says your bags are full, a notice offers to sell or delete the cheapest junk. With loot open, it counts how many new slots the loot needs: two items that fit no stack you have mean two slots. At a vendor one tap sells them all; anywhere else each tap deletes one, and the notice stays until all the loot fits.
 - **Disenchant with a key.** If you know Enchanting, pick a key in `/gbs` (for example `N`, or `Alt-D`). Point at a green, blue or purple weapon or armour in your bags and press the key: it is disenchanted. It works with any bag addon. While you do not point at such an item, the key does what it always does. It does nothing in a fight, on items it cannot disenchant, or on items you protected or keep in an equipment set. A switch turns it off.
 - **Sort and count.** A **Sort** button, and the number of free slots on the backpack button.
 - **A warning** in chat when only two slots are left.

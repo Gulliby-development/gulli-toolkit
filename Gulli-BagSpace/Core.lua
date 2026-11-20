@@ -262,20 +262,101 @@ function ns.KeptCount()
     return n
 end
 
--- The one item "Free 1 slot" would sell or delete: the cheapest ticked candidate of a plan
--- for one more slot (a gray item first, else white gear).
-function ns.OneItem()
-    local plan = ns.Plan(ns.Space() + 1)
+-- The items a "Bags are full" notice would sell or delete to free n slots: the cheapest ticked
+-- candidates of a plan for n more slots (gray items first, else white gear).
+function ns.FreeItems(n)
+    n = math.max(1, n or 1)
+    local plan, out = ns.Plan(ns.Space() + n), {}
     for _, it in ipairs(plan.items) do
-        if it.checked and not it.ah then return it end
+        if #out >= n then break end
+        if it.checked and not it.ah then out[#out + 1] = it end
     end
+    return out
 end
 
--- Runs inside the click of the Free 1 slot button.
+function ns.OneItem() return ns.FreeItems(1)[1] end
+
+-- Does an item of this bag family (C_Item.GetItemFamily) go into a bag of that family?
+local function fitsFamily(itemFamily, bagFamily)
+    if not itemFamily or itemFamily == 0 or not bagFamily or bagFamily == 0 then return false end
+    local bit = 1
+    while bit <= bagFamily do
+        if bagFamily % (bit * 2) >= bit and itemFamily % (bit * 2) >= bit then return true end
+        bit = bit * 2
+    end
+    return false
+end
+
+local function maxStackOf(id)
+    local n = C_Item and C_Item.GetItemMaxStackSizeByID and C_Item.GetItemMaxStackSizeByID(id)
+    if not n then n = select(8, ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)) end
+    return math.max(1, tonumber(n) or 1)
+end
+
+-- How many more free slots the open loot window needs than the normal bags have. Each item first
+-- fills the room left in its own stacks, then a free slot of a special bag that takes it (herbs,
+-- ...), then whole normal slots. nil while no loot window is open.
+function ns.LootShort()
+    local n = GetNumLootItems and GetNumLootItems() or 0
+    if n == 0 or not GetLootSlotLink then return nil end
+    local room, special = {}, {}
+    for _, bag in ipairs(ns.BAGS) do
+        local f, family = freeSlots(bag)
+        if family and family ~= 0 and f > 0 then special[#special + 1] = { family = family, free = f } end
+    end
+    local want = {}
+    for i = 1, n do
+        local link = GetLootSlotLink(i)
+        local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+        if id then
+            local count = GetLootSlotInfo and select(3, GetLootSlotInfo(i))
+            want[#want + 1] = { id = id, count = math.max(1, tonumber(count) or 1) }
+            room[id] = 0
+        end
+    end
+    if #want == 0 then return 0 end
+    for _, bag in ipairs(ns.BAGS) do
+        for s = 1, numSlots(bag) do
+            local id, count = slotInfo(bag, s)
+            if id and room[id] then room[id] = room[id] + math.max(0, maxStackOf(id) - (count or 1)) end
+        end
+    end
+    local slots = 0
+    for _, w in ipairs(want) do
+        local stack = maxStackOf(w.id)
+        local fit = math.min(room[w.id], w.count)
+        room[w.id] = room[w.id] - fit
+        local left = w.count - fit
+        while left > 0 do
+            local family = C_Item and C_Item.GetItemFamily and C_Item.GetItemFamily(w.id)
+            local bag
+            for _, b in ipairs(special) do
+                if b.free > 0 and fitsFamily(family, b.family) then bag = b; break end
+            end
+            if bag then bag.free = bag.free - 1 else slots = slots + 1 end
+            local put = math.min(stack, left)
+            room[w.id] = room[w.id] + stack - put
+            left = left - put
+        end
+    end
+    return math.max(0, slots - (ns.Space()))
+end
+
+-- Runs inside the click of the notice's button: sells all of them at a vendor, else deletes one
+-- (the game allows one delete per click), so the notice stays for the next click.
+function ns.FreeSome(items)
+    local list = {}
+    for _, it in ipairs(items) do
+        list[#list + 1] = { bag = it.bag, slot = it.slot, id = it.id, price = it.price, checked = true }
+    end
+    if #list == 0 then return 0, 0 end
+    return ns.Run({ items = list, merges = {} })
+end
+
 function ns.FreeOne()
     local it = ns.OneItem()
     if not it then return nil end
-    ns.Run({ items = { { bag = it.bag, slot = it.slot, id = it.id, price = it.price, checked = true } }, merges = {} })
+    ns.FreeSome({ it })
     return it
 end
 
@@ -376,6 +457,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         self:RegisterEvent("MERCHANT_SHOW")
         self:RegisterEvent("MERCHANT_CLOSED")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
+        self:RegisterEvent("LOOT_CLOSED")
         self:RegisterEvent("PLAYER_LOGIN")
         return
     end
@@ -388,7 +470,12 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         checkFull()
         if ns.UpdateCounter then ns.UpdateCounter() end
         if ns.CheckArmed then ns.CheckArmed() end
+        if ns.UpdatePopup then ns.UpdatePopup() end
         if ns.Refresh then ns.Refresh(true) end
+        return
+    end
+    if event == "LOOT_CLOSED" then
+        if ns.LootClosed then ns.LootClosed() end
         return
     end
     if event == "UI_ERROR_MESSAGE" then
