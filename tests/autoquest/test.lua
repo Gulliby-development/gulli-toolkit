@@ -414,6 +414,100 @@ test("quest mob list: a row per kind with its count, a click targets that kind, 
     CreateFrame, UnitExists, SetPortraitTexture = create, nil, nil
 end)
 
+test("quest mob list: the kinds worked on last come first, the faces are models once the client has them", function()
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
+                                           { type = "monster", text = "Young Wolf slain: 0/5" },
+                                           { type = "monster", text = "Forest Spider slain: 1/4" },
+                                           { type = "monster", text = "Murloc slain: 0/6" } } } } })
+    local ns = Load()
+    eq(ns.NpcId("Creature-0-1-2-3-299-0000"), 299)
+    eq(ns.NpcId("Player-1-0000"), nil)
+    eq(ns.NpcId(nil), nil)
+    local rows, models = {}, {}
+    local create = CreateFrame
+    CreateFrame = function(kind, n, ...)
+        local f = create(kind, n, ...)
+        local i = n and tonumber(n:match("^GulliAutoQuestTargetRow(%d+)$"))
+        if i then rows[i] = f end
+        if kind == "PlayerModel" then
+            models[#models + 1] = f
+            rawset(f, "SetCreature", function(self, id) rawset(self, "creature", id) end)
+        end
+        return f
+    end
+    local b = made("GulliAutoQuestTarget")
+    ns.SetTargetButton(true)
+    local btn = b()
+    local function mobs() local t = {} for i = 1, 3 do t[i] = rawget(rows[i], "mob") end return table.concat(t, ",") end
+    eq(#rows, 3, "three rows")
+    eq(mobs(), "Kobold Vermin,Young Wolf,Forest Spider", "the log's order at first")
+    W.now = W.now + 10
+    W.qlog[2].obj[4].text = "Murloc slain: 1/6"
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(mobs(), "Murloc,Kobold Vermin,Young Wolf", "a murloc killed: its row comes first")
+    eq(rows[1]:GetAttribute("macrotext"), mac(false, "Murloc"))
+    eq(btn:GetAttribute("macrotext"), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider", "Murloc"),
+       "the big button keeps every kind in the log's order")
+    -- A fight with a wolf: the wolf first, set just before the lockdown.
+    local tgt = { name = "Young Wolf" }
+    UnitName = function(u) if u == "player" then return "Tester" end if u == "target" then return tgt.name end end
+    UnitGUID = function(u) if u == "target" then return "Creature-0-1-2-3-299-0000" end end
+    W.now = W.now + 10
+    W.Fire("PLAYER_REGEN_DISABLED")
+    eq(mobs(), "Young Wolf,Murloc,Kobold Vermin", "the mob fought comes first")
+    W.combat = true
+    W.now = W.now + 10
+    W.qlog[2].obj[3].text = "Forest Spider slain: 2/4"
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(mobs(), "Young Wolf,Murloc,Kobold Vermin", "no secure change in a fight")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    eq(mobs(), "Forest Spider,Young Wolf,Murloc", "after the fight, the spider killed in it first")
+    -- The wolf's face: its npc id is kept once the game shows it, the model waits for the client.
+    local cached = false
+    C_TooltipInfo = { GetHyperlink = function() if cached then return { lines = { { leftText = "Young Wolf" } } } end end }
+    W.timers = {}
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.mobIds["Young Wolf"], 299, "the id kept by name")
+    local wolf = rows[2].model
+    eq(rawget(wolf, "creature"), nil, "not in the client's cache yet")
+    eq(#W.timers > 0, true, "tried again later")
+    cached = true
+    W.RunTimers()
+    eq(rawget(wolf, "creature"), 299, "drawn once the client has it")
+    eq(wolf:IsShown(), true)
+    -- The big button shows the mob its next press tries first.
+    ns.db.mobIds["Kobold Vermin"] = 300
+    cached = true
+    ns.PaintFaces()
+    eq(rawget(btn.model, "creature"), 300)
+    UnitName = function(u) if u == "player" then return "Tester" end end
+    eq(click(btn), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider", "Murloc"))
+    eq(rawget(btn.model, "creature"), 299, "the next kind's face")
+    -- A name the game hides is never kept.
+    issecretvalue = function(v) return v == "Murloc" end
+    tgt = { name = "Murloc" }
+    UnitName = function(u) if u == "player" then return "Tester" end if u == "target" then return tgt.name end end
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.mobIds.Murloc, nil)
+    issecretvalue = nil
+    -- The number of rows is the player's: 0 to ns.LIST_MAX, 3 at first.
+    eq(ns.db.mobRows, 3)
+    ns.SetMobRows(4)
+    eq(rows[4] and rows[4]:IsShown(), true, "a fourth row")
+    ns.SetMobRows(1)
+    eq(rows[1]:IsShown() and not rows[2]:IsShown(), true, "one row")
+    W.combat = true
+    ns.SetMobRows(0)
+    eq(rows[1]:IsShown(), true, "a secure row waits for the end of the fight")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    eq(rows[1]:IsShown(), false, "no list")
+    eq(btn:GetAttribute("macrotext") ~= nil, true, "the button still works")
+    CreateFrame, C_TooltipInfo = create, nil
+end)
+
 test("quest mob button: shows from the hub's switch while a quest needs a mob, clicks like the key", function()
     local reg
     GulliToolkit = { Register = function(t) reg = t end }

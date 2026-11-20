@@ -13,6 +13,7 @@ ns.DEFAULTS = {
     minFree = 0,          -- keep this many quest log places free (0: off)
     pickBest = false,     -- take the reward with the best vendor price
     targetKey = nil,      -- the key that targets a mob the quest log needs (none: off)
+    mobRows = 3,          -- rows of the mob list under the quest mob button (0: none)
     gossip = false,       -- pick the only gossip line of an NPC
     chat = false,         -- a chat line for each quest taken or handed in
     paused = false, pauseUntil = 0, pauseKey = "SHIFT",
@@ -397,7 +398,8 @@ function ns.QuestMobList()
                     if name and not seen[name] then
                         local have, need = count(o)
                         seen[name] = true
-                        near[#near + 1] = { name = name, have = have, need = need }
+                        near[#near + 1] = { name = name, have = have, need = need,
+                                            id = ns.db and ns.db.mobIds and ns.db.mobIds[name] }
                     end
                 end
             end
@@ -455,6 +457,56 @@ function ns.CycleIndex(names)
     return nil
 end
 
+-- The npc id of a creature's GUID ("Creature-0-1-2-3-<id>-..."), else nil.
+function ns.NpcId(guid)
+    if type(guid) ~= "string" or (issecretvalue and issecretvalue(guid)) then return nil end
+    local kind, id = guid:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+    if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
+    return nil
+end
+
+-- What the player works on now: a kind whose count went up (a kill) or the mob fought when a
+-- fight starts. ns.hot[name] = when; the mob list shows those kinds first, newest first.
+ns.hot, ns.lastHave = {}, {}
+
+function ns.NoteProgress(list, now)
+    for _, m in ipairs(list) do
+        local prev = ns.lastHave[m.name]
+        if prev and m.have > prev then ns.hot[m.name] = now end
+        ns.lastHave[m.name] = m.have
+    end
+end
+
+-- The list in the order of the rows: the kinds worked on last first, then the log's order.
+function ns.RowOrder(list)
+    local out = {}
+    for i, m in ipairs(list) do out[i] = { m = m, i = i } end
+    table.sort(out, function(a, b)
+        local ha, hb = ns.hot[a.m.name] or 0, ns.hot[b.m.name] or 0
+        if ha ~= hb then return ha > hb end
+        return a.i < b.i
+    end)
+    for i, e in ipairs(out) do out[i] = e.m end
+    return out
+end
+
+-- Whether the client has a creature in its cache: a model drawn from an unknown one stays empty.
+-- Asking for its link's tooltip makes the client fetch it. nil when the client cannot tell.
+local known = {}
+function ns.CreatureKnown(id)
+    if not id then return false end
+    if known[id] then return true end
+    local get = C_TooltipInfo and C_TooltipInfo.GetHyperlink
+    if not get then return nil end
+    local ok, data = pcall(get, ("unit:Creature-0-0-0-0-%d-0000000000"):format(id))
+    local line = ok and type(data) == "table" and type(data.lines) == "table" and data.lines[1]
+    local text = type(line) == "table" and line.leftText
+    if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) or text == ""
+        or text == UNKNOWNOBJECT or text == RETRIEVING_DATA then return false end
+    known[id] = true
+    return true
+end
+
 -- One line for the hub's home page, or nil.
 function ns.Summary()
     if not ns.db then return nil end
@@ -496,6 +548,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db.ignoreNpc = ns.db.ignoreNpc or {}
         ns.db.ignoreQuest = ns.db.ignoreQuest or {}
         ns.db.session = ns.db.session or {}
+        ns.db.mobIds = ns.db.mobIds or {}
         for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM",
                              "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_ACCEPTED", "PLAYER_ENTERING_WORLD" }) do
             self:RegisterEvent(e)

@@ -80,6 +80,9 @@ local function rulesPage(body)
     local st = S.Stack(p)
     local mobs, mh = S.SettingsCard(p, nil, {
         { L.TARGET_KEY, L.TARGET_KEY_D, control = ns.KeyButton(p), icon = ns.OPT_ICON.targetKey },
+        { L.OPT_ROWS, L.OPT_ROWS_D, icon = "Interface\\Icons\\INV_Misc_Note_01",
+          control = S.Stepper(p, function() return ns.db.mobRows end, function(v) ns.SetMobRows(v) end, 1, 0, ns.LIST_MAX,
+              function(v) return v == 0 and L.OFF or tostring(v) end) },
     })
     st:Add(mobs, mh)
     local free = S.Stepper(p, function() return ns.db.minFree end, function(v) ns.db.minFree = v end, 1, 0, 10,
@@ -176,7 +179,7 @@ end
 local BUTTON = "GulliAutoQuestTarget"
 local SIZE = 44
 local ROW_W, ROW_H = 190, 28
-ns.LIST_MAX = 5 -- rows of the mob list under the button
+ns.LIST_MAX = 8 -- the most rows the mob list can have (the setting mobRows, 3 at first)
 local target, holder, keyOwner, waiting, moving
 local rows = {}
 ns.cycle = 1 -- the name the button's next press tries first
@@ -233,7 +236,33 @@ local function wire(b, main)
         if main and not self.kept and #self.names > 1 then ns.cycle = ns.cycle % #self.names + 1 end
         self.kept = nil
         set(self, "macrotext", ns.TargetMacro(self.names, main and ns.cycle or 1))
+        if main then ns.PaintFaces() end
     end)
+end
+
+-- A mob's face: a model of the creature over its icon. SetCreature draws a creature only from
+-- the client's cache (an unknown one stays empty and is not tried again), so it is drawn once
+-- ns.CreatureKnown says the client has it. Kept while hidden, or a hidden model drops it.
+local drawn = setmetatable({}, { __mode = "k" })
+local function faceModel(parent, anchor, inset)
+    local m = CreateFrame("PlayerModel", nil, parent)
+    m:SetPoint("TOPLEFT", anchor, "TOPLEFT", inset, -inset)
+    m:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -inset, inset)
+    if m.SetKeepModelOnHide then m:SetKeepModelOnHide(true) end
+    m:Hide()
+    return m
+end
+
+-- true when drawn or nothing to draw, false while the client still fetches the creature.
+local function paintModel(m, id)
+    if not id then drawn[m] = nil; m:Hide(); return true end
+    if drawn[m] == id then m:Show(); return true end
+    if ns.CreatureKnown(id) == false then drawn[m] = nil; m:Hide(); return false end
+    drawn[m] = id
+    m:Show()
+    m:SetCreature(id)
+    if m.SetPortraitZoom then m:SetPortraitZoom(1) end
+    return true
 end
 
 -- A light on each use (the key's too), and the icon darkens while the mouse holds it.
@@ -263,6 +292,7 @@ local function row(i)
     S.Box(r, S.HUD_GLASS, S.GLASS_EDGE, S.R_MD)
     r.face = S.IconBox(r, ROW_H - 6)
     r.face:SetPoint("LEFT", 3, 0)
+    r.model = faceModel(r, r.face, 2)
     r.count = S.Text(r, 12, S.MUTED)
     r.count:SetPoint("RIGHT", -8, 0)
     r.label = S.Text(r, 12, S.TEXT)
@@ -300,6 +330,12 @@ local function targetButton()
     S.HudIcon(target, SIZE)
     target:SetPoint("CENTER")
     target:SetIcon(ns.OPT_ICON.targetKey)
+    target.model = faceModel(target, target, 3)
+    -- The key and the count stay over the face.
+    local over = CreateFrame("Frame", nil, target)
+    over:SetAllPoints(target)
+    over:SetFrameLevel(target:GetFrameLevel() + 2)
+    for _, t in ipairs({ target.key, target.count, target.mid }) do t:SetParent(over) end
     flash(target)
     wire(target, true)
     target:HookScript("OnMouseDown", function(self) self.icon:SetVertexColor(0.6, 0.6, 0.6, 1) end)
@@ -327,17 +363,59 @@ local function paintRows(list)
     end
 end
 
--- The mob's face on its row, once the game shows that mob (target, mouseover, a nameplate).
-function ns.SeeMob(unit)
-    if not unit or not SetPortraitTexture then return end
-    local ok, name = pcall(UnitName, unit)
-    if not ok or name == nil or (issecretvalue and issecretvalue(name)) then return end
+-- The faces: each row's mob and, on the big button, the mob its next press tries first. A face
+-- the client still fetches is tried again a few times.
+local tries = 0
+function ns.PaintFaces()
+    if not ns.db or not target then return end
+    local ids, ok = ns.db.mobIds, true
     for _, r in ipairs(rows) do
-        if r.mob == name and r.faceOf ~= name then
+        local name = r:IsShown() and rawget(r, "mob")
+        ok = paintModel(r.model, name and ids[name]) and ok
+    end
+    local names = rawget(target, "names")
+    local first = names and names[ns.cycle]
+    ok = paintModel(target.model, first and ids[first]) and ok
+    if ok then tries = 0 elseif tries < 15 and C_Timer then
+        tries = tries + 1
+        C_Timer.After(2, ns.PaintFaces)
+    end
+end
+
+local function inList(name)
+    local names = target and rawget(target, "names")
+    for _, n in ipairs(names or {}) do if n == name then return true end end
+    return false
+end
+
+-- A quest mob the game shows (target, mouseover, a nameplate): its npc id is kept for its face
+-- (account-wide, the name is the key), and its portrait goes on its row until the model draws.
+function ns.SeeMob(unit)
+    if not unit then return end
+    local ok, name = pcall(UnitName, unit)
+    if not ok or name == nil or (issecretvalue and issecretvalue(name)) or not inList(name) then return end
+    local gok, guid = pcall(UnitGUID, unit)
+    local id = gok and ns.NpcId(guid)
+    if id and ns.db.mobIds[name] ~= id then
+        ns.db.mobIds[name] = id
+        ns.PaintFaces()
+    end
+    if not SetPortraitTexture then return end
+    for _, r in ipairs(rows) do
+        if rawget(r, "mob") == name and rawget(r, "faceOf") ~= name then
             SetPortraitTexture(r.face.tex, unit)
             r.faceOf = name
         end
     end
+end
+
+-- A fight starts: the quest mob fought is what the player works on now.
+function ns.NoteFight()
+    local ok, name = pcall(UnitName, "target")
+    if not ok or name == nil or (issecretvalue and issecretvalue(name)) or not inList(name) then return end
+    local dead = UnitIsDead and select(2, pcall(UnitIsDead, "target"))
+    if dead == true then return end
+    ns.hot[name] = GetTime()
 end
 
 -- Aims the buttons; secure attributes change only out of combat (the macros of a fight are the
@@ -345,6 +423,7 @@ end
 function ns.UpdateTargetMacro()
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
     local list = ns.QuestMobList()
+    ns.NoteProgress(list, GetTime())
     if InCombatLockdown() then
         waiting = true
         paintRows(list)
@@ -361,9 +440,11 @@ function ns.UpdateTargetMacro()
     b:SetKey(ns.db.targetKey)
     rawset(b, "doneNow", #names == 0)
     b:SetDone(#names == 0)
-    -- The list: one row per name while the button shows.
-    for i = 1, math.max(#rows, math.min(#names, ns.LIST_MAX)) do
-        local name = i <= ns.LIST_MAX and names[i] or nil
+    -- The list: the kinds worked on last first (a kill, a fight), then the log's order.
+    local order = ns.RowOrder(list)
+    local most = math.max(0, math.min(tonumber(ns.db.mobRows) or 3, ns.LIST_MAX))
+    for i = 1, math.max(#rows, math.min(#order, most)) do
+        local name = i <= most and order[i] and order[i].name or nil
         local r = (name or rows[i]) and row(i)
         if r then
             if r.mob ~= name then
@@ -377,10 +458,18 @@ function ns.UpdateTargetMacro()
         end
     end
     paintRows(list)
+    ns.PaintFaces()
     -- The screen button: shown while it is on and a quest needs a mob, or in the Unlock mode.
     local show = moving or (ns.db.targetButton and not ns.paused and #names > 0)
     if holder:IsShown() ~= (show and true or false) then holder:SetShown(show and true or false) end
     holder:SetMoving(moving and true or false)
+end
+
+-- How many kinds the list under the button shows; secure rows change after a fight.
+function ns.SetMobRows(n)
+    ns.db.mobRows = n
+    if InCombatLockdown() then waiting = true; return end
+    if target then ns.UpdateTargetMacro() end
 end
 
 -- The hub's Unlock mode; the button is secure, so nothing changes in a fight.
@@ -485,6 +574,7 @@ ev:SetScript("OnEvent", function(_, event, unit)
     elseif SEE[event] or event == "NAME_PLATE_UNIT_ADDED" then
         if not ns.paused then ns.SeeMob(SEE[event] or unit) end
     elseif not ns.paused then
+        if event == "PLAYER_REGEN_DISABLED" then ns.NoteFight() end
         -- PLAYER_REGEN_DISABLED comes just before the lockdown: the last chance to set the macros.
         ns.UpdateTargetMacro()
     end
