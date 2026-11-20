@@ -382,9 +382,14 @@ function ns.StepGuide()
     if not d then ns.guide = nil return false end
     local q = ns.Quests(g.key, UnitLevel("player") or 1)
     local route = ns.Route(q.take, ns.Here(), d)
+    -- The stop the guide leads to stays while it is still on the route, so walking nearer to
+    -- another one never moves the pin back and forth.
     local stop
     for _, s in ipairs(route) do
-        if not s.inside then stop = s break end
+        if not s.inside then
+            stop = stop or s
+            if (s.who or "") .. "@" .. (s.area or 0) == g.last then stop = s break end
+        end
     end
     if not stop then ns.guide = nil return false end
     if stop.entrance then

@@ -892,7 +892,6 @@ function ns.SetPin(stop, open)
         TomTom:AddWaypoint(id, stop.x / 100, stop.y / 100, { title = stop.who, from = "Gulli-DungeonPrep" })
     end
     if open then ns.OpenMap(id) end
-    print("|cff9ad0ffGulli-DungeonPrep|r: " .. L.PIN_SET:format(stop.who))
     return true
 end
 
