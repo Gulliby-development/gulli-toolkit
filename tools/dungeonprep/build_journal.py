@@ -24,6 +24,14 @@ same order; where ATT knows the instance, an elite that is neither ranked a boss
 is left out, and a ranked boss ATT does not list comes after the others, by level. D.walk names the dungeons whose bosses
 all have a place in it. D.zone has what the ordinary mobs drop: Wowhead's zone drops that no boss
 or rare has, and ATT's ZONE_DROPS (quality 0: the game says what they are).
+
+WoW Forever's own dungeons came after Wowhead's zone pages were read: where the snapshot has no
+boss of a dungeon, its bosses come from ATT alone (its order, the names in its comments, the
+items listed under each boss as loot with no chance, quality 0: the game says what they are).
+Wowhead gives no level for WoW Forever's own NPCs and neither does QuestieDB, so LEVELS holds the
+levels read in the game (a level the snapshot has wins), RARES marks the rares ATT lists among
+the bosses, NAMES renames an encounter the game shows under another name, SKIP drops an NPC that
+is part of another one's encounter, and EXTRA adds a boss or rare neither source lists.
 The snapshot is untrusted text: it is only read as JSON, never run.
 """
 import json
@@ -60,6 +68,37 @@ NOT_BOSSES = {
     15362,   # Malfurion Stormrage
     10162,   # Lord Victor Nefarius
     16387,   # Atiesh
+}
+# Levels of WoW Forever's own bosses, read in the game (another journal addon's boss list,
+# screenshots of the owner, 2026-11-20). A new dungeon's bosses get theirs here.
+LEVELS = {
+    # The Hall of Thanes
+    261306: 16, 261316: 16, 261311: 16, 261319: 16,
+    # Ruins of Lordaeron
+    250660: 17, 250483: 17, 256035: 19, 250631: 18, 256097: 19, 250657: 20, 255699: 19,
+    # Excavation Site: Wetlands
+    260322: 28, 260325: 29, 260326: 31,
+    # City of Dalaran
+    247126: 29, 245999: 30, 246003: 32, 246017: 31, 246008: 31, 246016: 30, 246020: 33,
+    # Krol'dok Stronghold
+    258966: 42, 258972: 43, 259281: 43, 258964: 44, 264773: 42, 262716: 41, 258968: 45,
+    # Alcaz Prison
+    255391: 50, 256236: 51, 255997: 50, 257016: 52, 255702: 53,
+    # Blackmaw Hold
+    247206: 57, 247198: 58, 269104: 55, 269111: 55, 250034: 55, 247195: 58, 247209: 59,
+    247207: 59, 247231: 59, 247234: 60,
+    # The Shaper's Terrace
+    253201: 61, 261813: 61, 261812: 61, 262127: 61, 261974: 61, 262081: 62, 262297: 62,
+    272561: 62, 253214: 61, 261809: 62,
+}
+RARES = {247032, 262716, 269111}       # Lyn the Ignored, Kroog, Gortek the Apprentice
+NAMES = {253214: "Izha'Rel and Tor'Rel"}  # ATT: Ravasaur Hunters
+SKIP = {262688}                         # the second Ravasaur Hunter of that encounter
+# Bosses and rares the game shows that neither Wowhead's zone page nor ATT lists:
+# dungeon -> [(npc, name, rare)], placed after the others.
+EXTRA = {
+    "KROLDOK": [(262716, "Kroog", True)],
+    "BLACKMAW": [(269111, "Gortek the Apprentice", True)],
 }
 MAX_DROPS = 30        # per boss, best first
 MAX_SPELLS = 6
@@ -135,23 +174,34 @@ def read_walk(att_root):
     return {}
 
 
-def level(v):
+def level(v, npc=0):
     v = as_int(v)
+    if v <= 0:
+        return LEVELS.get(as_int(npc), 0)
     return 0 if v >= SKULL else v
 
 
 
 
+def att_boss(npc, name, loot, rare):
+    """A boss known only from ATT: its loot without a chance (quality 0: the game says)."""
+    return {"id": npc, "name": NAMES.get(npc, name), "classification": BOSS_RANK, "rare": rare,
+            "att": [{"id": i, "quality": 0, "pct": 0} for i in loot]}
+
+
 def boss_row(b, rare, own, wing=""):
-    drops = sorted((d for d in b.get("drops") or [] if as_int(d.get("id")) > 0 and keep_drop(d, own)),
-                   key=lambda d: (-(d.get("quality") or 0), -pct_of(d), as_int(d["id"])))[:MAX_DROPS]
+    if "att" in b:
+        drops = b["att"][:MAX_DROPS]
+    else:
+        drops = sorted((d for d in b.get("drops") or [] if as_int(d.get("id")) > 0 and keep_drop(d, own)),
+                       key=lambda d: (-(d.get("quality") or 0), -pct_of(d), as_int(d["id"])))[:MAX_DROPS]
     loot = ",".join("{%d,%d,%s}" % (as_int(d["id"]), as_int(d.get("quality")),
                                     ("%.1f" % pct_of(d)).rstrip("0").rstrip("."))
                     for d in drops)
     spells = ",".join(str(s) for s in spells_of(b))
     return "{%d,%s,%s,%d,%d,%d,%d,{%s},{%s},%s}" % (
-        as_int(b["id"]), lua_str(b.get("name")), lua_str(b.get("tag")), level(b.get("minLevel")),
-        level(b.get("maxLevel")), as_int(b.get("displayId")), 1 if rare else 0, spells, loot, lua_str(wing))
+        as_int(b["id"]), lua_str(NAMES.get(as_int(b["id"]), b.get("name"))), lua_str(b.get("tag")),
+        level(b.get("minLevel"), b["id"]), level(b.get("maxLevel"), b["id"]), as_int(b.get("displayId")), 1 if rare else 0, spells, loot, lua_str(wing))
 
 
 def build(snapshot, walk=None):
@@ -169,14 +219,12 @@ def build(snapshot, walk=None):
     ]
     missing, walked, zones = [], [], []
     for key in known:
-        d = data.get(key)
-        if not d:
-            missing.append(key)
-            continue
+        d = data.get(key) or {}
         own = {as_int(z.get("id")) for z in d.get("zoneDrops") or []}
         w = walk.get(key) or {}
         place = {npc: (n, wing) for n, (npc, wing) in enumerate(w.get("order") or [])}
-        bosses = [b for b in d.get("bosses") or [] if as_int(b.get("id")) > 0 and is_boss(b, own)]
+        bosses = [b for b in d.get("bosses") or [] if as_int(b.get("id")) > 0 and is_boss(b, own)
+                  and as_int(b.get("id")) not in SKIP]
         # Where ATT knows the instance, an elite it does not list is an ordinary mob with a good
         # drop, not a boss: its drops go to the zone's.
         if place:
@@ -198,6 +246,28 @@ def build(snapshot, walk=None):
         bosses.sort(key=by_walk)
         rares = sorted((b for b in d.get("rares") or []
                         if as_int(b.get("id")) > 0 and as_int(b.get("id")) not in NOT_BOSSES), key=by_walk)
+        # The bosses of the ATT order the snapshot lacks (all of them for a dungeon Wowhead's
+        # zone page had no NPC of); elsewhere only those the game showed with a level, so
+        # trash in the order stays out.
+        alone = not (bosses or rares)
+        have = {as_int(b.get("id")) for b in bosses + rares}
+        seen_names = {NAMES.get(as_int(b.get("id")), b.get("name")) for b in bosses + rares}
+        names, att_loot = w.get("names") or {}, w.get("loot") or {}
+        for npc, _ in w.get("order") or []:
+            if npc in have or npc in SKIP or npc in NOT_BOSSES:
+                continue
+            if alone or npc in LEVELS:
+                b = att_boss(npc, names.get(str(npc)) or str(npc), att_loot.get(str(npc)) or [], npc in RARES)
+                if b["name"] in seen_names:
+                    continue
+                seen_names.add(b["name"])
+                (rares if npc in RARES else bosses).append(b)
+                have.add(npc)
+        for npc, name, rare in EXTRA.get(key) or []:
+            if npc not in have:
+                (rares if rare else bosses).append(att_boss(npc, name, [], rare))
+        bosses.sort(key=by_walk)
+        rares.sort(key=by_walk)
         rows = [boss_row(b, False, own, wing_of(b)) for b in bosses]
         rows += [boss_row(b, True, own, wing_of(b)) for b in rares]
         if not rows:
