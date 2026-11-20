@@ -1069,7 +1069,9 @@ end
 
 -- Columns: { header key, width }, the name column first (it takes the room left), the others
 -- from the right edge. `sort`: the column a tab sorts by at first, highest first.
-local FIND_W = 140
+local FIND_W, FIND_H = 220, 28
+-- the column heads sit under the filter row of the list card
+local HEAD_Y = FIND_H + 8
 local LISTS = {
     { cols = { { "C_RECIPE" }, { "C_COST", 62 }, { "C_VALUE", 62 }, { "C_WHERE", 54 }, { "C_PROFIT", 66 }, { "C_CAN", 30 } }, sort = 5 },
     { cols = { { "I_ITEM" }, { "I_BAGS", 34 }, { "I_BANK", 34 }, { "I_BEST", 110 }, { "I_EACH", 62 }, { "I_TOTAL", 66 } }, sort = 6 },
@@ -1132,6 +1134,22 @@ function ns.CdText(sec)
     if sec >= ns.DAY then return L.CD_DAYS:format(math.floor(sec / ns.DAY + 0.5)) end
     return L.CD_HOURS:format(math.max(1, math.ceil(sec / 3600)))
 end
+-- What is left of a running cooldown as "3d 4h" (or "5h"), nil when the craft is ready.
+function ns.CdLeftText(r, now)
+    now = now or (time and time() or 0)
+    local left = r and r.cd and r.cdReady and r.cdReady - now
+    if not left or left <= 0 then return nil end
+    local d, h = math.floor(left / ns.DAY), math.ceil((left % ns.DAY) / 3600)
+    if h >= 24 then d, h = d + 1, 0 end
+    return d > 0 and L.CD_DH:format(d, h) or L.CD_HOURS:format(math.max(1, h))
+end
+-- A recipe's name with its cooldown left after it in red, as Recipes and Crafts now show it.
+local function cdName(name, r)
+    local left = ns.CdLeftText(r)
+    return left and (name .. "  " .. color(BAD) .. L.CD_TAG:format(left) .. "|r") or name
+end
+ns.CdName = cdName
+
 -- The tooltip lines of a recipe with a cooldown: how often, and when it is ready again.
 local function cdTip(tip, r)
     if not (r and r.cd) then return end
@@ -1150,7 +1168,7 @@ local function listRows(which)
             -- the name in the recipe's colour, as in the game's profession window
             local c = x.color and segColor(x.color) or S.TEXT
             rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality, item = r.out,
-                text = color(c) .. x.name .. "|r" .. (x.stale and (" " .. color(GOLD) .. L.STALE .. "|r") or ""),
+                text = color(c) .. cdName(x.name, r) .. "|r" .. (x.stale and (" " .. color(GOLD) .. L.STALE .. "|r") or ""),
                 cols = { ns.Brief(x.cost), ns.Brief(x.value), L["HOW_" .. x.how],
                          color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r",
                          x.can > 0 and ("x" .. x.can) or "-" },
@@ -1166,7 +1184,7 @@ local function listRows(which)
                 keys = { x.name, x.bags, x.bank, x.how, x.each, x.total } }
         end
     else
-        for _, x in ipairs(ns.Recipes(st, P)) do
+        for _, x in ipairs(ns.Recipes(st, P, ns.db.onlyMine)) do
             local r = st.recipes[x.recipe]
             local where = (x.src == "text" and (ns.SourceLabel(x.text) or "-")) or L["WHERE_" .. x.src] or "-"
             -- an estimated vendor price gets "~"; the trainer's price is known after one visit
@@ -1180,7 +1198,7 @@ local function listRows(which)
             if x.src == "trainer" and not x.cost then tip[#tip + 1] = { L.TIP_TRAINER, nil, nil, nil, true } end
             if x.pay then tip[#tip + 1] = { L.TIP_PAY:format(x.pay), nil, nil, nil, true } end
             cdTip(tip, r)
-            rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = x.name, item = r.out,
+            rows[#rows + 1] = { icon = r.out and ns.ItemIcon(r.out) or PATTERN_ICON, text = cdName(x.name, r), item = r.out,
                 cols = { where, price, x.skill and tostring(x.skill) or "-",
                          x.profit and (color(x.profit >= 0 and GOOD or BAD) .. ns.Brief(x.profit, true) .. "|r") or L.NO_PRICE,
                          x.pay and L.PAY_AT:format(x.pay) or ((x.profit and x.cost) and L.PAY_NEVER or "-") },
@@ -1515,13 +1533,6 @@ local function build()
         GameTooltip:Show()
     end)
     ui.prof:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    -- the lists' search: only the rows whose name has the text
-    ui.find = S.Edit(main, FIND_W, 28)
-    ui.find:SetPoint("RIGHT", ui.prof, "LEFT", -8, 0)
-    ui.find:SetJustifyH("LEFT")
-    S.Placeholder(ui.find, L.LIST_FIND)
-    ui.find:SetScript("OnTextChanged", function() if ns.Refresh then ns.Refresh() end end)
-    ui.find:Hide()
 
     local route = CreateFrame("Frame", nil, main)
     route:SetPoint("TOPLEFT", 0, -TOP)
@@ -1550,10 +1561,20 @@ local function build()
         end)
         ui.listHead[k] = h
     end
+    -- the filter row: the search (only the rows whose name has the text) and, on Recipes,
+    -- "Only mine": the recipes the character knows instead of the ones to get (saved in db.onlyMine)
+    ui.find = S.Edit(list.body, FIND_W, FIND_H)
+    ui.find:SetPoint("TOPLEFT", 0, 0)
+    ui.find:SetJustifyH("LEFT")
+    S.Placeholder(ui.find, L.LIST_FIND)
+    ui.find:SetScript("OnTextChanged", function() if ns.Refresh then ns.Refresh() end end)
+    ui.mine = S.SwitchLabel(list.body, L.ONLY_MINE, function() return ns.db.onlyMine == true end,
+        function(on) ns.db.onlyMine = on or nil; if ns.Refresh then ns.Refresh() end end, 220)
+    ui.mine:SetPoint("LEFT", ui.find, "RIGHT", 12, 0)
     ui.probe = S.Text(list.body, 12, S.MUTED)
     ui.probe:Hide()
     ui.list = S.List(list.body, 32, makeListRow, fillListRow)
-    ui.list:SetPoint("TOPLEFT", 0, -20)
+    ui.list:SetPoint("TOPLEFT", 0, -(HEAD_Y + 20))
     ui.list:SetPoint("BOTTOMRIGHT", -10, 0)
 
     -- over the route and the lists: the reputation the plan could not read (like Crates' old prices)
@@ -1797,12 +1818,12 @@ local function refreshList()
         local h = ui.listHead[k]
         h:ClearAllPoints()
         if k == 1 then
-            h:SetPoint("TOPLEFT", 34, 0)
+            h:SetPoint("TOPLEFT", 34, -HEAD_Y)
             h:SetWidth(120)
             h.text:SetJustifyH("LEFT")
         else
             -- the scroll bar takes 10 at the right of the rows
-            h:SetPoint("TOPRIGHT", -(colRight(spec, k) + 10), 0)
+            h:SetPoint("TOPRIGHT", -(colRight(spec, k) + 10), -HEAD_Y)
             h:SetWidth(spec.cols[k][2])
             h.text:SetJustifyH("RIGHT")
         end
@@ -1873,7 +1894,8 @@ function ns.Refresh()
     ui.emptyBox:SetShown(not has and tab ~= 5)
     ui.route:SetShown(has and tab == 1)
     ui.listFrame:SetShown(has and tab > 1 and tab < 5)
-    ui.find:SetShown(has and tab > 1 and tab < 5)
+    ui.mine:SetShown(tab == 4)
+    ui.mine:SetChecked(ns.db.onlyMine == true)
     if not has or tab == 5 then return end
     if tab == 1 then refreshRoute() else refreshList() end
 end

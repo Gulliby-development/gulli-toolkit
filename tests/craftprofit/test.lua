@@ -2627,7 +2627,8 @@ test("the lists' search keeps the rows whose name has the text, and a row shows 
     eq(n.Matches("Anything", ""), true)
     n.Toggle(); n.Calculate()
     n.Tab(4)
-    assert(n.ui.find:IsShown(), "the search shows on the lists")
+    assert(n.ui.listFrame:IsShown(), "the list with its search shows")
+    assert(n.ui.mine:IsShown(), "Only mine on Recipes")
     local all = n.ListRows(4)
     assert(#all >= 1, "rows: " .. #all)
     local name = all[1].keys[1]
@@ -2639,8 +2640,19 @@ test("the lists' search keeps the rows whose name has the text, and a row shows 
     eq(#n.ListRows(4), 0)
     n.ui.find:SetText("")
     eq(#n.ListRows(4), #all)
-    n.Tab(1)
-    eq(n.ui.find:IsShown(), false, "not on the route")
+    -- Only mine: the recipes the character knows instead of the ones to get, and it is kept
+    local learned = {}
+    for rid, r in pairs(n.view.state.recipes) do if r.learned and not r.other then learned[#learned + 1] = rid end end
+    W.Click(n.ui.mine)
+    eq(n.db.onlyMine, true)
+    local mine = n.ListRows(4)
+    eq(#mine, #learned)
+    for _, row in ipairs(mine) do eq(row.cols[1], n.L.WHERE_learned) end
+    W.Click(n.ui.mine)
+    eq(n.db.onlyMine, nil)
+    eq(#n.ListRows(4), #all)
+    n.Tab(2)
+    eq(n.ui.mine:IsShown(), false, "only on Recipes")
     -- a row with an item: the game's own tooltip of that item, the row's lines under it
     local seen = {}
     GameTooltip = setmetatable({}, { __index = function(_, k)
@@ -2697,6 +2709,11 @@ test("a craft with a cooldown is taken once, only while ready; runs after it wai
     assert(total <= 1, "the runs after the first wait for the cooldown: " .. total)
     -- the Crafts now list: at most one, none while it waits
     for _, row in ipairs(c.Crafts(st, prefs())) do if row.recipe == "moon" then assert(row.can <= 1); eq(row.cd, 4 * c.DAY) end end
+    -- the lists name the time left in red beside the recipe
+    eq(c.CdLeftText({ cd = 4 * c.DAY, cdReady = 1000 + 3 * c.DAY + 4 * 3600 }, 1000), c.L.CD_DH:format(3, 4))
+    eq(c.CdLeftText({ cd = 4 * c.DAY, cdReady = 1000 + 5 * 3600 }, 1000), c.L.CD_HOURS:format(5))
+    eq(c.CdLeftText({ cd = 4 * c.DAY, cdReady = 900 }, 1000), nil, "ready")
+    eq(c.CdLeftText({}, 1000), nil)
     -- Mooncloth and the transmutes are known
     assert(c.COOLDOWNS[18560] and c.COOLDOWNS[17187] and c.COOLDOWNS[19047])
 end)

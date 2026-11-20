@@ -1246,12 +1246,18 @@ function ns.Items(state, P)
 end
 
 -- Recipes not learned yet: where, the price, profit per craft and the craft that pays it back.
-function ns.Recipes(state, P)
+-- `mine`: the recipes the character knows (of this profession) instead of the ones to get.
+function ns.Recipes(state, P, mine)
     local known, st = {}, ns.Stock(state, P)
     for rid, r in pairs(state.recipes) do if ns.CanGet(r, P) then known[rid] = true end end
     local rows = {}
     for rid, r in pairs(state.recipes) do
-        if not r.learned and r.src then
+        if mine and r.learned and not r.other then
+            local cost = reagentCost(state, P, st, known, rid)
+            local profit = cost < math.huge
+                and (r.out and ns.SellValue(state, P, r.out, 0) or 0) * (r.count or 1) - cost or nil
+            rows[#rows + 1] = { recipe = rid, name = r.name, cd = r.cd, src = "learned", skill = r.skill and r.skill[1], profit = profit }
+        elseif not mine and not r.learned and r.src then
             -- a reagent with no price anywhere makes the cost unknown, not a number
             local cost = reagentCost(state, P, st, known, rid)
             local profit = cost < math.huge
