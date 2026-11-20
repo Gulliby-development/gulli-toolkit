@@ -163,7 +163,7 @@ end)
 test("Show on map of a quest's page pins and opens the world map", function()
     local W = Fake({ areas = AREAS, map = { maps = MAPS }, level = 33, raceID = 2, faction = "Horde" })
     local opened
-    OpenWorldMap = function(id) opened = id end
+    C_Map.OpenWorldMap = function(id) opened = id end
     local ns = Load()
     ns.home, ns.selected = false, "GNOMER"
     ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(2841)
@@ -179,7 +179,7 @@ end)
 
 test("the map opened from the window is not hidden by it: the window lies under the map", function()
     Fake({ areas = AREAS, map = { maps = MAPS }, level = 33, raceID = 2, faction = "Horde" })
-    OpenWorldMap = function() end
+    C_Map.OpenWorldMap = function() end
     WorldMapFrame = CreateFrame("Frame")
     local ns = Load()
     ns.home, ns.selected = false, "GNOMER"
@@ -199,7 +199,9 @@ end)
 test("the tracker's map button pins and opens the world map on the pin's zone", function()
     local W = Fake({ areas = AREAS, map = { maps = MAPS } })
     local opened
-    OpenWorldMap = function(id) opened = id end
+    C_Map.OpenWorldMap = function(id) opened = id end
+    local tainted
+    OpenWorldMap = function(id) tainted = id end -- the addon's own call taints the map's pins
     local ns = Load()
     eq(ns.PinAt("Nogg", 1637, 76, 25), true)
     eq(opened, nil, "a pin alone leaves the map closed")
@@ -208,6 +210,10 @@ test("the tracker's map button pins and opens the world map on the pin's zone", 
     opened, W.combat = nil, true
     ns.PinAt("Nogg", 1637, 76, 25, true)
     eq(opened, nil, "never in combat")
+    eq(tainted, nil, "the game opens the map from its own event")
+    W.combat, C_Map.OpenWorldMap = false, nil
+    ns.PinAt("Nogg", 1637, 76, 25, true)
+    eq(tainted, 1454, "a client without C_Map.OpenWorldMap still opens it")
     OpenWorldMap = nil
 end)
 
@@ -1116,7 +1122,7 @@ test("a click on a chain step opens that step's page and sets no pin, also for a
                      done = { [92914] = true, [96010] = true, [96018] = true, [93016] = true, [93394] = true,
                               [93341] = true, [93594] = true } })
     local opened
-    OpenWorldMap = function(id) opened = id end
+    C_Map.OpenWorldMap = function(id) opened = id end
     local ns = Load()
     ns.home, ns.selected = false, "MARA"
     ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(93404)

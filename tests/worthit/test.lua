@@ -350,6 +350,25 @@ test("a guide kept over a reload leads on", function()
     eq(#W.pins, 1)
 end)
 
+test("the map opens through the game's own event, never by the addon's call, and never in a fight", function()
+    Fake({ level = 20, zone = WESTFALL, x = 50, y = 50, slots = { [POUCH] = 10 } })
+    local ns = Load()
+    local stop = ns.Stop(find(ns.Rewards(), BLANCHY))
+    eq(ns.SetPin(stop, true), true)
+    eq(W.maps[#W.maps], 10000 + WESTFALL, "C_Map.OpenWorldMap opens it")
+    eq(W.tainted, nil, "OpenWorldMap would taint the map's pins")
+    local n = #W.maps
+    eq(ns.SetPin(stop), true)
+    eq(#W.maps, n, "a pin alone, as the guide sets it, leaves the map shut")
+    W.combat = true
+    eq(ns.OpenMap(10000 + WESTFALL), false)
+    eq(#W.maps, n)
+    W.combat = nil
+    C_Map.OpenWorldMap = nil
+    eq(ns.OpenMap(10000 + WESTFALL), true)
+    eq(W.tainted, 10000 + WESTFALL, "a client without it still opens the map")
+end)
+
 test("a giver on no map has no pin, and never an error", function()
     Fake({ level = 20 })
     local ns = Load()
