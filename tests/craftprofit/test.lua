@@ -395,16 +395,56 @@ test("a profit run buys at most maxBuy of one item at the auction, and stops at 
         bolt = { name = "Bolt of Linen Cloth", skill = { 1, 25, 50 }, r = { cloth = 2 }, out = "bolt", learned = true },
         bag = { name = "Linen Bag", skill = { 45, 70, 95 }, r = { bolt = 3 }, out = "bag", learned = true },
     } }
-    local e = c.Earn(st, prefs({ maxBuy = 40 }))
+    local e = c.Earn(st, prefs({ maxBuy = 40, minGain = 0 }))
     assert(e.net > 0)
     assert((e.ahBuy.cloth or 0) <= 40 + 6, "cloth bought: " .. tostring(e.ahBuy.cloth))
-    local more = c.Earn(st, prefs({ maxBuy = 200 }))
+    local more = c.Earn(st, prefs({ maxBuy = 200, minGain = 0 }))
     assert(more.crafts > e.crafts)
-    assert(more.crafts <= c.EARN_MAX + 3, "crafts with the bolts: " .. more.crafts)
+    -- 50 bags at most; the bolts for them are preparation, beside them
+    eq(c.EARN_MAX, 50)
+    assert(c.LevelCrafts(more) <= c.EARN_MAX, "bags: " .. c.LevelCrafts(more))
+    assert(more.prepCrafts > 0, "the bolts")
     -- without the auction, only own cloth counts
     st.items.cloth.bags = 12
     local own = c.Earn(st, prefs({}), true)
     eq(own.ahBuy.cloth, nil)
+end)
+
+-- A profit craft must gain at least minGain (5 silver at first), and the auction never takes
+-- more of one item than are on sale there now (when the lots were read).
+test("a profit run keeps to the least gain per craft and to what the market takes", function()
+    local c = core()
+    local function st()
+        return { skill = 100, cap = 150, level = 30, items = {
+            cloth = { name = "Linen Cloth", ah = 1, age = 0, vend = 1, bags = 1000 },
+            bag = { name = "Linen Bag", ah = 400, age = 0, vend = 100 },
+            good = { name = "Good Bag", ah = 5000, age = 0, vend = 100 },
+        }, recipes = {
+            bag = { name = "Linen Bag", skill = { 45, 70, 95 }, r = { cloth = 3 }, out = "bag", learned = true },
+            good = { name = "Good Bag", skill = { 45, 70, 95 }, r = { cloth = 4 }, out = "good", learned = true },
+        } }
+    end
+    eq(c.DEFAULTS.minGain, 500, "5 silver at first")
+    local s1 = st()
+    s1.recipes.good = nil
+    local e = c.Earn(s1, prefs({ maxSell = 0 }), true)
+    eq(e.crafts, 0, "a bag that gains under 5 silver is no profit run")
+    local any = c.Earn(s1, prefs({ maxSell = 0, minGain = 0 }), true)
+    assert(any.crafts > 0, "with any gain it is")
+    -- no market depth known: up to EARN_MAX
+    local s2 = st()
+    local free = c.Earn(s2, prefs({ maxSell = 0 }), true)
+    eq(c.LevelCrafts(free), c.EARN_MAX)
+    -- 7 on sale: the auction takes 7, the rest would go to a vendor at a loss
+    s2.items.good.lots = { t = 1000, l = { { 5000, 4 }, { 5100, 3 } } }
+    s2.now = 1000 + 60
+    eq(c.MarketTake(s2, prefs({ maxSell = 0 }), "good"), 7)
+    eq(c.MarketTake(s2, prefs({ maxSell = 5 }), "good"), 5, "maxSell when smaller")
+    local held = c.Earn(s2, prefs({ maxSell = 0 }), true)
+    eq(c.LevelCrafts(held), 7)
+    -- lots older than a day say nothing
+    s2.now = 1000 + c.LOTS_FRESH + 1
+    eq(c.MarketTake(s2, prefs({ maxSell = 0 }), "good"), math.huge)
 end)
 
 test("from my stock buys nothing at the auction and no recipe", function()
@@ -458,19 +498,20 @@ test("the crafts limit: auto follows the target, routes over it go", function()
     eq(c.CraftCap(st, c.Prefs({ maxCrafts = 40 })), 40)
     eq(c.CraftCap(st, c.Prefs({ maxCrafts = -1 })), nil)
     local all = c.Frontier(st, prefs({ maxSell = 5 }))
-    local cheap, fast = all[1].crafts, all[#all].crafts
+    local L = c.LevelCrafts
+    local cheap, fast = L(all[1]), L(all[#all])
     assert(cheap > fast + 2)
     -- a limit between them: every route keeps within it, and the cheapest one within it is found
     local cap = math.floor((cheap + fast) / 2)
     local f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = cap }))
     assert(#f >= 1)
-    for _, p in ipairs(f) do assert(p.crafts <= cap + 0.5, "crafts " .. p.crafts .. " over " .. cap); assert(not p.many) end
+    for _, p in ipairs(f) do assert(L(p) <= cap + 0.5, "crafts " .. L(p) .. " over " .. cap); assert(not p.many) end
     for _, p in ipairs(all) do
-        if p.crafts <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
+        if L(p) <= cap + 0.5 then assert(f[1].net >= p.net - 1, "the cheapest within the limit") end
     end
     -- a limit nobody keeps: only the route with the fewest crafts, marked
     f = c.Frontier(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
-    eq(#f, 1); assert(f[1].many); eq(f[1].crafts, fast)
+    eq(#f, 1); assert(f[1].many); eq(L(f[1]), fast)
     local v = c.Variants(st, prefs({ maxSell = 5, maxCrafts = math.max(1, math.floor(fast / 2)) }))
     assert(v[1].many and v[1].best, "still shown, marked")
 end)
@@ -1750,6 +1791,39 @@ test("a plan never drops a bought recipe it needs to reach the target, however h
     eq(ns.Plan(st, P).reached, 175, "a run of that one recipe reaches it too")
 end)
 
+-- The crafts limit counts only the crafts that raise the skill. Smelting the bars for them is
+-- preparation: shown beside them ("4 + 40 prep"), never limited (owner's decision of 2026-11-20).
+test("the crafts limit counts only the crafts that raise the skill, not the preparation", function()
+    local ns = core()
+    local st = {
+        skill = 171, cap = 300, level = 60,
+        items = {
+            ore = { name = "Ore", ah = 10, age = 0.1, vend = 2 },
+            bar = { name = "Bar", vend = 5 },
+            out = { name = "Bracers", ah = 100, age = 0.1, vend = 50 },
+        },
+        recipes = {
+            smelt = { name = "Smelt Bar", r = { ore = 1 }, out = "bar", learned = true, other = "Mining" },
+            bracer = { name = "Bracers", skill = { 160, 185, 210 }, r = { bar = 10 }, out = "out", learned = true },
+        },
+    }
+    local P = prefs({ target = 175, maxCrafts = 0 })
+    eq(ns.CraftCap(st, P), 9, "auto: 4 points + 5")
+    local routes = ns.Frontier(st, P)
+    eq(#routes > 0, true, "a route")
+    local p = routes[1]
+    eq(p.reached, 175, "it reaches the target")
+    eq(p.many, nil, "within the limit")
+    eq(ns.LevelCrafts(p), 4, "4 crafts raise the skill")
+    eq(p.prepCrafts, 40, "40 bars smelted beside them")
+    eq(p.crafts, 44, "the time counts both")
+    -- a limit below the skill crafts still gives the way, marked over the limit
+    local Q = prefs({ target = 175, maxCrafts = 2 })
+    local over = ns.Frontier(st, Q)
+    eq(over[1].reached, 175, "the way is still planned")
+    eq(over[1].many, true, "marked over the limit")
+end)
+
 -- The runs follow the route the tile shows: a stretch the route crafts through is never "?",
 -- whatever the limits, the prices or the stock (a run planned anew from what the runs before
 -- left could miss a recipe the whole way had, and left a hole in the middle of the bar).
@@ -1783,6 +1857,8 @@ end)
 
 test("a route tile switches at once from the result; the runs of each route are kept", function()
     local n = game()
+    n.db.prefs = n.db.prefs or {}
+    n.db.prefs.minGain = 0
     n.Toggle(); n.Calculate()
     local calls = { v = 0, l = 0 }
     local V, Lg = n.Variants, n.Legs
