@@ -376,13 +376,14 @@ local function count(o)
     return have or 0, need or 0
 end
 
--- The mobs the quest log still needs, the ones of the player's zone first:
--- { { name, have, need }, ... }; a mob that two quests ask for is one entry.
+-- The mobs the quests of the player's zone still need (the quest log header is the zone):
+-- { { name, have, need }, ... }; a mob that two quests ask for is one entry. Quests of other
+-- zones stay out, so the key never reaches for a mob of a zone far away.
 function ns.QuestMobList()
     local Q = C_QuestLog or {}
     if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
     local here = GetRealZoneText and GetRealZoneText() or nil
-    local other, near, seen = {}, {}, {}
+    local near, seen = {}, {}
     local zone
     local n = (Q.GetNumQuestLogEntries or GetNumQuestLogEntries)()
     for i = 1, n or 0 do
@@ -391,18 +392,17 @@ function ns.QuestMobList()
             zone = info.title
         elseif info and info.questID and not info.isHidden then
             for _, o in ipairs(Q.GetQuestObjectives(info.questID) or {}) do
-                if o.type == "monster" and not o.finished then
+                if here and zone == here and o.type == "monster" and not o.finished then
                     local name = ns.MobName(o.text)
                     if name and not seen[name] then
                         local have, need = count(o)
                         seen[name] = true
-                        table.insert((here and zone == here) and near or other, { name = name, have = have, need = need })
+                        near[#near + 1] = { name = name, have = have, need = need }
                     end
                 end
             end
         end
     end
-    for _, m in ipairs(other) do near[#near + 1] = m end
     return near
 end
 

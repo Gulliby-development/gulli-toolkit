@@ -269,7 +269,7 @@ local function click(b)
     end
 end
 
-test("quest mob key: names and counts from the objectives, the zone's first, bound to the secure button", function()
+test("quest mob key: names and counts from the objectives of the zone only, bound to the secure button", function()
     Fake({ qlog = {
         { title = "Elwynn Forest", isHeader = true },
         { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" },
@@ -284,10 +284,17 @@ test("quest mob key: names and counts from the objectives, the zone's first, bou
     eq(ns.MobName("3/8 Defias Pillager slain"), "Defias Pillager")
     eq(ns.MobName(nil), nil)
     local mobs = ns.QuestMobs()
-    eq(table.concat(mobs, ","), "Kobold Vermin,Harvest Watcher", "finished and item objectives left out, the zone's first")
+    eq(table.concat(mobs, ","), "Kobold Vermin", "finished, item and other zones' objectives left out")
     local list = ns.QuestMobList()
     eq(list[1].have .. "/" .. list[1].need, "3/10", "read from the text")
-    eq(list[2].have .. "/" .. list[2].need, "2/8", "the game's numbers win")
+    W.zone = "Westfall"
+    list = ns.QuestMobList()
+    eq(list[1].name .. " " .. list[1].have .. "/" .. list[1].need, "Harvest Watcher 2/8", "another zone, the game's numbers win")
+    eq(#list, 2)
+    W.zone = "Tanaris"
+    eq(#ns.QuestMobList(), 0, "no quest of the zone, no mob")
+    W.zone = nil
+    mobs = { "Kobold Vermin", "Harvest Watcher" }
     eq(ns.TargetMacro(mobs), mac(false, "Kobold Vermin", "Harvest Watcher"))
     eq(ns.TargetMacro(mobs, 2), mac(false, "Harvest Watcher", "Kobold Vermin"), "from the second, round the list")
     eq(ns.TargetMacro(mobs, 2, true), mac(true, "Harvest Watcher", "Kobold Vermin"))
