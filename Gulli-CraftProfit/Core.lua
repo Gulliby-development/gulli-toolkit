@@ -1249,20 +1249,36 @@ function ns.Skipped(state)
     return rows
 end
 
+-- Lower case for a search, Cyrillic too (string.lower knows only A to Z): А-П, Р-Я and Ё.
+function ns.Fold(text)
+    local s = tostring(text or ""):lower()
+    s = s:gsub("\208([\144-\159])", function(c) return "\208" .. string.char(c:byte() + 32) end)
+    s = s:gsub("\208([\160-\175])", function(c) return "\209" .. string.char(c:byte() - 32) end)
+    s = s:gsub("\208\129", "\209\145")
+    return s
+end
+
+-- Does a name have the search text in it (any case)? An empty search finds everything.
+function ns.Matches(name, text)
+    text = ns.Fold((tostring(text or ""):match("^%s*(.-)%s*$")))
+    if text == "" then return true end
+    return ns.Fold(name):find(text, 1, true) ~= nil
+end
+
 -- The recipes whose name has `text` in it (any case), names that start with it first; a number
 -- or a link finds the recipe by its id. At most `max`. Second value: how many there are in all.
 function ns.FindRecipes(state, text, max)
     local rows = {}
     text = tostring(text or "")
     if text == "" then return rows, 0 end
-    local low = text:lower()
+    local low = ns.Fold(text)
     -- a number is the recipe's id (or the id of the item it makes); a pasted link gives it too
     local id = tonumber(text) or tonumber(text:match("|H%a+:(%d+)")) or tonumber(text:match("^%a+:(%d+)"))
     for rid, r in pairs(state and state.recipes or {}) do
         local name = tostring(r.name or "")
         local at
         if id then at = (rid == id or r.out == id) and 1 or nil
-        else at = name:lower():find(low, 1, true) or name:find(text, 1, true) end
+        else at = ns.Fold(name):find(low, 1, true) or name:find(text, 1, true) end
         if at then rows[#rows + 1] = { recipe = rid, name = name, out = r.out, skip = r.skip and true or false, at = at } end
     end
     table.sort(rows, function(a, b)

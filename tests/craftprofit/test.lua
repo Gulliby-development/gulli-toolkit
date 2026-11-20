@@ -2619,4 +2619,41 @@ test("a recipe of a specialization is offered only with that specialization", fu
     end
 end)
 
+test("the lists' search keeps the rows whose name has the text, and a row shows its item's own tooltip", function()
+    local n = game()
+    eq(n.Matches("Bolt of Silk Cloth", " silk "), true)
+    eq(n.Matches("Bolt of Silk Cloth", "wool"), false)
+    eq(n.Matches("Шёлковая повязка", "ШЁЛК"), true, "Cyrillic in any case")
+    eq(n.Matches("Anything", ""), true)
+    n.Toggle(); n.Calculate()
+    n.Tab(4)
+    assert(n.ui.find:IsShown(), "the search shows on the lists")
+    local all = n.ListRows(4)
+    assert(#all >= 1, "rows: " .. #all)
+    local name = all[1].keys[1]
+    n.ui.find:SetText(name:sub(1, 4):upper())
+    local rows = n.ListRows(4)
+    assert(#rows >= 1 and #rows <= #all)
+    for _, row in ipairs(rows) do assert(n.Matches(row.keys[1], name:sub(1, 4)), row.keys[1]) end
+    n.ui.find:SetText("no such recipe at all")
+    eq(#n.ListRows(4), 0)
+    n.ui.find:SetText("")
+    eq(#n.ListRows(4), #all)
+    n.Tab(1)
+    eq(n.ui.find:IsShown(), false, "not on the route")
+    -- a row with an item: the game's own tooltip of that item, the row's lines under it
+    local seen = {}
+    GameTooltip = setmetatable({}, { __index = function(_, k)
+        return function(_, a) seen[#seen + 1] = { k, a } end
+    end })
+    local row
+    for _, x in ipairs(all) do if type(x.item) == "number" then row = row or x end end
+    assert(row, "a recipe row with the item it makes")
+    local made = n.ItemTip(row.item)
+    eq(made, true)
+    eq(seen[1][1], "SetItemByID"); eq(seen[1][2], row.item)
+    eq(n.ItemTip(nil), false, "no item, no item tooltip")
+    GameTooltip = W.stub()
+end)
+
 W.finish()
