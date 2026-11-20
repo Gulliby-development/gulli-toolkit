@@ -3733,3 +3733,63 @@ do
         end)
     end
 end
+
+-- ---------- auction prices ----------
+-- Every module reads auction prices here, from the addons that know them, each only through
+-- its public calls: `on()` says it is loaded, `price(id, caller)` gives copper and the age in
+-- days. A new price addon is a row here (and its folder in the OptionalDeps of the modules that
+-- read prices), with a case in the CraftProfit test.
+local function priceNum(v) return type(v) == "number" and v > 0 and v or nil end
+local function auctionatorApi() return Auctionator and Auctionator.API and Auctionator.API.v1 end
+S.PRICE_SOURCES = {
+    { name = "Auctionator", on = auctionatorApi, price = function(id, caller)
+        local api = auctionatorApi()
+        if not api.GetAuctionPriceByItemID then return nil end
+        local price = api.GetAuctionPriceByItemID(caller, id)
+        local age = api.GetAuctionAgeByItemID and api.GetAuctionAgeByItemID(caller, id)
+        return price, age
+    end },
+    { name = "auxForever", on = function() return AuxForeverAPI and AuxForeverAPI.GetLatestPrice end, price = function(id)
+        if AuxForeverAPI.IsReady and not AuxForeverAPI.IsReady() then return nil end
+        return AuxForeverAPI.GetLatestPrice(id)
+    end },
+    -- Naowh Forever ships every auction house's prices and adds the player's own scans; its
+    -- second value is when the price was seen (time())
+    { name = "Naowh Forever", on = function() return NaowhForever and NaowhForever.AuctionPrice end, price = function(id)
+        local price, at = NaowhForever.AuctionPrice(id)
+        at = priceNum(at)
+        return price, at and time and math.max(0, (time() - at) / 86400) or 0
+    end },
+    { name = "TradeSkillMaster", on = function() return TSM_API and TSM_API.GetCustomPriceValue end, price = function(id)
+        return TSM_API.GetCustomPriceValue("DBMinBuyout", "i:" .. id), 0
+    end },
+    { name = "Hammerprice", on = function() return Hammerprice and Hammerprice.GetPrice end, price = function(id)
+        return Hammerprice.GetPrice(id), 0
+    end },
+}
+-- The auction price of one item (copper) and its age in days: the first source with a price
+-- at most `fresh` days old (3 by default), else the first with any price; nil when no loaded
+-- addon knows the item. A source that fails is skipped.
+function S.AuctionPrice(id, fresh)
+    if not id then return nil end
+    local first, firstAge
+    for _, src in ipairs(S.PRICE_SOURCES) do
+        if src.on() then
+            local ok, price, age = pcall(src.price, id, addon)
+            price = ok and priceNum(price)
+            if price then
+                age = type(age) == "number" and age >= 0 and age or 0
+                if age <= (fresh or 3) then return price, age end
+                if not first then first, firstAge = price, age end
+            end
+        end
+    end
+    return first, firstAge
+end
+-- The names of the loaded price addons, in order.
+function S.PriceAddons()
+    local out = {}
+    for _, src in ipairs(S.PRICE_SOURCES) do if src.on() then out[#out + 1] = src.name end end
+    return out
+end
+function S.HasPrices() return #S.PriceAddons() > 0 end

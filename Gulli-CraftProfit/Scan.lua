@@ -107,22 +107,14 @@ local function idFromLink(link)
     return link and tonumber(link:match("item:(%d+)"))
 end
 
--- Auctionator's price (copper) and its age in days, or nil without Auctionator.
+-- Auctionator's API, or nil without Auctionator.
 local function auctionator()
     return Auctionator and Auctionator.API and Auctionator.API.v1
 end
-function ns.AuctionPrice(id)
-    local api = auctionator()
-    if not api or not api.GetAuctionPriceByItemID then return nil end
-    local ok, price = pcall(api.GetAuctionPriceByItemID, CALLER, id)
-    if not ok or not price or price <= 0 then return nil end
-    local age = 0
-    if api.GetAuctionAgeByItemID then
-        local ok2, a = pcall(api.GetAuctionAgeByItemID, CALLER, id)
-        if ok2 and a then age = a end
-    end
-    return price, age
-end
+-- Auction prices come from every price addon through the shared reader (S.AuctionPrice in Skin.lua).
+function ns.AuctionPrice(id) return ns.Skin.AuctionPrice(id, ns.FRESH_DAYS) end
+function ns.PriceAddons() return ns.Skin.PriceAddons() end
+function ns.HasPrices() return ns.Skin.HasPrices() end
 function ns.HasAuctionator() return auctionator() ~= nil end
 
 -- ---------- the profession window ----------
@@ -177,6 +169,35 @@ local function professionLine()
     end
     if skill <= 0 and cap <= 0 then return nil end
     return name, skill, cap
+end
+
+-- Whether this character has the profession, by the spellbook; nil when the spellbook lists none.
+-- A profession saved from another player's window (a trade link) is not the character's.
+local function owned(name)
+    if not GetProfessions or not GetProfessionInfo then return nil end
+    local list, any = { GetProfessions() }, false
+    for k = 1, 6 do
+        local i = list[k]
+        if i then
+            any = true
+            if GetProfessionInfo(i) == name then return true end
+        end
+    end
+    if any then return false end
+end
+ns.OwnsProfession = owned
+
+-- The window shows another player's profession (a trade link, the guild) or an NPC's.
+local function foreign()
+    local T = C_TradeSkillUI
+    if not T then return false end
+    for _, f in ipairs({ "IsTradeSkillLinked", "IsTradeSkillGuild", "IsTradeSkillGuildMember", "IsNPCCrafting" }) do
+        if T[f] then
+            local ok, v = pcall(T[f])
+            if ok and v then return true end
+        end
+    end
+    return false
 end
 
 -- A saved profession the game gave no skill for (saved by version 1.1.0 and older).
@@ -270,8 +291,9 @@ end
 
 -- Saves the open profession for this character. Returns its name and the recipe count.
 function ns.ScanProfession()
+    if foreign() then return nil, 0 end
     local name, skill, cap = professionLine()
-    if not name then return nil, 0 end
+    if not name or owned(name) == false then return nil, 0 end
     local db = charDB()
     db.profs[name] = db.profs[name] or { recipes = {} }
     local prof = db.profs[name]
@@ -289,14 +311,16 @@ end
 
 function ns.Professions()
     local out = {}
-    for name, p in pairs(charDB().profs) do if not empty(p) then out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0, icon = p.icon } end end
+    for name, p in pairs(charDB().profs) do if not empty(p) and owned(name) ~= false then out[#out + 1] = { name = name, skill = p.skill or 0, cap = p.cap or 0, icon = p.icon } end end
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
 end
 
 function ns.SetProfession(name)
-    if not charDB().profs[name] then return end
+    if not charDB().profs[name] or owned(name) == false then return end
+    local from = charDB().current
     charDB().current = name
+    ns.SwitchView(from, name)
     ns.Rebuild(false, "pick")
 end
 
@@ -685,10 +709,10 @@ local function current()
     local db = charDB()
     local name = db.current
     local prof = name and db.profs[name]
-    if not prof or empty(prof) then
+    if not prof or empty(prof) or owned(name) == false then
         name, prof = nil, nil
         for n, p in pairs(db.profs) do
-            if not empty(p) and (not name or n < name) then name, prof = n, p end
+            if not empty(p) and owned(n) ~= false and (not name or n < name) then name, prof = n, p end
         end
         if not prof then return nil end
         db.current = name
@@ -799,6 +823,7 @@ function ns.Probe()
     local lines = {}
     local function yes(v) return v and "yes" or "no" end
     lines[#lines + 1] = "Auctionator API v1: " .. yes(auctionator())
+    lines[#lines + 1] = "Price addons: " .. (#ns.PriceAddons() > 0 and table.concat(ns.PriceAddons(), ", ") or "none")
     lines[#lines + 1] = "C_TradeSkillUI: " .. yes(T) .. ", GetAllRecipeIDs: " .. yes(T and T.GetAllRecipeIDs)
         .. ", GetRecipeSchematic: " .. yes(T and T.GetRecipeSchematic)
     lines[#lines + 1] = "classic GetTradeSkillInfo: " .. yes(GetTradeSkillInfo)

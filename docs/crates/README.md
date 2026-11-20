@@ -39,7 +39,7 @@ A Waylaid Crate takes any one bundle from its list: 10 Wintersbite, 10 Firebloom
 
 **By hand:** download `Gulli-Crates-<version>-forever.zip` from the [releases](https://github.com/Gulliby-development/gulli-toolkit/releases) and unpack it into `Interface/AddOns`. Then type `/reload`.
 
-You also need [Auctionator](https://www.curseforge.com/wow/addons/auctionator) for the prices. Scan the auction house with it now and then.
+You also need a price addon for the prices: [Auctionator](https://www.curseforge.com/wow/addons/auctionator), auxForever, Naowh Forever, TradeSkillMaster or Hammerprice. Scan the auction house with it now and then. The shopping list and the note about old prices work with Auctionator only.
 
 ## How to use it
 
