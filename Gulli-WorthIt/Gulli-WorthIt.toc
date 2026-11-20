@@ -21,6 +21,7 @@
 ## X-License: GPL-3.0
 
 Locales.lua
+Tips.lua
 Data.lua
 Core.lua
 Skin.lua

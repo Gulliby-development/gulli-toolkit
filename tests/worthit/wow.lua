@@ -212,7 +212,7 @@ function W.Pin()
 end
 
 function Load()
-    local ns = W.Load("Gulli-WorthIt", { "Locales.lua", "Data.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    local ns = W.Load("Gulli-WorthIt", { "Locales.lua", "Tips.lua", "Data.lua", "Core.lua", "Skin.lua", "UI.lua" })
     ns.Skin.Toast = function(o) W.toasts[#W.toasts + 1] = o end
     return ns
 end

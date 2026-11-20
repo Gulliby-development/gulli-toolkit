@@ -245,6 +245,9 @@ local function iconButton(parent, text, icon, primary)
     return b
 end
 
+-- The rows under a reward: a quest of the chain, a head, and a wrapped "what to do" line.
+local STEP_H, TIP_LEFT, TIP_RIGHT, TIP_PAD, TIP_WIDTH = 24, 28, 12, 5, 420
+
 local function buildDetail(parent)
     local d = S.Card(parent)
     d.icon = S.IconBox(d, 44)
@@ -272,23 +275,53 @@ local function buildDetail(parent)
     d.what = line(-120, 13, S.TEXT)
     d.where = line(-139, 12, S.MUTED)
     d.offers = line(-160, 12, S.MUTED)
-    d.chain = S.Text(d, 12, S.GOLD_DIM, nil, "bold")
-    d.chain:SetPoint("TOPLEFT", 14, -186)
+    -- One scrolling list: what to do (wrapped lines), then the chain's quests.
     d.stepsBox = CreateFrame("Frame", nil, d)
-    d.stepsBox:SetPoint("TOPLEFT", 8, -204)
+    d.stepsBox:SetPoint("TOPLEFT", 8, -180)
     d.stepsBox:SetPoint("BOTTOMRIGHT", -8, 84)
-    d.steps = S.List(d.stepsBox, 24, function(r)
+    d.measure = S.Text(d, 12)
+    d.measure:SetJustifyH("LEFT")
+    d.measure:Hide()
+    d.steps = S.List(d.stepsBox, STEP_H, function(r)
         r.mark = r:CreateTexture(nil, "ARTWORK")
         r.mark:SetSize(14, 14)
         r.mark:SetPoint("LEFT", 6, 0)
         r.level = S.Text(r, 12, S.FAINT)
         r.level:SetPoint("RIGHT", -8, 0)
         r.name = S.Text(r, 12)
-        r.name:SetPoint("LEFT", 28, 0)
+        r.name:SetPoint("LEFT", TIP_LEFT, 0)
         r.name:SetPoint("RIGHT", r.level, "LEFT", -6, 0)
         r.name:SetJustifyH("LEFT")
         r.name:SetWordWrap(false)
+        r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
+        r.head:SetPoint("BOTTOMLEFT", 6, 4)
+        r.head:SetPoint("RIGHT", -8, 0)
+        r.head:SetJustifyH("LEFT")
+        r.head:SetWordWrap(false)
+        r.num = S.Text(r, 12, S.FAINT)
+        r.num:SetPoint("TOPLEFT", 8, -TIP_PAD)
+        r.tip = S.Text(r, 12, S.TEXT)
+        r.tip:SetPoint("TOPLEFT", TIP_LEFT, -TIP_PAD)
+        r.tip:SetPoint("RIGHT", -TIP_RIGHT, 0)
+        r.tip:SetJustifyH("LEFT")
+        r.tip:SetJustifyV("TOP")
     end, function(r, st)
+        local step = not st.head and not st.tip
+        r.mark:SetShown(step)
+        r.level:SetShown(step)
+        r.name:SetShown(step)
+        r.head:SetShown(st.head ~= nil)
+        r.num:SetShown(st.tip ~= nil)
+        r.tip:SetShown(st.tip ~= nil)
+        r.line:SetShown(not st.head)
+        if st.head then
+            r.head:SetText(st.head)
+            return
+        elseif st.tip then
+            r.num:SetText(st.n .. ".")
+            r.tip:SetText(st.tip)
+            return
+        end
         r.mark:SetTexture(st.done and STATE_ICON.done or (st.now and STATE_ICON.take) or STATE_ICON.later)
         r.mark:SetDesaturated(not st.done and not st.now)
         r.name:SetText(st.n .. ".  " .. st.name)
@@ -296,6 +329,14 @@ local function buildDetail(parent)
         r.level:SetText(tostring(st.level))
         r.level:SetTextColor(unpack(st.done and S.FAINT or S.LevelColor(st.level)))
     end)
+    d.steps.heightOf = function(st)
+        if st.head then return STEP_H end
+        if not st.tip then return STEP_H end
+        local w = d.stepsBox:GetWidth() or 0
+        d.measure:SetWidth((w > 60 and w or TIP_WIDTH) - TIP_LEFT - TIP_RIGHT)
+        d.measure:SetText(st.tip)
+        return math.ceil(tonumber(d.measure:GetStringHeight()) or 14) + 2 * TIP_PAD
+    end
     d.steps:SetAllPoints()
 
     d.lead = iconButton(d, L.LEAD, ACT_ICON.lead, true)
@@ -324,7 +365,7 @@ local function buildDetail(parent)
         local e = shown[selected]
         if e then ns.SetHidden(e.quest, true) end
     end)
-    d.parts = { d.icon, d.name, d.kind, d.gain, d.state, d.what, d.where, d.offers, d.chain, d.stepsBox,
+    d.parts = { d.icon, d.name, d.kind, d.gain, d.state, d.what, d.where, d.offers, d.stepsBox,
                 d.lead, d.map, d.link, d.hide }
     d.pick = S.Empty(d)
     d.pick:Set(L.PICK, "")
@@ -362,9 +403,10 @@ local function paintDetail(e, bags)
     else
         detail.offers:SetText("")
     end
-    detail.chain:SetText(S.Upper(L.CHAIN) .. (e.steps > 1 and
-        ("  " .. colour(L.STEP_OF:format(math.min(e.step, e.steps), e.steps), S.FAINT)) or ""))
-    detail.steps:SetData(ns.Steps(e))
+    -- Without the line of the other rewards the list starts higher.
+    detail.stepsBox:SetPoint("TOPLEFT", 8, #e.options > 1 and -180 or -160)
+    detail.steps:SetData(ns.DetailRows(e, S.Upper(L.CHAIN) .. (e.steps > 1 and
+        ("  " .. colour(L.STEP_OF:format(math.min(e.step, e.steps), e.steps), S.FAINT)) or ""), S.Upper(L.TIPS)))
     local leads = ns.Leads(e.quest)
     detail.lead:Fit(leads and L.STOP or L.LEAD, 150)
     detail.lead:SetEnabled(leads or (e.group == "now" and not ns.paused))
