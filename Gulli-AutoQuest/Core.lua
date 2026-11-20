@@ -538,6 +538,35 @@ function ns.RowOrder(list)
     return out
 end
 
+-- The place of the kind the big button's next press tries first, among n kinds in ns.RowOrder:
+-- a smooth weighted round robin where the kind at place r weighs 1/sqrt(r), so the top kinds (the
+-- ones fought or killed last) come up more often and every kind still comes up in turn. With 19
+-- kinds the first comes about every 7th press, the 19th about every 31st. Never the kind just
+-- tried (now): the press after it goes to another kind.
+ns.picks = {}
+function ns.NextPick(n, now)
+    if n < 2 then return 1 end
+    local p = ns.picks
+    if p.n ~= n then ns.picks = { n = n }; p = ns.picks end
+    local best, total
+    total = 0
+    for r = 1, n do
+        local w = 1 / math.sqrt(r)
+        p[r] = (p[r] or 0) + w
+        total = total + w
+        if r ~= now and (not best or p[r] > p[best]) then best = r end
+    end
+    p[best] = p[best] - total
+    return best
+end
+
+-- names[first] in front, then the others in their order: the macro's order for one press.
+function ns.PressOrder(names, first)
+    local out = { names[first] }
+    for i, n in ipairs(names) do if i ~= first then out[#out + 1] = n end end
+    return out
+end
+
 -- A creature's name in the client's language, from its link's tooltip; nil while the client
 -- does not have it (asking makes it fetch the creature), false when the client cannot tell.
 local known = {}

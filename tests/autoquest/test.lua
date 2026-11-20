@@ -349,16 +349,17 @@ test("quest mob key: a press on a living quest mob goes to the next of it, else 
     UnitIsDead = function(u) return u == "target" and tgt and tgt.dead or false end
     UnitName = function(u) if u == "player" then return "Tester" end if u == "target" then return tgt and tgt.name end end
     eq(click(b), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider"), "no target: the first kind, the others behind it")
-    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "the next kind comes first")
+    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Kobold Vermin", "Forest Spider"), "the next kind comes first, the others in the list's order")
     tgt = { name = "Young Wolf" }
-    eq(click(b), mac(true, "Young Wolf", "Forest Spider", "Kobold Vermin"), "a living wolf: the next wolf, the target stays")
-    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "the macro back, no kind skipped")
+    eq(click(b), mac(true, "Young Wolf", "Kobold Vermin", "Forest Spider"), "a living wolf: the next wolf, the target stays")
+    eq(b:GetAttribute("macrotext"), mac(false, "Young Wolf", "Kobold Vermin", "Forest Spider"), "the macro back, no kind skipped")
     tgt = { name = "Kobold Vermin" }
     eq(click(b), mac(true, "Kobold Vermin", "Young Wolf", "Forest Spider"), "a living kobold: the next kobold")
     tgt.dead = true
-    eq(click(b), mac(false, "Young Wolf", "Forest Spider", "Kobold Vermin"), "a corpse is no reason to stay")
+    eq(click(b), mac(false, "Young Wolf", "Kobold Vermin", "Forest Spider"), "a corpse is no reason to stay")
     tgt = { name = "Stormwind Guard" }
-    eq(click(b), mac(false, "Forest Spider", "Kobold Vermin", "Young Wolf"), "another unit: cleared, the next kind")
+    eq(click(b), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider"), "another unit: cleared, the next pick (the top kind again)")
+    eq(b:GetAttribute("macrotext"), mac(false, "Forest Spider", "Kobold Vermin", "Young Wolf"), "then the last kind, in turn")
     -- A name the game hides counts as no target.
     tgt = { name = "Young Wolf" }
     issecretvalue = function(v) return v == "Young Wolf" end
@@ -447,8 +448,8 @@ test("quest mob list: the kinds worked on last come first, the faces are models 
     W.Fire("QUEST_LOG_UPDATE")
     eq(mobs(), "Murloc,Kobold Vermin,Young Wolf", "a murloc killed: its row comes first")
     eq(rows[1]:GetAttribute("macrotext"), mac(false, "Murloc"))
-    eq(btn:GetAttribute("macrotext"), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider", "Murloc"),
-       "the big button keeps every kind in the log's order")
+    eq(btn:GetAttribute("macrotext"), mac(false, "Murloc", "Kobold Vermin", "Young Wolf", "Forest Spider"),
+       "the big button tries the kinds in the list's order too")
     -- A fight with a wolf: the wolf first, set just before the lockdown.
     local tgt = { name = "Young Wolf" }
     UnitName = function(u) if u == "player" then return "Tester" end if u == "target" then return tgt.name end end
@@ -480,13 +481,13 @@ test("quest mob list: the kinds worked on last come first, the faces are models 
     eq(wolf:IsShown(), true)
     eq(rows[2].face.tex:IsShown(), false, "no icon behind the model")
     -- The big button shows the mob its next press tries first.
-    ns.db.mobIds["Kobold Vermin"] = 300
+    ns.db.mobIds["Forest Spider"] = 300
     cached = true
     ns.PaintFaces()
-    eq(rawget(btn.model, "creature"), 300)
+    eq(rawget(btn.model, "creature"), 300, "the spider, at the top of the list")
     eq(btn.icon:IsShown(), false, "no icon behind the button's model")
     UnitName = function(u) if u == "player" then return "Tester" end end
-    eq(click(btn), mac(false, "Kobold Vermin", "Young Wolf", "Forest Spider", "Murloc"))
+    eq(click(btn), mac(false, "Forest Spider", "Young Wolf", "Murloc", "Kobold Vermin"), "the top kind first, the others in the list's order")
     eq(rawget(btn.model, "creature"), 299, "the next kind's face")
     -- A name the game hides is never kept.
     issecretvalue = function(v) return v == "Murloc" end
@@ -549,6 +550,24 @@ test("quest mob list: the mobs that drop an item to collect join it, with the it
     W.RunTimers()
     eq(b:GetAttribute("macrotext"), mac(false, "Kobold Vermin", "Гнолл Речной Лапы"), "the button looks for it too")
     C_TooltipInfo = nil
+end)
+
+test("quest mob button: the kinds at the top of the list come up more often, each in turn", function()
+    local ns = Load and (function() Fake({ qlog = {} }); return Load() end)()
+    ns.picks = {}
+    local seen, now = {}, 1
+    for _ = 1, 1900 do
+        local r = ns.NextPick(19, now)
+        eq(r ~= now, true, "never the kind just tried")
+        seen[r] = (seen[r] or 0) + 1
+        now = r
+    end
+    for r = 1, 19 do eq((seen[r] or 0) > 0, true, "kind " .. r .. " comes up") end
+    eq(seen[1] > seen[3] and seen[3] > seen[10] and seen[10] > seen[19], true, "the top ones more often")
+    eq(seen[1] > 2.5 * seen[19], true)
+    eq(ns.NextPick(1, 1), 1)
+    local o = ns.PressOrder({ "a", "b", "c", "d" }, 3)
+    eq(table.concat(o, ","), "c,a,b,d")
 end)
 
 test("quest mob list: a quest of another zone's header joins when its mobs spawn here", function()
