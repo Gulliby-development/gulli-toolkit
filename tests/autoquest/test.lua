@@ -551,6 +551,27 @@ test("quest mob list: the mobs that drop an item to collect join it, with the it
     C_TooltipInfo = nil
 end)
 
+test("quest mob list: a quest of another zone's header joins when its mobs spawn here", function()
+    Fake({ qlog = { { title = "Un'Goro Crater", isHeader = true },
+                    { questID = 60, obj = { { type = "monster", text = "Diemetradon slain: 2/8" } } },
+                    { title = "Tanaris", isHeader = true },
+                    { questID = 4504, obj = { { type = "item", text = "Super Sticky Tar: 7/12", numFulfilled = 7, numRequired = 12 } } },
+                    { questID = 61, obj = { { type = "monster", text = "Sandfury Troll slain: 0/10" } } } } })
+    GetRealZoneText = function() return "Un'Goro Crater" end
+    local ns = Load()
+    ns.DROPS = { [4504] = { { 11834, 6518 } } }
+    ns.NPC_NAME = { [6518] = "Tar Lurker" }
+    ns.QUEST_AREAS = { [4504] = { 490 }, [61] = { 440 } }
+    C_Map = C_Map or {}
+    local was = C_Map.GetAreaInfo
+    C_Map.GetAreaInfo = function(a) return ({ [490] = "Un'Goro Crater", [440] = "Tanaris" })[a] end
+    local t = {}
+    for i, m in ipairs(ns.QuestMobList()) do t[i] = m.name .. " " .. m.have .. "/" .. m.need end
+    eq(table.concat(t, ","), "Diemetradon 2/8,Tar Lurker 7/12",
+       "the Tanaris quest whose tar lurkers live here; not the one whose trolls are in Tanaris")
+    C_Map.GetAreaInfo = was
+end)
+
 test("quest mob button: shows from the hub's switch while a quest needs a mob, clicks like the key", function()
     local reg
     GulliToolkit = { Register = function(t) reg = t end }

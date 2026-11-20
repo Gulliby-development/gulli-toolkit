@@ -393,6 +393,25 @@ end
 -- collect (ns.DROPS, with the item's count). A mob that two quests ask for is one entry. Quests of
 -- other zones stay out, so the key never reaches for a mob of a zone far away. The second value
 -- is true while a dropper's name is still asked from the client.
+-- A quest's work is here: under the log header of this zone, or its mobs spawn here (the data's
+-- area ids, named by the client), as for a quest of a neighbour zone's header.
+local areaNames = {}
+local function areaName(a)
+    if areaNames[a] == nil then
+        local name = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(a)
+        areaNames[a] = name or false
+    end
+    return areaNames[a]
+end
+
+local function workHere(id, zone, here)
+    if zone == here then return true end
+    for _, a in ipairs(ns.QUEST_AREAS and ns.QUEST_AREAS[id] or {}) do
+        if areaName(a) == here then return true end
+    end
+    return false
+end
+
 function ns.QuestMobList()
     local Q = C_QuestLog or {}
     if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
@@ -404,7 +423,7 @@ function ns.QuestMobList()
         local info = Q.GetInfo(i)
         if info and info.isHeader then
             zone = info.title
-        elseif info and info.questID and not info.isHidden and here and zone == here then
+        elseif info and info.questID and not info.isHidden and here and workHere(info.questID, zone, here) then
             local k = 0
             for _, o in ipairs(Q.GetQuestObjectives(info.questID) or {}) do
                 if o.type == "item" then k = k + 1 end
