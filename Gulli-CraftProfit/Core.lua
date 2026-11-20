@@ -410,6 +410,71 @@ function ns.CraftCap(state, P)
     return math.max(0, ns.Target(state, P) - state.skill) + ns.CRAFTS_SPARE
 end
 
+-- Why a stretch of the route crafts its recipe: the planner's own reasons at the stretch's first
+-- point, as { key, args... } entries for the window (WHY_<key> texts), and the next best recipes
+-- with what they would cost more per point. Built from the same numbers the choice used.
+ns.WHY_ALTS = 2
+local POOLS = { "bags", "bank", "mail", "alts", "gather" }
+function ns.Why(state, P, st, known, best, cands, w, s0)
+    local r = state.recipes[best.rid]
+    local out = { reasons = {}, alts = {} }
+    local function why(...) out.reasons[#out.reasons + 1] = { ... } end
+    if not best.earn then
+        if best.ch >= 1 then why("ORANGE") else why("CHANCE", math.floor(best.ch * 100 + 0.5), best.n) end
+    end
+    if r.cd then why("CD") end
+    -- where the reagents come from: the cheapest way of each, as the plan takes them
+    local from = {}
+    local ids = {}
+    for id in pairs(r.r) do ids[#ids + 1] = id end
+    table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
+    for _, id in ipairs(ids) do
+        local _, how = unitCost(state, P, st, known, id)
+        if how == "own" then
+            local s = st[id]
+            for _, pool in ipairs(POOLS) do
+                if s and (s[pool] or 0) > 0 then how = pool; break end
+            end
+        end
+        if how then
+            from[how] = from[how] or {}
+            table.insert(from[how], id)
+        end
+    end
+    for _, how in ipairs({ "bags", "bank", "mail", "alts", "gather", "own", "craft", "vendor", "ah" }) do
+        if from[how] then why("FROM_" .. how, from[how]) end
+    end
+    if best.value > 0 then why(best.how == "ah" and "SELL_AH" or "SELL_VENDOR", best.value) end
+    if best.earn then why("GAIN", -best.cost)
+    elseif best.cost < 0 then why("EARN", -best.cost) else why("COST", best.cost) end
+    if not r.learned and r.src and (r.src.cost or 0) > 0 then why("RECIPE_" .. (r.src.t or "trainer"), r.src.cost) end
+    -- the others, best first: those the choice beat, and why a cheaper one lost
+    local others = {}
+    for _, c in ipairs(cands) do if c.rid ~= best.rid then others[#others + 1] = c end end
+    table.sort(others, function(a, b)
+        if math.abs(a.score - b.score) > 1e-9 then return a.score < b.score end
+        return tostring(a.rid) < tostring(b.rid)
+    end)
+    if best.earn then
+        -- a profit run weighs whole series; ns.Earn adds the other recipes it tried
+    elseif #others == 0 then
+        why("ONLY")
+    else
+        local cheaper
+        for _, c in ipairs(others) do if c.cost < best.cost - 1 then cheaper = c; break end end
+        -- a recipe that costs less gold lost on time: the route counts each craft (fewer crafts)
+        if cheaper and w > 0 and cheaper.n > best.n + 1e-9 then why("FAST", cheaper.rid, best.cost - cheaper.cost)
+        elseif not cheaper then why("CHEAPEST", others[1].cost - best.cost) end
+    end
+    for i = 1, math.min(ns.WHY_ALTS, #others) do
+        local c = others[i]
+        local cr = state.recipes[c.rid]
+        out.alts[#out.alts + 1] = { rid = c.rid, cost = c.cost, more = c.cost - best.cost, n = c.n, color = ns.Color(cr, s0 or state.skill),
+                                    buy = not cr.learned or nil }
+    end
+    return out
+end
+
 -- One pass: at each skill point the recipe with the lowest expected cost per point (plus time
 -- by mode). `allowed`: the recipes it may use.
 local function planWith(state, P, allowed)
@@ -438,24 +503,33 @@ local function planWith(state, P, allowed)
         else
             local best
             local last = acc.segs[#acc.segs]
+            -- every recipe that could take this point, for the reasons a stretch shows (ns.Why)
+            local cands = {}
             for _, rid in ipairs(ids) do
                 local r = state.recipes[rid]
-                -- `only`: a run of one recipe; the others still make its intermediates
-                local ch = (not P.only or P.only == rid) and ns.Chance(r, s) or 0
+                local ch = ns.Chance(r, s)
                 -- a cooldown craft: once, and only a skill point it makes for sure
                 if ch > 0 and r.cd and 1 / ch > ns.CdLeft(state, r) - (acc.cdUsed[rid] or 0) + 1e-9 then ch = 0 end
                 if ch > 0 then
                     local n = 1 / ch
-                    local value = r.out and ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1) or 0
-                    local cost = n * (reagentCost(state, P, st, allowed, rid) - value)
+                    local value, how = 0, nil
+                    if r.out then value, how = ns.SellValue(state, P, r.out, acc.made[r.out] or 0); value = value * (r.count or 1) end
+                    local rc = reagentCost(state, P, st, allowed, rid)
+                    local cost = n * (rc - value)
                     if cost < math.huge then
-                        local score = cost + n * w + ((last and last.rid ~= rid) and ns.SWITCH or 0)
-                        if not best or score < best.score - 1e-9 then best = { rid = rid, n = n, score = score } end
+                        local raw = cost + n * w
+                        local c = { rid = rid, n = n, ch = ch, rc = rc, value = value, how = how, cost = cost, raw = raw,
+                                    score = raw + ((last and last.rid ~= rid) and ns.SWITCH or 0) }
+                        cands[#cands + 1] = c
+                        -- `only`: a run of one recipe; the others still make its intermediates
+                        if (not P.only or P.only == rid) and (not best or c.score < best.score - 1e-9) then best = c end
                     end
                 end
             end
             if not best then acc.warn = { "WARN_NONE", s }; break end
             local r = state.recipes[best.rid]
+            local why
+            if not (last and last.rid == best.rid and last.to == s) then why = ns.Why(state, P, st, allowed, best, cands, w, s) end
             for id, k in pairs(r.r) do take(state, P, st, allowed, acc, id, k * best.n) end
             if r.out then add(acc.made, r.out, best.n * (r.count or 1)) end
             acc.crafts = acc.crafts + best.n
@@ -465,7 +539,7 @@ local function planWith(state, P, allowed)
             if last and last.rid == best.rid and last.to == s then
                 last.to = s + 1; last.n = last.n + best.n
             else
-                acc.segs[#acc.segs + 1] = { rid = best.rid, from = s, to = s + 1, n = best.n, color = ns.Color(r, s) }
+                acc.segs[#acc.segs + 1] = { rid = best.rid, from = s, to = s + 1, n = best.n, color = ns.Color(r, s), why = why }
             end
             s = s + 1
         end
@@ -541,11 +615,13 @@ local function earnWith(state, P, known, rid)
             if cost < math.huge then
                 local value = ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1)
                 local gain = value - cost
-                if gain >= math.max(1, P.minGain or 0) and (not best or gain > best.gain) then best = { rid = rid, gain = gain } end
+                if gain >= math.max(1, P.minGain or 0) and (not best or gain > best.gain) then best = { rid = rid, gain = gain, value = value, how = select(2, ns.SellValue(state, P, r.out, acc.made[r.out] or 0)) } end
             end
         end
         if not best then break end
         local r = state.recipes[best.rid]
+        -- the reasons of the run, from the stock before its first craft takes from it
+        local why = not bySeg[best.rid] and ns.Why(state, P, st, known, { rid = best.rid, earn = true, cost = -best.gain, value = best.value, how = best.how }, {}, 0)
         for id, k in pairs(r.r) do take(state, P, st, known, acc, id, k) end
         add(acc.made, r.out, r.count or 1)
         acc.crafts = acc.crafts + 1
@@ -553,7 +629,7 @@ local function earnWith(state, P, known, rid)
         if not r.learned then acc.buyRecipes[best.rid] = true end
         local sg = bySeg[best.rid]
         if not sg then
-            sg = { rid = best.rid, from = state.skill, to = state.skill, n = 0, color = ns.Color(r, state.skill) }
+            sg = { rid = best.rid, from = state.skill, to = state.skill, n = 0, color = ns.Color(r, state.skill), why = why }
             bySeg[best.rid] = sg
             acc.segs[#acc.segs + 1] = sg
         end
@@ -595,6 +671,7 @@ function ns.Earn(state, P, own)
     end
     table.sort(cands, function(a, b) return tostring(a) < tostring(b) end)
     local best
+    local tried = {}
     for _, rid in ipairs(cands) do
         local k = known
         if not known[rid] then
@@ -603,7 +680,23 @@ function ns.Earn(state, P, own)
             k[rid] = true
         end
         local p = earnWith(state, Q, k, rid)
-        if #p.segs > 0 and p.net >= 1 and (not best or p.net > best.net + 1) then best = p end
+        if #p.segs > 0 and p.net >= 1 then
+            tried[#tried + 1] = p
+            if not best or p.net > best.net + 1 then best = p end
+        end
+    end
+    -- the next best series, for the reasons of the run (ns.Why)
+    local why = best and best.segs[1] and best.segs[1].why
+    if why then
+        table.sort(tried, function(a, b) return a.net > b.net end)
+        for _, p in ipairs(tried) do
+            if p ~= best and #why.alts < ns.WHY_ALTS then
+                local pr = state.recipes[p.segs[1].rid]
+                why.alts[#why.alts + 1] = { rid = p.segs[1].rid, net = p.net, more = best.net - p.net, color = p.segs[1].color,
+                                            buy = not pr.learned or nil }
+            end
+        end
+        if #tried > 1 then why.reasons[#why.reasons + 1] = { "BEST_RUN", best.net } end
     end
     return best or earnWith(state, Q, known, nil)
 end
@@ -681,6 +774,23 @@ end
 -- The next run of a levelling plan: its first recipe, crafted until the plan switches to the
 -- next one, planned again to that skill so the shopping covers this run only. The window plans
 -- the next run anew once the skill or the prices change. `full` keeps the whole way.
+-- A run planned with one recipe (`only`) takes the reasons of the whole way it follows: there the
+-- recipe was chosen against every other, in the run it had no rival.
+local function borrowWhy(run, way)
+    if not way or way == run then return end
+    local stretches, cur = {}, nil
+    for _, x in ipairs(way.segs) do
+        if cur and cur.rid == x.rid and cur.to == x.from then cur.to = x.to
+        else cur = { rid = x.rid, from = x.from, to = x.to, why = x.why }; stretches[#stretches + 1] = cur end
+    end
+    for _, sg in ipairs(run.segs) do
+        for _, c in ipairs(stretches) do
+            if c.why and c.rid == sg.rid and c.from <= sg.from and sg.from < c.to then sg.why = c.why; break end
+        end
+    end
+end
+ns.BorrowWhy = borrowWhy
+
 function ns.NextRun(state, P, full)
     local first = full.segs[1]
     if not first or first.to >= full.reached then full.full = full; return full end
@@ -689,6 +799,7 @@ function ns.NextRun(state, P, full)
     Q.target, Q.only = first.to, first.rid
     local run = ns.Plan(state, Q)
     run.full = full
+    borrowWhy(run, full)
     return run
 end
 
@@ -773,6 +884,7 @@ function ns.Legs(state, P, first)
                 for k, v in pairs(Q) do R[k] = v end
                 R.target, R.only = to, sg.rid
                 run = ns.Plan(st, R)
+                borrowWhy(run, way)
                 if run.reached <= s then
                     -- that recipe alone does not get there from what the runs before left (stock
                     -- used up, a pattern dropped as not worth it for so short a run): any recipe
@@ -800,7 +912,7 @@ function ns.Legs(state, P, first)
                 for k, v in pairs(Q) do M[k] = v end
                 M.target, M.only = run.reached, rid
                 merged = ns.Plan(last.state, M)
-                if merged.reached ~= run.reached then merged = nil end
+                if merged.reached ~= run.reached then merged = nil else borrowWhy(merged, whole) end
             end
             if merged then
                 last.to, last.plan = run.reached, merged

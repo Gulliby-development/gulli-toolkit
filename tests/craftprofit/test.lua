@@ -2749,4 +2749,87 @@ test("the game's cooldown of a recipe is saved: when it is ready, and that it ha
     eq(st.recipes[101].cd, nil)
 end)
 
+
+test("each stretch of a route says why its recipe was chosen, and the next best ones", function()
+    local c = core()
+    local st = state()
+    local plan = c.Plan(st, prefs())
+    local saw = {}
+    for i, sg in ipairs(plan.segs) do
+        local prev = plan.segs[i - 1]
+        if not (prev and prev.rid == sg.rid and prev.to == sg.from) then
+            assert(sg.why, "a stretch has its reasons: " .. tostring(sg.rid) .. " " .. sg.from)
+            local first = sg.why.reasons[1][1]
+            assert(first == "ORANGE" or first == "CHANCE", "the colour comes first")
+            for _, x in ipairs(sg.why.reasons) do saw[x[1]] = true end
+        end
+    end
+    assert(saw.COST or saw.EARN, "the cost or gain of a point")
+    assert(saw.FROM_bags or saw.FROM_bank or saw.FROM_craft, "where the reagents come from")
+    -- every reason and alternative is a text in the window, with no format left over
+    c.view.state = st
+    for _, sg in ipairs(plan.segs) do
+        for _, x in ipairs(sg.why and sg.why.reasons or {}) do
+            local t = c.WhyText(x)
+            assert(t and not t:find("%%[sd]"), x[1])
+        end
+        for _, a in ipairs(sg.why and sg.why.alts or {}) do assert(c.WhyAltSide(a) ~= "") end
+        if sg.why then assert(c.WhyTip(sg)) end
+    end
+
+    -- two orange recipes: the cheaper is chosen and says so; the other is the alternative
+    local function two(extra)
+        local s2 = { skill = 100, cap = 150, level = 30, items = {
+            cloth = { name = "Cloth", ah = 100, age = 0.1, vend = 10, bags = 200 },
+            a = { name = "A", vend = 1 }, b = { name = "B", vend = 1 },
+        }, recipes = {
+            ra = { name = "Cheap", skill = { 90, 110, 130 }, r = { cloth = 1 }, out = "a", learned = true },
+            rb = { name = "Dear", skill = { 90, 110, 130 }, r = { cloth = 3 }, out = "b", learned = true },
+        } }
+        for k, v in pairs(extra or {}) do s2.recipes[k] = v end
+        return s2
+    end
+    local s2 = two()
+    local p2 = c.Plan(s2, prefs({ target = 101 }))
+    local w2 = p2.segs[1].why
+    eq(p2.segs[1].rid, "ra")
+    local keys = {}
+    for _, x in ipairs(w2.reasons) do keys[x[1]] = x end
+    assert(keys.ORANGE and keys.FROM_bags and keys.CHEAPEST, "orange, own cloth, cheapest")
+    eq(w2.alts[1].rid, "rb")
+    assert(w2.alts[1].more > 0, "the alternative costs more a point")
+    -- alone: the only recipe that gives a point
+    local s3 = two()
+    s3.recipes.rb = nil
+    c.ForgetMakers(s3.recipes)
+    local w3 = c.Plan(s3, prefs({ target = 101 })).segs[1].why
+    local only = false
+    for _, x in ipairs(w3.reasons) do if x[1] == "ONLY" then only = true end end
+    assert(only and #w3.alts == 0, "the only recipe")
+    -- speed: an orange craft beats a cheaper green one that needs more crafts
+    local s4 = two({ rc = { name = "Slow", skill = { 50, 60, 104 }, r = {}, out = "a", learned = true } })
+    s4.recipes.rb = nil
+    s4.recipes.ra.r = { cloth = 2 }
+    c.ForgetMakers(s4.recipes)
+    local P4 = prefs({ target = 101 }); P4.w = 1e6
+    local p4 = c.Plan(s4, P4)
+    eq(p4.segs[1].rid, "ra")
+    local fast
+    for _, x in ipairs(p4.segs[1].why.reasons) do if x[1] == "FAST" then fast = x end end
+    assert(fast and fast[2] == "rc", "faster than the cheaper green one")
+    -- a profit run: what one craft gains, and the series it beat
+    local e = c.Earn(state(), prefs())
+    local we = e.segs[1] and e.segs[1].why
+    assert(we, "a profit run has its reasons")
+    local gain, best = false, false
+    for _, x in ipairs(we.reasons) do
+        if x[1] == "GAIN" then gain = true end
+        if x[1] == "BEST_RUN" then best = true end
+        assert(x[1] ~= "ORANGE" and x[1] ~= "CHANCE", "a profit run does not level")
+        assert(not c.WhyText(x):find("%%[sd]"), x[1])
+    end
+    assert(gain, "the gain of a craft")
+    if #we.alts > 0 then assert(best, "the best series against the next"); assert(c.WhyAltSide(we.alts[1]) ~= "") end
+end)
+
 W.finish()

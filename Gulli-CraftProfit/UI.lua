@@ -398,6 +398,86 @@ local function refreshSettings()
     end
 end
 
+-- ---------- why a stretch crafts its recipe ----------
+
+-- The icon of each reason of ns.Why: what it is about, with the shared meanings (coin = money,
+-- watch = time, the map pictures for the auction house and the bank).
+local WHY_ICON = {
+    CD = "Interface\\Icons\\Spell_Nature_TimeStop", FROM_bags = "Interface\\Icons\\INV_Misc_Bag_08",
+    FROM_bank = ns.STOP_ICONS.bank, FROM_mail = ns.STOP_ICONS.mail, FROM_alts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    FROM_gather = ns.STOP_ICONS.gather, FROM_own = "Interface\\Icons\\INV_Misc_Bag_08", FROM_vendor = ns.STOP_ICONS.vendor,
+    FROM_ah = ns.STOP_ICONS.ah, SELL_AH = ns.STOP_ICONS.ah, SELL_VENDOR = ns.STOP_ICONS.sell,
+    COST = "Interface\\Icons\\INV_Misc_Coin_01", EARN = "Interface\\Icons\\INV_Misc_Coin_01", GAIN = "Interface\\Icons\\INV_Misc_Coin_01",
+    CHEAPEST = "Interface\\Icons\\INV_Misc_Coin_03", BEST_RUN = "Interface\\Icons\\INV_Misc_Coin_03",
+    FAST = "Interface\\Icons\\INV_Misc_PocketWatch_01", RECIPE_trainer = ns.STOP_ICONS.trainer,
+    RECIPE_vendor = "Interface\\Icons\\INV_Scroll_03", RECIPE_ah = "Interface\\Icons\\INV_Scroll_03",
+}
+-- the reasons that are good news get a green key number; the rest stay plain
+local WHY_GOOD = { EARN = true, GAIN = true, SELL_AH = true, SELL_VENDOR = true, CHEAPEST = true, BEST_RUN = true,
+                   FROM_bags = true, FROM_bank = true, FROM_mail = true, FROM_alts = true, FROM_gather = true, FROM_own = true }
+
+-- Item names of a reason, in their quality colour: at most three, then "+n".
+local function whyItems(ids)
+    local st = ns.view.state
+    local parts = {}
+    for i, id in ipairs(ids) do
+        if i > 3 then parts[#parts + 1] = "+" .. (#ids - 3); break end
+        local it = st.items[id] or {}
+        parts[#parts + 1] = S.QualityHex(it.quality or 1) .. (it.name or ("#" .. tostring(id))) .. "|r"
+    end
+    return table.concat(parts, ", ")
+end
+
+local function recipeName(rid, col)
+    local r = ns.view.state.recipes[rid]
+    return color(col and (ns.COLORS[col] or ns.COLORS.gy) or S.TEXT) .. (r and r.name or tostring(rid)) .. "|r"
+end
+
+-- One reason as a line of text: its icon, then the sentence with its key number lit.
+function ns.WhyText(x)
+    local key = x[1]
+    local good = WHY_GOOD[key]
+    local function num(v) return good and (color(GOOD) .. v .. "|r") or S.Emph(v) end
+    local t
+    if key == "CHANCE" then t = L.WHY_CHANCE:format(x[2], num(("%.1f"):format(x[3])))
+    elseif key:sub(1, 5) == "FROM_" then t = L["WHY_" .. key]:format(whyItems(x[2]))
+    elseif key == "FAST" then t = L.WHY_FAST:format(recipeName(x[2]), S.MoneyText(math.floor(x[3] + 0.5)))
+    elseif type(x[2]) == "number" then t = L["WHY_" .. key]:format(S.MoneyText(math.floor(x[2] + 0.5)))
+    else t = L["WHY_" .. key] end
+    local icon = WHY_ICON[key] or ns.view.state.icon or ns.STOP_ICONS.craft
+    return S.IconTag(icon, 14) .. "  " .. t
+end
+
+-- What one alternative costs: more (red) or less (green) gold a point, or the gain of its run.
+function ns.WhyAltSide(a)
+    if a.net then return L.WHY_NET:format(S.MoneyText(math.floor(a.net + 0.5))) end
+    local m = math.floor(math.abs(a.more) + 0.5)
+    if a.more >= 0 then return color(BAD) .. "+|r" .. L.WHY_PER:format(S.MoneyText(m)) end
+    return color(GOOD) .. "-|r" .. L.WHY_PER:format(S.MoneyText(m))
+end
+
+-- The tooltip part of a stretch: the reasons as points, then the next best recipes beside it.
+function ns.WhyTip(sg)
+    local w = sg and sg.why
+    if not (w and GameTooltip) then return false end
+    GameTooltip:AddLine(" ")
+    local head = S.Upper(L.WHY_HEAD)
+    if sg.to > sg.from then head = head .. "  " .. color(S.MUTED) .. sg.from .. "-" .. sg.to .. "|r" end
+    GameTooltip:AddLine(head, S.GOLD_DIM[1], S.GOLD_DIM[2], S.GOLD_DIM[3])
+    for _, x in ipairs(w.reasons) do GameTooltip:AddLine(ns.WhyText(x), S.TEXT[1], S.TEXT[2], S.TEXT[3], true) end
+    if #w.alts > 0 then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(S.Upper(L.WHY_ALTS), S.GOLD_DIM[1], S.GOLD_DIM[2], S.GOLD_DIM[3])
+        for _, a in ipairs(w.alts) do
+            local r = ns.view.state.recipes[a.rid]
+            local icon = r and r.out and ns.ItemIcon(r.out)
+            local note = a.buy and (color(S.MUTED) .. "  " .. L.WHY_ALT_RECIPE .. "|r") or ""
+            GameTooltip:AddDoubleLine((icon and (S.IconTag(icon, 14) .. "  ") or "") .. recipeName(a.rid, a.color) .. note, ns.WhyAltSide(a))
+        end
+    end
+    return true
+end
+
 -- ---------- the stops of the run ----------
 
 local function stopIcon(n)
@@ -525,6 +605,9 @@ local function makeNode(parent, i)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(self.head:GetText() or "", 1, 1, 1)
             GameTooltip:AddLine(self.sub:GetText() or "", 0.8, 0.8, 0.8, true)
+            -- a craft stop says why the planner chose its recipe
+            local n = rawget(self, "node")
+            if n and n.segs then ns.WhyTip(n.segs[1]) end
             GameTooltip:Show()
         end
     end)
@@ -536,6 +619,7 @@ local function makeNode(parent, i)
 end
 
 local function fillNode(b, n, p, here)
+    rawset(b, "node", n)
     local kc = (n.kind == "craft" and n.segs) and (ns.COLORS[n.segs[1].color or "gy"] or ns.COLORS.gy) or ns.STOPS[n.kind]
     b.icon:SetIcon(stopIcon(n))
     S.SetBorder(b.icon, kc)
@@ -779,7 +863,7 @@ local function detailRows(n, i, a)
     for _, sg in ipairs(n.segs or {}) do
         local r = st.recipes[sg.rid]
         local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
-        rows[#rows + 1] = { rid = sg.rid, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
+        rows[#rows + 1] = { rid = sg.rid, seg = sg, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
                             note = sg.from .. " - " .. sg.to .. (r.cd and ("  ·  " .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
                             right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
@@ -875,6 +959,7 @@ local function makeLine(r)
         elseif e.rid then
             if ns.ItemTip(e.out) then GameTooltip:AddLine(L.RECIPE_TIP, 0.6, 0.6, 0.6, true)
             else GameTooltip:SetText(L.RECIPE_TIP, 1, 1, 1, 1, true) end
+            ns.WhyTip(e.seg)
         elseif e.pin then
             GameTooltip:SetText(e.pin.label, 1, 1, 1, 1, true)
             GameTooltip:AddLine(L.PIN_TIP, 0.6, 0.6, 0.6, true)
