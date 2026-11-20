@@ -251,10 +251,10 @@ test("quest mob key: names from the objectives, the zone's last, bound to the se
     eq(ns.MobName(nil), nil)
     local mobs = ns.QuestMobs()
     eq(table.concat(mobs, ","), "Harvest Watcher,Kobold Vermin", "finished and item objectives left out, the zone's last")
-    eq(ns.TargetMacro(mobs), "/targetexact Harvest Watcher\n/targetexact Kobold Vermin")
+    eq(ns.TargetMacro(mobs), "/targetexact Harvest Watcher\n/targetexact Kobold Vermin\n/cleartarget [dead]")
     eq(ns.TargetMacro({}), nil)
-    ns.TARGET_MAX = 30
-    eq(ns.TargetMacro(mobs), "/targetexact Kobold Vermin", "cut from the front")
+    ns.TARGET_MAX = 50
+    eq(ns.TargetMacro(mobs), "/targetexact Kobold Vermin\n/cleartarget [dead]", "cut from the front")
     ns.TARGET_MAX = 900
     ns.SetTargetKey("F")
     eq(W.bindings.F, "GulliAutoQuestTarget")
@@ -285,19 +285,126 @@ test("quest mob key: the macro follows the quest log, waits for the end of a fig
         return f
     end
     ns.SetTargetKey("F")
-    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin")
+    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin\n/cleartarget [dead]")
     W.combat = true
     W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
     W.Fire("QUEST_LOG_UPDATE")
-    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin", "no secure change in a fight")
+    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin\n/cleartarget [dead]", "no secure change in a fight")
     W.combat = false
     W.Fire("PLAYER_REGEN_ENABLED")
-    eq(made:GetAttribute("macrotext"), "/targetexact Murloc", "after the fight")
+    eq(made:GetAttribute("macrotext"), "/targetexact Murloc\n/cleartarget [dead]", "after the fight")
     reg.pause(true)
     eq(W.bindings.F, nil, "paused from the hub")
     reg.pause(false)
     eq(W.bindings.F, "GulliAutoQuestTarget")
     CreateFrame = create
+end)
+
+test("quest mob key: each press goes to the next living quest mob, never a corpse", function()
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" } } } } })
+    local ns = Load()
+    local made
+    local create = CreateFrame
+    CreateFrame = function(kind, name, ...)
+        local f = create(kind, name, ...)
+        if name == "GulliAutoQuestTarget" then made = f end
+        return f
+    end
+    -- Five plates: a corpse nearest, two living kobolds, one tagged by another player, a wolf.
+    local plates = {
+        nameplate1 = { name = "Kobold Vermin", guid = "C-1", dead = true },
+        nameplate2 = { name = "Kobold Vermin", guid = "C-3" },
+        nameplate3 = { name = "Kobold Vermin", guid = "C-2" },
+        nameplate4 = { name = "Kobold Vermin", guid = "C-4", tapped = true },
+        nameplate5 = { name = "Young Wolf", guid = "C-5" },
+    }
+    local target
+    C_NamePlate = { GetNamePlates = function()
+        local list = {}
+        for i = 1, 5 do if plates["nameplate" .. i] then list[#list + 1] = { namePlateUnitToken = "nameplate" .. i } end end
+        return list
+    end }
+    UnitName = function(u) if u == "player" then return "Tester" end return plates[u] and plates[u].name end
+    UnitGUID = function(u)
+        if u == "target" then return target end
+        return plates[u] and plates[u].guid
+    end
+    UnitIsDead = function(u) return plates[u] and plates[u].dead or false end
+    UnitIsTapDenied = function(u) return plates[u] and plates[u].tapped or false end
+    UnitCanAttack = function() return true end
+    local live = ns.LiveQuestMobs(ns.QuestMobs())
+    eq(#live, 2, "the corpse, the tagged mob and the wolf are left out")
+    eq(live[1].unit, "nameplate3", "a fixed order")
+    ns.SetTargetKey("F")
+    eq(made:GetAttribute("type"), "target")
+    eq(made:GetAttribute("unit"), "nameplate3", "no target: the first")
+    target = "C-2"
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(made:GetAttribute("unit"), "nameplate2", "the next one")
+    target = "C-3"
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(made:GetAttribute("unit"), "nameplate3", "round the list")
+    target = "C-1"
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(made:GetAttribute("unit"), "nameplate3", "from the corpse to a living one")
+    -- A name the game hides is skipped, not an error.
+    issecretvalue = function(v) return v == "C-3" end
+    eq(#ns.LiveQuestMobs(ns.QuestMobs()), 1, "a secret guid is left out")
+    issecretvalue = nil
+    -- The fight: the names macro, which drops a corpse.
+    W.Fire("PLAYER_REGEN_DISABLED")
+    eq(made:GetAttribute("type"), "macro")
+    eq(made:GetAttribute("macrotext"), "/targetexact Kobold Vermin\n/cleartarget [dead]")
+    W.combat = true
+    target = "C-2"
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(made:GetAttribute("type"), "macro", "no secure change in a fight")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    eq(made:GetAttribute("unit"), "nameplate2", "cycling again after the fight")
+    -- Every quest mob dead: the macro again.
+    plates.nameplate2.dead, plates.nameplate3.dead = true, true
+    W.Fire("NAME_PLATE_UNIT_REMOVED")
+    eq(made:GetAttribute("type"), "macro")
+    C_NamePlate, UnitIsDead, UnitIsTapDenied, UnitCanAttack = nil, nil, nil, nil
+    CreateFrame = create
+end)
+
+test("quest mob button: shows from the hub's switch while a quest needs a mob, clicks like the key", function()
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    Fake({ qlog = { { title = "Elwynn Forest", isHeader = true },
+                    { questID = 1, obj = { { type = "monster", text = "Kobold Vermin slain: 3/10" } } } } })
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local fr = reg.frames[1]
+    eq(fr.get(), false, "starts hidden")
+    local holder = fr.frame()
+    eq(holder:IsShown(), false)
+    fr.set(true)
+    eq(holder:IsShown(), true, "on, and a quest needs a mob")
+    eq(W.bindings.F, nil, "no key needed")
+    W.qlog[2].obj = {}
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(holder:IsShown(), false, "nothing to kill")
+    reg.move(true)
+    eq(holder:IsShown(), true, "the Unlock mode shows it")
+    reg.move(false)
+    eq(holder:IsShown(), false)
+    W.qlog[2].obj = { { type = "monster", text = "Murloc slain: 1/10" } }
+    W.Fire("QUEST_LOG_UPDATE")
+    eq(holder:IsShown(), true)
+    W.combat = true
+    fr.set(false)
+    eq(holder:IsShown(), true, "a secure frame waits for the end of the fight")
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    eq(holder:IsShown(), false)
+    fr.set(true)
+    reg.pause(true)
+    eq(holder:IsShown(), false, "paused from the hub")
 end)
 
 W.finish()

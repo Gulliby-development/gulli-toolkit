@@ -174,24 +174,113 @@ end
 -- Quest mob key ------------------------------------------------------------------------------
 
 local BUTTON = "GulliAutoQuestTarget"
-local target, keyOwner, waiting
+local SIZE = 44
+local target, holder, keyOwner, waiting, moving
 
+-- The key and the screen button work while either is set.
+local function active()
+    return ns.db and (ns.db.targetKey or ns.db.targetButton) and not ns.paused
+end
+
+local function savePoint()
+    local p, _, rel, x, y = holder:GetPoint()
+    ns.db.buttonPoint = { p, x, y, rel }
+end
+
+local function tip(self)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(L.TARGET_BTN)
+    local names = ns.QuestMobs()
+    for i = #names, math.max(1, #names - 9), -1 do GameTooltip:AddLine(names[i], 1, 1, 1) end
+    if #names == 0 then GameTooltip:AddLine(L.TARGET_NONE, 0.6, 0.6, 0.6) end
+    GameTooltip:AddLine(L.TARGET_TIP, 0.55, 0.55, 0.58, true)
+    GameTooltip:Show()
+end
+
+-- One secure button: the key clicks it, and on the screen it is the quest mob button.
 local function targetButton()
     if target then return target end
-    target = CreateFrame("Button", BUTTON, UIParent, "SecureActionButtonTemplate")
-    target:SetSize(1, 1)
-    target:Hide()
+    holder = CreateFrame("Frame", BUTTON .. "Frame", UIParent)
+    holder:SetSize(SIZE, SIZE)
+    local p = ns.db and ns.db.buttonPoint or { "CENTER", 0, -120 }
+    holder:SetPoint(p[1], UIParent, p[4] or p[1], p[2], p[3])
+    holder:Hide()
+    S.Mover(holder, { label = L.TARGET_BTN,
+        save = function() savePoint() end,
+        reset = function()
+            if InCombatLockdown() then return end
+            ns.db.buttonPoint = nil
+            holder:ClearAllPoints()
+            holder:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
+        end })
+    target = CreateFrame("Button", BUTTON, holder, "SecureActionButtonTemplate")
+    S.HudIcon(target, SIZE)
+    target:SetPoint("CENTER")
+    target:SetIcon(ns.OPT_ICON.targetKey)
     target:RegisterForClicks("AnyUp", "AnyDown")
     target:SetAttribute("type", "macro")
+    target:SetScript("OnEnter", tip)
+    target:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     return target
 end
 
--- The macro follows the quest log; secure attributes change only out of combat.
-function ns.UpdateTargetMacro()
-    if not ns.db or not ns.db.targetKey then return end
+local function set(b, k, v)
+    if b:GetAttribute(k) ~= v then b:SetAttribute(k, v) end
+end
+
+-- Aims the button; secure attributes change only out of combat. Out of a fight it targets the
+-- next living quest mob on the nameplates, of every kind the log asks for, so each press cycles
+-- and a corpse is never taken. In a fight (and without nameplates) the names macro stands,
+-- which drops a dead target.
+function ns.UpdateTargetMacro(fight)
+    if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
     if InCombatLockdown() then waiting = true; return end
     waiting = nil
-    targetButton():SetAttribute("macrotext", ns.TargetMacro(ns.QuestMobs()))
+    local b = targetButton()
+    local names = ns.QuestMobs()
+    local cur = UnitGUID("target")
+    if not cur or (issecretvalue and issecretvalue(cur)) then cur = nil end
+    local live = fight and {} or ns.LiveQuestMobs(names)
+    local mob = ns.PickNext(live, cur)
+    if mob then
+        set(b, "type", "target")
+        set(b, "unit", mob.unit)
+    else
+        set(b, "type", "macro")
+        set(b, "macrotext", ns.TargetMacro(names))
+    end
+    -- The screen button: shown while it is on and a quest needs a mob, or in the Unlock mode.
+    b:SetCount(#live > 0 and tostring(#live) or "")
+    b:SetKey(ns.db.targetKey)
+    b:SetDone(#names == 0)
+    local show = moving or (ns.db.targetButton and not ns.paused and #names > 0)
+    if holder:IsShown() ~= (show and true or false) then holder:SetShown(show and true or false) end
+    holder:SetMoving(moving and true or false)
+end
+
+-- The hub's Unlock mode; the button is secure, so nothing changes in a fight.
+function ns.MoveTarget(on)
+    moving = on and true or false
+    if InCombatLockdown() or not ns.db then return end
+    targetButton()
+    if ns.db.targetKey or ns.db.targetButton then ns.UpdateTargetMacro()
+    else holder:SetShown(moving); holder:SetMoving(moving) end
+end
+
+-- The frame for the hub's Unlock panel.
+function ns.TargetFrame()
+    if not target and InCombatLockdown() then return nil end
+    targetButton()
+    return holder
+end
+
+-- The show switch of the screen button (the hub's Unlock panel).
+function ns.SetTargetButton(on)
+    ns.db.targetButton = on and true or nil
+    if InCombatLockdown() then waiting = true; return end
+    targetButton()
+    if on then ns.UpdateTargetMacro() elseif not moving then holder:Hide() end
 end
 
 -- Binds the key to the button, or frees it (no key, or paused from the hub).
@@ -200,11 +289,13 @@ function ns.ApplyTargetKey()
     keyOwner = keyOwner or CreateFrame("Frame")
     ClearOverrideBindings(keyOwner)
     local key = ns.db and ns.db.targetKey
-    if key and not ns.paused then
+    if active() or moving then
         targetButton()
         ns.UpdateTargetMacro()
-        S.BindKey(keyOwner, true, key, BUTTON, "LeftButton")
+    elseif holder and not moving then
+        holder:Hide()
     end
+    if key and not ns.paused then S.BindKey(keyOwner, true, key, BUTTON, "LeftButton") end
 end
 
 local MODIFIER = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
@@ -257,14 +348,22 @@ function ns.KeyButton(parent)
 end
 
 local ev = CreateFrame("Frame")
-for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA" }) do
+for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "QUEST_LOG_UPDATE",
+                     "ZONE_CHANGED_NEW_AREA", "PLAYER_TARGET_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }) do
     ev:RegisterEvent(e)
 end
 ev:SetScript("OnEvent", function(_, event)
-    if not ns.db or not ns.db.targetKey then return end
-    if event == "PLAYER_LOGIN" or (event == "PLAYER_REGEN_ENABLED" and waiting) then
+    if event == "PLAYER_REGEN_ENABLED" and waiting and ns.db then return ns.ApplyTargetKey() end
+    if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
+    if event == "PLAYER_LOGIN" then
         ns.ApplyTargetKey()
     elseif not ns.paused then
-        ns.UpdateTargetMacro()
+        -- PLAYER_REGEN_DISABLED comes just before the lockdown: the last chance to set the macro.
+        ns.UpdateTargetMacro(event == "PLAYER_REGEN_DISABLED")
     end
+end)
+
+-- A mob that another player tags or that dies off a nameplate event: look again each second.
+C_Timer.NewTicker(1, function()
+    if active() and not InCombatLockdown() then ns.UpdateTargetMacro() end
 end)
