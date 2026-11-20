@@ -139,7 +139,6 @@ end
 local function charKey()
     local name = UnitName and UnitName("player") or "?"
     local r = GetRealmName and GetRealmName()
-    if (not r or r == "") and GetNormalizedRealmName then r = GetNormalizedRealmName() end
     if type(r) == "string" and r ~= "" then
         if ns.db then ns.db.realm = r end
     else
