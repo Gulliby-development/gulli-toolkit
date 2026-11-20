@@ -190,7 +190,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-AutoQuest", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-AutoQuest", { "Locales.lua", "Events.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W

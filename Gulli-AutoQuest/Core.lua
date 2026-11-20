@@ -156,11 +156,19 @@ function ns.Offered(event)
     return out
 end
 
+-- In a group with someone else: an escort or event quest (Events.lua) waits for the player,
+-- since its NPC is busy for the others once one starts it.
+local function withOthers()
+    if IsInGroup and not IsInGroup() then return false end
+    return ((GetNumGroupMembers and GetNumGroupMembers()) or (GetNumSubgroupMembers and GetNumSubgroupMembers() + 1) or 0) > 1
+end
+
 -- Why a new quest is not taken: a text key, or nil to take it. id may be nil (old greeting).
 function ns.SkipNew(id, trivial, group)
     local db = ns.db
     if not db.accept then return "OFF" end
     if id and db.ignoreQuest[id] then return "WHY_IGNORED" end
+    if id and ns.EVENT_QUESTS and ns.EVENT_QUESTS[id] and withOthers() then return "WHY_EVENT" end
     if db.skipTrivial and trivial then return "WHY_TRIVIAL" end
     if db.minFree > 0 and logFree() <= db.minFree then return "WHY_FULL" end
     local tag, elite = questTag(id)

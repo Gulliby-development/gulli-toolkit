@@ -215,4 +215,24 @@ test("paused from the hub it takes no quest", function()
     eq(W.did[1], "active:6", "started again")
 end)
 
+test("an escort or event quest waits for the player while others are in the group", function()
+    Fake({ questID = 155, npc = { active = {}, available = { { 155, false }, { 7, false } } } })
+    local ns = Load()
+    eq(ns.EVENT_QUESTS[155], true, "The Defias Brotherhood is an escort")
+    eq(ns.EVENT_QUESTS[7], nil)
+    IsInGroup = function() return true end
+    GetNumGroupMembers = function() return 3 end
+    W.Fire("QUEST_DETAIL")
+    eq(#W.did, 0, "not taken in a group")
+    eq(ns.SkipNew(155), "WHY_EVENT")
+    W.Fire("GOSSIP_SHOW")
+    eq(W.did[1], "available:7", "the NPC's other quest is opened, not the escort")
+    GetNumGroupMembers = function() return 1 end
+    IsInGroup = function() return false end
+    W.did = {}
+    W.Fire("QUEST_DETAIL")
+    eq(W.did[1], "accept", "alone it is taken as before")
+    IsInGroup, GetNumGroupMembers = nil, nil
+end)
+
 W.finish()

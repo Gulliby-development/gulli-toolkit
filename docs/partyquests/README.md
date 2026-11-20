@@ -25,6 +25,7 @@ Before you leave town with a group, you want to know: who has which quest? Gulli
 - **One line about the group.** "To share: 2. Ready to hand in for everyone: 1", or "The group is in sync".
 - **Share in one tap, or all at once.** **Share** gives one quest, **Share all** gives every quest someone lacks, one per second. The game's answer ("too low level", "did it before") shows at the bottom.
 - **Share with new members.** A switch shares your quests with everyone who joins (off by default).
+- **Escorts wait for the group.** Once one player starts an escort or an event quest, its NPC walks off or starts a scene, and whoever did not take it yet is left out. When you open such a quest in a group, a card shows who still does not have it. **Ask group** asks everyone: friends with the module get a card with **Ready** and **Not yet**, the others a line in party chat. Their answers show on your card, and it says when everyone is ready. A switch turns it off.
 - **Request a quest.** In "Their quests", **Request** asks the owner to share it. They get a card at the top of the screen with **Share**. Without the module, it is a whisper.
 - **Group news.** A line in chat and in the Gulli Toolkit feed when a member takes, finishes or hands in a quest, and when the whole group finished one. Each kind has a switch, plus one for the sound.
 - **This zone and search.** Show only the quests of the zone you are in, or search by name.
@@ -51,6 +52,12 @@ Before you leave town with a group, you want to know: who has which quest? Gulli
 <summary><b>A friend's quests are missing in "Their quests"</b></summary>
 
 That list needs Gulli Party Quests on both sides. The first list ("My quests") works without it: it shows who has a quest, but not their progress.
+</details>
+
+<details>
+<summary><b>Which quests count as escorts?</b></summary>
+
+Escorts, fights and scenes where the game gives the others a "join this quest" prompt, and WoW Forever's own escorts, from the QuestieDB data (about 150 quests). The card only shows in a group, and only when someone does not have the quest yet. Gulli Auto Quest never takes such a quest by itself while you are in a group.
 </details>
 
 <details>
