@@ -585,6 +585,38 @@ test("no auction prices at all: the route still goes on, at guessed auction pric
     for _, q in ipairs(c.BuyQueue(ah)) do if q.id then eq(q.unit, nil) end end
 end)
 
+test("no price addon: the auction switches are off and grey, a banner says so, only levelling routes", function()
+    local n = game({ auctionator = false })
+    n.Toggle(); n.Calculate()
+    local v = n.view
+    eq(v.state.noPrices, true)
+    for _, x in ipairs(v.variants) do assert(not n.EARN[x.mode], "no profit route from guessed prices: " .. x.mode) end
+    assert(v.plan, "a levelling route all the same")
+    assert(n.ui.priceBanner:IsShown(), "the banner tells why")
+    assert(n.ui.priceBanner.text:GetText():find("×" .. n.AH_GUESS, 1, true))
+    n.Tab(5)
+    for _, k in ipairs({ "buyAH", "sellAH" }) do
+        eq(n.ui.checks[k]:GetChecked(), false, k .. " shows off")
+        eq(n.ui.checks[k]:IsEnabled(), false, k .. " is grey")
+    end
+    eq(n.ui.checks.useBags:IsEnabled(), true)
+    eq(n.ui.steppers.maxSell.plus:IsEnabled(), false, "the auction steppers are grey too")
+    eq(n.Prefs(n.db.prefs).buyAH, true, "the player's own choice is kept for when prices come")
+    n.Tab(1)
+    -- with a price addon: profit routes, no banner, the switches work
+    n = game()
+    n.Toggle(); n.Calculate()
+    eq(n.view.state.noPrices, nil)
+    local earn = false
+    for _, x in ipairs(n.view.variants) do if n.EARN[x.mode] then earn = true end end
+    assert(earn, "the profit routes are back")
+    assert(not n.ui.priceBanner:IsShown())
+    n.Tab(5)
+    eq(n.ui.checks.buyAH:IsEnabled(), true)
+    eq(n.ui.checks.buyAH:GetChecked(), true)
+    n.Tab(1)
+end)
+
 test("a guessed price: an old price first, else the sell price times AH_GUESS; never for soulbound items", function()
     local c, st = core(), smith()
     local P = prefs()
@@ -667,7 +699,7 @@ test("Enchanting never keeps Tailoring recipes the game listed during a switch",
 end)
 
 test("Enchanting: enchants make no item, so they only level; a wand can also earn", function()
-    local n = game({ auctionator = false,
+    local n = game({
         items = { [8] = { name = "Strange Dust", sell = 10 }, [9] = { name = "Lesser Magic Wand", sell = 100 } },
         prof = { name = "Enchanting", skill = 100, cap = 150, recipes = {
             { id = 201, name = "Enchant Bracer - Minor Health", learned = true, diff = 0, grey = 125, r = { [8] = 1 } },

@@ -24,7 +24,7 @@ Is this worth keeping? Which quest wanted it? Gulli Tooltip puts the answer in t
 - **Quests that need it.** "Wolves 3/10" on a Wolf Pelt, from the quests in your log. The count turns green with a check mark when your bags hold enough. Only the whole name counts: a Large Wolf Pelt is not a Wolf Pelt.
 - **You have:** how many you hold in all, then you and each other character with bags and bank. The other characters come from Gulli Chores.
 - **Stack price.** What a full stack sells for at a vendor.
-- **Auction price of a full stack** from a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice), when you have one. It also says when a vendor pays more than the auction house after its cut. Off by default, because Auctionator already shows the price of one.
+- **Auction price of a full stack** from a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice), when you have one. It also says when a vendor pays more than the auction house after its cut. Off by default, because Auctionator already shows the price of one. Without a price addon its switch is grey and off; it comes back as you left it once you install one.
 - **Professions** that use the item, from Gulli Craft Profit. Off by default, because the game already says "Crafting Reagent".
 - **Where it drops:** the boss, the dungeon and the chance, from the Dungeon Journal. It also says when the item is on your wish list.
 - **Ids** of items, NPCs and spells, for guides and bug reports. Off by default.

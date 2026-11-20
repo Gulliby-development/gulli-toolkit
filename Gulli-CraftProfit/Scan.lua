@@ -755,6 +755,8 @@ function ns.State()
     local name, prof = current()
     if not name then return nil end
     local state = ns.Skill()
+    -- no auction price addon: reagents at a guessed price, and no profit routes
+    state.noPrices = not ns.HasPrices() or nil
     local gone = ns.Data and ns.Data.gone or {}
     ns.ReadRep()
     ns.repUnknown = {}
