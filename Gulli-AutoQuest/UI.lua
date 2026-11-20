@@ -183,7 +183,7 @@ ns.LIST_MAX = 8 -- the most rows the mob list can have (the setting mobRows, 3 a
 local target, holder, keyOwner, waiting, moving, asking
 local askTries = 0
 local rows = {}
-ns.cycle = 1 -- the name the button's next press tries first
+ns.cycle = 1 -- the place (in ns.RowOrder) of the name the button's next press tries first
 
 -- The key and the screen button work while either is set.
 local function active()
@@ -216,7 +216,8 @@ end
 -- A press on a living mob of one of the button's names goes on to the next mob of that name: the
 -- macro loses its clear for that one press (ns.TargetMacro's keep), and PostClick puts it back.
 -- The action runs on the release (useOnKeyDown false), so the press half does nothing here.
--- A press of the big button that found no living target first moves the next name to the front.
+-- A press of the big button that found no living target first puts the next pick of
+-- ns.NextPick in front: the kinds at the top of the list come up more often.
 local function wire(b, main)
     b:RegisterForClicks("AnyUp", "AnyDown")
     b:SetAttribute("useOnKeyDown", false)
@@ -225,7 +226,7 @@ local function wire(b, main)
         if down or InCombatLockdown() or not self.names then return end
         local i = ns.CycleIndex(self.names)
         self.kept = i ~= nil
-        if i then set(self, "macrotext", ns.TargetMacro(self.names, i, true)) end
+        if i then set(self, "macrotext", ns.TargetMacro(ns.PressOrder(self.names, i), 1, true)) end
     end)
     b:HookScript("PostClick", function(self, _, down)
         if down then return end
@@ -234,9 +235,9 @@ local function wire(b, main)
             C_Timer.After(0.15, function() self.flash:Hide() end)
         end
         if InCombatLockdown() or not self.names then return end
-        if main and not self.kept and #self.names > 1 then ns.cycle = ns.cycle % #self.names + 1 end
+        if main and not self.kept and #self.names > 1 then ns.cycle = ns.NextPick(#self.names, ns.cycle) end
         self.kept = nil
-        set(self, "macrotext", ns.TargetMacro(self.names, main and ns.cycle or 1))
+        set(self, "macrotext", ns.TargetMacro(ns.PressOrder(self.names, main and ns.cycle or 1)))
         if main then ns.PaintFaces() end
     end)
 end
@@ -427,7 +428,8 @@ function ns.NoteFight()
 end
 
 -- Aims the buttons; secure attributes change only out of combat (the macros of a fight are the
--- ones set just before it). The big button tries every name from ns.cycle on, a row its own.
+-- ones set just before it). The big button tries the name at ns.cycle, then the others in the
+-- list's order (the kinds worked on last first); a row tries its own.
 function ns.UpdateTargetMacro()
     if not ns.db or not (ns.db.targetKey or ns.db.targetButton) then return end
     local list, pending = ns.QuestMobList()
@@ -445,17 +447,17 @@ function ns.UpdateTargetMacro()
     end
     waiting = nil
     local b = targetButton()
+    -- The list: the kinds worked on last first (a kill, a fight), then the log's order.
+    local order = ns.RowOrder(list)
     local names = {}
-    for i, m in ipairs(list) do names[i] = m.name end
+    for i, m in ipairs(order) do names[i] = m.name end
     if ns.cycle > #names then ns.cycle = 1 end
     b.names = names
-    set(b, "macrotext", ns.TargetMacro(names, ns.cycle))
+    set(b, "macrotext", ns.TargetMacro(ns.PressOrder(names, ns.cycle)))
     b:SetCount(#names > 1 and tostring(#names) or "")
     b:SetKey(ns.db.targetKey)
     rawset(b, "doneNow", #names == 0)
     b:SetDone(#names == 0)
-    -- The list: the kinds worked on last first (a kill, a fight), then the log's order.
-    local order = ns.RowOrder(list)
     local most = math.max(0, math.min(tonumber(ns.db.mobRows) or 3, ns.LIST_MAX))
     for i = 1, math.max(#rows, math.min(#order, most)) do
         local name = i <= most and order[i] and order[i].name or nil
