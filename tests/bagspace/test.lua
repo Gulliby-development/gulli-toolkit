@@ -182,6 +182,59 @@ test("Free 1 slot takes the cheapest junk in one click", function()
     eq(W.deleted[1], 1)
 end)
 
+-- Full normal bags (the herb bag keeps free slots) and a loot window with the given items.
+local LOOT_ITEMS = {}
+for k, v in pairs(ITEMS) do LOOT_ITEMS[k] = v end
+LOOT_ITEMS[9] = { name = "Fur Cap", quality = 2, price = 80, classID = 4 }
+LOOT_ITEMS[10] = { name = "Wolf Claw", quality = 2, price = 90, classID = 4 }
+local function fullBags()
+    local b = bags()
+    b[1].slots[3] = { id = 2, count = 1 }
+    b[1].slots[4] = { id = 3, count = 1 }
+    return b
+end
+local function loot(list)
+    GetNumLootItems = function() return #list end
+    GetLootSlotLink = function(i) return "|Hitem:" .. list[i][1] .. ":0|h[x]|h" end
+    GetLootSlotInfo = function(i) return 1, "x", list[i][2] or 1 end
+end
+
+test("two loot items that fit no stack need two slots, and the notice frees both", function()
+    Fake({ bags = fullBags(), items = LOOT_ITEMS })
+    local ns = Load()
+    loot({ { 9 }, { 10 } })
+    eq(ns.Space(), 0)
+    eq(ns.LootShort(), 2)
+    local items = ns.FreeItems(2)
+    eq(#items, 2, "two items offered")
+    W.Fire("UI_ERROR_MESSAGE", 3, "Inventory is full.")
+    -- One delete per click: the first click frees one slot, the loot still misses one.
+    W.Click()
+    local _, deleted = ns.FreeSome(items)
+    eq(deleted, 1)
+    eq(ns.Space(), 1)
+    eq(ns.LootShort(), 1, "one more slot missing")
+    W.Click()
+    ns.FreeSome(ns.FreeItems(ns.LootShort()))
+    eq(ns.LootShort(), 0, "now everything fits")
+    eq(#W.deleted, 2)
+    ns.UpdatePopup()
+    ns.LootClosed()
+end)
+
+test("loot that joins its own stacks or a special bag needs no slot", function()
+    Fake({ bags = fullBags(), items = LOOT_ITEMS })
+    local ns = Load()
+    C_Item.GetItemFamily = function(id) if id == 8 then return 32 end return 0 end
+    loot({ { 1, 5 }, { 4, 25 }, { 8, 10 } })
+    eq(ns.LootShort(), 0, "fang onto 3/20, cloth into 32 free, herbs into the herb bag")
+    loot({ { 1, 30 } })
+    eq(ns.LootShort(), 1, "17 fit the stack, 13 need a new one")
+    GetNumLootItems = function() return 0 end
+    eq(ns.LootShort(), nil, "no loot window")
+    eq(#ns.FreeItems(), 1)
+end)
+
 test("nothing in combat", function()
     Fake({ bags = bags(), items = ITEMS, combat = true })
     local ns = Load()
