@@ -16,8 +16,8 @@ T.en = {
     TAB_SETTINGS = "Settings",
     COL_ITEM = "Item",
     COL_N = "Qty",
-    COL_AH = "Auction",
-    COL_VENDOR = "Vendor",
+    COL_AH = "AH each",
+    COL_VENDOR = "Vendor each",
     COL_GAIN = "Gain",
     BUY = "Buy",
     PRICE = "Price",
@@ -109,6 +109,9 @@ T.en = {
     QUEUE_LINE = "%d in the queue: each click of the big button buys the next",
     SCAN_HELD = "The scan waits while you buy",
     ERR_WAIT = "The auction house is still busy: click again in a moment",
+    TIP_LOT = "%d on sale at %s each. A vendor pays %s each.",
+    TIP_ONE = "One click buys one: gain %s. The line stays while more are on sale.",
+    TIP_ALL = "One click buys all %d: gain %s.",
 }
 
 T.de = {
@@ -118,8 +121,8 @@ T.de = {
     TAB_SETTINGS = "Optionen",
     COL_ITEM = "Gegenstand",
     COL_N = "Anz.",
-    COL_AH = "Auktion",
-    COL_VENDOR = "Händler",
+    COL_AH = "AH/Stk.",
+    COL_VENDOR = "Händl./Stk.",
     COL_GAIN = "Gewinn",
     BUY = "Kaufen",
     PRICE = "Preis",
@@ -211,6 +214,9 @@ T.de = {
     QUEUE_LINE = "%d in der Warteschlange: jeder Klick auf die große Taste kauft den nächsten",
     SCAN_HELD = "Der Scan wartet, solange du kaufst",
     ERR_WAIT = "Das Auktionshaus ist noch beschäftigt: gleich noch einmal klicken",
+    TIP_LOT = "%d im Angebot zu je %s. Ein Händler zahlt je %s.",
+    TIP_ONE = "Ein Klick kauft eins: Gewinn %s. Die Zeile bleibt, solange es mehr gibt.",
+    TIP_ALL = "Ein Klick kauft alle %d: Gewinn %s.",
 }
 
 T.es = {
@@ -220,8 +226,8 @@ T.es = {
     TAB_SETTINGS = "Ajustes",
     COL_ITEM = "Objeto",
     COL_N = "Cant.",
-    COL_AH = "Subasta",
-    COL_VENDOR = "Vendedor",
+    COL_AH = "Sub./ud.",
+    COL_VENDOR = "Vend./ud.",
     COL_GAIN = "Ganancia",
     BUY = "Comprar",
     PRICE = "Precio",
@@ -313,6 +319,9 @@ T.es = {
     QUEUE_LINE = "%d en cola: cada clic en el botón grande compra el siguiente",
     SCAN_HELD = "El escaneo espera mientras compras",
     ERR_WAIT = "La casa de subastas sigue ocupada: vuelve a hacer clic en un momento",
+    TIP_LOT = "%d a la venta a %s cada uno. Un vendedor paga %s cada uno.",
+    TIP_ONE = "Un clic compra uno: ganas %s. La línea sigue mientras haya más.",
+    TIP_ALL = "Un clic compra los %d: ganas %s.",
 }
 
 T.fr = {
@@ -322,8 +331,8 @@ T.fr = {
     TAB_SETTINGS = "Réglages",
     COL_ITEM = "Objet",
     COL_N = "Qté",
-    COL_AH = "Enchères",
-    COL_VENDOR = "Marchand",
+    COL_AH = "HV/u.",
+    COL_VENDOR = "March./u.",
     COL_GAIN = "Gain",
     BUY = "Acheter",
     PRICE = "Prix",
@@ -415,6 +424,9 @@ T.fr = {
     QUEUE_LINE = "%d en file : chaque clic sur le grand bouton achète le suivant",
     SCAN_HELD = "Le scan attend pendant que vous achetez",
     ERR_WAIT = "L'hôtel des ventes est encore occupé : recliquez dans un instant",
+    TIP_LOT = "%d en vente à %s l'unité. Un marchand paie %s l'unité.",
+    TIP_ONE = "Un clic en achète un : gain de %s. La ligne reste tant qu'il en reste.",
+    TIP_ALL = "Un clic achète les %d : gain de %s.",
 }
 
 T.pl = {
@@ -424,8 +436,8 @@ T.pl = {
     TAB_SETTINGS = "Ustawienia",
     COL_ITEM = "Przedmiot",
     COL_N = "Szt.",
-    COL_AH = "Aukcja",
-    COL_VENDOR = "Kupiec",
+    COL_AH = "Auk./szt.",
+    COL_VENDOR = "Kupiec/szt.",
     COL_GAIN = "Zysk",
     BUY = "Kup",
     PRICE = "Cena",
@@ -517,6 +529,9 @@ T.pl = {
     QUEUE_LINE = "%d w kolejce: każde kliknięcie dużego przycisku kupuje następny",
     SCAN_HELD = "Skan czeka, gdy kupujesz",
     ERR_WAIT = "Dom aukcyjny jest jeszcze zajęty: kliknij ponownie za chwilę",
+    TIP_LOT = "%d na sprzedaż po %s za sztukę. Kupiec płaci %s za sztukę.",
+    TIP_ONE = "Jedno kliknięcie kupuje jedną: zysk %s. Linia zostaje, dopóki są kolejne.",
+    TIP_ALL = "Jedno kliknięcie kupuje wszystkie %d: zysk %s.",
 }
 
 T.pt = {
@@ -526,8 +541,8 @@ T.pt = {
     TAB_SETTINGS = "Ajustes",
     COL_ITEM = "Item",
     COL_N = "Qtd.",
-    COL_AH = "Leilão",
-    COL_VENDOR = "Vendedor",
+    COL_AH = "Leil./un.",
+    COL_VENDOR = "Vend./un.",
     COL_GAIN = "Lucro",
     BUY = "Comprar",
     PRICE = "Preço",
@@ -619,6 +634,9 @@ T.pt = {
     QUEUE_LINE = "%d na fila: cada clique no botão grande compra o próximo",
     SCAN_HELD = "O escaneamento espera enquanto você compra",
     ERR_WAIT = "A casa de leilões ainda está ocupada: clique de novo em um instante",
+    TIP_LOT = "%d à venda a %s cada. Um vendedor paga %s cada.",
+    TIP_ONE = "Um clique compra um: ganho de %s. A linha fica enquanto houver mais.",
+    TIP_ALL = "Um clique compra os %d: ganho de %s.",
 }
 
 T.ru = {
@@ -628,8 +646,8 @@ T.ru = {
     TAB_SETTINGS = "Настройки",
     COL_ITEM = "Предмет",
     COL_N = "Шт.",
-    COL_AH = "Аукцион",
-    COL_VENDOR = "Торговец",
+    COL_AH = "Аук./шт",
+    COL_VENDOR = "Торг./шт",
     COL_GAIN = "Навар",
     BUY = "Купить",
     PRICE = "Цена",
@@ -721,6 +739,9 @@ T.ru = {
     QUEUE_LINE = "В очереди %d: каждый клик большой кнопки покупает следующий",
     SCAN_HELD = "Скан ждёт, пока вы покупаете",
     ERR_WAIT = "Аукцион ещё занят: кликните снова через миг",
+    TIP_LOT = "В продаже %d по %s за штуку. Торговец платит %s за штуку.",
+    TIP_ONE = "Один клик покупает одну: навар %s. Строка остаётся, пока есть ещё.",
+    TIP_ALL = "Один клик покупает все %d: навар %s.",
 }
 
 T.zh = {
@@ -730,8 +751,8 @@ T.zh = {
     TAB_SETTINGS = "设置",
     COL_ITEM = "物品",
     COL_N = "数量",
-    COL_AH = "拍卖价",
-    COL_VENDOR = "商人价",
+    COL_AH = "拍卖单价",
+    COL_VENDOR = "商人单价",
     COL_GAIN = "赚",
     BUY = "购买",
     PRICE = "询价",
@@ -823,6 +844,9 @@ T.zh = {
     QUEUE_LINE = "排队中 %d 个：每次点击大按钮购买下一个",
     SCAN_HELD = "购买时扫描暂停",
     ERR_WAIT = "拍卖行仍在忙：稍后再点一次",
+    TIP_LOT = "在售 %d 个，每个 %s。商人每个付 %s。",
+    TIP_ONE = "一次点击买一个：赚 %s。还有剩余时该行保留。",
+    TIP_ALL = "一次点击买下全部 %d 个：赚 %s。",
 }
 
 ns.T = T

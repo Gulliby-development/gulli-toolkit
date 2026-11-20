@@ -19,10 +19,10 @@ Players often put items on the auction house for less than a vendor pays for the
 ## Features
 
 - **A scan as often as you like.** While the auction house is open, Vendor Flip looks at the whole market every minute. Pick another wait in the settings: from 5 seconds to 5 minutes. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once. A good lot shows in the list as soon as the scan finds it, so you can buy it before the scan ends.
-- **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many, what the auction house wants, what a vendor pays and your gain. The best gain is on top.
+- **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many one click buys, the auction price of one, what a vendor pays for one and your gain from that click. The best gain is on top. Point at a line to see how many are on sale.
 - **Buy with clicks.** Each line has its own button. The big button at the bottom always buys the top line, so you can press it again and again.
 - **A queue.** Click more lines while one is being bought: they wait in a queue, and each press of the big button buys the next one. While you buy, the scan waits, so your purchase goes through at once.
-- **Two clicks for goods, one for gear.** Ore, herbs, leather and other goods are sold in stacks: the first click asks the auction house for the real price, the second buys. Gear is one lot, so one click buys it.
+- **Two clicks for goods, one for gear.** Ore, herbs, leather and other goods are sold in stacks: the first click asks the auction house for the real price, the second buys. Gear and bags are bought one at a time: a line is one item, and it stays while more are on sale at that price.
 - **Never at a loss.** If the price went up since the scan and a vendor would now pay less, the line says **Too dear** and nothing is bought. It only buys out: it never bids.
 - **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either. Set the least gain and the gold you keep in gold, silver and copper: press - or + on each, or type the number. The least gain goes down to 1 copper.
 - **Only what you want.** Choose what to buy: gear (weapons and armour), goods and the rest, and which qualities, from grey to purple. Set the most one line may cost and the least gain in percent of its price.
