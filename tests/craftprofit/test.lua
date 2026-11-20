@@ -698,6 +698,45 @@ test("Enchanting never keeps Tailoring recipes the game listed during a switch",
     W.otherRecipes = nil
 end)
 
+test("a second profession makes a reagent when that is cheaper (Smelting for the bars), if it knows the recipe", function()
+    local n = game({ spellbook = { { "Tailoring", SKILL, 225, "picon", 197 }, { "Mining", 120, 150, "micon", 186 } } })
+    n.char.profs.Mining = { skill = 120, cap = 150, recipes = {
+        [901] = { name = "Smelt Silk", learned = true, out = 1, count = 1, r = { [10] = 1 } },
+        [902] = { name = "Smelt Better Silk", learned = false, out = 1, count = 1, r = { [11] = 1 } },
+    } }
+    W.items[10] = { name = "Silk Ore", ah = 5, age = 0, sell = 1 }
+    W.items[11] = { name = "Rare Ore", ah = 1, age = 0, sell = 1 }
+    W.items[1].bags, W.items[1].bank = 0, 0
+    n.Toggle(); n.Calculate()
+    local st = n.view.state
+    eq(st.recipes[901] and st.recipes[901].other, "Mining")
+    eq(st.recipes[901].skill, nil, "it never levels Tailoring")
+    eq(st.recipes[902], nil, "a recipe the miner has not learned (too low a skill) is not offered")
+    local prep
+    for _, x in ipairs(n.view.route) do if x.prep then prep = x end end
+    assert(prep, "the bars are made, not bought")
+    local smelt = false
+    for _, l in ipairs(prep.lines) do if l.recipe == 901 then smelt = true end end
+    assert(smelt, "Smelt Silk is a line of the stop")
+    for _, row in ipairs(n.Crafts(st, n.view.prefs)) do assert(row.recipe ~= 901, "no row of Tailoring's crafts") end
+    for _, x in ipairs(n.view.variants) do
+        if n.EARN[x.mode] and x.plan then
+            for _, sg in ipairs(x.plan.segs) do assert(sg.rid ~= 901, "never a profit run of Tailoring") end
+        end
+    end
+    -- its stop opens the Mining window, which does not become the current profession
+    eq(n.ProfOf(901), "Mining")
+    eq(n.ProfOf(101), "Tailoring")
+    local opened
+    C_TradeSkillUI.OpenTradeSkill = function(line) opened = line; return true end
+    assert(n.OpenProfession(901))
+    eq(opened, 186, "the Mining window")
+    eq(n.helperOpen, "Mining")
+    eq(n.char.current, "Tailoring")
+    W.Fire("TRADE_SKILL_CLOSE")
+    eq(n.helperOpen, nil)
+end)
+
 test("Enchanting: enchants make no item, so they only level; a wand can also earn", function()
     local n = game({
         items = { [8] = { name = "Strange Dust", sell = 10 }, [9] = { name = "Lesser Magic Wand", sell = 100 } },

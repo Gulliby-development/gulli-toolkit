@@ -444,7 +444,7 @@ end
 -- per-point choice cannot see, so each bought recipe is dropped while that makes the plan better.
 function ns.Plan(state, P)
     local allowed = {}
-    for rid, r in pairs(state.recipes) do if r.skill and ns.CanGet(r, P) then allowed[rid] = true end end
+    for rid, r in pairs(state.recipes) do if (r.skill or r.other) and ns.CanGet(r, P) then allowed[rid] = true end end
     local best = planWith(state, P, allowed)
     for _ = 1, 8 do
         local better, drop
@@ -539,7 +539,7 @@ function ns.Earn(state, P, own)
     local known, cands = {}, {}
     for rid, r in pairs(state.recipes) do
         if r.learned and not r.skip then known[rid] = true end
-        if r.out and not r.skip and (r.learned or (not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1])) then
+        if r.out and not r.skip and not r.other and (r.learned or (not own and r.src and r.src.cost and ns.CanGet(r, Q) and r.skill and state.skill >= r.skill[1])) then
             cands[#cands + 1] = rid
         end
     end
@@ -1144,7 +1144,8 @@ function ns.Crafts(state, P)
         value = value * (r.count or 1)
         local can = math.huge
         for id, n in pairs(r.r) do can = math.min(can, math.floor(left(st, id) / n)) end
-        if cost < math.huge then
+        -- another profession's recipe only makes reagents here; it is no row of this list
+        if cost < math.huge and not r.other then
             rows[#rows + 1] = { recipe = rid, name = r.name, cost = cost, value = value, how = how,
                                 profit = value - cost, can = can == math.huge and 0 or can,
                                 color = ns.Color(r, state.skill), stale = ((state.items[r.out] or {}).age or 0) > ns.FRESH_DAYS }

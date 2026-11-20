@@ -786,6 +786,23 @@ function ns.State()
             if rec.out then itemFor(state, rec.out) end
         end
     end
+    -- the character's other professions that make a reagent here (Smelting for Blacksmithing and
+    -- Engineering): the plan may make that reagent itself when that is cheaper, never levels with it
+    local need = {}
+    for _, r in pairs(state.recipes) do for id in pairs(r.r) do need[id] = true end end
+    for other, p in pairs(charDB().profs) do
+        if other ~= name and not empty(p) and owned(other) ~= false then
+            for rid, rec in pairs(p.recipes or {}) do
+                if rec.learned and rec.out and need[rec.out] and not state.recipes[rid] and belongs(rid, other) then
+                    state.recipes[rid] = { name = rec.name or tostring(rid), r = rec.r or {}, out = rec.out,
+                                           count = rec.count, learned = true, icon = rec.icon, other = other,
+                                           skip = ns.db.skip and ns.db.skip[rid] == true or nil }
+                    for id in pairs(rec.r or {}) do itemFor(state, id) end
+                    itemFor(state, rec.out)
+                end
+            end
+        end
+    end
     return state
 end
 
@@ -1225,8 +1242,24 @@ local function classicIndex(name)
 end
 
 -- Shows the recipe in the open profession window. Returns false when the window is closed.
+-- The profession a recipe of the plan is crafted in: the current one, or the other profession
+-- of the character that makes one of its reagents.
+function ns.ProfOf(rid)
+    local cur = ns.char.current
+    local p = ns.char.profs[cur or ""]
+    if p and p.recipes[rid] then return cur end
+    for name, q in pairs(ns.char.profs) do
+        if name ~= cur and q.recipes and q.recipes[rid] and q.recipes[rid].learned then return name end
+    end
+    return cur
+end
+local function recOf(rid)
+    local p = ns.char.profs[ns.ProfOf(rid) or ""]
+    return p and p.recipes[rid]
+end
+
 function ns.OpenRecipe(rid)
-    local rec = ns.char.profs[ns.char.current or ""] and ns.char.profs[ns.char.current].recipes[rid]
+    local rec = recOf(rid)
     local name = rec and rec.name
     if C_TradeSkillUI and C_TradeSkillUI.OpenRecipe and type(rid) == "number" and rid ~= (rec and rec.out) then
         C_TradeSkillUI.OpenRecipe(rid)
@@ -1241,7 +1274,7 @@ end
 
 -- Crafts n of a recipe; runs from the Make click (the game wants a hardware event).
 function ns.Craft(rid, n)
-    local rec = ns.char.profs[ns.char.current or ""] and ns.char.profs[ns.char.current].recipes[rid]
+    local rec = recOf(rid)
     if not rec then return false end
     if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe and type(rid) == "number" and rid ~= rec.out then
         C_TradeSkillUI.CraftRecipe(rid, n)
@@ -1273,26 +1306,29 @@ local function skillLineOf(name)
     end
 end
 
--- The window of the current profession shows now.
-function ns.ProfessionShown()
+-- The window of a profession (the current one by default) shows now.
+function ns.ProfessionShown(prof)
     if not ns.profOpen then return false end
     local name = windowLine()
-    return name == nil or name == ns.char.current
+    return name == nil or name == (prof or ns.char.current)
 end
 
 -- The client can open the profession window from a click (else the stop keeps Make).
-function ns.CanOpenProfession()
-    return C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill and skillLineOf(ns.char.current) and true or false
+function ns.CanOpenProfession(prof)
+    return C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill and skillLineOf(prof or ns.char.current) and true or false
 end
 
--- Opens the current profession's window; `rid` is shown in it once it is open.
+-- Opens the window of the profession `rid` is crafted in; `rid` is shown in it once it is open.
+-- Another profession opened this way (Mining for its bars) does not become the current one.
 function ns.OpenProfession(rid)
-    local line = skillLineOf(ns.char.current)
+    local prof = rid and ns.ProfOf(rid) or ns.char.current
+    local line = skillLineOf(prof)
     local T = C_TradeSkillUI
     if not line or not T or not T.OpenTradeSkill then return false end
     local ok, opened = pcall(T.OpenTradeSkill, line)
     if not ok or opened == false then return false end
     ns.pendingRecipe = rid
+    ns.helperOpen = prof ~= ns.char.current and prof or nil
     return true
 end
 
@@ -1399,7 +1435,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "MAIL_CLOSED" then ns.atMail = false; ns.Arrive(nil); return end
     if event == "TRAINER_SHOW" then learnTrainer(); return end
     if event == "TRADE_SKILL_CLOSE" then
-        ns.profOpen, ns.pendingRecipe = false, nil
+        ns.profOpen, ns.pendingRecipe, ns.helperOpen = false, nil, nil
         if ns.Refresh then ns.Refresh() end
         return
     end
@@ -1425,7 +1461,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         pending = false
         if event ~= "BAG_UPDATE_DELAYED" then
             local name = ns.ScanProfession()
-            if name and event == "TRADE_SKILL_SHOW" then ns.char.current = name end
+            if name and event == "TRADE_SKILL_SHOW" and name ~= ns.helperOpen then ns.char.current = name end
             -- the window a craft stop opened: show its recipe there
             if ns.pendingRecipe and ns.profOpen then
                 local rid = ns.pendingRecipe
