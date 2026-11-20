@@ -229,6 +229,13 @@ function Fake(spec)
                 for _, r in ipairs(prof.recipes) do ids[#ids + 1] = r.id end
                 return ids
             end,
+            GetProfessionInfoByRecipeID = function(id)
+                for _, r in ipairs(prof.recipes) do
+                    if r.id == id then return { professionName = r.prof or prof.name } end
+                end
+                local o = W.otherRecipes and W.otherRecipes[id]
+                return { professionName = o or "" }
+            end,
             GetRecipeInfo = function(id)
                 for _, r in ipairs(prof.recipes) do
                     if r.id == id then

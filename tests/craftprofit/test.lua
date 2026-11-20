@@ -640,6 +640,32 @@ test("another player's profession (a trade link) is never saved; one the spellbo
     eq(st and st.name, "Tailoring")
 end)
 
+test("Enchanting never keeps Tailoring recipes the game listed during a switch", function()
+    local ench = { name = "Enchanting", skill = 168, cap = 225, recipes = {
+        { id = 201, name = "Enchant Bracer - Minor Health", learned = true, diff = 0, grey = 190, r = { [1] = 1 } },
+        { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 0, grey = 190, out = 2, r = { [1] = 4 }, prof = "Tailoring" },
+    } }
+    local n = game({ prof = ench, spellbook = { { "Tailoring", SKILL, 225 }, { "Enchanting", 168, 225 } } })
+    local e = n.char.profs.Enchanting
+    assert(e and e.recipes[201], "the enchant is saved")
+    eq(e.recipes[101], nil, "a Tailoring recipe in the list is not Enchanting's")
+    -- an older save that took them in: the next scan drops them, the plan never sees them
+    e.recipes[103] = { name = "Silk Headband", learned = true, out = 6, r = { [2] = 3 } }
+    W.otherRecipes = { [103] = "Tailoring" }
+    n.char.current = "Enchanting"
+    local st = n.State()
+    eq(st.recipes[103], nil, "the plan leaves out a saved Tailoring recipe")
+    W.Fire("TRADE_SKILL_LIST_UPDATE"); W.RunTimers()
+    eq(e.recipes[103], nil, "the scan removes it")
+    -- right after the switch the whole list is still Tailoring's: nothing is saved under Enchanting
+    for _, r in ipairs(ench.recipes) do r.prof = "Tailoring" end
+    e.recipes = { [201] = { name = "Enchant Bracer - Minor Health", learned = true, r = { [1] = 1 } } }
+    W.Fire("TRADE_SKILL_LIST_UPDATE"); W.RunTimers()
+    eq(e.recipes[101], nil, "a stale list is not saved")
+    assert(e.recipes[201], "and what was saved stays")
+    W.otherRecipes = nil
+end)
+
 test("Enchanting: enchants make no item, so they only level; a wand can also earn", function()
     local n = game({ auctionator = false,
         items = { [8] = { name = "Strange Dust", sell = 10 }, [9] = { name = "Lesser Magic Wand", sell = 100 } },

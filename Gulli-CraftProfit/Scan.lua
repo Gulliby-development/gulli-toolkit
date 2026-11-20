@@ -229,12 +229,32 @@ local function remember(rec, skill, diff)
     end
 end
 
+-- Whether a recipe is of the profession `name`: false only when the game names another one.
+-- Right after a switch in the window the game can still list the other profession's recipes.
+local function belongs(rid, name)
+    local T = C_TradeSkillUI
+    if type(rid) ~= "number" or not (T and T.GetProfessionInfoByRecipeID) then return true end
+    local ok, i = pcall(T.GetProfessionInfoByRecipeID, rid)
+    if not ok or type(i) ~= "table" then return true end
+    local a, b = i.professionName, i.parentProfessionName
+    if (a == nil or a == "") and (b == nil or b == "") then return true end
+    return a == name or b == name
+end
+ns.RecipeBelongs = belongs
+
 -- The modern API: every recipe of the profession, learned or not.
-local function scanModern(prof, skill)
+local function scanModern(prof, skill, name)
     local T = C_TradeSkillUI
     local ids = T.GetAllRecipeIDs() or {}
+    local mine = {}
+    for _, rid in ipairs(ids) do if belongs(rid, name) then mine[#mine + 1] = rid end end
+    -- a list with none of this profession is the one shown before: wait for the next update
+    if #ids > 0 and #mine == 0 then return 0 end
+    for rid in pairs(prof.recipes) do
+        if not belongs(rid, name) then prof.recipes[rid] = nil end
+    end
     local n = 0
-    for _, rid in ipairs(ids) do
+    for _, rid in ipairs(mine) do
         local info = T.GetRecipeInfo(rid)
         if info and not info.isDummyRecipe and not info.isGatheringRecipe then
             local rec = prof.recipes[rid] or {}
@@ -300,7 +320,7 @@ function ns.ScanProfession()
     prof.skill, prof.cap, prof.seen = skill, cap, time()
     prof.icon = professionIcon(name) or prof.icon
     local n
-    if C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs then n = scanModern(prof, skill)
+    if C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs then n = scanModern(prof, skill, name)
     elseif GetNumTradeSkills then n = scanClassic(prof, skill)
     else n = 0 end
     db.current = db.current or name
@@ -741,7 +761,7 @@ function ns.State()
     for rid, rec in pairs(prof.recipes) do
         ns.Tick()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
-        if rec.learned or not gone[rid] then
+        if (rec.learned or not gone[rid]) and belongs(rid, name) then
             local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
             -- a trainer that asks for another skill than the data says wins: the levels move with it
             local req = not rec.learned and rec.name and ns.db.trainerReq[rec.name]
