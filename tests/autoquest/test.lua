@@ -570,24 +570,40 @@ test("quest mob button: the kinds at the top of the list come up more often, eac
     eq(table.concat(o, ","), "c,a,b,d")
 end)
 
-test("quest mob list: a quest of another zone's header joins when its mobs spawn here", function()
+test("quest mob list: where the mobs live decides, from the data", function()
     Fake({ qlog = { { title = "Un'Goro Crater", isHeader = true },
-                    { questID = 60, obj = { { type = "monster", text = "Diemetradon slain: 2/8" } } },
+                    { questID = 60, obj = { { type = "monster", text = "Diemetradon slain: 2/8" },
+                                            { type = "item", text = "Raptor Head: 1/5", numFulfilled = 1, numRequired = 5 } } },
+                    { questID = 62, obj = { { type = "monster", text = "Servants of Grol Freed: 0/1" } } },
                     { title = "Tanaris", isHeader = true },
                     { questID = 4504, obj = { { type = "item", text = "Super Sticky Tar: 7/12", numFulfilled = 7, numRequired = 12 } } },
-                    { questID = 61, obj = { { type = "monster", text = "Sandfury Troll slain: 0/10" } } } } })
+                    { questID = 61, obj = { { type = "monster", text = "Sandfury Troll slain: 0/10" },
+                                            { type = "monster", text = "Tar Beast slain: 1/4" } } } } })
     GetRealZoneText = function() return "Un'Goro Crater" end
     local ns = Load()
-    ns.DROPS = { [4504] = { { 11834, 6518 } } }
-    ns.NPC_NAME = { [6518] = "Tar Lurker" }
-    ns.QUEST_AREAS = { [4504] = { 490 }, [61] = { 440 } }
+    ns.DROPS = { [4504] = { { 11834, 7246, 6518, 6519 } }, [60] = { { 900, 6505, 6506 } } }
+    ns.KILLS = { [60] = { { 9163 } }, [61] = { { 5646 }, { 6527 } }, [62] = { { 7669 } } }
+    ns.NPC_NAME = { [6518] = "Tar Lurker", [6519] = "Tar Lord", [7246] = "Sandfury Shadowhunter",
+                    [6505] = "Ravasaur", [6506] = "Ravasaur Runner", [9163] = "Diemetradon",
+                    [5646] = "Sandfury Troll", [6527] = "Tar Beast", [7669] = "Servant of Grol" }
+    ns.NPC_AREAS = { [6518] = { 490 }, [6519] = { 490 }, [7246] = { 440 }, [6505] = { 490 },
+                     [6506] = { 490 }, [9163] = { 490 }, [5646] = { 440 }, [6527] = { 490 }, [7669] = { 4 } }
     C_Map = C_Map or {}
     local was = C_Map.GetAreaInfo
-    C_Map.GetAreaInfo = function(a) return ({ [490] = "Un'Goro Crater", [440] = "Tanaris" })[a] end
-    local t = {}
-    for i, m in ipairs(ns.QuestMobList()) do t[i] = m.name .. " " .. m.have .. "/" .. m.need end
-    eq(table.concat(t, ","), "Diemetradon 2/8,Tar Lurker 7/12",
-       "the Tanaris quest whose tar lurkers live here; not the one whose trolls are in Tanaris")
+    C_Map.GetAreaInfo = function(a) return ({ [490] = "Un'Goro Crater", [440] = "Tanaris", [4] = "Blasted Lands" })[a] end
+    local function names()
+        local t = {}
+        for i, m in ipairs(ns.QuestMobList()) do t[i] = m.name .. " " .. m.have .. "/" .. m.need end
+        return table.concat(t, ",")
+    end
+    eq(names(), "Diemetradon 2/8,Servant of Grol 0/1,Tar Beast 1/4,Ravasaur 1/5,Ravasaur Runner 1/5,Tar Lurker 7/12,Tar Lord 7/12",
+       "this zone's quests; the Tanaris quests only for their mobs here; a group text looks for the mob the data names")
+    -- In Tanaris the Tanaris quests count, and a dropper of Un'Goro is no reason to go there.
+    GetRealZoneText = function() return "Tanaris" end
+    eq(names(), "Sandfury Troll 0/10,Tar Beast 1/4,Sandfury Shadowhunter 7/12")
+    -- A home quest whose droppers the data places nowhere still looks for them.
+    ns.NPC_AREAS = { [5646] = { 440 } }
+    eq(names(), "Sandfury Troll 0/10,Tar Beast 1/4,Sandfury Shadowhunter 7/12,Tar Lurker 7/12,Tar Lord 7/12")
     C_Map.GetAreaInfo = was
 end)
 

@@ -388,65 +388,103 @@ local function dropRow(rows, o, k)
     return rows[k]
 end
 
--- The mobs the quests of the player's zone still need (the quest log header is the zone):
--- { { name, have, need, id, item }, ... }: the mobs to kill, then the mobs that drop an item to
--- collect (ns.DROPS, with the item's count). A mob that two quests ask for is one entry. Quests of
--- other zones stay out, so the key never reaches for a mob of a zone far away. The second value
--- is true while a dropper's name is still asked from the client.
--- A quest's work is here: under the log header of this zone, or its mobs spawn here (the data's
--- area ids, named by the client), as for a quest of a neighbour zone's header.
+-- Where the player is, by the data: true when the npc spawns in the zone named here (its area
+-- ids of ns.NPC_AREAS, named by the client), false when it spawns only elsewhere, nil when nobody
+-- can tell (no spawns in the data, or a client without C_Map.GetAreaInfo).
 local areaNames = {}
 local function areaName(a)
     if areaNames[a] == nil then
-        local name = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(a)
-        areaNames[a] = name or false
+        local ok, name = pcall(C_Map.GetAreaInfo, a)
+        areaNames[a] = ok and type(name) == "string" and name or false
     end
     return areaNames[a]
 end
 
-local function workHere(id, zone, here)
-    if zone == here then return true end
-    for _, a in ipairs(ns.QUEST_AREAS and ns.QUEST_AREAS[id] or {}) do
+function ns.SpawnsHere(npc, here)
+    local list = ns.NPC_AREAS and ns.NPC_AREAS[npc]
+    if not list or not here or not (C_Map and C_Map.GetAreaInfo) then return nil end
+    for _, a in ipairs(list) do
         if areaName(a) == here then return true end
     end
     return false
 end
 
+-- The droppers of an item to look for here: the ones that spawn here; for a quest of this zone's
+-- header with none of them here, the ones nobody can place, else the first few (the quest zone's
+-- come first in the data).
+local function droppersHere(row, here, home)
+    local out, unknown = {}, {}
+    for j = 2, #row do
+        local at = ns.SpawnsHere(row[j], here)
+        if at then out[#out + 1] = row[j] elseif at == nil then unknown[#unknown + 1] = row[j] end
+    end
+    if #out > 0 or not home then return out end
+    if #unknown > 0 then return unknown end
+    for j = 2, math.min(#row, 6) do out[#out + 1] = row[j] end
+    return out
+end
+
+-- The ns.KILLS row of a kill objective: the one with a mob of the text's name, else the k-th.
+local function killRow(rows, name, k)
+    for _, r in ipairs(rows or {}) do
+        for _, id in ipairs(r) do
+            if ns.CreatureName(id) == name then return r, true end
+        end
+    end
+    return rows and rows[k], false
+end
+
+-- The mobs the quests still need where the player is: { { name, have, need, id, item }, ... },
+-- the mobs to kill, then the mobs that drop an item to collect (ns.DROPS, with the item's count).
+-- A quest counts under the quest log header of the player's zone (GetRealZoneText), and a quest of
+-- another header too for the mobs of it that spawn here (Tanaris' Super Sticky in Un'Goro): the
+-- key never reaches for a mob of a zone far away. A kill objective named by a group text ("Servants
+-- of Grol Freed") looks for the mob the data names. A mob that two quests ask for is one entry.
+-- The second value is true while a name is still asked from the client.
 function ns.QuestMobList()
     local Q = C_QuestLog or {}
     if not Q.GetInfo or not Q.GetQuestObjectives then return {} end
     local here = GetRealZoneText and GetRealZoneText() or nil
     local near, seen, drops, pending = {}, {}, {}, false
+    local ids = ns.db and ns.db.mobIds
+    local function add(into, name, have, need, id, item)
+        if seen[name] then return end
+        seen[name] = true
+        into[#into + 1] = { name = name, have = have, need = need, id = id or (ids and ids[name]), item = item }
+        if id and ids and not ids[name] then ids[name] = id end
+    end
     local zone
     local n = (Q.GetNumQuestLogEntries or GetNumQuestLogEntries)()
     for i = 1, n or 0 do
         local info = Q.GetInfo(i)
         if info and info.isHeader then
             zone = info.title
-        elseif info and info.questID and not info.isHidden and here and workHere(info.questID, zone, here) then
-            local k = 0
-            for _, o in ipairs(Q.GetQuestObjectives(info.questID) or {}) do
+        elseif info and info.questID and not info.isHidden and here then
+            local q, home = info.questID, zone == here
+            local ki, k = 0, 0
+            for _, o in ipairs(Q.GetQuestObjectives(q) or {}) do
                 if o.type == "item" then k = k + 1 end
+                if o.type == "monster" then ki = ki + 1 end
                 if o.type == "monster" and not o.finished then
                     local name = ns.MobName(o.text)
-                    if name and not seen[name] then
-                        local have, need = count(o)
-                        seen[name] = true
-                        near[#near + 1] = { name = name, have = have, need = need,
-                                            id = ns.db and ns.db.mobIds and ns.db.mobIds[name] }
-                    end
-                elseif o.type == "item" and not o.finished and ns.DROPS and ns.DROPS[info.questID] then
-                    local row = dropRow(ns.DROPS[info.questID], o, k)
+                    local row, named = killRow(ns.KILLS and ns.KILLS[q], name, ki)
                     local have, need = count(o)
-                    for j = 2, row and #row or 0 do
-                        local name = ns.CreatureName(row[j])
-                        if not name then pending = true
-                        elseif not seen[name] then
-                            seen[name] = true
-                            drops[#drops + 1] = { name = name, have = have, need = need, id = row[j], item = row[1] }
-                            local ids = ns.db and ns.db.mobIds
-                            if ids and not ids[name] then ids[name] = row[j] end
+                    for _, id in ipairs(row or {}) do
+                        local at = ns.SpawnsHere(id, here)
+                        if at or home then
+                            local real = named and name or ns.CreatureName(id)
+                            if not real then pending = true; real = name end
+                            if real then add(near, real, have, need, id) end
                         end
+                    end
+                    if not row and home and name then add(near, name, have, need) end
+                elseif o.type == "item" and not o.finished and ns.DROPS and ns.DROPS[q] then
+                    local row = dropRow(ns.DROPS[q], o, k)
+                    local have, need = count(o)
+                    for _, id in ipairs(row and droppersHere(row, here, home) or {}) do
+                        local name = ns.CreatureName(id)
+                        if not name then pending = true
+                        else add(drops, name, have, need, id, row[1]) end
                     end
                 end
             end
