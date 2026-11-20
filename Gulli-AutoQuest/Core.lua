@@ -395,16 +395,57 @@ function ns.QuestMobs()
     return other
 end
 
+-- /targetexact takes the nearest of a name, a corpse too: the macro drops a dead target after it.
+local CLEAR_DEAD = "/cleartarget [dead]"
+
 -- The macro for a list of names, cut at ns.TARGET_MAX from the front (the zone's mobs stay).
+-- It is the fallback in a fight and without enemy nameplates.
 function ns.TargetMacro(names)
-    local lines, len = {}, 0
+    local lines, len = {}, #CLEAR_DEAD
     for i = #names, 1, -1 do
         local line = "/targetexact " .. names[i]
         if len + #line + 1 > ns.TARGET_MAX then break end
         table.insert(lines, 1, line)
         len = len + #line + 1
     end
-    return #lines > 0 and table.concat(lines, "\n") or nil
+    if #lines == 0 then return nil end
+    lines[#lines + 1] = CLEAR_DEAD
+    return table.concat(lines, "\n")
+end
+
+local function readable(v)
+    return v ~= nil and not (issecretvalue and issecretvalue(v))
+end
+
+-- The living quest mobs on the enemy nameplates, in a fixed order: { { unit, guid }, ... }.
+-- Corpses, mobs another player tagged and units the game hides (secret values) are left out.
+function ns.LiveQuestMobs(names)
+    local want, found = {}, {}
+    for _, n in ipairs(names or {}) do want[n] = true end
+    local plates = C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates()
+    if not plates or next(want) == nil then return found end
+    for _, p in ipairs(plates) do
+        local unit = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
+        local okName, name = pcall(UnitName, unit or "none")
+        local okGuid, guid = pcall(UnitGUID, unit or "none")
+        if unit and okName and okGuid and readable(name) and readable(guid) and want[name]
+            and not (UnitIsDead and UnitIsDead(unit))
+            and not (UnitIsTapDenied and UnitIsTapDenied(unit))
+            and (not UnitCanAttack or UnitCanAttack("player", unit)) then
+            found[#found + 1] = { unit = unit, guid = guid }
+        end
+    end
+    table.sort(found, function(a, b) return a.guid < b.guid end)
+    return found
+end
+
+-- The mob the next press goes to: the one after the current target, round the list.
+function ns.PickNext(list, current)
+    if #list == 0 then return nil end
+    for i, m in ipairs(list) do
+        if m.guid == current then return list[i % #list + 1] end
+    end
+    return list[1]
 end
 
 -- One line for the hub's home page, or nil.
@@ -512,6 +553,11 @@ do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
         pause = function(on) ns.paused = on; if ns.ApplyTargetKey then ns.ApplyTargetKey() end end,
+        move = function(on) if ns.MoveTarget then ns.MoveTarget(on) end end,
+        frames = { { key = "target", label = ns.L.TARGET_BTN, icon = ns.OPT_ICON.targetKey,
+                     get = function() return ns.db and ns.db.targetButton and true or false end,
+                     set = function(on) if ns.SetTargetButton then ns.SetTargetButton(on) end end,
+                     frame = function() return ns.TargetFrame and ns.TargetFrame() end } },
         key = "AutoQuest",
         icon = "Interface\\AddOns\\Gulli-AutoQuest\\icon",
         slash = "/gaq",
