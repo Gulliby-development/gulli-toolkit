@@ -85,6 +85,13 @@ CLASS_SORTS = {-61, -81, -82, -141, -161, -162, -261, -262, -263}
 CLOSED_RAIDS = {1977, 3429, 3428, 2717, 2677, 3456}
 MAX_LEVEL = 60
 
+# Class quests of WoW Forever that the Wowhead snapshot misses, with the reason; their items come
+# from the item data's `questRewards`. Only a quest QuestieDB's Forever data has.
+CLASS_EXTRA = {
+    97257: "Call of Fire for the Forever Horde shamans of Olariaan Swiftburn: Fire Totem",
+    1782: "Furen's Armor, the warriors' Fire Hardened Mail chain: Fire Hardened Hauberk",
+}
+
 # Library books. Who takes the books back, Alliance then Horde: the librarians (Garion Wendell in
 # Stormwind, Owen Thadd in Undercity) and, for the level 60 books, the mage trainers beside them
 # (Jennea Cannon, Oran Snakewrithe); the milestone quests with the books they ask for (from the players' guides:
@@ -162,6 +169,15 @@ def class_links(quests, items, snapshot):
                 got.append(iid)
         if got:
             out.append((qid, mask, got))
+    listed = {qid for qid, _, _ in out}
+    for qid in sorted(CLASS_EXTRA):
+        q = quests.get(qid)
+        if not q or qid in listed:
+            continue
+        got = sorted(iid for iid, it in items.items()
+                     if qid in seq(it.get(I_QUEST_REWARDS) or {}) and it.get(I_CLASS) in CLASS_ITEM_CLASSES)
+        if got:
+            out.append((qid, q.get(Q_CLASSES) or 0, got))
     return out
 
 
@@ -216,11 +232,18 @@ def build(quests, npcs, objects, items, classq=()):
             if low & HORDE and not low & ALLIANCE:
                 return "H"
             return ""
+        # every NPC counts: a quest that the trainers of both sides give (Cenarion Aid, the
+        # first step of the priests' Sunken Temple chain) is for both sides
         for key in (Q_STARTED_BY, Q_FINISHED_BY):
+            sides = set()
             for nid in seq((q.get(key) or {}).get(1) or {}):
                 f = (npcs.get(nid) or {}).get(N_FACTION)
                 if f in ("A", "H"):
-                    return f
+                    sides.add(f)
+            if len(sides) == 1:
+                return sides.pop()
+            if sides:
+                return ""
         return ""
 
     def work(q):
