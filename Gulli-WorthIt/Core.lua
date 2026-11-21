@@ -517,6 +517,7 @@ end
 
 -- "Take: Poor Old Blanchy" and "Verna Furlbrow, Westfall" for a stop.
 function ns.StopText(stop)
+    if stop.book then return ns.BookStopText(stop) end
     local what = L["DO_" .. stop.kind:upper()]:format(questTitle(stop.quest))
     local where = (stop.kind == "work" and not stop.at) and (stop.zone or "") or
         (stop.zone and L.WHERE:format(stop.who, stop.zone) or stop.who)
@@ -659,22 +660,30 @@ local function dist(ax, ay, bx, by) return math.sqrt((ax - bx) ^ 2 + (ay - by) ^
 function ns.GuideRows()
     local g = ns.cdb and ns.cdb.guide
     if not g then return {} end
-    local byQuest, here, rows = {}, ns.Here(), {}
-    for _, e in ipairs(ns.ClassQuests()) do byQuest[e.quest] = e end
-    for _, e in ipairs((ns.Rewards())) do byQuest[e.quest] = e end
-    for i, id in ipairs(g.targets) do
-        local e = byQuest[id]
-        if e and e.state ~= "done" then
-            local stop = ns.Stop(e)
-            local row = { entry = e, stop = stop, order = i, tier = 5 }
-            if e.state == "later" then row.tier = 6
-            elseif stop and stop.pin then
-                local k = onKalimdor(stop.area)
-                row.tier = (here.zone ~= nil and stop.zone == here.zone) and 0
-                    or ((here.kalimdor == nil or k == here.kalimdor) and 1 or 2)
-                if row.tier == 0 and here.x then row.dist = dist(here.x, here.y, stop.x, stop.y) end
+    local here, rows = ns.Here(), nil
+    if g.library then
+        rows = ns.LibraryRows(here)
+    else
+        local byQuest = {}
+        rows = {}
+        for _, e in ipairs(ns.ClassQuests()) do byQuest[e.quest] = e end
+        for _, e in ipairs((ns.Rewards())) do byQuest[e.quest] = e end
+        for i, id in ipairs(g.targets) do
+            local e = byQuest[id]
+            if e and e.state ~= "done" then
+                rows[#rows + 1] = { entry = e, stop = ns.Stop(e), order = i, later = e.state == "later" }
             end
-            rows[#rows + 1] = row
+        end
+    end
+    for _, row in ipairs(rows) do
+        local stop = row.stop
+        row.tier = 5
+        if row.later then row.tier = 6
+        elseif stop and stop.pin then
+            local k = onKalimdor(stop.area)
+            row.tier = (here.zone ~= nil and stop.zone == here.zone) and 0
+                or ((here.kalimdor == nil or k == here.kalimdor) and 1 or 2)
+            if row.tier == 0 and here.x then row.dist = dist(here.x, here.y, stop.x, stop.y) end
         end
     end
     table.sort(rows, function(a, b)
@@ -713,22 +722,43 @@ function ns.StepGuide()
     return true
 end
 
--- The tracker's rows: { quest, item, name, state, what, where, pin (its stop) }.
+-- The tracker's rows: { quest, item, name, state, what, where, pin (its stop) }, at most
+-- ns.TRACK_MAX (ns.TRACK_BOOKS through the library, `book` rows of two lines). Also returns how
+-- many rows did not fit.
 function ns.TrackerItems()
     local out = {}
-    for i, row in ipairs(ns.GuideRows()) do
-        if i > ns.TRACK_MAX then break end
+    local rows = ns.GuideRows()
+    local library = ns.LeadsLibrary()
+    local cap = library and ns.TRACK_BOOKS or ns.TRACK_MAX
+    for i, row in ipairs(rows) do
+        if i > cap then break end
         local e, stop = row.entry, row.stop
-        local it = { quest = e.quest, item = e.item, name = ns.ItemName(e.item), state = e.state, first = i == 1 }
-        if e.state == "later" then
-            it.what = L.FROM_LEVEL:format(e.req)
-        elseif stop then
-            it.what, it.where = ns.StopText(stop)
-            if stop.pin then it.pin = stop end
+        local it = { quest = e.quest, item = e.item, state = e.state, first = i == 1 }
+        if library then
+            it.book = true
+            if e.tier then it.item, it.state = e.items[1], "ready" end
+            if stop and stop.kind == "pick" then
+                it.name = ns.ItemName(e.item)
+                it.where = row.later and ((stop.zone or "") .. ((ns.Skin and ns.Skin.DOT) or " - ") .. L.FROM_LEVEL:format(e.level - ns.BOOK_EARLY))
+                    or (stop.zone or "")
+                it.state = row.later and "later" or "take"
+            elseif stop then
+                it.name, it.where = ns.StopText(stop)
+                it.state = "ready"
+            end
+            if stop and stop.pin then it.pin = stop end
+        else
+            it.name = ns.ItemName(e.item)
+            if e.state == "later" then
+                it.what = L.FROM_LEVEL:format(e.req)
+            elseif stop then
+                it.what, it.where = ns.StopText(stop)
+                if stop.pin then it.pin = stop end
+            end
         end
         out[#out + 1] = it
     end
-    return out
+    return out, math.max(0, #rows - cap)
 end
 
 -- Notices -----------------------------------------------------------------------------------------
@@ -737,6 +767,216 @@ local function toast(o)
     local S = ns.Skin
     if S and S.Toast then S.Toast(o) else print(L.TITLE .. ": " .. o.text) end
 end
+
+-- The library ---------------------------------------------------------------------------------
+-- WoW Forever's library books: each lies somewhere in the world and goes back to a librarian
+-- (the last ones to a mage trainer) through a quest of its own; every so many books handed in
+-- open a reward quest (D.tiers). Each book is a stop of the library guide.
+
+ns.TRACK_BOOKS = 10     -- rows of the tracker while it leads through the books
+ns.BOOK_EARLY = 10      -- a book waits ("later") while the character is this far below its level
+ns.BOOK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
+ns.CAGE_KEY_BOOK = 79953 -- the book behind a cage: the Rusted Cage Key opens it
+
+local function itemCount(id)
+    if CI.GetItemCount then return CI.GetItemCount(id) or 0 end
+    if GetItemCount then return GetItemCount(id) or 0 end
+    return 0
+end
+
+-- Who takes a book back, or gives a reward, for this character's side: { who, area, x, y }.
+local function sideOf(t)
+    local mine = FACTION[UnitFactionGroup("player") or ""] or "A"
+    return t[mine] or t.A
+end
+function ns.Taker(i) return sideOf(ns.Data.takers[i]) end
+
+-- Every book: { book = true, quest, item, level, places = { { area, x, y } }, taker (index),
+-- state (done, bag: in the bags, take, later), group (bags, now, later, done) }, in the data's
+-- order (lowest level first).
+function ns.Books()
+    local level, out = playerLevel(), {}
+    for _, b in ipairs(ns.Data.books or {}) do
+        local e = { book = true, quest = b[1], item = b[2], level = b[3], taker = b[5], places = {} }
+        local p = b[4]
+        for i = 1, #p, 3 do e.places[#e.places + 1] = { area = p[i], x = p[i + 1], y = p[i + 2] } end
+        if questDone(e.quest) then e.state = "done"
+        elseif itemCount(e.item) > 0 then e.state = "bag"
+        elseif level < e.level - ns.BOOK_EARLY then e.state = "later"
+        else e.state = "take" end
+        e.group = (e.state == "bag" and "bags") or (e.state == "take" and "now") or e.state
+        out[#out + 1] = e
+    end
+    return out
+end
+
+-- The library for this character: { books, handed (books handed in), bags (in the bags),
+-- total, tiers = { { quest, need, req, items, giver, state, left } } }. A reward is done,
+-- ready (enough books and the level), log (taken), wait (books missing: `left`) or later
+-- (the level missing).
+function ns.Library()
+    local books = ns.Books()
+    local handed, bags = 0, 0
+    for _, e in ipairs(books) do
+        if e.state == "done" then handed = handed + 1 elseif e.state == "bag" then bags = bags + 1 end
+    end
+    local level, tiers = playerLevel(), {}
+    for _, t in ipairs(ns.Data.tiers or {}) do
+        local r = { tier = true, quest = t[1], need = t[2], req = t[3], items = t[4], giver = sideOf(t[5]) }
+        if questDone(r.quest) then r.state = "done"
+        elseif onQuest(r.quest) then r.state = "log"
+        elseif handed < r.need then r.state, r.left = "wait", r.need - handed
+        elseif level < r.req then r.state = "later"
+        else r.state = "ready" end
+        tiers[#tiers + 1] = r
+    end
+    return { books = books, handed = handed, bags = bags, total = #books, tiers = tiers }
+end
+
+-- The window's book list: a { head = group, count } row before each group (in the bags, to
+-- pick up, later, done). Also returns the number of books shown.
+function ns.BookList()
+    local groups = { bags = {}, now = {}, later = {}, done = {} }
+    for _, e in ipairs(ns.Books()) do
+        if e.state ~= "done" or ns.db.showDone then local g = groups[e.group]; g[#g + 1] = e end
+    end
+    local out, n = {}, 0
+    for _, g in ipairs({ "bags", "now", "later", "done" }) do
+        if #groups[g] > 0 then
+            out[#out + 1] = { head = g, count = #groups[g] }
+            for _, e in ipairs(groups[g]) do out[#out + 1] = e; n = n + 1 end
+        end
+    end
+    return out, n
+end
+
+function ns.Book(quest)
+    for _, e in ipairs(ns.Books()) do if e.quest == quest then return e end end
+end
+
+-- The place to pick a book up: the one in the player's zone, else on the same continent, else
+-- the first.
+function ns.BookPlace(e, here)
+    here = here or ns.Here()
+    local best, rank
+    for _, p in ipairs(e.places) do
+        local zone = areaName(p.area)
+        local r = (here.zone ~= nil and zone == here.zone) and 0
+            or ((here.kalimdor == nil or onKalimdor(p.area) == here.kalimdor) and 1 or 2)
+        if not rank or r < rank then best, rank = p, r end
+    end
+    return best
+end
+
+local function placeStop(kind, at, quest, extra)
+    local area, x, y = at[2] or at.area or 0, at[3] or at.x or 0, at[4] or at.y or 0
+    local s = { kind = kind, who = at[1] or "", area = area, zone = areaName(area), x = x, y = y, quest = quest,
+                book = true, pin = area > 0 and (x > 0 or y > 0) }
+    for k, v in pairs(extra or {}) do s[k] = v end
+    return s
+end
+
+-- Where a book or a library reward sends the character: pick (the book where it lies),
+-- handin (the books in the bags, to who takes them back) or claim (a reward that is ready).
+function ns.BookStop(e, here)
+    if e.tier then
+        if e.state ~= "ready" and e.state ~= "log" then return nil end
+        return placeStop("claim", e.giver, e.quest, { need = e.need })
+    end
+    if e.state == "done" then return nil end
+    if e.state == "bag" then return placeStop("handin", ns.Taker(e.taker), e.quest, { item = e.item, count = 1 }) end
+    local p = ns.BookPlace(e, here)
+    if not p then return nil end
+    return placeStop("pick", { "", p.area, p.x, p.y }, e.quest, { item = e.item })
+end
+
+-- "Pick up: Goaz Scrolls" and "Westfall" for a stop of the library guide.
+function ns.BookStopText(stop)
+    if stop.kind == "pick" then return L.DO_PICK:format(ns.ItemName(stop.item)), stop.zone or "" end
+    local what = stop.kind == "claim" and L.DO_CLAIM:format(stop.need) or L.DO_HANDIN:format(stop.count or 1)
+    return what, stop.zone and L.WHERE:format(stop.who, stop.zone) or stop.who
+end
+
+-- Starts leading through the books. Returns false when there is nothing to do.
+function ns.StartLibrary()
+    if ns.paused or not ns.cdb then return false end
+    local lib = ns.Library()
+    local open = lib.bags > 0
+    for _, e in ipairs(lib.books) do if e.state == "take" or e.state == "later" then open = true end end
+    for _, t in ipairs(lib.tiers) do if t.state == "ready" or t.state == "log" then open = true end end
+    if not open then return false end
+    claim()
+    ns.cdb.guide = { library = true, targets = {} }
+    return ns.StepGuide()
+end
+
+function ns.LeadsLibrary() return ns.cdb ~= nil and ns.cdb.guide ~= nil and ns.cdb.guide.library == true end
+
+-- The library guide's rows, the same shape as ns.GuideRows: one row for the books in the bags
+-- of each who takes them back, one per reward ready to take, one per book to pick up; the books
+-- that wait for a level last.
+local function libraryRows(here)
+    local lib, rows = ns.Library(), {}
+    local hand = {}
+    for i, e in ipairs(lib.books) do
+        if e.state == "bag" then
+            local h = hand[e.taker]
+            if h then
+                h.stop.count = h.stop.count + 1
+            else
+                h = { entry = e, stop = ns.BookStop(e, here), order = i }
+                hand[e.taker] = h
+                rows[#rows + 1] = h
+            end
+        elseif e.state == "take" or e.state == "later" then
+            rows[#rows + 1] = { entry = e, stop = ns.BookStop(e, here), order = 100 + i, later = e.state == "later" }
+        end
+    end
+    for i, t in ipairs(lib.tiers) do
+        if t.state == "ready" or t.state == "log" then
+            rows[#rows + 1] = { entry = t, stop = ns.BookStop(t, here), order = 50 + i }
+        end
+    end
+    return rows
+end
+ns.LibraryRows = libraryRows
+
+-- Tells once about a book that came into the bags and a reward that opened. The first look on
+-- a character only notes what is there.
+function ns.CheckBooks()
+    if not ns.cdb or ns.paused then return 0 end
+    local first = ns.cdb.bookTold == nil
+    ns.cdb.bookTold = ns.cdb.bookTold or {}
+    local told, news = ns.cdb.bookTold, {}
+    local lib = ns.Library()
+    for _, e in ipairs(lib.books) do
+        local key = "b" .. e.quest
+        if e.state == "bag" and not told[key] then
+            told[key] = true
+            local who = ns.Taker(e.taker)
+            news[#news + 1] = { icon = ns.ItemIcon(e.item), quest = e.quest,
+                                text = L.LIB_FOUND:format(ns.ItemName(e.item), who[1]) }
+        end
+    end
+    for _, t in ipairs(lib.tiers) do
+        local key = "t" .. t.quest
+        if t.state == "ready" and not told[key] then
+            told[key] = true
+            news[#news + 1] = { icon = ns.ItemIcon(t.items[1]), quest = t.quest,
+                                text = L.LIB_REWARD:format(t.need, t.giver[1]) }
+        end
+    end
+    if first then return 0 end
+    for _, n in ipairs(news) do
+        if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("WorthIt", n.text) end
+        if ns.db.notify then
+            toast({ key = "book" .. n.quest, icon = n.icon, title = L.TAB_LIBRARY, text = n.text, seconds = 10,
+                    buttons = { { text = L.OPEN, onClick = function() ns.ShowBook(n.quest) end } } })
+        end
+    end
+    return #news
+end
+
 
 -- A reward quest was handed in: one notice, and the guide goes on to the next reward.
 function ns.OnTurnedIn(id)
@@ -848,6 +1088,7 @@ local function later()
         if ns.paused then return end
         if ns.Guiding() then ns.StepGuide() elseif ns.Refresh then ns.Refresh() end
         ns.CheckNew()
+        ns.CheckBooks()
     end)
 end
 ns.Later = later

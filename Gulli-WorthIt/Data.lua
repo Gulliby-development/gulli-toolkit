@@ -145,7 +145,6 @@ D.class = {
 {99187,2,{286408}}, -- The Reliquary of Tyr
 {84332,2,{227935}}, -- A Thane's Gratitude
 {7583,256,{18602}}, -- Suppression
-{7634,4,{18714}}, -- Ancient Sinew Wrapped Lamina
 {8258,64,{20134,20133}}, -- The Darkreaver Menace
 {8905,1024,{22108}}, -- An Earnest Proposition
 {8906,4,{22011}}, -- An Earnest Proposition
@@ -431,8 +430,6 @@ D.quest = {
 [7601]={"What Niby Commands",50,50,0,256,"","Niby the Almighty",361,41.4,44.9,"Impsy",361,41.4,45,0,0,0},
 [7602]={"Flawless Fel Essence",55,50,0,256,"","Impsy",361,41.4,45,"Impsy",361,41.4,45,16,64.7,18.4},
 [7603]={"Kroshius' Infernal Core",55,50,0,256,"","Impsy",361,41.4,45,"Niby the Almighty",361,41.4,44.9,361,45.7,34.8},
-[7632]={"The Ancient Leaf",60,60,0,4,"","Ancient Petrified Leaf",0,0,0,"Vartrus the Ancient",0,0,0,0,0,0},
-[7634]={"Ancient Sinew Wrapped Lamina",60,60,0,4,"","Hastat the Ancient",0,0,0,"Hastat the Ancient",0,0,0,618,56.7,51.7},
 [7667]={"Material Assistance",60,58,8589934770,64,"H","Sagorne Creststrider",1637,38.7,35.9,"Sagorne Creststrider",1637,38.7,35.9,46,58.8,45.3},
 [8151]={"The Hunter's Charm",52,50,0,4,"H","Kary Thunderhorn",1638,58.5,88.3,"Ogtinc",16,42.4,42.6,0,0,0},
 [8153]={"Courser Antlers",52,50,0,4,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,16,52.1,35.4},
@@ -663,7 +660,6 @@ D.chain = {
 [6129]={6126,6127,6128,6129},
 [7583]={7581,7583},
 [7603]={7601,7602,7603},
-[7634]={7632,7634},
 [8232]={8151,8153,8231,8232},
 [8236]={8234,8235,8236},
 [8253]={8250,8251,8252,8253},
@@ -736,6 +732,65 @@ D.alt = {
 [93461]={92514},
 [96135]={79366},
 [96136]={1531,1532},
+}
+
+-- Library books: { hand-in quest, the book (item), the quest's level, { area, x, y, area, x, y ... }
+--   (where it lies; a book in two places has both), who takes it back (D.takers) }, lowest level first.
+D.books = {
+{78124,209843,20,{148,59.6,22.2},1}, -- Nar'thalas Almanac
+{78127,209844,20,{130,63.5,63.2},1}, -- The Dalaran Digest
+{78142,209845,20,{40,45.4,70.4},1}, -- Bewitchments and Glamours
+{78143,209846,20,{17,49.3,33},1}, -- Secrets of the Dreamers
+{78145,209847,20,{17,56.3,8.8},1}, -- Arcanic Systems Manual
+{78146,209848,20,{11,33.6,47.9},1}, -- Goaz Scrolls
+{78147,209849,20,{10,16.7,28.4},1}, -- Crimes Against Anatomy
+{78148,209850,20,{38,77.4,14},1}, -- Runes of the Sorcerer-Kings
+{78149,209851,20,{406,74.4,85.7},1}, -- Fury of the Land
+{79091,203754,20,{1537,76,10.4},1}, -- Archmage Antonidas: The Unabridged Autobiography
+{79092,203755,20,{12,65.4,70.1},1}, -- Archmage Theocritus' Research Journal
+{79093,208860,20,{38,35.6,48.9,40,52.7,53.8},1}, -- Rumi of Gnomeregan: The Collected Works
+{79094,207972,20,{1637,38.7,78.4},1}, -- The Lessons of Ta'zo
+{79095,208185,20,{85,59.4,52.3},1}, -- The Apothecary's Metaphysical Primer
+{79096,210177,20,{130,43.4,41.2},1}, -- Ataeric: On Arcane Curiosities
+{79097,208800,20,{17,62.7,36.3},1}, -- Baxtan: On Destructive Magics
+{79535,213165,35,{33,41.5,50.8},1}, -- Basilisks: Should Petrification be Feared?
+{79947,215683,35,{400,34.4,40.1},1}, -- Geomancy: The Stone-Cold Truth
+{79948,215815,35,{36,48.4,57.6},1}, -- Defensive Magics 101
+{79949,215816,35,{45,73.6,65.2},1}, -- A Web of Lies: Debunking Myths and Legends
+{79950,215817,35,{405,55,26.2},1}, -- Demons and You
+{79951,215820,35,{3,56.7,39.9},1}, -- Mummies: A Guide to the Unsavory Undead
+{79952,215822,35,{15,57.2,20.8},1}, -- RwlRwlRwlRwl!
+{79953,215824,35,{8,61.2,22.2},1}, -- A Ludite's Guide to Caring for Your Demonic Pet
+{81947,220345,45,{8,70,51},1}, -- Sanguine Sorcery
+{81949,220346,45,{440,72.7,47.8},1}, -- Legends of the Tidesages
+{81952,220348,45,{16,20.7,62},1}, -- Everyday Etiquette
+{81953,220349,45,{46,29,28.9},1}, -- Stonewrought Design
+{81954,220350,45,{47,36,72.8},1}, -- Venomous Journeys
+{81955,220352,45,{51,37.8,49.3},1}, -- A Mind of Metal
+{81956,220353,45,{4,55.4,32.2},1}, -- Conjurer's Codex
+{84395,228132,60,{28,38.2,54.6},2}, -- Undead Potatoes
+{84396,228133,60,{46,26.4,24.4},2}, -- Magma or Lava?
+{84397,228134,60,{361,65.2,3.3},2}, -- Northern Kalimdor - A Comprehensive Guide
+{84398,228135,60,{139,71.9,48.3},2}, -- A Study of the Light
+{84399,228136,60,{618,60.7,37.7},2}, -- Ka-Boom!
+{84400,228138,60,{139,47.3,42.2},2}, -- The Knight and the Lady
+{84401,228140,60,{139,26.4,15.1},2}, -- Scourge: Undead Menace or Misunderstood?
+{84402,228141,60,{28,69.4,72.8},2}, -- Necromancy 101
+}
+
+-- Who takes the books back, by side: { name, area, x, y }; the librarians first.
+D.takers = {
+{A={"Garion Wendell",1519,48.9,86.5},H={"Owen Thadd",1497,73.4,33}},
+{A={"Jennea Cannon",1519,49.6,85.8},H={"Oran Snakewrithe",1497,73.1,32.9}},
+}
+
+-- The milestones: { quest, books it asks for, required level, { reward items },
+--   { A = who gives it, H = ... } }, fewest books first.
+D.tiers = {
+{78150,10,1,{277203,277204},{A={"Garion Wendell",1519,48.9,86.5},H={"Owen Thadd",1497,73.4,33}}},
+{79536,20,20,{281634,281635},{A={"Garion Wendell",1519,48.9,86.5},H={"Owen Thadd",1497,73.4,33}}},
+{82208,25,35,{277254,277258,277260},{A={"Garion Wendell",1519,48.9,86.5},H={"Owen Thadd",1497,73.4,33}}},
+{84394,35,50,{281637,277202,281636},{A={"Jennea Cannon",1519,49.6,85.8},H={"Oran Snakewrithe",1497,73.1,32.9}}},
 }
 
 -- Areas on Kalimdor; the others are in the Eastern Kingdoms.
