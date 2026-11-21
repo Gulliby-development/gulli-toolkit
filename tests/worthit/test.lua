@@ -586,13 +586,53 @@ test("the class list: groups and the done switch, the bag switch does not hide a
     local ns = Load()
     ns.db.better = true
     local items = ns.List("class")
-    eq(items[1].head, "now")
+    eq(items[1].head, "level", "the quests for the level come first")
     assert(find(items, FORGED), "listed with only better on")
     W.done[FORGED] = true
     ns.db.showDone = true
     eq(find(ns.List("class"), FORGED).state, "done")
     ns.db.showDone = false
     eq(find(ns.List("class"), FORGED), nil, "done ones hidden with the switch off")
+end)
+
+test("the class list: up to three quests for the level on top, then the rest by level", function()
+    for _, c in ipairs({ { "PRIEST", nil }, { "PRIEST", 11 }, { "MAGE", nil }, { "WARRIOR", 3 } }) do
+        for _, level in ipairs({ 10, 24, 40, 52, 60 }) do
+            Fake({ level = level, class = c[1], faction = "Horde", raceId = 5 })
+            local ns = Load()
+            ns.db.showDone = true
+            local items = ns.List("class", c[2])
+            local group, picks, seen, last = nil, 0, {}, {}
+            for _, it in ipairs(items) do
+                if it.head then group = it.head
+                else
+                    eq(seen[it.quest], nil, "listed once: " .. it.quest)
+                    seen[it.quest] = true
+                    if group == "level" then
+                        picks = picks + 1
+                        assert(math.abs(it.level - level) <= ns.LEVEL_SPAN, "near the level")
+                        assert(it.req <= level, "one can take it")
+                        assert(it.state ~= "done" and it.state ~= "later", "open")
+                    end
+                    if group == "now" or group == "all" or group == "level" then
+                        assert((last[group] or 0) <= it.level, "by level in " .. group)
+                        last[group] = it.level
+                    end
+                end
+            end
+            assert(picks <= ns.LEVEL_PICKS, "three at most")
+        end
+    end
+    -- a level 52 priest: the Sunken Temple wand (Blood of Morphaz) is for the level, on either side
+    for _, side in ipairs({ { "Horde", 5 }, { "Alliance", 1 } }) do
+        Fake({ level = 52, class = "PRIEST", faction = side[1], raceId = side[2] })
+        local ns = Load()
+        local items, group, found = ns.List("class"), nil, nil
+        for _, it in ipairs(items) do
+            if it.head then group = it.head elseif it.quest == 8257 then found = group end
+        end
+        eq(found, "level", side[1] .. " priest sees Blood of Morphaz for the level")
+    end
 end)
 
 test("the class quest's page lists its rewards, then the chain", function()
@@ -655,7 +695,10 @@ test("another class: its quests on this side, any race, nothing done or led", fu
     end
     for i = 2, #list do assert(list[i - 1].req <= list[i].req, "lowest level first") end
     local items, n = ns.List("class", 1)
-    eq(items[1].head, "all")
+    eq(items[1].head, "level", "another class's quests for this level come first too")
+    local heads = {}
+    for _, it in ipairs(items) do if it.head then heads[#heads + 1] = it.head end end
+    eq(heads[2], "all")
     eq(n, #list)
     eq(#ns.Targets(true) == 0 or find(ns.Targets(true), FORGED) == nil, true, "the guide keeps to the own class")
     -- a class of the other side alone still shows its quests

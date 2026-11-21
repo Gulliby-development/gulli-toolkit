@@ -389,21 +389,62 @@ end
 -- The window's list: a { head = group, count } row before each group's entries. kind filters
 -- (nil is all). Hidden rewards are left out, the ones that are no better with `better` on,
 -- the done ones with `showDone` off. Also returns the number of entries.
+-- The class quests that fit the character's level now, for the top of the Class quests tab:
+-- up to ns.LEVEL_PICKS of the entries one can take (req at most the level) whose quest level is
+-- within ns.LEVEL_SPAN of it, nearest first. Done or later ones never; another class's too.
+ns.LEVEL_PICKS, ns.LEVEL_SPAN = 3, 5
+function ns.LevelPicks(...)
+    local level, out = playerLevel(), {}
+    for _, list in ipairs({ ... }) do
+        for _, e in ipairs(list) do
+            if (e.req or 1) <= level and math.abs(e.level - level) <= ns.LEVEL_SPAN then out[#out + 1] = e end
+        end
+    end
+    table.sort(out, function(a, b)
+        local da, db = math.abs(a.level - level), math.abs(b.level - level)
+        if da ~= db then return da < db end
+        if a.level ~= b.level then return a.level < b.level end
+        return a.quest < b.quest
+    end)
+    for i = #out, ns.LEVEL_PICKS + 1, -1 do out[i] = nil end
+    table.sort(out, function(a, b)
+        if a.level ~= b.level then return a.level < b.level end
+        return a.quest < b.quest
+    end)
+    return out
+end
+
 function ns.List(kind, classId)
     local class = kind == "class"
     local rewards = class and ns.ClassQuests(classId) or ns.Rewards()
-    local groups = { now = {}, later = {}, done = {}, all = {} }
+    local groups = { level = {}, now = {}, later = {}, done = {}, all = {} }
     for _, e in ipairs(rewards) do
         local keep = not e.hidden and (class or not kind or e.kind == kind)
         if keep and e.state == "done" then keep = ns.db.showDone
         elseif keep and ns.db.better and not class then keep = ns.IsBetter(e) end
         if keep then local g = groups[e.group]; g[#g + 1] = e end
     end
+    if class then
+        groups.level = ns.LevelPicks(groups.now, groups.all)
+        local picked = {}
+        for _, e in ipairs(groups.level) do picked[e] = true end
+        for _, g in ipairs({ "now", "all" }) do
+            local rest = {}
+            for _, e in ipairs(groups[g]) do if not picked[e] then rest[#rest + 1] = e end end
+            groups[g] = rest
+        end
+    end
     table.sort(groups.now, function(a, b)
+        if class and a.level ~= b.level then return a.level < b.level end
         if STATE_ORDER[a.state] ~= STATE_ORDER[b.state] then return STATE_ORDER[a.state] < STATE_ORDER[b.state] end
         local ga, gb = a.gain or 0, b.gain or 0
         if ga ~= gb then return ga > gb end
         if a.level ~= b.level then return a.level < b.level end
+        return a.quest < b.quest
+    end)
+    table.sort(groups.all, function(a, b)
+        if a.level ~= b.level then return a.level < b.level end
+        if a.req ~= b.req then return a.req < b.req end
         return a.quest < b.quest
     end)
     table.sort(groups.later, function(a, b)
@@ -411,7 +452,7 @@ function ns.List(kind, classId)
         return a.quest < b.quest
     end)
     local out, n = {}, 0
-    for _, g in ipairs({ "now", "later", "done", "all" }) do
+    for _, g in ipairs({ "level", "now", "later", "done", "all" }) do
         if #groups[g] > 0 then
             out[#out + 1] = { head = g, count = #groups[g] }
             for _, e in ipairs(groups[g]) do out[#out + 1] = e; n = n + 1 end

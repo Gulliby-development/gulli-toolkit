@@ -224,7 +224,9 @@ local function fillRow(P)
         r.line:SetShown(not head)
         if head then
             r:SetSelected(false)
-            local name = it.head == "all" and L.CQ_ALL:format(ns.ClassName(P.viewClass)) or L["G_" .. it.head:upper()]
+            local name = (it.head == "all" and L.CQ_ALL:format(ns.ClassName(P.viewClass)))
+                or (it.head == "level" and L.G_LEVEL:format(UnitLevel("player") or 1))
+                or L["G_" .. it.head:upper()]
             r.head:SetText(S.Upper(name) .. "  " .. colour(it.count, S.FAINT))
             return
         end
