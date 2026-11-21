@@ -4,7 +4,7 @@ from a module's Locales.lua: every text a player reads is in all eight languages
 Each domain (such as `dungeonprep-tips`) has its cache `tools/i18n/<domain>.json`:
 { "<English text>": { "de": "...", "es": "...", ... } }. A generator calls `sync(domain, texts)`,
 which adds the new English texts (without translations), drops the ones no longer used and
-returns the cache; it writes what it has, and a text with no translation yet shows in English.
+returns the cache (a text the game has in some languages lists the others as `_need`); it writes what it has, and a text with no translation yet shows in English.
 
     python3 tools/i18n/i18n.py pending            # untranslated texts per domain and language
     python3 tools/i18n/i18n.py export <domain> <lang> <out.json>   # the texts to translate
@@ -40,17 +40,32 @@ def save(domain, data):
 
 
 def sync(domain, texts):
-    """Keeps the cache to `texts` (English) and returns it."""
+    """Keeps the cache to `texts` (English) and returns it. `texts` is a list (every language
+    needs it) or {text: [languages that need it]}, for a text the game already has in the
+    others; those are kept as `_need`."""
     old = load(domain)
-    data = {t: {l: v for l, v in (old.get(t) or {}).items() if l in LANGS and v} for t in set(texts) if t}
+    if not isinstance(texts, dict):
+        texts = {t: LANGS for t in texts}
+    data = {}
+    for t, need in texts.items():
+        if not t or not need:
+            continue
+        entry = {l: v for l, v in (old.get(t) or {}).items() if l in LANGS and v}
+        if sorted(need) != sorted(LANGS):
+            entry["_need"] = sorted(need)
+        data[t] = entry
     save(domain, data)
     return data
+
+
+def needs(entry, lang):
+    return lang in entry.get("_need", LANGS)
 
 
 def pending(domain):
     """{lang: [English texts without a translation]}."""
     data = load(domain)
-    return {l: sorted(t for t, tr in data.items() if not tr.get(l)) for l in LANGS}
+    return {l: sorted(t for t, tr in data.items() if needs(tr, l) and not tr.get(l)) for l in LANGS}
 
 
 def domains():

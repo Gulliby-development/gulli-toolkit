@@ -23,6 +23,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "questcleaner"))
 import questie  # noqa: E402
+import luadata  # noqa: E402
 sys.path.insert(0, HERE)
 import att  # noqa: E402
 import guides  # noqa: E402
@@ -286,11 +287,49 @@ def load_guides(root, tips=None):
     return out
 
 
-def write_translations(texts, tips):
-    """Data_<lang>.lua: the objectives and the guide tips in each language (tools/i18n). A file
-    keeps only what is translated; the rest shows in English. Each file returns at once on a
-    client of another language, so only one language stays in memory."""
-    tr_text = i18n.sync("dungeonprep-objectives", [t for t in texts.values() if t])
+# Our language -> the game client's locale of QuestieDB's translations (Polish has no client).
+GAME_LOCALES = {"de": "deDE", "es": "esES", "fr": "frFR", "pt": "ptBR", "ru": "ruRU", "zh": "zhCN"}
+
+
+def game_objectives(root):
+    """{lang: {quest: objective}}: the game's own text of each quest in that language, from
+    QuestieDB's l10n lookups (the Forever ones, else the Classic ones)."""
+    out = {}
+    for lang, loc in GAME_LOCALES.items():
+        for flavor in ("Forever", "Classic"):
+            path = os.path.join(root, "l10n", flavor, "lookupQuests", loc + ".lua")
+            if os.path.exists(path):
+                break
+        else:
+            continue
+        src = open(path, encoding="utf-8").read()
+        m = re.search(r"loadstring\(\[(=*)\[\s*return\s*(.*?)\]\1\]", src, re.S)
+        if not m:
+            continue
+        got = {}
+        for qid, row in luadata.parse(m.group(2)).items():
+            lines = row.get(2) if isinstance(row, dict) else None
+            if isinstance(lines, dict):
+                text = " ".join(v for _, v in sorted(lines.items()) if isinstance(v, str) and v.strip())
+                if text:
+                    got[qid] = text
+        out[lang] = got
+    return out
+
+
+def write_translations(texts, tips, game=None):
+    """Data_<lang>.lua: the objectives and the guide tips in each language. An objective is the
+    game's own text where QuestieDB has it (`game`), else ours from tools/i18n. A file keeps only
+    what is translated; the rest shows in English. Each file returns at once on a client of
+    another language, so only one language stays in memory."""
+    game = game or {}
+    need = {}
+    for qid, t in texts.items():
+        if t:
+            for lang in i18n.LANGS:
+                if qid not in game.get(lang, {}):
+                    need.setdefault(t, set()).add(lang)
+    tr_text = i18n.sync("dungeonprep-objectives", {t: sorted(ls) for t, ls in need.items()})
     tr_tips = i18n.sync("dungeonprep-tips", [t for by in tips.values() for t in by.values()])
     for lang in i18n.LANGS:
         lines = [
@@ -302,8 +341,8 @@ def write_translations(texts, tips):
             "local text, tips = D.L.text, D.L.tips",
         ]
         for qid in sorted(texts):
-            v = (tr_text.get(texts[qid]) or {}).get(lang)
-            if v:
+            v = game.get(lang, {}).get(qid) or (tr_text.get(texts[qid]) or {}).get(lang)
+            if v and texts[qid]:
                 lines.append("text[%d]=%s" % (qid, lua_str(v)))
         for qid in sorted(tips):
             parts = []
@@ -773,7 +812,7 @@ def main(root, att_root=None, gdq_root=None):
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
     write_translations({qid: objective(quests[qid]) for qid in used},
-                       {qid: guide_tips[qid] for qid in used if qid in guide_tips})
+                       {qid: guide_tips[qid] for qid in used if qid in guide_tips}, game_objectives(root))
     print(", ".join("%s %d" % (k, len(by_dungeon[k])) for k, *_ in DUNGEONS))
     print("quests %d, %d bytes; left out %d repeatable or exchange quests" % (
         len(used), os.path.getsize(OUT), len(dropped)))

@@ -4,3 +4,115 @@ if ns.lang ~= "pl" then return end
 local D = ns.Data
 D.L = { text = {}, tips = {} }
 local text, tips = D.L.text, D.L.tips
+tips[17]={d="Więcej rośnie w lochu."}
+tips[155]={d="Nie można go udostępnić; każdy gracz bierze eskortę sam."}
+tips[207]={t="Wymaga oddania obu zadań Yohwa.",d="Pilnują go murloki Saltscale (elita), a Grom'gol (Horda) jest tuż na wschód."}
+tips[261]={d="Często chodzą grupami. W pobliżu są Dread Rippers (39-40), Magram Necromancers (42-43) i Magram Necrokhan (elita, poziom 45); na południu Outcast Necromancers (39-40)."}
+tips[303]={d="To elita, poziom 27-31, a wśród nich elitarni Riflemen i Balgaras the Foul (elita, poziom 34): weź grupę."}
+tips[389]={t="Krazore (poziom 44) przy katedrze może zaatakować."}
+tips[629]={t="Zadanie grupowe: murloki Saltscale przy rafie to elita.",d="Pilnują go murloki Saltscale (elita); uważaj na oddech."}
+tips[739]={d="Murdaloc ma poziom 42."}
+tips[964]={d="Upuszczają je też Skeletal Flayers i Sorcerers.",h="Weź na drogę 15 sztuk złota i 2 Thorium Bars."}
+tips[1048]={t="Anya Rince (poziom 52) w pobliżu może zaatakować.",d="Gdy ginie, wbiega fala Scarlet Trainees."}
+tips[1049]={t="Nieumarli nie mogą go wziąć. Arrgrah Stonewall (poziom 38) przy mistrzu lotów może zaatakować."}
+tips[1053]={d="Gdy ginie, wbiega fala Scarlet Trainees."}
+tips[1100]={t="Jeśli nie ma łupu, spróbuj drugiego ciała kawałek na południe przy drodze."}
+tips[1102]={t="Arrgrah Stonewall (poziom 38) przy mistrzu lotów może zaatakować."}
+tips[1109]={t="Anya Rince (poziom 52) w pobliżu może zaatakować.",h="Potem proponuje Hearts of Zeal do Scarlet Monastery."}
+tips[1113]={t="Dopiero po oddaniu Going, Going, Guano! z Razorfen Kraul; wymaga poziomu 30. Anya Rince (poziom 52) tutaj może zaatakować."}
+tips[1139]={d="Dopiero gdy Advisor Belgrum da ci The Lost Tablets of Will; zobacz niżej."}
+tips[1144]={t="Daje zadanie od razu; zostaw wolne miejsce w dzienniku, bo inaczej się nie uda i trzeba zresetować loch."}
+tips[1221]={t="Bruuz (elita, poziom 20) przy mistrzu lotów i Ratchet Enforcer (poziom 57) mogą zaatakować."}
+tips[1424]={d="Wokół sadzawki są Sawtooth Crocolisks i trolle Atal'ai (poziom 36-38); Mukomonji (elita, poziom 62) stoi w 62,53 na zachodnim brzegu."}
+tips[1448]={d="Wokół sadzawki są Sawtooth Crocolisks i trolle Atal'ai (poziom 36-38); Mukomonji (elita, poziom 62) stoi w 62,53 na zachodnim brzegu."}
+tips[1452]={d="W okolicy 44-46,21-25 są Arash-ethis (rzadka elita, 49) oraz grupy Frayfeather i Lasher na poziomie 51."}
+tips[2198]={t="Szansa na łup jest niska."}
+tips[2199]={d="Kup je w domu aukcyjnym albo przetop rudę srebra."}
+tips[2202]={d="Więcej rośnie w lochu."}
+tips[2283]={d="Szansa na łup jest niska."}
+tips[2398]={t="Opcjonalne: prowadzi do Baelog i The Hidden Chamber w środku.",h="Tylko z The Lost Dwarves."}
+tips[2418]={d="Krasnoludy to elita (poziom 35-37)."}
+tips[2770]={t="Aby przyzwać Gahz'rillę, grupa potrzebuje Mallet of Zul'Farrak."}
+tips[2841]={t="Weź je, zanim porozmawiasz z Sovikiem: gdy masz Chief Engineer Scooty, Rig Wars nie jest już oferowane."}
+tips[2865]={t="Jeśli masz w dzienniku Tran'rek (zadanie wstępne), najpierw oddaj je tutaj."}
+tips[2926]={d="Irradiated Invaders to elita, poziom 24-26."}
+tips[2930]={d="Wszyscy oprócz Lepers to elita, poziom 24-26."}
+tips[2933]={t="Przy butelkach stoją Witherbark Scalpers i Zealots (poziom 40-42); Zul'arek Hatefowler (elita 43) jest w okolicy 32,57."}
+tips[2934]={d="Witherheart the Stalker (rzadka elita, 45) krąży w okolicy 33,70."}
+tips[2988]={d="Przy klatkach stoją Witherbark Scalpers i Zealots (poziom 40-42); Zul'arek Hatefowler (elita 43) jest przy trzeciej klatce."}
+tips[2989]={d="W pobliżu są Qiaga the Keeper i Morta'gya the Keeper (elita, poziom 50) oraz Vilebranch Soothsayers (46-47)."}
+tips[3523]={t="Potem proponuje Extinguishing the Idol. Niech każdy w grupie odda Scourge of the Downs, zanim ktoś zacznie eskortę."}
+tips[3701]={d="Po ruinach krążą War Reavers i żywiołaki ognia."}
+tips[3906]={d="Zjedź po wiszącym łańcuchu z półki i trzymaj się dolnej ścieżki."}
+tips[3982]={d="Wydarzenie zaczyna tylko jeden gracz; pozostali biorą zadanie po nim."}
+tips[4023]={d="Smok jest elitą."}
+tips[4121]={d="Wrogowie Dark Iron i Blackrock atakują eskortę."}
+tips[4122]={t="Jeśli to pominiesz, pomiń też następne siedem kroków.",h="Grark jest elitą."}
+tips[4141]={d="Krążą tam też raptory i diabłozaury (poziom 48-55)."}
+tips[4182]={d="Większość to elita; weź grupę.",h="Jeśli pominiesz ten łańcuch, pomiń też następne osiem kroków."}
+tips[4224]={d="Straże Hordy w Flame Crest."}
+tips[4262]={d="Pyron jest elitą. Zjedź po wiszącym łańcuchu z półki i trzymaj się dolnej ścieżki."}
+tips[4701]={d="Zaraz potem przychodzi po ciebie Gizrul the Slavener."}
+tips[4726]={t="Firesworn (60-61) chodzą tuż obok niego.",d="Krążą tu Broodlings i Black Dragonspawn (51-56, niektóre to elita)."}
+tips[4735]={d="Z niektórych jaj wykluwają się smoczęta."}
+tips[4742]={t="Potrzebujesz Unadorned Seal of Ascension (losowy łup z potworów Spire) i klejnotów Highlord Omokk, War Master Voone i Overlord Wyrmthalak."}
+tips[4743]={d="Emberstrife to elitarny smok na poziomie 61 z elitarnymi drakonidami wokół: weź grupę.",h="Dostajesz Seal of Ascension, która otwiera drzwi do Upper Blackrock Spire."}
+tips[4787]={t="Po wydmach krążą bandyci Wastewander (poziom 40-46).",d="Gniazda pilnują Hitah'ya the Keeper (elita, poziom 51) i elita Vilebranch (poziom 49-51); weź grupę."}
+tips[4808]={h="Hailspite (elita 60) stoi w okolicy 60.7,38.2 przy Everlook; zostaw go w spokoju."}
+tips[4809]={d="Chimery mają poziom 55-57; po zboczu krążą Shardtooth Maulers, Spell Eaters i Cobalt Broodlings (54-56)."}
+tips[4867]={t="Połóż Omokk's Head i Roughshod Pike na Urok's Tribute Pile; przychodzą Urok i fale ogrów, a z niego wypada Mojo."}
+tips[5081]={d="Zabójstwa liczą się tylko z zadaniem w dzienniku."}
+tips[5096]={t="Weź Flame in a Bottle ze skrzyni obok niego."}
+tips[5097]={d="Andorhal jest pełen nieumarłych (poziom 50-56); Araj the Summoner (61, elita) stoi na środku w 45,69; krążą też elitarni Skeletal Warlords i Flesh Golems (56-57) oraz Putridius (58, elita) w 48,67."}
+tips[5098]={d="Andorhal jest pełen nieumarłych (poziom 50-56); Araj the Summoner (61, elita) stoi na środku w 45,69; krążą też elitarni Skeletal Warlords i Flesh Golems (56-57) oraz Putridius (58, elita) w 48,67."}
+tips[5213]={d="Pojawia się w jednym z nich."}
+tips[5281]={h="Nie można go udostępnić; każdy gracz dostaje je od Alen i Egan."}
+tips[5505]={h="Dostajesz Skeleton Key."}
+tips[5511]={t="Dostajesz Skeleton Key."}
+tips[5528]={t="Weź je po Tribute Run, a potem oddaj: The Gordok Taste Test"}
+tips[5529]={d="Może z nich wypaść Healthy Dragon Scale, która zaczyna Healthy Dragon Scale."}
+tips[5537]={d="Upuszczają je Skeletal Flayers i Sorcerers. Miejsce wybrano według pojawiania się potworów, a nie ze źródła zadania.",h="Weź na drogę 15 sztuk złota i 2 Thorium Bars."}
+tips[5722]={h="Nie można go udostępnić, więc każdy gracz przeszukuje ciało sam."}
+tips[5726]={d="Są tu też Felweaver Scornn (elita) i Gazz'uz (poziom 14)."}
+tips[5727]={d="Wokół Cleft stoją inkuby; mogą być wrogie."}
+tips[5803]={d="Araj to elita na poziomie 61, a obok niego szkielety-strażnicy i Spectral Attendants na poziomie 60: weź grupę."}
+tips[5804]={d="Araj to elita na poziomie 61, a obok niego szkielety-strażnicy i Spectral Attendants na poziomie 60: weź grupę."}
+tips[5961]={t="Potrzebuje go łańcuch Nathanosa.",h="Nathanos ma poziom 62. Duggan Wildhammer (55, elita, przyjazny Przymierzu) stoi tuż na południowy wschód."}
+tips[6022]={d="Po mieście chodzą elitarne Stitched Horrors (58)."}
+tips[6133]={d="Tropiciele w chacie mają poziom 58-60, a stoi tam Ranger Lord Hawkspear (60, elita)."}
+tips[6136]={d="Borelgore to elita na poziomie 61; weź grupę."}
+tips[6522]={t="Bez zwoju pomiń ten i następny krok.",h="Najpierw trzeba wykonać zadanie ze zwojem. Anya Rince (poziom 52) i Darkspear Emissary (poziom 30) w pobliżu mogą zaatakować."}
+tips[6981]={h="Na szczycie wzgórza krążą Deviate Slayers i Ectoplasms (elita, poziom 16-17)."}
+tips[7066]={t="Opcjonalne: przyjmuje je Keeper Remulos w Moonglade; zobacz ostatni krok.",h="Brak trasy tutaj: do Moonglade dolecisz z Thunder Bluff lub Orgrimmar (Horda) albo z Rut'theran Village (Przymierze), a druid zaklęciem Teleport: Moonglade. Pomiń ten krok, jeśli tam nie lecisz."}
+tips[7067]={t="Chodzi stąd mniej więcej do 43,85. W pobliżu mogą być Kaskk (rzadka elita, poziom 40), Whirlwind Shredders i Nether Sorceresses (poziom 32-40)."}
+tips[7463]={t="Lydros stoi w Athenaeum. Poziom 60. Hydrospawn jest w Dire Maul East; oddaj przy następnej wizycie."}
+tips[7494]={t="Chodzi w okolicy; to samo zadanie dają Crier Goodman w Stormwind i Herald Moonstalker w Darnassus."}
+tips[7703]={h="Przy kolejnym Tribute Run, gdy będziesz mieć Gauntlet."}
+tips[92066]={d="Znajdź Totem of Ursoc i Totem of Ursol."}
+tips[92343]={d="Zbierz 10 Nordrassil Root Caps."}
+tips[92344]={d="Zbierz 10 Nordrassil Root Caps."}
+tips[92745]={d="Po drodze mogą się kręcić Sergeant Brashclaw i Leprithus (rzadka elita, poziom 18-19)."}
+tips[92747]={d="W domu na północ od miasta straszą Forlorn Spirits (poziom 25-26). Miasta pilnują elitarni Defias Henchmen, Conjurers i Watchmen (poziom 15-18)."}
+tips[94968]={t="Otwiera się, gdy przyniesiesz mu It Is Time, Brother... od Da'grosha."}
+tips[94972]={t="Odblokowuje się tak samo jak Eye of Mugg."}
+tips[94974]={h="Klucz otwiera górną część lochu."}
+tips[94975]={t="Otwiera się, gdy oddasz mu Bring Me His Head. Wokół Shroud są Twilight Enforcers (elita 45) i Fanatics (42-43).",h="W pobliżu są Twilight Enforcers (elita 45)."}
+tips[94981]={h="Klucz otwiera górną część lochu."}
+tips[94983]={t="Otwiera się, gdy oddasz mu Bring Me His Head. W pobliżu są Executioner Morg, Twilight Forgemaster i Kargra the Blind (wszyscy elita 46).",h="Elita (46) w pobliżu."}
+tips[94984]={t="Otwiera się po jej zadaniu A Small Favor."}
+tips[95198]={d="Trzymaj się z dala od Jainy: przejrzy przebranie. Jeśli utkniesz po wykonaniu zadania, użyj przycisku opuszczenia pojazdu."}
+tips[95748]={d="Skóra ani węgiel nie są potrzebne; po prostu kliknij tabliczkę."}
+tips[95773]={t="Wymaga oddania The Gurubashi Legends of Old.",d="Szansa jest niska, a nagi są pod wodą; weź grupę albo coś do oddychania.",h="Wymaga oddania Enemies in the Water i Locating the Lost City."}
+tips[95789]={t="Oba wymagają poziomu 34.",d="Gracze piszą, że w jednym przejściu wypada za mało na całą grupę; dobrze wyczyść teren piratów."}
+tips[95790]={t="Nie można go udostępnić; każdy gracz klika sam."}
+tips[95926]={t="Anya Rince (poziom 52) w pobliżu może zaatakować."}
+tips[96334]={d="Niska szansa; gracze potrzebowali kilku przejść."}
+tips[96335]={t="Nie zabijaj The Questioner wcześniej, bo zadanie się nie pojawi.",d="Niska szansa.",h="Jeden gracz pisze, że nie mógł go oddać po grupie; oddajcie razem."}
+tips[96337]={h="Moonbrook jest pełen Defias. Jeśli Box nic nie oferuje, zapytaj Nazgrela."}
+tips[96771]={t="Potem udaj się do Riverglades."}
+tips[96772]={d="Tylko jeśli wziąłeś je w Dalaranie."}
+tips[96773]={d="Przeszukaj go wkrótce po pierwszym członku grupy; gracze piszą, że po około 30 sekundach nie da się go już przeszukać."}
+tips[97173]={d="Znajdź Blackmaw Ritual Totem (tylko jeśli wziąłeś zadanie w Dalaranie)."}
+tips[97196]={d="Przeszukaj go wkrótce po pierwszym członku grupy; gracze piszą, że po około 30 sekundach nie da się go już przeszukać."}
+tips[97198]={d="Znajdź Blackmaw Ritual Totem."}
+tips[97327]={d="Zbierz 5 Blackmaw Pouches."}
