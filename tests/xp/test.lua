@@ -40,6 +40,36 @@ test("time and kills to the next level", function()
     eq(ns.Span(st.toLevel), "1 h 30 min")
 end)
 
+test("only kill messages count as kills", function()
+    Fake({ level = 52, xp = 0, xpMax = 21000, now = 0 })
+    local ns = Load()
+    W.now = 600
+    for _ = 1, 5 do
+        W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Ragged Owlbeast dies, you gain 200 experience.")
+        W.Gain(200)
+    end
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Felpaw Wolf dies, you gain 300 experience. (+100 exp Rested bonus)")
+    W.Gain(300)
+    -- Quest and other XP come through the same event and must stay out of the kills.
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "You gain 4200 experience.")
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Experience gained: 4200.")
+    W.Gain(8400)
+    local st = ns.Stats(600)
+    eq(st.kills, 6)
+    eq(st.killXP, 1300)
+    eq(ns.KillXP("You gain 4200 experience."), nil)
+    eq(ns.KillXP("Boar dies, you gain 45 experience. (+10 exp group bonus)"), 45)
+end)
+
+test("kill messages of another client language", function()
+    Fake({ level = 20 })
+    COMBATLOG_XPGAIN_FIRSTPERSON = "%s погибает, вы получаете %d ед. опыта."
+    local ns = Load()
+    eq(ns.KillXP("Кабан погибает, вы получаете 120 ед. опыта."), 120)
+    eq(ns.KillXP("Вы получаете 900 ед. опыта."), nil)
+    COMBATLOG_XPGAIN_FIRSTPERSON = nil
+end)
+
 test("quest XP is counted apart", function()
     Fake({ level = 20 })
     local ns = Load()
