@@ -175,6 +175,34 @@ test("the gain: over the smallest bag of the kind, or the whole bag into an empt
     eq(ns.Gain("bag", 8, ns.Bags()), 8, "an empty bag slot")
 end)
 
+test("the Cozy Sleeping Bag: a reward of its own kind, no bag, worth it until it is got, for both sides", function()
+    for _, side in ipairs({ { "Alliance", 1, 79008 }, { "Horde", 2, 79007 } }) do
+        Fake({ level = 20, faction = side[1], raceId = side[2], bags = { 20, 20, 20, 20 } })
+        local ns = Load()
+        local e = find((ns.Rewards()), 79976)
+        assert(e, side[1] .. " sees This Must Be The Place")
+        eq(e.item, 211527)
+        eq(e.kind, "rest")
+        eq(e.slots, nil, "no slots")
+        eq(e.chain[1], side[3], side[1] .. "'s first step")
+        eq(#e.chain, 6, "note, Stepping Stones, Scramble, Wet Job, Eagle's Fist, the bag")
+        assert(ns.IsBetter(e), "better than any bags worn")
+        local text = ns.GainText(e, ns.Bags())
+        eq(text, ns.L.GAIN_REST)
+        local listed = false
+        for _, it in ipairs((ns.List("rest"))) do if it.quest == 79976 then listed = true end end
+        assert(listed, "listed under its kind with the better switch on")
+        local kinds = {}
+        for _, k in ipairs(ns.Kinds()) do kinds[k] = true end
+        assert(kinds.rest, "the kind has its tab")
+        assert(ns.KIND_ICON.rest and ns.L.KIND_REST and ns.L.SHORT_REST, "icon and texts")
+        eq(ns.Potential(), 0, "it adds no bag slots")
+        for _, id in ipairs(e.chain) do W.done[id] = true end
+        e = find((ns.Rewards()), 79976)
+        eq(e.state, "done")
+    end
+end)
+
 test("rewards are only the ones this character can get", function()
     Fake({ level = 20 })
     local ns = Load()
