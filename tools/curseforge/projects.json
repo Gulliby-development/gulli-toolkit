@@ -9,6 +9,7 @@
     "GroupBuffs": { "id": 1813373 },
     "WorthIt": { "id": 1821802 },
     "VendorFlip": { "id": 1821814 },
-    "MyBisList": { "id": 1821807 }
+    "MyBisList": { "id": 1821807 },
+    "WritRunner": { "id": null, "optional": ["auctionator"] }
   }
 }

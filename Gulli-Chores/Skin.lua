@@ -3035,7 +3035,7 @@ end
 -- The groups in the order they show; a new kind of line joins one of them or gets a key here.
 S.TIP_GROUPS = { "state", "quest", "stock", "price", "craft", "source", "note", "id" }
 -- The modules in the order their lines stand inside a group; any other comes after, by name.
-S.TIP_ORDER = { "Tooltip", "QuestCleaner", "Junk", "PartyQuests", "CraftProfit", "Attune" }
+S.TIP_ORDER = { "Tooltip", "QuestCleaner", "Junk", "PartyQuests", "CraftProfit", "WritRunner", "Attune" }
 local TIP_V = 1
 local TIP_RULE, TIP_RULE_FAINT = { 1, 0.82, 0, 0.34 }, { 1, 0.925, 0.784, 0.13 }
 -- An empty picture as wide as an icon (a clear corner of a game texture), for lines under one.
