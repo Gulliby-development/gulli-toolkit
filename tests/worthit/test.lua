@@ -1082,4 +1082,49 @@ test("random characters: the library and its guide never raise an error, the tra
     assert(seen > 200, "the rounds did list books")
 end)
 
+test("an item the client lacks: the data's name, asked for once, repainted when it comes, or its id when the server refuses it", function()
+    Fake({ level = 30, zone = WESTFALL })
+    local known, asks = {}, {}
+    C_Item.GetItemNameByID = function(id) return known[id] end
+    C_Item.RequestLoadItemDataByID = function(id) asks[id] = (asks[id] or 0) + 1 end
+    local ns = Load()
+    eq(ns.ItemName(9513), "Ley Staff", "the English name of the data meanwhile")
+    eq(ns.ItemName(227025), "...", "no name in the data: it loads")
+    ns.ItemName(227025); ns.ItemName(227025)
+    eq(asks[227025], 1, "asked once, not on every paint")
+    W.Fire("GET_ITEM_INFO_RECEIVED", 227025, false)
+    eq(ns.ItemName(227025), ns.L.ITEM_ID:format(227025), "the server does not know it")
+    eq(asks[227025], 1, "a refused item is not asked again")
+    W.now = W.now + 1; W.RunTimers()
+    local paints, refresh = 0, ns.Refresh
+    ns.Refresh = function() paints = paints + 1 end
+    W.Fire("GET_ITEM_INFO_RECEIVED", 424242, true)
+    W.now = W.now + 1; W.RunTimers()
+    eq(paints, 0, "another addon's item repaints nothing")
+    known[9513] = "Stab der Ley"
+    W.Fire("GET_ITEM_INFO_RECEIVED", 9513, true)
+    W.now = W.now + 1; W.RunTimers()
+    eq(paints, 1, "our item repaints the window")
+    ns.Refresh = refresh
+    eq(ns.ItemName(9513), "Stab der Ley", "the client's own name wins")
+    ns.ItemName(4242)
+    W.now = W.now + ns.ASK_AGAIN + 1
+    ns.ItemName(4242)
+    eq(asks[4242], 2, "a lost answer is asked again after a while")
+end)
+
+test("every item the window shows is asked for at login, of every class, the books and the milestones too", function()
+    Fake({ level = 10, zone = WESTFALL })
+    local asks = {}
+    C_Item.GetItemNameByID = function() return nil end
+    C_Item.RequestLoadItemDataByID = function(id) asks[id] = true end
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    W.now = W.now + 5; W.RunTimers()
+    for _, r in ipairs(ns.Data.rewards) do assert(asks[r[1]], "reward " .. r[1]) end
+    for _, c in ipairs(ns.Data.class) do for _, id in ipairs(c[3]) do assert(asks[id], "class item " .. id) end end
+    for _, b in ipairs(ns.Data.books) do assert(asks[b[2]], "book " .. b[2]) end
+    for _, t in ipairs(ns.Data.tiers) do for _, id in ipairs(t[4]) do assert(asks[id], "tier item " .. id) end end
+end)
+
 W.finish()

@@ -271,11 +271,19 @@ end
 -- do" line.
 local STEP_H, ITEM_H, TIP_LEFT, TIP_RIGHT, TIP_PAD, TIP_WIDTH = 24, 30, 28, 12, 5, 420
 
+-- The game's tooltip of an item, or while the client has no data for it (it would only say
+-- "Retrieving item information") its name and what is going on.
+local function setItemTip(id)
+    if ns.Known(id) and GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) return end
+    GameTooltip:AddLine(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
+    GameTooltip:AddLine(ns.failed[id] and L.ITEM_UNKNOWN or L.ITEM_LOADING, unpack(S.MUTED))
+end
+
 local function itemTip(self)
     local id = self:GetParent().itemId
     if not (GameTooltip and id) then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    if GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) end
+    setItemTip(id)
     GameTooltip:Show()
 end
 
@@ -622,7 +630,7 @@ local function buildLadder(p)
             b:SetScript("OnEnter", function(self)
                 if not (GameTooltip and self.itemId) then return end
                 GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-                if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemId) end
+                setItemTip(self.itemId)
                 GameTooltip:Show()
             end)
             b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -1011,7 +1019,7 @@ local function build()
         p:SetPoint("BOTTOMRIGHT")
         p:SetShown(i == 1)
     end
-    frame:HookScript("OnShow", function() ns.Refresh() end)
+    frame:HookScript("OnShow", function() ns.Prefetch(); ns.Refresh() end)
 end
 
 function ns.Toggle()
@@ -1120,7 +1128,7 @@ local function trackerRow(parent)
         local it = self.item
         if not (GameTooltip and it and it.book and it.item) then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        if GameTooltip.SetItemByID then GameTooltip:SetItemByID(it.item) end
+        setItemTip(it.item)
         GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
