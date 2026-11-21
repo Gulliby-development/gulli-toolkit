@@ -72,7 +72,7 @@ For auction prices, also install one of these and scan the auction once: **Aucti
 <details>
 <summary><b>Do I need Auctionator?</b></summary>
 
-No. Any of the price addons above works. Without any of them, the route still goes on: what only the auction sells (ore, bars, cloth) gets a guessed price, marked "price guessed" with a `~`, from an old price or five times what a vendor pays for it. A banner over the route says so, only levelling routes show (a profit from guessed prices would mislead), and the auction switches in Settings are grey and off. Once you install a price addon, they come back as you left them. The real price is the one you see at the auction.
+No. Any of the price addons above works. Without any of them, the route still goes on: what only the auction sells (ore, bars, cloth) gets a guessed price, marked "price guessed", from an old price or five times what a vendor pays for it. A banner over the route says so, only levelling routes show (a profit from guessed prices would mislead), and the auction switches in Settings are grey and off. Once you install a price addon, they come back as you left them. The real price is the one you see at the auction.
 </details>
 
 <details>

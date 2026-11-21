@@ -152,7 +152,7 @@ function Fake(spec)
         GetItemNameByID = function(id) return W.names[id] end,
         GetItemIconByID = function(id) return "icon" .. id end,
         GetItemCount = function(id, bank) return (W.bags[id] or 0) + (bank and (W.bank[id] or 0) or 0) end,
-        RequestLoadItemDataByID = function() end,
+        RequestLoadItemDataByID = function(id) W.requested = W.requested or {}; W.requested[id] = true end,
     }
     C_TooltipInfo = { GetItemByID = function(id)
         local t = W.tooltips[id]

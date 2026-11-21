@@ -164,6 +164,49 @@ test("Today sorts the writs held: ready, missing their item, handed in", functio
     eq(rows[4].s.w.id, WISDOM)
 end)
 
+test("Today shows what handing in each held writ costs: the item less its pouch", function()
+    Fake({ bags = { [OGRE] = 1 }, bank = { [WISDOM] = 1, [WISDOM_ITEM] = 1 }, prices = { [OGRE_ITEM] = 5000 } })
+    local ns = Load()
+    local pouch = ns.PouchOf("J")
+    local rows = ns.TodayRows()
+    local byId, heads = {}, {}
+    for _, r in ipairs(rows) do
+        if r.s then byId[r.s.w.id] = r elseif r.head then heads[#heads + 1] = r end
+    end
+    eq(byId[OGRE].s.status, "item")
+    eq(byId[OGRE].close.item, 5000)
+    eq(byId[OGRE].close.total, 5000 - pouch)
+    eq(byId[OGRE].close.estimate, true)
+    -- the writ and its item wait in the bank: handing it in only gives the pouch
+    eq(byId[WISDOM].s.status, "bank")
+    eq(byId[WISDOM].close.total, -pouch)
+    eq(heads[1].cost, 5000 - pouch)
+    eq(heads[2].cost, -pouch)
+    -- the tooltip names it too
+    local found
+    for _, l in ipairs(ns.TipLines(OGRE)) do if l.left == ns.L.TIP_CLOSE then found = l end end
+    eq(found ~= nil, true)
+end)
+
+test("a held writ without a price keeps its group's head without a sum", function()
+    Fake({ bags = { [OGRE] = 1 } })
+    local ns = Load()
+    local rows = ns.TodayRows()
+    eq(rows[1].cost, nil)
+    eq(rows[2].close.total, nil)
+end)
+
+test("the writ and item names are asked for at login, only the missing ones", function()
+    Fake({ names = { [OGRE] = "Craftsman's Writ: Elixir of Ogre's Strength" } })
+    local ns = Load()
+    W.requested = {}
+    ns.Prefetch()
+    eq(W.requested[OGRE], nil)
+    eq(W.requested[OGRE_ITEM], true)
+    eq(W.requested[SEALED_J], true)
+    eq(W.requested[POUCH_J], true)
+end)
+
 test("a writ taken into the log needs no writ item", function()
     Fake({ log = { [OGRE_Q] = true }, bags = { [OGRE_ITEM] = 1 } })
     local ns = Load()
@@ -392,6 +435,8 @@ test("the window builds every tab, with a plan and without", function()
     assert(#rows > 0)
     assert(ns.LineParts(ns.plan.lines[1]):find("pouch", 1, true), "every line shows its pouch")
     eq(ns.CostText(-500):sub(1, 1) ~= "", true)
+    eq(ns.CostText(500, true):find("~", 1, true), nil)
+    eq(ns.CostText(500):find(ns.Skin.Hex(ns.Skin.BAD) .. "-", 1, true) ~= nil, true)
     W.Fire("AUCTION_HOUSE_SHOW")
     ns.MoveTracker(true)
     assert(ns.TrackerFrame(), "the tracker for the Unlock mode")

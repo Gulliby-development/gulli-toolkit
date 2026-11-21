@@ -34,7 +34,7 @@ ns.FACTION = { Alliance = 2586, Horde = 2587 }
 -- Where each standing starts (absolute reputation), by the game's reaction index.
 ns.REACTION_AT = { [4] = 0, [5] = 3000, [6] = 9000, [7] = 21000, [8] = 42000 }
 ns.GOALS = { 5, 6, 7, 8 }
-ns.DAYS_MAX = 14
+ns.DAYS_MAX = 31
 local UNIT = 25 -- 75, 125 and 200 are all multiples of 25
 
 -- ---------- game wrappers ----------
@@ -501,7 +501,27 @@ function ns.CostOf(w, useBank)
     local need = math.max(0, w.count - items)
     c.item = need == 0 and 0 or (ns.Price(w.item, need, 0) and math.floor(ns.Price(w.item, need, 0) * need + 0.5))
     if c.writ and c.item then c.total = c.writ + c.item - c.pouch end
+    local function fresh(id) local l = ns.lots[id]; return l and time() - l.t <= ns.LOTS_FRESH end
+    c.estimate = (c.writ ~= 0 and not fresh(w.id)) or (need > 0 and not fresh(w.item)) or false
     return c
+end
+
+-- What handing in a writ the character holds costs from here: the item still to buy (bags and
+-- bank count as owned, so does the writ) less its pouch. A negative total is gold won.
+function ns.CloseCost(s)
+    if s.status == "done" or s.status == "none" then return nil end
+    return ns.CostOf(s.w, true)
+end
+
+-- Asks the client for every writ and item name of this side once, so the lists show names
+-- instead of "..." when the window opens; GET_ITEM_INFO_RECEIVED repaints it.
+function ns.Prefetch()
+    for _, w in ipairs(ns.Writs()) do
+        if not itemName(w.id) then requestItem(w.id) end
+        if not itemName(w.item) then requestItem(w.item) end
+    end
+    for id in pairs(ns.SEALED) do if not itemName(id) then requestItem(id) end end
+    for _, id in pairs(ns.POUCH) do if not itemName(id) then requestItem(id) end end
 end
 
 -- ---------- the plan (no game calls) ----------
@@ -1286,6 +1306,15 @@ local function writLines(w, S)
         out[#out + 1] = { group = "quest", sub = true, left = L.TIP_CUSTOMER, right = zone and L.WHO_WHERE:format(who, zone) or who,
                           color = S.MUTED, rcolor = S.GOLD }
     end
+    local held = ns.CloseCost(s)
+    if held and held.total then
+        local parts = held.item > 0 and L.PART_ITEM:format(S.MoneyText(held.item, true)) or L.PART_ITEM_OWN
+        parts = parts .. "  " .. L.PART_POUCH:format(S.MoneyText(held.pouch, true))
+        local right = held.total < 0 and (S.Hex(S.GOOD) .. "+|r" .. S.MoneyText(-held.total)) or S.MoneyText(held.total)
+        out[#out + 1] = { group = "price", left = S.Cap(L.TIP_CLOSE), right = right,
+                          color = S.MUTED, icon = "Interface\\Icons\\INV_Misc_Bag_10" }
+        out[#out + 1] = { group = "price", sub = true, left = parts, color = S.FAINT }
+    end
     local c = ns.CostOf(w, ns.db.bank)
     if c.total then
         out[#out + 1] = { group = "price", left = S.Cap(L.TIP_PER100), right = S.MoneyText(math.floor(c.total * 100 / rep + 0.5)),
@@ -1403,7 +1432,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "UPDATE_FACTION" or event == "PLAYER_ENTERING_WORLD" then
         local r = ns.Rep()
         ns.NoteRep(r and r.value)
-        if event == "PLAYER_ENTERING_WORLD" then ns.PouchReset(); ns.Snapshot() end
+        if event == "PLAYER_ENTERING_WORLD" then ns.PouchReset(); ns.Snapshot(); ns.Prefetch() end
         if ns.Refresh then ns.Refresh() end
         return
     end

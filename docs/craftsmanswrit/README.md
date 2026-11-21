@@ -18,11 +18,11 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 
 ## Features
 
-- **Today.** Your standing with the camp and how much is left to the next one, when the day resets, and every writ you carry: ready to hand in, still missing its item, in the bank or already handed in today. Sealed Writs in your bags are listed too.
-- **A plan for any number of days.** Pick the standing you want (the next one, Friendly, Honored, Revered or Exalted) and the days you have. Craftsman's Writ picks the writs that get you there for the least gold. Each writ can be used once a day, so more days let it use the cheap writs again. The plan is shown day by day.
-- **Coin Pouches in plain sight.** Every turn-in gives a Coin Pouch with gold in it. The plan shows it on every line and on top: **Purchases**, minus **Coin Pouches**, equals **Total**. A writ that costs less than its pouch is marked **profit**, and the plan always takes it. Craftsman's Writ learns what your pouches really hold when you open them.
+- **Today.** Your standing with the camp and how much is left to the next one, when the day resets, and every writ you carry: ready to hand in, still missing its item, in the bank or already handed in today. Each one shows what handing it in costs from here: the item you still need at the auction, less its Coin Pouch. Sealed Writs in your bags are listed too.
+- **A plan for up to 31 days.** Pick the standing you want (the next one, Friendly, Honored, Revered or Exalted) and the days you have. Craftsman's Writ picks the writs that get you there for the least gold. Each writ can be used once a day, so more days let it use the cheap writs again. The plan is shown day by day.
+- **Coin Pouches in plain sight.** Every turn-in gives a Coin Pouch with gold in it. The plan shows it on every line and on top: **Purchases**, minus **Coin Pouches**, equals **Total**. A writ that costs less than its pouch is marked **profit** in green, and the plan always takes it; one that costs more shows its **loss** in red. Craftsman's Writ learns what your pouches really hold when you open them.
 - **Bags and bank first.** Writs and items you already have cost nothing. The bank counts too (switch it off if you like).
-- **Sealed Writs.** A Sealed Writ holds a random writ of its rank. The plan can count it at the mean price of that rank's items, marked with `~`.
+- **Sealed Writs.** A Sealed Writ holds a random writ of its rank. The plan can count it at the mean price of that rank's items.
 - **Real auction prices.** Prices come from your price addon (Auctionator and others). At the auction house, **Calculate** reads the real listings, so buying many also counts the dearer ones.
 - **Buy with clicks.** At the auction house the window opens beside the auction window. The **Buy** button buys the plan line by line: the first press asks the price, the second buys.
 - **Lead me.** With writs ready, **Lead me** puts a map pin on the nearest customer, and a small tracker lists the others. Customers the data does not know yet are learned when you take or hand in their writ.
