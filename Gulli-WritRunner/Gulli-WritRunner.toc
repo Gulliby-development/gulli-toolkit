@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-WritRunner
+## Notes: Plans the cheapest Craftsman's Writs to your trade camp standing, buys them at the auction house, counts every Coin Pouch and leads you to the customers. /gwr
+## Notes-ruRU: Планирует самые дешёвые ремесленные заказы до нужной репутации торгового лагеря, покупает их на аукционе, учитывает мешочки монет и ведёт к заказчикам. /gwr
+## Notes-deDE: Plant die günstigsten Handwerksaufträge bis zu deinem Ruf beim Handelslager, kauft sie im Auktionshaus, zählt jeden Münzbeutel und führt dich zu den Kunden. /gwr
+## Notes-esES: Planea los encargos de artesano más baratos hasta tu reputación con el campamento comercial, los compra en la casa de subastas, cuenta cada bolsa de monedas y te guía a los clientes. /gwr
+## Notes-esMX: Planea los encargos de artesano más baratos hasta tu reputación con el campamento comercial, los compra en la casa de subastas, cuenta cada bolsa de monedas y te guía a los clientes. /gwr
+## Notes-frFR: Planifie les commandes d'artisan les moins chères jusqu'à votre réputation au camp marchand, les achète à l'hôtel des ventes, compte chaque bourse de pièces et vous guide vers les clients. /gwr
+## Notes-ptBR: Planeja as encomendas de artesão mais baratas até sua reputação com o acampamento comercial, compra-as na casa de leilões, conta cada bolsa de moedas e guia você até os clientes. /gwr
+## Notes-zhCN: 规划达到贸易营地声望最便宜的工匠委托，在拍卖行购买，计算每个钱币袋，并带你去找委托人。 /gwr
+## Notes-zhTW: 规划达到贸易营地声望最便宜的工匠委托，在拍卖行购买，计算每个钱币袋，并带你去找委托人。 /gwr
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-WritRunner\icon
+## OptionalDeps: Gulli-Toolkit, Auctionator, auxForever, NaowhForever, TradeSkillMaster, Hammerprice, TomTom
+## X-Gulli-Module: WritRunner
+## SavedVariables: GulliWritRunnerDB
+## SavedVariablesPerCharacter: GulliWritRunnerCharDB
+## AddonCompartmentFunc: GulliWritRunner_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Data.lua
+Core.lua
+Skin.lua
+UI.lua

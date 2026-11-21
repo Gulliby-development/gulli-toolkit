@@ -1623,4 +1623,51 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
         ns.OpenAdd(select(1, ns.Parts()).card.add)
     end } }
 
+-- Writ Runner: a Friendly character with writs in the bags, two of them ready, and a plan.
+local WR_NAMES = { [264011] = "Craftsman's Writ: Elixir of Ogre's Strength", [3391] = "Elixir of Ogre's Strength",
+    [264012] = "Craftsman's Writ: Elixir of Wisdom", [3383] = "Elixir of Wisdom",
+    [264056] = "Craftsman's Writ: Frost Protection Potion", [6050] = "Frost Protection Potion",
+    [264037] = "Craftsman's Writ: Crafted Solid Shot", [8069] = "Crafted Solid Shot",
+    [264116] = "Craftsman's Writ: Potion of Demonslaying", [9224] = "Potion of Demonslaying",
+    [262888] = "Sealed Journeyman's Writ", [262889] = "Sealed Expert's Writ", [262890] = "Sealed Artisan's Writ" }
+local function wrSpec(locale)
+    return { locale = locale, names = WR_NAMES, rep = { 5, 6240 }, reset = 4 * 3600 + 23 * 60,
+             bags = { [264011] = 1, [3391] = 1, [264012] = 1, [3383] = 1, [264056] = 1, [264037] = 1, [262889] = 2 },
+             done = { [94316] = true },
+             prices = { [264011] = 9000, [3391] = 2500, [264012] = 12000, [3383] = 4200, [264056] = 26000, [6050] = 9800,
+                        [264037] = 14000, [8069] = 6, [264116] = 41000, [9224] = 22000, [262888] = 15000,
+                        [262889] = 30000, [262890] = 52000 },
+             db = { days = 3, goal = 6, history = {
+                 { at = 90000, writ = 264116, rep = 200, paid = 63000, pouch = 15179, who = "Tester" },
+                 { at = 80000, writ = 264011, rep = 75, paid = 0, pouch = 3490, who = "Tester" } } } }
+end
+local WR_ZONES = { [1416] = "Alterac Mountains", [1417] = "Arathi Highlands", [1418] = "Badlands", [1437] = "Wetlands",
+    [1440] = "Ashenvale", [1447] = "Azshara" }
+local function wrOpen(tab, plan)
+    return function(ns)
+        C_Map.GetMapInfo = function(id) return { name = WR_ZONES[id] or "Stranglethorn Vale" } end
+        local get = C_Reputation.GetFactionDataByID
+        C_Reputation.GetFactionDataByID = function(id)
+            local d = get(id)
+            if d then d.name = "Azeroth Commerce Authority" end
+            return d
+        end
+        if plan then ns.Calculate() end
+        ns.Window():Show()
+        ns.ShowTab(tab)
+        ns.Refresh()
+    end
+end
+S.writrunner = { default = { spec = wrSpec(), open = wrOpen(1) },
+    ru = { spec = wrSpec("ruRU"), open = wrOpen(1) },
+    de = { spec = wrSpec("deDE"), open = wrOpen(1) },
+    plan = { spec = wrSpec(), open = wrOpen(2, true) },
+    plan_ru = { spec = wrSpec("ruRU"), open = wrOpen(2, true) },
+    plan_de = { spec = wrSpec("deDE"), open = wrOpen(2, true) },
+    empty = { spec = { rep = { 5, 6240 } }, open = wrOpen(2) },
+    writs = { spec = wrSpec(), open = wrOpen(3) },
+    history = { spec = wrSpec(), open = wrOpen(4) },
+    settings = { spec = wrSpec(), open = wrOpen(5) },
+    settings_ru = { spec = wrSpec("ruRU"), open = wrOpen(5) } }
+
 return S
