@@ -14,6 +14,11 @@ and the drops of its ordinary mobs under ZONE_DROPS: the journal takes the order
     walk(path) -> {"order": [[npc id, wing key or ""]], "zone": [item id],
                    "names": {npc id: name}, "loot": {npc id: [item id]}}
 
+ATT also says what comes before a quest (`sourceQuest`, `sourceQuests`), which quests stand
+for each other (`altQuests`: one of them, such as a faction's copy) and the level it opens at:
+
+    links(path) -> {quest id: {"pre": [quest id], "alt": [quest id], "lvl": level or 0}}
+
 `names` comes from the comment after each NPC id, `loot` from the items listed under each boss
 (an encounter's creatureID, or an n(<npc id>) of its own): the journal falls back to them where
 the Wowhead snapshot has no NPC of the instance.
@@ -96,6 +101,49 @@ def quests(path):
             races = frames[p]["races"]
             p = frames[p]["parent"]
         out.setdefault(qid, side(races or ""))
+    return out
+
+
+def links(path):
+    text = open(path, encoding="utf-8").read()
+    toks = [m.group(0) for m in TOKEN.finditer(text) if not m.group(0).startswith("--")]
+    out = {}
+    # A frame per open bracket; a quest's options table is the "{" right after q(<id>,.
+    stack = []
+    i = 0
+    while i < len(toks):
+        t = toks[i]
+        if t in "({":
+            quest = None
+            if (t == "{" and i >= 4 and toks[i - 1] == "," and toks[i - 2].isdigit()
+                    and toks[i - 3] == "(" and toks[i - 4] == "q"):
+                quest = int(toks[i - 2])
+                out.setdefault(quest, {"pre": [], "alt": [], "lvl": 0})
+            stack.append(quest)
+        elif t in ")}":
+            if stack:
+                stack.pop()
+        elif (t in ("sourceQuest", "sourceQuests", "altQuests", "lvl") and stack and stack[-1]
+              and i + 1 < len(toks) and toks[i + 1] == "="):
+            ids, j = [], i + 2
+            if j < len(toks) and toks[j] == "{":
+                j += 1
+                while j < len(toks) and toks[j] != "}":
+                    if toks[j].isdigit():
+                        ids.append(int(toks[j]))
+                    j += 1
+                j += 1
+            elif j < len(toks) and toks[j].isdigit():
+                ids.append(int(toks[j]))
+                j += 1
+            entry = out[stack[-1]]
+            if t == "lvl":
+                entry["lvl"] = ids[0] if ids else 0
+            else:
+                entry["alt" if t == "altQuests" else "pre"] += ids
+            i = j
+            continue
+        i += 1
     return out
 
 

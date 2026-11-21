@@ -84,10 +84,14 @@ NPCS = {
     "DROWNED": [258905, 270882, 258924, 270883, 260042, 270884, 260213, 268478, 263886, 270887, 273738,
                 260243, 260274, 267852, 269466, 270886],
     "KROLDOK": [258966, 258972, 258964, 258968, 259256, 268423],
-    "ALCAZ": [255391, 255997, 257016, 256236, 255702, 255707],
+    "ALCAZ": [255391, 255997, 257016, 256236, 255702, 255707, 264770],
     "BLACKMAW": [247195, 247206, 247209, 247198, 247234, 247207, 247231],
     "SHAPERS": [253201, 261812, 261813, 262127, 261974, 261993, 262297, 262081, 272561, 261809],
 }
+# Givers the data does not name, by npc id: Mason Connery, chained at the end of Alcaz Prison,
+# gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
+# Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
+STARTERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
 QUESTS = {"BLACKMAW": [92065]}
 WORDS = {
@@ -204,18 +208,55 @@ def load_xp(root):
 
 
 def load_att(root):
-    """Dungeon key -> {quest id: "A" | "H" | ""} from an AllTheThings checkout, or {}."""
+    """Dungeon key -> {quest id: "A" | "H" | ""} from an AllTheThings checkout, and
+    {quest id: {"pre", "alt", "lvl"}} of every quest there; both empty without one."""
     if not root:
-        return {}
-    folder = os.path.join(root, ".contrib", ".db", "forever", "dungeons & raids")
-    out = {}
+        return {}, {}
+    base = os.path.join(root, ".contrib", ".db", "forever")
+    folder = os.path.join(base, "dungeons & raids")
+    out, links = {}, {}
     for key, name in ATT_FILES.items():
         path = os.path.join(folder, name + ".lua")
         if os.path.exists(path):
             out[key] = att.quests(path)
         else:
             print("no AllTheThings file for %s: %s" % (key, path))
-    return out
+    # A chain may start in a zone file (The Missing Kor'kron in Orgrimmar's).
+    for d, _, files in sorted(os.walk(base)):
+        for f in sorted(files):
+            if f.endswith(".lua"):
+                for qid, link in att.links(os.path.join(d, f)).items():
+                    have = links.setdefault(qid, {"pre": [], "alt": [], "lvl": 0})
+                    have["pre"] += [p for p in link["pre"] if p not in have["pre"]]
+                    have["alt"] += [a for a in link["alt"] if a not in have["alt"]]
+                    have["lvl"] = have["lvl"] or link["lvl"]
+    return out, links
+
+
+def add_att_links(quests, links):
+    """Fills in what QuestieDB lacks for WoW Forever's own quests from ATT: the quests before
+    one (State Secrets needs the Document Box of More Valuable Than Gold), the copies that close
+    it and the level it opens at. QuestieDB's own values always stay."""
+    for qid, link in links.items():
+        q = quests.get(qid)
+        if q is None or qid < FOREVER_QUESTS:
+            continue
+        pre = [p for p in link["pre"] if p in quests]
+        if pre and not seq(q.get(Q_PRE_SINGLE) or {}) and not seq(q.get(Q_PRE_GROUP) or {}):
+            q[Q_PRE_GROUP if len(pre) > 1 else Q_PRE_SINGLE] = {i + 1: p for i, p in enumerate(pre)}
+        alt = [a for a in link["alt"] if a in quests]
+        if alt and not seq(q.get(Q_EXCLUSIVE) or {}):
+            q[Q_EXCLUSIVE] = {i + 1: a for i, a in enumerate(alt)}
+        if link["lvl"] and not q.get(Q_REQ_LEVEL):
+            q[Q_REQ_LEVEL] = link["lvl"]
+
+
+def add_starters(quests):
+    """Hand-set givers the data lacks (STARTERS)."""
+    for qid, nid in STARTERS.items():
+        q = quests.get(qid)
+        if q is not None and not seq((q.get(Q_STARTED_BY) or {}).get(1) or {}):
+            q.setdefault(Q_STARTED_BY, {})[1] = {1: nid}
 
 
 def load_guides(root):
@@ -238,7 +279,9 @@ def main(root, att_root=None, gdq_root=None):
     # The data files and the Forever corrections, where everything Forever added lives.
     quests, npcs, objects, items = questie.load_forever(root)
     quest_xp = load_xp(root)
-    att_quests = load_att(att_root)
+    att_quests, att_links = load_att(att_root)
+    add_att_links(quests, att_links)
+    add_starters(quests)
     guide_quests = load_guides(gdq_root)
     att_side = {}
     for listed in att_quests.values():
