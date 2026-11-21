@@ -1587,6 +1587,20 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
     head = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "head") end },
     level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
         mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },
-    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end } }
+    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end },
+    own = { spec = mbSpec(), open = function(ns, W)
+        mbOpen(ns, W, "legs")
+        local ref = ns.CopyList("site:WARRIOR_ARMS:PRE")
+        ns.RenameOwn(ref, "Arms: my dungeon set")
+        ns.db.own[1].snap.head = 1
+        ns.ViewRefSet(ref)
+    end },
+    add = { spec = mbSpec(), open = function(ns, W)
+        mbOpen(ns, W, "legs")
+        local ref = ns.CopyList("site:WARRIOR_ARMS:PRE")
+        ns.ViewRefSet(ref)
+        ns.OwnRemove(ref, "legs", ns.Resolve(ref).slots.legs[5])
+        ns.OpenAdd(select(1, ns.Parts()).card.add)
+    end } }
 
 return S

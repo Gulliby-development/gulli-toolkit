@@ -40,6 +40,26 @@ ns.SPEC_ID = {
     [265] = "WARLOCK_AFFLICTION", [266] = "WARLOCK_DEMONOLOGY", [267] = "WARLOCK_DESTRUCTION",
     [102] = "DRUID_BALANCE", [103] = "DRUID_FERALDPS", [104] = "DRUID_FERALTANK", [105] = "DRUID_RESTORATION",
 }
+-- Each spec's own icon (the game's talent tree icons), on the spec button and in its picker.
+ns.SPEC_ICON = {
+    WARRIOR_ARMS = "Ability_Warrior_SavageBlow", WARRIOR_FURY = "Ability_Warrior_InnerRage",
+    WARRIOR_PROTECTION = "Ability_Warrior_DefensiveStance", PALADIN_HOLY = "Spell_Holy_HolyBolt",
+    PALADIN_PROTECTION = "Spell_Holy_DevotionAura", PALADIN_RETRIBUTION = "Spell_Holy_AuraOfLight",
+    HUNTER_BEASTMASTERY = "Ability_Hunter_BeastTaming", HUNTER_MARKSMANSHIP = "Ability_Marksmanship",
+    HUNTER_SURVIVAL = "Ability_Hunter_SwiftStrike", ROGUE_ASSASSINATION = "Ability_Rogue_Eviscerate",
+    ROGUE_COMBAT = "Ability_BackStab", ROGUE_SUBTLETY = "Ability_Stealth",
+    PRIEST_DISCIPLINE = "Spell_Holy_PowerWordShield", PRIEST_HOLY = "Spell_Holy_GuardianSpirit",
+    PRIEST_SHADOW = "Spell_Shadow_ShadowWordPain", SHAMAN_ELEMENTAL = "Spell_Nature_Lightning",
+    SHAMAN_ENHANCEMENT = "Spell_Nature_LightningShield", SHAMAN_RESTORATION = "Spell_Nature_MagicImmunity",
+    MAGE_ARCANE = "Spell_Holy_MagicalSentry", MAGE_FIRE = "Spell_Fire_FireBolt02", MAGE_FROST = "Spell_Frost_FrostBolt02",
+    WARLOCK_AFFLICTION = "Spell_Shadow_DeathCoil", WARLOCK_DEMONOLOGY = "Spell_Shadow_Metamorphosis",
+    WARLOCK_DESTRUCTION = "Spell_Shadow_RainOfFire", DRUID_BALANCE = "Spell_Nature_StarFall",
+    DRUID_FERALDPS = "Ability_Druid_CatForm", DRUID_FERALTANK = "Ability_Racial_BearForm",
+    DRUID_RESTORATION = "Spell_Nature_HealingTouch",
+}
+function ns.SpecIcon(key)
+    return "Interface\\Icons\\" .. (ns.SPEC_ICON[key] or "INV_Misc_QuestionMark")
+end
 ns.ROLE_ICON = { tank = "Interface\\Icons\\Ability_Warrior_DefensiveStance",
                  heal = "Interface\\Icons\\Spell_Holy_FlashHeal", dps = "Interface\\Icons\\Ability_DualWield" }
 ns.SRC_ICON = {
@@ -165,6 +185,12 @@ function ns.ParseRef(ref)
         if stage == "PRE" and ns.db and ns.db.real then stage = "REAL" end
         return ns.MySpec(), stage, true
     end
+    local n = tonumber(ref:match("^own:(%d+)$"))
+    if n then
+        local own = ns.db and ns.db.own[n]
+        if own and SPEC[own.spec] then return own.spec, own.stage, false, own, n end
+        return nil
+    end
     local spec, stage = ref:match("^site:([%u_]+):(%u[%u%d]*)$")
     if spec and SPEC[spec] and D.lists[spec] and D.lists[spec][stage] then return spec, stage, false end
     return nil
@@ -181,21 +207,38 @@ function ns.Filter(ids, side)
     return out
 end
 
--- The list behind a ref: { ref, spec, stage, auto, slots = { slot -> ids }, ench }.
+-- The list behind a ref: { ref, spec, stage, auto, own, slots = { slot -> ids }, ench }. An own
+-- list keeps what the player chose, other faction or not.
 function ns.Resolve(ref)
-    local spec, stage, auto = ns.ParseRef(ref)
+    local spec, stage, auto, own, n = ns.ParseRef(ref)
     if not spec then return nil end
-    local src = D.lists[spec][stage] or {}
-    local list = { ref = ref or "auto", spec = spec, stage = stage, auto = auto, slots = {},
-                   ench = (D.ench[spec] or {})[stage] or {}, simmed = SPEC[spec][5] }
+    local src = own and own.slots or (D.lists[spec] or {})[stage] or {}
+    local list = { ref = ref or "auto", spec = spec, stage = stage, auto = auto, own = n, name = own and own.name,
+                   slots = {}, ench = (D.ench[spec] or {})[stage] or {}, simmed = SPEC[spec][5] }
     for _, slot in ipairs(D.slots) do
-        if src[slot] then list.slots[slot] = ns.Filter(src[slot]) end
+        if src[slot] then
+            if own then
+                local copy = {}
+                for i, id in ipairs(src[slot]) do copy[i] = id end
+                list.slots[slot] = copy
+            else
+                list.slots[slot] = ns.Filter(src[slot])
+            end
+        end
     end
     return list
 end
 
+-- The site ref of a list, or its own ref.
+function ns.RefOf(list)
+    if not list then return nil end
+    if list.own then return "own:" .. list.own end
+    return ns.Ref(list.spec, list.stage)
+end
+
 function ns.StageName(stage) return L["STAGE_" .. stage] end
 function ns.ListName(list)
+    if list.own then return list.name or L.OWN_NAME:format(ns.SpecName(list.spec)) end
     return ns.SpecName(list.spec) .. " · " .. ns.StageName(list.stage)
 end
 
@@ -218,10 +261,239 @@ end
 function ns.Favs()
     local out = {}
     for ref in pairs(ns.db and ns.db.fav or {}) do
-        local spec, stage = ns.ParseRef(ref)
-        if spec then out[#out + 1] = { ref = ref, spec = spec, stage = stage } end
+        local spec, stage, _, own = ns.ParseRef(ref)
+        if spec and not own then out[#out + 1] = { ref = ref, spec = spec, stage = stage } end
     end
     table.sort(out, function(a, b) return a.ref < b.ref end)
+    return out
+end
+
+-- Own lists -------------------------------------------------------------------------------------------
+-- A copy of a site list the player edits, for the whole account: db.own[n] = { name, spec, stage,
+-- slots = { slot -> ids }, from = the site ref, snap = { slot -> the site's first item then } }.
+
+ns.OWN_MAX = 5          -- items a slot of an own list holds, like the site's
+
+-- Own lists in the order they were made: { ref, n, name, spec, stage }.
+function ns.OwnLists()
+    local out = {}
+    for n, o in pairs(ns.db and ns.db.own or {}) do
+        if SPEC[o.spec] then out[#out + 1] = { ref = "own:" .. n, n = n, name = o.name, spec = o.spec, stage = o.stage } end
+    end
+    table.sort(out, function(a, b) return a.n < b.n end)
+    return out
+end
+
+local function firsts(list)
+    local snap = {}
+    for slot, ids in pairs(list.slots) do snap[slot] = ids[1] end
+    return snap
+end
+
+-- Copies a list (a site list or an own one) into a new own list and returns its ref.
+function ns.CopyList(ref)
+    local list = ns.Resolve(ref)
+    if not (list and ns.db) then return nil end
+    local n = ns.db.ownNext or 1
+    ns.db.ownNext = n + 1
+    local from = list.own and ns.db.own[list.own].from or ns.Ref(list.spec, list.stage)
+    local site = ns.Resolve(from)
+    local slots = {}
+    for slot, ids in pairs(list.slots) do
+        local copy = {}
+        for i, id in ipairs(ids) do if i <= ns.OWN_MAX then copy[#copy + 1] = id end end
+        slots[slot] = copy
+    end
+    local base = list.own and list.name or ns.ListName(list)
+    ns.db.own[n] = { name = L.OWN_NAME:format(base), spec = list.spec, stage = list.stage, slots = slots,
+                     from = from, snap = site and firsts(site) or {} }
+    if ns.Refresh then ns.Refresh() end
+    return "own:" .. n
+end
+
+local function ownOf(ref)
+    local n = tonumber(type(ref) == "string" and ref:match("^own:(%d+)$"))
+    return n and ns.db and ns.db.own[n], n
+end
+
+function ns.RenameOwn(ref, name)
+    local o = ownOf(ref)
+    name = name and strtrim(name) or ""
+    if not o or name == "" then return false end
+    o.name = name:sub(1, 48)
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+-- Deletes an own list; returns what Undo needs. The star and the main list let go of it.
+function ns.DeleteOwn(ref)
+    local o, n = ownOf(ref)
+    if not o then return nil end
+    ns.db.own[n] = nil
+    local fav = ns.db.fav[ref]
+    ns.db.fav[ref] = nil
+    local wasMain = ns.cdb and ns.cdb.main == ref
+    if wasMain then ns.cdb.main = "auto" end
+    if ns.view == ref then ns.view = nil end
+    if ns.Refresh then ns.Refresh() end
+    return { n = n, own = o, fav = fav, main = wasMain }
+end
+
+function ns.RestoreOwn(undo)
+    if not (undo and ns.db) or ns.db.own[undo.n] then return end
+    ns.db.own[undo.n] = undo.own
+    local ref = "own:" .. undo.n
+    ns.db.fav[ref] = undo.fav
+    if undo.main and ns.cdb then ns.cdb.main = ref end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Adds an item to a slot (at the end, or at pos). False when the slot is full or has it already.
+function ns.OwnAdd(ref, slot, id, pos)
+    local o = ownOf(ref)
+    if not (o and ns.INV[slot] and id) then return false end
+    o.slots[slot] = o.slots[slot] or {}
+    local ids = o.slots[slot]
+    for _, x in ipairs(ids) do if x == id then return false end end
+    if #ids >= ns.OWN_MAX then return false end
+    table.insert(ids, math.min(pos or #ids + 1, #ids + 1), id)
+    if ns.Refresh then ns.Refresh() end
+    return true
+end
+
+function ns.OwnRemove(ref, slot, id)
+    local o = ownOf(ref)
+    local ids = o and o.slots[slot]
+    if not ids then return false end
+    for i, x in ipairs(ids) do
+        if x == id then
+            table.remove(ids, i)
+            if ns.Refresh then ns.Refresh() end
+            return true
+        end
+    end
+    return false
+end
+
+-- Moves an item one place up (dir -1) or down (dir 1).
+function ns.OwnMove(ref, slot, id, dir)
+    local o = ownOf(ref)
+    local ids = o and o.slots[slot]
+    if not ids then return false end
+    for i, x in ipairs(ids) do
+        local j = i + dir
+        if x == id and ids[j] then
+            ids[i], ids[j] = ids[j], ids[i]
+            if ns.Refresh then ns.Refresh() end
+            return true
+        end
+    end
+    return false
+end
+
+-- The slots whose first site item changed since the own list was copied or last looked at.
+function ns.SiteNews(ref)
+    local o = ownOf(ref)
+    local site = o and ns.Resolve(o.from)
+    if not site then return {} end
+    local out = {}
+    for _, slot in ipairs(D.slots) do
+        local now = (site.slots[slot] or {})[1]
+        if now and now ~= o.snap[slot] then out[#out + 1] = slot end
+    end
+    return out
+end
+
+function ns.AckNews(ref)
+    local o = ownOf(ref)
+    local site = o and ns.Resolve(o.from)
+    if site then o.snap = firsts(site) end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- What a class can wear and wield (Vanilla rules; the shield and off-hand weapons by class).
+ns.ARMOR = {
+    WARRIOR = { plate = 1, mail = 2, leather = 3, cloth = 4 }, PALADIN = { plate = 1, mail = 2, leather = 3, cloth = 4 },
+    HUNTER = { mail = 1, leather = 2, cloth = 3 }, SHAMAN = { mail = 1, leather = 2, cloth = 3 },
+    ROGUE = { leather = 1, cloth = 2 }, DRUID = { leather = 1, cloth = 2 },
+    PRIEST = { cloth = 1 }, MAGE = { cloth = 1 }, WARLOCK = { cloth = 1 },
+}
+local function set(list) local t = {} for w in list:gmatch("[^,]+") do t[w] = true end return t end
+ns.WEAPON = {
+    WARRIOR = set("axe,dagger,fist weapon,mace,sword,polearm,staff,shield,bow,crossbow,gun,thrown"),
+    PALADIN = set("axe,mace,sword,polearm,shield,libram,held"),
+    HUNTER = set("axe,dagger,fist weapon,sword,polearm,staff,bow,crossbow,gun,thrown"),
+    ROGUE = set("dagger,fist weapon,mace,sword,bow,crossbow,gun,thrown"),
+    PRIEST = set("dagger,mace,staff,wand,held"),
+    SHAMAN = set("axe,dagger,fist weapon,mace,staff,shield,totem,held"),
+    MAGE = set("dagger,sword,staff,wand,held"),
+    WARLOCK = set("dagger,sword,staff,wand,held"),
+    DRUID = set("dagger,fist weapon,mace,staff,polearm,idol,held"),
+}
+ns.DUAL = { WARRIOR = true, ROGUE = true, HUNTER = true }
+
+-- Whether an item can go into a slot of a class's list.
+function ns.Fits(class, slot, id)
+    local it = D.item[id]
+    if not it then return false end
+    local code, kind = it[1], it[8] or ""
+    local base = slot:gsub("%d$", "")
+    if base == "main" then
+        if not (code == "2h" or code == "mh" or code == "1h") then return false end
+    elseif base == "off" then
+        if code == "held" then return ns.WEAPON[class].held == true end
+        if code == "oh" and kind == "shield" then return ns.WEAPON[class].shield == true end
+        if not (code == "oh" or code == "1h") or not ns.DUAL[class] then return false end
+    elseif base == "ranged" then
+        if code ~= "ranged" and code ~= "relic" then return false end
+    else
+        if code ~= base then return false end
+        if ns.ARMOR[class][kind] then return true end
+        return kind == "" or (base == "back" and kind == "cloth")
+    end
+    return ns.WEAPON[class][kind] == true
+end
+
+local function fold(t) return (t or ""):lower() end
+
+-- The items that fit a slot of an own list and are not in it, for its search: the items of the
+-- spec's own site lists first, then of the class's other specs, then the rest; the best item level
+-- first. Matches the client's name and the English one.
+function ns.Candidates(ref, slot, query)
+    local list = ns.Resolve(ref)
+    if not list then return {} end
+    local class = SPEC[list.spec][2]
+    local have, weight = {}, {}
+    for _, id in ipairs(list.slots[slot] or {}) do have[id] = true end
+    for _, s in ipairs(D.specs) do
+        if s[2] == class then
+            for _, l in pairs(D.lists[s[1]] or {}) do
+                for _, ids in pairs(l) do
+                    for _, id in ipairs(ids) do
+                        local w = s[1] == list.spec and 2 or 1
+                        if (weight[id] or 0) < w then weight[id] = w end
+                    end
+                end
+            end
+        end
+    end
+    local side = playerSide()
+    query = fold(query)
+    local out = {}
+    for id, it in pairs(D.item) do
+        if not have[id] and not (side and it[6] and it[6] ~= side) and ns.Fits(class, slot, id) then
+            local ok = query == "" or fold(it[7]):find(query, 1, true) or fold(ns.ItemName(id)):find(query, 1, true)
+                or tostring(id) == query
+            if ok then out[#out + 1] = id end
+        end
+    end
+    table.sort(out, function(a, b)
+        local wa, wb = weight[a] or 0, weight[b] or 0
+        if wa ~= wb then return wa > wb end
+        local ia, ib = D.item[a][3] or 0, D.item[b][3] or 0
+        if ia ~= ib then return ia > ib end
+        return a < b
+    end)
     return out
 end
 
@@ -469,6 +741,7 @@ f:SetScript("OnEvent", function(self, event, a1)
             if ns.db[k] == nil then ns.db[k] = v end
         end
         ns.db.fav = ns.db.fav or {}
+        ns.db.own = ns.db.own or {}
         ns.cdb.told = ns.cdb.told or {}
         ns.cdb.main = ns.cdb.main or "auto"
         for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED",
