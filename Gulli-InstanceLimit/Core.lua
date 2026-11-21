@@ -99,10 +99,17 @@ local function warn(s)
     end
 end
 
--- Run stats: what the player got inside, kept on the entry.
-local function startRun(e)
+-- Run stats: what the player got inside, kept on the entry. A run that goes on (back in
+-- after leaving) keeps its kills and adds to the XP and money it had.
+local function startRun(e, goesOn)
     local cur, max = xp()
-    e.money0, e.xp0, e.xpMax0, e.kills = money(), cur, max, 0
+    e.money0, e.xp0, e.xpMax0 = money(), cur, max
+    if goesOn then
+        e.xpBase, e.moneyBase = e.xp or 0, e.money or 0
+        e.kills = e.kills or 0
+    else
+        e.kills = 0
+    end
 end
 
 local function endRun(e, now)
@@ -113,8 +120,9 @@ local function endRun(e, now)
     local cur = xp()
     local gained = cur - (e.xp0 or cur)
     if gained < 0 then gained = gained + (e.xpMax0 or 0) end -- a level up inside
-    e.xp = gained
-    e.money0, e.xp0, e.xpMax0 = nil, nil, nil
+    e.xp = gained + (e.xpBase or 0)
+    e.money = e.money + (e.moneyBase or 0)
+    e.money0, e.xp0, e.xpMax0, e.xpBase, e.moneyBase = nil, nil, nil, nil, nil
     if ns.db.summary then say(L.SUMMARY:format(e.name or "?", ns.RunText(e))) end
 end
 
@@ -190,8 +198,15 @@ function ns.Entered(name, kind, mapID, now)
     -- An unused copy of a dungeon goes away after a while; after an hour we count it again.
     local opened = db.open[mapID]
     if opened and (opened == true or now - opened < ns.HOUR) then
+        -- Back in the same copy: the run goes on. After a /reload inside it never stopped,
+        -- so its kills and the start values stay as they are.
         local e = current()
-        if e then e.out = nil; startRun(e) end
+        if e and e.out then
+            e.out = nil
+            startRun(e, true)
+        elseif e and not e.xp0 then
+            startRun(e, true)
+        end
         return false
     end
     db.open[mapID] = now
