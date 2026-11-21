@@ -107,6 +107,12 @@ T.en = {
     "The next note sends you to Stonetalon. From the road at about 51, 51 go through the opening into the mountains and follow the path up to the camp.",
     "The Pocket Litter that ends the quest lies at that camp.",
 },
+[79976] = {
+    "First do Stepping Stones (see that reward). The camp's next note, Scramble, sends you north up the hill to a Mound of Dirt in Stonetalon, 39, 49.",
+    "Wet Job: in Loch Modan go to the middle of the big dam in the north and drop onto the ledge with the Carved Figurine, 49, 12. Horde: the guards there are strong.",
+    "Eagle's Fist: the Messenger Bag lies on top of Thoradin's Wall in the Arathi Highlands, 22, 24. From the broken cart at the gap, jump up the beams and the rocks.",
+    "Hand it in and open the Hastily Rolled-Up Satchel beside it for the Cozy Sleeping Bag. Each minute of sleep in it gives +1% XP, up to +3%.",
+},
 [93269] = {
     "Sebelia at the top of Mount Hyjal, 71, 52, gives Mending Communications. The way up is closed: Evie Whirlbrew in Everlook, 61, 38, makes the Potion of Winterspring Shrouding that gets you there.",
     "Bring the parcels down to Innkeeper Vizzie in Everlook, 61, 39.",
@@ -266,6 +272,12 @@ T.de = {
     "Horde: Nimm die Notiz am erloschenen Feuer im Brachland, 46, 73, und bring sie zum gleichen Feuer in Westfall, 37, 50. Allianz: andersherum.",
     "Die nächste Notiz schickt dich ins Steinkrallengebirge. Geh von der Straße bei etwa 51, 51 durch die Öffnung in die Berge und folge dem Pfad hinauf zum Lager.",
     "Das Pocket Litter, das die Quest abschließt, liegt in diesem Lager.",
+},
+[79976] = {
+    "Mach zuerst Stepping Stones (siehe diese Belohnung). Die nächste Notiz im Lager, Scramble, schickt dich nach Norden den Hügel hinauf zu einem Mound of Dirt im Steinkrallengebirge, 39, 49.",
+    "Wet Job: Geh in Loch Modan zur Mitte des großen Damms im Norden und lass dich auf den Vorsprung mit der Carved Figurine fallen, 49, 12. Horde: Die Wachen dort sind stark.",
+    "Eagle's Fist: Die Messenger Bag liegt oben auf Thoradins Wall im Arathihochland, 22, 24. Spring vom kaputten Karren an der Lücke über die Balken und Felsen hinauf.",
+    "Gib sie ab und öffne die Hastily Rolled-Up Satchel daneben: darin ist der Cozy Sleeping Bag. Jede Minute Schlaf darin gibt +1% EP, bis zu +3%.",
 },
 [93269] = {
     "Sebelia auf dem Gipfel des Hyjal, 71, 52, gibt Mending Communications. Der Weg hinauf ist versperrt: Evie Whirlbrew in Ewige Warte, 61, 38, braut den Potion of Winterspring Shrouding, der euch hinaufbringt.",
@@ -427,6 +439,12 @@ T.es = {
     "La nota siguiente te manda a Sierra Espolón. Desde el camino, hacia 51, 51, entra por la abertura en las montañas y sigue el sendero hasta el campamento.",
     "El Pocket Litter que termina la misión está en ese campamento.",
 },
+[79976] = {
+    "Haz primero Stepping Stones (mira esa recompensa). La nota siguiente del campamento, Scramble, te manda al norte, cuesta arriba, a un Mound of Dirt en Sierra Espolón, 39, 49.",
+    "Wet Job: en Loch Modan ve al centro de la gran presa del norte y déjate caer a la cornisa con la Carved Figurine, 49, 12. Horda: los guardias de allí son fuertes.",
+    "Eagle's Fist: la Messenger Bag está en lo alto de la Muralla de Thoradin, en las Tierras Altas de Arathi, 22, 24. Desde el carro roto del hueco, salta por las vigas y las rocas.",
+    "Entrégala y abre la Hastily Rolled-Up Satchel de al lado: dentro está el Cozy Sleeping Bag. Cada minuto de sueño en él da +1% de PX, hasta +3%.",
+},
 [93269] = {
     "Sebelia, en la cima del monte Hyjal, 71, 52, da Mending Communications. El camino está cerrado: Evie Whirlbrew en Vista Eterna, 61, 38, prepara la Potion of Winterspring Shrouding que te lleva arriba.",
     "Baja los paquetes a Innkeeper Vizzie en Vista Eterna, 61, 39.",
@@ -586,6 +604,12 @@ T.fr = {
     "Horde : prenez la note au feu éteint des Tarides, 46, 73, et portez-la au même genre de feu dans la Marche de l'Ouest, 37, 50. Alliance : dans l'autre sens.",
     "La note suivante vous envoie dans les Serres-Rocheuses. Depuis la route, vers 51, 51, passez par l'ouverture dans les montagnes et suivez le sentier jusqu'au camp.",
     "Le Pocket Litter qui termine la quête se trouve dans ce camp.",
+},
+[79976] = {
+    "Faites d'abord Stepping Stones (voir cette récompense). La note suivante du camp, Scramble, vous envoie au nord, en haut de la colline, vers un Mound of Dirt dans les Serres-Rocheuses, 39, 49.",
+    "Wet Job : dans le Loch Modan, allez au milieu du grand barrage au nord et laissez-vous tomber sur la corniche de la Carved Figurine, 49, 12. Horde : les gardes y sont forts.",
+    "Eagle's Fist : le Messenger Bag est en haut du mur de Thoradin, dans les Hautes-terres d'Arathi, 22, 24. Depuis la charrette cassée à la brèche, sautez sur les poutres et les rochers.",
+    "Rendez-la et ouvrez la Hastily Rolled-Up Satchel à côté : le Cozy Sleeping Bag est dedans. Chaque minute de sommeil dedans donne +1% d'XP, jusqu'à +3%.",
 },
 [93269] = {
     "Sebelia, au sommet du mont Hyjal, 71, 52, donne Mending Communications. Le chemin est fermé : Evie Whirlbrew à Long-Guet, 61, 38, prépare la Potion of Winterspring Shrouding qui vous y mène.",
@@ -747,6 +771,12 @@ T.pl = {
     "Następna notatka wysyła cię do Stonetalon. Z drogi koło 51, 51 wejdź w przejście w górach i idź ścieżką w górę do obozu.",
     "Pocket Litter, który kończy zadanie, leży w tym obozie.",
 },
+[79976] = {
+    "Najpierw zrób Stepping Stones (zobacz tę nagrodę). Następna notatka z obozu, Scramble, wysyła cię na północ, w górę wzgórza, do Mound of Dirt w Stonetalon, 39, 49.",
+    "Wet Job: w Loch Modan idź na środek dużej tamy na północy i zeskocz na półkę z Carved Figurine, 49, 12. Horda: tamtejsi strażnicy są silni.",
+    "Eagle's Fist: Messenger Bag leży na szczycie Thoradin's Wall w Arathi Highlands, 22, 24. Od rozbitego wozu przy wyrwie skacz po belkach i skałach w górę.",
+    "Oddaj zadanie i otwórz Hastily Rolled-Up Satchel obok: w środku jest Cozy Sleeping Bag. Każda minuta snu w nim daje +1% PD, do +3%.",
+},
 [93269] = {
     "Sebelia na szczycie góry Hyjal, 71, 52, daje Mending Communications. Droga na górę jest zamknięta: Evie Whirlbrew w Everlook, 61, 38, warzy Potion of Winterspring Shrouding, która cię tam zabierze.",
     "Zanieś paczki do Innkeeper Vizzie w Everlook, 61, 39.",
@@ -906,6 +936,12 @@ T.pt = {
     "Horda: pegue o bilhete na fogueira apagada dos Sertões, 46, 73, e leve-o a uma fogueira igual em Cerro Oeste, 37, 50. Aliança: o contrário.",
     "O bilhete seguinte manda você à Serra das Torres de Pedra. Da estrada, perto de 51, 51, entre pela abertura nas montanhas e siga a trilha até o acampamento.",
     "O Pocket Litter que termina a missão fica nesse acampamento.",
+},
+[79976] = {
+    "Faça primeiro Stepping Stones (veja essa recompensa). O bilhete seguinte do acampamento, Scramble, manda você ao norte, morro acima, até um Mound of Dirt na Serra das Torres de Pedra, 39, 49.",
+    "Wet Job: em Loch Modan vá ao meio da grande represa do norte e desça até a saliência com a Carved Figurine, 49, 12. Horda: os guardas de lá são fortes.",
+    "Eagle's Fist: a Messenger Bag fica no alto da Muralha de Thoradin, no Planalto Arathi, 22, 24. Da carroça quebrada na brecha, pule pelas vigas e pelas rochas.",
+    "Entregue e abra a Hastily Rolled-Up Satchel ao lado: dentro está o Cozy Sleeping Bag. Cada minuto de sono nele dá +1% de XP, até +3%.",
 },
 [93269] = {
     "Sebelia, no topo do monte Hyjal, 71, 52, dá Mending Communications. O caminho está fechado: Evie Whirlbrew em Visteterna, 61, 38, faz a Potion of Winterspring Shrouding que leva você lá.",
@@ -1067,6 +1103,12 @@ T.ru = {
     "Следующая записка ведёт в Когтистые горы. С дороги примерно на 51, 51 сверните в проход в горы и поднимайтесь по тропе до лагеря.",
     "Pocket Litter, которым завершается задание, лежит в этом лагере.",
 },
+[79976] = {
+    "Сначала пройдите Stepping Stones (см. эту награду). Следующая записка в лагере, Scramble, ведёт на север вверх по холму к Mound of Dirt в Когтистых горах, 39, 49.",
+    "Wet Job: в Лок Модане идите на середину большой плотины на севере и спрыгните на уступ с Carved Figurine, 49, 12. Орде: стража там сильная.",
+    "Eagle's Fist: Messenger Bag лежит наверху Стены Торадина в Нагорье Арати, 22, 24. От сломанной телеги у пролома прыгайте наверх по балкам и камням.",
+    "Сдайте задание и откройте Hastily Rolled-Up Satchel рядом: в нём Cozy Sleeping Bag. Каждая минута сна в нём даёт +1% опыта, до +3%.",
+},
 [93269] = {
     "Sebelia на вершине горы Хиджал, 71, 52, даёт Mending Communications. Наверх так просто не пройти: Evie Whirlbrew в Круговзоре, 61, 38, варит Potion of Winterspring Shrouding, которое туда переносит.",
     "Отнесите посылки вниз, Innkeeper Vizzie в Круговзоре, 61, 39.",
@@ -1226,6 +1268,12 @@ T.zh = {
     "部落：在贫瘠之地 46, 73 熄灭的营火处拿纸条，送到西部荒野 37, 50 同样的营火处。联盟：顺序相反。",
     "下一张纸条指向石爪山脉。从大约 51, 51 的路边穿过山口进山，沿小路上到营地。",
     "结束任务的 Pocket Litter 就在那个营地里。",
+},
+[79976] = {
+    "先完成 Stepping Stones（见那个奖励）。营地里的下一张纸条 Scramble 让你往北上山，到石爪山脉 39, 49 的 Mound of Dirt。",
+    "Wet Job：在洛克莫丹走到北边大坝的中间，跳到放着 Carved Figurine 的岩架上，49, 12。部落：那里的卫兵很强。",
+    "Eagle's Fist：Messenger Bag 在阿拉希高地索拉丁之墙的顶上，22, 24。从缺口处的破马车起跳，沿着横梁和石头爬上去。",
+    "交任务后打开旁边的 Hastily Rolled-Up Satchel，里面就是 Cozy Sleeping Bag。在里面每睡一分钟经验值 +1%，最多 +3%。",
 },
 [93269] = {
     "海加尔山顶的 Sebelia（71, 52）给出 Mending Communications。上山的路是封闭的：永望镇的 Evie Whirlbrew（61, 38）会做 Potion of Winterspring Shrouding，能把你送上去。",

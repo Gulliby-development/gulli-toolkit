@@ -35,6 +35,7 @@ end
 -- "+4 over your smallest bag (6)" for an entry against the bags worn.
 function ns.GainText(e, bags)
     if e.state == "done" then return L.ST_DONE, S.FAINT end
+    if ns.PERKS[e.kind] then return L["GAIN_" .. e.kind:upper()], S.GOOD end
     if not e.slots then return L.GAIN_UNKNOWN, S.MUTED end
     if not e.gain or e.gain <= 0 then return L.GAIN_NONE, S.MUTED end
     local same = bags.smallest[e.kind] or bags.smallest.bag
@@ -245,7 +246,7 @@ local function fillRow(P)
         r.name:SetTextColor(unpack(S.TEXT))
         r.gain:SetTextColor(unpack(S.GOOD))
         local up = it.state ~= "done" and it.gain and it.gain > 0
-        r.gain:SetText(up and ("+" .. it.gain) or "")
+        r.gain:SetText(up and ("+" .. it.gain) or (it.state ~= "done" and ns.PERKS[it.kind] and L["SHORT_" .. it.kind:upper()]) or "")
         r.slots:SetText(it.slots and L.SLOTS:format(it.slots) or "")
     end
 end

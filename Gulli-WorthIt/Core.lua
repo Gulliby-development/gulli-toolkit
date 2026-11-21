@@ -1,5 +1,5 @@
 -- Worth It: the quests whose reward is worth the walk (a bag, a quiver, an ammo pouch, a soul
--- bag, a profession bag), against the bags the character wears, and a guide that leads to them.
+-- bag, a profession bag, the Cozy Sleeping Bag), against the bags the character wears, and a guide that leads to them.
 -- It only reads the game and sets map pins; it never takes, hands in or equips anything.
 
 local ADDON, ns = ...
@@ -11,7 +11,10 @@ ns.ICON = "Interface\\AddOns\\Gulli-WorthIt\\icon"
 ns.KIND_ICON = {
     bag = "Interface\\Icons\\INV_Misc_Bag_08", ammo = "Interface\\Icons\\INV_Misc_Quiver_03",
     soul = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02", prof = "Interface\\Icons\\Trade_Herbalism",
+    rest = "Interface\\Icons\\Spell_Nature_Sleep",
 }
+-- Kinds that are no bag: they have no slots and are worth it until the quest is done.
+ns.PERKS = { rest = true }
 ns.OPT_ICON = {
     better = "Interface\\Icons\\INV_Misc_Bag_10", notify = "Interface\\Icons\\INV_Misc_Bell_01",
     showDone = "Interface\\Icons\\INV_Misc_Ribbon_01",
@@ -281,8 +284,8 @@ function ns.Rewards()
                 byQuest[quest] = e
                 order[#order + 1] = e
             end
-            local slots = ns.Slots(item)
-            e.options[#e.options + 1] = { item = item, kind = kind, slots = slots, gain = ns.Gain(kind, slots, bags) }
+            local slots = not ns.PERKS[kind] and ns.Slots(item) or nil
+            e.options[#e.options + 1] = { item = item, kind = kind, slots = slots, gain = slots and ns.Gain(kind, slots, bags) }
         end
     end
     for _, e in ipairs(order) do
@@ -372,8 +375,8 @@ function ns.Entry(quest)
     for _, e in ipairs(ns.ClassQuests()) do if e.quest == quest then return e end end
 end
 
--- Whether the reward is better than what is worn (unknown slots count as better).
-function ns.IsBetter(e) return e.gain == nil or e.gain > 0 end
+-- Whether the reward is better than what is worn (unknown slots and a perk count as better).
+function ns.IsBetter(e) return ns.PERKS[e.kind] or e.gain == nil or e.gain > 0 end
 
 -- The kinds that have a reward for this character, in the data's order.
 function ns.Kinds()

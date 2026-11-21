@@ -54,7 +54,14 @@ KINDS = [
     ("ammo", lambda c, s: c == 11),
     ("soul", lambda c, s: c == 1 and s == 1),
     ("prof", lambda c, s: c == 1 and (s or 0) >= 2),
+    ("rest", lambda c, s: False),
 ]
+
+# Lasting rewards no item class marks (a misc item that is a tool for good): item id -> kind of
+# KINDS. A kind used only here tests False above, so it keeps its place in the window order.
+ITEM_KINDS = {
+    211527: "rest",  # Cozy Sleeping Bag: sleeping in it gives up to +3% XP (This Must Be The Place)
+}
 
 # Rewards the data does not link to their quest: (item id, quest id). Only with a source a
 # player can check (the quest's page), named in a comment.
@@ -105,7 +112,9 @@ def num(v):
     return ("%.1f" % v).rstrip("0").rstrip(".") if v else "0"
 
 
-def kind_of(item):
+def kind_of(item, iid=None):
+    if iid in ITEM_KINDS:
+        return ITEM_KINDS[iid]
     for key, test in KINDS:
         if test(item.get(I_CLASS), item.get(I_SUBCLASS)):
             return key
@@ -267,12 +276,12 @@ def build(quests, npcs, objects, items, classq=()):
 
     links = []
     for iid, it in items.items():
-        k = kind_of(it)
+        k = kind_of(it, iid)
         if k:
             for qid in seq(it.get(I_QUEST_REWARDS) or {}):
                 links.append((iid, k, qid))
     for iid, qid in EXTRA:
-        k = kind_of(items.get(iid) or {})
+        k = kind_of(items.get(iid) or {}, iid)
         if k and (iid, k, qid) not in links:
             links.append((iid, k, qid))
 

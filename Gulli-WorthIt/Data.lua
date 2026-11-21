@@ -5,7 +5,7 @@ local D = {}
 ns.Data = D
 
 -- The kinds of reward, in window order.
-D.kinds = {"bag","ammo","soul","prof"}
+D.kinds = {"bag","ammo","soul","prof","rest"}
 
 -- Rewards: { item, kind, the quest that gives it }, lowest quest level first.
 D.rewards = {
@@ -38,6 +38,7 @@ D.rewards = {
 {3604,"ammo",58}, -- Bandolier of the Night Watch
 {3605,"ammo",58}, -- Quiver of the Night Watch
 {22244,"soul",1795}, -- Box of Souls
+{211527,"rest",79976}, -- Cozy Sleeping Bag
 {274926,"ammo",96109}, -- Matriarch Quiver
 {9587,"bag",2439}, -- Thawpelt Sack
 {9587,"bag",2440}, -- Thawpelt Sack
@@ -513,6 +514,10 @@ D.quest = {
 [79366]={"Heed My Call",40,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Rau Cliffrunner",400,46.1,51.7,400,37.2,40.4},
 [79442]={"The Tempest's Weapons",40,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
 [79970]={"Aeonas the Vindicated",40,35,4294967373,2,"A","Aeonas",796,0,0,"Aeonas the Vindicated",1519,48.6,49.1,0,0,0},
+[79974]={"Wet Job",32,14,0,0,"","Mound of Dirt",406,39.6,49.8,"Carved Figurine",38,49.4,12.9,0,0,0},
+[79975]={"Eagle's Fist",32,14,0,0,"","Carved Figurine",38,49.4,12.9,"Messenger Bag",45,22.5,24.1,0,0,0},
+[79976]={"This Must Be The Place",32,14,0,0,"","Messenger Bag",45,22.5,24.1,"Hastily Rolled-Up Satchel",45,22.5,24.1,0,0,0},
+[79980]={"Scramble",24,14,0,0,"","Pocket Litter",406,40.8,52.6,"Mound of Dirt",406,39.6,49.8,0,0,0},
 [80455]={"Biding Our Time",50,45,0,8,"","Dead Drop",130,47.1,71,"Fahrad",36,84.5,80.3,0,0,0},
 [81924]={"Wisdom of the Guardians",50,40,40,1024,"","Tyrisius",357,57.2,68.9,"Tyrisius",357,57.2,68.9,0,0,0},
 [82084]={"A Lesson in Literacy",45,42,0,128,"H","Owen Thadd",1497,73.4,33,"Owen Thadd",1497,73.4,33,47,41,52.2},
@@ -679,6 +684,7 @@ D.chain = {
 [79192]={79007,79192},
 [79366]={1531,79360,79364,79361,79366},
 [79442]={1531,79360,79364,79361,79366,79442},
+[79976]={79007,79192,79980,79974,79975,79976},
 [91316]={91285,91294,91316},
 [91775]={91741,92124,91743,91745,91752,91758,91772,91775},
 [92468]={1516,92467,92468},
