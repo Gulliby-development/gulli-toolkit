@@ -19,9 +19,10 @@ You have many characters. Gulli Chores remembers what waits for each of them.
 ## Features
 
 - **Every character.** Each one saves its state when you play it.
-- **What waits.** Mail with items or money that runs out soon, ready crafting cooldowns (transmutes, Mooncloth, Salt Shaker), new spells at the trainer (on even levels), a profession at its rank limit, new mail, full rested XP, gear to repair and full bags.
+- **What waits.** Mail with items or money that runs out soon, ready crafting cooldowns (transmutes, Mooncloth, Cured Rugged Hide, the Salt Shaker), new spells at the trainer (on even levels), a profession at its rank limit, new mail, full rested XP, gear to repair and full bags.
 - **Rested XP keeps growing** while you are away, and the card tells you when it is full.
-- **The card** of a character: four tiles with rested XP, money, the hearthstone and its home, and played time; each profession with a bar (yellow when the rank is full and the trainer waits); letters with items, cash on delivery letters and saved raids when there are some. Write a **note** (bank, crafter...).
+- **The card** of a character: four tiles with rested XP, money, the hearthstone and its home, and played time; each profession with a bar (yellow when the rank is full and the trainer waits), and under it its crafting cooldowns: **Ready**, or how long they still need; letters with items, cash on delivery letters and saved raids when there are some. Write a **note** (bank, crafter...).
+- **Cooldowns:** the crafting cooldowns of all your characters in one list, the ready ones first. Log in, craft, log out, go to the next one. On top: how many are ready and how many characters you need to visit. Tap a row to open that character. Transmutes, Mooncloth, Cured Rugged Hide and the Salt Shaker are known; a cooldown of another recipe joins when [Craft Profit](../craftprofit/README.md) has seen it.
 - **Overview:** every character in one table: level, rested XP, money, gear, free slots, next cooldown and tasks. Tap a column head to sort. Colours show what needs you: gear from 90% and more than 10 free slots are green, gear under your repair limit, fewer than 5 slots and 6 or more tasks are red, the rest in between is yellow. Money shows in gold, silver and copper colours. Under it, your money per realm.
 - Show **All** characters, **This realm** or **This faction**. **Hide** a bank character so it does not count.
 - **At login,** one chat line tells you what waits on your other characters. **While you play,** it tells you once when a cooldown is ready or rested XP is full on any character.
@@ -40,7 +41,7 @@ You have many characters. Gulli Chores remembers what waits for each of them.
 
 1. Log in with each character once.
 2. Type `/gch`, or open it from `/gulli`.
-3. Pick a character on the left, or open **Overview** for all of them.
+3. Pick a character on the left, open **Cooldowns** to see who can craft now, or **Overview** for all of them.
 4. Open the mailbox and the bank once on each character, so the mail times and the bank are known.
 
 ## FAQ
@@ -55,6 +56,12 @@ Open the trainer window once. The addon then knows you visited it at this level.
 <summary><b>The mail warning or the bank is missing</b></summary>
 
 The game shows mail times only at the mailbox, and the bank only at the bank. Open them once on that character.
+</details>
+
+<details>
+<summary><b>A crafting cooldown is missing</b></summary>
+
+Log in on that character once, and open its profession window or make the craft once. Then the addon knows the recipe and its cooldown.
 </details>
 
 <details>

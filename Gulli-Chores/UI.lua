@@ -1,4 +1,5 @@
--- Three tabs. Characters: the list on the left, the chosen one's card and what waits for it.
+-- Four tabs. Characters: the list on the left, the chosen one's card (its crafting cooldowns
+-- under each profession) and what waits for it. Cooldowns: every character's crafting cooldowns.
 -- Overview: every character in one table, sorted by a click on a column head, with the money
 -- per realm. Settings: which tasks to show, their limits and the reminders.
 
@@ -22,18 +23,24 @@ local ICON = {
     REPAIR = "Interface\\Icons\\Trade_BlackSmithing",
     BAGS = "Interface\\Icons\\INV_Misc_Bag_08",
 }
--- Each cooldown shows the icon of what it makes; a new cooldown text key gets one here.
-local CD_ICON = {
-    CD_TRANSMUTE = "Interface\\Icons\\Trade_Alchemy",
-    CD_MOONCLOTH = "Interface\\Icons\\INV_Fabric_Moonrag_01",
-}
-local function cdIcon(key)
-    if key == "CD_SALT" then
-        local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
-        return get and get(15846) -- Salt Shaker
-    end
-    return CD_ICON[key]
+-- Each cooldown shows the icon of what it makes (ns.CRAFTS); a cooldown Gulli Craft Profit found
+-- shows its recipe's icon from the game.
+local function itemIcon(id)
+    local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+    return get and get(id)
 end
+local TRANSMUTE_ICON = "Interface\\Icons\\Trade_Alchemy"
+local function cdIcon(key)
+    if key == "CD_TRANSMUTE" then return TRANSMUTE_ICON end
+    for _, cr in ipairs(ns.CRAFTS) do
+        if cr.key == key then return itemIcon(cr.made or cr.item) or ICON.CD end
+    end
+    local rid = tonumber(key:match("^R(%d+)$") or "")
+    local tex = rid and ((C_Spell and C_Spell.GetSpellTexture) and C_Spell.GetSpellTexture(rid)
+        or (GetSpellTexture and GetSpellTexture(rid)))
+    return tex or ICON.CD
+end
+ns.CdIcon = cdIcon
 
 local function classColor(class)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -90,10 +97,6 @@ end
 -- The facts of the character card: four tiles, the professions and the lines that only some
 -- characters have. Each tile is { value, color, sub, frac }.
 local HEARTH_ID = 6948
-local function itemIcon(id)
-    local get = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
-    return get and get(id)
-end
 local TILE_ICON = {
     rested = "Interface\\Icons\\Spell_Nature_Sleep",
     money = "Interface\\Icons\\INV_Misc_Coin_01",
@@ -143,13 +146,23 @@ function ns.CardInfo(c, key, now)
         if l.til > now then locks[#locks + 1] = l.name .. " " .. ns.Span(l.til - now) end
     end
     if #locks > 0 then info.extra[#info.extra + 1] = L.LOCKS:format(table.concat(locks, ", ")) end
+    -- Each cooldown under its profession; one whose profession is not known comes last.
+    local cds, placed = ns.Cooldowns(c, now), {}
     for _, p in ipairs(c.profs or {}) do
         local cap = p.cap or 0
         -- A rank that is full waits for the trainer: yellow, like the task.
         local full = cap > 0 and cap < 300 and (p.skill or 0) >= cap
+        local mine = {}
+        for _, cd in ipairs(cds) do
+            if cd.prof == p.name and not placed[cd.key] then mine[#mine + 1] = cd; placed[cd.key] = true end
+        end
         info.profs[#info.profs + 1] = { name = p.name, icon = p.icon, skill = p.skill or 0, cap = cap,
-            frac = cap > 0 and (p.skill or 0) / cap or 0, color = full and S.WARN or S.Accent(), full = full }
+            frac = cap > 0 and (p.skill or 0) / cap or 0, color = full and S.WARN or S.Accent(), full = full,
+            cds = mine }
     end
+    local rest = {}
+    for _, cd in ipairs(cds) do if not placed[cd.key] then rest[#rest + 1] = cd end end
+    if #rest > 0 then info.profs[#info.profs + 1] = { name = L.TAB_CDS, icon = ICON.CD, cds = rest, only = true } end
     return info
 end
 
@@ -160,7 +173,7 @@ local function placeTasks(withProfs)
     taskCard:SetPoint("TOPLEFT", withProfs and profCard or top, "BOTTOMLEFT", 0, -S.GAP)
     taskCard:SetPoint("BOTTOMRIGHT")
 end
-local PROF_MAX, PROF_H = 6, 26
+local PROF_MAX, PROF_H, CD_H = 10, 26, 22
 local TILE_H, HEAD_H = 80, 28
 
 local function fillCard(c)
@@ -173,20 +186,52 @@ local function fillCard(c)
     extra:SetText(table.concat(info.extra, "\n"))
     local lines = #info.extra
     top:Fit(HEAD_H + 10 + TILE_H + (lines > 0 and (8 + lines * 16) or 0))
-    local n = math.min(#info.profs, PROF_MAX)
+    -- One line per profession, its cooldowns under it.
+    local lines = {}
+    for _, p in ipairs(info.profs) do
+        if not p.only then lines[#lines + 1] = { prof = p } end
+        for _, cd in ipairs(p.cds or {}) do lines[#lines + 1] = { cd = cd } end
+    end
+    local n = math.min(#lines, PROF_MAX)
+    local y, now = 0, time()
     for i = 1, PROF_MAX do
-        local r, p = profRows[i], info.profs[i]
+        local r, line = profRows[i], lines[i]
         r:SetShown(i <= n)
-        if p and i <= n then
-            r.icon:SetIcon(p.icon)
-            r.name:SetText(p.name)
-            r.bar:Set(p.frac, p.color)
-            r.value:SetText(p.full and (S.Hex(S.WARN) .. p.skill .. "/" .. p.cap .. "|r")
-                or (p.skill .. S.Hex(S.MUTED) .. "/" .. p.cap .. "|r"))
+        if line and i <= n then
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, -y)
+            r:SetPoint("RIGHT")
+            local p, cd = line.prof, line.cd
+            r.bar:SetShown(p ~= nil)
+            if p then
+                r:SetHeight(PROF_H)
+                r.icon:SetShown(true); r.small:SetShown(false)
+                r.icon:SetIcon(p.icon)
+                r.name:ClearAllPoints()
+                r.name:SetPoint("LEFT", 32, 0)
+                r.name:SetWidth(110)
+                r.name:SetText(p.name)
+                r.name:SetTextColor(unpack(S.TEXT))
+                r.bar:Set(p.frac, p.color)
+                r.value:SetText(p.full and (S.Hex(S.WARN) .. p.skill .. "/" .. p.cap .. "|r")
+                    or (p.skill .. S.Hex(S.MUTED) .. "/" .. p.cap .. "|r"))
+                y = y + PROF_H
+            else
+                r:SetHeight(CD_H)
+                r.icon:SetShown(false); r.small:SetShown(true)
+                r.small:SetIcon(cdIcon(cd.key))
+                r.name:ClearAllPoints()
+                r.name:SetPoint("LEFT", 62, 0)
+                r.name:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
+                r.name:SetText(cd.name)
+                r.name:SetTextColor(unpack(S.MUTED))
+                r.value:SetText(cd.done and (S.Hex(S.GOOD) .. L.READY_UP .. "|r") or ns.Span(cd.ready - now))
+                y = y + CD_H
+            end
         end
     end
     profCard:SetShown(n > 0)
-    if n > 0 then profCard:Fit(n * PROF_H) end
+    if n > 0 then profCard:Fit(y) end
     placeTasks(n > 0)
 end
 
@@ -229,9 +274,9 @@ local function makeProf(parent, i)
     r:SetPoint("RIGHT")
     r.icon = S.IconBox(r, 22)
     r.icon:SetPoint("LEFT")
+    r.small = S.IconBox(r, 18) -- a cooldown under its profession
+    r.small:SetPoint("LEFT", 34, 0)
     r.name = S.Text(r, 12)
-    r.name:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
-    r.name:SetWidth(110)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
     r.value = S.Text(r, 12)
@@ -239,7 +284,7 @@ local function makeProf(parent, i)
     r.value:SetWidth(70)
     r.value:SetJustifyH("RIGHT")
     r.bar = S.Progress(r, 6)
-    r.bar:SetPoint("LEFT", r.name, "RIGHT", 8, 0)
+    r.bar:SetPoint("LEFT", r, "LEFT", 150, 0)
     r.bar:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
     return r
 end
@@ -324,6 +369,68 @@ local function buildChars(page)
     list:SetPoint("TOPLEFT")
     list:SetPoint("BOTTOMRIGHT", -10, 0)
     empty = S.Empty(right.body)
+end
+
+-- ---------- Cooldowns ----------
+
+-- Every character's crafting cooldowns in one list, the ready ones first: log in, craft, go on.
+local cdList, cdHead, cdEmpty
+
+local function makeCd(r)
+    r.icon = S.IconBox(r, 26)
+    r.icon:SetPoint("LEFT", 2, 0)
+    r.value = S.Text(r, 12)
+    r.value:SetPoint("RIGHT", -6, 0)
+    r.value:SetWidth(90)
+    r.value:SetJustifyH("RIGHT")
+    r.value:SetWordWrap(false)
+    r.text = S.Text(r, 12)
+    r.text:SetPoint("LEFT", r.icon, "RIGHT", 10, 0)
+    r.text:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
+    r.text:SetJustifyH("LEFT")
+    r.text:SetWordWrap(false)
+    r.click = CreateFrame("Button", nil, r)
+    r.click:SetAllPoints()
+    r.click:SetScript("OnClick", function(self)
+        selected = self:GetParent().entry.charKey
+        tabs:Select(1)
+    end)
+end
+
+local function fillCd(r, e)
+    r.entry = e
+    r.icon:SetIcon(cdIcon(e.key))
+    local who = classColor(e.char.class) .. (e.char.name or e.charKey) .. "|r"
+    r.text:SetText(who .. "   " .. e.name .. (e.prof and (S.DOT .. S.Hex(S.MUTED) .. e.prof .. "|r") or ""))
+    if e.done then
+        r.value:SetText(S.Hex(S.GOOD) .. L.READY_UP .. "|r")
+    else
+        r.value:SetText(S.Hex(S.MUTED) .. ns.Span(e.ready - time()) .. "|r")
+    end
+end
+
+local function refreshCds()
+    local rows, ready, chars, crafters = ns.CdList()
+    cdList:SetData(rows)
+    cdHead:SetText(L.CDS_READY:format(ready) .. S.DOT .. L.CDS_CHARS:format(chars) .. S.DOT .. L.CDS_CRAFTERS:format(crafters))
+    cdHead:SetShown(#rows > 0)
+    cdEmpty:SetShown(#rows == 0)
+    cdEmpty:Set(L.CDS_EMPTY, L.CDS_HOW)
+end
+
+local function buildCds(page)
+    local card = S.Card(page)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("BOTTOMRIGHT")
+    cdHead = S.Text(card.body, 12, S.MUTED)
+    cdHead:SetPoint("TOPLEFT", 6, 0)
+    cdHead:SetPoint("TOPRIGHT", -6, 0)
+    cdHead:SetJustifyH("LEFT")
+    cdHead:SetWordWrap(false)
+    cdList = S.List(card.body, 34, makeCd, fillCd)
+    cdList:SetPoint("TOPLEFT", 0, -24)
+    cdList:SetPoint("BOTTOMRIGHT", -10, 0)
+    cdEmpty = S.Empty(card.body)
 end
 
 -- ---------- Overview ----------
@@ -492,29 +599,31 @@ function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local t = tabs.selected
     for i, p in ipairs(pages) do p:SetShown(i == t) end
-    filterTabs.frame:SetShown(t ~= 3)
-    if t == 1 then refreshChars() elseif t == 2 then refreshOver() else refreshSettings() end
+    filterTabs.frame:SetShown(t ~= 4)
+    if t == 1 then refreshChars() elseif t == 2 then refreshCds() elseif t == 3 then refreshOver() else refreshSettings() end
 end
 
 local function build()
     frame = S.Window("GulliChoresFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body = frame.body
-    tabs = S.PageTabs(body, { L.TAB_CHARS, L.TAB_OVERVIEW, L.TAB_SETTINGS }, nil, function() ns.Refresh() end, nil, { S.TAB.char, S.TAB.overview, S.TAB.settings })
+    tabs = S.PageTabs(body, { L.TAB_CHARS, L.TAB_CDS, L.TAB_OVERVIEW, L.TAB_SETTINGS }, nil, function() ns.Refresh() end, nil,
+                       { S.TAB.char, S.TAB.recent, S.TAB.overview, S.TAB.settings })
     local labels = {}
     for i, k in ipairs(ns.FILTERS) do labels[i] = L["FILTER_" .. k:upper()] end
     -- beside the page tabs: lower than them and lifted, clear of the hairline under the tabs
     filterTabs = S.Tabs(body, labels, nil, function(i) ns.SetPref("filter", ns.FILTERS[i]) end, 28)
     filterTabs.frame:ClearAllPoints()
     filterTabs.frame:SetPoint("TOPRIGHT", 0, 3)
-    for i = 1, 3 do
+    for i = 1, 4 do
         local p = CreateFrame("Frame", nil, body)
         p:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
         p:SetPoint("BOTTOMRIGHT")
         pages[i] = p
     end
     buildChars(pages[1])
-    buildOver(pages[2])
-    buildSettings(pages[3])
+    buildCds(pages[2])
+    buildOver(pages[3])
+    buildSettings(pages[4])
     frame:SetScript("OnShow", function()
         for i, k in ipairs(ns.FILTERS) do if k == ns.Pref("filter") then filterTabs:Select(i, true) end end
         ns.Snapshot(); ns.Refresh()

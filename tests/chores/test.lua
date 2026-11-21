@@ -82,10 +82,15 @@ end)
 test("a cooldown the character does not know is not tracked", function()
     Fake({})
     local ns = Load()
-    W.char.cooldowns[18560] = { W.now, 86400 }
     eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil)
+    W.char.cooldowns[18560] = { W.now, 86400 } -- a cooldown that runs proves the recipe is learned
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now + 86400)
+    W.char.cooldowns[18560] = nil
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now, "and stays known once it ran")
     W.char.items[15846] = 1 -- the Salt Shaker is tracked while it is in the bags
-    eq(has(ns.Tasks(ns.Snapshot()), "CD").text, "Salt Shaker is ready")
+    local texts = {}
+    for _, t in ipairs(ns.Tasks(ns.Snapshot())) do texts[t.text] = true end
+    assert(texts["Salt Shaker is ready"])
 end)
 
 test("login prints what waits on the other characters", function()
@@ -339,7 +344,7 @@ test("overview cells are coloured by state, money by coin", function()
     eq(S.MoneyText(10000):find("s", 1, true), nil, "empty parts are left out")
 end)
 
-test("the window has three tabs and the hub gets a summary and options", function()
+test("the window has four tabs and the hub gets a summary and options", function()
     Fake({ name = "Me" })
     local reg
     GulliToolkit = { Register = function(info) reg = info end }
@@ -356,8 +361,8 @@ test("the window has three tabs and the hub gets a summary and options", functio
     eq(ns.TaskOn("EXPIRE"), true)
     ns.Toggle()
     ns.Window():GetScript("OnShow")()
-    for i = 1, 3 do ns.Tabs():Select(i) end
-    ns.Tabs():Select(2)
+    for i = 1, 4 do ns.Tabs():Select(i) end
+    ns.Tabs():Select(3)
     ns.SortBy("money")
     ns.SortBy("money")
 end)
@@ -382,6 +387,94 @@ test("an empty realm name never makes a second entry for one character", functio
     eq(ns.db.chars["Tester-"], nil, "a snapshot without a realm keeps the saved realm")
     eq(ns.db.chars["Tester-Realm"].realm, "Realm")
     eq(ns.Passes(ns.db.chars["Tester-Realm"], "realm"), true)
+end)
+
+test("each cooldown shows under its profession, and one of a profession that is gone is dropped", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    W.char.profs = { { "Tailoring", 300, 300, "tail", 197 }, { "Cooking", 100, 150, "cook", 185 } }
+    W.char.spells[18560], W.char.spells[17187] = true, true -- Mooncloth, and a transmute without Alchemy
+    W.char.cooldowns[18560] = { 50000 - 60, 4 * 86400 }
+    local c = ns.Snapshot()
+    eq(c.cooldowns.CD_TRANSMUTE, nil, "no Alchemy, no transmute")
+    eq(c.cdProf.CD_MOONCLOTH, "Tailoring")
+    local info = ns.CardInfo(c, ns.CharKey(), 50000)
+    eq(#info.profs, 2)
+    eq(#info.profs[1].cds, 1)
+    eq(info.profs[1].cds[1].name, "Mooncloth")
+    eq(info.profs[1].cds[1].done, false)
+    eq(#info.profs[2].cds, 0)
+    -- An old save without professions for its cooldowns lists them on a line of their own.
+    c.cdProf = nil
+    info = ns.CardInfo(c, ns.CharKey(), 50000)
+    eq(#info.profs, 3)
+    eq(info.profs[3].only, true)
+    eq(info.profs[3].cds[1].key, "CD_MOONCLOTH")
+end)
+
+test("the profession window and a craft tell a cooldown the spell does not show", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    W.char.profs = { { "Leatherworking", 260, 300, "lw", 165 } }
+    W.Fire("PLAYER_ENTERING_WORLD")
+    eq(ns.Snapshot().cooldowns.CD_HIDE, nil)
+    C_TradeSkillUI = {
+        GetRecipeInfo = function(id) if id == 19047 then return { learned = true } end end,
+        GetRecipeCooldown = function(id) if id == 19047 then return 7200 end end,
+    }
+    W.Fire("TRADE_SKILL_SHOW")
+    local c = ns.Snapshot()
+    eq(c.cooldowns.CD_HIDE, 50000 + 7200)
+    eq(ns.CdName(c, "CD_HIDE"), "Cured Rugged Hide")
+    eq(ns.CdTask(c, "CD_HIDE"), "Cured Rugged Hide is ready")
+    C_TradeSkillUI.GetRecipeCooldown = function() return 0 end
+    W.Fire("TRADE_SKILL_LIST_UPDATE")
+    eq(ns.Snapshot().cooldowns.CD_HIDE, 50000, "ready again")
+    -- A craft starts its cooldown at once, also with no profession window.
+    C_TradeSkillUI = nil
+    W.now = 60000
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 19047)
+    W.RunTimers()
+    eq(ns.db.chars[ns.CharKey()].cooldowns.CD_HIDE, 60000 + 3 * 86400)
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "party1", "guid", 18560)
+    eq(ns.OnCast(18560), true)
+    issecretvalue = function(v) return v == 17187 end
+    eq(ns.OnCast(17187), false, "a secret spell id is left alone")
+end)
+
+test("a cooldown that Gulli Craft Profit found joins its profession", function()
+    Fake({ now = 50000 })
+    GulliCraftProfitCharDB = { profs = { Alchemy = { recipes = {
+        [1400001] = { name = "Transmute: Starmetal", learned = true, cd = 86400, cdReady = 50000 + 3600 },
+        [1400002] = { name = "Swiftness Potion", learned = true } } } } }
+    local ns = Load()
+    W.char.profs = { { "Alchemy", 300, 300, "alc", 171 } }
+    local c = ns.Snapshot()
+    eq(c.cooldowns.R1400001, 50000 + 3600)
+    eq(c.cooldowns.R1400002, nil, "a recipe without a cooldown")
+    local info = ns.CardInfo(c, ns.CharKey(), 50000)
+    eq(info.profs[1].cds[1].name, "Transmute: Starmetal")
+    eq(has(ns.Tasks(c, 50000 + 3600), "CD").text, "Transmute: Starmetal is ready")
+end)
+
+test("the cooldowns tab lists every character's cooldowns, the ready ones first", function()
+    Fake({ now = 100000, db = { chars = {
+        ["Alc-Realm"] = { name = "Alc", level = 60, t = 1000, cooldowns = { CD_TRANSMUTE = 99000 },
+                          cdProf = { CD_TRANSMUTE = "Alchemy" } },
+        ["Tai-Realm"] = { name = "Tai", level = 60, t = 1000, cooldowns = { CD_MOONCLOTH = 100000 + 7200 } },
+        ["Lw-Realm"] = { name = "Lw", level = 60, t = 1000, cooldowns = { CD_HIDE = 50000, CD_SALT = 100000 + 60 } },
+        ["None-Realm"] = { name = "None", level = 10, t = 1000, cooldowns = {} } } } })
+    local ns = Load()
+    local rows, ready, chars, crafters = ns.CdList(100000)
+    eq(#rows, 4)
+    eq(ready, 2); eq(chars, 2); eq(crafters, 3)
+    eq(rows[1].done, true); eq(rows[2].done, true)
+    eq(rows[3].key, "CD_SALT"); eq(rows[4].key, "CD_MOONCLOTH")
+    eq(rows[1].charKey, "Alc-Realm")
+    eq(rows[1].prof, "Alchemy")
+    ns.Toggle()
+    ns.Window():GetScript("OnShow")()
+    ns.Tabs():Select(2)
 end)
 
 W.finish()
