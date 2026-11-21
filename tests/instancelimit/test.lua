@@ -393,6 +393,39 @@ test("the hub's session card: the runs of this character since the login", funct
     GulliToolkit = nil
 end)
 
+test("a /reload or going out and in again keeps the run's kills, XP and money", function()
+    Fake({ now = 1000 })
+    local ns = Load()
+    W.xp, W.xpMax, W.money = 100, 1000, 500
+    W.Go("The Deadmines", "party", 36)
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Defias Pirate dies, you gain 80 experience.")
+    W.xp, W.money = 180, 600
+    -- a /reload inside: the addon loads again with the saved entries
+    local db = ns.db
+    Fake({ now = 1200, db = db })
+    ns = Load()
+    W.xp, W.xpMax, W.money = 180, 1000, 600
+    W.Go("The Deadmines", "party", 36)
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Defias Miner dies, you gain 70 experience.")
+    W.xp, W.money = 250, 700
+    eq(#ns.db.entries, 1)
+    eq(ns.db.entries[1].kills, 2, "the kill before the reload still counts")
+    -- out and in again: the same copy, the run goes on
+    W.now = 1500; W.Go("Westfall", "none", 0)
+    local e = ns.db.entries[1]
+    eq(e.kills, 2); eq(e.xp, 150); eq(e.money, 200)
+    W.xp, W.money = 300, 650 -- spent on repairs outside, not part of the run
+    W.now = 1600; W.Go("The Deadmines", "party", 36)
+    eq(#ns.db.entries, 1)
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Mr. Smite dies, you gain 120 experience.")
+    W.xp, W.money = 420, 850
+    W.now = 2000; W.Go("Westfall", "none", 0)
+    eq(e.kills, 3, "kills from both visits")
+    eq(e.xp, 270, "XP from both visits")
+    eq(e.money, 400, "money from both visits")
+    eq(e.secs, 1000)
+end)
+
 test("every language has every key, with the same placeholders", function()
     Fake({})
     W.CheckLocales(Load())
