@@ -227,7 +227,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-DungeonPrep", { "Locales.lua", "Data.lua", "JournalData.lua", "Core.lua", "Journal.lua", "Skin.lua", "UI.lua", "Tracker.lua" })
+    return W.Load("Gulli-DungeonPrep", { "Locales.lua", "Data.lua", "Data_de.lua", "Data_es.lua", "Data_fr.lua", "Data_pl.lua", "Data_pt.lua", "Data_ru.lua", "Data_zh.lua", "JournalData.lua", "Core.lua", "Journal.lua", "Skin.lua", "UI.lua", "Tracker.lua" })
 end
 
 return W

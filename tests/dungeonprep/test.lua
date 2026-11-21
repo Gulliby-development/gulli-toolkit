@@ -1289,6 +1289,19 @@ test("a quest's page: the way in three stages, the dungeon's other quests beside
     assert(not d.startMap:IsShown(), "no map pin inside a dungeon")
 end)
 
+test("a Russian client reads the objective and the guide tips in Russian (Data_ru.lua)", function()
+    Fake({ level = 40, raceID = 3, faction = "Alliance", locale = "ruRU" })
+    local ns = Load()
+    eq(ns.lang, "ru")
+    local q = ns.Quest(17, 40)
+    eq(q.text, "Принесите 12 грибов-малиновиков Гхаку Целителю в Телcамар.", "the game's own text, from QuestieDB")
+    eq(q.tips.d, "Ещё больше растёт внутри подземелья.", "our translation of the guide's note")
+    Fake({ level = 40, raceID = 3, faction = "Alliance" })
+    ns = Load()
+    eq(ns.Quest(17, 40).text, "Bring 12 Magenta Fungus Caps to Ghak Healtouch in Thelsamar.", "English elsewhere")
+    eq(ns.Data.L, nil, "no other language in memory")
+end)
+
 test("experience: the game's number for a quest in the log, else the data's, cut above the quest", function()
     Fake({ level = 47, raceID = 2, faction = "Horde", active = { [168] = true } })
     local ns = Load()
@@ -1306,6 +1319,7 @@ test("experience: the game's number for a quest in the log, else the data's, cut
     -- Brotherhood's End is a step of the Defias chain outside the dungeon (D.pre, level 31).
     eq(ns.Data.pre[395] ~= nil, true); eq(ns.Data.quest[395], nil)
     eq(ns.Data.xp[395], 630); eq(ns.QuestXP(395, 31), 625, "a chain step outside the dungeon has its experience too")
+    eq(ns.Data.xp[99187], 7750, "a Forever quest QuestieDB has not measured takes its experience from the Wowhead snapshot")
     assert(ns.XPText(7028, 47):find("~5250 experience", 1, true), "the data's number is marked: " .. ns.XPText(7028, 47))
     eq(ns.XPText(7028, 60), nil)
     assert(not ns.XPText(168, 18):find("~", 1, true), "the game's number is not")

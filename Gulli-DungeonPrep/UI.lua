@@ -1338,18 +1338,10 @@ local function buildDetail(parent)
     top:SetPoint("TOPRIGHT")
     top:Fit(44)
     d.topCard = top
-    -- Back to the list: the list icon, so it is not taken for the arrows on the right.
-    d.back = S.Button(top.body, 30, 30)
-    d.back:SetText("")
-    S.SetButtonIcon(d.back, S.TAB.list, 18)
-    d.back.btnIcon:ClearAllPoints()
-    d.back.btnIcon:SetPoint("CENTER")
+    -- Back to the list: a gold button with its words, so it is found at once.
+    d.back = S.Return(S.FitButton(top.body, "« " .. L.BACK, 30, 72))
     d.back:SetPoint("LEFT")
     d.back:SetScript("OnClick", function() ns.openQuest = nil; ns.Refresh() end)
-    d.back:HookScript("OnEnter", function(self)
-        if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L.BACK); GameTooltip:Show() end
-    end)
-    d.back:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     -- The quest before and after this one in the list.
     local function arrow(text, tip, step)
         local a = S.Button(top.body, 30, 30)
@@ -2383,8 +2375,7 @@ local function build()
     local area = CreateFrame("Frame", nil, body)
     areaFrame = area
     area:SetAllPoints()
-    homeBtn = iconButton(area, TI .. "INV_Misc_Map_02", 30)
-    fitIcon(homeBtn, "« " .. L.ALL_DUNGEONS, 96)
+    homeBtn = S.Return(S.FitButton(area, "« " .. L.ALL_DUNGEONS, 30, 96))
     homeBtn:SetPoint("TOPLEFT")
     homeBtn:SetScript("OnClick", function() ns.home, ns.openQuest = true, nil; ns.Refresh() end)
     tabs = S.PageTabs(area, { L.TAB_BOSSES, L.TAB_LOOT, L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil,
