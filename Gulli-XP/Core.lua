@@ -69,9 +69,20 @@ ns.WatchedFaction = watchedFaction
 
 -- The session -----------------------------------------------------------------------------------
 
+-- Each part of `gained` belongs to one source: killXP + questXP + otherXP == gained (v = 2).
 local function newSession(now)
-    return { t = now, gained = 0, kills = 0, killXP = 0, quests = 0, questXP = 0, events = {},
-             active = 0, lastActive = now, buckets = {} }
+    return { t = now, gained = 0, kills = 0, killXP = 0, quests = 0, questXP = 0, otherXP = 0, v = 2,
+             events = {}, active = 0, lastActive = now, buckets = {} }
+end
+
+-- A session saved before the sources were measured: the counts of the messages could add up to
+-- more than the bar gained, so they are cut to it once.
+local function measured(s)
+    if s.v == 2 then return end
+    s.killXP = math.min(s.killXP or 0, s.gained or 0)
+    s.questXP = math.min(s.questXP or 0, (s.gained or 0) - s.killXP)
+    s.otherXP = (s.gained or 0) - s.killXP - s.questXP
+    s.v = 2
 end
 
 -- The level the character is on now: its play time and XP sources, for the level history.
@@ -84,6 +95,7 @@ end
 function ns.Start(now)
     now = now or time()
     ns.s = newSession(now)
+    ns.pend, ns.loose = {}, nil
     if ns.cdb then ns.cdb.s = ns.s end
     ns.lastXP, ns.lastMax = UnitXP("player"), UnitXPMax("player")
 end
@@ -96,6 +108,7 @@ function ns.Resume(now)
         ns.s = s
         s.events, s.buckets = s.events or {}, s.buckets or {}
         s.active, s.lastActive = s.active or 0, s.lastActive or s.t
+        measured(s)
         ns.lastXP, ns.lastMax = UnitXP("player"), UnitXPMax("player")
     else
         ns.Start(now)
@@ -111,6 +124,63 @@ end
 function ns.Active(now)
     now = now or time()
     return ns.s.active + step(now, ns.s.lastActive)
+end
+
+-- Where the XP comes from. A kill message and a quest hand-in tell how much they bring, but the
+-- game may report more than reaches the bar, and the message may come before or after the bar
+-- moves. So a source only takes XP the bar really gained: a message waits in ns.pend until a gain
+-- pays it (at most ns.PEND seconds), and a gain no message claimed waits in ns.loose for a
+-- message that comes a moment later (ns.LATE). What no message claims is exploring and other XP.
+ns.PEND = 60
+ns.LATE = 3
+ns.pend, ns.loose = {}, nil
+
+local FIELD = { kill = "killXP", quest = "questXP" }
+
+local function credit(kind, xp)
+    local s, cur = ns.s, ns.cdb and ns.cdb.cur
+    s[FIELD[kind]] = s[FIELD[kind]] + xp
+    if cur then cur[FIELD[kind]] = (cur[FIELD[kind]] or 0) + xp end
+end
+
+-- A message that brought xp of this kind (kill or quest).
+function ns.Claim(kind, xp, now)
+    now = now or time()
+    local l = ns.loose
+    if l and now - l.at <= ns.LATE and l.xp > 0 then
+        local take = math.min(xp, l.xp)
+        l.xp = l.xp - take
+        ns.s.otherXP = ns.s.otherXP - take
+        credit(kind, take)
+        xp = xp - take
+    end
+    if xp > 0 then ns.pend[#ns.pend + 1] = { kind = kind, xp = xp, at = now } end
+end
+
+-- A gain of the bar: the waiting messages take their share, the rest is other XP.
+local function share(delta, now)
+    local i = 1
+    while ns.pend[i] do
+        local p = ns.pend[i]
+        if now - p.at > ns.PEND then
+            table.remove(ns.pend, i)
+        else
+            local take = math.min(p.xp, delta)
+            if take > 0 then credit(p.kind, take) end
+            delta = delta - take
+            -- one message is one gain: what the bar did not pay was never XP
+            table.remove(ns.pend, i)
+            if delta <= 0 then break end
+        end
+    end
+    if delta > 0 then
+        ns.s.otherXP = ns.s.otherXP + delta
+        if ns.loose and now - ns.loose.at <= ns.LATE then
+            ns.loose.xp, ns.loose.at = ns.loose.xp + delta, now
+        else
+            ns.loose = { xp = delta, at = now }
+        end
+    end
 end
 
 -- Counts what changed since the last update; a level up adds the rest of the old level.
@@ -131,6 +201,7 @@ function ns.Update(now)
         local b = math.floor((now - s.t) / ns.BUCKET)
         s.buckets[b + 1] = (s.buckets[b + 1] or 0) + delta
         if ns.cdb and ns.cdb.cur then ns.cdb.cur.active = ns.cdb.cur.active + played end
+        share(delta, now)
     end
 end
 
@@ -149,6 +220,11 @@ function ns.Rate(now)
     end
     span = span + step(now, prev)
     return sum * 3600 / math.max(MIN_SPAN, span)
+end
+
+-- XP per hour over the whole session: what it gained over the time played, without breaks.
+function ns.SessionRate(now)
+    return ns.s.gained * 3600 / math.max(MIN_SPAN, ns.Active(now))
 end
 
 -- The XP of the finished quests in the log, and how many there are. Cached until the log changes.
@@ -174,6 +250,8 @@ function ns.Stats(now)
     local avgQuest = s.quests > 0 and s.questXP / s.quests or 0
     local ready, readyN = ns.ReadyXP()
     return {
+        -- avg: the whole session, the big number; rate: the last hour, which the times go by
+        avg = ns.SessionRate(now),
         rate = rate,
         left = left,
         toLevel = rate > 0 and math.floor(left / rate * 3600) or nil,
@@ -181,11 +259,13 @@ function ns.Stats(now)
         questsToLevel = avgQuest > 0 and math.ceil(left / avgQuest) or nil,
         avgKill = avgKill,
         kills = s.kills, quests = s.quests, killXP = s.killXP, questXP = s.questXP,
-        otherXP = math.max(0, s.gained - s.killXP - s.questXP),
+        otherXP = s.otherXP or math.max(0, s.gained - s.killXP - s.questXP),
         gained = s.gained, session = ns.Active(now),
         rested = GetXPExhaustion and GetXPExhaustion() or 0,
         percent = max > 0 and math.floor(cur * 100 / max) or 0,
         ready = ready, readyN = readyN,
+        -- the session as it stands once the finished quests are handed in
+        withReady = s.gained + ready,
         -- Where the level stands after handing in every finished quest.
         readyPercent = max > 0 and math.min(100, math.floor((cur + ready) * 100 / max)) or 0,
         level = UnitLevel("player"), cur = cur, max = max,
@@ -358,7 +438,7 @@ function ns.Session(now)
     for b = math.max(1, last - ns.SESSION_COLUMNS + 1), last do bars[#bars + 1] = ns.s.buckets[b] or 0 end
     local done, rested = ns.BarParts(st)
     return {
-        value = ns.Short(st.rate), unit = L.TEXT_RATE,
+        value = ns.Short(st.avg), unit = L.TEXT_RATE,
         line = st.toLevel and L.TO_LEVEL:format(ns.Span(st.toLevel)) or L.SUM_LEFT:format(ns.Short(st.left), st.level + 1),
         span = ns.Span(st.session), bars = bars,
         progress = { value = done, extra = rested, left = st.level, right = st.percent .. "%" },
@@ -373,7 +453,7 @@ end
 -- One line to share in chat (shift-click on the bar).
 function ns.ShareText()
     local st = ns.Stats()
-    local parts = { L.RATE:format(ns.Short(st.rate)) }
+    local parts = { L.RATE:format(ns.Short(st.avg)) }
     if st.toLevel then parts[#parts + 1] = L.TO_LEVEL:format(ns.Span(st.toLevel)) end
     parts[#parts + 1] = L.LEFT_SHORT:format(ns.Short(st.left), st.percent)
     return "Gulli XP: " .. L.LEVEL_N:format(st.level) .. ", " .. table.concat(parts, ", ")
@@ -426,18 +506,16 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         local xp = ns.KillXP(a1)
         if xp then
             ns.s.kills = ns.s.kills + 1
-            ns.s.killXP = ns.s.killXP + xp
             local cur = ns.cdb.cur
-            if cur then cur.kills, cur.killXP = cur.kills + 1, cur.killXP + xp end
+            if cur then cur.kills = cur.kills + 1 end
+            ns.Claim("kill", xp)
         end
     elseif event == "QUEST_TURNED_IN" then
         local xp = tonumber(a2) or 0
         ns.ready = nil
         if xp > 0 then
             ns.s.quests = ns.s.quests + 1
-            ns.s.questXP = ns.s.questXP + xp
-            local cur = ns.cdb.cur
-            if cur then cur.questXP = cur.questXP + xp end
+            ns.Claim("quest", xp)
         end
     end
     if ns.Refresh then ns.Refresh() end

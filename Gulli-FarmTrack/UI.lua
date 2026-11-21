@@ -8,6 +8,7 @@ local S = ns.Skin
 
 local panel, frame, tabs, tiles, targetCard, lootList, lootEmpty, targetEmpty
 local pages, targetRows, steppers = {}, {}, {}
+local worthRows, worthNote, worthList, worthEmpty = {}
 local PANEL_W, HEAD_H, ROW_H = 230, 26, 46
 ns.PANEL_POINT = { "RIGHT", "RIGHT", -40, 120 }
 
@@ -330,6 +331,132 @@ local function farmPage(body, width)
     return p
 end
 
+-- The Session tab ----------------------------------------------------------------------------
+-- How the estimate of the session is made: the gold looted, the items by how each was judged,
+-- their sum, and every item with its price, how many and what it adds.
+
+-- How an item was judged: its word and colour on the list.
+ns.HOW = {
+    auction = { "HOW_AUCTION", S.GOLD }, vendor = { "HOW_VENDOR", S.MUTED },
+    disenchant = { "HOW_DISENCHANT", { 0.70, 0.55, 1.00, 1 } }, noprice = { "HOW_NOPRICE", S.WARN },
+    quest = { "HOW_QUEST", S.FAINT }, unknown = { "HOW_UNKNOWN", S.FAINT },
+}
+
+local PARTS = {
+    { "ROW_GOLD", ns.GOLD_ICON },
+    { "ROW_AUCTION", "Interface\\Minimap\\Tracking\\Auctioneer" },
+    { "ROW_VENDOR", "Interface\\Icons\\INV_Misc_Coin_02" },
+    { "ROW_DISENCHANT", "Interface\\Icons\\INV_Enchant_DustVision" },
+    { "ROW_ESTIMATE", "Interface\\Icons\\INV_Misc_Gem_Pearl_04" },
+}
+local PART_H = 24
+
+local function partRow(parent, i, d)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(PART_H - 4)
+    r:SetPoint("TOPLEFT", 0, -(i - 1) * PART_H)
+    r:SetPoint("TOPRIGHT", 0, -(i - 1) * PART_H)
+    local ic = S.IconBox(r, 18, d[2])
+    ic:SetPoint("LEFT")
+    r.value = S.Text(r, 13)
+    r.value:SetPoint("RIGHT")
+    r.value:SetJustifyH("RIGHT")
+    r.value:SetWordWrap(false)
+    r.label = S.Text(r, 12, i == #PARTS and S.TEXT or S.MUTED)
+    r.label:SetPoint("LEFT", ic, "RIGHT", 8, 0)
+    r.label:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
+    r.label:SetWordWrap(false)
+    r.label:SetText(L[d[1]])
+    return r
+end
+
+-- "+12g 30s" or a grey dash for nothing.
+local function money(c, sign)
+    if not c or c == 0 then return S.Hex(S.FAINT) .. "-|r" end
+    return (sign and "+" or "") .. S.MoneyText(c)
+end
+
+-- The rows of the item list: name, "19 × 1s 80c · Auction", and what it adds.
+function ns.WorthItems()
+    local out = {}
+    for _, r in ipairs(ns.WorthRows()) do
+        local how = ns.HOW[r.how] or ns.HOW.vendor
+        local sub = r.unit and L.UNIT:format(r.n, S.MoneyText(r.unit)) or L.UNIT_COUNT:format(r.n)
+        out[#out + 1] = { id = r.id, name = ns.ItemName(r.id), icon = ns.ItemIcon(r.id), how = r.how,
+                          sub = sub .. S.DOT .. S.Hex(how[2]) .. L[how[1]] .. "|r", total = r.total }
+    end
+    return out
+end
+
+-- The lines of the card: the parts of the estimate and the note under them.
+function ns.WorthLines()
+    local p = ns.WorthParts()
+    p.count.shop = p.count.vendor + p.count.noprice
+    local function n(k) return p.count[k] > 0 and (" " .. S.Hex(S.FAINT) .. L.TIMES:format(p.count[k]) .. "|r") or "" end
+    local lines = {
+        money(p.gold, true),
+        money(p.by.auction, true) .. n("auction"),
+        money(p.by.vendor + p.by.noprice, true) .. n("shop"),
+        money(p.by.disenchant, true) .. n("disenchant"),
+        "~" .. S.MoneyText(p.total),
+    }
+    local notes = {}
+    if p.sold > 0 then notes[#notes + 1] = L.NOTE_SOLD:format(S.MoneyText(p.sold)) end
+    if p.count.noprice > 0 then notes[#notes + 1] = L.NOTE_NOPRICE end
+    if p.unknown > 0 then notes[#notes + 1] = L.NOTE_UNKNOWN:format(p.unknown) end
+    if #notes == 0 then notes[1] = L.NOTE_HOW end
+    return lines, table.concat(notes, " "), p
+end
+
+local function sessionPage(body, width)
+    local p = CreateFrame("Frame", nil, body)
+    local st = S.Stack(p)
+    local card = S.Card(p, L.SEC_ESTIMATE)
+    for i, d in ipairs(PARTS) do worthRows[i] = partRow(card.body, i, d) end
+    worthNote = S.Note(card.body, 12)
+    worthNote:SetPoint("TOPLEFT", 0, -#PARTS * PART_H - 2)
+    worthNote:SetPoint("RIGHT")
+    worthNote:SetMaxLines(3)
+    st:Add(card, card:Fit(#PARTS * PART_H + 46))
+
+    local items = S.Card(p, L.SEC_WORTH_ITEMS)
+    items:SetPoint("TOPLEFT", 0, -st.y)
+    items:SetPoint("BOTTOMRIGHT")
+    worthList = S.List(items.body, 40, function(r)
+        r.icon = S.IconBox(r, 26)
+        r.icon:SetPoint("LEFT", 2, 0)
+        r.total = S.Text(r, 13)
+        r.total:SetPoint("RIGHT", -4, 0)
+        r.total:SetJustifyH("RIGHT")
+        r.name = S.Text(r, 12)
+        r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 10, 2)
+        r.name:SetPoint("RIGHT", r.total, "LEFT", -8, 0)
+        r.name:SetWordWrap(false)
+        r.sub = S.Text(r, 12, S.MUTED)
+        r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -2)
+        r.sub:SetPoint("RIGHT", r.total, "LEFT", -8, 0)
+        r.sub:SetWordWrap(false)
+    end, function(r, it)
+        r.icon:SetIcon(it.icon)
+        r.name:SetText(it.name)
+        r.sub:SetText(it.sub)
+        r.total:SetText(it.total and it.total > 0 and S.MoneyText(it.total) or (S.Hex(S.FAINT) .. "-|r"))
+    end)
+    worthList:SetAllPoints()
+    worthEmpty = S.Empty(items.body)
+    worthEmpty:Set(L.NO_LOOT, L.NO_LOOT_SUB)
+    return p
+end
+
+local function paintSession()
+    local lines, note = ns.WorthLines()
+    for i, r in ipairs(worthRows) do r.value:SetText(lines[i]) end
+    worthNote:SetText(note)
+    local rows = ns.WorthItems()
+    worthList:SetData(rows)
+    worthEmpty:SetShown(#rows == 0)
+end
+
 local function settingsPage(body, width)
     local page = S.ScrollPage(body, width)
     local p = page.inner
@@ -397,6 +524,7 @@ local function paintWindow()
     local rows = ns.LootRows()
     lootList:SetData(rows)
     lootEmpty:SetShown(#rows == 0)
+    paintSession()
 end
 
 function ns.Refresh()
@@ -424,16 +552,17 @@ local function build()
         { "Interface\\Icons\\INV_Misc_PocketWatch_01", ns.GOLD_ICON, "Interface\\Icons\\INV_Misc_Bag_10" })
     st:Add(tiles, 62)
     tiles:Layout(width)
-    tabs = S.PageTabs(body, { L.TAB_FARM, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_SESSION, L.TAB_FARM, L.TAB_SETTINGS }, nil, function(i)
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         for _, x in ipairs(steppers) do x:Refresh() end
         ns.Refresh()
-    end, nil, { S.TAB.list, S.TAB.settings })
+    end, nil, { S.TAB.recent, S.TAB.list, S.TAB.settings })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
     st:Space(30 + S.GAP)
-    pages[1] = farmPage(body, width)
-    pages[2] = settingsPage(body, width)
+    pages[1] = sessionPage(body, width)
+    pages[2] = farmPage(body, width)
+    pages[3] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -st.y)
         p:SetPoint("BOTTOMRIGHT")

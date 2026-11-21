@@ -18,14 +18,14 @@ How long until the next level? Gulli XP tells you on a small bar.
 
 ## Features
 
-- **XP per hour** over the last hour of play. Breaks of more than 10 minutes (AFK, a chat, a meal) do not count, so the pace stays honest.
+- **XP per hour** over the whole session, big, and the pace of the last hour small under it ("now 37k/h"). Breaks of more than 10 minutes (AFK, a chat, a meal) do not count, so the pace stays honest. The time to the next level goes by the last hour.
 - **Time to level** at that pace, and **kills** and **quests to level** from your average XP per kill and per quest.
 - **Finished quests:** the XP of the quests you can hand in now, and how far the level gets when you do. The gold part of the line under the bar shows it.
 - The bar fills from end to end: the **level so far** (purple), **finished quests** (gold) and your **rested XP** (blue), with a tick every 10%. Your level is at the left end, the percent at the right. Under **Bar look** you can switch back to a **thin line** under the text.
 - **Hover** the bar for every number, in three blocks: **Pace** (XP per hour, time, kills and quests to level), **Level** (done, left, rested, finished quests) and **Session**. **Shift-click** it to tell your group your pace.
 - **Choose the text** on the bar: everything, XP per hour, time to level, XP to go or percent.
 - **Your last levels:** how long each one took in play time, and the XP from kills and quests. The Gulli Toolkit shows a line when you level up.
-- **Where the XP came from:** kills, quests, the rest (exploring and so on) and the rested bonus, each in its own colour, next to your **pace** (play time, XP per kill, kills and quests to level), plus a small graph of XP per 10 minutes.
+- **Where the XP came from:** kills, quests and the rest (exploring and so on). They always add up to the **total** of the session, because each part counts only the XP your bar really got. Under the total, **with your finished quests**: the total once you hand them in. Next to it your **pace** (play time, XP per kill, kills and quests to level, rested XP left), plus a small graph of XP per 10 minutes.
 - **A /reload keeps the session.** A new one starts when you log in again or after a long break.
 - **Place** the bar in **Unlock frames** in `/gulli`. **Across the whole screen** makes it as wide as the screen. Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
 - At the top level the bar shows the **reputation** you watch, or hides.
