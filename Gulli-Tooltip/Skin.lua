@@ -1558,8 +1558,8 @@ function S.Empty(parent)
     return e
 end
 
--- Money in the coin colours, so gold, silver and copper read at a glance. `short` drops the
--- copper from 1 gold up (for tiles). A negative amount starts with a minus.
+-- Money in the coin colours, so gold, silver and copper read at a glance. From 1 gold up the
+-- copper is left out (owner's decision of 2026-11-21); `short` is kept for the callers.
 function S.MoneyText(copper, short)
     copper = tonumber(copper) or 0
     if copper ~= copper or copper == math.huge or copper == -math.huge then return "?" end
@@ -1570,7 +1570,7 @@ function S.MoneyText(copper, short)
     local parts = {}
     if g > 0 then parts[#parts + 1] = S.Hex(S.GOLD) .. g .. "g|r" end
     if s > 0 then parts[#parts + 1] = S.Hex(S.SILVER) .. s .. "s|r" end
-    if (c > 0 and not (short and g > 0)) or #parts == 0 then parts[#parts + 1] = S.Hex(S.COPPER) .. c .. "c|r" end
+    if (c > 0 and g == 0) or #parts == 0 then parts[#parts + 1] = S.Hex(S.COPPER) .. c .. "c|r" end
     return sign .. table.concat(parts, " ")
 end
 
@@ -1588,7 +1588,7 @@ function S.MoneyIcons(copper, short)
     local parts = {}
     if g > 0 then parts[#parts + 1] = coin(g, "Gold") end
     if s > 0 then parts[#parts + 1] = coin(s, "Silver") end
-    if (c > 0 and not (short and g > 0)) or #parts == 0 then parts[#parts + 1] = coin(c, "Copper") end
+    if (c > 0 and g == 0) or #parts == 0 then parts[#parts + 1] = coin(c, "Copper") end
     return sign .. table.concat(parts, " ")
 end
 

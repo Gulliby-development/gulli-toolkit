@@ -46,12 +46,12 @@ local flash -- one line for the chosen stop that an action left (lots read, a li
 -- ---------- money ----------
 
 local function coins(c)
-    if GetCoinTextureString then return GetCoinTextureString(c) end
+    if GetCoinTextureString then return GetCoinTextureString(c >= 10000 and c - c % 100 or c) end
     local g, s, k = math.floor(c / 10000), math.floor(c / 100) % 100, c % 100
     local out = {}
     if g > 0 then out[#out + 1] = g .. "g" end
-    if s > 0 or (g > 0 and k > 0) then out[#out + 1] = s .. "s" end
-    if k > 0 or #out == 0 then out[#out + 1] = k .. "c" end
+    if s > 0 then out[#out + 1] = s .. "s" end
+    if (k > 0 and g == 0) or #out == 0 then out[#out + 1] = k .. "c" end
     return table.concat(out, " ")
 end
 -- A signed amount; `plus` adds "+" to a gain.

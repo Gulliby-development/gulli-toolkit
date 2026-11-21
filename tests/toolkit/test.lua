@@ -1501,16 +1501,19 @@ test("a button with an icon keeps its text after the icon when hovered or presse
     eq(#left, before, "a tile's title keeps its own place")
 end)
 
-test("money shows each coin in its colour, short drops copper from 1 gold, a loss keeps its minus", function()
+test("money shows each coin in its colour, no copper from 1 gold, a loss keeps its minus", function()
     Fake({ addons = { QC } })
     local S = Load().Skin
     local plain = function(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-    eq(plain(S.MoneyText(26664)), "2g 66s 64c")
+    eq(plain(S.MoneyText(26664)), "2g 66s")
+    eq(plain(S.MoneyText(20064)), "2g")
+    eq(plain(S.MoneyText(6664)), "66s 64c")
+    eq(plain(S.MoneyIcons(26664)):find("Copper", 1, true), nil)
     eq(plain(S.MoneyText(26664, true)), "2g 66s")
     eq(plain(S.MoneyText(-150)), "-1s 50c")
     eq(plain(S.MoneyText(0)), "0c")
     assert(S.MoneyText(26664):find(S.Hex(S.GOLD) .. "2g", 1, true), "gold in the gold colour")
-    assert(S.MoneyText(26664):find(S.Hex(S.COPPER) .. "64c", 1, true), "copper in the copper colour")
+    assert(S.MoneyText(6664):find(S.Hex(S.COPPER) .. "64c", 1, true), "copper in the copper colour")
 end)
 
 test("money on a coloured button: plain numbers with the game's coin pictures, no colour codes", function()
