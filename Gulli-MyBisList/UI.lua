@@ -308,7 +308,7 @@ local function pickFill(r, it)
         r:SetSelected(shown ~= nil and ns.RefOf(shown) == it.ref)
         return
     end
-    r.icon:SetIcon(it.stage and STAR_ON or ns.ROLE_ICON[s[3]])
+    r.icon:SetIcon(ns.SpecIcon(it.spec))
     local text = ns.SpecName(it.spec) .. "  " .. colour(ns.ClassName(s[2]), S.FAINT)
     if it.stage then text = text .. colour(" · " .. ns.StageName(it.stage), S.FAINT) end
     r.name:SetText(text)
@@ -567,7 +567,7 @@ local function paintGear()
     end
     local spec = ns.SpecInfo(list.spec)
     gear.chip:SetText(ns.SpecName(list.spec))
-    if gear.chip.btnIcon then gear.chip.btnIcon:SetTexture(ns.ClassIcon(spec[2])) end
+    if gear.chip.btnIcon then gear.chip.btnIcon:SetTexture(ns.SpecIcon(list.spec)) end
     local own = list.own ~= nil
     gear.stages.frame:SetShown(not own)
     gear.star:SetShown(not own)

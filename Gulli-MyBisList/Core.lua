@@ -40,6 +40,26 @@ ns.SPEC_ID = {
     [265] = "WARLOCK_AFFLICTION", [266] = "WARLOCK_DEMONOLOGY", [267] = "WARLOCK_DESTRUCTION",
     [102] = "DRUID_BALANCE", [103] = "DRUID_FERALDPS", [104] = "DRUID_FERALTANK", [105] = "DRUID_RESTORATION",
 }
+-- Each spec's own icon (the game's talent tree icons), on the spec button and in its picker.
+ns.SPEC_ICON = {
+    WARRIOR_ARMS = "Ability_Warrior_SavageBlow", WARRIOR_FURY = "Ability_Warrior_InnerRage",
+    WARRIOR_PROTECTION = "Ability_Warrior_DefensiveStance", PALADIN_HOLY = "Spell_Holy_HolyBolt",
+    PALADIN_PROTECTION = "Spell_Holy_DevotionAura", PALADIN_RETRIBUTION = "Spell_Holy_AuraOfLight",
+    HUNTER_BEASTMASTERY = "Ability_Hunter_BeastTaming", HUNTER_MARKSMANSHIP = "Ability_Marksmanship",
+    HUNTER_SURVIVAL = "Ability_Hunter_SwiftStrike", ROGUE_ASSASSINATION = "Ability_Rogue_Eviscerate",
+    ROGUE_COMBAT = "Ability_BackStab", ROGUE_SUBTLETY = "Ability_Stealth",
+    PRIEST_DISCIPLINE = "Spell_Holy_PowerWordShield", PRIEST_HOLY = "Spell_Holy_GuardianSpirit",
+    PRIEST_SHADOW = "Spell_Shadow_ShadowWordPain", SHAMAN_ELEMENTAL = "Spell_Nature_Lightning",
+    SHAMAN_ENHANCEMENT = "Spell_Nature_LightningShield", SHAMAN_RESTORATION = "Spell_Nature_MagicImmunity",
+    MAGE_ARCANE = "Spell_Holy_MagicalSentry", MAGE_FIRE = "Spell_Fire_FireBolt02", MAGE_FROST = "Spell_Frost_FrostBolt02",
+    WARLOCK_AFFLICTION = "Spell_Shadow_DeathCoil", WARLOCK_DEMONOLOGY = "Spell_Shadow_Metamorphosis",
+    WARLOCK_DESTRUCTION = "Spell_Shadow_RainOfFire", DRUID_BALANCE = "Spell_Nature_StarFall",
+    DRUID_FERALDPS = "Ability_Druid_CatForm", DRUID_FERALTANK = "Ability_Racial_BearForm",
+    DRUID_RESTORATION = "Spell_Nature_HealingTouch",
+}
+function ns.SpecIcon(key)
+    return "Interface\\Icons\\" .. (ns.SPEC_ICON[key] or "INV_Misc_QuestionMark")
+end
 ns.ROLE_ICON = { tank = "Interface\\Icons\\Ability_Warrior_DefensiveStance",
                  heal = "Interface\\Icons\\Spell_Holy_FlashHeal", dps = "Interface\\Icons\\Ability_DualWield" }
 ns.SRC_ICON = {

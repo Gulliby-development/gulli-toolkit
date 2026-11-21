@@ -31,6 +31,7 @@ test("the data: every spec has every stage, at most five known items a slot, and
     for _, s in ipairs(D.specs) do
         assert(ns.SpecName(s[1]), "no name for " .. s[1])
         assert(ns.ROLE_ICON[s[3]], "no role icon for " .. s[1])
+        assert(ns.SPEC_ICON[s[1]], "no spec icon for " .. s[1])
         for _, stage in ipairs(D.stages) do
             local l = D.lists[s[1]] and D.lists[s[1]][stage]
             assert(l, s[1] .. " has no " .. stage)
