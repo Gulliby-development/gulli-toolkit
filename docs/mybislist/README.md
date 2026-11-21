@@ -24,7 +24,7 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 - **Where to get it.** Each item says where it comes from: a boss and its dungeon, a quest, a reputation, a craft or a world drop.
 - **Realistic before the raids.** The switch **Realistic** shows the list without the hardest items to get.
 - **My target.** The target button on an item makes it the first of its slot. On a site list, the first click makes your own copy of it, and that copy becomes your main list. What you wear can be your target too.
-- **Your own lists.** **Copy to mine** makes a copy of any list that you can change: move items up and down, remove them, and add others with a search over the items your class can use (the ones of your spec first). Type an item id or Shift-click an item into the search to add any item at all. Rename it in the box at the top. When the site later changes the first item of a slot, a line over the list says which slots. Your lists are for every character of your account.
+- **Your own lists.** **Copy to mine** makes a copy of any list that you can change: make an item your target, remove items, and add others with a search over the items your class can use (the ones of your spec first). Type an item id or Shift-click an item into the search to add any item at all. Rename it in the box at the top. When the site later changes the first item of a slot, a line over the list says which slots. Your lists are for every character of your account.
 - **Favourite lists.** The star keeps a list at the top of the picker, for an alt or a second spec.
 - **Your main list.** **Track this list** chooses the list the tooltips and notices follow. Until you choose, it is the list of your spec and level.
 - **In the tooltip.** An item on your main list shows its place in its slot, and the place of what you wear there.
@@ -44,7 +44,7 @@ My BiS List works alone. With [Gulli Toolkit](../../README.md) installed, it als
 2. Click a slot to see its five best items.
 3. Shift-click an item to put its link in the chat.
 4. Press the target button on an item to make it your first choice for that slot.
-5. To change a list, press **Copy to mine**, then **Add item** or the arrows on a row.
+5. To change a list, press **Copy to mine**, then **Add item**, the target button or the cross on a row.
 
 Commands: `/gbis` opens the window, `/gbis reset` puts the settings back.
 

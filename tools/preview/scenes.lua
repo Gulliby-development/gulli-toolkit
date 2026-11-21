@@ -1589,6 +1589,14 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
     level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
         mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },
     settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end },
+    four = { spec = mbSpec(), open = function(ns, W)
+        mbOpen(ns, W, "neck")
+        local ref = ns.CopyList("site:WARRIOR_ARMS:PRE")
+        ns.ViewRefSet(ref)
+        ns.OwnRemove(ref, "neck", ns.Resolve(ref).slots.neck[5])
+        W.worn[2] = 18723
+        ns.Refresh()
+    end },
     offlist = { spec = mbSpec(), open = function(ns, W)
         mbOpen(ns, W, "neck")
         W.worn[2] = 18723
