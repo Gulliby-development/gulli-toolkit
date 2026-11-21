@@ -27,6 +27,8 @@ local STAR_ON, STAR_OFF = "Interface\\Icons\\INV_Misc_Gem_Topaz_02", "Interface\
 local OWN_ICON = "Interface\\Icons\\INV_Misc_Note_05"
 local UP, DOWN = "Interface\\Buttons\\Arrow-Up-Up", "Interface\\Buttons\\Arrow-Down-Up"
 local DEL = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
+local TARGET = "Interface\\Icons\\Ability_Hunter_SniperShot"
+local SEP_H = 18        -- the line over what is worn when it is not on the list
 
 function ns.ClassIcon(class)
     return "Interface\\Icons\\ClassIcon_" .. class:sub(1, 1) .. class:sub(2):lower()
@@ -35,13 +37,12 @@ end
 local function colour(text, c) return S.Hex(c) .. text .. "|r" end
 
 -- The state of a slot as a short line and its colour (never by colour alone: a word goes with it).
-function ns.StateText(r)
-    if r.state == "bis" then return L.ST_BIS, S.GOOD end
-    if r.state == "bag" then return L.ST_BAG:format(r.haveRank), S.WARN end
-    if r.state == "rank" then return L.ST_RANK:format(r.rank, #r.ids), S.TEXT end
-    if r.state == "miss" then return r.worn and L.ST_OFF or L.ST_EMPTY, S.MUTED end
+-- Where the list's first item is: its colour and the word for the tooltip.
+ns.AT_COLOR = { worn = S.GOOD, bag = S.WARN, miss = S.BAD }
+function ns.TopText(r)
     if r.state == "covered" then return L.ST_COVERED, S.FAINT end
-    return L.ST_NONE, S.FAINT
+    if not r.top then return L.ST_NONE, S.FAINT end
+    return S.QualityHex(ns.ItemQuality(r.top)) .. ns.ItemName(r.top) .. "|r", ns.AT_COLOR[r.topAt]
 end
 
 local function itemTip(self)
@@ -92,14 +93,24 @@ local function slotButton(parent, slot)
     b.name:SetJustifyH("LEFT")
     b.name:SetWordWrap(false)
     b.name:SetText(S.Upper(L["SLOT_" .. slot]))
+    b.dot = S.Circle(b, 8, S.BAD, "OVERLAY")
+    b.dot:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 4)
     b.state = S.Text(b, 12, S.MUTED)
-    b.state:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 1)
+    b.state:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 20, 1)
     b.state:SetPoint("RIGHT", -8, 0)
     b.state:SetJustifyH("LEFT")
     b.state:SetWordWrap(false)
     b:SetScript("OnClick", function(self) ns.slot = self.slot; ns.Refresh() end)
     b:SetScript("OnEnter", function(self)
-        if self.itemId then itemTip(self) end
+        if self.itemId then
+            itemTip(self)
+            local at = self.row and self.row.topAt
+            if at and GameTooltip then
+                local c = ns.AT_COLOR[at]
+                GameTooltip:AddLine(L["AT_" .. at:upper()], c[1], c[2], c[3])
+                GameTooltip:Show()
+            end
+        end
         if not self.selected then S.Fill(self, S.RAISED) end
     end)
     b:SetScript("OnLeave", function(self)
@@ -111,12 +122,21 @@ end
 
 local function paintSlot(b, r)
     b.row = r
-    b.itemId = r.worn
-    b.icon:SetIcon(r.worn and ns.ItemIcon(r.worn) or (PD .. SLOT_ART[r.slot]))
-    local text, c = ns.StateText(r)
+    local top = r.state ~= "covered" and r.top or nil
+    b.itemId = top
+    b.icon:SetIcon(top and ns.ItemIcon(top) or (PD .. SLOT_ART[r.slot]))
+    local text, c = ns.TopText(r)
     b.state:SetText(text)
-    b.state:SetTextColor(c[1], c[2], c[3], 1)
-    b.icon:SetGlow((r.state == "bis" and S.GOOD) or (r.state == "bag" and S.WARN) or nil)
+    b.state:SetTextColor(1, 1, 1, 1)
+    if top then
+        b.dot:SetVertexColor(c[1], c[2], c[3], 1)
+        b.state:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 20, 1)
+    else
+        b.state:SetTextColor(c[1], c[2], c[3], 1)
+        b.state:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 1)
+    end
+    b.dot:SetShown(top ~= nil)
+    b.icon:SetGlow(top and c or nil)
     b.icon:SetAlpha(r.counted and 1 or 0.45)
     b.selected = ns.slot == r.slot
     S.Fill(b, b.selected and { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 } or S.SURFACE)
@@ -126,15 +146,19 @@ end
 -- The card of the chosen slot --------------------------------------------------------------------------
 
 local function makeRow(r)
+    r.body = CreateFrame("Frame", nil, r)
+    r.body:SetPoint("BOTTOMLEFT")
+    r.body:SetPoint("BOTTOMRIGHT")
+    r.body:SetHeight(ROW_H)
     r.rank = S.Text(r, 14, S.MUTED, nil, "bold")
-    r.rank:SetPoint("LEFT", 4, 0)
+    r.rank:SetPoint("LEFT", r.body, "LEFT", 4, 0)
     r.rank:SetWidth(22)
     r.rank:SetJustifyH("CENTER")
     r.icon = S.IconBox(r, 32)
-    r.icon:SetPoint("LEFT", 30, 0)
+    r.icon:SetPoint("LEFT", r.body, "LEFT", 30, 0)
     -- an own list's row: up, down, remove (the hit area lies under them)
     r.tools = CreateFrame("Frame", nil, r)
-    r.tools:SetPoint("RIGHT", -4, 0)
+    r.tools:SetPoint("RIGHT", r.body, "RIGHT", -4, 0)
     r.tools:SetSize(1, 26)
     local function tool(icon, tip, fn)
         local b = S.Button(r.tools, 26, 26)
@@ -151,18 +175,37 @@ local function makeRow(r)
         b:SetScript("OnLeave", hideTip)
         return b
     end
+    -- "My target": the same button on every row but the first
+    r.aim = tool(TARGET, L.TARGET, function(it) ns.SetTarget(ns.ShownRef(), it.slot, it.id) end)
+    r.aim:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L.TARGET)
+        GameTooltip:AddLine(L.TARGET_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    r.sep = S.Text(r, 12, S.MUTED, nil, "bold")
+    r.sep:SetPoint("TOPLEFT", 4, -2)
+    r.sep:SetText(S.Upper(L.WORN_NOW))
+    r.sepLine = S.Divider(r)
+    r.sepLine:SetPoint("TOPLEFT", 0, 0)
+    r.sepLine:SetPoint("TOPRIGHT", 0, 0)
+    r.sepLine:SetHeight(1)
     r.up = tool(UP, L.MOVE_UP, function(it) ns.OwnMove(it.ref, it.slot, it.id, -1) end)
     r.down = tool(DOWN, L.MOVE_DOWN, function(it) ns.OwnMove(it.ref, it.slot, it.id, 1) end)
     r.del = tool(DEL, L.REMOVE, function(it) ns.OwnRemove(it.ref, it.slot, it.id) end)
-    r.up:SetPoint("LEFT", 0, 0)
+    r.aim:SetPoint("LEFT", 0, 0)
+    r.up:SetPoint("LEFT", r.aim, "RIGHT", 2, 0)
     r.down:SetPoint("LEFT", r.up, "RIGHT", 2, 0)
     r.del:SetPoint("LEFT", r.down, "RIGHT", 2, 0)
     r.tag = S.Text(r, 12, S.MUTED)
     r.tag:SetPoint("TOPRIGHT", r.tools, "TOPLEFT", -4, 3)
     r.tag:SetJustifyH("RIGHT")
     r.tag:SetWordWrap(false)
+    r.dot = S.Circle(r, 8, S.BAD, "OVERLAY")
+    r.dot:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 9, -4)
     r.name = S.Text(r, 13)
-    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 9, 0)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 21, 0)
     r.name:SetPoint("RIGHT", r.tag, "LEFT", -6, 0)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
@@ -175,7 +218,15 @@ local function makeRow(r)
     r.hit:SetAllPoints()
     r.hit:SetFrameLevel((tonumber(r:GetFrameLevel()) or 1))
     r.tools:SetFrameLevel((tonumber(r:GetFrameLevel()) or 1) + 2)
-    r.hit:SetScript("OnEnter", function(self) S.Fill(r, S.HOVER); itemTip(self) end)
+    r.hit:SetScript("OnEnter", function(self)
+        S.Fill(r, S.HOVER)
+        itemTip(self)
+        local c = self.at and ns.AT_COLOR[self.at]
+        if c and GameTooltip then
+            GameTooltip:AddLine(L["AT_" .. self.at:upper()], c[1], c[2], c[3])
+            GameTooltip:Show()
+        end
+    end)
     r.hit:SetScript("OnLeave", function() S.Fill(r, S.CLEAR); hideTip() end)
     r.hit:SetScript("OnClick", function(self)
         -- Shift-click links the item in chat, like the game's own lists
@@ -193,13 +244,22 @@ local function fillRow(r, it)
     r.item = it
     r.hit.itemId = it.id
     local own = it.ref ~= nil
-    r.tools:SetShown(own)
-    r.tools:SetWidth(own and 82 or 1)
-    if own then
+    local onList = it.rank ~= nil
+    r.sep:SetShown(it.sep == true)
+    r.sepLine:SetShown(it.sep == true)
+    -- every row but the first: "My target"; an own list's rows also up, down, remove
+    local edit = own and onList
+    local aim = it.rank ~= 1
+    r.aim:SetShown(aim)
+    for _, b in ipairs({ r.up, r.down, r.del }) do b:SetShown(edit) end
+    r.up:ClearAllPoints()
+    if aim then r.up:SetPoint("LEFT", r.aim, "RIGHT", 2, 0) else r.up:SetPoint("LEFT", 0, 0) end
+    r.tools:SetWidth((aim and 28 or 0) + (edit and 82 or 0) + 1)
+    if edit then
         r.up:SetEnabled(it.rank > 1)
         r.down:SetEnabled(not it.last)
     end
-    r.rank:SetText(tostring(it.rank))
+    r.rank:SetText(onList and tostring(it.rank) or "")
     r.rank:SetTextColor(unpack(it.rank == 1 and S.GOLD or S.MUTED))
     r.icon:SetIcon(ns.ItemIcon(it.id))
     r.icon:SetGlow(S.QUALITY[ns.ItemQuality(it.id)])
@@ -207,15 +267,12 @@ local function fillRow(r, it)
     local src = ns.SourceText(it.id)
     r.src:SetText(src)
     local need = ns.NeedsLevel(it.id)
-    if it.worn then
-        r.tag:SetText(colour(L.TAG_WORN, S.GOOD))
-    elseif it.have then
-        r.tag:SetText(colour(L.TAG_BAG, S.WARN))
-    elseif need then
-        r.tag:SetText(colour(L.TAG_LEVEL:format(need), S.MUTED))
-    else
-        r.tag:SetText("")
-    end
+    -- where it is: a dot (its word in the tooltip), and the level it needs while too high
+    r.at = it.worn and "worn" or (it.have and "bag") or "miss"
+    local c = ns.AT_COLOR[r.at]
+    r.dot:SetVertexColor(c[1], c[2], c[3], 1)
+    r.hit.at = r.at
+    r.tag:SetText(need and colour(L.TAG_LEVEL:format(need), S.MUTED) or "")
 end
 
 local function buildCard(parent)
@@ -231,6 +288,7 @@ local function buildCard(parent)
     c.bar:SetPoint("TOPLEFT", 0, -28)
     c.bar:SetPoint("TOPRIGHT", 0, -28)
     c.list = S.List(c.body, ROW_H, makeRow, fillRow)
+    c.list.heightOf = function(it) return it.sep and ROW_H + SEP_H or ROW_H end
     c.list:SetPoint("TOPLEFT", 0, -44)
     c.list:SetPoint("BOTTOMRIGHT", 0, 24)
     c.empty = S.Text(c.body, 12, S.MUTED)
@@ -255,13 +313,17 @@ local function buildCard(parent)
 end
 
 -- The rows of a slot's list for the card: { rank, id, worn, have }, and for an own list its ref,
--- slot and last (the tools of the row).
+-- slot and last (the tools of the row). What is worn and not on the list comes last, under a
+-- line, without a rank (sep), so it can be made the target too.
 function ns.CardItems(list, r)
     local out = {}
     local ref = list.own and ns.RefOf(list) or nil
     for i, id in ipairs(r.ids) do
-        out[#out + 1] = { rank = i, id = id, worn = r.worn == id, have = r.have == id,
+        out[#out + 1] = { rank = i, id = id, worn = r.worn == id, have = ns.Carried(id),
                           ref = ref, slot = r.slot, last = i == #r.ids }
+    end
+    if r.worn and not r.rank and r.state ~= "covered" then
+        out[#out + 1] = { id = r.worn, worn = true, sep = true, ref = ref, slot = r.slot }
     end
     return out
 end
@@ -382,8 +444,7 @@ local function addRow(r)
     r.hit:SetScript("OnEnter", itemTip)
     r.hit:SetScript("OnLeave", hideTip)
     r.hit:SetScript("OnClick", function(self)
-        local list = ns.Shown()
-        if list and list.own and self.itemId then ns.OwnAdd(ns.RefOf(list), ns.slot, self.itemId) end
+        if self.itemId then ns.AddTo(ns.ShownRef(), ns.slot, self.itemId) end
         adder:Hide()
     end)
 end
@@ -393,13 +454,13 @@ local function addFill(r, id)
     r.icon:SetGlow(S.QUALITY[ns.ItemQuality(id)])
     r.name:SetText(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
     local it = D.item[id]
-    r.lvl:SetText(L.ILVL:format(it[3] or 0))
+    r.lvl:SetText(it and it[3] and L.ILVL:format(it[3]) or "")
     r.src:SetText(ns.SourceText(id))
 end
 
 function ns.AddItems(query)
     local list = ns.Shown()
-    if not (list and list.own) then return {} end
+    if not list then return {} end
     local ids = ns.Candidates(ns.RefOf(list), ns.slot, query)
     local out = {}
     for i = 1, math.min(#ids, 60) do out[i] = ids[i] end
@@ -444,6 +505,21 @@ local function buildAdder()
     end)
     p:Hide()
     return p
+end
+
+-- A Shift-click on an item while the search box has the focus puts the item's id there.
+function ns.OnLink(link)
+    if not (adder and adder:IsShown() and adder.search:HasFocus()) then return end
+    local id = ns.ParseId(link)
+    if id then adder.search:SetText(tostring(id)) end
+end
+do
+    local util = ChatFrameUtil
+    if hooksecurefunc and util and util.InsertLink then
+        hooksecurefunc(util, "InsertLink", function(link) ns.OnLink(link) end)
+    elseif hooksecurefunc and ChatEdit_InsertLink then
+        hooksecurefunc("ChatEdit_InsertLink", function(link) ns.OnLink(link) end)
+    end
 end
 
 function ns.OpenAdd(anchor)
@@ -605,7 +681,7 @@ local function paintGear()
     c.empty:SetText(r.state == "covered" and L.EMPTY_COVERED or (own and L.EMPTY_OWN) or L.EMPTY_SLOT)
     local ench = list.ench[r.slot]
     c.ench:SetText(ench and (L.ENCHANT .. " " .. colour(ench, S.TEXT)) or "")
-    c.add:SetShown(own and #r.ids < ns.OWN_MAX)
+    c.add:SetShown(r.state ~= "covered" and (not own or #r.ids < ns.OWN_MAX))
     c.countLabel:SetPoint("RIGHT", c.add:IsShown() and -(c.add:GetWidth() + 8) or 0, 0)
     local news = own and ns.SiteNews(ns.RefOf(list)) or {}
     if #news > 0 then
@@ -629,7 +705,7 @@ local function settingsPage(body, width)
         return { L["OPT_" .. up], L["OPT_" .. up .. "_TIP"], function() return ns.db[key] end,
                  function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
     end
-    for _, sec in ipairs({ { L.SEC_MAIN, { "real" } }, { L.SEC_NOTICES, { "tooltip", "notify" } } }) do
+    for _, sec in ipairs({ { L.SEC_MAIN, { "real" } }, { L.SEC_NOTICES, { "tooltip", "notify", "drop" } } }) do
         local rows = {}
         for _, k in ipairs(sec[2]) do rows[#rows + 1] = row(k) end
         local card, h = S.SettingsCard(page.inner, sec[1], rows)
@@ -658,7 +734,7 @@ local function paintFooter()
         mainBtn:SetText(ns.MainRef() == "auto" and L.MAIN_AUTO or L.MAIN_IS)
         mainBtn:SetEnabled(false)
     else
-        mainBtn:SetText(L.MAKE_MAIN)
+        mainBtn:SetText(L.TRACK)
         mainBtn:SetEnabled(true)
     end
     mainBtn:SetWidth(math.max(150, math.floor((mainBtn.text:GetStringWidth() or 0) + 40)))
