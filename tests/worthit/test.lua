@@ -804,7 +804,9 @@ test("a book is done, in the bags, to pick up or for later; the rewards follow t
     eq(find(lib.books, RUNES).state, "take")
     eq(find(lib.books, POTATOES).state, "later", "a level-60 book waits at 30")
     eq(lib.tiers[1].state, "wait")
-    eq(lib.tiers[1].left, 1)
+    eq(lib.tiers[1].left, 0, "the book in the bags is found already")
+    eq(lib.tiers[1].hand, 1)
+    eq(lib.tiers[2].left, 20 - 9 - 1, "a tile counts the books still to find")
     W.done[GOAZ] = true
     lib = ns.Library()
     eq(lib.tiers[1].state, "ready")
@@ -1031,15 +1033,26 @@ test("the window's library goal: a click on a reward tile, its mark and the foot
     local tile = ladder.tiles[1]
     tile._OnMouseUp(tile)
     eq(ns.cdb.libGoal, TIER1)
-    assert(tile.need:GetText():find(ns.L.LIB_GOAL:upper(), 1, true) or tile.need:GetText():find(ns.L.LIB_GOAL, 1, true), "the goal mark")
-    eq(ladder.tiles[2].need:GetText():find(ns.L.LIB_GOAL, 1, true), nil)
+    eq(tile.star:IsShown(), true, "the goal's star")
+    eq(ladder.tiles[2].star:IsShown(), false)
+    eq(tile.need:GetText():find(ns.L.LIB_GOAL, 1, true), nil, "no word that may not fit the tile")
     leadAll._OnClick(leadAll)
     local n = 0
     for _, r in ipairs(ns.GuideRows()) do if r.stop.kind == "pick" then n = n + 1 end end
     eq(n, 9, "ten less the book in the bags")
+    eq(ns.LeadCount(), 9, "the button counts the books to fetch, not the hand-in stops")
     leadAll._OnClick(leadAll)
     tile._OnMouseUp(tile)
     eq(ns.cdb.libGoal, nil, "a second click takes the goal away")
+end)
+
+test("a book in the bank counts like one in the bags", function()
+    Fake({ level = 30, zone = LOCH, bank = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    ns.SetLibGoal(TIER1)
+    eq(ns.LibGoal().left, 9, "ten less the book in the bank")
+    ns.StartLibrary()
+    eq(ns.LeadCount(), 9)
 end)
 
 test("random characters: the library and its guide never raise an error, the tracker never passes ten", function()

@@ -140,6 +140,7 @@ function Fake(spec)
     W.bags, W.family, W.slots = spec.bags or { 6, 6, 8, 8 }, spec.family or {}, spec.slots or {}
     W.zone, W.kalimdor, W.x, W.y = spec.zone, spec.kalimdor, spec.x, spec.y
     W.items = spec.items or {}
+    W.bank = spec.bank or {}
     W.pins, W.cleared, W.toasts, W.notes, W.maps = {}, 0, {}, {}, {}
     UnitRace = function() return "Race", "Race", spec.raceId or 1 end
     UnitClass = function() return "Class", spec.class or "PRIEST", CLASS_ID[spec.class or "PRIEST"] end
@@ -163,7 +164,7 @@ function Fake(spec)
         GetItemIconByID = function(id) return "icon" .. id end,
         GetItemQualityByID = function() return 1 end,
         RequestLoadItemDataByID = function() end,
-        GetItemCount = function(id) return W.items[id] or 0 end,
+        GetItemCount = function(id, bank) return (W.items[id] or 0) + (bank and W.bank and W.bank[id] or 0) end,
     }
     C_TooltipInfo = { GetItemByID = function(id)
         local n = W.slots[id]

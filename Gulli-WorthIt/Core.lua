@@ -834,8 +834,8 @@ ns.BOOK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
 ns.CAGE_KEY_BOOK = 79953 -- the book behind a cage: the Rusted Cage Key opens it
 
 local function itemCount(id)
-    if CI.GetItemCount then return CI.GetItemCount(id) or 0 end
-    if GetItemCount then return GetItemCount(id) or 0 end
+    if CI.GetItemCount then return CI.GetItemCount(id, true) or 0 end
+    if GetItemCount then return GetItemCount(id, true) or 0 end
     return 0
 end
 
@@ -867,8 +867,8 @@ end
 
 -- The library for this character: { books, handed (books handed in), bags (in the bags),
 -- total, tiers = { { quest, need, req, items, giver, state, left } } }. A reward is done,
--- ready (enough books and the level), log (taken), wait (books missing: `left`) or later
--- (the level missing).
+-- ready (enough books and the level), log (taken), wait (books still to hand in: `hand`, of
+-- them still to find: `left`, the books in the bags count) or later (the level missing).
 function ns.Library()
     local books = ns.Books()
     local handed, bags = 0, 0
@@ -880,7 +880,9 @@ function ns.Library()
         local r = { tier = true, quest = t[1], need = t[2], req = t[3], items = t[4], giver = sideOf(t[5]) }
         if questDone(r.quest) then r.state = "done"
         elseif onQuest(r.quest) then r.state = "log"
-        elseif handed < r.need then r.state, r.left = "wait", r.need - handed
+        elseif handed < r.need then
+            r.state, r.hand = "wait", r.need - handed
+            r.left = math.max(0, r.hand - bags)
         elseif level < r.req then r.state = "later"
         else r.state = "ready" end
         tiers[#tiers + 1] = r
@@ -1001,6 +1003,14 @@ local function libraryRows(here)
     return rows
 end
 ns.LibraryRows = libraryRows
+
+-- The number on Lead through the books: the books to fetch (what the goal still needs), or the
+-- stops left (hand-ins, rewards) once nothing is left to fetch.
+function ns.LeadCount()
+    local rows, picks = libraryRows(ns.Here()), 0
+    for _, r in ipairs(rows) do if r.stop and r.stop.kind == "pick" then picks = picks + 1 end end
+    return picks > 0 and picks or #rows
+end
 
 -- The library goal of this character: { tier, need, left (books still to find: the goal less
 -- the books handed in and in the bags) } or nil. `lib` is ns.Library() when the caller has it.
