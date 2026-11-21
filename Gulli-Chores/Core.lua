@@ -5,15 +5,28 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- Crafting cooldowns worth coming back for: spell id -> text key. One shared cooldown for
--- the transmutes, so one key is enough.
-ns.COOLDOWNS = {
-    [17187] = "CD_TRANSMUTE", [11479] = "CD_TRANSMUTE", [11480] = "CD_TRANSMUTE", [17559] = "CD_TRANSMUTE",
-    [17560] = "CD_TRANSMUTE", [17561] = "CD_TRANSMUTE", [17562] = "CD_TRANSMUTE", [17563] = "CD_TRANSMUTE",
-    [17564] = "CD_TRANSMUTE", [17565] = "CD_TRANSMUTE", [17566] = "CD_TRANSMUTE", [25146] = "CD_TRANSMUTE",
-    [18560] = "CD_MOONCLOTH",
+local DAY = 86400
+-- Crafting cooldowns worth coming back for. key: CD_<X> ("... is ready") or a CRAFT_<X> name;
+-- line: the profession's skill line; spells: recipe spell -> seconds of its cooldown (the
+-- transmutes share one, so one entry is enough); made: the item it makes, for the icon; item: an
+-- item with a cooldown of its own. A cooldown of another recipe comes from Gulli Craft Profit,
+-- which learns it from the game. A new cooldown goes here, with its CRAFT_ text.
+ns.CRAFTS = {
+    { key = "CD_TRANSMUTE", line = 171, spells = {
+        [11479] = 2 * DAY, [11480] = 2 * DAY, [17187] = 2 * DAY,          -- Iron to Gold, Mithril to Truesilver, Arcanite
+        [17559] = DAY, [17560] = DAY, [17561] = DAY, [17562] = DAY,       -- the elemental transmutes
+        [17563] = DAY, [17564] = DAY, [17565] = DAY, [17566] = DAY,
+        [25146] = DAY } },                                                -- Elemental Fire
+    { key = "CD_LEGIONITE", line = 171, made = 251290, spells = { [1317279] = DAY } }, -- WoW Forever
+    { key = "CD_MOONCLOTH", line = 197, made = 14342, spells = { [18560] = 4 * DAY } },
+    { key = "CD_HIDE", line = 165, made = 15407, spells = { [19047] = 3 * DAY } },     -- Cured Rugged Hide
+    { key = "CD_SALT", line = 165, item = 15846 },                                      -- Salt Shaker
 }
-ns.ITEM_COOLDOWNS = { [15846] = "CD_SALT" } -- Salt Shaker
+-- recipe spell -> its cooldown's key and seconds
+ns.CD_KEY, ns.CD_SECONDS = {}, {}
+for _, cr in ipairs(ns.CRAFTS) do
+    for spell, sec in pairs(cr.spells or {}) do ns.CD_KEY[spell], ns.CD_SECONDS[spell] = cr.key, sec end
+end
 
 local RESTED_PER_8H = 0.05 -- of a level, in an inn; a quarter of it outside
 local RESTED_MAX = 1.5
@@ -78,8 +91,8 @@ local function professions()
     local out = {}
     if GetProfessions and GetProfessionInfo then
         for _, i in ipairs({ GetProfessions() }) do
-            local name, icon, rank, max = GetProfessionInfo(i)
-            if name then out[#out + 1] = { name = name, icon = icon, skill = rank or 0, cap = max or 0 } end
+            local name, icon, rank, max, _, _, line = GetProfessionInfo(i)
+            if name then out[#out + 1] = { name = name, icon = icon, skill = rank or 0, cap = max or 0, line = line } end
         end
         if #out > 0 then return out end
     end
@@ -190,6 +203,103 @@ function ns.MergeRealmless()
     end
 end
 
+-- The learned recipes with a cooldown that Gulli Craft Profit saw: recipe spell -> { name, prof, cd, ready }.
+local function craftProfitCooldowns()
+    local out = {}
+    local db = GulliCraftProfitCharDB
+    for prof, p in pairs(type(db) == "table" and type(db.profs) == "table" and db.profs or {}) do
+        for rid, r in pairs(type(p) == "table" and type(p.recipes) == "table" and p.recipes or {}) do
+            if type(rid) == "number" and type(r) == "table" and r.learned then
+                out[rid] = { name = r.name, prof = prof, cd = tonumber(r.cd), ready = tonumber(r.cdReady) }
+            end
+        end
+    end
+    return out
+end
+
+local function readyAt(start, duration, now, clock)
+    if secret(start) or secret(duration) then return nil end
+    local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
+    return now + math.max(0, math.floor(left)), left > 0
+end
+
+local function profName(profs, line)
+    for _, p in ipairs(profs or {}) do if line and p.line == line then return p.name end end
+end
+-- false when the profession of that skill line is surely gone (every profession tells its line).
+local function hasLine(profs, line)
+    if #profs == 0 then return true end
+    for _, p in ipairs(profs) do
+        if p.line == nil or p.line == line then return true end
+    end
+    return false
+end
+
+-- The game's name of a cooldown, saved so another character shows it in the same words.
+local function gameName(cr)
+    if cr.key == "CD_TRANSMUTE" then return nil end
+    if cr.item then
+        local get = (C_Item and C_Item.GetItemNameByID) or GetItemInfo
+        local n = get and get(cr.item)
+        return type(n) == "string" and n ~= "" and n or nil
+    end
+    local spell = next(cr.spells)
+    local n = (C_Spell and C_Spell.GetSpellName) and C_Spell.GetSpellName(spell) or (GetSpellInfo and GetSpellInfo(spell))
+    return type(n) == "string" and n ~= "" and n or nil
+end
+
+-- Every crafting cooldown of this character as real time, so another character can check it:
+-- c.cooldowns key -> ready, c.cdProf key -> profession, c.cdNames key -> name. A recipe counts as
+-- learned once the game, its cooldown, Gulli Craft Profit or the profession window said so
+-- (c.cdSpells, kept until the profession is gone); c.cdTrade keeps what the profession window or
+-- a craft said (spell -> ready), since the spell cooldown may not show a recipe's.
+function ns.ReadCooldowns(c, old, now, clock)
+    old = old or {}
+    local spells, trade = old.cdSpells or {}, old.cdTrade or {}
+    local cp = craftProfitCooldowns()
+    c.cooldowns, c.cdProf, c.cdNames, c.cdSpells, c.cdTrade = {}, {}, {}, {}, {}
+    local function spellReady(spell)
+        local s, d = spellCooldown(spell)
+        local r, running = readyAt(s, d, now, clock)
+        local t = trade[spell]
+        if t and t > now then
+            c.cdTrade[spell] = t
+            if not r or t > r then r = t end
+        end
+        return r, running
+    end
+    for _, cr in ipairs(ns.CRAFTS) do
+        local best
+        if cr.item then
+            if itemCount(cr.item) > 0 then
+                local s, d = itemCooldown(cr.item)
+                best = readyAt(s, d, now, clock)
+            end
+        elseif hasLine(c.profs, cr.line) then
+            for spell in pairs(cr.spells) do
+                local r, running = spellReady(spell)
+                if knows(spell) or running or spells[spell] or cp[spell] or c.cdTrade[spell] then
+                    c.cdSpells[spell] = true
+                    if r and (not best or r < best) then best = r end
+                end
+            end
+        end
+        if best then
+            c.cooldowns[cr.key] = best
+            c.cdProf[cr.key] = profName(c.profs, cr.line)
+            c.cdNames[cr.key] = gameName(cr)
+        end
+    end
+    for rid, r in pairs(cp) do
+        if not ns.CD_KEY[rid] and (r.cd or 0) > 0 then
+            local key = "R" .. rid
+            local ready = spellReady(rid) or now
+            if r.ready and r.ready > ready then ready = r.ready end
+            c.cooldowns[key], c.cdProf[key], c.cdNames[key] = ready, r.prof, r.name
+        end
+    end
+end
+
 -- Takes this character's snapshot. What the game only shows at the mailbox or the bank, and
 -- what the player wrote, stays from the last one.
 function ns.Snapshot()
@@ -216,36 +326,108 @@ function ns.Snapshot()
         if cur and mx and mx > 0 then lowest = math.min(lowest, math.floor(cur * 100 / mx)) end
     end
     c.durability = lowest
-    -- Cooldowns as real time, so they can be checked from another character.
-    c.cooldowns = {}
-    for spell, text in pairs(ns.COOLDOWNS) do
-        if knows(spell) then
-            local start, duration = spellCooldown(spell)
-            if not secret(start) and not secret(duration) then
-                local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
-                local ready = now + math.max(0, math.floor(left))
-                if not c.cooldowns[text] or ready < c.cooldowns[text] then c.cooldowns[text] = ready end
-            end
-        end
-    end
-    for item, text in pairs(ns.ITEM_COOLDOWNS) do
-        if itemCount(item) > 0 then
-            local start, duration = itemCooldown(item)
-            local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
-            c.cooldowns[text] = now + math.max(0, math.floor(left))
-        end
-    end
+    c.profs = professions()
+    ns.ReadCooldowns(c, old, now, clock)
     if itemCount(HEARTHSTONE) > 0 then
         local start, duration = itemCooldown(HEARTHSTONE)
         local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
         c.hearth = now + math.max(0, math.floor(left))
     end
     c.bind = bindLocation()
-    c.profs = professions()
     c.lockouts = lockouts(now) or old.lockouts
     c.items = countItems({ 0, 1, 2, 3, 4 })
     ns.db.chars[key] = c
     return c
+end
+
+-- The profession window: which of the cooldown recipes this character learned, and when each
+-- is ready (the window tells a recipe's cooldown even where the spell cooldown does not).
+function ns.ReadTrade()
+    local T = C_TradeSkillUI
+    local c = ns.db and ns.db.chars[ns.CharKey()]
+    if not (c and T and T.GetRecipeInfo) then return end
+    c.cdSpells, c.cdTrade = c.cdSpells or {}, c.cdTrade or {}
+    local now = time()
+    for spell in pairs(ns.CD_KEY) do
+        local ok, info = pcall(T.GetRecipeInfo, spell)
+        if ok and type(info) == "table" and info.learned then
+            c.cdSpells[spell] = true
+            if T.GetRecipeCooldown then
+                local ok2, left = pcall(T.GetRecipeCooldown, spell)
+                left = ok2 and tonumber(left)
+                c.cdTrade[spell] = (left and left > 0) and now + math.ceil(left) or nil
+            end
+        end
+    end
+end
+
+-- A craft of this character that has a cooldown: it is learned and waits from now on.
+function ns.OnCast(spell)
+    if secret(spell) then return false end
+    local sec = ns.CD_SECONDS[spell]
+    if not sec then
+        local r = craftProfitCooldowns()[spell]
+        sec = r and r.cd
+    end
+    local c = ns.db and ns.db.chars[ns.CharKey()]
+    if not (sec and sec > 0 and c) then return false end
+    c.cdSpells, c.cdTrade = c.cdSpells or {}, c.cdTrade or {}
+    c.cdSpells[spell], c.cdTrade[spell] = true, time() + sec
+    return true
+end
+
+-- A cooldown's name: the game's, saved with the character, else ours.
+function ns.CdName(c, key)
+    local n = c and c.cdNames and c.cdNames[key]
+    if n then return n end
+    return L["CRAFT_" .. key:gsub("^CD_", "")]
+end
+
+-- The task line of a ready cooldown.
+function ns.CdTask(c, key)
+    if ns.T.en[key] then return L[key] end
+    return L.CD_READY:format(ns.CdName(c, key))
+end
+
+-- The cooldowns of a character: { { key, name, prof, ready } }, ready first, then the soonest.
+function ns.Cooldowns(c, now)
+    now = now or time()
+    local out = {}
+    for key, ready in pairs(c.cooldowns or {}) do
+        out[#out + 1] = { key = key, name = ns.CdName(c, key), prof = c.cdProf and c.cdProf[key],
+                          ready = ready, done = ready <= now }
+    end
+    table.sort(out, function(a, b)
+        if a.done ~= b.done then return a.done end
+        if not a.done and a.ready ~= b.ready then return a.ready < b.ready end
+        return a.name < b.name
+    end)
+    return out
+end
+
+-- Every visible character's cooldowns for the Cooldowns tab: { { charKey, char, key, name, prof,
+-- ready, done } }, ready first, then the soonest; and how many are ready and on how many characters.
+function ns.CdList(now)
+    now = now or time()
+    local out, ready, crafters, waiting = {}, 0, 0, {}
+    for _, e in ipairs(ns.Chars()) do
+        local list = ns.Cooldowns(e.char, now)
+        if #list > 0 then crafters = crafters + 1 end
+        for _, cd in ipairs(list) do
+            cd.charKey, cd.char, cd.me = e.key, e.char, e.me
+            out[#out + 1] = cd
+            if cd.done then ready = ready + 1; waiting[e.key] = true end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.done ~= b.done then return a.done end
+        if not a.done and a.ready ~= b.ready then return a.ready < b.ready end
+        if a.charKey ~= b.charKey then return a.charKey < b.charKey end
+        return a.name < b.name
+    end)
+    local chars = 0
+    for _ in pairs(waiting) do chars = chars + 1 end
+    return out, ready, chars, crafters
 end
 
 -- At the mailbox: when the first letter with items or money runs out, and how many ask for COD.
@@ -323,7 +505,7 @@ function ns.Tasks(c, now)
     end
     local cds = {}
     for text, ready in pairs(c.cooldowns or {}) do
-        if ready <= now then cds[#cds + 1] = { key = "CD", text = L[text], cd = text } end
+        if ready <= now then cds[#cds + 1] = { key = "CD", text = ns.CdTask(c, text), cd = text } end
     end
     table.sort(cds, function(a, b) return a.text < b.text end)
     for _, t in ipairs(cds) do add(t.key, t.text, t.cd) end
@@ -525,7 +707,7 @@ function ns.CheckAlerts(now, quiet)
             local id = e.key .. ":" .. text
             if ready <= now and told[id] ~= ready then
                 told[id] = ready
-                if on("CD") then out[#out + 1] = L.ALERT:format(c.name, L[text]) end
+                if on("CD") then out[#out + 1] = L.ALERT:format(c.name, ns.CdTask(c, text)) end
             end
         end
         local id = e.key .. ":RESTED"
@@ -575,7 +757,7 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1)
+f:SetScript("OnEvent", function(self, event, a1, ...)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliChoresDB = GulliChoresDB or {}
@@ -588,12 +770,18 @@ f:SetScript("OnEvent", function(self, event, a1)
                              "UPDATE_PENDING_MAIL", "MAIL_CLOSED", "BAG_UPDATE_DELAYED", "PLAYER_UPDATE_RESTING",
                              "UPDATE_INVENTORY_DURABILITY", "TRADE_SKILL_CLOSE", "PLAYER_MONEY",
                              "MAIL_INBOX_UPDATE", "BANKFRAME_OPENED", "PLAYERBANKSLOTS_CHANGED",
-                             "UPDATE_INSTANCE_INFO", "TIME_PLAYED_MSG", "SKILL_LINES_CHANGED" }) do
+                             "UPDATE_INSTANCE_INFO", "TIME_PLAYED_MSG", "SKILL_LINES_CHANGED",
+                             "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "UNIT_SPELLCAST_SUCCEEDED" }) do
             self:RegisterEvent(e)
         end
         return
     end
     if event == "PLAYER_LOGOUT" then ns.Snapshot(); return end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local spell = select(2, ...)
+        if a1 ~= "player" or not ns.OnCast(spell) then return end
+    end
+    if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then ns.ReadTrade() end
     if event == "TIME_PLAYED_MSG" then ns.OnPlayed(a1); return end
     if event == "MAIL_INBOX_UPDATE" then ns.ReadMail(); if ns.Refresh then ns.Refresh() end; return end
     if event == "BANKFRAME_OPENED" or event == "PLAYERBANKSLOTS_CHANGED" then ns.ReadBank(); return end
