@@ -155,7 +155,9 @@ test("run stats: time, XP with a level up, money and kills, and a summary", func
     local ns = Load()
     W.xp, W.xpMax, W.money = 900, 1000, 500
     W.Go("The Deadmines", "party", 36)
-    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "x"); W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "x")
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Defias Pirate dies, you gain 80 experience.")
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Mr. Smite dies, you gain 120 experience. (+40 exp Rested bonus)")
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "You gain 2400 experience.") -- a quest, no kill
     W.xp, W.money = 150, 2500
     W.now = 1000 + 1500
     W.Go("Westfall", "none", 0)
