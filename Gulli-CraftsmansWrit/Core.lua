@@ -12,7 +12,7 @@ local CALLER = "Gulli-CraftsmansWrit"
 local QUOTE_WAIT = 8 -- seconds the auction house has to answer a price request
 
 ns.DEFAULTS = { bank = true, sealed = true, pouch = true, live = true, auto = true, tooltip = true,
-                goal = 0, days = 3 }
+                goal = 0, days = 3, writSort = "gain" }
 
 local function say(msg) print("|cff9ad0ffCraftsman's Writ|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("CraftsmansWrit", msg) end end

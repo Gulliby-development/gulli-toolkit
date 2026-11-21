@@ -27,7 +27,7 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 - **Buy with clicks.** At the auction house the window opens beside the auction window. The **Buy** button buys the plan line by line: the first press asks the price, the second buys.
 - **Lead me.** With writs ready, **Lead me** puts a map pin on the nearest customer, and a small tracker lists the others. Customers the data does not know yet are learned when you take or hand in their writ.
 - **Diplomat counted.** The Legacy perk Diplomat gives more reputation. Craftsman's Writ reads what you really get after a turn-in and plans with it.
-- **All writs and history.** The Writs tab lists every writ of your side with its customer and what one turn-in costs now. History lists what you handed in, with what it cost and what its pouch gave, for a day, a week or all time.
+- **All writs and history.** The Writs tab lists every writ of your side with its customer and what one turn-in costs now, the best gain on top (or by profession). History lists what you handed in, with what it cost and what its pouch gave, for a day, a week or all time.
 - **Tooltips.** Writs, Sealed Writs, Coin Pouches and the items writs ask for get a line in their tooltip: the rank, the reputation, the customer, the cost per 100 reputation, and your other characters who hold one.
 
 ## Install

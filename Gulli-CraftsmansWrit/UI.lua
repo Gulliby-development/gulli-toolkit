@@ -13,7 +13,8 @@ local frame, tabs, pages = nil, nil, {}
 local calcBtn, buyBtn, skipBtn, leadBtn
 local repCard, repBar, repText, repSub, todayStats, todayCard, todayList, todayEmpty
 local goalTabs, planCard, planStats, planList, planEmpty
-local writTabs, writCard, writList
+local writTabs, sortTabs, writCard, writList
+local SORT_W = 170
 local periodTabs, histStats, histList, histEmpty
 local setCard, pouchStats, pouchNote, histCard
 local tab, period, rankFilter = 1, "all", nil
@@ -66,6 +67,7 @@ local function makeRow(r)
     r.value = S.Text(r, 12)
     r.value:SetPoint("TOPRIGHT", -4, -4)
     r.value:SetJustifyH("RIGHT")
+    r.value:SetWordWrap(false)
     r.sub = S.Text(r, 12, S.FAINT)
     r.sub:SetPoint("BOTTOMRIGHT", -4, 4)
     r.sub:SetJustifyH("RIGHT")
@@ -272,10 +274,22 @@ end
 
 -- ---------- Writs ----------
 
-function ns.WritRows(rank)
+-- sort "gain" (the default): the best gain first, the dearest last, writs without a price at
+-- the end; "prof": the data's order, by profession.
+function ns.WritRows(rank, sort)
     local rows = {}
     for _, w in ipairs(ns.Writs()) do
         if not rank or w.rank == rank then rows[#rows + 1] = w end
+    end
+    if (sort or (ns.db and ns.db.writSort) or "gain") == "gain" then
+        local cost, at = {}, {}
+        for i, w in ipairs(rows) do cost[w] = ns.CostOf(w, ns.db and ns.db.bank).total; at[w] = i end
+        table.sort(rows, function(a, b)
+            local x, y = cost[a], cost[b]
+            if x and y and x ~= y then return x < y end
+            if (x == nil) ~= (y == nil) then return x ~= nil end
+            return at[a] < at[b]
+        end)
     end
     return rows
 end
@@ -421,7 +435,7 @@ local function refreshPlan()
 end
 
 local function refreshWrits()
-    local rows = ns.WritRows(rankFilter)
+    local rows = ns.WritRows(rankFilter, ns.db.writSort)
     writList:SetData(rows)
     writCard:SetTitle(L.WRITS, tostring(#rows))
 end
@@ -590,7 +604,16 @@ local function build()
     end, 28)
     writTabs.frame:ClearAllPoints()
     writTabs.frame:SetPoint("TOPLEFT")
-    writTabs.frame:SetPoint("TOPRIGHT")
+    writTabs.frame:SetPoint("TOPRIGHT", -(SORT_W + S.GAP), 0)
+    local sorts = { "gain", "prof" }
+    sortTabs = S.Tabs(wp, { L.SORT_GAIN, L.SORT_PROF }, nil, function(i)
+        ns.db.writSort = sorts[i]
+        ns.Refresh()
+    end, 28)
+    sortTabs.frame:ClearAllPoints()
+    sortTabs.frame:SetPoint("TOPRIGHT")
+    sortTabs.frame:SetWidth(SORT_W)
+    sortTabs:Select(ns.db.writSort == "prof" and 2 or 1, true)
     writCard, writList = listCard(wp, L.WRITS, WRIT_ICON, makeRow, fillWrit)
     writCard:SetPoint("TOPLEFT", 0, -(28 + S.GAP))
     writCard:SetPoint("BOTTOMRIGHT")
