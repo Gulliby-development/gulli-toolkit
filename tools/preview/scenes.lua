@@ -1563,4 +1563,30 @@ S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
         ns.Refresh()
     end } }
 
+-- My BiS List: an arms warrior at 60 wearing part of the pre-raid list, two better items in the bags.
+local MB_ICON = { head = "INV_Helmet_03", neck = "INV_Jewelry_Necklace_07", shoulder = "INV_Shoulder_29", back = "INV_Misc_Cape_18",
+    chest = "INV_Chest_Plate06", wrist = "INV_Bracer_07", hands = "INV_Gauntlets_26", waist = "INV_Belt_27", legs = "INV_Pants_04",
+    feet = "INV_Boots_Plate_06", finger = "INV_Jewelry_Ring_15", trinket = "INV_Misc_Orb_02", ["2h"] = "INV_Sword_50",
+    mh = "INV_Sword_27", ["1h"] = "INV_Sword_27", oh = "INV_Shield_05", held = "INV_Misc_Book_09", ranged = "INV_Weapon_Bow_08" }
+local function mbOpen(ns, W, slot)
+    local D = ns.Data
+    C_Item.GetItemNameByID = function(id) return D.item[id] and D.item[id][7] or ("Item " .. id) end
+    C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (MB_ICON[D.item[id] and D.item[id][1]] or "INV_Misc_QuestionMark") end
+    C_Item.GetItemQualityByID = function(id) return D.item[id] and D.item[id][2] or 1 end
+    local l = D.lists.WARRIOR_ARMS.PRE
+    W.worn = { [1] = l.head[1], [2] = l.neck[3], [3] = l.shoulder[3], [15] = l.back[1], [5] = l.chest[2], [9] = l.wrist[1],
+               [16] = l.main[1], [11] = l.finger1[1], [13] = l.trinket1[2], [8] = l.feet[4] }
+    W.items = { [l.legs[1]] = 1, [l.hands[3]] = 1 }
+    for _, id in pairs(W.worn) do W.items[id] = (W.items[id] or 0) + 1 end
+    ns.SetMySpec("WARRIOR_ARMS")
+    ns.Toggle()
+    ns.Show(slot or "head")
+end
+local mbSpec = function() return { level = 60, class = "WARRIOR", faction = "Alliance", spec = 71 } end
+S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "legs") end },
+    head = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "head") end },
+    level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
+        mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },
+    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end } }
+
 return S

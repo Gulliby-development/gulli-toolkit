@@ -35,6 +35,9 @@
    boss of WoW Forever's own (npc id from FOREVER_NPCS) has a level: Wowhead and QuestieDB give
    none, so it goes into LEVELS in tools/dungeonprep/build_journal.py as the game shows it.
 
+8. My BiS List: the wowtbc.gg snapshot (tools/bislist/wowtbc.json) is no older than BIS_DAYS; the
+   weekly job fetches it, and when the site refuses the server it is collected on a computer.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
@@ -50,6 +53,8 @@ RECIPES_SEEN = os.path.join(HERE, "recipes_seen.txt")
 CRAFT_DATA = os.path.join(ROOT, "Gulli-CraftProfit", "Data.lua")
 WOWHEAD = os.path.join(ROOT, "tools", "craftprofit", "wowhead-professions.json")
 WOWHEAD_DAYS = 60
+BIS = os.path.join(ROOT, "tools", "bislist", "wowtbc.json")
+BIS_DAYS = 21
 PATTERN = re.compile(r"^(Pattern|Plans|Recipe|Formula|Schematic|Manual): ")
 FOREVER_ITEMS = 245000  # SOD_ITEMS in tools/craftprofit/build_data.py ends here
 JOURNAL = os.path.join(ROOT, "Gulli-DungeonPrep", "JournalData.lua")
@@ -242,6 +247,22 @@ def check_recipes(qdb, today=None):
     return lines, missing
 
 
+def check_bislist(today=None, path=BIS):
+    """My BiS List's wowtbc.gg snapshot: the weekly job fetches it; when the site refused it for
+    three weeks, it is collected on a computer (python3 tools/bislist/fetch.py)."""
+    import datetime
+    try:
+        fetched = json.load(open(path, encoding="utf-8")).get("fetched", "")
+        age = ((today or datetime.date.today()) - datetime.date.fromisoformat(fetched[:10])).days
+    except (OSError, ValueError):
+        age = None
+    if age is not None and age <= BIS_DAYS:
+        return []
+    return ["- My BiS List's wowtbc.gg snapshot is %s old: run `python3 tools/bislist/fetch.py` and "
+            "`python3 tools/bislist/build_data.py` on a computer and commit both files."
+            % ("%d days" % age if age is not None else "of unknown age")]
+
+
 def check_rewards(qdb):
     """Forever bags without a source that Worth It has not looked at: (lines, [(id, name, kind)])."""
     import importlib.util
@@ -308,6 +329,7 @@ def main(argv):
     tip_lines = check_tips()
     bagquest_lines = check_bagquests()
     journal_lines = check_journal()
+    bis_lines = check_bislist()
     if "--update-seen" in argv:
         with open(os.path.join(ROOT, "tools", "worthit", "seen.txt"), "a", encoding="utf-8") as f:
             for iid, name, kind in bags:
@@ -355,6 +377,8 @@ def main(argv):
                    "tools/dungeonprep/build_journal.py and run it.", ""] + journal_lines + [""]
     if tip_lines:
         report += ["### Worth It: what to do", ""] + tip_lines + [""]
+    if bis_lines:
+        report += ["### My BiS List", ""] + bis_lines + [""]
     text = "\n".join(report)
     print(text or "Every module keeps up with the Forever data.")
     if out:

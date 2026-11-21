@@ -53,7 +53,7 @@ class Targets(unittest.TestCase):
     def test_the_real_config_reads_and_has_the_separate_projects(self):
         with open(U.CONFIG) as f:
             config = json.load(f)
-        self.assertEqual(sorted(config["separate"]), ["CraftProfit", "Crates", "DungeonPrep", "GroupBuffs", "VendorFlip", "WorthIt"])
+        self.assertEqual(sorted(config["separate"]), ["CraftProfit", "Crates", "DungeonPrep", "GroupBuffs", "MyBisList", "VendorFlip", "WorthIt"])
         for name in config["separate"]:
             self.assertTrue(os.path.isdir("Gulli-" + name), name)
 
