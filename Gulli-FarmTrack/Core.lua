@@ -165,18 +165,38 @@ function ns.StillOpen(what)
     return nil
 end
 
+-- The mailbox and the auction house count only with the mail switch: what comes from there
+-- (auction buys, sold or expired auctions, letters) was not farmed.
+local MAIL_KINDS = { mail = true, auction = true }
+local MAIL_WAIT = 3 -- seconds after a take from a letter in which bag and money changes are the letter's
+
+function ns.Blocks(what)
+    return not (MAIL_KINDS[what] and ns.db and ns.db.mail)
+end
+
+-- A take from a letter, through any mail window (the game's, Gulli Mail or another addon's).
+function ns.MailTake()
+    ns.mailAt = now()
+end
+
+local function fromMail()
+    return ns.mailAt ~= nil and not (ns.db and ns.db.mail) and now() < ns.mailAt + MAIL_WAIT
+end
+
 function ns.Busy()
+    local any = false
     for what in pairs(ns.busy) do
         -- ns.last followed the bags all along, so only the flag goes.
-        if ns.StillOpen(what) == false then ns.busy[what] = nil end
+        if ns.StillOpen(what) == false then ns.busy[what] = nil
+        elseif ns.Blocks(what) then any = true end
     end
-    return next(ns.busy) ~= nil
+    return any or fromMail()
 end
 
 function ns.SetBusy(what, on)
     ns.busy[what] = on and true or nil
     if not on then
-        ns.quietUntil = now() + QUIET
+        if ns.Blocks(what) then ns.quietUntil = now() + QUIET end
         ns.last, ns.lastMoney = ns.CountBags(), money()
     end
 end
@@ -210,9 +230,10 @@ function ns.OnMoney(t)
     local d = m - (ns.lastMoney or m)
     ns.lastMoney = m
     if d <= 0 then return end
+    if fromMail() then return end
     ns.Busy()
     local other = false
-    for what in pairs(ns.busy) do if what ~= "merchant" then other = true end end
+    for what in pairs(ns.busy) do if what ~= "merchant" and ns.Blocks(what) then other = true end end
     if not other and (not ns.busy.merchant or ns.db.sales) then
         -- a sale's money is already in the worth of the loot it sold
         if ns.busy.merchant then ns.s.sold = (ns.s.sold or 0) + d end
@@ -507,10 +528,11 @@ end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = false, sales = true, alert = true, value = false, alpha = 100, scale = 100 }
+ns.DEFAULTS = { panel = false, sales = true, mail = false, alert = true, value = false, alpha = 100, scale = 100 }
 ns.OPT_ICON = {
     panel = "Interface\\Icons\\INV_Misc_Spyglass_02",
     sales = "Interface\\Icons\\INV_Misc_Coin_02",
+    mail = "Interface\\Icons\\INV_Letter_15",
     alert = "Interface\\Icons\\INV_Misc_Bell_01",
     value = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
 }
@@ -604,12 +626,20 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         local events = { "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED", "LOOT_READY" }
         for e in pairs(BUSY) do events[#events + 1] = e end
         for _, e in ipairs(events) do self:RegisterEvent(e) end
+        if hooksecurefunc then
+            for _, fn in ipairs({ "TakeInboxItem", "TakeInboxMoney", "AutoLootMailItem" }) do
+                if _G[fn] then hooksecurefunc(fn, ns.MailTake) end
+            end
+        end
         ns.Resume()
         return
     end
     if event == "LOOT_READY" or event == "PLAYER_ENTERING_WORLD" then
-        -- Looting or a loading screen: no vendor, mailbox, bank or trade window is in use.
-        for what in pairs(ns.busy) do ns.busy[what] = nil end
+        -- Looting or a loading screen: no vendor, mailbox, bank or trade window is in use,
+        -- unless the game still says it is open.
+        for what in pairs(ns.busy) do
+            if event == "PLAYER_ENTERING_WORLD" or ns.StillOpen(what) ~= true then ns.busy[what] = nil end
+        end
     end
     if event == "PLAYER_ENTERING_WORLD" then
         -- a1: a real login, which starts a new session; a2: a /reload, which keeps it.
@@ -650,6 +680,8 @@ do
         options = {
             { label = L.OPT_SALES, icon = ns.OPT_ICON.sales, tip = L.OPT_SALES_TIP,
               get = function() return ns.db ~= nil and ns.db.sales == true end, set = function(v) ns.SetPref("sales", v) end },
+            { label = L.OPT_MAIL, icon = ns.OPT_ICON.mail, tip = L.OPT_MAIL_TIP,
+              get = function() return ns.db ~= nil and ns.db.mail == true end, set = function(v) ns.SetPref("mail", v) end },
             { label = L.OPT_VALUE, icon = ns.OPT_ICON.value, tip = L.OPT_VALUE_TIP,
               get = function() return ns.db ~= nil and ns.db.value == true end, set = function(v) ns.SetPref("value", v) end },
         },

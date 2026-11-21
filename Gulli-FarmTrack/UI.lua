@@ -473,6 +473,8 @@ local function settingsPage(body, width)
     local count, ch = S.SettingsCard(p, L.SEC_COUNT, {
         { L.OPT_SALES, L.OPT_SALES_TIP, function() return ns.db.sales end, function(v) ns.SetPref("sales", v) end,
           icon = ns.OPT_ICON.sales },
+        { L.OPT_MAIL, L.OPT_MAIL_TIP, function() return ns.db.mail end, function(v) ns.SetPref("mail", v) end,
+          icon = ns.OPT_ICON.mail },
         { L.OPT_ALERT, L.OPT_ALERT_TIP, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
           icon = ns.OPT_ICON.alert },
         { L.OPT_VALUE, L.OPT_VALUE_TIP, function() return ns.db.value end, function(v) ns.SetPref("value", v) end,
