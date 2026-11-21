@@ -489,7 +489,20 @@ def write(rewards, rows, chains, names, alt=None, classes=(), lib=None):
         lines.append("{%d,%d,%d,{%s},{%s}}," % (qid, need, req, ",".join(str(i) for i in got),
                                                 ",".join("%s=%s" % (side, place(giv[side])) for side in sorted(giv))))
     lines += ["}", "", "-- Areas on Kalimdor; the others are in the Eastern Kingdoms.",
-              "D.kalimdor = {%s}" % ",".join(str(a) for a in sorted(set(KALIMDOR))), ""]
+              "D.kalimdor = {%s}" % ",".join(str(a) for a in sorted(set(KALIMDOR)))]
+    # English names of every item above, shown while the client still fetches an item (or never
+    # gets it): the client's own name wins once it has one.
+    shown = set(iid for iid, _, _ in rewards)
+    for _, _, got in classes:
+        shown.update(got)
+    for _, iid, _, _, _, _ in books:
+        shown.add(iid)
+    for _, _, _, got, _ in tiers:
+        shown.update(got)
+    named = [(iid, names[iid]) for iid in sorted(shown) if names.get(iid)]
+    lines += ["", "-- English item names, until the client has its own.", "D.names = {"]
+    lines += ["[%d]=%s," % (iid, lua_str(name)) for iid, name in named]
+    lines += ["}", ""]
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines))
 

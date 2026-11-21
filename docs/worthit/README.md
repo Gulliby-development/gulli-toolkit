@@ -58,6 +58,12 @@ The game tells a bag's size a moment after it first hears of the item. Open the 
 </details>
 
 <details>
+<summary><b>An item shows "..." or "Item 12345".</b></summary>
+
+The game loads items from the server a moment after it is asked. Worth It asks for every item it can show when you log in, so they are ready when you open a page. Until the game sends an item, its English name stands there. "Item 12345" means the server sends nothing for that item yet: it may come with a later WoW Forever patch.
+</details>
+
+<details>
 <summary><b>Where does the list of class quests come from?</b></summary>
 
 From Wowhead's WoW Forever quest list (every class quest that gives an item), joined with the quest data of QuestieDB for the chains and the places. A few WoW Forever class quests Wowhead's list misses are added by hand (Furen's Armor, the Forever Call of Fire). A quest that trainers of both sides give (such as Cenarion Aid, the start of the Sunken Temple quests) shows on both sides. Quests of raids WoW Forever has not opened yet (Zul'Gurub, Ahn'Qiraj, Molten Core, Blackwing Lair, Naxxramas) are left out until they open.
