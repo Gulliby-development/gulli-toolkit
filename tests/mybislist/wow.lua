@@ -143,6 +143,11 @@ function Fake(spec)
     LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue",
         PRIEST = "Priest", SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid" }
     GetInventoryItemID = function(_, slot) return W.worn[slot] end
+    W.loot, W.rolls, W.sounds = spec.loot or {}, spec.rolls or {}, 0
+    GetNumLootItems = function() return #W.loot end
+    GetLootSlotLink = function(i) return W.loot[i] and ("|Hitem:" .. W.loot[i] .. "::|h[x]|h") or nil end
+    GetLootRollItemLink = function(id) return W.rolls[id] and ("|Hitem:" .. W.rolls[id] .. "::|h[x]|h") or nil end
+    PlaySound = function() W.sounds = W.sounds + 1 end
     C_Item = {
         GetItemNameByID = function(id) return "Item" .. id end,
         GetItemIconByID = function(id) return "icon" .. id end,

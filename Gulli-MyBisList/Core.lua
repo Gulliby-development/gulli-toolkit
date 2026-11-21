@@ -5,11 +5,11 @@ local ADDON, ns = ...
 local L = ns.L
 local D = ns.Data
 
-ns.DEFAULTS = { tooltip = true, notify = true, real = false }
+ns.DEFAULTS = { tooltip = true, notify = true, real = false, drop = true }
 ns.ICON = "Interface\\AddOns\\Gulli-MyBisList\\icon"
 ns.OPT_ICON = {
     tooltip = "Interface\\Icons\\INV_Misc_Note_01", notify = "Interface\\Icons\\INV_Misc_Bell_01",
-    real = "Interface\\Icons\\INV_Misc_Coin_02",
+    real = "Interface\\Icons\\INV_Misc_Coin_02", drop = "Interface\\Icons\\INV_Box_02",
 }
 ns.TOP = 3              -- a bag item this high on the list is worth a notice
 -- The game's inventory slot of each list slot.
@@ -272,7 +272,8 @@ end
 -- A copy of a site list the player edits, for the whole account: db.own[n] = { name, spec, stage,
 -- slots = { slot -> ids }, from = the site ref, snap = { slot -> the site's first item then } }.
 
-ns.OWN_MAX = 5          -- items a slot of an own list holds, like the site's
+ns.OWN_MAX = 8          -- items a slot of an own list holds
+ns.COPY_MAX = 5         -- items a copy takes from the site, like the site's own lists
 
 -- Own lists in the order they were made: { ref, n, name, spec, stage }.
 function ns.OwnLists()
@@ -301,7 +302,7 @@ function ns.CopyList(ref)
     local slots = {}
     for slot, ids in pairs(list.slots) do
         local copy = {}
-        for i, id in ipairs(ids) do if i <= ns.OWN_MAX then copy[#copy + 1] = id end end
+        for i, id in ipairs(ids) do if i <= ns.COPY_MAX then copy[#copy + 1] = id end end
         slots[slot] = copy
     end
     local base = list.own and list.name or ns.ListName(list)
@@ -391,6 +392,57 @@ function ns.OwnMove(ref, slot, id, dir)
     return false
 end
 
+-- The own list to change instead of a site list: the one copied from it, made the first time.
+-- It becomes the main list and the one shown.
+function ns.OwnFor(ref)
+    local list = ns.Resolve(ref)
+    if not (list and ns.db) then return nil end
+    if list.own then return ref end
+    local site = ns.Ref(list.spec, list.stage)
+    local mine
+    for _, o in ipairs(ns.OwnLists()) do
+        if ns.db.own[o.n].from == site then mine = o.ref; break end
+    end
+    mine = mine or ns.CopyList(site)
+    if not mine then return nil end
+    ns.SetMain(mine)
+    if ns.ViewRefSet then ns.ViewRefSet(mine) end
+    return mine
+end
+
+-- Adds an item at the end of a slot; a site list adds it to its own copy.
+function ns.AddTo(ref, slot, id)
+    local mine = ns.OwnFor(ref)
+    return mine ~= nil and ns.OwnAdd(mine, slot, id), mine
+end
+
+-- An item id from what the player typed: a number or an item link.
+function ns.ParseId(text)
+    text = text or ""
+    local id = tonumber(text:match("item:(%d+)") or text:match("^%s*(%d+)%s*$"))
+    if id and id > 0 then return id end
+end
+
+-- Makes an item the first of a slot ("My target"). On an own list it moves or comes to the top
+-- (the last one leaves when the slot is full). On a site list the item goes into the own list
+-- copied from it, made the first time; that list becomes the main one and the one shown.
+function ns.SetTarget(ref, slot, id)
+    local list = ns.Resolve(ref)
+    if not (list and id and ns.INV[slot] and ns.db) then return nil end
+    if not list.own then
+        local mine = ns.OwnFor(ref)
+        return mine and ns.SetTarget(mine, slot, id)
+    end
+    local o = ownOf(ref)
+    o.slots[slot] = o.slots[slot] or {}
+    local ids = o.slots[slot]
+    for i = #ids, 1, -1 do if ids[i] == id then table.remove(ids, i) end end
+    table.insert(ids, 1, id)
+    while #ids > ns.OWN_MAX do table.remove(ids) end
+    if ns.Refresh then ns.Refresh() end
+    return ref
+end
+
 -- The slots whose first site item changed since the own list was copied or last looked at.
 function ns.SiteNews(ref)
     local o = ownOf(ref)
@@ -478,10 +530,14 @@ function ns.Candidates(ref, slot, query)
         end
     end
     local side = playerSide()
-    query = fold(query)
     local out = {}
+    -- an id or a link: that item first, whatever list or slot it comes from (the player knows it)
+    local typed = ns.ParseId(query)
+    if typed and not have[typed] then out[1] = typed end
+    if (query or ""):find("|H") then return out end
+    query = fold(query)
     for id, it in pairs(D.item) do
-        if not have[id] and not (side and it[6] and it[6] ~= side) and ns.Fits(class, slot, id) then
+        if not have[id] and id ~= typed and not (side and it[6] and it[6] ~= side) and ns.Fits(class, slot, id) then
             local ok = query == "" or fold(it[7]):find(query, 1, true) or fold(ns.ItemName(id)):find(query, 1, true)
                 or tostring(id) == query
             if ok then out[#out + 1] = id end
@@ -512,6 +568,13 @@ local function owned(ids, wornIds)
     end
 end
 
+-- Whether an item is carried (bags or bank) besides what is worn.
+function ns.Carried(id)
+    local n = itemCount(id)
+    for _, slot in ipairs(D.slots) do if wornItem(slot) == id then n = n - 1 end end
+    return n > 0
+end
+
 local function isTwoHand(id) local it = id and D.item[id]; return it ~= nil and it[1] == "2h" end
 
 -- One row per slot: { slot, ids, worn, rank, have, haveRank, counted, state }.
@@ -539,6 +602,11 @@ function ns.SlotRows(list)
         local r = { slot = slot, ids = ids, worn = worn[slot], counted = #ids > 0 }
         r.rank = rankOf(ids, r.worn)
         r.have, r.haveRank = owned(ids, wornIds)
+        -- where the list's first item is: worn, in the bags or the bank, or not found
+        r.top = ids[1]
+        if r.top then
+            r.topAt = (r.rank == 1 and "worn") or (itemCount(r.top) - (wornIds[r.top] or 0) > 0 and "bag") or "miss"
+        end
         if slot == "off" and isTwoHand(mainTop) then
             r.state, r.counted = "covered", false
         elseif #ids == 0 then
@@ -669,6 +737,55 @@ function ns.CheckBags(first)
     return #fresh
 end
 
+-- A wanted item: on the main list, better than what is worn there and not carried yet.
+-- Returns the slot and its place.
+function ns.Wanted(id)
+    if not id then return nil end
+    local list = ns.Main()
+    if not list or ns.Carried(id) then return nil end
+    for _, r in ipairs(ns.SlotRows(list)) do
+        local rank = rankOf(r.ids, id)
+        if rank and r.state ~= "covered" and (not r.rank or rank < r.rank) then return r.slot, rank end
+    end
+end
+
+local function linkId(link)
+    return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+end
+
+-- A wanted item in the loot window (also master loot) or in a roll: a sound and a notice, once a
+-- minute per item.
+function ns.CheckDrop(links)
+    if not ns.db or not ns.db.drop or ns.paused then return 0 end
+    ns.dropAt = ns.dropAt or {}
+    local now, n = GetTime and GetTime() or 0, 0
+    for _, link in ipairs(links) do
+        local id = linkId(link)
+        local slot, rank = ns.Wanted(id)
+        if slot and not (ns.dropAt[id] and now - ns.dropAt[id] < 60) then
+            ns.dropAt[id] = now
+            n = n + 1
+            if n == 1 then
+                if PlaySound then PlaySound((SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959, "Master") end
+                local text = L.DROP:format(ns.ItemName(id), rank, L["SLOT_" .. slot])
+                if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("MyBisList", text) end
+                toast({ key = "drop", icon = ns.ItemIcon(id), title = L.TITLE, text = text, seconds = 12 })
+            end
+        end
+    end
+    return n
+end
+
+local function lootLinks()
+    local out = {}
+    local count = GetNumLootItems and GetNumLootItems() or 0
+    for i = 1, count do
+        local link = GetLootSlotLink and GetLootSlotLink(i)
+        if link then out[#out + 1] = link end
+    end
+    return out
+end
+
 -- The hub's home line: "BiS 6/17 · Protection", with the number for its tile.
 function ns.Summary()
     if not ns.db or ns.paused then return nil end
@@ -745,7 +862,8 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.cdb.told = ns.cdb.told or {}
         ns.cdb.main = ns.cdb.main or "auto"
         for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED",
-                             "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "GET_ITEM_INFO_RECEIVED" }) do
+                             "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "GET_ITEM_INFO_RECEIVED", "LOOT_READY",
+                             "START_LOOT_ROLL" }) do
             self:RegisterEvent(e)
         end
         return
@@ -756,6 +874,11 @@ f:SetScript("OnEvent", function(self, event, a1)
         return
     end
     if ns.paused then return end
+    if event == "LOOT_READY" then ns.CheckDrop(lootLinks()); return end
+    if event == "START_LOOT_ROLL" then
+        ns.CheckDrop({ GetLootRollItemLink and GetLootRollItemLink(a1) or nil })
+        return
+    end
     later()
 end)
 
@@ -783,6 +906,6 @@ do
         summary = function() return ns.Summary() end,
         pause = function(on) ns.Pause(on) end,
         reset = function() ns.Reset() end,
-        options = { opt("tooltip"), opt("notify"), opt("real") },
+        options = { opt("tooltip"), opt("notify"), opt("drop"), opt("real") },
     })
 end
