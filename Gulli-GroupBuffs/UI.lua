@@ -515,11 +515,13 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
             and spellID and not (issecretvalue and issecretvalue(spellID))
             and ns.SpellName(spellID) == lastCast.spell then
             landed[lastCast.guid .. "|" .. lastCast.spell] = true
+            ns.Thanked(lastCast.guid)
             dirty = true
         end
     elseif event == "UNIT_POWER_UPDATE" then
         if unit == "player" and (ns.DB().mana or 0) > 0 then dirty = true end
     elseif event == "UNIT_AURA" then
+        if unit == "player" and not InCombatLockdown() then ns.NoteBuffs((...)) end
         if unit and (GROUP_UNIT[unit] or unit:find("^party%d") or unit:find("^raid%d")) then
             dirty = true
             -- Out of combat a new or lost buff shows at once; in combat the plan is fixed anyway.
@@ -660,6 +662,7 @@ local function rowList()
         { kind = "header", label = L.TARGETS },
         toggle(L.PETS, dbValue("pets"), I .. "Ability_Hunter_BeastCall"),
         toggle(L.FOCUS, dbValue("focus"), I .. "Ability_Hunter_SniperShot"),
+        toggle(L.THANK, dbValue("thank"), I .. "Spell_Holy_SealOfSalvation"),
         option(L.RAID_GROUPS, dbValue("raidGroups"), ns.RAID_GROUPS,
             function(v) return v == "all" and L.RAID_ALL or L.RAID_N:format(v) end, I .. "INV_Banner_02"),
         option(L.MANA, dbValue("mana"), ns.MANA,

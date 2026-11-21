@@ -951,6 +951,58 @@ test("the Unlock mode in a fight never touches the secure buttons", function()
     W.combat = false
 end)
 
+test("return the buff: off by default; on, a passer-by who buffed you gets one buff back", function()
+    local units = { player = { name = "Me", class = "PRIEST", auras = {} },
+                    nameplate3 = { name = "Passer", class = "MAGE", auras = {} } }
+    Fake { known = { [1243] = true, [14752] = true }, units = units, db = { who = "group" } }
+    local ns = Load()
+    W.units.player.auras = { ["Power Word: Fortitude"] = 1500, ["Divine Spirit"] = 1500 }
+    local buffed = { addedAuras = { { name = "Arcane Intellect", isHelpful = true, sourceUnit = "nameplate3" } } }
+    eq(ns.DB().thank, false, "off by default")
+    Fire("UNIT_AURA", "player", buffed)
+    eq(show(ns.Plan()), "", "off: nobody is buffed back")
+    ns.DB().thank = true
+    Fire("UNIT_AURA", "player", buffed)
+    eq(show(ns.Plan()), "Power Word: Fortitude@nameplate3", "one buff back, not all")
+    eq(ns.Plan()[1].thanks, true)
+    local p, f = ns.Plan()
+    eq(#ns.CombatList(p, f), 0, "a name plate is not aimed at in a fight")
+    ns.Thanked("Player-Passer")
+    eq(show(ns.Plan()), "", "thanked once")
+    Fire("UNIT_AURA", "player", buffed)
+    W.spec.time = 100 + ns.THANK_SECONDS + 1
+    eq(show(ns.Plan()), "", "the wait ends")
+end)
+
+test("return the buff: never for party or raid members, yourself, enemies or hidden sources", function()
+    local units = party({ nameplate1 = { name = "Foe", class = "MAGE", auras = {}, enemy = true } })
+    Fake { known = { [1243] = true }, units = units, db = { who = "group", thank = true, groupMin = 0 } }
+    local ns = Load()
+    for _, u in pairs(W.units) do u.auras = { ["Power Word: Fortitude"] = 1500 } end
+    W.units.party2.auras = {}
+    local before = show(ns.Plan())
+    for _, src in ipairs({ "party2", "player", "nameplate1", W.SECRET }) do
+        Fire("UNIT_AURA", "player", { addedAuras = { { name = "X", isHelpful = true, sourceUnit = src } } })
+    end
+    eq(next(ns.thanked), nil, "nobody noted")
+    eq(show(ns.Plan()), before)
+    -- One who joins the group after buffing you is a member now.
+    W.units.nameplate2 = { name = "Joiner", class = "MAGE", auras = {} }
+    Fire("UNIT_AURA", "player", { addedAuras = { { name = "X", isHelpful = true, sourceUnit = "nameplate2" } } })
+    W.units.nameplate2.inGroup = true
+    eq(show(ns.Plan()), before, "joined the group")
+    eq(next(ns.thanked), nil)
+end)
+
+test("return the buff: the target passer-by keeps the target's buffs, noted once", function()
+    local units = { player = { name = "Me", class = "PRIEST", auras = { ["Power Word: Fortitude"] = 1500, ["Divine Spirit"] = 1500 } },
+                    target = { name = "Passer", class = "MAGE", auras = {} } }
+    Fake { known = { [1243] = true, [14752] = true }, units = units, db = { who = "target", thank = true } }
+    local ns = Load()
+    Fire("UNIT_AURA", "player", { addedAuras = { { name = "X", isHelpful = true, sourceUnit = "target" } } })
+    eq(show(ns.Plan()), "Power Word: Fortitude@target,Divine Spirit@target", "no second entry")
+end)
+
 test("every language has every key with the same placeholders", function()
     Fake {}
     local ns = Load()

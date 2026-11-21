@@ -21,6 +21,7 @@ ns.DEFAULTS = {
     raidGroups = "all",  -- the raid groups you buff, see ns.RAID_GROUPS
     perSize = false,     -- "Buff again when" and "Group spells" kept per group size
     fadeAlert = true,    -- in a fight: a notice when one of your own buffs falls off
+    thank = false,       -- a passer-by outside the group who buffs you gets one buff back
 }
 for k, v in pairs(B.CHOICE_DEFAULT) do ns.DEFAULTS[k] = v end
 ns.WHO = { "group", "target", "off" }
@@ -35,6 +36,7 @@ ns.SIZES = { "solo", "party", "raid" }
 -- Raid groups to buff, as "first-last".
 ns.RAID_GROUPS = { "all", "1-2", "3-4", "5-6", "7-8", "1-4", "5-8" }
 ns.SKIP_SECONDS = 20
+ns.THANK_SECONDS = 120   -- how long a passer-by who buffed you waits for a buff back
 
 local db
 
@@ -264,7 +266,68 @@ function ns.Units()
         and not ask(UnitInParty, "target") and not ask(UnitInRaid, "target") then
         list[#list + 1] = { unit = "target" }
     end
+    if d.thank then ns.AddThanked(list) end
     return list
+end
+
+---- Return the buff -------------------------------------------------------------
+
+-- Passer-by GUID -> { at = when they buffed you }. Never a member of your party or raid.
+local thanked = {}
+ns.thanked = thanked
+
+local function stranger(unit)
+    return ask(UnitExists, unit) and ask(UnitIsPlayer, unit) and ask(UnitIsFriend, "player", unit)
+        and not ask(UnitIsUnit, unit, "player") and not ask(UnitInParty, unit) and not ask(UnitInRaid, unit)
+        and true or false
+end
+
+-- UNIT_AURA of the player, out of combat: a friendly player outside the group who put a buff
+-- on you is noted for one buff back. Only what the game shows plainly (no secret values).
+function ns.NoteBuffs(info)
+    if not (ns.DB().thank and type(info) == "table" and type(info.addedAuras) == "table") then return end
+    for _, a in ipairs(info.addedAuras) do
+        local src = type(a) == "table" and val(a.sourceUnit)
+        if type(src) == "string" and val(a.isHelpful) ~= false and stranger(src) then
+            local g = ask(UnitGUID, src)
+            if type(g) == "string" then thanked[g] = { at = now() } end
+        end
+    end
+end
+
+-- A buff of ours landed on them: they are thanked.
+function ns.Thanked(guid)
+    if guid then thanked[guid] = nil end
+end
+
+-- A unit token for this GUID now: target, focus, mouseover, then the name plates.
+local TOKENS = { "target", "focus", "mouseover" }
+for i = 1, 40 do TOKENS[#TOKENS + 1] = "nameplate" .. i end
+function ns.TokenOf(guid)
+    for _, unit in ipairs(TOKENS) do
+        if ask(UnitGUID, unit) == guid then return unit end
+    end
+end
+
+-- Adds the passers-by who buffed you and are still near (a unit token) to the units to buff.
+function ns.AddThanked(list)
+    local t = now()
+    for guid, e in pairs(thanked) do
+        if t - e.at > ns.THANK_SECONDS then
+            thanked[guid] = nil
+        else
+            local unit = ns.TokenOf(guid)
+            if unit and stranger(unit) then
+                local dup = false
+                for _, u in ipairs(list) do
+                    if ask(UnitIsUnit, u.unit, unit) then dup = true; u.thanks = true end
+                end
+                if not dup then list[#list + 1] = { unit = unit, thanks = true } end
+            elseif unit then
+                thanked[guid] = nil   -- joined your group or is no friend: not a passer-by any more
+            end
+        end
+    end
 end
 
 -- A check the game hides (a secret value) does not count against the unit.
@@ -601,7 +664,13 @@ function ns.Plan()
         if ns.Skipped(u.unit) then return "skipped" end
         local auras = ns.Auras(u.unit, watched)
         if not auras then return "hidden" end
-        return check(u, auras)
+        local found = check(u, auras)
+        -- A passer-by gets one buff back, not all of yours.
+        if u.thanks and not (u.unit == "target" and d.who == "target") and found[2] then
+            found = { found[1] }
+        end
+        for _, e in ipairs(found) do e.thanks = u.thanks end
+        return found
     end
     for _, u in ipairs(units) do
         local ok, r = pcall(look, u)
@@ -797,7 +866,8 @@ function ns.CombatList(plan, far, max)
     local list = {}
     for _, src in ipairs({ plan, far }) do
         for _, e in ipairs(src) do
-            if #list < (max or 40) then list[#list + 1] = e end
+            -- A name plate token moves to someone else in a fight: no buffs back there.
+            if #list < (max or 40) and not e.thanks then list[#list + 1] = e end
         end
     end
     return list
