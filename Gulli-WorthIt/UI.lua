@@ -561,15 +561,19 @@ local function tierText(t)
     if t.state == "done" then return L.LIB_T_DONE, S.FAINT end
     if t.state == "ready" then return L.LIB_T_READY, S.GOOD end
     if t.state == "log" then return L.ST_LOG, S.TEXT end
+    if t.state == "wait" and t.left == 0 then return L.DO_HANDIN:format(t.hand), S.GOOD end
     if t.state == "wait" then return L.LIB_T_WAIT:format(t.left), S.MUTED end
     return L.FROM_LEVEL:format(t.req), S.MUTED
 end
+
+local GOAL_STAR = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1"
 
 local function tierTip(self)
     local t = self.tierData
     if not (GameTooltip and t) then return end
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
     GameTooltip:AddLine(L.LIB_TIER:format(t.need), 1, 0.82, 0)
+    if self.goal then GameTooltip:AddLine(L.LIB_GOAL, S.Accent()[1], S.Accent()[2], S.Accent()[3]) end
     local text, c = tierText(t)
     GameTooltip:AddLine(text, c[1], c[2], c[3])
     GameTooltip:AddLine(L.WHERE:format(t.giver[1], ns.AreaName(t.giver[2]) or ""), 1, 1, 1)
@@ -627,6 +631,12 @@ local function buildLadder(p)
         t.mark = t:CreateTexture(nil, "ARTWORK")
         t.mark:SetSize(14, 14)
         t.mark:SetPoint("TOPRIGHT", -8, -13)
+        -- the goal: a gold star beside the state mark, so no word has to fit the tile
+        t.star = t:CreateTexture(nil, "OVERLAY")
+        t.star:SetSize(18, 18)
+        t.star:SetPoint("RIGHT", t.mark, "LEFT", -4, 0)
+        t.star:SetTexture(GOAL_STAR)
+        t.star:Hide()
         t.need = S.Text(t, 12, S.GOLD_DIM, nil, "bold")
         t.need:SetPoint("TOPLEFT", 8, -38)
         t.need:SetPoint("RIGHT", -8, 0)
@@ -676,7 +686,8 @@ local function paintLadder(lib)
             end
             t.goal = goal == d.quest
             local need = S.Upper(L.LIB_TIER:format(d.need))
-            t.need:SetText(t.goal and (need .. S.DOT .. colour(S.Upper(L.LIB_GOAL), S.Accent())) or need)
+            t.need:SetText(need)
+            t.star:SetShown(t.goal)
             local text, col = tierText(d)
             t.state:SetText(text)
             t.state:SetTextColor(unpack(col))
@@ -907,7 +918,7 @@ local function paintWindow()
     if current == 3 then
         leadAll:SetShown(true)
         local lib = paintLibrary()
-        local open = #ns.LibraryRows(ns.Here())
+        local open = ns.LeadCount()
         if ns.Guiding() then
             leadAll:SetText(L.STOP)
             leadAll:SetEnabled(true)
