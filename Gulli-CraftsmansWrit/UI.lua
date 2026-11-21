@@ -109,13 +109,21 @@ function ns.TodayRows(states)
         if a.status ~= b.status then return STATUS_ORDER[a.status] < STATUS_ORDER[b.status] end
         return a.w.id < b.w.id
     end)
-    local rows, last = {}, nil
+    -- Each held writ carries what handing it in costs (the item less its pouch); a group's head
+    -- adds them up while every one of them has a price.
+    local rows, last, head = {}, nil, nil
     for _, s in ipairs(list) do
         if s.status ~= last then
-            rows[#rows + 1] = { head = L["GROUP_" .. s.status] }
+            head = { head = L["GROUP_" .. s.status], cost = s.status ~= "done" and 0 or nil }
+            rows[#rows + 1] = head
             last = s.status
         end
-        rows[#rows + 1] = { s = s }
+        local c = ns.CloseCost(s)
+        if head.cost then
+            if c and c.total then head.cost = head.cost + c.total; head.estimate = head.estimate or c.estimate
+            else head.cost = nil end
+        end
+        rows[#rows + 1] = { s = s, close = c }
     end
     local sealed = ns.SealedHeld(ns.db and ns.db.bank)
     local any
@@ -129,7 +137,11 @@ function ns.TodayRows(states)
 end
 
 local function fillToday(r, row)
-    if row.head then return asHead(r, row.head) end
+    if row.head then
+        asHead(r, row.head)
+        if row.cost then r.head:SetText(S.Upper(row.head) .. S.DOT .. ns.CostText(row.cost, row.estimate)) end
+        return
+    end
     asItem(r)
     if row.sealed then
         local id = ns.SealedOf(row.sealed)
@@ -155,8 +167,16 @@ local function fillToday(r, row)
     if s.status ~= "done" and who then note = note .. S.DOT .. (zone and L.WHO_WHERE:format(who, zone) or who) end
     if s.status == "item" and s.haveBank > 0 and have >= w.count then note = need .. S.DOT .. S.Hex(S.WARN) .. L.FROM_BANK .. "|r" end
     r.note:SetText(note)
-    r.value:SetText(S.Hex(s.status == "done" and S.FAINT or S.TEXT) .. L.TIP_REP:format(math.floor(w.rep * ns.Mult() + 0.5)) .. "|r")
-    r.sub:SetText(S.Hex(S[st[2]]) .. L[st[1]] .. "|r")
+    local rep = L.TIP_REP:format(math.floor(w.rep * ns.Mult() + 0.5))
+    if s.status == "done" then
+        r.value:SetText(S.Hex(S.FAINT) .. rep .. "|r")
+        r.sub:SetText(S.Hex(S[st[2]]) .. L[st[1]] .. "|r")
+        return
+    end
+    -- What handing it in costs from here (the group's head names the state); the tooltip splits it.
+    local c = row.close
+    r.value:SetText(c and c.total and ns.CostText(c.total, c.estimate) or (S.Hex(S.FAINT) .. L.NO_PRICE .. "|r"))
+    r.sub:SetText(S.Hex(S[st[2]]) .. rep .. "|r")
 end
 
 -- ---------- Plan ----------
@@ -193,9 +213,9 @@ end
 
 -- A line's cost at the right: what it costs, or what it pays when the pouch is worth more.
 function ns.CostText(cost, estimate, short)
-    local approx = estimate and "~" or ""
-    if cost < 0 then return S.Hex(S.GOOD) .. "+" .. "|r" .. approx .. S.MoneyText(-cost, short) end
-    return approx .. S.MoneyText(cost, short)
+    if cost < 0 then return S.Hex(S.GOOD) .. "+|r" .. S.MoneyText(-cost, short) end
+    if cost > 0 then return S.Hex(S.BAD) .. "-|r" .. S.MoneyText(cost, short) end
+    return S.MoneyText(0, short)
 end
 
 local function planHeight(row)
@@ -247,7 +267,7 @@ local function fillPlan(r, row)
     end
     r.note:SetText(ns.LineParts(l))
     r.value:SetText(ns.CostText(l.cost, l.estimate))
-    r.sub:SetText(l.cost < 0 and (S.Hex(S.GOOD) .. L.PROFIT .. "|r") or L.TIP_REP:format(l.rep))
+    r.sub:SetText(l.cost < 0 and (S.Hex(S.GOOD) .. L.PROFIT .. "|r") or (S.Hex(S.BAD) .. L.LOSS .. "|r"))
 end
 
 -- ---------- Writs ----------
@@ -388,9 +408,9 @@ local function refreshPlan()
     goalTabs.sync()
     planCard.days:Refresh()
     local plan = ns.plan
-    local approx = plan and plan.estimate and "~" or ""
-    planStats.tiles[1]:Set(plan and (approx .. S.MoneyText(plan.buy, true)) or "-")
-    planStats.tiles[2]:Set(plan and (S.Hex(S.GOOD) .. "-" .. "|r" .. S.MoneyText(plan.pouch, true)) or "-")
+    -- as money flows: what the purchases take (red), what the pouches give back (green), the sum
+    planStats.tiles[1]:Set(plan and ns.CostText(plan.buy, nil, true) or "-")
+    planStats.tiles[2]:Set(plan and ns.CostText(-plan.pouch, nil, true) or "-")
     planStats.tiles[3]:Set(plan and ns.CostText(plan.total, plan.estimate) or "-")
     planList:SetData(ns.PlanRows(plan))
     planEmpty:SetShown(not plan or #plan.lines == 0)
@@ -621,7 +641,7 @@ local function build()
     ss:Add(pouchCard, pouchCard:Fit(62 + S.GAP + 52))
     sp:SetContent(ss.y)
 
-    frame:SetScript("OnShow", function() ns.Refresh() end)
+    frame:SetScript("OnShow", function() if ns.Prefetch then ns.Prefetch() end; ns.Refresh() end)
 end
 
 function ns.Toggle()

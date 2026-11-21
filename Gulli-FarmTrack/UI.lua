@@ -141,7 +141,7 @@ end
 function ns.WorthText()
     if not ns.db.value then return nil end
     local total, unknown = ns.SessionValue()
-    local text = "~" .. S.MoneyText(total, true)
+    local text = S.MoneyText(total, true)
     if unknown > 0 then text = text .. S.Hex(S.FAINT) .. " +" .. unknown .. "?|r" end
     return text
 end
@@ -398,7 +398,7 @@ function ns.WorthLines()
         money(p.by.auction, true) .. n("auction"),
         money(p.by.vendor + p.by.noprice, true) .. n("shop"),
         money(p.by.disenchant, true) .. n("disenchant"),
-        "~" .. S.MoneyText(p.total),
+        S.MoneyText(p.total),
     }
     local notes = {}
     if p.sold > 0 then notes[#notes + 1] = L.NOTE_SOLD:format(S.MoneyText(p.sold)) end

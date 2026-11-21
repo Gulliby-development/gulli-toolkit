@@ -91,7 +91,7 @@ T.en = {
     OPT_live = "Read the auction listings",
     TIP_live = "At the auction house, Calculate reads every listing of what you buy, so a big buy pays for the dearer lots too. Away from it, the plan uses Auctionator's lowest price.",
     SCANNING = "Reading the auction: %d / %d",
-    ESTIMATE = "~ An estimate from Auctionator's lowest price. At the auction house, Calculate reads the real listings.",
+    ESTIMATE = "An estimate from Auctionator's lowest price. At the auction house, Calculate reads the real listings.",
 }
 
 T.de = {
@@ -176,7 +176,7 @@ T.de = {
     OPT_live = "Auktionsangebote lesen",
     TIP_live = "Im Auktionshaus liest Berechnen jedes Angebot dessen, was du kaufst, damit ein großer Kauf auch die teureren Angebote zahlt. Sonst nutzt der Plan den niedrigsten Preis von Auctionator.",
     SCANNING = "Lese das Auktionshaus: %d / %d",
-    ESTIMATE = "~ Eine Schätzung aus dem niedrigsten Preis von Auctionator. Im Auktionshaus liest Berechnen die echten Angebote.",
+    ESTIMATE = "Eine Schätzung aus dem niedrigsten Preis von Auctionator. Im Auktionshaus liest Berechnen die echten Angebote.",
 }
 
 T.es = {
@@ -261,7 +261,7 @@ T.es = {
     OPT_live = "Leer las subastas",
     TIP_live = "En la casa de subastas, Calcular lee cada oferta de lo que compras, así una compra grande paga también las ofertas más caras. Fuera de ella, el plan usa el precio más bajo de Auctionator.",
     SCANNING = "Leyendo la subasta: %d / %d",
-    ESTIMATE = "~ Una estimación con el precio más bajo de Auctionator. En la casa de subastas, Calcular lee las ofertas reales.",
+    ESTIMATE = "Una estimación con el precio más bajo de Auctionator. En la casa de subastas, Calcular lee las ofertas reales.",
 }
 
 T.fr = {
@@ -346,7 +346,7 @@ T.fr = {
     OPT_live = "Lire les offres",
     TIP_live = "À l'hôtel des ventes, Calculer lit chaque offre de ce que vous achetez, donc un gros achat paie aussi les offres plus chères. Ailleurs, le plan prend le prix le plus bas d'Auctionator.",
     SCANNING = "Lecture des enchères : %d / %d",
-    ESTIMATE = "~ Une estimation d'après le prix le plus bas d'Auctionator. À l'hôtel des ventes, Calculer lit les vraies offres.",
+    ESTIMATE = "Une estimation d'après le prix le plus bas d'Auctionator. À l'hôtel des ventes, Calculer lit les vraies offres.",
 }
 
 T.pl = {
@@ -431,7 +431,7 @@ T.pl = {
     OPT_live = "Czytaj oferty aukcji",
     TIP_live = "W domu aukcyjnym Oblicz czyta każdą ofertę tego, co kupujesz, więc duży zakup płaci też za droższe oferty. Poza nim plan bierze najniższą cenę z Auctionatora.",
     SCANNING = "Czytam aukcje: %d / %d",
-    ESTIMATE = "~ Szacunek z najniższej ceny Auctionatora. W domu aukcyjnym Oblicz czyta prawdziwe oferty.",
+    ESTIMATE = "Szacunek z najniższej ceny Auctionatora. W domu aukcyjnym Oblicz czyta prawdziwe oferty.",
 }
 
 T.pt = {
@@ -516,7 +516,7 @@ T.pt = {
     OPT_live = "Ler as ofertas do leilão",
     TIP_live = "Na casa de leilões, Calcular lê cada oferta do que você compra, então uma compra grande paga também as ofertas mais caras. Fora dela, o plano usa o menor preço do Auctionator.",
     SCANNING = "Lendo o leilão: %d / %d",
-    ESTIMATE = "~ Uma estimativa pelo menor preço do Auctionator. Na casa de leilões, Calcular lê as ofertas reais.",
+    ESTIMATE = "Uma estimativa pelo menor preço do Auctionator. Na casa de leilões, Calcular lê as ofertas reais.",
 }
 
 T.ru = {
@@ -601,7 +601,7 @@ T.ru = {
     OPT_live = "Читать лоты аукциона",
     TIP_live = "У аукциона «Посчитать» читает все лоты того, что вы покупаете, так что большая покупка учитывает и дорогие лоты. Вдали от аукциона план берёт самую низкую цену из Auctionator.",
     SCANNING = "Читаю аукцион: %d / %d",
-    ESTIMATE = "~ Оценка по самой низкой цене Auctionator. У аукциона «Посчитать» читает настоящие лоты.",
+    ESTIMATE = "Оценка по самой низкой цене Auctionator. У аукциона «Посчитать» читает настоящие лоты.",
 }
 
 T.zh = {
@@ -686,7 +686,7 @@ T.zh = {
     OPT_live = "读取拍卖行挂单",
     TIP_live = "在拍卖行时，计算会读取你要买的每件物品的所有挂单，大量购买也会算上更贵的挂单。不在拍卖行时，按 Auctionator 的最低价估算。",
     SCANNING = "正在读取拍卖行：%d / %d",
-    ESTIMATE = "~ 按 Auctionator 最低价的估算。在拍卖行点计算会读取真实挂单。",
+    ESTIMATE = "按 Auctionator 最低价的估算。在拍卖行点计算会读取真实挂单。",
 }
 
 ns.T = T

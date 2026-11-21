@@ -256,7 +256,7 @@ local function buyStatus(plan, how)
     end
     local total = 0
     for _, line in ipairs(queue) do total = total + line.cost end
-    return L.TOTAL:format(#queue, (plan.estimate and "~" or "") .. S.MoneyText(total)) .. S.DOT
+    return L.TOTAL:format(#queue, S.MoneyText(total)) .. S.DOT
         .. itemLine(ns.Current().id, ns.Current().n)
 end
 
@@ -285,7 +285,7 @@ local function refreshTokens()
         goalCard.rows[1].desc:SetText(held and (L.TIP_goal .. " " .. L.TOK_HAVE:format(held)) or L.TIP_goal)
     end
     tokStats.tiles[1]:Set(plan and tostring(#plan.crates) or "-")
-    local approx = plan and plan.estimate and "~" or ""
+    local approx = ""
     tokStats.tiles[2]:Set(plan and (approx .. S.MoneyText(plan.total, true)) or "-")
     local per = plan and plan.favor > 0 and math.floor(plan.total / plan.favor + 0.5) or nil
     tokStats.tiles[3]:Set(per and (approx .. S.MoneyText(per, true)) or "-")
@@ -331,7 +331,7 @@ function ns.Refresh()
     local plan = ns.plan
     planList:SetData(ns.PlanRows(plan))
     planEmpty:SetShown(not plan or #plan.crates == 0)
-    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and ((plan.estimate and "~" or "") .. S.MoneyText(plan.total)) or "")
+    planCard:SetTitle(L.PLAN, plan and #plan.crates > 0 and S.MoneyText(plan.total) or "")
 
     label(calcBtn, plan and L.RECALC or L.CALCULATE, 110)
     calcBtn:SetEnabled(#ns.Picks(crates) > 0 and not ns.Scanning())

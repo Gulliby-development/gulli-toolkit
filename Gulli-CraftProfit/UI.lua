@@ -924,7 +924,7 @@ local function detailRows(n, i, a)
         -- made in another profession of the character (bars by Smelting): name it
         local made = l.src == "prep" and l.recipe and st.recipes[l.recipe]
         if made and made.other then note = made.other end
-        local right = l.price and ((l.guess and "~" or "") .. S.MoneyText(l.price * l.n)) or ""
+        local right = l.price and S.MoneyText(l.price * l.n) or ""
         if l.price and (l.src == "ah" or l.src == "vendor") and l.n > 1 and not spot and not l.guess then note = L.EACH:format(S.MoneyText(l.price)) end
         local e = { id = l.id, rid = l.src == "prep" and l.recipe or nil, icon = icon, q = q,
                     pin = spot and spot.zone and spot or nil, noteShort = spot and spot.who or nil,
@@ -1312,8 +1312,7 @@ local function listRows(which)
         for _, x in ipairs(ns.Recipes(st, P, ns.db.onlyMine)) do
             local r = st.recipes[x.recipe]
             local where = (x.src == "text" and (ns.SourceLabel(x.text) or "-")) or L["WHERE_" .. x.src] or "-"
-            -- an estimated vendor price gets "~"; the trainer's price is known after one visit
-            local price = x.cost and ((x.est and "~" or "") .. ns.Brief(x.cost)) or (x.src == "trainer" and "?" or "-")
+            local price = x.cost and ns.Brief(x.cost) or (x.src == "trainer" and "?" or "-")
             local tip = recipeTip(r)
             if x.who then
                 tip[#tip + 1] = { (x.src == "trainer" and L.TIP_TAUGHT or L.TIP_VENDOR):format(table.concat(x.who, ", ")), nil, nil, nil, true }
