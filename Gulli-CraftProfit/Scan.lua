@@ -1005,7 +1005,37 @@ end
 function ns.RunProgress()
     local v = ns.view
     if not v.route or not v.state or (v.leg or 1) > 1 then return {} end
-    return ns.Progress(v.route, v.state, count)
+    local prof = ns.char and ns.char.profs and ns.char.profs[v.state.name or ""]
+    return ns.Progress(v.route, v.state, count, v.made, v.marks, prof and prof.skill)
+end
+
+-- Marks stop i done by hand, or not done again: the stops after it go on, whatever the bags say.
+function ns.MarkDone(i, on)
+    local v = ns.view
+    local n = v.route and v.route[i]
+    if not n or not n.sig then return end
+    v.marks = v.marks or {}
+    v.marks[n.sig] = on and true or nil
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- A craft the game finished: it counts for the craft stops of the run. The recipe is the spell
+-- (the modern API's recipe id), else the recipe of that name (a classic recipe keyed by its item).
+function ns.OnCast(spell)
+    local v = ns.view
+    local st = v and v.state
+    if not st or not spell then return false end
+    local rid = st.recipes[spell] and spell
+    -- by name only while a profession window is open: every spell of a fight comes here too
+    if not rid and ns.profOpen then
+        local name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spell)) or (GetSpellInfo and GetSpellInfo(spell))
+        if not name then return false end
+        for id, r in pairs(st.recipes) do if r.name == name and r.learned then rid = id; break end end
+    end
+    if not rid then return false end
+    v.made = v.made or {}
+    v.made[rid] = (v.made[rid] or 0) + 1
+    return true
 end
 
 -- ---------- buying at the auction house ----------
@@ -1340,8 +1370,17 @@ local function skillLineOf(name)
 end
 
 -- The window of a profession (the current one by default) shows now.
+-- The game's profession window is on the screen. The events alone can mislead: going from one
+-- profession's window to another's may send its CLOSE after the new SHOW.
+local function windowShown()
+    for _, f in ipairs({ _G.ProfessionsFrame, _G.TradeSkillFrame }) do
+        if f and f.IsShown and f:IsShown() then return true end
+    end
+    return false
+end
+
 function ns.ProfessionShown(prof)
-    if not ns.profOpen then return false end
+    if not ns.profOpen and not windowShown() then return false end
     local name = windowLine()
     return name == nil or name == (prof or ns.char.current)
 end
@@ -1435,7 +1474,7 @@ ns.PLACE_CLOSED = {
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1, a2)
+f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliCraftProfitDB = GulliCraftProfitDB or {}
@@ -1460,6 +1499,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                           "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
                           "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
                           "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
+        if self.RegisterUnitEvent then pcall(self.RegisterUnitEvent, self, "UNIT_SPELLCAST_SUCCEEDED", "player") end
         -- every way a place closes, walking away too: the stop and the window beside it follow
         if ns.Skin and ns.Skin.ClosesWith then
             for place, fn in pairs(ns.PLACE_CLOSED) do ns.Skin.ClosesWith(place, fn) end
@@ -1472,6 +1512,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     if next(ns.nameWaiting) then ns.CheckNames() end
     if event == "GET_ITEM_INFO_RECEIVED" then return end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if a1 == "player" and ns.OnCast(a3) and ns.Refresh then ns.Refresh() end
+        return
+    end
     if event == "UPDATE_FACTION" or event == "PLAYER_ENTERING_WORLD" then
         if event == "PLAYER_ENTERING_WORLD" then ns.HookRepWindow() end
         ns.RepChanged()

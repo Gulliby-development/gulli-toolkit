@@ -28,12 +28,13 @@ ns.DEFAULTS = {
     maxBuy = 40, -- units of one item a profit run buys at the auction: only a few sell at that price
     useMail = true, -- items waiting in the mailbox count as own
     useAlts = false, -- items on the other characters (Gulli Chores) count as own, sent by mail
+    ahead = true, -- the first run's buy stops also buy what the later runs of the way need
     guard = 10, -- percent an auction price may be above the plan before the Buy button asks first
     side = true, -- at the auction house the run's buy stop opens in the window beside it
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
 }
 -- Settings that change no plan: the window only redraws.
-ns.NO_PLAN = { guard = true, side = true }
+ns.NO_PLAN = { guard = true, side = true, ahead = true }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
 ns.FRESH_DAYS = 3
@@ -981,6 +982,18 @@ local function total(ls)
     return t
 end
 
+-- Numbers the stops and gives each a signature: the same stop on a new route keeps it.
+local function seal(nodes)
+    for i, n in ipairs(nodes) do
+        n.index = i
+        local parts = { n.kind, n.title, tostring(n.from), tostring(n.to), tostring(n.crafts) }
+        for _, l in ipairs(n.lines or {}) do parts[#parts + 1] = tostring(l.id or l.recipe or l.rank) .. "x" .. l.n end
+        for _, sg in ipairs(n.segs or {}) do parts[#parts + 1] = tostring(sg.rid) .. sg.from .. "-" .. sg.to end
+        n.sig = table.concat(parts, "|")
+    end
+    return nodes
+end
+
 -- The stops in walking order: bank, auction, vendor, intermediates, then crafts split by the
 -- trainer visits they need, then selling. Each stop: { kind, title, lines, cost, from, to, segs }.
 function ns.Route(state, plan)
@@ -1062,14 +1075,58 @@ function ns.Route(state, plan)
     -- the units the auction would sell too, past what it takes of one item (maxSell)
     for _, l in ipairs(sv) do l.over = (plan.sellAH[l.id] or 0) > 0 end
     if #sv > 0 then push({ kind = "vendor", title = "STOP_VENDOR_SELL", lines = sv, cost = total(sv) }) end
-    for i, n in ipairs(nodes) do
-        n.index = i
-        local parts = { n.kind, n.title, tostring(n.from), tostring(n.to), tostring(n.crafts) }
-        for _, l in ipairs(n.lines or {}) do parts[#parts + 1] = tostring(l.id or l.recipe or l.rank) .. "x" .. l.n end
-        for _, sg in ipairs(n.segs or {}) do parts[#parts + 1] = tostring(sg.rid) .. sg.from .. "-" .. sg.to end
-        n.sig = table.concat(parts, "|")
+    return seal(nodes)
+end
+
+-- The buy stops of the first run also take what the later runs of the way buy (`ahead`), so the
+-- player goes to the auction house and the vendor once for the whole way. `legs`: the runs of
+-- the way (ns.Legs), the first one being this route. A line added for a later run carries
+-- `ahead` (the skill that run reaches); a stop the first run lacks comes before its first craft.
+function ns.BuyAhead(route, legs)
+    if not legs or #legs < 2 then return route end
+    local function stopOf(kind, title)
+        for _, n in ipairs(route) do if n.kind == kind and n.title == title then return n end end
     end
-    return nodes
+    local added = false
+    for i = 2, #legs do
+        local l = legs[i]
+        if l.plan and l.state then
+            for _, m in ipairs(ns.Route(l.state, l.plan)) do
+                if (m.kind == "ah" and m.title == "STOP_AH_BUY") or (m.kind == "vendor" and m.title == "STOP_VENDOR_BUY") then
+                    local n = stopOf(m.kind, m.title)
+                    if not n then
+                        n = { kind = m.kind, title = m.title, lines = {}, cost = 0 }
+                        local at = #route + 1
+                        for k, x in ipairs(route) do if x.kind == "craft" or x.kind == "trainer" or x.kind == "sell" then at = k; break end end
+                        -- the auction before the vendor, as in a route of its own
+                        if m.kind == "ah" and route[at - 1] and route[at - 1].kind == "vendor" then at = at - 1 end
+                        table.insert(route, at, n)
+                    end
+                    for _, x in ipairs(m.lines) do
+                        -- an item adds up; a pattern is bought once
+                        local same
+                        for _, y in ipairs(n.lines) do
+                            if (x.recipe and y.recipe == x.recipe) or (not x.recipe and not y.recipe and x.id and y.id == x.id) then same = y; break end
+                        end
+                        if not (same and x.recipe) then
+                            if same then
+                                same.n = same.n + x.n
+                                same.ahead = same.ahead or l.to
+                            else
+                                local c = {}
+                                for k, v in pairs(x) do c[k] = v end
+                                c.ahead = l.to
+                                n.lines[#n.lines + 1] = c
+                            end
+                            n.cost = (n.cost or 0) + (x.price or 0) * x.n
+                            added = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return added and seal(route) or route
 end
 
 -- ---------- the run outside the window ----------
@@ -1142,11 +1199,23 @@ function ns.RunNeeds(state, route)
     return out
 end
 
--- The craft a craft stop starts with: the recipe and how many, for the "Make" button.
-function ns.NextCraft(node)
-    local sg = node and node.segs and node.segs[1]
-    if not sg then return nil end
-    return sg.rid, ceil(sg.n)
+-- The craft a craft stop is at: the first recipe of it not made yet (a stop of intermediates
+-- makes several, one after another), and how many crafts of it are left, for the "Make" button.
+-- `p`: the stop's progress (ns.Progress); without it the first one. nil when all are made.
+function ns.NextCraft(node, p)
+    if not node then return nil end
+    if node.segs then
+        for k, sg in ipairs(node.segs) do
+            local e = p and p.segs and p.segs[k]
+            if not (e and e.done) then return sg.rid, e and e.left or ceil(sg.n) end
+        end
+        return nil
+    end
+    for k, l in ipairs(node.lines or {}) do
+        local e = p and p.lines and p.lines[k]
+        if l.recipe and not (e and e.done) then return l.recipe, e and e.left or l.n end
+    end
+    return nil
 end
 
 -- ---------- how far the run is, and buying from its stops ----------
@@ -1158,14 +1227,24 @@ local function gets(node)
 end
 ns.Gets = gets
 
--- How far the run is: for each stop { done, left, lines = { { got, left, done } } }. `have(id)`
--- is what the bags hold now, `state` what they held when the plan was made: units that arrived
--- since count for the stops in their order, so a stop is done once its items are in the bags.
--- A line without an item (a pattern) is never done by itself. Other stops are never done.
-function ns.Progress(route, state, have)
-    local out, used = {}, {}
+-- How far the run is: for each stop { done, left, marked, lines = { { got, left, done } },
+-- segs = { { got, left, done } } }. `have(id)` is what the bags hold now, `state` what they held
+-- when the plan was made: units that arrived since count for the stops in their order, so a stop
+-- is done once its items are in the bags. A line without an item (a pattern) is never done by
+-- itself. A craft stop counts its crafts: `made` (recipe -> crafts since the plan, read from the
+-- game's casts), each recipe's crafts going to its lines in their order; a stretch of the skill
+-- is also done once `skill` (the profession's skill now) reaches its end. `marks` (stop signature
+-- -> true): stops the player marked done by hand. Other stops are never done.
+function ns.Progress(route, state, have, made, marks, skill)
+    local out, used, usedMade = {}, {}, {}
+    local function crafted(rid, n)
+        local got = math.max(0, ((made or {})[rid] or 0) - (usedMade[rid] or 0))
+        usedMade[rid] = (usedMade[rid] or 0) + n
+        return math.min(n, got)
+    end
     for i, node in ipairs(route or {}) do
         local p = { lines = {}, left = 0, done = false }
+        local mark = marks and node.sig and marks[node.sig] or false
         if gets(node) then
             for k, l in ipairs(node.lines or {}) do
                 local e = { got = 0, left = l.n, done = false }
@@ -1182,6 +1261,32 @@ function ns.Progress(route, state, have)
                 p.lines[k] = e
             end
             p.done = #p.lines > 0 and p.left == 0
+        elseif node.kind == "craft" then
+            local any = false
+            for k, l in ipairs(node.lines or {}) do
+                if l.recipe then
+                    any = true
+                    local got = crafted(l.recipe, l.n)
+                    local e = { got = got, left = l.n - got, done = got >= l.n }
+                    if not e.done then p.left = p.left + 1 end
+                    p.lines[k] = e
+                end
+            end
+            p.segs = {}
+            for k, sg in ipairs(node.segs or {}) do
+                any = true
+                local n = ceil(sg.n)
+                local got = crafted(sg.rid, n)
+                local e = { got = got, left = n - got, done = got >= n or (skill and sg.to > sg.from and skill >= sg.to) or false }
+                if e.done then e.left = 0 else p.left = p.left + 1 end
+                p.segs[k] = e
+            end
+            p.done = any and p.left == 0
+        end
+        if mark then
+            p.done, p.marked, p.left = true, true, 0
+            for _, e in pairs(p.lines) do e.done, e.left = true, 0 end
+            for _, e in pairs(p.segs or {}) do e.done, e.left = true, 0 end
         end
         out[i] = p
     end
@@ -1515,7 +1620,8 @@ local function build(flash)
     return out
 end
 
-local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta", "legsBy" }
+local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta", "legsBy",
+                 "made", "marks" }
 local function apply(out)
     local v = ns.view
     -- a result of another profession than the one chosen now never shows (a switch while it ran)
@@ -1524,6 +1630,8 @@ local function apply(out)
     for _, k in ipairs(FIELDS) do v[k] = out[k] end
     v.route = v.route or {}
     v.changed = v.changed or {}
+    -- a new plan starts from the bags as they are: what was crafted or marked before is in them
+    v.made, v.marks = v.made or {}, v.marks or {}
     v.stale = nil
     if ns.nameLate then ns.nameLate = nil; ns.FixNames(v) end
     return v
@@ -1595,7 +1703,11 @@ function ns.LegsJob(mode)
         if ns.view.state ~= state then return end
         ns.view.legsBy[mode] = legs
         if ns.nameLate then ns.nameLate = nil; ns.FixNames(legs) end
-        if ns.view.mode == mode then ns.view.legs, ns.view.leg = legs, 1 end
+        if ns.view.mode == mode then
+            ns.view.legs, ns.view.leg = legs, 1
+            -- the buy stops may now take the later runs in
+            ns.view.route = ns.LegRoute(ns.view)
+        end
     end)
 end
 
@@ -1616,7 +1728,7 @@ function ns.PickMode(want)
     v.legsBy = v.legsBy or {}
     if ns.EARN[mode] or v.plan.earn then v.legsBy[mode] = v.legsBy[mode] or {} end
     v.legs, v.leg = v.legsBy[mode], 1
-    v.route = ns.Route(v.state, v.plan)
+    v.route = ns.LegRoute(v)
     v.changed, v.delta = {}, nil
     return true, v.legs == nil
 end
@@ -1637,7 +1749,10 @@ function ns.LegRoute(v)
     local l = v.legs and v.legs[v.leg or 1]
     if l and l.unknown then return {} end
     if l and v.leg > 1 then return ns.Route(l.state, l.plan) end
-    return ns.Route(v.state, v.plan)
+    local route = ns.Route(v.state, v.plan)
+    -- the first run buys for the whole way at once (`ahead`)
+    if ns.Prefs(ns.db and ns.db.prefs).ahead and v.legs then route = ns.BuyAhead(route, v.legs) end
+    return route
 end
 
 function ns.SelectLeg(i)
@@ -1655,6 +1770,11 @@ function ns.SetPref(key, value)
     ns.db.prefs = ns.db.prefs or {}
     ns.db.prefs[key] = value
     if ns.NO_PLAN[key] then
+        -- the buy stops take the later runs in or leave them out: the same plan, other stops
+        if key == "ahead" and ns.view and ns.view.state and ns.view.plan then
+            ns.view.route = ns.LegRoute(ns.view)
+            ns.view.changed = {}
+        end
         if ns.Refresh then ns.Refresh() end
         return
     end
