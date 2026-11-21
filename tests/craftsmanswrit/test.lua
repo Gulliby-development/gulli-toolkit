@@ -207,6 +207,20 @@ test("the writ and item names are asked for at login, only the missing ones", fu
     eq(W.requested[POUCH_J], true)
 end)
 
+test("the Writs tab sorts the best gain first and the writs without a price last", function()
+    Fake({ prices = { [OGRE] = 100, [OGRE_ITEM] = 100, [WISDOM] = 90000, [WISDOM_ITEM] = 90000,
+                      [FROST] = 100, [FROST_ITEM] = 50000 } })
+    local ns = Load()
+    local rows = ns.WritRows(nil, "gain")
+    eq(rows[1].id, OGRE)
+    local at = {}
+    for i, w in ipairs(rows) do at[w.id] = i end
+    eq(at[FROST] < at[WISDOM], true)
+    eq(at[WISDOM] < at[SHOT], true) -- no price for the shot: at the end
+    local plain = ns.WritRows(nil, "prof")
+    eq(plain[1].id, ns.Writs()[1].id)
+end)
+
 test("a writ taken into the log needs no writ item", function()
     Fake({ log = { [OGRE_Q] = true }, bags = { [OGRE_ITEM] = 1 } })
     local ns = Load()
