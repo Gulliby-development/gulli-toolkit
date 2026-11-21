@@ -678,23 +678,34 @@ function ns.GuideRows()
             end
         end
     end
-    for _, row in ipairs(rows) do
-        local stop = row.stop
-        row.tier = 5
-        if row.later then row.tier = 6
-        elseif stop and stop.pin then
-            local k = onKalimdor(stop.area)
-            row.tier = (here.zone ~= nil and stop.zone == here.zone) and 0
-                or ((here.kalimdor == nil or k == here.kalimdor) and 1 or 2)
-            if row.tier == 0 and here.x then row.dist = dist(here.x, here.y, stop.x, stop.y) end
-        end
-    end
-    table.sort(rows, function(a, b)
-        if a.tier ~= b.tier then return a.tier < b.tier end
-        if (a.dist or 0) ~= (b.dist or 0) then return (a.dist or 0) < (b.dist or 0) end
-        return a.order < b.order
-    end)
+    for _, row in ipairs(rows) do ns.RankRow(row, here) end
+    table.sort(rows, ns.RowBefore)
     return rows
+end
+
+-- A row's place: `tier` 0 the player's zone (with `dist`), 1 the same continent, 2 the other
+-- one, 5 no map, 6 waits for a level; `band` puts a book above the player's level (`high`)
+-- after every book at or below it, and the books that wait last.
+function ns.RankRow(row, here)
+    local stop = row.stop
+    row.tier, row.dist = 5, nil
+    row.band = row.later and 2 or (row.high and 1 or 0)
+    if row.later then row.tier = 6
+    elseif stop and stop.pin then
+        local k = onKalimdor(stop.area)
+        row.tier = (here.zone ~= nil and stop.zone == here.zone) and 0
+            or ((here.kalimdor == nil or k == here.kalimdor) and 1 or 2)
+        if row.tier == 0 and here.x then row.dist = dist(here.x, here.y, stop.x, stop.y) end
+    end
+end
+
+function ns.RowBefore(a, b)
+    if (a.band or 0) ~= (b.band or 0) then return (a.band or 0) < (b.band or 0) end
+    -- above the player's level the lowest book comes first, wherever it lies
+    if (a.band or 0) > 0 and (a.level or 0) ~= (b.level or 0) then return (a.level or 0) < (b.level or 0) end
+    if a.tier ~= b.tier then return a.tier < b.tier end
+    if (a.dist or 0) ~= (b.dist or 0) then return (a.dist or 0) < (b.dist or 0) end
+    return a.order < b.order
 end
 
 -- Pins the stop to go to now, when it changed. With every reward got, the guide is done.
@@ -709,7 +720,7 @@ function ns.StepGuide()
     -- nearer to another one never moves the pin back and forth.
     local pick = rows[1]
     for _, row in ipairs(rows) do
-        if row.tier ~= pick.tier then break end
+        if row.tier ~= pick.tier or row.band ~= pick.band then break end
         local st = row.stop
         if st and (st.kind .. "@" .. st.quest) == ns.cdb.guide.last then pick = row break end
     end
@@ -903,11 +914,7 @@ end
 -- Starts leading through the books. Returns false when there is nothing to do.
 function ns.StartLibrary()
     if ns.paused or not ns.cdb then return false end
-    local lib = ns.Library()
-    local open = lib.bags > 0
-    for _, e in ipairs(lib.books) do if e.state == "take" or e.state == "later" then open = true end end
-    for _, t in ipairs(lib.tiers) do if t.state == "ready" or t.state == "log" then open = true end end
-    if not open then return false end
+    if #ns.LibraryRows(ns.Here()) == 0 then return false end
     claim()
     ns.cdb.guide = { library = true, targets = {} }
     return ns.StepGuide()
@@ -916,10 +923,11 @@ end
 function ns.LeadsLibrary() return ns.cdb ~= nil and ns.cdb.guide ~= nil and ns.cdb.guide.library == true end
 
 -- The library guide's rows, the same shape as ns.GuideRows: one row for the books in the bags
--- of each who takes them back, one per reward ready to take, one per book to pick up; the books
--- that wait for a level last.
+-- of each who takes them back, one per reward ready to take, one per book to pick up (with a
+-- goal, only as many as it still needs). The books at or below the player's level come before
+-- the ones above it, and the books that wait for a level last.
 local function libraryRows(here)
-    local lib, rows = ns.Library(), {}
+    local lib, rows, picks, level = ns.Library(), {}, {}, playerLevel()
     local hand = {}
     for i, e in ipairs(lib.books) do
         if e.state == "bag" then
@@ -932,7 +940,8 @@ local function libraryRows(here)
                 rows[#rows + 1] = h
             end
         elseif e.state == "take" or e.state == "later" then
-            rows[#rows + 1] = { entry = e, stop = ns.BookStop(e, here), order = 100 + i, later = e.state == "later" }
+            picks[#picks + 1] = { entry = e, stop = ns.BookStop(e, here), order = 100 + i, level = e.level,
+                                  later = e.state == "later", high = e.level > level }
         end
     end
     for i, t in ipairs(lib.tiers) do
@@ -940,9 +949,41 @@ local function libraryRows(here)
             rows[#rows + 1] = { entry = t, stop = ns.BookStop(t, here), order = 50 + i }
         end
     end
+    -- With a goal only the books it still needs, the first in the guide's order.
+    local goal = ns.LibGoal(lib)
+    if goal then
+        for _, row in ipairs(picks) do ns.RankRow(row, here) end
+        table.sort(picks, ns.RowBefore)
+        for i = goal.left + 1, #picks do picks[i] = nil end
+    end
+    for _, row in ipairs(picks) do rows[#rows + 1] = row end
     return rows
 end
 ns.LibraryRows = libraryRows
+
+-- The library goal of this character: { tier, need, left (books still to find: the goal less
+-- the books handed in and in the bags) } or nil. `lib` is ns.Library() when the caller has it.
+function ns.LibGoal(lib)
+    local q = ns.cdb and ns.cdb.libGoal
+    if not q then return nil end
+    lib = lib or ns.Library()
+    for _, t in ipairs(lib.tiers) do
+        if t.quest == q then
+            return { tier = t, quest = q, need = t.need, left = math.max(0, t.need - lib.handed - lib.bags) }
+        end
+    end
+end
+
+-- Makes a library reward the goal; the same one again takes the goal away. A guide through the
+-- books follows it at once.
+function ns.SetLibGoal(quest)
+    if not ns.cdb then return end
+    if ns.cdb.libGoal == quest then quest = nil end
+    ns.cdb.libGoal = quest
+    if ns.LeadsLibrary() then ns.StepGuide() end
+    if ns.Refresh then ns.Refresh() end
+    return quest
+end
 
 -- Tells once about a book that came into the bags and a reward that opened. The first look on
 -- a character only notes what is there.

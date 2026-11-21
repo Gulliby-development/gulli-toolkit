@@ -574,7 +574,19 @@ local function tierTip(self)
     for _, id in ipairs(t.items) do
         GameTooltip:AddLine(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
     end
+    if t.state ~= "done" or self.goal then
+        local hint = self.goal and L.LIB_GOAL_CLEAR or L.LIB_GOAL_SET
+        GameTooltip:AddLine(hint, S.MUTED[1], S.MUTED[2], S.MUTED[3])
+    end
     GameTooltip:Show()
+end
+
+-- A click on a reward makes it the goal of the guide; a click on the goal takes it away.
+local function tierClick(self)
+    local t = self.tierData
+    if not t or (t.state == "done" and not self.goal) then return end
+    ns.SetLibGoal(t.quest)
+    if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(self) then tierTip(self) end
 end
 
 local function buildLadder(p)
@@ -625,6 +637,7 @@ local function buildLadder(p)
         t.state:SetWordWrap(false)
         t:EnableMouse(true)
         t:SetScript("OnEnter", tierTip)
+        t:SetScript("OnMouseUp", tierClick)
         t:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         c.tiles[i] = t
     end
@@ -644,6 +657,7 @@ local function paintLadder(lib)
     local c = libP.ladder
     c.value:SetText(S.Emph(tostring(lib.handed)) .. colour(" / " .. lib.total, S.FAINT))
     c.bar:Set(lib.total > 0 and lib.handed / lib.total or 0, S.GOOD)
+    local goal = ns.cdb and ns.cdb.libGoal
     for i, t in ipairs(c.tiles) do
         local d = lib.tiers[i]
         t.tierData = d
@@ -658,13 +672,15 @@ local function paintLadder(lib)
                     b.icon:SetAlpha(d.state == "done" and 0.5 or 1)
                 end
             end
-            t.need:SetText(S.Upper(L.LIB_TIER:format(d.need)))
+            t.goal = goal == d.quest
+            local need = S.Upper(L.LIB_TIER:format(d.need))
+            t.need:SetText(t.goal and (need .. S.DOT .. colour(S.Upper(L.LIB_GOAL), S.Accent())) or need)
             local text, col = tierText(d)
             t.state:SetText(text)
             t.state:SetTextColor(unpack(col))
             t.mark:SetTexture(STATE_ICON[TIER_STATE[d.state]])
             t.mark:SetDesaturated(d.state == "wait" or d.state == "later")
-            S.SetBorder(t, d.state == "ready" and S.GOOD or S.CARD_EDGE)
+            S.SetBorder(t, (t.goal and S.Accent()) or (d.state == "ready" and S.GOOD) or S.CARD_EDGE)
         end
     end
 end
@@ -897,7 +913,14 @@ local function paintWindow()
         else
             leadAll:SetText(L.LIB_LEAD:format(open))
             leadAll:SetEnabled(open > 0 and not ns.paused)
-            footer:SetStatus(L.LIB_STATUS:format(lib.handed, lib.total))
+            local goal = ns.LibGoal(lib)
+            if goal and goal.left > 0 then
+                footer:SetStatus(L.LIB_GOAL_STATUS:format(goal.need, goal.left))
+            elseif goal then
+                footer:SetStatus(L.LIB_GOAL_ENOUGH:format(goal.need), S.GOOD)
+            else
+                footer:SetStatus(L.LIB_STATUS:format(lib.handed, lib.total))
+            end
         end
         return
     end

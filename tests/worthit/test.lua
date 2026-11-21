@@ -921,6 +921,84 @@ test("the window's library tab: the rewards, the books, a book's page and the gu
     tabs:Select(4)
 end)
 
+test("a library goal: a click on a reward makes it the goal, the guide leads to the books it still needs, the ones at the player's level first", function()
+    Fake({ level = 30, zone = LOCH, x = 70, y = 20, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    W.items[ns.Book(RUMI).item] = 1
+    W.items[ns.Book(RUNES).item] = 1
+    eq(ns.LibGoal(), nil)
+    eq(ns.SetLibGoal(TIER1), TIER1)
+    local goal = ns.LibGoal()
+    eq(goal.need, 10)
+    eq(goal.left, 7, "ten books less the three in the bags")
+    eq(ns.StartLibrary(), true)
+    local picks, hand, seenHigh = 0, 0, false
+    for _, r in ipairs(ns.GuideRows()) do
+        if r.stop.kind == "pick" then
+            picks = picks + 1
+            if r.entry.level > 30 then seenHigh = true
+            else assert(not seenHigh, "a book at the player's level never comes after one above it") end
+        elseif r.stop.kind == "handin" then hand = hand + 1 end
+    end
+    eq(picks, 7, "only the books the goal still needs")
+    assert(hand >= 1, "the books in the bags are still handed in")
+    -- the books chosen are the ones at or below the level while there are enough of them
+    local low = 0
+    for _, e in ipairs(ns.Library().books) do if e.state == "take" and e.level <= 30 then low = low + 1 end end
+    for _, r in ipairs(ns.GuideRows()) do
+        if r.stop.kind == "pick" and low >= 7 then assert(r.entry.level <= 30, "a book above the level while enough lie lower") end
+    end
+    -- a bigger goal follows at once in the running guide
+    ns.SetLibGoal(TIER2)
+    local n = 0
+    for _, r in ipairs(ns.GuideRows()) do if r.stop.kind == "pick" then n = n + 1 end end
+    eq(n, math.min(ns.LibGoal().need - 3, #ns.LibraryRows(ns.Here())), "twenty less three")
+    -- the same reward again takes the goal away: every book is a stop again
+    ns.SetLibGoal(TIER2)
+    eq(ns.LibGoal(), nil)
+    ns.StopGuide()
+    -- enough books for the goal: only the hand-in is left
+    ns.SetLibGoal(TIER1)
+    for _, id in ipairs(bookIds(ns, 7)) do W.done[id] = true end
+    eq(ns.LibGoal().left, 0)
+    eq(ns.StartLibrary(), true)
+    for _, r in ipairs(ns.GuideRows()) do assert(r.stop.kind ~= "pick", "no book to fetch: " .. r.stop.kind) end
+end)
+
+test("without a goal the guide still puts the books at the player's level before the ones above it", function()
+    Fake({ level = 25, zone = LOCH, x = 70, y = 20 })
+    local ns = Load()
+    ns.StartLibrary()
+    local seenHigh, seenLater = false, false
+    for _, r in ipairs(ns.GuideRows()) do
+        if r.later then seenLater = true
+        else
+            assert(not seenLater, "the books for later last")
+            if r.entry.level > 25 then seenHigh = true else assert(not seenHigh, "low before high") end
+        end
+    end
+    assert(seenHigh, "some books lie above the level")
+end)
+
+test("the window's library goal: a click on a reward tile, its mark and the footer", function()
+    Fake({ level = 30, zone = LOCH, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    ns.Show(RUMI)
+    local _, _, _, _, leadAll, _, ladder = ns.Parts()
+    local tile = ladder.tiles[1]
+    tile._OnMouseUp(tile)
+    eq(ns.cdb.libGoal, TIER1)
+    assert(tile.need:GetText():find(ns.L.LIB_GOAL:upper(), 1, true) or tile.need:GetText():find(ns.L.LIB_GOAL, 1, true), "the goal mark")
+    eq(ladder.tiles[2].need:GetText():find(ns.L.LIB_GOAL, 1, true), nil)
+    leadAll._OnClick(leadAll)
+    local n = 0
+    for _, r in ipairs(ns.GuideRows()) do if r.stop.kind == "pick" then n = n + 1 end end
+    eq(n, 9, "ten less the book in the bags")
+    leadAll._OnClick(leadAll)
+    tile._OnMouseUp(tile)
+    eq(ns.cdb.libGoal, nil, "a second click takes the goal away")
+end)
+
 test("random characters: the library and its guide never raise an error, the tracker never passes ten", function()
     math.randomseed(23)
     local seen = 0
