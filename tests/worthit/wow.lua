@@ -131,7 +131,7 @@ end
 
 -- spec: done, log, ready (quest id sets), bags (bag 1-4 -> slots), family (bag -> family),
 -- slots (item id -> slots, 10 for the rest), raceId, classId, zone (area id the player is in),
--- kalimdor, x, y, db, cdb.
+-- kalimdor, x, y, items (item id -> count in the bags), db, cdb.
 local CLASS_ID = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
 function Fake(spec)
     spec = spec or {}
@@ -139,6 +139,7 @@ function Fake(spec)
     W.done, W.log, W.ready = spec.done or {}, spec.log or {}, spec.ready or {}
     W.bags, W.family, W.slots = spec.bags or { 6, 6, 8, 8 }, spec.family or {}, spec.slots or {}
     W.zone, W.kalimdor, W.x, W.y = spec.zone, spec.kalimdor, spec.x, spec.y
+    W.items = spec.items or {}
     W.pins, W.cleared, W.toasts, W.notes, W.maps = {}, 0, {}, {}, {}
     UnitRace = function() return "Race", "Race", spec.raceId or 1 end
     UnitClass = function() return "Class", spec.class or "PRIEST", CLASS_ID[spec.class or "PRIEST"] end
@@ -162,6 +163,7 @@ function Fake(spec)
         GetItemIconByID = function(id) return "icon" .. id end,
         GetItemQualityByID = function() return 1 end,
         RequestLoadItemDataByID = function() end,
+        GetItemCount = function(id) return W.items[id] or 0 end,
     }
     C_TooltipInfo = { GetItemByID = function(id)
         local n = W.slots[id]

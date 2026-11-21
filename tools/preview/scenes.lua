@@ -1443,9 +1443,29 @@ local function wiOpen(ns)
     end
     ns.Toggle()
 end
+-- The library: book names from the comments of Data.lua, a few handed in, two in the bags.
+local function wiLibrary(ns, W)
+    local names = {}
+    for line in io.lines("Gulli-WorthIt/Data.lua") do
+        local item, name = line:match("^{%d+,(%d+),.-}, %-%- (.+)$")
+        if item then names[tonumber(item)] = name end
+    end
+    local name, icon = C_Item.GetItemNameByID, C_Item.GetItemIconByID
+    C_Item.GetItemNameByID = function(id) return names[id] or name(id) end
+    C_Item.GetItemIconByID = function(id)
+        if names[id] then return "Interface\\Icons\\INV_Misc_Book_0" .. (id % 9 + 1) end
+        return icon(id)
+    end
+    for i = 1, 11 do W.done[ns.Data.books[i][1]] = true end
+    W.done[78150] = true
+    W.items = { [ns.Data.books[14][2]] = 1, [ns.Data.books[15][2]] = 1 }
+end
+local wiLibSpec = { level = 38, class = "MAGE", zone = 38, x = 60, y = 30, bags = { 10, 10, 12, 12 } }
 S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show(140) end },
     lead = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.StartGuide(); ns.Refresh() end },
-    settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(3) end },
+    settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(4) end },
+    library = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.Show(79093) end },
+    libraryLead = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.Show(79093); ns.StartLibrary(); ns.Refresh() end },
     class = { spec = { level = 30, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17, bags = { 6, 6, 8, 8 },
                        done = { [1505] = true, [1498] = true, [1502] = true, [1503] = true, [1823] = true, [1824] = true },
                        log = { [1825] = true } },

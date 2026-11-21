@@ -685,4 +685,239 @@ test("random characters: the class list and its guide never raise an error", fun
     assert(seen > 100, "the rounds did list class quests")
 end)
 
+-- The library: Goaz Scrolls (Wetlands), Rumi of Gnomeregan (Loch Modan and Westfall), the first
+-- reward (10 books) and a level-60 book that goes to a mage trainer.
+local GOAZ, GOAZ_BOOK, RUMI, RUNES, POTATOES, TIER1, TIER2 = 78146, 209848, 79093, 78148, 84395, 78150, 79536
+local LOCH = 38
+
+-- n book quests of the lowest level, never Goaz Scrolls, Runes or Rumi.
+local function bookIds(ns, n)
+    local out, keep = {}, { [GOAZ] = true, [RUNES] = true, [RUMI] = true }
+    for _, b in ipairs(ns.Data.books) do
+        if #out == n then break end
+        if not keep[b[1]] then out[#out + 1] = b[1] end
+    end
+    return out
+end
+
+test("the data: library books with their places and who takes them back, four rewards", function()
+    Fake({})
+    local ns = Load()
+    local D = ns.Data
+    assert(#D.books >= 39, "every book: " .. #D.books)
+    local items = {}
+    for _, b in ipairs(D.books) do
+        assert(not items[b[2]], "one book per item")
+        items[b[2]] = true
+        assert(#b[4] >= 3 and #b[4] % 3 == 0, "a place for " .. b[1])
+        assert(D.takers[b[5]], "who takes back " .. b[1])
+    end
+    eq(#D.tiers, 4)
+    for i, t in ipairs(D.tiers) do
+        assert(#t[4] > 0 and t[5].A and t[5].H, "rewards and givers of " .. t[1])
+        if i > 1 then assert(t[2] > D.tiers[i - 1][2], "fewest books first") end
+    end
+    eq(D.takers[1].A[1], "Garion Wendell")
+    eq(D.takers[2].H[1], "Oran Snakewrithe")
+end)
+
+test("a book is done, in the bags, to pick up or for later; the rewards follow the books", function()
+    Fake({ level = 30, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    for _, id in ipairs(bookIds(ns, 9)) do W.done[id] = true end
+    local lib = ns.Library()
+    eq(lib.handed, 9)
+    eq(lib.bags, 1)
+    eq(find(lib.books, GOAZ).state, "bag")
+    eq(find(lib.books, GOAZ).group, "bags")
+    eq(find(lib.books, RUNES).state, "take")
+    eq(find(lib.books, POTATOES).state, "later", "a level-60 book waits at 30")
+    eq(lib.tiers[1].state, "wait")
+    eq(lib.tiers[1].left, 1)
+    W.done[GOAZ] = true
+    lib = ns.Library()
+    eq(lib.tiers[1].state, "ready")
+    eq(lib.tiers[2].state, "wait")
+    W.log[TIER1] = true
+    eq(ns.Library().tiers[1].state, "log")
+    W.done[TIER1] = true
+    eq(ns.Library().tiers[1].state, "done")
+    W.level = 10
+    for _, id in ipairs(bookIds(ns, 20)) do W.done[id] = true end
+    eq(ns.Library().tiers[2].state, "later", "enough books, the level missing")
+end)
+
+test("the book list: in the bags, to pick up, later, handed in; the done switch", function()
+    Fake({ level = 30, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    W.done[RUNES] = true
+    local items = ns.BookList()
+    eq(items[1].head, "bags")
+    eq(items[2].quest, GOAZ)
+    eq(items[#items].quest ~= nil and items[#items].state, "done")
+    ns.db.showDone = false
+    eq(find(ns.BookList(), RUNES), nil)
+end)
+
+test("a book in two places is picked up in the player's zone, and handed in by side", function()
+    Fake({ level = 30, zone = LOCH, faction = "Horde" })
+    local ns = Load()
+    local rumi = ns.Book(RUMI)
+    eq(#rumi.places, 2)
+    eq(ns.BookPlace(rumi).area, LOCH)
+    W.zone = 40
+    eq(ns.BookPlace(rumi).area, 40)
+    W.items[ns.Book(RUMI).item] = 1
+    local stop = ns.BookStop(ns.Book(RUMI))
+    eq(stop.kind, "handin")
+    eq(stop.who, "Owen Thadd")
+    W.items[228132] = 1
+    eq(ns.BookStop(ns.Book(POTATOES)).who, "Oran Snakewrithe", "a level-60 book goes to the mage trainer")
+end)
+
+test("the library guide: every book is a stop, the books in the bags one stop per taker, a ready reward its own", function()
+    Fake({ level = 30, zone = LOCH, x = 70, y = 20, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    for _, id in ipairs(bookIds(ns, 8)) do W.done[id] = true end
+    W.items[ns.Book(RUMI).item] = 1
+    eq(ns.StartLibrary(), true)
+    eq(ns.LeadsLibrary(), true)
+    local rows = ns.GuideRows()
+    local hand, claim, picks = 0, 0, 0
+    for _, r in ipairs(rows) do
+        if r.stop.kind == "handin" then hand = hand + 1; eq(r.stop.count, 2)
+        elseif r.stop.kind == "claim" then claim = claim + 1
+        else picks = picks + 1 end
+    end
+    eq(hand, 1, "both books go to the librarian in one stop")
+    eq(claim, 0, "ten books are not handed in yet")
+    local lib = ns.Library()
+    local open = 0
+    for _, e in ipairs(lib.books) do if e.state == "take" or e.state == "later" then open = open + 1 end end
+    eq(picks, open, "every book to pick up is a stop")
+    eq(rows[1].stop.zone, "Area" .. LOCH, "the player's zone first")
+    eq(rows[1].stop.kind, "pick")
+    eq(rows[#rows].later, true, "the books for later last")
+    eq(W.Pin()[1], LOCH, "the first stop is pinned")
+    ns.StopGuide()
+    W.done[GOAZ], W.items[GOAZ_BOOK], W.done[RUMI] = true, 0, true
+    ns.StartLibrary()
+    local found
+    for _, r in ipairs(ns.GuideRows()) do if r.stop.kind == "claim" then found = r.stop end end
+    eq(found.who, "Garion Wendell", "the ready reward is a stop")
+end)
+
+test("the tracker shows at most ten library stops and counts the rest", function()
+    Fake({ level = 60, zone = LOCH, x = 70, y = 20, hub = true })
+    local ns = Load()
+    ns.StartLibrary()
+    local items, more = ns.TrackerItems()
+    eq(#items, ns.TRACK_BOOKS)
+    eq(ns.TRACK_BOOKS, 10)
+    eq(more, #ns.GuideRows() - 10)
+    assert(more > 0, "the rest is counted")
+    for _, it in ipairs(items) do assert(it.book and it.name and it.where, "a two-line book row") end
+    eq(items[1].first, true)
+    ns.RefreshTracker()
+    local tr = ns.TrackerFrame()
+    local shown = 0
+    for _, r in ipairs(tr.rows) do if r:IsShown() then shown = shown + 1 end end
+    eq(shown, 10)
+    eq(tr.more:IsShown(), true)
+    eq(tr.title:GetText(), ns.L.TR_LIB)
+    -- a reward guide keeps its own six rows
+    ns.StopGuide()
+    ns.StartGuide()
+    local _, rest = ns.TrackerItems()
+    assert(#ns.TrackerItems() <= ns.TRACK_MAX)
+    eq(rest, math.max(0, #ns.GuideRows() - ns.TRACK_MAX))
+end)
+
+test("the library guide ends when there is nothing left, and one guide leads at a time", function()
+    Fake({ level = 60 })
+    local ns = Load()
+    for _, b in ipairs(ns.Data.books) do W.done[b[1]] = true end
+    for _, t in ipairs(ns.Data.tiers) do W.done[t[1]] = true end
+    eq(ns.StartLibrary(), false)
+    W.done[RUNES] = nil
+    local stopped
+    GulliHUD = { guide = { owner = "DungeonPrep", stop = function() stopped = true end } }
+    eq(ns.StartLibrary(), true)
+    eq(stopped, true)
+    eq(GulliHUD.guide.owner, "WorthIt")
+    ns.OnTurnedIn(RUNES)
+    W.done[RUNES] = true
+    eq(ns.Guiding(), false, "the last book handed in ends the guide")
+end)
+
+test("a book that comes into the bags and a reward that opens are told once, never on the first look", function()
+    Fake({ level = 30, hub = true })
+    local ns = Load()
+    for _, id in ipairs(bookIds(ns, 9)) do W.done[id] = true end
+    eq(ns.CheckBooks(), 0)
+    W.items[GOAZ_BOOK] = 1
+    eq(ns.CheckBooks(), 1)
+    eq(#W.toasts, 1)
+    assert(W.toasts[1].text:find("Garion Wendell", 1, true), "says who takes it")
+    eq(ns.CheckBooks(), 0, "once")
+    W.items[GOAZ_BOOK] = 0
+    W.done[GOAZ] = true
+    ns.db.notify = false
+    eq(ns.CheckBooks(), 1, "the first reward opened")
+    eq(#W.toasts, 1, "no notice with the switch off")
+    eq(#W.notes, 2, "the hub's feed gets both")
+    ns.Pause(true)
+    W.items[ns.Book(RUNES).item] = 1
+    eq(ns.CheckBooks(), 0, "a paused module tells nothing")
+end)
+
+test("the window's library tab: the rewards, the books, a book's page and the guide", function()
+    Fake({ level = 30, zone = LOCH, items = { [GOAZ_BOOK] = 1 } })
+    local ns = Load()
+    ns.Show(RUMI)
+    local frame, list, detail, tabs, leadAll, _, ladder = ns.Parts()
+    eq(ns.Selected(), RUMI, "Show opens the library on the book")
+    eq(#ladder.tiles, 4)
+    eq(ladder.tiles[1].need:GetText() ~= nil, true)
+    assert(detail.name:GetText():find("Item208860", 1, true), "the book's page")
+    eq(detail.places[2]:IsShown(), true, "both places")
+    leadAll._OnClick(leadAll)
+    eq(ns.LeadsLibrary(), true)
+    eq(leadAll:GetText(), ns.L.STOP)
+    leadAll._OnClick(leadAll)
+    eq(ns.Guiding(), false)
+    detail.map._OnClick(detail.map)
+    eq(W.Pin()[1], LOCH, "Show on map pins the place in the player's zone")
+    tabs:Select(1)
+    assert(ns.Selected() ~= RUMI, "the rewards tab keeps its own choice")
+    tabs:Select(4)
+end)
+
+test("random characters: the library and its guide never raise an error, the tracker never passes ten", function()
+    math.randomseed(23)
+    local seen = 0
+    for round = 1, 40 do
+        Fake({ level = math.random(1, 60), faction = round % 2 == 0 and "Horde" or "Alliance",
+               zone = ({ 38, 40, 17, 148, 10 })[math.random(5)], kalimdor = round % 3 == 0, x = 50, y = 50 })
+        local ns = Load()
+        for _, b in ipairs(ns.Data.books) do
+            local p = math.random()
+            if p < 0.4 then W.done[b[1]] = true elseif p < 0.6 then W.items[b[2]] = 1 end
+        end
+        for _, t in ipairs(ns.Data.tiers) do if math.random() < 0.3 then W.done[t[1]] = true end end
+        local items, n = ns.BookList()
+        seen = seen + n
+        for _, it in ipairs(items) do if not it.head then ns.BookSub(it) end end
+        ns.Show(ns.Data.books[math.random(#ns.Data.books)][1])
+        ns.CheckBooks()
+        if ns.StartLibrary() then
+            local tr = ns.TrackerItems()
+            assert(#tr <= 10, "at most ten rows")
+            for _, it in ipairs(tr) do assert(it.name, "a name") end
+            ns.StopGuide()
+        end
+    end
+    assert(seen > 200, "the rounds did list books")
+end)
+
 W.finish()

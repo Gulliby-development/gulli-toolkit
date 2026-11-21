@@ -10,7 +10,7 @@
 ## Notes-zhCN: 奖励值得跑一趟的任务：背包、箭袋和弹药包，与你身上的对比，你职业的职业任务，并引导你前往。 /gwi
 ## Notes-zhTW: 奖励值得跑一趟的任务：背包、箭袋和弹药包，与你身上的对比，你职业的职业任务，并引导你前往。 /gwi
 ## Author: Gulliby
-## Version: 1.4.0
+## Version: 1.5.0
 ## IconTexture: Interface\AddOns\Gulli-WorthIt\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: WorthIt

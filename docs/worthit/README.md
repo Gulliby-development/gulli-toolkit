@@ -25,7 +25,8 @@ Some quests give a bag. Most players find out too late, or never. Worth It lists
 - **The whole chain.** When a bag is the end of a quest chain, you see every step and where you are in it.
 - **Lead to the reward.** One button puts a pin on the map: first on who gives the quest, then on the place of its work, then on who takes it back. **Lead through all** does this for every open reward, the nearest first.
 - **Class quests.** A tab of its own lists every class quest of your class that gives an item: the weapons, armour, totems and robes your trainers send you for. Each one shows what you get (or the items you choose from), the whole chain and where you are in it. **Lead to the reward** and **Lead through all** work here too. The row of class icons on top shows the class quests of any other class too, so you can plan an alt or help a friend: each starts at the level it asks for, with its rewards, its chain and where it begins. Your own class is chosen when the tab opens, and only your class can be led to. Only quests WoW Forever has: raids it has not opened yet stay out.
-- **A tracker on the screen.** While the guide leads, a small panel shows what to do now and where. Place it with the toolkit's **Unlock frames**.
+- **The library.** WoW Forever hides library books all over the world. The **Library** tab lists every one: the books in your bags, the ones to pick up and where they lie, and the ones you handed in. On top you see how many you handed in and the four library rewards, with the books each one still needs. **Lead through the books** makes every book a stop of the guide: the nearest first, then who takes them back, then the reward when it is ready.
+- **A tracker on the screen.** While the guide leads, a small panel shows what to do now and where. Through the library it shows the ten nearest stops and counts the rest. Place it with the toolkit's **Unlock frames**.
 - **A note when a reward opens.** When you reach the level of a reward quest, or finish the step before it, a notice says so, once.
 - **In the toolkit.** The home page shows how many slots the open rewards would add.
 
@@ -42,6 +43,8 @@ Worth It works alone. With [Gulli Toolkit](../../README.md) installed, it also s
 1. Type `/gwi`.
 2. Pick a reward on the left.
 3. Press **Lead to the reward** and follow the pin on your map.
+
+For the library books, open the **Library** tab and press **Lead through the books**.
 
 Commands: `/gwi` opens the window, `/gwi lead` leads to every open reward, `/gwi stop` ends the guide, `/gwi reset` puts the settings back.
 
@@ -63,6 +66,12 @@ From Wowhead's WoW Forever quest list (every class quest that gives an item), jo
 <summary><b>Where do the steps under "What to do" come from?</b></summary>
 
 We write them by hand from the quest text and from the best comments of players on Wowhead's WoW Forever pages. We read the new comments again from time to time. Names of NPCs, quests and items stay in English.
+</details>
+
+<details>
+<summary><b>Where does the list of library books come from?</b></summary>
+
+From the WoW Forever quest data of QuestieDB: every quest that gives a book back to a librarian (Garion Wendell in Stormwind, Owen Thadd in Undercity) or, for the last books, to a mage trainer. A book counts as found while it is in your bags, and as done once its quest is handed in.
 </details>
 
 <details>

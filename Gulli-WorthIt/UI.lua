@@ -18,6 +18,7 @@ local STATE_ICON = {
     ready = "Interface\\GossipFrame\\ActiveQuestIcon", log = "Interface\\GossipFrame\\IncompleteQuestIcon",
     take = "Interface\\GossipFrame\\AvailableQuestIcon", later = "Interface\\RaidFrame\\ReadyCheck-Waiting",
     done = "Interface\\RaidFrame\\ReadyCheck-Ready", other = "Interface\\RaidFrame\\ReadyCheck-Waiting",
+    bag = "Interface\\GossipFrame\\ActiveQuestIcon",
 }
 local ACT_ICON = { map = TI .. "INV_Misc_Map_01", lead = TI .. "Ability_Hunter_Pathfinding",
                    link = TI .. "INV_Misc_Book_09", hide = TI .. "Ability_Stealth" }
@@ -544,6 +545,304 @@ local function listPage(body, P)
     return p
 end
 
+-- The library -------------------------------------------------------------------------------------
+-- On top the books handed in and the four library rewards; under it the books in groups on the
+-- left and one book's page on the right.
+
+local libP = { shown = {}, library = true }
+local LADDER_H, LEFT_W = 92, 186
+
+local TIER_STATE = { done = "done", ready = "ready", log = "log", wait = "later", later = "later" }
+
+local function tierText(t)
+    if t.state == "done" then return L.LIB_T_DONE, S.FAINT end
+    if t.state == "ready" then return L.LIB_T_READY, S.GOOD end
+    if t.state == "log" then return L.ST_LOG, S.TEXT end
+    if t.state == "wait" then return L.LIB_T_WAIT:format(t.left), S.MUTED end
+    return L.FROM_LEVEL:format(t.req), S.MUTED
+end
+
+local function tierTip(self)
+    local t = self.tierData
+    if not (GameTooltip and t) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(L.LIB_TIER:format(t.need), 1, 0.82, 0)
+    local text, c = tierText(t)
+    GameTooltip:AddLine(text, c[1], c[2], c[3])
+    GameTooltip:AddLine(L.WHERE:format(t.giver[1], ns.AreaName(t.giver[2]) or ""), 1, 1, 1)
+    for _, id in ipairs(t.items) do
+        GameTooltip:AddLine(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
+    end
+    GameTooltip:Show()
+end
+
+local function buildLadder(p)
+    local c = S.Card(p)
+    c.label = S.Text(c, 12, S.MUTED)
+    c.label:SetPoint("TOPLEFT", 14, -14)
+    c.label:SetWidth(LEFT_W - 14)
+    c.label:SetJustifyH("LEFT")
+    c.label:SetWordWrap(false)
+    c.label:SetText(S.Upper(L.LIB_HANDED))
+    c.value = S.Text(c, 28, S.TEXT, nil, "title")
+    c.value:SetPoint("TOPLEFT", 14, -32)
+    c.bar = S.Progress(c, 6)
+    c.bar:SetPoint("TOPLEFT", 14, -70)
+    c.bar:SetWidth(LEFT_W - 28)
+    c.tiles = {}
+    for i = 1, 4 do
+        local t = CreateFrame("Frame", nil, c)
+        S.Box(t, S.RAISED, S.CARD_EDGE, S.R_LG)
+        t.icons = {}
+        for j = 1, 3 do
+            local b = CreateFrame("Button", nil, t)
+            b:SetSize(24, 24)
+            b:SetPoint("TOPLEFT", 8 + (j - 1) * 27, -8)
+            b.icon = S.IconBox(b, 24)
+            b.icon:SetAllPoints()
+            b:SetScript("OnEnter", function(self)
+                if not (GameTooltip and self.itemId) then return end
+                GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+                if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemId) end
+                GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+            t.icons[j] = b
+        end
+        t.mark = t:CreateTexture(nil, "ARTWORK")
+        t.mark:SetSize(14, 14)
+        t.mark:SetPoint("TOPRIGHT", -8, -13)
+        t.need = S.Text(t, 12, S.GOLD_DIM, nil, "bold")
+        t.need:SetPoint("TOPLEFT", 8, -38)
+        t.need:SetPoint("RIGHT", -8, 0)
+        t.need:SetJustifyH("LEFT")
+        t.need:SetWordWrap(false)
+        t.state = S.Text(t, 12)
+        t.state:SetPoint("TOPLEFT", 8, -55)
+        t.state:SetPoint("RIGHT", -8, 0)
+        t.state:SetJustifyH("LEFT")
+        t.state:SetWordWrap(false)
+        t:EnableMouse(true)
+        t:SetScript("OnEnter", tierTip)
+        t:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        c.tiles[i] = t
+    end
+    function c:Layout(width)
+        local n, gap = #self.tiles, 8
+        local w = math.floor((width - LEFT_W - 14 - (n - 1) * gap) / n)
+        for i, t in ipairs(self.tiles) do
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", LEFT_W + (i - 1) * (w + gap), -10)
+            t:SetSize(w, LADDER_H - 20)
+        end
+    end
+    return c
+end
+
+local function paintLadder(lib)
+    local c = libP.ladder
+    c.value:SetText(S.Emph(tostring(lib.handed)) .. colour(" / " .. lib.total, S.FAINT))
+    c.bar:Set(lib.total > 0 and lib.handed / lib.total or 0, S.GOOD)
+    for i, t in ipairs(c.tiles) do
+        local d = lib.tiers[i]
+        t.tierData = d
+        t:SetShown(d ~= nil)
+        if d then
+            for j, b in ipairs(t.icons) do
+                local id = d.items[j]
+                b.itemId = id
+                b:SetShown(id ~= nil)
+                if id then
+                    b.icon:SetIcon(ns.ItemIcon(id))
+                    b.icon:SetAlpha(d.state == "done" and 0.5 or 1)
+                end
+            end
+            t.need:SetText(S.Upper(L.LIB_TIER:format(d.need)))
+            local text, col = tierText(d)
+            t.state:SetText(text)
+            t.state:SetTextColor(unpack(col))
+            t.mark:SetTexture(STATE_ICON[TIER_STATE[d.state]])
+            t.mark:SetDesaturated(d.state == "wait" or d.state == "later")
+            S.SetBorder(t, d.state == "ready" and S.GOOD or S.CARD_EDGE)
+        end
+    end
+end
+
+-- A book's row: its name, its level on the right, and where it stands under it.
+local function bookSub(e)
+    if e.state == "bag" then return L.ST_BAG, S.GOOD end
+    if e.state == "done" then return L.LG_DONE, S.FAINT end
+    if e.state == "later" then return L.FROM_LEVEL:format(e.level - ns.BOOK_EARLY), S.MUTED end
+    local place = ns.BookPlace(e)
+    return place and ns.AreaName(place.area) or "", S.TEXT
+end
+ns.BookSub = bookSub
+
+local function fillBook(r, it)
+    local head = it.head ~= nil
+    r.entry = not head and it or nil
+    r.head:SetShown(head)
+    r.icon:SetShown(not head)
+    r.click:SetShown(not head)
+    for _, t in ipairs({ r.gain, r.slots, r.name, r.sub }) do t:SetShown(not head) end
+    r.line:SetShown(not head)
+    if head then
+        r:SetSelected(false)
+        r.head:SetText(S.Upper(L["LG_" .. it.head:upper()]) .. "  " .. colour(it.count, S.FAINT))
+        return
+    end
+    r:SetSelected(it.quest == libP.selected)
+    r.itemId = it.item
+    if not rawget(r, "bookTip") then
+        rawset(r, "bookTip", true)
+        r.click:SetScript("OnEnter", itemTip)
+        r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end
+    r.icon:SetIcon(ns.ItemIcon(it.item))
+    r.icon:SetAlpha(it.state == "done" and 0.5 or 1)
+    r.name:SetText(S.QualityHex(ns.ItemQuality(it.item)) .. ns.ItemName(it.item) .. "|r")
+    r.name:SetTextColor(unpack(S.TEXT))
+    local text, c = bookSub(it)
+    r.sub:SetText("|T" .. STATE_ICON[it.state] .. ":13|t " .. text)
+    r.sub:SetTextColor(unpack(c))
+    r.gain:SetText(tostring(it.level))
+    r.gain:SetTextColor(unpack(it.state == "done" and S.FAINT or S.LevelColor(it.level)))
+    r.slots:SetText("")
+end
+
+local function buildBook(parent)
+    local d = S.Card(parent)
+    d.icon = S.IconBox(d, 44)
+    d.icon:SetPoint("TOPLEFT", 14, -14)
+    d.name = S.Text(d, 16, S.GOLD, nil, "title")
+    d.name:SetPoint("TOPLEFT", d.icon, "TOPRIGHT", 12, -2)
+    d.name:SetPoint("RIGHT", -14, 0)
+    d.name:SetJustifyH("LEFT")
+    d.name:SetWordWrap(false)
+    d.kind = S.Text(d, 12, S.MUTED)
+    d.kind:SetPoint("BOTTOMLEFT", d.icon, "BOTTOMRIGHT", 12, 2)
+    d.kind:SetPoint("RIGHT", -14, 0)
+    d.kind:SetJustifyH("LEFT")
+    d.kind:SetWordWrap(false)
+    local function line(y, size, c, lines)
+        local t = S.Text(d, size, c)
+        t:SetPoint("TOPLEFT", 14, y)
+        t:SetPoint("RIGHT", -14, 0)
+        t:SetJustifyH("LEFT")
+        if lines then t:SetMaxLines(lines) else t:SetWordWrap(false) end
+        return t
+    end
+    -- the book's name may be long: the icon and the name show the book's tooltip
+    d.hover = CreateFrame("Button", nil, d)
+    d.hover:SetPoint("TOPLEFT", 14, -14)
+    d.hover:SetPoint("RIGHT", -14, 0)
+    d.hover:SetHeight(44)
+    d.hover:SetScript("OnEnter", itemTip)
+    d.hover:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    d.state = line(-72, 12, S.MUTED)
+    d.placesHead = line(-102, 12, S.GOLD_DIM)
+    d.places = {}
+    for i = 1, 3 do d.places[i] = line(-102 - i * 19, 12, S.TEXT) end
+    d.takerHead = line(-160, 12, S.GOLD_DIM)
+    d.taker = line(-179, 12, S.TEXT)
+    d.cage = line(-204, 12, S.WARN, 2)
+    d.map = iconButton(d, L.MAP, ACT_ICON.map)
+    d.map:SetPoint("BOTTOMLEFT", 14, 14)
+    d.map:SetScript("OnClick", function()
+        local e = libP.shown[libP.selected]
+        local stop = e and ns.BookStop(e)
+        if not (stop and ns.SetPin(stop, true)) then footer:SetStatus(L.NO_PIN, S.WARN) end
+    end)
+    d.link = iconButton(d, L.WOWHEAD, ACT_ICON.link)
+    d.link:SetPoint("LEFT", d.map, "RIGHT", 8, 0)
+    d.link:SetScript("OnClick", function()
+        local e = libP.shown[libP.selected]
+        if e then ns.ShowLink(ns.WowheadURL("item", e.item), ns.ItemName(e.item)) end
+    end)
+    d.parts = { d.icon, d.name, d.kind, d.hover, d.state, d.placesHead, d.takerHead, d.taker,
+                d.cage, d.map, d.link }
+    for _, t in ipairs(d.places) do d.parts[#d.parts + 1] = t end
+    d.pick = S.Empty(d)
+    d.pick:Set(L.LIB_PICK, "")
+    return d
+end
+
+local function paintBook(e)
+    local d = libP.detail
+    for _, p in ipairs(d.parts) do p:SetShown(e ~= nil) end
+    d.pick:SetShown(e == nil)
+    if not e then return end
+    d.itemId = e.item
+    d.icon:SetIcon(ns.ItemIcon(e.item))
+    d.name:SetText(S.QualityHex(ns.ItemQuality(e.item)) .. ns.ItemName(e.item) .. "|r")
+    d.kind:SetText(L.LIB_KIND .. S.DOT .. L.LEVEL_N:format(e.level))
+    local text, c = bookSub(e)
+    if e.state == "take" then text, c = L.ST_TAKE, S.TEXT end
+    d.state:SetText("|T" .. STATE_ICON[e.state] .. ":13|t " .. text)
+    d.state:SetTextColor(unpack(c))
+    local stop = ns.BookStop(e)
+    d.placesHead:SetText(S.Upper(L.LIB_PLACES))
+    for i, t in ipairs(d.places) do
+        local p = e.places[i]
+        t:SetShown(p ~= nil)
+        if p then t:SetText((ns.AreaName(p.area) or "?") .. colour(string.format("  %.1f, %.1f", p.x, p.y), S.FAINT)) end
+    end
+    local n = math.min(#e.places, #d.places)
+    d.takerHead:SetPoint("TOPLEFT", 14, -102 - (n + 1) * 19 - 10)
+    d.taker:SetPoint("TOPLEFT", 14, -102 - (n + 2) * 19 - 10)
+    d.cage:SetPoint("TOPLEFT", 14, -102 - (n + 3) * 19 - 14)
+    d.takerHead:SetText(S.Upper(L.LIB_TAKER))
+    local who = ns.Taker(e.taker)
+    d.taker:SetText(L.WHERE:format(who[1], ns.AreaName(who[2]) or ""))
+    d.cage:SetText(e.quest == ns.CAGE_KEY_BOOK and e.state ~= "done" and L.LIB_CAGE or "")
+    d.map:SetEnabled(stop ~= nil and stop.pin == true)
+end
+
+local function libraryPage(body)
+    local p = CreateFrame("Frame", nil, body)
+    libP.ladder = buildLadder(p)
+    libP.ladder:SetPoint("TOPLEFT")
+    libP.ladder:SetPoint("TOPRIGHT")
+    libP.ladder:SetHeight(LADDER_H)
+    local left = S.Card(p)
+    left:SetPoint("TOPLEFT", libP.ladder, "BOTTOMLEFT", 0, -S.GAP)
+    left:SetPoint("BOTTOMLEFT")
+    left:SetWidth(LIST_W)
+    local box = CreateFrame("Frame", nil, left)
+    box:SetPoint("TOPLEFT", 4, -6)
+    box:SetPoint("BOTTOMRIGHT", -4, 6)
+    libP.list = S.List(box, ROW_H, makeRow(libP), fillBook)
+    libP.list:SetAllPoints()
+    libP.list.heightOf = function(it) return it.head and HEAD_H or ROW_H end
+    libP.empty = S.Empty(box)
+    libP.empty:Set(L.LIB_EMPTY, L.LIB_EMPTY_SUB)
+    libP.detail = buildBook(p)
+    libP.detail:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
+    libP.detail:SetPoint("BOTTOMRIGHT")
+    return p
+end
+
+local function paintLibrary()
+    local lib = ns.Library()
+    local w = tonumber(libP.ladder:GetWidth()) or 0
+    libP.ladder:Layout(w > 300 and w or 800)
+    paintLadder(lib)
+    local items, n = ns.BookList()
+    libP.shown = {}
+    local first
+    for _, it in ipairs(items) do
+        if not it.head then
+            libP.shown[it.quest] = it
+            first = first or it.quest
+        end
+    end
+    if not libP.shown[libP.selected] then libP.selected = first end
+    libP.list:SetData(items)
+    libP.empty:SetShown(n == 0)
+    paintBook(libP.shown[libP.selected])
+    return lib
+end
+
 local function settingsPage(body, width)
     local page = S.ScrollPage(body, width)
     local st = S.Stack(page.inner)
@@ -585,9 +884,24 @@ end
 local function paintWindow()
     local bags = ns.Bags()
     paintStrip(bags)
+    better:SetChecked(ns.db.better)
+    if current == 3 then
+        leadAll:SetShown(true)
+        local lib = paintLibrary()
+        local open = #ns.LibraryRows(ns.Here())
+        if ns.Guiding() then
+            leadAll:SetText(L.STOP)
+            leadAll:SetEnabled(true)
+            footer:SetStatus(L.STATUS_LEAD:format(ns.stop and ns.StopText(ns.stop) or ""), S.Accent())
+        else
+            leadAll:SetText(L.LIB_LEAD:format(open))
+            leadAll:SetEnabled(open > 0 and not ns.paused)
+            footer:SetStatus(L.LIB_STATUS:format(lib.handed, lib.total))
+        end
+        return
+    end
     local class = current == 2
     paintList(class and classP or rewardsP, bags)
-    better:SetChecked(ns.db.better)
     local targets = #ns.Targets(class)
     local other = class and classP.viewClass
     -- another class's quests are only to look at: no Lead through all
@@ -628,6 +942,8 @@ local function build()
     leadAll:SetScript("OnClick", function()
         if ns.Guiding() then
             ns.StopGuide()
+        elseif current == 3 then
+            if not ns.StartLibrary() then footer:SetStatus(L.LIB_NOTHING, S.WARN) end
         elseif not ns.StartGuide(nil, current == 2) then
             footer:SetStatus(current == 2 and L.CQ_NOTHING or L.NOTHING, S.WARN)
         end
@@ -636,13 +952,13 @@ local function build()
     local st = S.Stack(body)
     strip = buildStrip(body)
     st:Add(strip, 52)
-    tabs = S.PageTabs(body, { L.TAB_REWARDS, L.TAB_CLASS, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_REWARDS, L.TAB_CLASS, L.TAB_LIBRARY, L.TAB_SETTINGS }, nil, function(i)
         current = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if better then better:SetShown(i == 1) end
-        footer:SetShown(i ~= 3)
+        footer:SetShown(i ~= 4)
         ns.Refresh()
-    end, nil, { S.TAB.list, classIcon(), S.TAB.settings })
+    end, nil, { S.TAB.list, classIcon(), ns.BOOK_ICON, S.TAB.settings })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
     better = S.SwitchLabel(body, L.ONLY_BETTER, function() return ns.db.better end,
@@ -651,7 +967,8 @@ local function build()
     st:Space(30 + S.GAP)
     pages[1] = listPage(body, rewardsP)
     pages[2] = listPage(body, classP)
-    pages[3] = settingsPage(body, width)
+    pages[3] = libraryPage(body)
+    pages[4] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -st.y)
         p:SetPoint("BOTTOMRIGHT")
@@ -665,10 +982,19 @@ function ns.Toggle()
 end
 
 -- Opens the window on one entry (a notice's button, a click on the tracker): a class quest on
--- its own page, a bag reward on the first.
+-- its own page, a library book or reward on the library's, a bag reward on the first.
 function ns.Show(quest)
     local f = ns.Window()
     if not f:IsShown() then ns.Toggle() end
+    local book = ns.Book(quest)
+    local tier = false
+    for _, t in ipairs(ns.Data.tiers or {}) do if t[1] == quest then tier = true end end
+    if book or tier then
+        tabs:Select(3)
+        if book then libP.selected = quest end
+        ns.Refresh()
+        return
+    end
     local class = false
     for _, e in ipairs(ns.ClassQuests()) do if e.quest == quest then class = true end end
     if class and classP.viewClass then
@@ -689,11 +1015,13 @@ function ns.Window()
 end
 
 -- For the tests and the previews.
+local function pageP() return (current == 2 and classP) or (current == 3 and libP) or rewardsP end
 function ns.Parts()
-    local P = current == 2 and classP or rewardsP
-    return frame, P.list, P.detail, tabs, leadAll, strip
+    local P = pageP()
+    return frame, P.list, P.detail, tabs, leadAll, strip, libP.ladder
 end
-function ns.Selected() return (current == 2 and classP or rewardsP).selected end
+function ns.Selected() return pageP().selected end
+ns.ShowBook = function(quest) ns.Show(quest) end
 function ns.ViewClass(id)
     ns.Window()
     for i, c in ipairs(ns.CLASSES) do if c == id then classTabs:Select(i) end end
@@ -705,7 +1033,7 @@ end
 -- opens the reward in the window, the cross ends the guide. It shows by itself, so it has no
 -- show switch; the hub's Unlock mode places it.
 
-local TW, T_HEAD, T_ROW = 290, 28, 56
+local TW, T_HEAD, T_ROW, T_BOOK, T_MORE = 290, 28, 56, 40, 22
 local tracker
 
 function ns.PlaceTracker()
@@ -750,6 +1078,15 @@ local function trackerRow(parent)
     r.what = text(-22, 12, S.TEXT)
     r.where = text(-36, 12, S.MUTED)
     r:SetScript("OnClick", function(self) if self.item then ns.Show(self.item.quest) end end)
+    -- a book's name may be cut: its row shows the book's tooltip
+    r:SetScript("OnEnter", function(self)
+        local it = self.item
+        if not (GameTooltip and it and it.book and it.item) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        if GameTooltip.SetItemByID then GameTooltip:SetItemByID(it.item) end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     return r
 end
 
@@ -781,12 +1118,11 @@ local function buildTracker()
     tracker.empty:SetJustifyH("LEFT")
     tracker.empty:SetText(L.TR_EMPTY)
     tracker.rows = {}
-    for i = 1, ns.TRACK_MAX do
-        local r = trackerRow(tracker)
-        r:SetPoint("TOPLEFT", 1, -(T_HEAD + 2 + (i - 1) * T_ROW))
-        r:SetPoint("TOPRIGHT", -1, -(T_HEAD + 2 + (i - 1) * T_ROW))
-        tracker.rows[i] = r
-    end
+    for i = 1, math.max(ns.TRACK_MAX, ns.TRACK_BOOKS) do tracker.rows[i] = trackerRow(tracker) end
+    -- through the library only the nearest stops show: the rest is one line under them
+    tracker.more = S.Text(tracker, 12, S.FAINT)
+    tracker.more:SetJustifyH("LEFT")
+    tracker.more:SetWordWrap(false)
     S.Mover(tracker, { label = L.TR_TITLE,
         save = function(p, rp, x, y) if ns.db then ns.db.trackerPoint = { p, rp, x, y } end end,
         reset = function() if ns.db then ns.db.trackerPoint = nil end; ns.PlaceTracker() end })
@@ -807,22 +1143,43 @@ function ns.RefreshTracker()
     end
     if not tracker then buildTracker() end
     ns.PlaceTracker()
-    local items = ns.Guiding() and ns.TrackerItems() or {}
+    local items, more = {}, 0
+    if ns.Guiding() then items, more = ns.TrackerItems() end
+    tracker.title:SetText(ns.LeadsLibrary() and L.TR_LIB or L.TR_TITLE)
+    local y = T_HEAD + 2
     for i, r in ipairs(tracker.rows) do
         local it = items[i]
         r.item = it
         r:SetShown(it ~= nil)
         if it then
+            local h = it.book and T_BOOK or T_ROW
+            r:SetHeight(h)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 1, -y)
+            r:SetPoint("TOPRIGHT", -1, -y)
+            y = y + h
             r.icon:SetIcon(ns.ItemIcon(it.item))
             r.name:SetText(it.name)
             r.name:SetTextColor(unpack(it.first and S.Accent() or S.GOLD))
+            r.what:SetShown(not it.book)
             r.what:SetText("|T" .. STATE_ICON[it.state] .. ":12|t " .. (it.what or ""))
-            r.where:SetText(it.where or "")
+            r.where:ClearAllPoints()
+            r.where:SetPoint("TOPLEFT", 40, it.book and -22 or -36)
+            r.where:SetPoint("RIGHT", -32, 0)
+            r.where:SetText(it.book and ("|T" .. STATE_ICON[it.state] .. ":12|t " .. (it.where or "")) or (it.where or ""))
             r.pin:SetShown(it.pin ~= nil)
         end
     end
+    tracker.more:SetShown(more > 0)
+    if more > 0 then
+        tracker.more:ClearAllPoints()
+        tracker.more:SetPoint("TOPLEFT", 40, -y - 4)
+        tracker.more:SetPoint("RIGHT", -10, 0)
+        tracker.more:SetText(L.TR_MORE:format(more))
+        y = y + T_MORE
+    end
     tracker.empty:SetShown(#items == 0)
-    tracker:SetHeight(T_HEAD + 6 + (#items > 0 and #items * T_ROW or 34))
+    tracker:SetHeight(#items > 0 and (y + 4) or (T_HEAD + 40))
     tracker:SetMoving(moving and not (InCombatLockdown and InCombatLockdown()))
     tracker:Show()
 end
