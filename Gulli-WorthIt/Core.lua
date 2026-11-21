@@ -208,11 +208,58 @@ local function wholeChain(quest)
     return true
 end
 
+-- Where an entry stands for this character: state (ready, log, take, later, done), group (now,
+-- later, done), chain (quest ids), cur (the step to do now), step, steps, level, req (the level
+-- the step asks for), hidden and progress (how far on, for picking between branches).
+local function settle(e, level)
+    local D = ns.Data
+    local chain = ns.ChainOf(e.quest)
+    e.chain, e.steps = chain, #chain
+    local progress = 0
+    if questDone(e.quest) then
+        e.state, e.step, e.cur, progress = "done", #chain, e.quest, 1000
+    else
+        for i, id in ipairs(chain) do
+            if questDone(id) then progress = i elseif not e.cur then e.cur, e.step = id, i end
+        end
+        e.cur, e.step = e.cur or e.quest, e.step or #chain
+        local q = D.quest[e.cur] or D.quest[e.quest]
+        e.req = q[3] or 1
+        if onQuest(e.cur) then
+            e.state = questReady(e.cur) and "ready" or "log"
+            progress = progress + 0.5
+        else
+            e.state = level >= e.req and "take" or "later"
+        end
+    end
+    e.level = D.quest[e.quest][2]
+    e.group = (e.state == "done" and "done") or (e.state == "later" and "later") or "now"
+    e.hidden = ns.db ~= nil and ns.db.hidden ~= nil and ns.db.hidden[e.quest] == true
+    e.progress = progress
+end
+
+-- Keeps one entry per set of items: the same reward behind two quests (a branch of a chain, a
+-- copy for each race) is listed once, by the branch the character is further on.
+local function once(entries)
+    local out, byKey = {}, {}
+    for _, e in ipairs(entries) do
+        local ids = {}
+        for _, o in ipairs(e.options) do ids[#ids + 1] = o.item end
+        table.sort(ids)
+        local key = table.concat(ids, ",")
+        local at = byKey[key]
+        if not at then
+            out[#out + 1] = e
+            byKey[key] = #out
+        elseif e.progress > out[at].progress then
+            out[at] = e
+        end
+    end
+    return out
+end
+
 -- Every reward this character can get, one entry per quest: { quest, item, kind, slots, gain,
--- options (every item the quest offers the character, the best first), state (ready, log,
--- take, later, done), group (now, later, done), chain (quest ids), cur (the step to do now),
--- step, steps, level, req (the level the step asks for), hidden }. The same reward behind two
--- quests (a branch of a chain) is listed once, by the branch the character is further on.
+-- options (every item the quest offers the character, the best first) } and what settle adds.
 function ns.Rewards()
     local D, bags, level = ns.Data, ns.Bags(), playerLevel()
     local byQuest, order = {}, {}
@@ -230,7 +277,6 @@ function ns.Rewards()
             e.options[#e.options + 1] = { item = item, kind = kind, slots = slots, gain = ns.Gain(kind, slots, bags) }
         end
     end
-    local out, byKey = {}, {}
     for _, e in ipairs(order) do
         table.sort(e.options, function(a, b)
             local ga, gb = a.gain or -1000, b.gain or -1000
@@ -239,42 +285,34 @@ function ns.Rewards()
         end)
         local best = e.options[1]
         e.item, e.kind, e.slots, e.gain = best.item, best.kind, best.slots, best.gain
-        local chain = ns.ChainOf(e.quest)
-        e.chain, e.steps = chain, #chain
-        local progress = 0
-        if questDone(e.quest) then
-            e.state, e.step, e.cur, progress = "done", #chain, e.quest, 1000
-        else
-            for i, id in ipairs(chain) do
-                if questDone(id) then progress = i elseif not e.cur then e.cur, e.step = id, i end
-            end
-            e.cur, e.step = e.cur or e.quest, e.step or #chain
-            local q = D.quest[e.cur] or D.quest[e.quest]
-            e.req = q[3] or 1
-            if onQuest(e.cur) then
-                e.state = questReady(e.cur) and "ready" or "log"
-                progress = progress + 0.5
-            else
-                e.state = level >= e.req and "take" or "later"
-            end
-        end
-        e.level = D.quest[e.quest][2]
-        e.group = (e.state == "done" and "done") or (e.state == "later" and "later") or "now"
-        e.hidden = ns.db ~= nil and ns.db.hidden ~= nil and ns.db.hidden[e.quest] == true
-        e.progress = progress
-        local ids = {}
-        for _, o in ipairs(e.options) do ids[#ids + 1] = o.item end
-        table.sort(ids)
-        local key = table.concat(ids, ",")
-        local at = byKey[key]
-        if not at then
-            out[#out + 1] = e
-            byKey[key] = #out
-        elseif e.progress > out[at].progress then
-            out[at] = e
+        settle(e, level)
+    end
+    return once(order), bags
+end
+
+-- The class quests that give an item, for this character's class: { quest, class = true, item
+-- (the first the quest gives), options (every item, in the quest's order) } and what settle adds.
+function ns.ClassQuests()
+    local D, level = ns.Data, playerLevel()
+    local classId = select(3, UnitClass("player"))
+    local order = {}
+    for _, r in ipairs(D.class or {}) do
+        local quest, mask, items = r[1], r[2], r[3]
+        if D.quest[quest] and hasBit(mask, classId) and wholeChain(quest) then
+            local e = { quest = quest, class = true, options = {} }
+            for _, item in ipairs(items) do e.options[#e.options + 1] = { item = item } end
+            e.item = items[1]
+            settle(e, level)
+            order[#order + 1] = e
         end
     end
-    return out, bags
+    return once(order)
+end
+
+-- The entry of a quest, a bag reward or a class quest.
+function ns.Entry(quest)
+    for _, e in ipairs((ns.Rewards())) do if e.quest == quest then return e end end
+    for _, e in ipairs(ns.ClassQuests()) do if e.quest == quest then return e end end
 end
 
 -- Whether the reward is better than what is worn (unknown slots count as better).
@@ -292,18 +330,20 @@ end
 -- (nil is all). Hidden rewards are left out, the ones that are no better with `better` on,
 -- the done ones with `showDone` off. Also returns the number of entries.
 function ns.List(kind)
-    local rewards = ns.Rewards()
+    local class = kind == "class"
+    local rewards = class and ns.ClassQuests() or ns.Rewards()
     local groups = { now = {}, later = {}, done = {} }
     for _, e in ipairs(rewards) do
-        local keep = not e.hidden and (not kind or e.kind == kind)
+        local keep = not e.hidden and (class or not kind or e.kind == kind)
         if keep and e.state == "done" then keep = ns.db.showDone
-        elseif keep and ns.db.better then keep = ns.IsBetter(e) end
+        elseif keep and ns.db.better and not class then keep = ns.IsBetter(e) end
         if keep then local g = groups[e.group]; g[#g + 1] = e end
     end
     table.sort(groups.now, function(a, b)
         if STATE_ORDER[a.state] ~= STATE_ORDER[b.state] then return STATE_ORDER[a.state] < STATE_ORDER[b.state] end
         local ga, gb = a.gain or 0, b.gain or 0
         if ga ~= gb then return ga > gb end
+        if a.level ~= b.level then return a.level < b.level end
         return a.quest < b.quest
     end)
     table.sort(groups.later, function(a, b)
@@ -320,11 +360,12 @@ function ns.List(kind)
     return out, n
 end
 
--- The rewards the guide would lead to: open now, not hidden, better than what is worn.
-function ns.Targets()
+-- The rewards the guide would lead to: open now, not hidden, better than what is worn. With
+-- `class`, the class quests open now that are not hidden.
+function ns.Targets(class)
     local out = {}
-    for _, e in ipairs((ns.Rewards())) do
-        if e.group == "now" and not e.hidden and ns.IsBetter(e) then out[#out + 1] = e end
+    for _, e in ipairs(class and ns.ClassQuests() or (ns.Rewards())) do
+        if e.group == "now" and not e.hidden and (class or ns.IsBetter(e)) then out[#out + 1] = e end
     end
     return out
 end
@@ -375,10 +416,15 @@ function ns.Tips(quest)
     return (t and t[quest]) or (all.en and all.en[quest]) or nil
 end
 
--- The reward's page under its lines: "What to do" with its steps, then the chain with its quests.
--- { head = text }, { tip = text, n = i } or a step of ns.Steps.
-function ns.DetailRows(e, chainHead, tipsHead)
+-- The entry's page under its lines: a class quest's rewards, "What to do" with its steps, then
+-- the chain with its quests. { head = text }, { item = id }, { tip = text, n = i } or a step of
+-- ns.Steps.
+function ns.DetailRows(e, chainHead, tipsHead, rewardHead)
     local out = {}
+    if e.class then
+        out[#out + 1] = { head = rewardHead or (#e.options > 1 and ns.L.CQ_CHOOSE_HEAD or ns.L.CQ_REWARD_HEAD) }
+        for _, o in ipairs(e.options) do out[#out + 1] = { item = o.item } end
+    end
     local tips = ns.Tips(e.quest)
     if tips and #tips > 0 then
         out[#out + 1] = { head = tipsHead or ns.L.TIPS }
@@ -522,13 +568,13 @@ function ns.Leads(quest)
     return false
 end
 
--- Starts leading: to the rewards of these quests, or to every open one. Returns false when
--- there is nowhere to lead.
-function ns.StartGuide(quests)
+-- Starts leading: to the rewards of these quests, or to every open one (of the class quests
+-- with `class`). Returns false when there is nowhere to lead.
+function ns.StartGuide(quests, class)
     if ns.paused or not ns.cdb then return false end
     if not quests then
         quests = {}
-        for _, e in ipairs(ns.Targets()) do quests[#quests + 1] = e.quest end
+        for _, e in ipairs(ns.Targets(class)) do quests[#quests + 1] = e.quest end
     end
     if #quests == 0 then return false end
     claim()
@@ -556,6 +602,7 @@ function ns.GuideRows()
     local g = ns.cdb and ns.cdb.guide
     if not g then return {} end
     local byQuest, here, rows = {}, ns.Here(), {}
+    for _, e in ipairs(ns.ClassQuests()) do byQuest[e.quest] = e end
     for _, e in ipairs((ns.Rewards())) do byQuest[e.quest] = e end
     for i, id in ipairs(g.targets) do
         local e = byQuest[id]
@@ -635,8 +682,7 @@ end
 
 -- A reward quest was handed in: one notice, and the guide goes on to the next reward.
 function ns.OnTurnedIn(id)
-    local entry
-    for _, e in ipairs((ns.Rewards())) do if e.quest == id then entry = e end end
+    local entry = ns.Entry(id)
     turned[id] = true
     if entry and not ns.paused then
         local text = L.GOT:format(ns.ItemName(entry.item))

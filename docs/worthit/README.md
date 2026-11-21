@@ -24,6 +24,7 @@ Some quests give a bag. Most players find out too late, or never. Worth It lists
 - **What to do, step by step.** Each reward has two to four short steps: where the quest items are, which way to go, what to watch out for. They come from the tips of players on Wowhead, in your game's language.
 - **The whole chain.** When a bag is the end of a quest chain, you see every step and where you are in it.
 - **Lead to the reward.** One button puts a pin on the map: first on who gives the quest, then on the place of its work, then on who takes it back. **Lead through all** does this for every open reward, the nearest first.
+- **Class quests.** A tab of its own lists every class quest of your class that gives an item: the weapons, armour, totems and robes your trainers send you for. Each one shows what you get (or the items you choose from), the whole chain and where you are in it. **Lead to the reward** and **Lead through all** work here too. Only quests WoW Forever has: raids it has not opened yet stay out.
 - **A tracker on the screen.** While the guide leads, a small panel shows what to do now and where. Place it with the toolkit's **Unlock frames**.
 - **A note when a reward opens.** When you reach the level of a reward quest, or finish the step before it, a notice says so, once.
 - **In the toolkit.** The home page shows how many slots the open rewards would add.
@@ -50,6 +51,12 @@ Commands: `/gwi` opens the window, `/gwi lead` leads to every open reward, `/gwi
 <summary><b>A reward shows no number of slots.</b></summary>
 
 The game tells a bag's size a moment after it first hears of the item. Open the window again and the number is there.
+</details>
+
+<details>
+<summary><b>Where does the list of class quests come from?</b></summary>
+
+From Wowhead's WoW Forever quest list (every class quest that gives an item), joined with the quest data of QuestieDB for the chains and the places. Quests of raids WoW Forever has not opened yet (Zul'Gurub, Ahn'Qiraj, Molten Core, Blackwing Lair, Naxxramas) are left out until they open.
 </details>
 
 <details>

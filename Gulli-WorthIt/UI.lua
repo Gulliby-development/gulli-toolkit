@@ -7,10 +7,9 @@ local L = ns.L
 local S = ns.Skin
 local TI = "Interface\\Icons\\"
 
-local frame, footer, leadAll, strip, tabs, better, list, empty, detail, kindTabs
+local frame, footer, leadAll, strip, tabs, better, kindTabs
 local pages = {}
-local kinds, kindFilter, selected = {}, nil, nil
-local shown = {}        -- quest -> the entry the list shows now
+local kinds = {}
 
 local LIST_W, HEAD_H, ROW_H = 336, 28, 48
 local PACK_ICON = "Interface\\Icons\\INV_Misc_Bag_08"
@@ -172,66 +171,84 @@ local function paintStrip(bags)
 end
 
 -- The list ----------------------------------------------------------------------------------------
+-- Two pages show a list and one entry's page: the bag rewards and the class quests. Each page
+-- keeps its own list, filter and choice in its table `P`.
 
-local function makeRow(r)
-    S.NavRow(r)
-    r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
-    r.head:SetPoint("BOTTOMLEFT", 8, 6)
-    r.head:SetPoint("RIGHT", -8, 0)
-    r.head:SetJustifyH("LEFT")
-    r.head:SetWordWrap(false)
-    r.icon = S.IconBox(r, 32)
-    r.icon:SetPoint("LEFT", 8, 0)
-    r.gain = S.Text(r, 14, S.GOOD)
-    r.gain:SetPoint("TOPRIGHT", -10, -8)
-    r.gain:SetJustifyH("RIGHT")
-    r.slots = S.Text(r, 12, S.FAINT)
-    r.slots:SetPoint("BOTTOMRIGHT", -10, 8)
-    r.slots:SetJustifyH("RIGHT")
-    r.name = S.Text(r, 13)
-    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 9, 0)
-    r.name:SetPoint("RIGHT", r.gain, "LEFT", -6, 0)
-    r.name:SetJustifyH("LEFT")
-    r.name:SetWordWrap(false)
-    r.sub = S.Text(r, 12, S.MUTED)
-    r.sub:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 9, 0)
-    r.sub:SetPoint("RIGHT", r.slots, "LEFT", -6, 0)
-    r.sub:SetJustifyH("LEFT")
-    r.sub:SetWordWrap(false)
-    r.click = CreateFrame("Button", nil, r)
-    r.click:SetAllPoints()
-    r.click:SetScript("OnClick", function(self)
-        local e = self:GetParent().entry
-        if e then selected = e.quest; ns.Refresh() end
-    end)
-end
-
-local function fillRow(r, it)
-    local head = it.head ~= nil
-    r.entry = not head and it or nil
-    r.head:SetShown(head)
-    r.icon:SetShown(not head)
-    r.click:SetShown(not head)
-    for _, t in ipairs({ r.gain, r.slots, r.name, r.sub }) do t:SetShown(not head) end
-    r.line:SetShown(not head)
-    if head then
-        r:SetSelected(false)
-        r.head:SetText(S.Upper(L["G_" .. it.head:upper()]) .. "  " .. colour(it.count, S.FAINT))
-        return
+local function makeRow(P)
+    return function(r)
+        S.NavRow(r)
+        r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
+        r.head:SetPoint("BOTTOMLEFT", 8, 6)
+        r.head:SetPoint("RIGHT", -8, 0)
+        r.head:SetJustifyH("LEFT")
+        r.head:SetWordWrap(false)
+        r.icon = S.IconBox(r, 32)
+        r.icon:SetPoint("LEFT", 8, 0)
+        r.gain = S.Text(r, 14, S.GOOD)
+        r.gain:SetPoint("TOPRIGHT", -10, -8)
+        r.gain:SetJustifyH("RIGHT")
+        r.slots = S.Text(r, 12, S.FAINT)
+        r.slots:SetPoint("BOTTOMRIGHT", -10, 8)
+        r.slots:SetJustifyH("RIGHT")
+        r.name = S.Text(r, 13)
+        r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 9, 0)
+        r.name:SetPoint("RIGHT", r.gain, "LEFT", -6, 0)
+        r.name:SetJustifyH("LEFT")
+        r.name:SetWordWrap(false)
+        r.sub = S.Text(r, 12, S.MUTED)
+        r.sub:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 9, 0)
+        r.sub:SetPoint("RIGHT", r.slots, "LEFT", -6, 0)
+        r.sub:SetJustifyH("LEFT")
+        r.sub:SetWordWrap(false)
+        r.click = CreateFrame("Button", nil, r)
+        r.click:SetAllPoints()
+        r.click:SetScript("OnClick", function(self)
+            local e = self:GetParent().entry
+            if e then P.selected = e.quest; ns.Refresh() end
+        end)
     end
-    r:SetSelected(it.quest == selected)
-    r.icon:SetIcon(ns.ItemIcon(it.item))
-    r.icon:SetAlpha(it.state == "done" and 0.5 or 1)
-    r.name:SetText(S.QualityHex(ns.ItemQuality(it.item)) .. ns.ItemName(it.item) .. "|r")
-    local text, c = ns.StateText(it)
-    r.sub:SetText("|T" .. STATE_ICON[it.state] .. ":13|t " .. text)
-    r.sub:SetTextColor(unpack(c))
-    local up = it.state ~= "done" and it.gain and it.gain > 0
-    r.gain:SetText(up and ("+" .. it.gain) or "")
-    r.slots:SetText(it.slots and L.SLOTS:format(it.slots) or "")
 end
 
--- One reward's page ----------------------------------------------------------------------------------
+-- A class quest's row: the quest's name in gold, its level on the right, and the reward (or
+-- how many it lets you choose from) under it.
+local function fillRow(P)
+    return function(r, it)
+        local head = it.head ~= nil
+        r.entry = not head and it or nil
+        r.head:SetShown(head)
+        r.icon:SetShown(not head)
+        r.click:SetShown(not head)
+        for _, t in ipairs({ r.gain, r.slots, r.name, r.sub }) do t:SetShown(not head) end
+        r.line:SetShown(not head)
+        if head then
+            r:SetSelected(false)
+            r.head:SetText(S.Upper(L["G_" .. it.head:upper()]) .. "  " .. colour(it.count, S.FAINT))
+            return
+        end
+        r:SetSelected(it.quest == P.selected)
+        r.icon:SetIcon(ns.ItemIcon(it.item))
+        r.icon:SetAlpha(it.state == "done" and 0.5 or 1)
+        local text, c = ns.StateText(it)
+        r.sub:SetText("|T" .. STATE_ICON[it.state] .. ":13|t " .. text)
+        r.sub:SetTextColor(unpack(c))
+        if it.class then
+            r.name:SetText(ns.QuestTitle(it.quest))
+            r.name:SetTextColor(unpack(it.state == "done" and S.FAINT or S.GOLD))
+            r.gain:SetText(tostring(it.level))
+            r.gain:SetTextColor(unpack(it.state == "done" and S.FAINT or S.LevelColor(it.level)))
+            r.slots:SetText(#it.options > 1 and L.CQ_CHOICES:format(#it.options) or "")
+            return
+        end
+        r.name:SetText(S.QualityHex(ns.ItemQuality(it.item)) .. ns.ItemName(it.item) .. "|r")
+        r.name:SetTextColor(unpack(S.TEXT))
+        r.gain:SetTextColor(unpack(S.GOOD))
+        local up = it.state ~= "done" and it.gain and it.gain > 0
+        r.gain:SetText(up and ("+" .. it.gain) or "")
+        r.slots:SetText(it.slots and L.SLOTS:format(it.slots) or "")
+    end
+end
+
+-- One entry's page ----------------------------------------------------------------------------------
 
 local function iconButton(parent, text, icon, primary)
     local b = S.Button(parent, 110, 30)
@@ -245,10 +262,19 @@ local function iconButton(parent, text, icon, primary)
     return b
 end
 
--- The rows under a reward: a quest of the chain, a head, and a wrapped "what to do" line.
-local STEP_H, TIP_LEFT, TIP_RIGHT, TIP_PAD, TIP_WIDTH = 24, 28, 12, 5, 420
+-- The rows under an entry: a quest of the chain, a head, a reward item and a wrapped "what to
+-- do" line.
+local STEP_H, ITEM_H, TIP_LEFT, TIP_RIGHT, TIP_PAD, TIP_WIDTH = 24, 30, 28, 12, 5, 420
 
-local function buildDetail(parent)
+local function itemTip(self)
+    local id = self:GetParent().itemId
+    if not (GameTooltip and id) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) end
+    GameTooltip:Show()
+end
+
+local function buildDetail(parent, P)
     local d = S.Card(parent)
     d.icon = S.IconBox(d, 44)
     d.icon:SetPoint("TOPLEFT", 14, -14)
@@ -275,7 +301,7 @@ local function buildDetail(parent)
     d.what = line(-120, 13, S.TEXT)
     d.where = line(-139, 12, S.MUTED)
     d.offers = line(-160, 12, S.MUTED)
-    -- One scrolling list: what to do (wrapped lines), then the chain's quests.
+    -- One scrolling list: the rewards (class quests), what to do (wrapped lines), then the chain.
     d.stepsBox = CreateFrame("Frame", nil, d)
     d.stepsBox:SetPoint("TOPLEFT", 8, -180)
     d.stepsBox:SetPoint("BOTTOMRIGHT", -8, 84)
@@ -305,14 +331,30 @@ local function buildDetail(parent)
         r.tip:SetPoint("RIGHT", -TIP_RIGHT, 0)
         r.tip:SetJustifyH("LEFT")
         r.tip:SetJustifyV("TOP")
+        r.item = S.IconBox(r, 22)
+        r.item:SetPoint("LEFT", 4, 0)
+        r.itemName = S.Text(r, 12)
+        r.itemName:SetPoint("LEFT", r.item, "RIGHT", 8, 0)
+        r.itemName:SetPoint("RIGHT", -8, 0)
+        r.itemName:SetJustifyH("LEFT")
+        r.itemName:SetWordWrap(false)
+        r.hover = CreateFrame("Button", nil, r)
+        r.hover:SetAllPoints()
+        r.hover:SetScript("OnEnter", itemTip)
+        r.hover:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, function(r, st)
-        local step = not st.head and not st.tip
+        local item = st.item ~= nil
+        local step = not st.head and not st.tip and not item
         r.mark:SetShown(step)
         r.level:SetShown(step)
         r.name:SetShown(step)
         r.head:SetShown(st.head ~= nil)
         r.num:SetShown(st.tip ~= nil)
         r.tip:SetShown(st.tip ~= nil)
+        r.item:SetShown(item)
+        r.itemName:SetShown(item)
+        r.hover:SetShown(item)
+        r.itemId = st.item
         r.line:SetShown(not st.head)
         if st.head then
             r.head:SetText(st.head)
@@ -320,6 +362,10 @@ local function buildDetail(parent)
         elseif st.tip then
             r.num:SetText(st.n .. ".")
             r.tip:SetText(st.tip)
+            return
+        elseif item then
+            r.item:SetIcon(ns.ItemIcon(st.item))
+            r.itemName:SetText(S.QualityHex(ns.ItemQuality(st.item)) .. ns.ItemName(st.item) .. "|r")
             return
         end
         r.mark:SetTexture(st.done and STATE_ICON.done or (st.now and STATE_ICON.take) or STATE_ICON.later)
@@ -330,8 +376,8 @@ local function buildDetail(parent)
         r.level:SetTextColor(unpack(st.done and S.FAINT or S.LevelColor(st.level)))
     end)
     d.steps.heightOf = function(st)
-        if st.head then return STEP_H end
-        if not st.tip then return STEP_H end
+        if st.item then return ITEM_H end
+        if st.head or not st.tip then return STEP_H end
         local w = d.stepsBox:GetWidth() or 0
         d.measure:SetWidth((w > 60 and w or TIP_WIDTH) - TIP_LEFT - TIP_RIGHT)
         d.measure:SetText(st.tip)
@@ -342,46 +388,55 @@ local function buildDetail(parent)
     d.lead = iconButton(d, L.LEAD, ACT_ICON.lead, true)
     d.lead:SetPoint("BOTTOMLEFT", 14, 48)
     d.lead:SetScript("OnClick", function()
-        local e = shown[selected]
+        local e = P.shown[P.selected]
         if not e then return end
         if ns.Leads(e.quest) then ns.StopGuide() else ns.StartGuide({ e.quest }) end
     end)
     d.map = iconButton(d, L.MAP, ACT_ICON.map)
     d.map:SetPoint("LEFT", d.lead, "RIGHT", 8, 0)
     d.map:SetScript("OnClick", function()
-        local e = shown[selected]
+        local e = P.shown[P.selected]
         local stop = e and ns.Stop(e)
         if not (stop and ns.SetPin(stop, true)) then footer:SetStatus(L.NO_PIN, S.WARN) end
     end)
     d.link = iconButton(d, L.WOWHEAD, ACT_ICON.link)
     d.link:SetPoint("BOTTOMLEFT", 14, 14)
     d.link:SetScript("OnClick", function()
-        local e = shown[selected]
+        local e = P.shown[P.selected]
         if e then ns.ShowLink(ns.WowheadURL("quest", e.cur or e.quest), ns.QuestTitle(e.cur or e.quest)) end
     end)
     d.hide = iconButton(d, L.HIDE, ACT_ICON.hide)
     d.hide:SetPoint("LEFT", d.link, "RIGHT", 8, 0)
     d.hide:SetScript("OnClick", function()
-        local e = shown[selected]
+        local e = P.shown[P.selected]
         if e then ns.SetHidden(e.quest, true) end
     end)
     d.parts = { d.icon, d.name, d.kind, d.gain, d.state, d.what, d.where, d.offers, d.stepsBox,
                 d.lead, d.map, d.link, d.hide }
     d.pick = S.Empty(d)
-    d.pick:Set(L.PICK, "")
+    d.pick:Set(P.class and L.CQ_PICK or L.PICK, "")
     return d
 end
 
-local function paintDetail(e, bags)
+local function paintDetail(P, e, bags)
+    local detail = P.detail
     for _, p in ipairs(detail.parts) do p:SetShown(e ~= nil) end
     detail.pick:SetShown(e == nil)
     if not e then return end
     detail.icon:SetIcon(ns.ItemIcon(e.item))
-    detail.name:SetText(S.QualityHex(ns.ItemQuality(e.item)) .. ns.ItemName(e.item) .. "|r")
-    detail.kind:SetText(L["KIND_" .. e.kind:upper()] .. (e.slots and (S.DOT .. S.Emph(L.SLOTS:format(e.slots))) or ""))
-    local text, c = ns.GainText(e, bags)
-    detail.gain:SetText(text)
-    detail.gain:SetTextColor(unpack(c))
+    local text, c
+    if e.class then
+        detail.name:SetText(ns.QuestTitle(e.quest))
+        detail.kind:SetText(L.CQ_KIND:format(UnitClass("player") or "", e.level))
+        detail.gain:SetText(#e.options > 1 and L.CQ_CHOOSE:format(#e.options) or L.CQ_GIVES)
+        detail.gain:SetTextColor(unpack(S.GOOD))
+    else
+        detail.name:SetText(S.QualityHex(ns.ItemQuality(e.item)) .. ns.ItemName(e.item) .. "|r")
+        detail.kind:SetText(L["KIND_" .. e.kind:upper()] .. (e.slots and (S.DOT .. S.Emph(L.SLOTS:format(e.slots))) or ""))
+        text, c = ns.GainText(e, bags)
+        detail.gain:SetText(text)
+        detail.gain:SetTextColor(unpack(c))
+    end
     text, c = ns.StateText(e)
     detail.state:SetText("|T" .. STATE_ICON[e.state] .. ":13|t " .. text)
     detail.state:SetTextColor(unpack(c))
@@ -394,7 +449,8 @@ local function paintDetail(e, bags)
         detail.what:SetText("")
         detail.where:SetText("")
     end
-    if #e.options > 1 then
+    local offers = not e.class and #e.options > 1
+    if offers then
         local names = {}
         for _, o in ipairs(e.options) do
             names[#names + 1] = S.QualityHex(ns.ItemQuality(o.item)) .. ns.ItemName(o.item) .. "|r"
@@ -404,9 +460,10 @@ local function paintDetail(e, bags)
         detail.offers:SetText("")
     end
     -- Without the line of the other rewards the list starts higher.
-    detail.stepsBox:SetPoint("TOPLEFT", 8, #e.options > 1 and -180 or -160)
+    detail.stepsBox:SetPoint("TOPLEFT", 8, offers and -180 or -160)
     detail.steps:SetData(ns.DetailRows(e, S.Upper(L.CHAIN) .. (e.steps > 1 and
-        ("  " .. colour(L.STEP_OF:format(math.min(e.step, e.steps), e.steps), S.FAINT)) or ""), S.Upper(L.TIPS)))
+        ("  " .. colour(L.STEP_OF:format(math.min(e.step, e.steps), e.steps), S.FAINT)) or ""), S.Upper(L.TIPS),
+        S.Upper(#e.options > 1 and L.CQ_CHOOSE_HEAD or L.CQ_REWARD_HEAD)))
     local leads = ns.Leads(e.quest)
     detail.lead:Fit(leads and L.STOP or L.LEAD, 150)
     detail.lead:SetEnabled(leads or (e.group == "now" and not ns.paused))
@@ -416,42 +473,47 @@ end
 
 -- The pages ---------------------------------------------------------------------------------------------
 
-local function rewardsPage(body)
+local rewardsP = { shown = {} }
+local classP = { shown = {}, class = true }
+
+local function listPage(body, P)
     local p = CreateFrame("Frame", nil, body)
     local left = S.Card(p)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
     left:SetWidth(LIST_W)
     local top = 6
-    kinds = ns.Kinds()
-    if #kinds > 1 then
-        local labels, icons = { "" }, { S.TAB.list }
-        for _, k in ipairs(kinds) do
-            labels[#labels + 1] = ""
-            icons[#icons + 1] = ns.KIND_ICON[k]
+    if not P.class then
+        kinds = ns.Kinds()
+        if #kinds > 1 then
+            local labels, icons = { "" }, { S.TAB.list }
+            for _, k in ipairs(kinds) do
+                labels[#labels + 1] = ""
+                icons[#icons + 1] = ns.KIND_ICON[k]
+            end
+            kindTabs = S.Tabs(left, labels, 44, function(i)
+                P.kind = i > 1 and kinds[i - 1] or nil
+                ns.Refresh()
+            end, 30, icons)
+            kindTabs.frame:ClearAllPoints()
+            kindTabs.frame:SetPoint("TOPLEFT", 8, -8)
+            for i, b in ipairs(kindTabs.buttons) do
+                b.tip = i == 1 and L.KIND_ALL or L["KIND_" .. kinds[i - 1]:upper()]
+            end
+            top = 44
         end
-        kindTabs = S.Tabs(left, labels, 44, function(i)
-            kindFilter = i > 1 and kinds[i - 1] or nil
-            ns.Refresh()
-        end, 30, icons)
-        kindTabs.frame:ClearAllPoints()
-        kindTabs.frame:SetPoint("TOPLEFT", 8, -8)
-        for i, b in ipairs(kindTabs.buttons) do
-            b.tip = i == 1 and L.KIND_ALL or L["KIND_" .. kinds[i - 1]:upper()]
-        end
-        top = 44
     end
     local box = CreateFrame("Frame", nil, left)
     box:SetPoint("TOPLEFT", 4, -top)
     box:SetPoint("BOTTOMRIGHT", -4, 6)
-    list = S.List(box, ROW_H, makeRow, fillRow)
-    list:SetAllPoints()
-    list.heightOf = function(it) return it.head and HEAD_H or ROW_H end
-    empty = S.Empty(box)
-    empty:Set(L.EMPTY, L.EMPTY_SUB)
-    detail = buildDetail(p)
-    detail:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
-    detail:SetPoint("BOTTOMRIGHT")
+    P.list = S.List(box, ROW_H, makeRow(P), fillRow(P))
+    P.list:SetAllPoints()
+    P.list.heightOf = function(it) return it.head and HEAD_H or ROW_H end
+    P.empty = S.Empty(box)
+    if P.class then P.empty:Set(L.CQ_EMPTY, L.CQ_EMPTY_SUB) else P.empty:Set(L.EMPTY, L.EMPTY_SUB) end
+    P.detail = buildDetail(p, P)
+    P.detail:SetPoint("TOPLEFT", left, "TOPRIGHT", S.GAP, 0)
+    P.detail:SetPoint("BOTTOMRIGHT")
     return p
 end
 
@@ -473,24 +535,31 @@ local function settingsPage(body, width)
     return page
 end
 
-local function paintWindow()
-    local items, n = ns.List(kindFilter)
-    local bags = ns.Bags()
-    paintStrip(bags)
-    shown = {}
+local current = 1       -- the page tab shown
+
+local function paintList(P, bags)
+    local items, n = ns.List(P.class and "class" or P.kind)
+    P.shown = {}
     local first
     for _, it in ipairs(items) do
         if not it.head then
-            shown[it.quest] = it
+            P.shown[it.quest] = it
             first = first or it.quest
         end
     end
-    if not shown[selected] then selected = first end
-    list:SetData(items)
-    empty:SetShown(n == 0)
-    paintDetail(shown[selected], bags)
+    if not P.shown[P.selected] then P.selected = first end
+    P.list:SetData(items)
+    P.empty:SetShown(n == 0)
+    paintDetail(P, P.shown[P.selected], bags)
+end
+
+local function paintWindow()
+    local bags = ns.Bags()
+    paintStrip(bags)
+    local class = current == 2
+    paintList(class and classP or rewardsP, bags)
     better:SetChecked(ns.db.better)
-    local targets = #ns.Targets()
+    local targets = #ns.Targets(class)
     if ns.Guiding() then
         leadAll:SetText(L.STOP)
         leadAll:SetEnabled(true)
@@ -499,7 +568,8 @@ local function paintWindow()
     else
         leadAll:SetText(L.LEAD_ALL:format(targets))
         leadAll:SetEnabled(targets > 0 and not ns.paused)
-        footer:SetStatus(targets > 0 and L.STATUS_OPEN:format(targets) or L.STATUS_NONE)
+        local open = class and L.CQ_STATUS_OPEN or L.STATUS_OPEN
+        footer:SetStatus(targets > 0 and open:format(targets) or L.STATUS_NONE)
     end
 end
 
@@ -508,32 +578,44 @@ function ns.Refresh()
     if frame and frame:IsShown() then paintWindow() end
 end
 
+local function classIcon()
+    local file = select(2, UnitClass("player"))
+    if type(file) ~= "string" or file == "" then return S.TAB.quests end
+    return "Interface\\Icons\\ClassIcon_" .. file:sub(1, 1) .. file:sub(2):lower()
+end
+
 local function build()
     frame = S.Window("GulliWorthItFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
     footer = S.Footer(frame)
     leadAll = S.Primary(S.Button(frame, 250, 30))
     leadAll:SetScript("OnClick", function()
-        if ns.Guiding() then ns.StopGuide() elseif not ns.StartGuide() then footer:SetStatus(L.NOTHING, S.WARN) end
+        if ns.Guiding() then
+            ns.StopGuide()
+        elseif not ns.StartGuide(nil, current == 2) then
+            footer:SetStatus(current == 2 and L.CQ_NOTHING or L.NOTHING, S.WARN)
+        end
     end)
     footer:Add(leadAll)
     local st = S.Stack(body)
     strip = buildStrip(body)
     st:Add(strip, 52)
-    tabs = S.PageTabs(body, { L.TAB_REWARDS, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_REWARDS, L.TAB_CLASS, L.TAB_SETTINGS }, nil, function(i)
+        current = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if better then better:SetShown(i == 1) end
-        footer:SetShown(i == 1)
+        footer:SetShown(i ~= 3)
         ns.Refresh()
-    end, nil, { S.TAB.list, S.TAB.settings })
+    end, nil, { S.TAB.list, classIcon(), S.TAB.settings })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", 0, -st.y)
     better = S.SwitchLabel(body, L.ONLY_BETTER, function() return ns.db.better end,
         function(v) ns.SetPref("better", v) end, 220)
     better:SetPoint("TOPRIGHT", body, "TOPRIGHT", -224, -st.y + 3)
     st:Space(30 + S.GAP)
-    pages[1] = rewardsPage(body)
-    pages[2] = settingsPage(body, width)
+    pages[1] = listPage(body, rewardsP)
+    pages[2] = listPage(body, classP)
+    pages[3] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -st.y)
         p:SetPoint("BOTTOMRIGHT")
@@ -546,12 +628,15 @@ function ns.Toggle()
     if S.ToggleWindow(ns.Window()) then ns.Refresh() end
 end
 
--- Opens the window on one reward (a notice's button, a click on the tracker).
+-- Opens the window on one entry (a notice's button, a click on the tracker): a class quest on
+-- its own page, a bag reward on the first.
 function ns.Show(quest)
     local f = ns.Window()
     if not f:IsShown() then ns.Toggle() end
-    tabs:Select(1)
-    selected = quest
+    local class = false
+    for _, e in ipairs(ns.ClassQuests()) do if e.quest == quest then class = true end end
+    tabs:Select(class and 2 or 1)
+    if class then classP.selected = quest else rewardsP.selected = quest end
     ns.Refresh()
 end
 
@@ -562,8 +647,11 @@ function ns.Window()
 end
 
 -- For the tests and the previews.
-function ns.Parts() return frame, list, detail, tabs, leadAll, strip end
-function ns.Selected() return selected end
+function ns.Parts()
+    local P = current == 2 and classP or rewardsP
+    return frame, P.list, P.detail, tabs, leadAll, strip
+end
+function ns.Selected() return (current == 2 and classP or rewardsP).selected end
 
 -- The tracker -----------------------------------------------------------------------------------------------
 -- A small Gulli HUD panel while the guide leads: a row per reward with what to do now and

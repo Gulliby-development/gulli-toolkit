@@ -506,4 +506,134 @@ test("random characters: the list and the guide never raise an error", function(
     assert(seen > 100, "the rounds did list rewards")
 end)
 
+-- Class quests -------------------------------------------------------------------------------------
+
+local CLASS_BITS = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128,
+                     WARLOCK = 256, DRUID = 1024 }
+-- Forged Steel (Horde warriors, Durotar, level 10): a weapon of four to choose from.
+local FORGED, FORGED_1 = 1503, 1505
+
+test("the data: class quests of every class, each with its quest, items and a chain that ends in it", function()
+    Fake({})
+    local D = Load().Data
+    local by = {}
+    assert(#D.class >= 80, "class quests")
+    for _, r in ipairs(D.class) do
+        local q = D.quest[r[1]]
+        assert(q and #q == 17, "quest row of " .. r[1])
+        assert(#r[3] >= 1, "items of " .. r[1])
+        for bit = 0, 10 do if math.floor(r[2] / 2 ^ bit) % 2 == 1 then by[2 ^ bit] = true end end
+        local chain = D.chain[r[1]]
+        if chain then eq(chain[#chain], r[1], "chain end") end
+    end
+    for class, bit in pairs(CLASS_BITS) do assert(by[bit], class .. " has class quests") end
+    local ids = {}
+    for _, r in ipairs(D.class) do ids[r[1]] = r end
+    -- raids WoW Forever has not opened stay out: Zul'Gurub, Ahn'Qiraj, Naxxramas; and quests past 60
+    for _, gone in ipairs({ 8079, 8557, 9037, 8711, 84213 }) do eq(ids[gone], nil, "no quest " .. gone) end
+    eq(#ids[FORGED][3], 4, "Forged Steel offers four weapons")
+    eq(ids[1792][3][1], 6975, "Whirlwind Weapon gives the Whirlwind Axe")
+end)
+
+test("class quests are only the ones of the character's class and side", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2 })
+    local ns = Load()
+    local e = find(ns.ClassQuests(), FORGED)
+    assert(e, "a Horde warrior sees Forged Steel")
+    eq(e.class, true)
+    eq(#e.options, 4)
+    eq(e.chain[1], FORGED_1, "the chain starts at its first step")
+    eq(e.state, "take")
+    for _, x in ipairs(ns.ClassQuests()) do
+        eq(math.floor(ns.Data.quest[x.quest][5] / 1) % 2 == 1 or ns.Data.quest[x.quest][5] == 0, true, "warrior quests only")
+    end
+    Fake({ level = 10, class = "WARRIOR", faction = "Alliance", raceId = 1 })
+    eq(find(Load().ClassQuests(), FORGED), nil, "not for an Alliance warrior")
+    Fake({ level = 10, class = "MAGE", faction = "Horde", raceId = 5 })
+    eq(find(Load().ClassQuests(), FORGED), nil, "not for a mage")
+end)
+
+test("the class list: groups and the done switch, the bag switch does not hide a class quest", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2 })
+    local ns = Load()
+    ns.db.better = true
+    local items = ns.List("class")
+    eq(items[1].head, "now")
+    assert(find(items, FORGED), "listed with only better on")
+    W.done[FORGED] = true
+    ns.db.showDone = true
+    eq(find(ns.List("class"), FORGED).state, "done")
+    ns.db.showDone = false
+    eq(find(ns.List("class"), FORGED), nil, "done ones hidden with the switch off")
+end)
+
+test("the class quest's page lists its rewards, then the chain", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2 })
+    local ns = Load()
+    local e = find(ns.ClassQuests(), FORGED)
+    local rows = ns.DetailRows(e)
+    eq(rows[1].head, ns.L.CQ_CHOOSE_HEAD)
+    for i = 2, 5 do assert(rows[i].item, "an item row") end
+    local chain
+    for _, r in ipairs(rows) do if r.head == ns.L.CHAIN then chain = true end end
+    assert(chain, "the chain follows")
+end)
+
+test("the guide leads to a class quest, and through every open one", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17 })
+    local ns = Load()
+    eq(ns.StartGuide({ FORGED }), true)
+    local items = ns.TrackerItems()
+    eq(items[1].quest, FORGED)
+    eq(ns.stop.quest, FORGED_1, "the first step of the chain")
+    ns.StopGuide()
+    eq(ns.StartGuide(nil, true), true)
+    assert(#ns.cdb.guide.targets == #ns.Targets(true) and #ns.Targets(true) > 0, "every open class quest")
+    ns.StopGuide()
+end)
+
+test("the window's class tab: picks a class quest, leads through all of them", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17 })
+    local ns = Load()
+    ns.Show(FORGED)
+    local _, _, _, tabs, leadAll = ns.Parts()
+    eq(ns.Selected(), FORGED, "Show opens the class tab on the quest")
+    leadAll._OnClick(leadAll)
+    eq(ns.Guiding(), true)
+    eq(#ns.cdb.guide.targets, #ns.Targets(true), "leads through the class quests")
+    leadAll._OnClick(leadAll)
+    eq(ns.Guiding(), false)
+    tabs:Select(1)
+    assert(ns.Selected() ~= FORGED, "the rewards tab keeps its own choice")
+end)
+
+test("random characters: the class list and its guide never raise an error", function()
+    math.randomseed(11)
+    local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
+    local seen = 0
+    for round = 1, 45 do
+        Fake({ level = math.random(1, 60), class = classes[(round - 1) % 9 + 1],
+               faction = round % 2 == 0 and "Horde" or "Alliance", raceId = math.random(1, 8) })
+        local ns = Load()
+        for _, r in ipairs(ns.Data.class) do
+            for _, id in ipairs(ns.Data.chain[r[1]] or { r[1] }) do
+                local p = math.random()
+                if p < 0.2 then W.done[id] = true elseif p < 0.3 then W.log[id] = true end
+            end
+        end
+        local items, n = ns.List("class")
+        seen = seen + n
+        for _, it in ipairs(items) do
+            if not it.head then
+                ns.DetailRows(it); ns.StateText(it)
+                local stop = ns.Stop(it)
+                if stop then ns.StopText(stop) end
+            end
+        end
+        ns.Show((items[2] or {}).quest or 0)
+        if ns.StartGuide(nil, true) then ns.TrackerItems(); ns.StopGuide() end
+    end
+    assert(seen > 100, "the rounds did list class quests")
+end)
+
 W.finish()

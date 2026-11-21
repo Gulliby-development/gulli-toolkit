@@ -47,21 +47,161 @@ D.rewards = {
 {226697,"bag",84146}, -- Red Bag
 }
 
+-- Class quests: { quest, class mask (1 warrior ... 1024 druid), items it gives }, lowest level first.
+D.class = {
+{1499,256,{4925,5778}}, -- Vile Familiars
+{1518,64,{5175}}, -- Call of Earth
+{1521,64,{5175}}, -- Call of Earth
+{5621,16,{16604}}, -- Garments of the Moon
+{5624,16,{16605}}, -- Garments of the Light
+{5625,16,{16605}}, -- Garments of the Light
+{5648,16,{16606}}, -- Garments of Spirituality
+{5650,16,{16607}}, -- Garments of Darkness
+{92468,64,{5175}}, -- Call of Earth
+{94375,64,{5175}}, -- Call of Earth
+{1503,1,{7326,7328,7327,7329}}, -- Forged Steel
+{1667,1,{6979,6983,6980,6985}}, -- Dead-tooth Jack
+{1682,1,{6978,6982,6981,6984}}, -- Grey Iron Weapons
+{1693,1,{6966,6968,6969,6967}}, -- Weapons of Elunite
+{1861,128,{7508,9513}}, -- Mirror Lake
+{1880,128,{7507,9514}}, -- Mage-tastic Gizmonitor
+{1882,128,{7507,9514}}, -- The Balnir Farmstead
+{1884,128,{7508,9513}}, -- Ju-Ju Heaps
+{2206,8,{7298}}, -- Snatch and Grab
+{2239,8,{7298}}, -- Onin's Report
+{2242,8,{7298}}, -- Destiny Calls
+{93797,128,{263430}}, -- Boughs in the Wind
+{94003,1,{275290}}, -- The Skybreaker Bulwark
+{1822,1,{7115,7117,7116,7118}}, -- Heirloom Weapon
+{91285,2,{246164,246165}}, -- Murlocs at the Gates
+{91316,2,{246265}}, -- Making Repairs
+{1527,64,{5176,263412}}, -- Call of Fire
+{1858,8,{7298}}, -- The Shattered Hand
+{1978,8,{7298}}, -- The Deathstalkers
+{6124,1024,{15866}}, -- Curing the Sick
+{6129,1024,{15866}}, -- Curing the Sick
+{94468,64,{5176,263412}}, -- Call of Fire
+{1941,128,{7509}}, -- Manaweave Robe
+{1962,128,{7510}}, -- Spellfire Robes
+{31,1024,{16608,263411}}, -- Aquatic Form
+{5061,1024,{16608,263411}}, -- Aquatic Form
+{1474,256,{22243}}, -- The Binding
+{1513,256,{22243}}, -- The Binding
+{1739,256,{22243}}, -- The Binding
+{1824,1,{7120}}, -- Trial at the Field of Giants
+{65597,256,{22243}}, -- The Binding
+{65603,256,{22243}}, -- The Binding
+{65604,256,{22243}}, -- The Binding
+{1702,1,{6970}}, -- The Shieldsmith
+{1806,2,{6953}}, -- The Test of Righteousness
+{96,64,{5177}}, -- Call of Water
+{78307,8,{277210}}, -- The Horn of Xelthos
+{94505,64,{5177}}, -- Call of Water
+{1652,2,{9607}}, -- The Tome of Valor
+{1740,256,{6898,15109}}, -- The Orb of Soran'ruk
+{95126,2,{268484}}, -- The Moonsilver Blade
+{1942,128,{7511,9516}}, -- Astral Knot Garment
+{1946,128,{7512,9515}}, -- Nether-lace Garment
+{95140,2,{267369}}, -- Old Fire-Eye
+{397,256,{3556}}, -- You Have Served Us Well
+{1531,64,{5178}}, -- Call of Air
+{1532,64,{5178}}, -- Call of Air
+{1706,1,{6971}}, -- Grimand's Armor
+{1709,1,{6974}}, -- Klockmort's Creation
+{1711,1,{6973}}, -- Mathiel's Armor
+{1795,256,{22244}}, -- The Binding
+{1843,1,{7129}}, -- Brutal Gauntlets
+{1845,1,{7130}}, -- Brutal Helm
+{1847,1,{7132}}, -- Brutal Legguards
+{1848,1,{7133}}, -- Brutal Hauberk
+{78093,2,{277205}}, -- Return to Delgren
+{94789,64,{5178}}, -- Call of Air
+{78699,8,{277246}}, -- The Eye of Bhossca
+{96136,64,{5178}}, -- Call of Air
+{4786,256,{6900}}, -- The Completed Robe
+{1792,1,{6975,6977,6976}}, -- Whirlwind Weapon
+{1952,128,{7514,11263,7513}}, -- Mage's Wand
+{1958,128,{7515,9517}}, -- Celestial Power
+{4964,256,{15108,15106}}, -- The Completed Orb of Dar'Orahil
+{4975,256,{15107,15105}}, -- The Completed Orb of Noh'Orahil
+{79366,64,{212994,212996,212997}}, -- Heed My Call
+{79442,64,{280696,280607,280605,280604}}, -- The Tempest's Weapons
+{79970,2,{277236}}, -- Aeonas the Vindicated
+{96016,64,{280696,280607,280605,280604}}, -- The Tempest's Weapons
+{82084,128,{221344}}, -- A Lesson in Literacy
+{80455,8,{219343}}, -- Biding Our Time
+{81924,1024,{219326}}, -- Wisdom of the Guardians
+{8232,4,{20083,19991,19992}}, -- The Green Drake
+{8236,8,{19984,20255,19982}}, -- The Azure Key
+{8253,128,{20035,20037,20036}}, -- Destroy Morphaz
+{8257,16,{19990,20082,20006}}, -- Blood of Morphaz
+{8413,64,{20369,20503,20556}}, -- Da Voodoo
+{8418,2,{20504,20512,20505}}, -- Forging the Mightstone
+{8422,256,{20536,20534,20530}}, -- Trolls of a Feather
+{8425,1,{20521,20130,20517}}, -- Voodoo Feathers
+{9053,1024,{22274,22272,22458}}, -- A Better Ingredient
+{82135,2,{221518}}, -- The Price of Hope
+{7603,256,{18762}}, -- Kroshius' Infernal Core
+{99187,2,{286408}}, -- The Reliquary of Tyr
+{84332,2,{227935}}, -- A Thane's Gratitude
+{7583,256,{18602}}, -- Suppression
+{7634,4,{18714}}, -- Ancient Sinew Wrapped Lamina
+{8258,64,{20134,20133}}, -- The Darkreaver Menace
+{8905,1024,{22108}}, -- An Earnest Proposition
+{8906,4,{22011}}, -- An Earnest Proposition
+{8907,128,{22063}}, -- An Earnest Proposition
+{8908,2,{22088}}, -- An Earnest Proposition
+{8909,16,{22079}}, -- An Earnest Proposition
+{8910,8,{22004}}, -- An Earnest Proposition
+{8911,256,{22071}}, -- An Earnest Proposition
+{8912,1,{21996}}, -- An Earnest Proposition
+{8913,1024,{22108}}, -- An Earnest Proposition
+{8914,4,{22011}}, -- An Earnest Proposition
+{8915,128,{22063}}, -- An Earnest Proposition
+{8916,16,{22079}}, -- An Earnest Proposition
+{8917,8,{22004}}, -- An Earnest Proposition
+{8918,64,{22095}}, -- An Earnest Proposition
+{8919,256,{22071}}, -- An Earnest Proposition
+{8920,1,{21996}}, -- An Earnest Proposition
+{8935,8,{22002,22006}}, -- Just Compensation
+{8937,1,{21994,21998}}, -- Just Compensation
+{8941,8,{22006,22002}}, -- Just Compensation
+{84124,1,{208222}}, -- Legacy of Valor
+{84147,1024,{226796,226788,226782,226775}}, -- An Earnest Proposition
+{84150,2,{226985,226977,226970}}, -- An Earnest Proposition
+{84160,64,{227001,227009,227017,227025}}, -- An Earnest Proposition
+{97169,64,{20134,20133}}, -- The Darkreaver Menace
+}
+
 -- Quest -> { English name, level, required level, race mask, class mask, side (A, H or ""),
 --   giver, its area, x, y, who takes it back, area, x, y, the area of its work, x, y }.
 -- x, y are map percent; 0, 0 is a place with no map (a dungeon) or one the data lacks.
 D.quest = {
+[26]={"A Lesson to Learn",16,16,32,1024,"H","Turak Runetotem",1638,76.5,27.2,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[27]={"A Lesson to Learn",16,16,8,1024,"A","Mathrengyl Bearwalker",1657,35.4,8.4,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[28]={"Trial of the Lake",16,16,32,1024,"H","Dendrite Starblaze",493,56.2,30.6,"Tajarri",493,36.5,40.1,0,0,0},
+[29]={"Trial of the Lake",16,16,8,1024,"A","Dendrite Starblaze",493,56.2,30.6,"Tajarri",493,36.5,40.1,0,0,0},
+[30]={"Trial of the Sea Lion",16,16,32,1024,"H","Tajarri",493,36.5,40.1,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[31]={"Aquatic Form",16,16,32,1024,"H","Dendrite Starblaze",493,56.2,30.6,"Turak Runetotem",1638,76.5,27.2,0,0,0},
 [56]={"The Night Watch",24,18,4294967373,0,"A","Commander Althea Ebonlocke",10,73.5,46.8,"Commander Althea Ebonlocke",10,73.5,46.8,10,79.5,71.2},
 [57]={"The Night Watch",26,18,4294967373,0,"A","Commander Althea Ebonlocke",10,73.5,46.8,"Commander Althea Ebonlocke",10,73.5,46.8,10,23.1,47.1},
 [58]={"The Night Watch",30,18,4294967373,0,"A","Commander Althea Ebonlocke",10,73.5,46.8,"Commander Althea Ebonlocke",10,73.5,46.8,10,23.7,34.1},
+[63]={"Call of Water",23,20,8589934770,64,"H","Islen Waterseer",17,65.8,43.8,"Brazier of Everfount",130,38.3,44.6,130,38.8,44.3},
+[96]={"Call of Water",23,20,8589934770,64,"H","Minor Manifestation of Water",0,0,0,"Islen Waterseer",17,65.8,43.8,0,0,0},
+[100]={"Call of Water",23,20,8589934770,64,"H","Brazier of Everfount",130,38.3,44.6,"Minor Manifestation of Water",0,0,0,0,0,0},
 [136]={"Captain Sander's Hidden Treasure",16,10,0,0,"","Captain Sander's Treasure Map (Murloc Warrior)",40,29.3,32.9,"Captain's Footlocker",40,25.9,47.8,0,0,0},
 [138]={"Captain Sander's Hidden Treasure",16,10,0,0,"","Captain's Footlocker",40,25.9,47.8,"Broken Barrel",40,40.5,47.8,0,0,0},
 [139]={"Captain Sander's Hidden Treasure",16,10,0,0,"","Broken Barrel",40,40.5,47.8,"Old Jug",40,40.6,17,0,0,0},
 [140]={"Captain Sander's Hidden Treasure",16,10,0,0,"","Old Jug",40,40.6,17,"Locked Chest",40,26,16.9,0,0,0},
 [151]={"Poor Old Blanchy",14,9,4294967373,0,"A","Verna Furlbrow",40,59.9,19.4,"Verna Furlbrow",40,59.9,19.4,40,46.8,37.5},
+[220]={"Call of Water",23,20,8589934770,64,"H","Brine",17,43.4,77.4,"Islen Waterseer",17,65.8,43.8,0,0,0},
 [257]={"A Hunter's Boast",16,11,4294967373,0,"A","Daryl the Youngling",38,83.5,65.5,"Daryl the Youngling",38,83.5,65.5,38,74.7,67.7},
 [258]={"A Hunter's Challenge",17,11,4294967373,0,"A","Daryl the Youngling",38,83.5,65.5,"Daryl the Youngling",38,83.5,65.5,38,66.3,40.1},
 [271]={"Vyrin's Revenge",20,15,4294967373,0,"A","Vyrin Swiftwind",38,81.7,64.1,"Daryl the Youngling",38,83.5,65.5,38,37.9,63.4},
+[272]={"Trial of the Sea Lion",16,16,4294967304,1024,"A","Tajarri",493,36.5,40.1,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[335]={"A Noble Brew",30,25,4294967373,0,"A","Zardeth of the Black Claw",1519,40.1,85.3,"Zardeth of the Black Claw",1519,40.1,85.3,10,78.3,36},
+[336]={"A Noble Brew",30,25,4294967373,0,"A","Zardeth of the Black Claw",1519,40.1,85.3,"Lord Baurles K. Wishock",1519,77.9,49,0,0,0},
+[397]={"You Have Served Us Well",30,25,65,256,"A","Zardeth of the Black Claw",1519,40.1,85.3,"Zggi",1519,40.2,85.3,0,0,0},
 [470]={"Digging Through the Ooze",24,19,4294967373,0,"A","Sida",11,11.8,58,"Sida",11,11.8,58,11,56.8,33.7},
 [531]={"Vyrin's Revenge",20,15,4294967373,0,"A","Daryl the Youngling",38,83.5,65.5,"Vyrin Swiftwind",38,81.7,64.1,0,0,0},
 [624]={"Cortello's Riddle",43,35,0,0,"","Cortello's Riddle",33,29.2,88.6,"A Soggy Scroll",8,22.9,48.2,0,0,0},
@@ -78,7 +218,13 @@ D.quest = {
 [1472]={"Devourer of Souls",20,20,8589934770,256,"H","Carendin Halgar",1497,85.1,26,"Godrick Farsan",1497,84.8,14.8,0,0,0},
 [1474]={"The Binding",20,20,8589934770,256,"H","Carendin Halgar",1497,85.1,26,"Carendin Halgar",1497,85.1,26,0,0,0},
 [1476]={"Hearts of the Pure",20,20,8589934770,256,"H","Godrick Farsan",1497,84.8,14.8,"Carendin Halgar",1497,85.1,26,11,49.9,12.6},
+[1485]={"Vile Familiars",4,1,8589934770,256,"H","Ruzan",14,42.6,69,"Ruzan",14,42.6,69,14,44.2,55.3},
 [1486]={"Deviate Hides",17,13,0,0,"","Nalpak",17,46,35.7,"Nalpak",17,46,35.7,17,47.4,33.7},
+[1498]={"Path of Defense",10,10,8589934770,1,"H","Uzzek",17,61.4,21.1,"Uzzek",17,61.4,21.1,14,39.2,26.6},
+[1499]={"Vile Familiars",4,1,8589934770,256,"H","Ruzan",14,42.6,69,"Zureetha Fargaze",14,42.9,69.2,0,0,0},
+[1502]={"Thun'grim Firegaze",10,10,8589934770,1,"H","Uzzek",17,61.4,21.1,"Thun'grim Firegaze",17,57.2,30.3,0,0,0},
+[1503]={"Forged Steel",10,10,8589934770,1,"H","Thun'grim Firegaze",17,57.2,30.3,"Thun'grim Firegaze",17,57.2,30.3,17,55,26.6},
+[1505]={"Veteran Uzzek",10,10,8589934770,1,"H","Krang Stonehoof",215,48.4,63.7,"Uzzek",17,61.4,21.1,0,0,0},
 [1507]={"Devourer of Souls",20,20,8589934770,256,"H","Gan'rul Bloodeye",1637,48.2,45.3,"Cazul",1637,47.1,46.4,0,0,0},
 [1508]={"Blind Cazul",20,20,8589934770,256,"H","Cazul",1637,47.1,46.4,"Zankaja",1637,37,59.5,0,0,0},
 [1509]={"News of Dogran",20,20,8589934770,256,"H","Zankaja",1637,37,59.5,"Gazrog",17,51.9,30.3,0,0,0},
@@ -87,14 +233,147 @@ D.quest = {
 [1512]={"Love's Gift",20,20,8589934770,256,"H","Grunt Dogran",17,43.3,47.9,"Gan'rul Bloodeye",1637,48.2,45.3,0,0,0},
 [1513]={"The Binding",20,20,8589934770,256,"H","Gan'rul Bloodeye",1637,48.2,45.3,"Gan'rul Bloodeye",1637,48.2,45.3,0,0,0},
 [1515]={"Dogran's Captivity",20,20,8589934770,256,"H","Grunt Logmar",17,44.6,59.3,"Grunt Dogran",17,43.3,47.9,0,0,0},
+[1516]={"Call of Earth",4,4,8589934770,64,"H","Canaga Earthcaller",14,42.4,69.2,"Canaga Earthcaller",14,42.4,69.2,14,44.3,54.2},
+[1517]={"Call of Earth",4,4,8589934770,64,"H","Canaga Earthcaller",14,42.4,69.2,"Minor Manifestation of Earth",14,44,76.2,0,0,0},
+[1518]={"Call of Earth",4,4,8589934770,64,"H","Minor Manifestation of Earth",14,44,76.2,"Canaga Earthcaller",14,42.4,69.2,0,0,0},
+[1519]={"Call of Earth",4,4,32,64,"H","Seer Ravenfeather",215,44.4,76.8,"Seer Ravenfeather",215,44.4,76.8,215,60.1,76.8},
+[1520]={"Call of Earth",4,4,8589934770,64,"H","Seer Ravenfeather",215,44.4,76.8,"Minor Manifestation of Earth",14,44,76.2,0,0,0},
+[1521]={"Call of Earth",4,4,8589934770,64,"H","Minor Manifestation of Earth",14,44,76.2,"Seer Ravenfeather",215,44.4,76.8,0,0,0},
+[1522]={"Call of Fire",10,10,8589934770,64,"H","Searn Firewarder",1637,38,37.7,"Kranal Fiss",17,56,19.9,0,0,0},
+[1523]={"Call of Fire",10,10,8589934770,64,"H","Beram Skychaser",1638,22,18.8,"Kranal Fiss",17,56,19.9,0,0,0},
+[1524]={"Call of Fire",11,10,8589934770,64,"H","Kranal Fiss",17,56,19.9,"Telf Joolam",14,38.5,59,0,0,0},
+[1525]={"Call of Fire",12,10,8589934770,64,"H","Telf Joolam",14,38.5,59,"Telf Joolam",14,38.5,59,17,54.7,27.1},
+[1526]={"Call of Fire",13,10,8589934770,64,"H","Telf Joolam",14,38.5,59,"Brazier of the Dormant Flame",14,39,58.2,16593,51,85.1},
+[1527]={"Call of Fire",13,10,8589934770,64,"H","Brazier of the Dormant Flame",14,39,58.2,"Kranal Fiss",17,56,19.9,0,0,0},
+[1528]={"Call of Water",20,20,8589934770,64,"H","Searn Firewarder",1637,38,37.7,"Islen Waterseer",17,65.8,43.8,0,0,0},
+[1529]={"Call of Water",20,20,8589934770,64,"H","Xanis Flameweaver",1638,25.2,20.5,"Islen Waterseer",17,65.8,43.8,0,0,0},
+[1530]={"Call of Water",22,20,8589934770,64,"H","Islen Waterseer",17,65.8,43.8,"Brine",17,43.4,77.4,0,0,0},
+[1531]={"Call of Air",30,30,8589934770,64,"H","Searn Firewarder",1637,38,37.7,"Prate Cloudseer",400,53.5,42.6,0,0,0},
+[1532]={"Call of Air",30,30,8589934770,64,"H","Xanis Flameweaver",1638,25.2,20.5,"Prate Cloudseer",400,53.5,42.6,0,0,0},
+[1534]={"Call of Water",23,20,8589934770,64,"H","Brine",17,43.4,77.4,"Brine",17,43.4,77.4,0,0,0},
+[1535]={"Call of Water",22,20,8589934770,64,"H","Brine",17,43.4,77.4,"Brine",17,43.4,77.4,0,0,0},
+[1536]={"Call of Water",22,20,8589934770,64,"H","Brine",17,43.4,77.4,"Brine",17,43.4,77.4,0,0,0},
+[1638]={"A Warrior's Training",10,10,4294967373,1,"A","Lyria Du Lac",12,41.1,65.8,"Harry Burlguard",1519,77.1,53.3,0,0,0},
+[1639]={"Bartleby the Drunk",10,10,4294967373,1,"A","Harry Burlguard",1519,77.1,53.3,"Bartleby",1519,76.8,52.5,0,0,0},
+[1640]={"Beat Bartleby",10,10,4294967373,1,"A","Bartleby",1519,76.8,52.5,"Bartleby",1519,76.8,52.5,0,0,0},
+[1649]={"The Tome of Valor",20,20,5,2,"A","Tome of Valor",0,0,0,"Duthorian Rall",1519,50.5,47.5,0,0,0},
+[1650]={"The Tome of Valor",23,20,5,2,"A","Duthorian Rall",1519,50.5,47.5,"Daphne Stilwell",40,41.7,89.2,0,0,0},
+[1651]={"The Tome of Valor",25,20,5,2,"A","Daphne Stilwell",40,41.7,89.2,"Daphne Stilwell",40,41.7,89.2,0,0,0},
+[1652]={"The Tome of Valor",25,20,5,2,"A","Daphne Stilwell",40,41.7,89.2,"Duthorian Rall",1519,50.5,47.5,0,0,0},
+[1653]={"The Test of Righteousness",21,20,5,2,"A","Duthorian Rall",1519,50.5,47.5,"Jordan Stilwell",1,52.5,36.9,0,0,0},
+[1654]={"The Test of Righteousness",22,20,5,2,"A","Jordan Stilwell",1,52.5,36.9,"Jordan Stilwell",1,52.5,36.9,209,0,0},
+[1665]={"Bartleby's Mug",10,10,4294967373,1,"A","Bartleby",1519,76.8,52.5,"Harry Burlguard",1519,77.1,53.3,0,0,0},
+[1666]={"Marshal Haggard",10,10,4294967373,1,"A","Harry Burlguard",1519,77.1,53.3,"Marshal Haggard",12,84.6,69.4,0,0,0},
+[1667]={"Dead-tooth Jack",10,10,4294967373,1,"A","Marshal Haggard",12,84.6,69.4,"Marshal Haggard",12,84.6,69.4,12,89.3,78.9},
+[1678]={"Vejrek",11,10,4294967373,1,"A","Muren Stormpike",1537,70.8,90.3,"Muren Stormpike",1537,70.8,90.3,1,27.8,58},
+[1679]={"Muren Stormpike",10,10,4294967373,1,"A","Granis Swiftaxe",1,47.4,52.6,"Muren Stormpike",1537,70.8,90.3,0,0,0},
+[1680]={"Tormus Deepforge",11,10,4294967373,1,"A","Muren Stormpike",1537,70.8,90.3,"Tormus Deepforge",1537,48.6,42.5,0,0,0},
+[1681]={"Ironband's Compound",11,10,4294967373,1,"A","Tormus Deepforge",1537,48.6,42.5,"Tormus Deepforge",1537,48.6,42.5,1,78,62.2},
+[1682]={"Grey Iron Weapons",10,10,4294967373,1,"A","Tormus Deepforge",1537,48.6,42.5,"Tormus Deepforge",1537,48.6,42.5,0,0,0},
+[1683]={"Vorlus Vilehoof",10,10,4294967373,1,"A","Elanaria",1657,57.3,34.6,"Elanaria",1657,57.3,34.6,141,47.2,63.6},
+[1684]={"Elanaria",10,10,4294967373,1,"A","Kyra Windblade",141,56.2,59.2,"Elanaria",1657,57.3,34.6,0,0,0},
+[1686]={"The Shade of Elura",10,10,4294967373,1,"A","Elanaria",1657,57.3,34.6,"Elanaria",1657,57.3,34.6,148,32.2,44.4},
+[1692]={"Smith Mathiel",10,10,4294967373,1,"A","Elanaria",1657,57.3,34.6,"Mathiel",1657,59.5,45.4,0,0,0},
+[1693]={"Weapons of Elunite",10,10,4294967373,1,"A","Mathiel",1657,59.5,45.4,"Mathiel",1657,59.5,45.4,0,0,0},
+[1698]={"Yorus Barleybrew",20,20,4294967373,1,"A","Wu Shen",1519,80.5,59.9,"Yorus Barleybrew",44,21.5,44.7,0,0,0},
+[1699]={"The Rethban Gauntlet",22,20,4294967373,1,"A","Yorus Barleybrew",44,21.5,44.7,"Yorus Barleybrew",44,21.5,44.7,0,0,0},
+[1700]={"Grimand Elmore",28,20,65,1,"A","Furen Longbeard",1519,64.6,37.2,"Grimand Elmore",1519,59.7,33.8,0,0,0},
+[1701]={"Fire Hardened Mail",28,20,4294967373,1,"A","Furen Longbeard",1519,64.6,37.2,"Furen Longbeard",1519,64.6,37.2,11,50.8,62.1},
+[1702]={"The Shieldsmith",22,20,4294967373,1,"A","Yorus Barleybrew",44,21.5,44.7,"Furen Longbeard",1519,64.6,37.2,0,0,0},
+[1703]={"Mathiel",28,20,8,1,"A","Furen Longbeard",1519,64.6,37.2,"Mathiel",1657,59.5,45.4,0,0,0},
+[1704]={"Klockmort Spannerspan",28,20,68,1,"A","Furen Longbeard",1519,64.6,37.2,"Klockmort Spannerspan",1537,67.9,46.1,0,0,0},
+[1705]={"Burning Blood",28,20,4294967373,1,"A","Grimand Elmore",1519,59.7,33.8,"Grimand Elmore",1519,59.7,33.8,10,62.6,55},
+[1706]={"Grimand's Armor",30,20,4294967373,1,"A","Grimand Elmore",1519,59.7,33.8,"Grimand Elmore",1519,59.7,33.8,0,0,0},
+[1708]={"Iron Coral",29,20,4294967373,1,"A","Klockmort Spannerspan",1537,67.9,46.1,"Klockmort Spannerspan",1537,67.9,46.1,11,9.3,68.3},
+[1709]={"Klockmort's Creation",30,20,4294967373,1,"A","Klockmort Spannerspan",1537,67.9,46.1,"Klockmort Spannerspan",1537,67.9,46.1,0,0,0},
+[1710]={"Sunscorched Shells",30,20,4294967373,1,"A","Mathiel",1657,59.5,45.4,"Mathiel",1657,59.5,45.4,400,11.8,37.1},
+[1711]={"Mathiel's Armor",30,20,4294967373,1,"A","Mathiel",1657,59.5,45.4,"Mathiel",1657,59.5,45.4,0,0,0},
+[1712]={"Cyclonian",40,30,0,1,"","Bath'rah the Windwatcher",36,80.5,66.9,"Bath'rah the Windwatcher",36,80.5,66.9,33,35.5,30.9},
+[1713]={"The Summoning",40,30,0,1,"","Bath'rah the Windwatcher",36,80.5,66.9,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
 [1716]={"Devourer of Souls",20,20,4294967373,256,"A","Gakin the Darkbinder",1519,39.2,85.2,"Takar the Seer",17,49.3,57.1,0,0,0},
+[1718]={"The Islander",30,30,0,1,"H","Torm Ragetotem",1638,57.2,87.4,"Klannoc Macleod",17,68.6,49.2,0,0,0},
+[1719]={"The Affray",30,30,0,1,"","Klannoc Macleod",17,68.6,49.2,"Klannoc Macleod",17,68.6,49.2,0,0,0},
 [1738]={"Heartswood",20,20,4294967373,256,"A","Takar the Seer",17,49.3,57.1,"Gakin the Darkbinder",1519,39.2,85.2,331,31.6,31.2},
 [1739]={"The Binding",20,20,4294967373,256,"A","Gakin the Darkbinder",1519,39.2,85.2,"Gakin the Darkbinder",1519,39.2,85.2,0,0,0},
+[1740]={"The Orb of Soran'ruk",25,20,0,256,"","Doan Karhan",17,49.3,57.2,"Doan Karhan",17,49.3,57.2,209,0,0},
+[1791]={"The Windwatcher",30,30,0,1,"","Klannoc Macleod",17,68.6,49.2,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
+[1792]={"Whirlwind Weapon",40,30,0,1,"","Bath'rah the Windwatcher",36,80.5,66.9,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
 [1795]={"The Binding",30,30,0,256,"","Strahad Farsan",17,62.6,35.5,"Strahad Farsan",17,62.6,35.5,0,0,0},
+[1796]={"Components for the Enchanted Gold Bloodrobe",31,31,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[1799]={"Fragments of the Orb of Orahil",40,35,0,256,"","Menara Voidrender",17,62.5,35.5,"Tabetha",15,46.1,57.1,405,79.5,81.3},
 [1801]={"Tome of the Cabal",30,30,8589934770,256,"H","Strahad Farsan",17,62.6,35.5,"Jorah Annison",1497,75.9,37.9,0,0,0},
 [1803]={"Tome of the Cabal",30,30,8589934770,256,"H","Jorah Annison",1497,75.9,37.9,"Jorah Annison",1497,75.9,37.9,267,27.8,72.8},
 [1804]={"Tome of the Cabal",30,30,4294967373,256,"A","Krom Stoutarm",1537,74.2,9.4,"Strahad Farsan",17,62.6,35.5,11,49.9,47.8},
 [1805]={"Tome of the Cabal",30,30,8589934770,256,"H","Jorah Annison",1497,75.9,37.9,"Strahad Farsan",17,62.6,35.5,11,49.9,47.8},
+[1806]={"The Test of Righteousness",22,20,5,2,"A","Jordan Stilwell",1,52.5,36.9,"Jordan Stilwell",1,52.5,36.9,0,0,0},
+[1818]={"Speak with Dillinger",10,10,8589934770,1,"H","Austil de Mon",85,61.9,52.5,"Deathguard Dillinger",85,58.2,51.5,0,0,0},
+[1819]={"Ulag the Cleaver",10,10,8589934770,1,"H","Deathguard Dillinger",85,58.2,51.5,"Deathguard Dillinger",85,58.2,51.5,0,0,0},
+[1820]={"Speak with Coleman",10,10,8589934770,1,"H","Deathguard Dillinger",85,58.2,51.5,"Coleman Farthing",85,61.7,52.3,0,0,0},
+[1821]={"Agamand Heirlooms",11,10,8589934770,1,"H","Coleman Farthing",85,61.7,52.3,"Coleman Farthing",85,61.7,52.3,85,52.7,25.9},
+[1822]={"Heirloom Weapon",11,10,8589934770,1,"H","Coleman Farthing",85,61.7,52.3,"Coleman Farthing",85,61.7,52.3,0,0,0},
+[1823]={"Speak with Ruga",20,20,8589934770,1,"H","Sorek",1637,80.4,32.4,"Ruga Ragetotem",17,44.7,59.4,0,0,0},
+[1824]={"Trial at the Field of Giants",20,20,8589934770,1,"H","Ruga Ragetotem",17,44.7,59.4,"Ruga Ragetotem",17,44.7,59.4,17,45.2,70.2},
+[1825]={"Speak with Thun'grim",20,20,8589934770,1,"H","Ruga Ragetotem",17,44.7,59.4,"Thun'grim Firegaze",17,57.2,30.3,0,0,0},
+[1838]={"Brutal Armor",30,20,8589934770,1,"H","Thun'grim Firegaze",17,57.2,30.3,"Thun'grim Firegaze",17,57.2,30.3,406,72.9,60.6},
+[1840]={"Orm Stonehoof and the Brutal Helm",30,20,8589934770,1,"H","Thun'grim Firegaze",17,57.2,30.3,"Orm Stonehoof",1638,39,56,0,0,0},
+[1841]={"Velora Nitely and the Brutal Legguards",30,20,8589934770,1,"H","Thun'grim Firegaze",17,57.2,30.3,"Velora Nitely",1497,62.1,39.1,0,0,0},
+[1842]={"Satyr Hooves",30,20,8589934770,1,"H","Ula'elek",14,56.3,74.3,"Ula'elek",14,56.3,74.3,331,78.4,47.5},
+[1843]={"Brutal Gauntlets",30,20,8589934770,1,"H","Ula'elek",14,56.3,74.3,"Ula'elek",14,56.3,74.3,0,0,0},
+[1844]={"Chimaeric Horn",30,20,8589934770,1,"H","Orm Stonehoof",1638,39,56,"Orm Stonehoof",1638,39,56,406,33.6,74.7},
+[1845]={"Brutal Helm",30,20,8589934770,1,"H","Orm Stonehoof",1638,39,56,"Orm Stonehoof",1638,39,56,0,0,0},
+[1846]={"Dragonmaw Shinbones",30,20,8589934770,1,"H","Velora Nitely",1497,62.1,39.1,"Velora Nitely",1497,62.1,39.1,0,0,0},
+[1847]={"Brutal Legguards",30,20,8589934770,1,"H","Velora Nitely",1497,62.1,39.1,"Velora Nitely",1497,62.1,39.1,0,0,0},
+[1848]={"Brutal Hauberk",30,20,8589934770,1,"H","Thun'grim Firegaze",17,57.2,30.3,"Thun'grim Firegaze",17,57.2,30.3,0,0,0},
+[1858]={"The Shattered Hand",13,10,130,8,"H","Therzok",1637,42.7,53.5,"Therzok",1637,42.7,53.5,0,0,0},
+[1859]={"Therzok",10,10,2,8,"H","Kaplak",14,52,43.7,"Therzok",1637,42.7,53.5,0,0,0},
+[1860]={"Speak with Jennea",10,10,65,128,"A","Zaldimar Wefhellt",12,43.2,66.2,"Jennea Cannon",1519,49.6,85.8,0,0,0},
+[1861]={"Mirror Lake",10,10,4294967361,128,"A","Jennea Cannon",1519,49.6,85.8,"Jennea Cannon",1519,49.6,85.8,0,0,0},
+[1879]={"Speak with Bink",10,10,65,128,"A","Magis Sparkmantle",1,47.5,52.1,"Bink",1537,27.2,8.3,0,0,0},
+[1880]={"Mage-tastic Gizmonitor",10,10,65,128,"A","Bink",1537,27.2,8.3,"Bink",1537,27.2,8.3,1,27.7,36.4},
+[1881]={"Speak with Anastasia",10,10,144,128,"H","Cain Firesong",85,62,52.5,"Anastasia Hartwell",1497,85.1,10,0,0,0},
+[1882]={"The Balnir Farmstead",10,10,144,128,"H","Anastasia Hartwell",1497,85.1,10,"Anastasia Hartwell",1497,85.1,10,85,77.6,62},
+[1883]={"Speak with Un'thuwa",10,10,0,128,"H","Uthel'nay",1637,39.2,86.3,"Un'Thuwa",14,56.3,75.1,0,0,0},
+[1884]={"Ju-Ju Heaps",10,10,146,128,"H","Un'Thuwa",14,56.3,75.1,"Un'Thuwa",14,56.3,75.1,14,68.5,84.2},
+[1885]={"Mennet Carkad",10,10,16,8,"H","Marion Call",85,61.8,52,"Mennet Carkad",1497,83.5,69.1,0,0,0},
+[1886]={"The Deathstalkers",13,10,16,8,"H","Mennet Carkad",1497,83.5,69.1,"Mennet Carkad",1497,83.5,69.1,130,49.7,32.2},
+[1898]={"The Deathstalkers",13,10,16,8,"H","Mennet Carkad",1497,83.5,69.1,"Andron Gant",1497,54.8,76.3,0,0,0},
+[1899]={"The Deathstalkers",13,10,16,8,"H","Andron Gant",1497,54.8,76.3,"Mennet Carkad",1497,83.5,69.1,1497,55.4,77},
+[1919]={"Report to Jennea",15,15,65,128,"A","Dink",1537,27.2,8.6,"Jennea Cannon",1519,49.6,85.8,0,0,0},
+[1920]={"Investigate the Blue Recluse",16,15,4294967361,128,"A","Jennea Cannon",1519,49.6,85.8,"Jennea Cannon",1519,49.6,85.8,1497,85.6,9.9},
+[1921]={"Gathering Materials",15,15,4294967361,128,"A","Jennea Cannon",1519,49.6,85.8,"Wynne Larson",1519,51.8,83.5,17,48.7,40.9},
+[1938]={"Ur's Treatise on Shadow Magic",28,26,4294967361,128,"A","High Sorcerer Andromath",1519,48.7,87.6,"High Sorcerer Andromath",1519,48.7,87.6,44,73.8,47.6},
+[1939]={"High Sorcerer Andromath",26,26,65,128,"A","Jennea Cannon",1519,49.6,85.8,"High Sorcerer Andromath",1519,48.7,87.6,0,0,0},
+[1940]={"Pristine Spider Silk",26,26,4294967361,128,"A","High Sorcerer Andromath",1519,48.7,87.6,"Wynne Larson",1519,51.8,83.5,10,34.9,46},
+[1941]={"Manaweave Robe",15,15,65,128,"A","Wynne Larson",1519,51.8,83.5,"Wynne Larson",1519,51.8,83.5,0,0,0},
+[1942]={"Astral Knot Garment",26,26,65,128,"A","Wynne Larson",1519,51.8,83.5,"Wynne Larson",1519,51.8,83.5,0,0,0},
+[1943]={"Speak with Deino",26,26,144,128,"H","Anastasia Hartwell",1497,85.1,10,"Deino",1637,38.5,86.1,0,0,0},
+[1944]={"Waters of Xavian",26,26,146,128,"H","Deino",1637,38.5,86.1,"Deino",1637,38.5,86.1,0,0,0},
+[1945]={"Laughing Sisters",26,26,144,128,"H","Deino",1637,38.5,86.1,"Kil'hala",17,52.2,31.7,331,59.8,54.7},
+[1946]={"Nether-lace Garment",26,26,144,128,"H","Kil'hala",17,52.2,31.7,"Kil'hala",17,52.2,31.7,0,0,0},
+[1947]={"Journey to the Marsh",38,30,0,128,"A","Jennea Cannon",1519,49.6,85.8,"Tabetha",15,46.1,57.1,0,0,0},
+[1949]={"Hidden Secrets",38,30,0,128,"","Tabetha",15,46.1,57.1,"Magus Tirth",400,78.3,75.7,0,0,0},
+[1950]={"Get the Scoop",30,30,0,128,"","Magus Tirth",400,78.3,75.7,"Magus Tirth",400,78.3,75.7,0,0,0},
+[1951]={"Rituals of Power",40,30,0,128,"","Magus Tirth",400,78.3,75.7,"Tabetha",15,46.1,57.1,796,0,0},
+[1952]={"Mage's Wand",40,30,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,0,0,0},
+[1953]={"Return to the Marsh",40,35,0,128,"H","Anastasia Hartwell",1497,85.1,10,"Tabetha",15,46.1,57.1,0,0,0},
+[1954]={"The Infernal Orb",40,35,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,405,79.5,81.3},
+[1955]={"The Exorcism",40,35,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,0,0,0},
+[1956]={"Power in Uldaman",40,35,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,1337,0,0},
+[1957]={"Mana Surges",40,35,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,0,0,0},
+[1958]={"Celestial Power",40,35,0,128,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,0,0,0},
+[1959]={"Report to Anastasia",15,15,144,128,"H","Uthel'nay",1637,39.2,86.3,"Anastasia Hartwell",1497,85.1,10,0,0,0},
+[1960]={"Investigate the Alchemist Shop",16,15,146,128,"H","Anastasia Hartwell",1497,85.1,10,"Anastasia Hartwell",1497,85.1,10,1497,85.6,9.9},
+[1961]={"Gathering Materials",15,15,146,128,"H","Anastasia Hartwell",1497,85.1,10,"Josef Gregorian",1497,70.8,30.7,17,48.7,40.9},
+[1962]={"Spellfire Robes",15,15,144,128,"H","Josef Gregorian",1497,70.8,30.7,"Josef Gregorian",1497,70.8,30.7,0,0,0},
+[1963]={"The Shattered Hand",13,10,130,8,"H","Therzok",1637,42.7,53.5,"Therzok",1637,42.7,53.5,17,63.1,44.3},
+[1978]={"The Deathstalkers",13,10,16,8,"H","Mennet Carkad",1497,83.5,69.1,"Varimathras",1497,56.2,92.2,0,0,0},
+[2205]={"Seek out SI: 7",10,10,4294967373,8,"A","Keryn Sylvius",12,43.9,65.9,"Master Mathias Shaw",1519,78.3,70.7,0,0,0},
+[2206]={"Snatch and Grab",10,10,4294967373,8,"A","Master Mathias Shaw",1519,78.3,70.7,"Master Mathias Shaw",1519,78.3,70.7,12,48.1,87},
+[2218]={"Road to Salvation",10,10,4294967373,8,"A","Hogral Bakkan",1,47.6,52.6,"Hulfdan Blackbeard",1537,52,14.8,0,0,0},
+[2238]={"Simple Subterfugin'",10,10,4294967373,8,"A","Hulfdan Blackbeard",1537,52,14.8,"Onin MacHammar",1,25.2,44.5,0,0,0},
+[2239]={"Onin's Report",10,10,4294967373,8,"A","Onin MacHammar",1,25.2,44.5,"Hulfdan Blackbeard",1537,52,14.8,0,0,0},
+[2241]={"The Apple Falls",10,10,4294967373,8,"A","Jannok Breezesong",141,56.4,60.1,"Syurna",1657,37,21.9,0,0,0},
+[2242]={"Destiny Calls",10,10,4294967373,8,"A","Syurna",1657,37,21.9,"Syurna",1657,37,21.9,0,0,0},
 [2278]={"The Platinum Discs",47,40,0,0,"","The Discs of Norgannon",1337,0,0,"The Discs of Norgannon",1337,0,0,0,0,0},
 [2279]={"The Platinum Discs",47,40,4294967373,0,"A","The Discs of Norgannon",1337,0,0,"High Explorer Magellas",1537,69.9,18.6,0,0,0},
 [2280]={"The Platinum Discs",47,40,8589934770,0,"H","The Discs of Norgannon",1337,0,0,"Sage Truthseeker",1638,34.4,46.9,0,0,0},
@@ -104,6 +383,10 @@ D.quest = {
 [2721]={"Kirith",58,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Spirit of Kirith",0,0,0,0,0,0},
 [2743]={"The Cover of Darkness",60,45,0,0,"","Spirit of Kirith",0,0,0,"Fallen Hero of the Horde",8,34.3,66.1,0,0,0},
 [2744]={"The Demon Hunter",60,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Loramus Thalipedes",16,60.8,66.3,0,0,0},
+[2983]={"Call of Fire",10,10,8589934770,64,"H","Swart",14,54.4,42.6,"Kranal Fiss",17,56,19.9,0,0,0},
+[2984]={"Call of Fire",10,10,8589934770,64,"H","Narm Skychaser",215,47.4,62.5,"Kranal Fiss",17,56,19.9,0,0,0},
+[2985]={"Call of Water",20,20,8589934770,64,"H","Swart",14,54.4,42.6,"Islen Waterseer",17,65.8,43.8,0,0,0},
+[2986]={"Call of Water",20,20,8589934770,64,"H","Narm Skychaser",215,47.4,62.5,"Islen Waterseer",17,65.8,43.8,0,0,0},
 [3141]={"Loramus",57,45,0,0,"","Loramus Thalipedes",16,60.8,66.3,"Loramus Thalipedes",16,60.8,66.3,0,0,0},
 [3508]={"Breaking the Ward",58,45,0,0,"","Loramus Thalipedes",16,60.8,66.3,"Loramus Thalipedes",16,60.8,66.3,0,0,0},
 [3509]={"The Name of the Beast",58,45,0,0,"","Loramus Thalipedes",16,60.8,66.3,"Lord Arkkoroc",16,77.1,42.8,0,0,0},
@@ -115,12 +398,139 @@ D.quest = {
 [3626]={"Return to the Blasted Lands",58,45,0,0,"","Galvan the Ancient",33,50.6,20.5,"Fallen Hero of the Horde",8,34.3,66.1,0,0,0},
 [3627]={"Uniting the Shattered Amulet",60,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,4,40.8,30},
 [3628]={"You Are Rakh'likh, Demon",60,45,0,0,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,0,0,0},
+[4781]={"Components for the Enchanted Gold Bloodrobe",34,31,0,256,"","Menara Voidrender",17,62.5,35.5,"Xizk Goodstitch",33,28.7,76.9,33,41.6,42.2},
+[4782]={"Components for the Enchanted Gold Bloodrobe",34,31,0,256,"","Xizk Goodstitch",33,28.7,76.9,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[4783]={"Components for the Enchanted Gold Bloodrobe",37,31,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,405,74.5,26.8},
+[4784]={"Components for the Enchanted Gold Bloodrobe",37,31,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,45,25.8,30.6},
+[4786]={"The Completed Robe",38,31,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[4961]={"Cleansing of the Orb of Orahil",40,35,0,256,"","Tabetha",15,46.1,57.1,"Tabetha",15,46.1,57.1,0,0,0},
+[4964]={"The Completed Orb of Dar'Orahil",40,35,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[4975]={"The Completed Orb of Noh'Orahil",40,35,0,256,"","Menara Voidrender",17,62.5,35.5,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[4976]={"Returning the Cleansed Orb",40,35,0,256,"","Tabetha",15,46.1,57.1,"Menara Voidrender",17,62.5,35.5,0,0,0},
+[5061]={"Aquatic Form",16,16,8,1024,"A","Dendrite Starblaze",493,56.2,30.6,"Mathrengyl Bearwalker",1657,35.4,8.4,0,0,0},
+[5621]={"Garments of the Moon",4,5,8,16,"A","Laurna Morninglight",141,55.6,56.8,"Laurna Morninglight",141,55.6,56.8,141,57.2,63.5},
+[5622]={"In Favor of Elune",4,5,8,16,"A","Shanda",141,59.2,40.4,"Laurna Morninglight",141,55.6,56.8,0,0,0},
+[5623]={"In Favor of the Light",4,5,1,16,"A","Priestess Anetta",12,49.8,39.5,"Priestess Josetta",12,43.3,65.7,0,0,0},
+[5624]={"Garments of the Light",4,5,1,16,"A","Priestess Josetta",12,43.3,65.7,"Priestess Josetta",12,43.3,65.7,12,48.1,68},
+[5625]={"Garments of the Light",4,5,68,16,"A","Maxan Anvol",1,47.3,52.2,"Maxan Anvol",1,47.3,52.2,1,45.8,54.6},
+[5626]={"In Favor of the Light",4,5,68,16,"A","Branstock Khalder",1,28.6,66.4,"Maxan Anvol",1,47.3,52.2,0,0,0},
+[5648]={"Garments of Spirituality",4,5,128,16,"H","Tai'jin",14,54.3,42.9,"Tai'jin",14,54.3,42.9,14,53.1,46.5},
+[5649]={"In Favor of Spirituality",4,5,128,16,"H","Ken'jai",14,42.4,68.8,"Tai'jin",14,54.3,42.9,0,0,0},
+[5650]={"Garments of Darkness",4,5,16,16,"H","Dark Cleric Beryl",85,61.6,52.2,"Dark Cleric Beryl",85,61.6,52.2,85,59.2,46.5},
+[5651]={"In Favor of Darkness",4,5,16,16,"H","Dark Cleric Duesten",85,31.1,66,"Dark Cleric Beryl",85,61.6,52.2,0,0,0},
+[6121]={"Lessons Anew",14,14,4294967304,1024,"A","Mathrengyl Bearwalker",1657,35.4,8.4,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[6122]={"The Principal Source",14,14,4294967304,1024,"A","Dendrite Starblaze",493,56.2,30.6,"Alanndarian Nightsong",148,37.7,40.7,0,0,0},
+[6123]={"Gathering the Cure",14,14,4294967304,1024,"A","Alanndarian Nightsong",148,37.7,40.7,"Alanndarian Nightsong",148,37.7,40.7,141,54.5,66.6},
+[6124]={"Curing the Sick",14,14,4294967304,1024,"A","Alanndarian Nightsong",148,37.7,40.7,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[6126]={"Lessons Anew",14,14,32,1024,"H","Turak Runetotem",1638,76.5,27.2,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[6127]={"The Principal Source",14,14,32,1024,"H","Dendrite Starblaze",493,56.2,30.6,"Tonga Runetotem",17,52.3,31.9,0,0,0},
+[6128]={"Gathering the Cure",14,14,32,1024,"H","Tonga Runetotem",17,52.3,31.9,"Tonga Runetotem",17,52.3,31.9,141,54.5,66.6},
+[6129]={"Curing the Sick",14,14,32,1024,"H","Tonga Runetotem",17,52.3,31.9,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
+[7581]={"The Prison's Bindings",60,60,0,256,"","Daio the Decrepit",4,34.1,50.1,"Daio the Decrepit",4,34.1,50.1,2557,0,0},
+[7583]={"Suppression",60,60,0,256,"","Daio the Decrepit",4,34.1,50.1,"Daio the Decrepit",4,34.1,50.1,0,0,0},
+[7601]={"What Niby Commands",50,50,0,256,"","Niby the Almighty",361,41.4,44.9,"Impsy",361,41.4,45,0,0,0},
+[7602]={"Flawless Fel Essence",55,50,0,256,"","Impsy",361,41.4,45,"Impsy",361,41.4,45,16,64.7,18.4},
+[7603]={"Kroshius' Infernal Core",55,50,0,256,"","Impsy",361,41.4,45,"Niby the Almighty",361,41.4,44.9,361,45.7,34.8},
+[7632]={"The Ancient Leaf",60,60,0,4,"","Ancient Petrified Leaf",0,0,0,"Vartrus the Ancient",0,0,0,0,0,0},
+[7634]={"Ancient Sinew Wrapped Lamina",60,60,0,4,"","Hastat the Ancient",0,0,0,"Hastat the Ancient",0,0,0,618,56.7,51.7},
+[7667]={"Material Assistance",60,58,8589934770,64,"H","Sagorne Creststrider",1637,38.7,35.9,"Sagorne Creststrider",1637,38.7,35.9,46,58.8,45.3},
+[8151]={"The Hunter's Charm",52,50,0,4,"H","Kary Thunderhorn",1638,58.5,88.3,"Ogtinc",16,42.4,42.6,0,0,0},
+[8153]={"Courser Antlers",52,50,0,4,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,16,52.1,35.4},
+[8231]={"Wavethrashing",52,50,0,4,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,16,69.2,73},
+[8232]={"The Green Drake",52,50,0,4,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,1477,0,0},
+[8234]={"Sealed Azure Bag",52,50,0,8,"","Lord Jorach Ravenholdt",36,86,78.9,"Archmage Xylem",16,29.2,40.2,16,45.3,25.8},
+[8235]={"Encoded Fragments",52,50,0,8,"","Archmage Xylem",16,29.2,40.2,"Archmage Xylem",16,29.2,40.2,16,51.8,38},
+[8236]={"The Azure Key",52,50,0,8,"","Archmage Xylem",16,29.2,40.2,"Lord Jorach Ravenholdt",36,86,78.9,1477,0,0},
+[8250]={"Magecraft",52,50,0,128,"H","Thurston Xane",1638,25.2,21,"Sanath Lim-yo",16,28.1,50.1,0,0,0},
+[8251]={"Magic Dust",52,50,0,128,"","Archmage Xylem",16,29.2,40.2,"Archmage Xylem",16,29.2,40.2,16,64.8,27.8},
+[8252]={"The Siren's Coral",52,50,0,128,"","Archmage Xylem",16,29.2,40.2,"Archmage Xylem",16,29.2,40.2,16,44.4,53.9},
+[8253]={"Destroy Morphaz",52,50,0,128,"","Archmage Xylem",16,29.2,40.2,"Archmage Xylem",16,29.2,40.2,1477,0,0},
+[8254]={"Cenarion Aid",52,50,0,16,"A","High Priestess Laurena",1519,49.5,44.6,"Ogtinc",16,42.4,42.6,0,0,0},
+[8255]={"Of Coursers We Know",52,50,0,16,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,16,52.1,35.4},
+[8256]={"The Ichor of Undeath",52,50,0,16,"","Ogtinc",16,42.4,42.6,"Ogtinc",16,42.4,42.6,28,47.9,64.5},
+[8257]={"Blood of Morphaz",52,50,0,16,"","Ogtinc",16,42.4,42.6,"Greta Mosshoof",361,51.2,82.1,1477,0,0},
+[8258]={"The Darkreaver Menace",60,60,8589934770,64,"H","Sagorne Creststrider",1637,38.7,35.9,"Sagorne Creststrider",1637,38.7,35.9,0,0,0},
+[8410]={"Elemental Mastery",50,50,8589934770,64,"H","Haromm",8,48.2,57.9,"Bath'rah the Windwatcher",36,80.5,66.9,1377,44.9,41},
+[8412]={"Spirit Totem",52,50,8589934770,64,"H","Bath'rah the Windwatcher",36,80.5,66.9,"Bath'rah the Windwatcher",36,80.5,66.9,28,51.1,53.1},
+[8413]={"Da Voodoo",52,50,8589934770,64,"H","Bath'rah the Windwatcher",36,80.5,66.9,"Bath'rah the Windwatcher",36,80.5,66.9,1477,0,0},
+[8414]={"Dispelling Evil",52,50,5,2,"A","Commander Ashlam Valorfist",28,42.7,84,"High Priest Thel'danis",28,52,83.3,28,47.3,64.5},
+[8416]={"Inert Scourgestones",52,50,5,2,"A","High Priest Thel'danis",28,52,83.3,"Commander Ashlam Valorfist",28,42.7,84,0,0,0},
+[8418]={"Forging the Mightstone",52,50,5,2,"A","Commander Ashlam Valorfist",28,42.7,84,"Commander Ashlam Valorfist",28,42.7,84,1477,0,0},
+[8419]={"An Imp's Request",52,50,0,256,"A","Demisette Cloyce",1519,39.2,85,"Impsy",361,41.4,45,361,38.6,50.9},
+[8420]={"Hot and Itchy",52,50,0,256,"","Impsy",361,41.4,45,"Impsy",361,41.4,45,361,38.6,50.9},
+[8421]={"The Wrong Stuff",52,50,0,256,"","Impsy",361,41.4,45,"Impsy",361,41.4,45,361,41.4,45.5},
+[8422]={"Trolls of a Feather",52,50,0,256,"","Impsy",361,41.4,45,"Impsy",361,41.4,45,1477,0,0},
+[8423]={"Warrior Kinship",52,50,0,1,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,4,53.6,50.5},
+[8424]={"War on the Shadowsworn",52,50,0,1,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,4,64.1,35.2},
+[8425]={"Voodoo Feathers",52,50,0,1,"","Fallen Hero of the Horde",8,34.3,66.1,"Fallen Hero of the Horde",8,34.3,66.1,1477,0,0},
+[8905]={"An Earnest Proposition",60,58,4294967373,1024,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8906]={"An Earnest Proposition",60,58,4294967373,4,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8907]={"An Earnest Proposition",60,58,4294967373,128,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8908]={"An Earnest Proposition",60,58,4294967373,2,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8909]={"An Earnest Proposition",60,58,4294967373,16,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8910]={"An Earnest Proposition",60,58,4294967373,8,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8911]={"An Earnest Proposition",60,58,4294967373,256,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8912]={"An Earnest Proposition",60,58,4294967373,1,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,618,56.6,26.4},
+[8913]={"An Earnest Proposition",60,58,8589934770,1024,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8914]={"An Earnest Proposition",60,58,8589934770,4,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8915]={"An Earnest Proposition",60,58,8589934770,128,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8916]={"An Earnest Proposition",60,58,8589934770,16,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8917]={"An Earnest Proposition",60,58,8589934770,8,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8918]={"An Earnest Proposition",60,58,8589934770,64,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8919]={"An Earnest Proposition",60,58,8589934770,256,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8920]={"An Earnest Proposition",60,58,8589934770,1,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[8921]={"The Ectoplasmic Distiller",60,58,0,0,"","Mux Manascrambler",440,52.5,27.2,"Mux Manascrambler",440,52.5,27.2,46,60.1,40.4},
+[8922]={"A Supernatural Device",60,58,4294967373,0,"A","Deliana",1537,43.5,52.6,"Mux Manascrambler",440,52.5,27.2,0,0,0},
+[8923]={"A Supernatural Device",60,58,8589934770,0,"H","Mokvar",1637,35,38.3,"Mux Manascrambler",440,52.5,27.2,0,0,0},
+[8924]={"Hunting for Ectoplasm",60,58,0,0,"","Mux Manascrambler",440,52.5,27.2,"Mux Manascrambler",440,52.5,27.2,139,35.1,40.3},
+[8925]={"A Portable Power Source",60,58,0,0,"","Mux Manascrambler",440,52.5,27.2,"Mux Manascrambler",440,52.5,27.2,46,35.4,57.8},
+[8928]={"A Shifty Merchant",60,58,0,0,"","Mux Manascrambler",440,52.5,27.2,"Mux Manascrambler",440,52.5,27.2,0,0,0},
+[8935]={"Just Compensation",60,58,4294967373,8,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,1583,0,0},
+[8937]={"Just Compensation",60,58,4294967373,1,"A","Deliana",1537,43.5,52.6,"Deliana",1537,43.5,52.6,2017,0,0},
+[8941]={"Just Compensation",60,58,8589934770,8,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1583,0,0},
+[8977]={"Return to Deliana",60,58,4294967373,0,"A","Mux Manascrambler",440,52.5,27.2,"Deliana",1537,43.5,52.6,0,0,0},
+[8978]={"Return to Mokvar",60,58,8589934770,0,"H","Mux Manascrambler",440,52.5,27.2,"Mokvar",1637,35,38.3,0,0,0},
+[9051]={"Toxic Test",52,50,0,1024,"","Torwa Pathfinder",490,71.6,76,"Torwa Pathfinder",490,71.6,76,0,0,0},
+[9052]={"Bloodpetal Poison",52,50,0,1024,"","Torwa Pathfinder",490,71.6,76,"Torwa Pathfinder",490,71.6,76,490,47.3,69.4},
+[9053]={"A Better Ingredient",52,50,0,1024,"","Torwa Pathfinder",490,71.6,76,"Torwa Pathfinder",490,71.6,76,0,0,0},
+[9063]={"Torwa Pathfinder",52,50,0,1024,"H","Turak Runetotem",1638,76.5,27.2,"Torwa Pathfinder",490,71.6,76,0,0,0},
+[65597]={"The Binding",20,0,0,0,"H","Carendin Halgar",1497,85.1,26,"Carendin Halgar",1497,85.1,26,1497,85.2,25.1},
+[65603]={"The Binding",20,0,0,0,"A","Gakin the Darkbinder",1519,39.2,85.2,"Gakin the Darkbinder",1519,39.2,85.2,1497,85.2,25.1},
+[65604]={"The Binding",20,0,0,0,"H","Gan'rul Bloodeye",1637,48.2,45.3,"Gan'rul Bloodeye",1637,48.2,45.3,1497,85.2,25.1},
+[78088]={"A Strange Artifact",30,22,4294967373,2,"A","Strange Orb",148,56.2,26.4,"Delgren the Purifier",331,26.2,38.7,0,0,0},
+[78089]={"Advice From Stormwind",30,22,4294967373,2,"A","Delgren the Purifier",331,26.2,38.7,"Katherine the Pure",1519,48.5,49.1,0,0,0},
+[78090]={"A Second Opinion",30,22,5,2,"A","Katherine the Pure",1519,48.5,49.1,"Ursula Deline",1519,39.9,84.2,0,0,0},
+[78091]={"Earning Your Salt",30,22,5,2,"A","Ursula Deline",1519,39.9,84.2,"Ursula Deline",1519,39.9,84.2,44,55.5,43},
+[78092]={"It Must Be Destroyed",30,22,5,2,"A","Ursula Deline",1519,39.9,84.2,"Spear of Mannoroth",331,89.5,77,331,81.3,79.5},
+[78093]={"Return to Delgren",30,22,5,2,"A","Shattered Orb",331,89.4,77,"Delgren the Purifier",331,26.2,38.7,0,0,0},
+[78261]={"The Horn of Xelthos",23,1,0,8,"","Dead Drop",130,47.1,71,"Dead Drop",130,47.1,71,0,0,0},
+[78307]={"The Horn of Xelthos",23,1,0,8,"","",0,0,0,"Dead Drop",130,47.1,71,0,0,0},
+[78676]={"The Eye of Bhossca",35,25,0,8,"","Dead Drop",130,47.1,71,"Dead Drop",130,47.1,71,0,0,0},
+[78699]={"The Eye of Bhossca",35,25,0,8,"","",0,0,0,"Dead Drop",130,47.1,71,0,0,0},
 [79007]={"... and that note you found",22,14,8589934770,0,"H","Burned-Out Remains",17,46.4,73.9,"Burned-Out Remains",40,37.4,50.7,0,0,0},
 [79008]={"... and that note you found",22,14,4294967373,0,"A","Burned-Out Remains",40,37.4,50.7,"Burned-Out Remains",17,46.4,73.9,0,0,0},
 [79192]={"Stepping Stones",24,14,0,0,"","Nailed Plank",17,46.4,73.8,"Pocket Litter",406,40.8,52.6,0,0,0},
+[79360]={"Elemental Aid",33,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Rau Cliffrunner",400,46.1,51.7,491,0,0},
+[79361]={"Storm, Earth, and Fire",43,30,8589934770,64,"H","Prate Cloudseer",400,53.5,42.6,"Prate Cloudseer",400,53.5,42.6,3,29.6,57.4},
+[79364]={"Eyes on the Sky",33,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Prate Cloudseer",400,53.5,42.6,0,0,0},
+[79366]={"Heed My Call",40,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Rau Cliffrunner",400,46.1,51.7,400,37.2,40.4},
+[79442]={"The Tempest's Weapons",40,30,8589934770,64,"H","Rau Cliffrunner",400,46.1,51.7,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
+[79970]={"Aeonas the Vindicated",40,35,4294967373,2,"A","Aeonas",796,0,0,"Aeonas the Vindicated",1519,48.6,49.1,0,0,0},
+[80455]={"Biding Our Time",50,45,0,8,"","Dead Drop",130,47.1,71,"Fahrad",36,84.5,80.3,0,0,0},
+[81924]={"Wisdom of the Guardians",50,40,40,1024,"","Tyrisius",357,57.2,68.9,"Tyrisius",357,57.2,68.9,0,0,0},
+[82084]={"A Lesson in Literacy",45,42,0,128,"H","Owen Thadd",1497,73.4,33,"Owen Thadd",1497,73.4,33,47,41,52.2},
+[82135]={"The Price of Hope",53,44,0,2,"A","Aeonas the Vindicated",361,45,52.1,"Katherine the Pure",1519,48.5,49.1,0,0,0},
+[84124]={"Legacy of Valor",60,55,0,1,"","",0,0,0,"Altar of Reverence",46,39.6,28.1,0,0,0},
 [84146]={"Red Bag Blues",60,55,0,0,"","Nami",618,61.3,36.9,"Red Bag",46,53,24.4,0,0,0},
+[84147]={"An Earnest Proposition",60,58,4294967373,1024,"A","Deliana",1537,43.6,52.6,"Deliana",1537,43.6,52.6,618,56.6,26.4},
+[84150]={"An Earnest Proposition",60,58,4294967373,2,"A","Deliana",1537,43.6,52.6,"Deliana",1537,43.6,52.6,618,56.6,26.4},
+[84160]={"An Earnest Proposition",60,58,8589934770,0,"H","Mokvar",1637,35,38.3,"Mokvar",1637,35,38.3,1377,46.9,52.8},
+[84332]={"A Thane's Gratitude",59,54,0,2,"","Mysterious Chest",139,23.1,73.5,"Mysterious Chest",139,23.1,73.5,0,0,0},
 [86784]={"Sticks and Bones",7,4,50,0,"H","Deathguard Bartholomew",85,58.5,51.4,"Eleanor Shackleton",85,57.3,55.5,85,56.1,53.5},
 [87288]={"Soft Saber Pelts",7,4,4294967373,0,"A","Aldia",141,55.5,57.1,"Aldia",141,55.5,57.1,141,58.7,58.3},
+[91285]={"Murlocs at the Gates",11,7,16,2,"H","Breton Samuels",85,21.9,45.2,"Breton Samuels",85,21.9,45.2,85,18.9,54.4},
+[91294]={"Touring the Grounds",11,8,16,2,"H","Breton Samuels",85,21.9,45.2,"Danitha Morr",85,22.1,44.7,85,22,47.2},
+[91316]={"Making Repairs",11,8,16,2,"H","Jorin Croge",85,22.7,44.7,"Jorin Croge",85,22.7,44.7,85,9.9,66.4},
 [91741]={"Nibbled-On Book",2,1,4294967373,0,"A","Nibbled-On Book (Kobold Worker)",12,51.5,38,"Brother Paxton",12,49.6,40.4,0,0,0},
 [91743]={"Rascally Rodents",2,1,4294967373,0,"A","Brother Paxton",12,49.6,40.4,"Brother Paxton",12,49.6,40.4,12,48.7,33.8},
 [91745]={"Mining Consultant",3,1,4294967373,0,"A","Brother Paxton",12,49.6,40.4,"Kelsey Fargo",12,47.2,32.2,0,0,0},
@@ -128,56 +538,204 @@ D.quest = {
 [91758]={"Follow That Kobold!",4,1,4294967373,0,"A","Marshal McBride",12,48.9,41.6,"Tordrin Sternblade",12,51.2,40.8,0,0,0},
 [91772]={"Shhh! We're Hunting Kobolds",4,1,4294967373,0,"A","Tordrin Sternblade",12,51.2,40.8,"Marshal Dughan",12,42.1,65.9,12,45.8,56.5},
 [91775]={"Book Return",6,1,4294967373,0,"A","Marshal Dughan",12,42.1,65.9,"Marshal Dughan",12,42.1,65.9,12,41.5,77.9},
+[91858]={"Diplomatic Incident",22,18,8589934770,2,"H","Danitha Morr",85,22.1,44.7,"Trevan Rol",130,43.4,41.1,0,0,0},
+[91859]={"A Curious Pair",22,18,8589934770,2,"H","Trevan Rol",130,43.4,41.1,"Deathguard Baldren",130,45.8,41.9,0,0,0},
+[91860]={"A Grim Fate",22,18,8589934770,2,"H","Deathguard Baldren",130,45.8,41.9,"Charred Remains",130,65,34.1,130,65,34.1},
+[91861]={"Into Fenris Keep",22,18,16,2,"H","Charred Remains",130,65,34.1,"Lumina Windsinger",130,65.5,23.3,0,0,0},
+[91862]={"Lumina Windsinger",22,18,8589934770,2,"H","Lumina Windsinger",130,65.5,23.3,"Lumina Windsinger",130,65.5,23.3,130,65.7,24},
 [92124]={"Book Inventory",2,1,4294967373,0,"A","Brother Paxton",12,49.6,40.4,"Daniel",12,49.5,40.7,0,0,0},
+[92466]={"Call of Earth",4,3,8589934770,64,"H","Windshaper Boro",16593,42.8,23.6,"Windshaper Boro",16593,42.8,23.6,16593,38.9,30},
+[92467]={"Call of Earth",4,3,8589934770,64,"H","Windshaper Boro",16593,42.8,23.6,"Minor Manifestation of Earth",16593,49.7,23.8,0,0,0},
+[92468]={"Call of Earth",4,3,8589934770,64,"H","Minor Manifestation of Earth",16593,49.7,23.8,"Windshaper Boro",16593,42.8,23.6,0,0,0},
 [92514]={"Welcome to Shen'dar Village",6,4,8589934770,0,"H","Constable Aonda",16593,45.7,45.5,"Constable Aonda",16593,45.7,45.5,16593,43,43.2},
 [92515]={"The Problem With Prideclaws",6,4,0,0,"","Indari Sunseam",16593,44.7,44.5,"Indari Sunseam",16593,44.7,44.5,16593,45.7,52.7},
 [93197]={"Mending Communications",58,0,0,0,"","Sebelia",616,70.9,51.5,"Innkeeper Vizzie",618,61.4,38.8,0,0,0},
 [93269]={"Top of the Post",58,0,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Sebelia",616,70.9,51.5,0,0,0},
 [93406]={"Unfrozen Deliveries",56,56,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Innkeeper Vizzie",618,61.4,38.8,618,64,39.8},
 [93461]={"Welcome to Shen'dar Village",6,4,4294967373,0,"A","Constable Aonda",16593,45.7,45.5,"Constable Aonda",16593,45.7,45.5,16593,45,46.4},
+[93791]={"Speak with Belann",10,10,4294967373,128,"A","Anathamaas Aetherwind",16593,65.9,80.6,"Belann Windwood",16593,62.9,77.4,0,0,0},
+[93797]={"Boughs in the Wind",10,10,4294967373,128,"A","Belann Windwood",16593,62.9,77.4,"Belann Windwood",16593,62.9,77.4,16593,48.6,67.6},
+[94003]={"The Skybreaker Bulwark",10,10,12884901888,1,"","Seena Skybreaker",16593,59.9,72.9,"Seena Skybreaker",16593,59.9,72.9,16593,56.6,50.4},
+[94373]={"Call of Earth",4,4,4,64,"A","Teo Hammerstorm",1,28.8,66.2,"Teo Hammerstorm",1,28.8,66.2,1,27.7,78.8},
+[94374]={"Call of Earth",4,4,4294967373,64,"A","Teo Hammerstorm",1,28.8,66.2,"Minor Manifestation of Earth",14,44,76.2,0,0,0},
+[94375]={"Call of Earth",4,4,4294967373,64,"A","Minor Manifestation of Earth",14,44,76.2,"Teo Hammerstorm",1,28.8,66.2,0,0,0},
+[94465]={"Call of Fire",11,10,4294967373,64,"A","Bruegs Kindleborn",1,87.9,44.8,"Braldir Ashmantle",38,32.2,66,0,0,0},
+[94466]={"Call of Fire",14,10,4294967373,64,"A","Braldir Ashmantle",38,32.2,66,"Braldir Ashmantle",38,32.2,66,17,54.7,27.1},
+[94467]={"Call of Fire",14,10,4294967373,64,"A","Braldir Ashmantle",38,32.2,66,"Brazier of the Dormant Flame",14,39,58.2,16593,51,85.1},
+[94468]={"Call of Fire",14,10,4,64,"A","Brazier of the Dormant Flame",14,39,58.2,"Bruegs Kindleborn",1,87.9,44.8,0,0,0},
+[94494]={"Call of Water",20,20,4294967373,64,"A","Eldrun Stormbreaker",1537,47.1,13.8,"Norric Lochthane",38,41.8,19.1,0,0,0},
+[94495]={"Call of Water",22,20,4294967373,64,"A","Norric Lochthane",38,41.8,19.1,"Hervdana Saegrund",11,65.8,76.5,0,0,0},
+[94497]={"Call of Water",22,20,4294967373,64,"A","Hervdana Saegrund",11,65.8,76.5,"Hervdana Saegrund",11,65.8,76.5,0,0,0},
+[94499]={"Call of Water",22,20,4294967373,64,"A","Hervdana Saegrund",11,65.8,76.5,"Hervdana Saegrund",11,65.8,76.5,0,0,0},
+[94500]={"Call of Water",23,20,4294967373,64,"A","Hervdana Saegrund",11,65.8,76.5,"Hervdana Saegrund",11,65.8,76.5,0,0,0},
+[94501]={"Call of Water",23,20,4294967373,64,"A","Hervdana Saegrund",11,65.8,76.5,"Norric Lochthane",38,41.8,19.1,0,0,0},
+[94502]={"Call of Water",23,20,4294967373,64,"A","Norric Lochthane",38,41.8,19.1,"Forgotten Shrine",40,45.6,59.9,130,38.8,44.3},
+[94503]={"Call of Water",23,20,4,64,"A","Forgotten Shrine",40,45.6,59.9,"Minor Manifestation of Water",0,0,0,0,0,0},
+[94505]={"Call of Water",23,20,4,64,"A","Minor Manifestation of Water",0,0,0,"Norric Lochthane",38,41.8,19.1,0,0,0},
+[94789]={"Call of Air",30,30,4294967373,64,"A","Eldrun Stormbreaker",1537,47.1,13.8,"Veyric Thunderhame",45,59.8,27.6,0,0,0},
+[95034]={"The Debt",24,18,16,2,"H","Lumina Windsinger",130,43.4,41,"Lumina Windsinger",130,43.4,41,130,43.4,41},
+[95036]={"A Moon-Kissed Blade",25,20,16,2,"H","Lumina Windsinger",130,43.4,41,"Trevan Rol",130,43.4,41.1,130,43.4,41.1},
+[95111]={"An Underrated Talent",25,20,8589934770,2,"H","Trevan Rol",130,43.4,41.1,"Ott",267,60.4,26.2,0,0,0},
+[95125]={"Ott's Masterwork",25,20,8589934770,2,"H","Ott",267,60.4,26.2,"Ott",267,60.4,26.2,267,60.4,26.2},
+[95126]={"The Moonsilver Blade",25,20,8589934770,2,"H","Ott",267,60.4,26.2,"Trevan Rol",130,43.4,41.1,0,0,0},
+[95140]={"Old Fire-Eye",26,20,16,2,"H","Lumina Windsinger",130,43.4,41,"Lumina Windsinger",130,43.4,41,130,49.4,85.6},
 [95805]={"Grace of An'she and Mu'sha",4,1,48,0,"H","Seer Graytongue",215,42.5,90.1,"Ritual Fire",215,56.6,88.7,0,0,0},
-[96107]={"Feathers for Fletching",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,63.5,56},
-[96108]={"Poison Tips",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,62.2,58.6},
-[96109]={"A Hunter's Quiver",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,59.5,53.4},
-[96260]={"Stronger than Steel",29,23,8589934770,0,"H","Yorn Grimtotem",215,32.5,20,"Yorn Grimtotem",215,32.5,20,215,33.7,11.3},
+[96016]={"The Tempest's Weapons",40,30,4294967373,64,"A","Veyric Thunderhame",45,59.8,27.6,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
+[96107]={"Feathers for Fletching",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,63.8,55.7},
+[96108]={"Poison Tips",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,62.3,58.3},
+[96109]={"A Hunter's Quiver",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,59.5,53.5},
+[96135]={"Heed My Call",40,30,4294967373,64,"A","Veyric Thunderhame",45,59.8,27.6,"Veyric Thunderhame",45,59.8,27.6,400,37.2,40.4},
+[96136]={"Call of Air",35,30,8589934592,0,"","Alaana Stormwalker",215,33.4,22.6,"Prate Cloudseer",400,53.5,42.6,0,0,0},
+[96204]={"The Windshaper's Wrath",22,18,8589934770,2,"H","Lumina Windsinger",130,65.5,23.3,"Lumina Windsinger",130,43.4,41,130,65.5,23.3},
+[96260]={"Stronger than Steel",29,23,8589934770,0,"H","Yorn Grimtotem",215,32.5,20,"Yorn Grimtotem",215,32.5,20,215,33.8,11.4},
+[97169]={"The Darkreaver Menace",60,0,0,0,"A","Eldrun Stormbreaker",1537,47.1,13.8,"Eldrun Stormbreaker",1537,47.1,13.8,0,0,0},
 [97253]={"Parts and Pieces",15,9,0,0,"","Wrenix the Wretched",17,63.1,36.3,"Wrenix the Wretched",17,63.1,36.3,17,62.3,46.2},
 [97277]={"Grund and Gozwin",6,4,4294967373,0,"A","Grund Drokda",1,28.7,67.5,"Grund Drokda",1,28.7,67.5,1,27.3,62.9},
 [97914]={"Expanding Horizons",17,13,4294967373,0,"A","Thundris Windweaver",148,37.4,40.1,"Baros Alexston",1519,57.7,47.9,0,0,0},
 [97926]={"Making Do",17,13,4294967373,0,"A","Baros Alexston",1519,57.7,47.9,"Thundris Windweaver",148,37.4,40.1,0,0,0},
 [99053]={"Escaping Ban'ethil",10,4,4294967373,0,"A","Sentinel Lynessa Duskblossom",141,44.7,58.9,"Sentinel Kyra Starsong",141,56,59.5,0,0,0},
+[99187]={"The Reliquary of Tyr",58,50,8589934770,2,"H","Knight of Mourning",85,17.6,67.6,"Knight of Mourning",85,17.6,67.6,0,0,0},
 }
 
 -- Reward quest -> its chain, first step first (only chains of two steps or more).
 D.chain = {
+[31]={26,28,30,31},
 [58]={56,57,58},
+[96]={1528,1530,1535,1536,1534,220,63,100,96},
 [140]={136,138,139,140},
+[397]={335,336,397},
 [531]={257,258,271,531},
 [626]={624,625,626},
 [1003]={983,1001,1002,1003},
 [1474]={1472,1476,1474},
+[1499]={1485,1499},
+[1503]={1505,1498,1502,1503},
 [1513]={1507,1508,1509,1510,1511,1515,1512,1513},
+[1518]={1516,1517,1518},
+[1521]={1519,1520,1521},
+[1527]={1522,1524,1525,1526,1527},
+[1652]={1649,1650,1651,1652},
+[1667]={1638,1639,1640,1665,1666,1667},
+[1682]={1679,1678,1680,1681,1682},
+[1693]={1684,1683,1686,1692,1693},
+[1702]={1698,1699,1702},
+[1706]={1698,1699,1702,1701,1700,1705,1706},
+[1709]={1698,1699,1702,1701,1704,1708,1709},
+[1711]={1698,1699,1702,1701,1703,1710,1711},
 [1739]={1716,1738,1739},
+[1792]={1718,1719,1791,1712,1713,1792},
 [1795]={1801,1803,1805,1795},
+[1806]={1649,1650,1651,1652,1653,1654,1806},
+[1822]={1818,1819,1820,1821,1822},
+[1824]={1823,1824},
+[1843]={1823,1824,1825,1838,1848,1842,1843},
+[1845]={1823,1824,1825,1838,1840,1844,1845},
+[1847]={1823,1824,1825,1838,1841,1846,1847},
+[1848]={1823,1824,1825,1838,1848},
+[1858]={1859,1963,1858},
+[1861]={1860,1861},
+[1880]={1879,1880},
+[1882]={1881,1882},
+[1884]={1883,1884},
+[1941]={1919,1920,1921,1941},
+[1942]={1939,1938,1940,1942},
+[1946]={1943,1944,1945,1946},
+[1952]={1947,1949,1950,1951,1952},
+[1958]={1953,1954,1955,1956,1957,1958},
+[1962]={1959,1960,1961,1962},
+[1978]={1885,1886,1898,1899,1978},
+[2206]={2205,2206},
+[2239]={2218,2238,2239},
+[2242]={2241,2242},
 [2439]={2278,2279,2439},
 [2440]={2278,2280,2440},
 [3628]={2701,2721,2743,2744,3141,3508,3509,3510,3511,3602,3621,3625,3626,3627,3628},
+[4786]={1796,4781,4782,4783,4784,4786},
+[4964]={1799,4961,4976,4964},
+[4975]={1799,4961,4976,4975},
+[5061]={27,29,272,5061},
+[5621]={5622,5621},
+[5624]={5623,5624},
+[5625]={5626,5625},
+[5648]={5649,5648},
+[5650]={5651,5650},
+[6124]={6121,6122,6123,6124},
+[6129]={6126,6127,6128,6129},
+[7583]={7581,7583},
+[7603]={7601,7602,7603},
+[7634]={7632,7634},
+[8232]={8151,8153,8231,8232},
+[8236]={8234,8235,8236},
+[8253]={8250,8251,8252,8253},
+[8257]={8254,8255,8256,8257},
+[8258]={7667,8258},
+[8413]={8410,8412,8413},
+[8418]={8414,8416,8418},
+[8422]={8419,8421,8422},
+[8425]={8423,8424,8425},
+[8935]={8905,8922,8921,8924,8925,8928,8977,8935},
+[8937]={8905,8922,8921,8924,8925,8928,8977,8937},
+[8941]={8905,8922,8921,8924,8925,8928,8978,8941},
+[9053]={9063,9052,9051,9053},
+[78093]={78088,78089,78090,78091,78092,78093},
+[78307]={78261,78307},
+[78699]={78261,78307,78676,78699},
 [79192]={79007,79192},
+[79366]={1531,79360,79364,79361,79366},
+[79442]={1531,79360,79364,79361,79366,79442},
+[91316]={91285,91294,91316},
 [91775]={91741,92124,91743,91745,91752,91758,91772,91775},
+[92468]={1516,92467,92468},
 [92515]={92514,92515},
 [93269]={93197,93406,93269},
+[93797]={93791,93797},
+[94375]={94373,94374,94375},
+[94468]={94465,94466,94467,94468},
+[94505]={94494,94495,94497,94499,94500,94501,94502,94503,94505},
+[95126]={91858,91859,91860,91861,91862,96204,95034,95036,95111,95125,95126},
+[95140]={91858,91859,91860,91861,91862,96204,95034,95036,95111,95125,95126,95140},
 [95805]={752,753,755,95805},
+[96016]={1531,79360,79364,79361,79366,96016},
 [96109]={96107,96108,96109},
 [97926]={97914,97926},
 }
 
 -- Step -> the quests that may stand for it (an "any one of" earlier quest, one per side).
 D.alt = {
+[1516]={1519,92466},
+[1519]={1516,92466},
+[1522]={1523,2983,2984},
+[1523]={1522,2983,2984},
+[1528]={1529,2985,2986},
+[1529]={1528,2985,2986},
+[1531]={1532,96136},
+[1532]={1531,96136},
 [1804]={1805},
 [1805]={1804},
+[2983]={1522,1523,2984},
+[2984]={1522,1523,2983},
+[2985]={1528,1529,2986},
+[2986]={1528,1529,2985},
+[8419]={8420},
+[8420]={8419},
+[8905]={8906,8907,8908,8909,8910,8911,8912},
+[8906]={8905,8907,8908,8909,8910,8911,8912},
+[8907]={8905,8906,8908,8909,8910,8911,8912},
+[8908]={8905,8906,8907,8909,8910,8911,8912},
+[8909]={8905,8906,8907,8908,8910,8911,8912},
+[8910]={8905,8906,8907,8908,8909,8911,8912},
+[8911]={8905,8906,8907,8908,8909,8910,8912},
+[8912]={8905,8906,8907,8908,8909,8910,8911},
+[8922]={8923},
+[8923]={8922},
 [79007]={79008},
 [79008]={79007},
+[79366]={96135},
+[92466]={1516,1519},
 [92514]={93461},
 [93461]={92514},
+[96135]={79366},
+[96136]={1531,1532},
 }
 
 -- Areas on Kalimdor; the others are in the Eastern Kingdoms.
