@@ -1467,6 +1467,7 @@ S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show
     settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(4) end },
     library = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.Show(79093) end },
     libraryLead = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.Show(79093); ns.StartLibrary(); ns.Refresh() end },
+    libraryGoal = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.SetLibGoal(79536); ns.Show(79093) end },
     class = { spec = { level = 30, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17, bags = { 6, 6, 8, 8 },
                        done = { [1505] = true, [1498] = true, [1502] = true, [1503] = true, [1823] = true, [1824] = true },
                        log = { [1825] = true } },
