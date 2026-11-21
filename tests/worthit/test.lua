@@ -607,6 +607,55 @@ test("the window's class tab: picks a class quest, leads through all of them", f
     assert(ns.Selected() ~= FORGED, "the rewards tab keeps its own choice")
 end)
 
+test("another class: its quests on this side, any race, nothing done or led", function()
+    Fake({ level = 10, class = "MAGE", faction = "Horde", raceId = 5, zone = 17 })
+    local ns = Load()
+    eq(find(ns.ClassQuests(), FORGED), nil, "a mage's own list has no warrior quest")
+    W.done[FORGED_1] = true
+    local list = ns.ClassQuests(1)
+    local e = find(list, FORGED)
+    assert(e, "a Horde mage can look at the warriors' Forged Steel")
+    eq(e.state, "other")
+    eq(e.group, "all")
+    eq(e.classId, 1)
+    eq(e.chain[1], FORGED_1, "the whole chain from its first step")
+    for _, st in ipairs(ns.Steps(e)) do eq(st.done, false, "nothing of this character counts") end
+    for _, x in ipairs(list) do
+        local mask = ns.Data.quest[x.quest][5]
+        eq(mask == 0 or mask % 2 == 1, true, "warrior quests only")
+        assert(ns.Data.quest[x.quest][6] ~= "A", "Horde side only")
+    end
+    for i = 2, #list do assert(list[i - 1].req <= list[i].req, "lowest level first") end
+    local items, n = ns.List("class", 1)
+    eq(items[1].head, "all")
+    eq(n, #list)
+    eq(#ns.Targets(true) == 0 or find(ns.Targets(true), FORGED) == nil, true, "the guide keeps to the own class")
+    -- a class of the other side alone still shows its quests
+    local ok = true
+    for _, id in ipairs(ns.CLASSES) do
+        if #ns.ClassQuests(id) == 0 then ok = false end
+        assert(ns.ClassName(id) ~= "", "a name for class " .. id)
+    end
+    eq(ok, true, "every class has quests to look at")
+    eq(#ns.ClassQuests(), #ns.ClassQuests(8), "the own class by id is the own list")
+end)
+
+test("the window's class picker: another class, then back to the own one with Show", function()
+    Fake({ level = 10, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17 })
+    local ns = Load()
+    ns.Show(FORGED)
+    ns.ViewClass(8)
+    local _, list, detail, _, leadAll = ns.Parts()
+    eq(leadAll:IsShown(), false, "no Lead all for another class")
+    local sel = ns.Selected()
+    assert(sel and sel ~= FORGED, "a mage quest is chosen")
+    eq(detail.lead:IsShown(), false, "no Lead me on another class's quest")
+    eq(detail.hide:IsShown(), false, "nor Hide")
+    ns.Show(FORGED)
+    eq(ns.Selected(), FORGED, "Show goes back to the own class")
+    eq(detail.lead:IsShown(), true)
+end)
+
 test("random characters: the class list and its guide never raise an error", function()
     math.randomseed(11)
     local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
@@ -621,7 +670,7 @@ test("random characters: the class list and its guide never raise an error", fun
                 if p < 0.2 then W.done[id] = true elseif p < 0.3 then W.log[id] = true end
             end
         end
-        local items, n = ns.List("class")
+        local items, n = ns.List("class", round % 3 == 0 and ns.CLASSES[math.random(1, 9)] or nil)
         seen = seen + n
         for _, it in ipairs(items) do
             if not it.head then

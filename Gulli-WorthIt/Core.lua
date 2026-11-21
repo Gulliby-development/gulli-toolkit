@@ -87,8 +87,16 @@ local function hasBit(mask, id)
 end
 
 local FACTION = { Alliance = "A", Horde = "H" }
+-- While another class's quests are looked at: { class (id), side ("A", "H" or nil for both) };
+-- any race of that class counts then.
+local viewing
 local function forMe(q)
-    local side, mine = q[6] or "", FACTION[UnitFactionGroup("player") or ""]
+    local side = q[6] or ""
+    if viewing then
+        if side ~= "" and viewing.side and side ~= viewing.side then return false end
+        return hasBit(q[5], viewing.class)
+    end
+    local mine = FACTION[UnitFactionGroup("player") or ""]
     if side ~= "" and mine and side ~= mine then return false end
     return hasBit(q[4], select(3, UnitRace("player"))) and hasBit(q[5], select(3, UnitClass("player")))
 end
@@ -290,23 +298,72 @@ function ns.Rewards()
     return once(order), bags
 end
 
--- The class quests that give an item, for this character's class: { quest, class = true, item
--- (the first the quest gives), options (every item, in the quest's order) } and what settle adds.
-function ns.ClassQuests()
-    local D, level = ns.Data, playerLevel()
-    local classId = select(3, UnitClass("player"))
+-- The class ids of the game, in its order (the class picker of the window), and their tokens.
+ns.CLASSES = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
+ns.CLASS_TOKEN = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", nil, "SHAMAN", "MAGE", "WARLOCK",
+                   nil, "DRUID" }
+
+-- A class's name in the client's language: the game's class info, else its list of names.
+function ns.ClassName(id)
+    local info = C_CreatureInfo and C_CreatureInfo.GetClassInfo and C_CreatureInfo.GetClassInfo(id)
+    if info and type(info.className) == "string" and info.className ~= "" then return info.className end
+    local token = ns.CLASS_TOKEN[id]
+    local names = LOCALIZED_CLASS_NAMES_MALE
+    return (token and names and names[token]) or token or ""
+end
+
+-- Another class's entry: nothing of this character's log counts, so it is only where the
+-- chain starts and the level it asks for (state `other`, group `all`).
+local function settleOther(e)
+    local D = ns.Data
+    local chain = ns.ChainOf(e.quest)
+    e.chain, e.steps, e.cur, e.step = chain, #chain, chain[1], 1
+    local first = D.quest[chain[1]] or D.quest[e.quest]
+    e.req = first[3] or 1
+    e.level = D.quest[e.quest][2]
+    e.state, e.group, e.hidden, e.progress, e.other = "other", "all", false, 0, true
+end
+
+local function classList(classId, other, level)
+    local D = ns.Data
     local order = {}
     for _, r in ipairs(D.class or {}) do
         local quest, mask, items = r[1], r[2], r[3]
         if D.quest[quest] and hasBit(mask, classId) and wholeChain(quest) then
-            local e = { quest = quest, class = true, options = {} }
+            local e = { quest = quest, class = true, classId = classId, options = {} }
             for _, item in ipairs(items) do e.options[#e.options + 1] = { item = item } end
             e.item = items[1]
-            settle(e, level)
+            if other then settleOther(e) else settle(e, level) end
             order[#order + 1] = e
         end
     end
     return once(order)
+end
+
+-- The class quests that give an item: { quest, class = true, classId, item (the first the quest
+-- gives), options (every item, in the quest's order) } and what settle adds. For this
+-- character's class (classId nil or its own) with its progress; for another class every quest
+-- that class has on this character's side, or on both sides when it has none on this one
+-- (a class of the other faction), each as state `other`.
+function ns.ClassQuests(classId)
+    local own = select(3, UnitClass("player"))
+    if not classId or classId == own then return classList(own, false, playerLevel()) end
+    local list
+    viewing = { class = classId, side = FACTION[UnitFactionGroup("player") or ""] }
+    local ok, err = pcall(function()
+        list = classList(classId, true)
+        if #list == 0 and viewing.side then
+            viewing.side = nil
+            list = classList(classId, true)
+        end
+    end)
+    viewing = nil
+    if not ok then error(err, 0) end
+    table.sort(list, function(a, b)
+        if a.req ~= b.req then return a.req < b.req end
+        return a.quest < b.quest
+    end)
+    return list
 end
 
 -- The entry of a quest, a bag reward or a class quest.
@@ -329,10 +386,10 @@ end
 -- The window's list: a { head = group, count } row before each group's entries. kind filters
 -- (nil is all). Hidden rewards are left out, the ones that are no better with `better` on,
 -- the done ones with `showDone` off. Also returns the number of entries.
-function ns.List(kind)
+function ns.List(kind, classId)
     local class = kind == "class"
-    local rewards = class and ns.ClassQuests() or ns.Rewards()
-    local groups = { now = {}, later = {}, done = {} }
+    local rewards = class and ns.ClassQuests(classId) or ns.Rewards()
+    local groups = { now = {}, later = {}, done = {}, all = {} }
     for _, e in ipairs(rewards) do
         local keep = not e.hidden and (class or not kind or e.kind == kind)
         if keep and e.state == "done" then keep = ns.db.showDone
@@ -351,7 +408,7 @@ function ns.List(kind)
         return a.quest < b.quest
     end)
     local out, n = {}, 0
-    for _, g in ipairs({ "now", "later", "done" }) do
+    for _, g in ipairs({ "now", "later", "done", "all" }) do
         if #groups[g] > 0 then
             out[#out + 1] = { head = g, count = #groups[g] }
             for _, e in ipairs(groups[g]) do out[#out + 1] = e; n = n + 1 end
@@ -404,7 +461,8 @@ function ns.Steps(e)
     for i, id in ipairs(e.chain) do
         local q = ns.Data.quest[id]
         out[i] = { id = id, n = i, name = questTitle(id), level = q and q[2] or e.level,
-                   done = e.state == "done" or questDone(id), now = e.state ~= "done" and id == e.cur }
+                   done = not e.other and (e.state == "done" or questDone(id)),
+                   now = not e.other and e.state ~= "done" and id == e.cur }
     end
     return out
 end

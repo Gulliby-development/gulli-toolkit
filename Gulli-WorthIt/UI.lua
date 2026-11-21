@@ -7,7 +7,7 @@ local L = ns.L
 local S = ns.Skin
 local TI = "Interface\\Icons\\"
 
-local frame, footer, leadAll, strip, tabs, better, kindTabs
+local frame, footer, leadAll, strip, tabs, better, kindTabs, classTabs
 local pages = {}
 local kinds = {}
 
@@ -17,7 +17,7 @@ local NO_BAG_ICON = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Bag"
 local STATE_ICON = {
     ready = "Interface\\GossipFrame\\ActiveQuestIcon", log = "Interface\\GossipFrame\\IncompleteQuestIcon",
     take = "Interface\\GossipFrame\\AvailableQuestIcon", later = "Interface\\RaidFrame\\ReadyCheck-Waiting",
-    done = "Interface\\RaidFrame\\ReadyCheck-Ready",
+    done = "Interface\\RaidFrame\\ReadyCheck-Ready", other = "Interface\\RaidFrame\\ReadyCheck-Waiting",
 }
 local ACT_ICON = { map = TI .. "INV_Misc_Map_01", lead = TI .. "Ability_Hunter_Pathfinding",
                    link = TI .. "INV_Misc_Book_09", hide = TI .. "Ability_Stealth" }
@@ -26,7 +26,7 @@ local function colour(text, c) return S.Hex(c) .. text .. "|r" end
 
 -- "Ready to hand in", "From level 24"... for an entry.
 function ns.StateText(e)
-    if e.state == "later" then return L.FROM_LEVEL:format(e.req), S.MUTED end
+    if e.state == "later" or e.state == "other" then return L.FROM_LEVEL:format(e.req), S.MUTED end
     if e.state == "done" then return L.ST_DONE, S.FAINT end
     return L["ST_" .. e.state:upper()], e.state == "ready" and S.GOOD or S.TEXT
 end
@@ -222,7 +222,8 @@ local function fillRow(P)
         r.line:SetShown(not head)
         if head then
             r:SetSelected(false)
-            r.head:SetText(S.Upper(L["G_" .. it.head:upper()]) .. "  " .. colour(it.count, S.FAINT))
+            local name = it.head == "all" and L.CQ_ALL:format(ns.ClassName(P.viewClass)) or L["G_" .. it.head:upper()]
+            r.head:SetText(S.Upper(name) .. "  " .. colour(it.count, S.FAINT))
             return
         end
         r:SetSelected(it.quest == P.selected)
@@ -427,7 +428,7 @@ local function paintDetail(P, e, bags)
     local text, c
     if e.class then
         detail.name:SetText(ns.QuestTitle(e.quest))
-        detail.kind:SetText(L.CQ_KIND:format(UnitClass("player") or "", e.level))
+        detail.kind:SetText(L.CQ_KIND:format(ns.ClassName(e.classId), e.level))
         detail.gain:SetText(#e.options > 1 and L.CQ_CHOOSE:format(#e.options) or L.CQ_GIVES)
         detail.gain:SetTextColor(unpack(S.GOOD))
     else
@@ -461,14 +462,19 @@ local function paintDetail(P, e, bags)
     end
     -- Without the line of the other rewards the list starts higher.
     detail.stepsBox:SetPoint("TOPLEFT", 8, offers and -180 or -160)
-    detail.steps:SetData(ns.DetailRows(e, S.Upper(L.CHAIN) .. (e.steps > 1 and
+    detail.steps:SetData(ns.DetailRows(e, S.Upper(L.CHAIN) .. ((e.steps > 1 and not e.other) and
         ("  " .. colour(L.STEP_OF:format(math.min(e.step, e.steps), e.steps), S.FAINT)) or ""), S.Upper(L.TIPS),
         S.Upper(#e.options > 1 and L.CQ_CHOOSE_HEAD or L.CQ_REWARD_HEAD)))
     local leads = ns.Leads(e.quest)
     detail.lead:Fit(leads and L.STOP or L.LEAD, 150)
     detail.lead:SetEnabled(leads or (e.group == "now" and not ns.paused))
+    -- another class's quest only shows where it starts: nothing to lead to or hide
+    detail.lead:SetShown(not e.other)
+    detail.map:ClearAllPoints()
+    if e.other then detail.map:SetPoint("BOTTOMLEFT", 14, 48)
+    else detail.map:SetPoint("LEFT", detail.lead, "RIGHT", 8, 0) end
     detail.map:SetEnabled(stop ~= nil and stop.pin == true)
-    detail.hide:SetShown(e.state ~= "done")
+    detail.hide:SetShown(e.state ~= "done" and not e.other)
 end
 
 -- The pages ---------------------------------------------------------------------------------------------
@@ -483,7 +489,28 @@ local function listPage(body, P)
     left:SetPoint("BOTTOMLEFT")
     left:SetWidth(LIST_W)
     local top = 6
-    if not P.class then
+    if P.class then
+        -- a round icon per class, this character's class chosen first
+        local own = select(3, UnitClass("player"))
+        local labels, icons, at = {}, {}, 1
+        for i, id in ipairs(ns.CLASSES) do
+            labels[i], icons[i] = "", ns.ClassIcon(id)
+            if id == own then at = i end
+        end
+        classTabs = S.Tabs(left, labels, 34, function(i)
+            P.viewClass = ns.CLASSES[i] ~= own and ns.CLASSES[i] or nil
+            P.selected = nil
+            ns.Refresh()
+        end, 30, icons)
+        classTabs.frame:ClearAllPoints()
+        classTabs.frame:SetPoint("TOPLEFT", 8, -8)
+        for i, b in ipairs(classTabs.buttons) do
+            local id = ns.CLASSES[i]
+            b.tip = id == own and L.CQ_YOURS:format(ns.ClassName(id)) or ns.ClassName(id)
+        end
+        classTabs:Select(at, true)
+        top = 44
+    else
         kinds = ns.Kinds()
         if #kinds > 1 then
             local labels, icons = { "" }, { S.TAB.list }
@@ -538,7 +565,8 @@ end
 local current = 1       -- the page tab shown
 
 local function paintList(P, bags)
-    local items, n = ns.List(P.class and "class" or P.kind)
+    local items, n
+    if P.class then items, n = ns.List("class", P.viewClass) else items, n = ns.List(P.kind) end
     P.shown = {}
     local first
     for _, it in ipairs(items) do
@@ -549,6 +577,7 @@ local function paintList(P, bags)
     end
     if not P.shown[P.selected] then P.selected = first end
     P.list:SetData(items)
+    P.count = n
     P.empty:SetShown(n == 0)
     paintDetail(P, P.shown[P.selected], bags)
 end
@@ -560,7 +589,12 @@ local function paintWindow()
     paintList(class and classP or rewardsP, bags)
     better:SetChecked(ns.db.better)
     local targets = #ns.Targets(class)
-    if ns.Guiding() then
+    local other = class and classP.viewClass
+    -- another class's quests are only to look at: no Lead through all
+    leadAll:SetShown(not (other and not ns.Guiding()))
+    if other and not ns.Guiding() then
+        footer:SetStatus(L.CQ_STATUS_OTHER:format(ns.ClassName(other), classP.count or 0))
+    elseif ns.Guiding() then
         leadAll:SetText(L.STOP)
         leadAll:SetEnabled(true)
         local what = ns.stop and ns.StopText(ns.stop) or ""
@@ -578,11 +612,13 @@ function ns.Refresh()
     if frame and frame:IsShown() then paintWindow() end
 end
 
-local function classIcon()
-    local file = select(2, UnitClass("player"))
+-- A class's round icon by its id (nil is this character's class).
+function ns.ClassIcon(id)
+    local file = id and ns.CLASS_TOKEN[id] or select(2, UnitClass("player"))
     if type(file) ~= "string" or file == "" then return S.TAB.quests end
     return "Interface\\Icons\\ClassIcon_" .. file:sub(1, 1) .. file:sub(2):lower()
 end
+local function classIcon() return ns.ClassIcon() end
 
 local function build()
     frame = S.Window("GulliWorthItFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
@@ -635,6 +671,12 @@ function ns.Show(quest)
     if not f:IsShown() then ns.Toggle() end
     local class = false
     for _, e in ipairs(ns.ClassQuests()) do if e.quest == quest then class = true end end
+    if class and classP.viewClass then
+        -- back to this character's own class, where the quest is
+        classP.viewClass = nil
+        local own = select(3, UnitClass("player"))
+        for i, id in ipairs(ns.CLASSES) do if id == own then classTabs:Select(i, true) end end
+    end
     tabs:Select(class and 2 or 1)
     if class then classP.selected = quest else rewardsP.selected = quest end
     ns.Refresh()
@@ -652,6 +694,10 @@ function ns.Parts()
     return frame, P.list, P.detail, tabs, leadAll, strip
 end
 function ns.Selected() return (current == 2 and classP or rewardsP).selected end
+function ns.ViewClass(id)
+    ns.Window()
+    for i, c in ipairs(ns.CLASSES) do if c == id then classTabs:Select(i) end end
+end
 
 -- The tracker -----------------------------------------------------------------------------------------------
 -- A small Gulli HUD panel while the guide leads: a row per reward with what to do now and
