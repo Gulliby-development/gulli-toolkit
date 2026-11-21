@@ -1324,4 +1324,52 @@ test("one guide at a time: Lead me stops another module's guide, and can be stop
     eq(GulliHUD.guide, nil)
 end)
 
+test("a quest's way: guide tips per stage, quest items, the boss a quest needs, what comes next", function()
+    Fake({ level = 50, raceID = 2, faction = "Horde", areas = { [5140] = "Alcaz Prison" } })
+    local ns = Load()
+    -- The tips of the Alcaz guide: taking it, its work, handing it in.
+    local q = ns.Quest(96335, 50)
+    local st = ns.Stages(q, "ALCAZ")
+    assert(st[1].tip:find("Do not kill The Questioner", 1, true), "take: " .. tostring(st[1].tip))
+    eq(st[2].tip, "Low drop rate.")
+    assert(st[3].tip:find("turn it in together", 1, true), "turn in: " .. tostring(st[3].tip))
+    -- Mason Connery takes it back, inside the prison.
+    eq(st[3].who, "Mason Connery"); eq(st[3].inside, true)
+    -- Before the log: the quest item without a count.
+    local goals = ns.Goals(q)
+    eq(#goals, 1); eq(goals[1].text, "Ornate Shackle Key"); eq(goals[1].item, 274029); eq(goals[1].have, nil)
+    -- The Questioner is a boss of the prison, with its place in the order.
+    local b = ns.QuestBosses(q, "ALCAZ")
+    eq(#b, 1); eq(b[1].name, "The Questioner"); eq(b[1].min, 51)
+    assert(b[1].n >= 1 and b[1].n <= b[1].of, "boss " .. b[1].n .. " of " .. b[1].of)
+    -- No tips without a guide note, and no boss of another dungeon.
+    eq(ns.Stages(q, "ALCAZ")[1].tip ~= nil, true)
+    eq(#ns.QuestBosses(q, "RFC"), 0)
+
+    -- In the log, the game's line gives the count, and the item its icon.
+    Fake({ level = 50, raceID = 2, faction = "Horde", active = { [96335] = true },
+           objectives = { [96335] = { { text = "Ornate Shackle Key: 0/1", finished = false } } } })
+    ns = Load()
+    goals = ns.Goals(ns.Quest(96335, 50))
+    eq(goals[1].have, 0); eq(goals[1].need, 1); eq(goals[1].item, 274029); eq(goals[1].done, false)
+
+    -- The page: the tips show, the boss row opens the boss page, the summary names the next steps.
+    ns.home, ns.selected = false, "ALCAZ"
+    ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96335)
+    local d = ns.DetailFrame()
+    eq(d.turnin:GetText(), "Mason Connery")
+    assert(not d.stages[1].tip:IsShown(), "taken: no tip for taking it")
+    for i = 2, 3 do assert(d.stages[i].tip:IsShown(), "tip of stage " .. i) end
+    assert(d.objRows[1]:IsShown(), "the key's row")
+    eq(d.objRows[1].count:GetText(), "0/1")
+    assert(d.bossRows[1]:IsShown(), "The Questioner's row")
+    assert(d.bossRows[1].name:GetText():find("The Questioner", 1, true), d.bossRows[1].name:GetText())
+    assert(not d.mobs:IsShown(), "the boss is not named twice")
+    assert(d.summary:IsShown(), "the summary strip")
+    local sum = d.summary.gives:GetText() .. "|" .. d.summary.next:GetText()
+    assert(sum:find("More Valuable Than Gold", 1, true), sum)
+    d.bossRows[1]:GetScript("OnClick")(d.bossRows[1])
+    eq(ns.boss, 256236, "the boss page shows The Questioner")
+end)
+
 W.finish()

@@ -1252,6 +1252,8 @@ end
 local REWARD_MAX, CHAIN_ROW, REWARD_ROW = 4, 40, 26
 -- A stage of the quest's way: its round icon, and the least height of one.
 local STAGE_ICON, STAGE_MIN = 30, 72
+-- The way's parts: a tip box, an objective row (with its bar), a boss row, the summary strip.
+local TIP_ICON, TIP_LINE, OBJ_ROW, BOSS_ROW, BOSS_MAX = "Interface\\FriendsFrame\\InformationIcon", 15, 32, 42, 2
 local LABEL_Y = 4 -- a stage's label below its top, so its Done/Now tag is not cut
 -- A row of the page's list of the dungeon's other quests, and the game's quest mark per group.
 local OTHER_ROW = 26
@@ -1464,6 +1466,30 @@ local function buildDetail(parent)
         s.sub:SetPoint("TOPLEFT", s.title, "BOTTOMLEFT", 0, -4)
         s.sub:SetPoint("RIGHT", s.map, "LEFT", -8, 0)
         s.sub:SetWordWrap(false)
+        -- A tip from the quest's guide for this stage (D.tips), shown only when there is one.
+        s.tip = CreateFrame("Frame", nil, s)
+        S.Box(s.tip, S.SURFACE, S.EDGE, S.R_MD)
+        s.tip:SetPoint("LEFT", s, "LEFT", TEXT_X, 0)
+        s.tip:SetPoint("RIGHT", s, "RIGHT")
+        s.tip.icon = s.tip:CreateTexture(nil, "ARTWORK")
+        s.tip.icon:SetSize(14, 14)
+        s.tip.icon:SetPoint("TOPLEFT", 6, -5)
+        s.tip.icon:SetTexture(TIP_ICON)
+        s.tip.text = S.Text(s.tip, 12, S.MUTED)
+        s.tip.text:SetPoint("TOPLEFT", 26, -5)
+        s.tip.text:SetPoint("RIGHT", -6, 0)
+        s.tip.text:SetJustifyH("LEFT")
+        s.tip.text:SetJustifyV("TOP")
+        s.tip:EnableMouse(true)
+        s.tip:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L.TIP_GUIDE, 1, 1, 1)
+            GameTooltip:AddLine("Guidelime_DungeonQuests", 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end)
+        s.tip:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        s.tip:Hide()
         d.stages[#d.stages + 1] = s
         return s
     end
@@ -1518,21 +1544,70 @@ local function buildDetail(parent)
     d.objText:SetPoint("RIGHT", work, "RIGHT")
     d.objText:SetJustifyH("LEFT")
     d.objText:SetJustifyV("TOP")
+    -- One row per objective: the item's icon (else the state's), what it asks for, the count
+    -- and a bar of it.
     d.objRows = {}
     for i = 1, OBJ_MAX do
-        local r = {}
-        r.state = work:CreateTexture(nil, "ARTWORK")
-        r.state:SetSize(14, 14)
-        r.state:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
-        r.count = S.Text(work, 12)
-        r.count:SetPoint("LEFT", r.state, "RIGHT", 6, 0)
-        r.count:SetJustifyH("LEFT")
-        r.text = S.Text(work, 12)
-        r.text:SetPoint("LEFT", r.count, "RIGHT", 6, 0)
-        r.text:SetPoint("RIGHT", work, "RIGHT")
+        local r = CreateFrame("Frame", nil, work)
+        r:SetHeight(OBJ_ROW - 4)
+        r:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+        r:SetPoint("RIGHT", work, "RIGHT")
+        r.icon = S.IconBox(r, 24)
+        r.icon:SetPoint("LEFT")
+        r.state = r:CreateTexture(nil, "OVERLAY")
+        r.state:SetSize(12, 12)
+        r.state:SetPoint("BOTTOMRIGHT", r.icon, "BOTTOMRIGHT", 4, -3)
+        r.count = S.Text(r, 12)
+        r.count:SetPoint("TOPRIGHT", 0, -1)
+        r.count:SetJustifyH("RIGHT")
+        r.text = S.Text(r, 12)
+        r.text:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 0)
+        r.text:SetPoint("RIGHT", r.count, "LEFT", -8, 0)
         r.text:SetJustifyH("LEFT")
         r.text:SetWordWrap(false)
+        r.bar = S.Progress(r, 4)
+        r.bar:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, 1)
+        r.bar:SetPoint("RIGHT")
+        r:EnableMouse(true)
+        r:SetScript("OnEnter", function(self) if self.item then ns.ItemTip(self, self.item) end end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        r:Hide()
         d.objRows[i] = r
+    end
+    -- The dungeon's bosses the quest needs: picture, level, place in the order, a click opens
+    -- the boss's page.
+    d.bossRows = {}
+    for i = 1, BOSS_MAX do
+        local r = CreateFrame("Button", nil, work)
+        r:SetHeight(BOSS_ROW - 4)
+        r:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
+        r:SetPoint("RIGHT", work, "RIGHT")
+        S.Box(r, S.SURFACE, S.EDGE, S.R_MD)
+        r.pic = S.IconBox(r, 30)
+        r.pic:SetPoint("LEFT", 4, 0)
+        r.num = S.Text(r.pic, 12, S.Accent(), nil, "bold")
+        r.num:SetPoint("CENTER")
+        r.go = S.Text(r, 12, S.Accent())
+        r.go:SetPoint("RIGHT", -8, 0)
+        r.go:SetJustifyH("RIGHT")
+        r.go:SetWordWrap(false)
+        r.name = S.Text(r, 12, S.GOLD)
+        r.name:SetPoint("TOPLEFT", r.pic, "TOPRIGHT", 8, 1)
+        r.name:SetPoint("RIGHT", r.go, "LEFT", -8, 0)
+        r.name:SetJustifyH("LEFT")
+        r.name:SetWordWrap(false)
+        r.sub = S.Text(r, 12, S.FAINT)
+        r.sub:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -2)
+        r.sub:SetPoint("RIGHT", r.go, "LEFT", -8, 0)
+        r.sub:SetJustifyH("LEFT")
+        r.sub:SetWordWrap(false)
+        r:SetScript("OnClick", function(self)
+            if not self.b then return end
+            ns.boss, ns.modelBoss = self.b.npc, self.b.npc
+            ns.ShowTab(1)
+        end)
+        r:Hide()
+        d.bossRows[i] = r
     end
     d.mobs = S.Text(work, 12, S.MUTED)
     d.mobs:SetPoint("LEFT", work, "LEFT", TEXT_X, 0)
@@ -1544,6 +1619,22 @@ local function buildDetail(parent)
     d.need:SetPoint("RIGHT", work, "RIGHT")
     d.need:SetJustifyH("LEFT")
     d.need:SetWordWrap(false)
+    -- Under the way: what the quest gives and where its chain goes on.
+    d.summary = CreateFrame("Frame", nil, b)
+    S.Box(d.summary, S.SURFACE, S.EDGE, S.R_MD)
+    d.summary:SetPoint("LEFT", b, "LEFT")
+    d.summary:SetPoint("RIGHT", b, "RIGHT")
+    d.summary.gives = S.Text(d.summary, 12, S.MUTED)
+    d.summary.gives:SetPoint("TOPLEFT", 10, -7)
+    d.summary.gives:SetPoint("RIGHT", -10, 0)
+    d.summary.gives:SetJustifyH("LEFT")
+    d.summary.gives:SetWordWrap(false)
+    d.summary.next = S.Text(d.summary, 12, S.MUTED)
+    d.summary.next:SetPoint("TOPLEFT", d.summary.gives, "BOTTOMLEFT", 0, -4)
+    d.summary.next:SetPoint("RIGHT", -10, 0)
+    d.summary.next:SetJustifyH("LEFT")
+    d.summary.next:SetWordWrap(false)
+    d.summary:Hide()
 
     -- Right, only for a quest that has them: the chain, as high as its steps, and the rewards
     -- (each with its icon, its name in its quality colour, and whether it is for you).
@@ -1658,6 +1749,8 @@ function ns.FillDetail(level)
                   st.state == "done" and S.GOOD or S.Accent())
         S.SetBorder(s.icon, (st.state == "done" and S.GOOD) or (st.state == "now" and S.Accent()) or S.RING)
         s.icon:SetAlpha(st.state == "wait" and 0.6 or 1)
+        local rc = st.state == "done" and S.GOOD or S.EDGE
+        s.rail:SetColorTexture(rc[1], rc[2], rc[3], st.state == "done" and 0.8 or rc[4] or 1)
         local faded = st.state == "done"
         s.title:SetTextColor(unpack(faded and S.MUTED or S.TEXT))
         if st.kind == "work" then
@@ -1685,6 +1778,11 @@ function ns.FillDetail(level)
             end
             s.map:SetShown(pin)
         end
+        -- Without the map button, the place takes the stage's whole width.
+        local edge = s.map:IsShown() and s.map or s
+        local gap = s.map:IsShown() and -8 or 0
+        s.title:SetPoint("RIGHT", edge, s.map:IsShown() and "LEFT" or "RIGHT", gap, 0)
+        s.sub:SetPoint("RIGHT", edge, s.map:IsShown() and "LEFT" or "RIGHT", gap, 0)
     end
 
     -- The right column: the chain, the rewards, the dungeon's other quests.
@@ -1763,23 +1861,39 @@ function ns.FillDetail(level)
     local cardW = (d:GetWidth() or 0) > 200 and (full and d:GetWidth() or d:GetWidth() / 2 + 20) or 0
     if cardW > 0 then d.infoBody:SetWidth(cardW - 2 * S.INSET - 10) end
 
-    -- The work stage: the quest's own text, the objectives, the mobs, what stands in the way.
+    -- The work stage: the quest's own text, the objectives, the bosses, the mobs, what stands
+    -- in the way, and its tip.
     local work = d.work
     local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
-    local y = LABEL_Y + (work.title:GetText() ~= "" and 40 or 20)
-    local objs = q.objectives
-    local counted = false
-    for _, o in ipairs(objs) do
-        if o.text:match("%d+%s*/%s*%d+") then counted = true end
+    local function linesOf(t, width)
+        return math.min(4, math.max(1, math.ceil((t:GetStringWidth() or 0) * 1.12 / width)))
     end
+    -- A stage's tip under what is above it, at y; returns the y under it.
+    local function placeTip(st, text, y)
+        local tip = st.tip
+        tip:SetShown(text ~= nil and text ~= "")
+        if not tip:IsShown() then return y end
+        tip.text:SetText(text)
+        local lines = linesOf(tip.text, wide - 32)
+        tip.text:SetMaxLines(lines)
+        tip.text:SetHeight(lines * TIP_LINE)
+        tip:SetHeight(lines * TIP_LINE + 10)
+        tip:ClearAllPoints()
+        tip:SetPoint("TOP", st, "TOP", 0, -y - 2)
+        tip:SetPoint("LEFT", st, "LEFT", STAGE_ICON + 14, 0)
+        tip:SetPoint("RIGHT", st, "RIGHT")
+        return y + lines * TIP_LINE + 16
+    end
+    local y = LABEL_Y + (work.title:GetText() ~= "" and 40 or 20)
+    local goals = ns.Goals(q)
     -- The game gives counted lines while the quest is in the log; the data's sentence says
     -- what it is about, over them or alone.
     local sentence = q.text or ""
-    if not counted and #objs > 0 then sentence = objs[1].text end
+    if #goals == 0 and #q.objectives > 0 then sentence = q.objectives[1].text end
     d.objText:SetText(sentence)
     d.objText:SetShown(sentence ~= "")
     if sentence ~= "" then
-        local lines = math.min(4, math.max(1, math.ceil((d.objText:GetStringWidth() or 0) * 1.12 / wide)))
+        local lines = linesOf(d.objText, wide)
         d.objText:SetMaxLines(lines)
         d.objText:SetHeight(lines * 16)
         d.objText:ClearAllPoints()
@@ -1789,24 +1903,50 @@ function ns.FillDetail(level)
         y = y + lines * 16 + 6
     end
     for i, r in ipairs(d.objRows) do
-        local o = counted and objs[i] or nil
-        r.state:SetShown(o ~= nil)
-        r.count:SetShown(o ~= nil)
-        r.text:SetShown(o ~= nil)
+        local o = goals[i]
+        r:SetShown(o ~= nil)
         if o then
-            local have, need, what = o.text:match("^(%d+)%s*/%s*(%d+)%s+(.+)$")
-            if not have then what, have, need = o.text:match("^(.-):%s*(%d+)%s*/%s*(%d+)$") end
-            local done = o.done or (have and tonumber(have) >= tonumber(need))
-            r.state:SetTexture(done and ICON_OK or WAIT_ICON)
-            r.state:SetAlpha((done or have) and 1 or 0.5)
-            r.count:SetWidth(have and 38 or 1)
-            r.count:SetText(have and (have .. "/" .. need) or "")
-            r.count:SetTextColor(unpack(done and S.GOOD or S.WARN))
-            r.text:SetText(have and what or o.text)
-            r.text:SetTextColor(unpack(done and S.MUTED or S.TEXT))
-            r.state:ClearAllPoints()
-            r.state:SetPoint("TOPLEFT", work, "TOPLEFT", STAGE_ICON + 14, -y - 1)
-            y = y + 20
+            r.item = o.item
+            r.icon:SetIcon(o.icon or (o.item and "Interface\\Icons\\INV_Misc_QuestionMark") or S.TAB.quests)
+            r.icon:SetGlow(o.done and S.GOOD or S.RING)
+            r.state:SetShown(o.have ~= nil or o.done)
+            r.state:SetTexture(o.done and ICON_OK or WAIT_ICON)
+            r.text:SetText(o.text or "")
+            r.text:SetTextColor(unpack(o.done and S.MUTED or S.TEXT))
+            r.count:SetText(o.have and (o.have .. "/" .. o.need) or "")
+            r.count:SetTextColor(unpack(o.done and S.GOOD or S.WARN))
+            r.bar:Set(o.done and 1 or (o.have and o.need > 0 and o.have / o.need) or 0, o.done and S.GOOD or nil)
+            r:ClearAllPoints()
+            r:SetPoint("TOP", work, "TOP", 0, -y)
+            r:SetPoint("LEFT", work, "LEFT", STAGE_ICON + 14, 0)
+            r:SetPoint("RIGHT", work, "RIGHT")
+            y = y + OBJ_ROW
+        end
+    end
+    local bosses = ns.QuestBosses(q, key)
+    local named = {}
+    for i, r in ipairs(d.bossRows) do
+        local bo = bosses[i]
+        r.b = bo
+        r:SetShown(bo ~= nil)
+        if bo then
+            named[bo.name] = true
+            local icon = ns.BossIcon(key, bo)
+            local portrait = not icon and bo.display > 0 and SetPortraitTextureFromCreatureDisplayID
+            if icon then r.pic.tex:SetTexture(icon)
+            elseif portrait then r.pic.tex:SetTexture(nil); portrait(r.pic.tex, bo.display)
+            else r.pic.tex:SetTexture(nil) end
+            r.num:SetText((icon or portrait) and "" or tostring(bo.n))
+            local level = bo.min <= 0 and "??" or (bo.min == bo.max and tostring(bo.min) or (bo.min .. "-" .. bo.max))
+            local color = bo.min <= 0 and S.BAD or ns.DiffColor(ns.Difficulty(bo.max, ns.level or 1))
+            r.name:SetText(bo.name)
+            r.sub:SetText(S.Hex(color) .. level .. "|r" .. (bo.rare and "" or ("  ·  " .. L.BOSS_N:format(bo.n, bo.of))))
+            r.go:SetText(L.BOSS_PAGE .. " »")
+            r:ClearAllPoints()
+            r:SetPoint("TOP", work, "TOP", 0, -y)
+            r:SetPoint("LEFT", work, "LEFT", STAGE_ICON + 14, 0)
+            r:SetPoint("RIGHT", work, "RIGHT")
+            y = y + BOSS_ROW
         end
     end
     local function lineAt(t, text)
@@ -1819,8 +1959,10 @@ function ns.FillDetail(level)
         t:SetPoint("RIGHT", work, "RIGHT")
         y = y + 20
     end
-    lineAt(d.mobs, (q.targets and #q.targets > 0) and (L.DETAIL_MOBS .. ":  " .. S.Hex(S.TEXT)
-        .. table.concat(q.targets, ", ") .. "|r") or "")
+    -- The mobs that are no boss of the list above.
+    local mobs = {}
+    for _, m in ipairs(q.targets or {}) do if not named[m] then mobs[#mobs + 1] = m end end
+    lineAt(d.mobs, #mobs > 0 and (L.DETAIL_MOBS .. ":  " .. S.Hex(S.TEXT) .. table.concat(mobs, ", ") .. "|r") or "")
     local need
     for _, st in ipairs(q.chain) do if st.missing then need = st end end
     if need then
@@ -1832,20 +1974,60 @@ function ns.FillDetail(level)
     else
         lineAt(d.need, "")
     end
+    -- A stage that is done needs no tip any more.
+    local function tipOf(i) return stages[i].state ~= "done" and stages[i].tip or nil end
+    y = placeTip(work, tipOf(2), y)
 
-    -- The stages share the card's height, so the way fills it; a long one scrolls.
-    local workH = math.max(y + 8, STAGE_MIN)
-    room = room - 2 * S.INSET
-    local ends = STAGE_MIN
-    if room > 0 and room > workH + 2 * STAGE_MIN then
-        local spare = room - workH - 2 * STAGE_MIN
-        ends = STAGE_MIN + math.floor(math.min(spare, 60) / 3)
-        workH = workH + math.floor(math.min(spare, 60) / 3)
+    -- The two ends: who and where, then the tip.
+    local function endHeight(i)
+        local st = d.stages[i]
+        local h = LABEL_Y + 37 + (st.sub:GetText() ~= "" and 18 or 0)
+        return math.max(i == 3 and STAGE_MIN - 14 or STAGE_MIN, placeTip(st, tipOf(i), h) + 4)
     end
-    d.stages[1]:SetHeight(ends)
+    local takeH, turnH = endHeight(1), endHeight(3)
+    local workH = math.max(y + 8, STAGE_MIN)
+
+    -- Under the way: the XP and the first reward, then the chain's next steps.
+    local gives = {}
+    gives[#gives + 1] = ns.XPText(q.id, level)
+    local r1 = rewards[1]
+    if r1 then
+        gives[#gives + 1] = (r1.name and (S.QualityHex(r1.quality) .. r1.name .. "|r") or ("#" .. r1.id))
+            .. (#rewards > 1 and ("  " .. S.Hex(S.FAINT) .. "+" .. (#rewards - 1) .. "|r") or "")
+    end
+    local after, seen = {}, false
+    for _, st in ipairs(q.chain) do
+        if seen and #after < 2 then after[#after + 1] = S.Hex(S.TEXT) .. st.name .. "|r" end
+        if st.this then seen = true end
+    end
+    d.summary.gives:SetText(table.concat(gives, "  ·  "))
+    d.summary.next:SetText(#after > 0 and L.THEN_STEPS:format(table.concat(after, " » ")) or "")
+    local sumLines = (#gives > 0 and 1 or 0) + (#after > 0 and 1 or 0)
+    local sumH = sumLines > 0 and (sumLines * 16 + 12) or 0
+    d.summary:SetShown(sumH > 0)
+    if sumLines == 1 and #gives == 0 then
+        d.summary.gives:SetText(d.summary.next:GetText()); d.summary.next:SetText("")
+    end
+
+    -- The stages fill the card's height, so the way reaches its bottom; a long one scrolls.
+    room = room - 2 * S.INSET
+    local total = takeH + workH + turnH + (sumH > 0 and sumH + S.GAP or 0)
+    if room > total then
+        local spare = math.min(room - total, 60)
+        takeH, workH = takeH + math.floor(spare / 3), workH + math.floor(spare / 3)
+        total = total + 2 * math.floor(spare / 3)
+    end
+    d.stages[1]:SetHeight(takeH)
     d.stages[2]:SetHeight(workH)
-    d.stages[3]:SetHeight(STAGE_MIN - 14)
-    d.infoPage:SetContent(ends + workH + STAGE_MIN - 14)
+    d.stages[3]:SetHeight(turnH)
+    if sumH > 0 then
+        d.summary:SetHeight(sumH)
+        d.summary:ClearAllPoints()
+        d.summary:SetPoint("TOP", d.infoBody, "TOP", 0, -math.max(total - sumH, room - sumH))
+        d.summary:SetPoint("LEFT", d.infoBody, "LEFT")
+        d.summary:SetPoint("RIGHT", d.infoBody, "RIGHT")
+    end
+    d.infoPage:SetContent(math.max(total, sumH > 0 and room or 0))
     if d.shownId ~= q.id then
         d.shownId = q.id
         local bar = d.infoPage.scroll.bar
