@@ -284,10 +284,35 @@ function ns.Span(sec)
     return L.M:format(math.max(1, math.floor(sec / 60)))
 end
 
--- The XP number of a kill message: the first number in it ("Boar dies, you gain 45 experience").
+-- The pattern of the client's kill message ("%s dies, you gain %d experience."), with the mob name
+-- and the XP as captures. The same event also brings quest and other XP ("You gain 5000
+-- experience."), which must never count as a kill.
+local killPattern
+local function makeKillPattern()
+    local fmt = COMBATLOG_XPGAIN_FIRSTPERSON
+    if type(fmt) ~= "string" or fmt == "" then fmt = "%s dies, you gain %d experience." end
+    local parts, i = {}, 1
+    while i <= #fmt do
+        local spec, nextI = fmt:match("^(%%%d?%$?[sd])()", i)
+        if spec then
+            parts[#parts + 1] = spec:sub(-1) == "d" and "(%d+)" or ".+"
+            i = nextI
+        else
+            local c = fmt:sub(i, i)
+            if c == "%" and fmt:sub(i + 1, i + 1) == "%" then i = i + 1 end
+            parts[#parts + 1] = c:match("%w") and c or ("%" .. c)
+            i = i + 1
+        end
+    end
+    -- The bonus variants (rested, group, raid) add to the end, so only the start must match.
+    return "^" .. table.concat(parts):gsub("%%%.$", "")
+end
+
+-- The XP of a kill message, or nil when the message is not a kill (a quest, exploring, ...).
 function ns.KillXP(msg)
     if not msg or secret(msg) then return nil end
-    return tonumber(msg:match("(%d+)"))
+    killPattern = killPattern or makeKillPattern()
+    return tonumber(msg:match(killPattern))
 end
 
 -- One line for the hub's home page.
