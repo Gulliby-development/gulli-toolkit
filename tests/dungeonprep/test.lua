@@ -1316,6 +1316,9 @@ test("experience: the game's number for a quest in the log, else the data's, cut
     eq(ns.QuestXP(7028, 57), 525, "a tenth at the end, rounded like the game")
     eq(ns.QuestXP(7028, 60), 0, "nothing at the top level")
     eq(ns.QuestXP(1, 47), 0, "an unknown quest")
+    -- Brotherhood's End is a step of the Defias chain outside the dungeon (D.pre, level 31).
+    eq(ns.Data.pre[395] ~= nil, true); eq(ns.Data.quest[395], nil)
+    eq(ns.Data.xp[395], 630); eq(ns.QuestXP(395, 31), 625, "a chain step outside the dungeon has its experience too")
     assert(ns.XPText(7028, 47):find("~5250 experience", 1, true), "the data's number is marked: " .. ns.XPText(7028, 47))
     eq(ns.XPText(7028, 60), nil)
     assert(not ns.XPText(168, 18):find("~", 1, true), "the game's number is not")

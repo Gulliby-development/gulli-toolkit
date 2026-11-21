@@ -770,7 +770,8 @@ def main(root, att_root=None, gdq_root=None):
     lines.append("}")
     lines.append("-- Quest -> the experience it gives at its own level (less for a character far above it).")
     lines.append("D.xp = {")
-    for qid in sorted(used):
+    # The chain steps outside the dungeon (D.pre) too: their pages show it.
+    for qid in sorted(used | others):
         if qid in quest_xp and quest_xp[qid][1] > 0:
             lines.append("[%d]=%d," % (qid, quest_xp[qid][1]))
     lines.append("}")

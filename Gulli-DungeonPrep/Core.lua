@@ -782,7 +782,8 @@ function ns.QuestXP(id, level)
     local xp = ns.LogReward(id)
     if onQuest(id) and xp > 0 then return xp, true end
     local D = data()
-    local base, q = D.xp and D.xp[id], D.quest[id]
+    -- A dungeon quest, or a step of its chain outside the dungeon (D.pre); both keep the level second.
+    local base, q = D.xp and D.xp[id], D.quest[id] or (D.pre and D.pre[id])
     level = level or UnitLevel("player") or 1
     if not base or not q or level >= ns.MAX_LEVEL then return 0, false end
     local factor = math.max(1, math.min(10, 2 * (q[2] - level) + 20))
