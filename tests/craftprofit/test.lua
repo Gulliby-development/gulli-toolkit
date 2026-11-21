@@ -1478,7 +1478,8 @@ test("the auction stop sends the list to Auctionator; a craft stop makes the cra
     end
     assert(ah, kinds(n.view.route))
     n.Select(ah)
-    assert(n.ui.tool1:IsShown()); assert(not n.ui.tool2:IsShown(), "no lots button away from the auction")
+    assert(n.ui.tool1:IsShown())
+    eq(n.ui.tool2:GetText(), n.L.MARK_DONE, "no lots button away from the auction: the mark tool instead")
     assert(n.ui.act1:IsShown() and not n.ui.act1:IsEnabled(), "the Buy button waits for the auction house")
     W.Click(n.ui.tool1)
     assert(list and #list.terms > 0 and list.terms[1]:find(";", 1, true))
@@ -2394,6 +2395,141 @@ test("the buying settings: the guard stepper and the side window switch plan not
     eq(n.Prefs(n.db.prefs).guard, 10)
 end)
 
+test("a craft stop goes from one craft to the next as the game makes them; any stop can be marked done", function()
+    local c = core()
+    local node = { kind = "craft", title = "STOP_PREP", prep = true, sig = "prep",
+                   lines = { { recipe = "a", n = 3, src = "prep" }, { recipe = "b", n = 2, src = "prep" }, { recipe = "c", n = 1, src = "prep" } } }
+    local run = { kind = "craft", title = "STOP_CRAFT", sig = "run", segs = {
+        { rid = "x", n = 4, from = 150, to = 154 }, { rid = "y", n = 2.2, from = 154, to = 156 } } }
+    local route = { node, run }
+    local function prog(made, marks, skill) return c.Progress(route, { items = {} }, function() return 0 end, made, marks, skill) end
+    local p = prog({})
+    eq(c.NextCraft(node, p[1]), "a"); eq(select(2, c.NextCraft(node, p[1])), 3)
+    eq(p[1].done, false)
+    -- the first reagent made: the button goes to the second one, not the first again
+    p = prog({ a = 3 })
+    assert(p[1].lines[1].done)
+    local rid, k = c.NextCraft(node, p[1])
+    eq(rid, "b"); eq(k, 2)
+    p = prog({ a = 3, b = 1 })
+    eq(select(2, c.NextCraft(node, p[1])), 1, "what is left of it")
+    p = prog({ a = 3, b = 2, c = 1 })
+    eq(p[1].done, true); eq(c.NextCraft(node, p[1]), nil)
+    -- a run of the skill: crafts counted, or the skill reached
+    p = prog({ x = 4 })
+    eq(c.NextCraft(run, p[2]), "y"); eq(select(2, c.NextCraft(run, p[2])), 3)
+    p = prog({}, nil, 154)
+    eq(c.NextCraft(run, p[2]), "y", "the skill is past the first stretch")
+    p = prog({}, nil, 156)
+    eq(p[2].done, true)
+    -- by hand: done, whatever the bags or the casts say
+    p = prog({}, { prep = true })
+    eq(p[1].done, true); eq(p[1].marked, true); eq(c.NextCraft(node, p[1]), nil)
+    eq(p[2].done, false)
+end)
+
+test("in the game: each finished craft moves the stop on; Mark done ticks a stop off and back", function()
+    local n = game()
+    local made
+    C_TradeSkillUI.CraftRecipe = function(rid, k) made = { rid, k } end
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle(); n.Calculate()
+    local craft
+    for i, s in ipairs(n.view.route) do if s.segs then craft = craft or i end end
+    local node = n.view.route[craft]
+    n.Select(craft)
+    W.Click(n.ui.act1)
+    local first, k = node.segs[1].rid, n.Ceil(node.segs[1].n)
+    eq(made[1], first)
+    -- the game casts the recipe k times: the stop is done (or goes to its next recipe)
+    for _ = 1, k do W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", first) end
+    eq(n.view.made[first], k)
+    local p = n.RunProgress()[craft]
+    assert(p.segs[1].done, "the first stretch is made")
+    if node.segs[2] then
+        n.Select(craft); W.Click(n.ui.act1)
+        eq(made[1], node.segs[2].rid, "the button makes the next recipe")
+    end
+    -- another player's cast or a spell that is no recipe counts nothing
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "party1", "guid", first)
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 999999)
+    eq(n.view.made[first], k)
+    -- Mark done on the first stop, then back
+    n.Select(1)
+    local a = n.StopAction(1)
+    local tool
+    for _, t in ipairs(a.tools) do if t.mark then tool = t end end
+    assert(tool, "a Mark done tool")
+    tool[2]()
+    assert(n.RunProgress()[1].done and n.RunProgress()[1].marked)
+    a = n.StopAction(1)
+    for _, t in ipairs(a.tools) do if t.mark == false then tool = t end end
+    eq(tool[1], n.L.MARK_UNDO)
+    tool[2]()
+    eq(n.RunProgress()[1].marked, nil)
+    -- a new plan starts fresh
+    n.Calculate()
+    eq(next(n.view.made), nil); eq(next(n.view.marks), nil)
+end)
+
+test("the profession window counts as open while the game shows it, whatever order its events came in", function()
+    local n = game()
+    W.Fire("TRADE_SKILL_CLOSE")
+    eq(n.ProfessionShown("Tailoring"), false)
+    ProfessionsFrame = W.stub(); ProfessionsFrame:Show()
+    eq(n.ProfessionShown("Tailoring"), true)
+    ProfessionsFrame = nil
+end)
+
+test("the first run's buy stops also buy what the later runs need, behind a switch that plans nothing", function()
+    local c = core()
+    local st = state()
+    for _, it in pairs(st.items) do it.bags, it.bank = 0, 0 end
+    st.cap = 225
+    local P = prefs({ target = 225 })
+    local first = c.NextRun(st, P, c.Plan(st, P))
+    local legs = c.Legs(st, P, first)
+    assert(#legs >= 2, "runs: " .. #legs)
+    local alone = c.Route(st, first)
+    local want = {}
+    local function add(route)
+        for _, e in ipairs(c.Shopping(route)) do want[e.id or e.name] = (want[e.id or e.name] or 0) + e.n end
+    end
+    local later = 0
+    for i, l in ipairs(legs) do
+        if l.plan then
+            local r = c.Route(l.state, l.plan)
+            add(r)
+            if i > 1 then later = later + #c.Shopping(r) end
+        end
+    end
+    assert(later > 0, "a later run buys at the auction")
+    local merged = c.BuyAhead(c.Route(st, first), legs)
+    local got = {}
+    for _, e in ipairs(c.Shopping(merged)) do got[e.id or e.name] = (got[e.id or e.name] or 0) + e.n end
+    for k, v in pairs(want) do eq(got[k], v, tostring(k)) end
+    local ah = has(merged, "STOP_AH_BUY")
+    local tagged = false
+    for _, l in ipairs(ah.lines) do if l.ahead then tagged = true end end
+    assert(tagged, "lines for later runs say so")
+    for i, nd in ipairs(merged) do eq(nd.index, i) end
+    assert(#merged >= #alone)
+    -- one run: nothing to add
+    eq(c.BuyAhead(alone, { legs[1] }), alone)
+end)
+
+test("the ahead switch changes the buy stops, not the plan", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local plan = n.view.plan
+    assert(n.ui.checks.ahead, "a switch on the Settings tab")
+    eq(n.Prefs(n.db.prefs).ahead, true)
+    n.SetPref("ahead", false)
+    eq(n.view.plan, plan)
+    n.SetPref("ahead", true)
+    eq(n.view.plan, plan)
+end)
+
 test("an item the client had not loaded gets its name once the game sends it", function()
     local n = game()
     W.items[3].pending = true
@@ -2575,7 +2711,7 @@ test("a vendor or trainer line names who to go to, and Show on map pins the map 
     eq(a.tools[1].pin.who, "Jalane Ayrole")
     a.tools[1][2]()
     eq(W.pins[2].map, 84); eq(W.mapOpened, 84)
-    eq(#n.StopAction(3).tools, 0, "an ordinary trainer is anyone's: no pin")
+    for _, t in ipairs(n.StopAction(3).tools) do assert(not t.pin, "an ordinary trainer is anyone's: no pin") end
     -- in a fight the pin is set but the map stays shut
     W.combat, W.mapOpened = true, nil
     eq(n.SetPin(spot, true), true); eq(W.mapOpened, nil)

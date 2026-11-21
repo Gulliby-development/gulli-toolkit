@@ -23,6 +23,7 @@ local function stub()
             if W.unknownEvents and W.unknownEvents[e] then error('Attempt to register unknown event "' .. e .. '"') end
             rawget(t, "_events")[e] = true
         end end
+        if k == "RegisterUnitEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
         if k == "UnregisterEvent" then return function(_, e) rawget(t, "_events")[e] = nil end end
         return function() return stub() end
     end })

@@ -316,7 +316,7 @@ local function buildSettings(box)
         stepRow(cols[1], "maxCrafts", 5, 5, 500),
         stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end) }))
     add(1, skipCard(cols[1]))
-    add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side") }))
+    add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side"), sw("ahead") }))
     add(1, rowsCard(cols[1], L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") }))
 
     add(2, rowsCard(cols[2], L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
@@ -813,14 +813,16 @@ function ns.StopAction(i, aside)
         -- a craft waits for the stops before it that bring its items
         local waits = 0
         for k = 1, i - 1 do if ns.Gets(v.route[k]) and not (prog[k] and prog[k].done) then waits = waits + 1 end end
-        a.pill = (not now or waits == 0) and { L.CRAFT_READY, GOOD } or { L.CRAFT_WAITS:format(waits) }
-        local rid, k
-        if n.segs then rid, k = ns.NextCraft(n)
-        elseif n.lines and n.lines[1] then rid, k = n.lines[1].recipe, n.lines[1].n end
+        a.pill = done and { L.STOP_DONE, GOOD } or ((not now or waits == 0) and { L.CRAFT_READY, GOOD } or { L.CRAFT_WAITS:format(waits) })
+        -- the recipe the stop is at: a stop of intermediates goes from one to the next
+        local rid, k = ns.NextCraft(n, p)
+        if done then rid = nil end
         -- a reagent made in another profession (bars by Smelting) is crafted in that one's window
         local prof = rid and ns.ProfOf(rid) or ns.char.current or ""
         local closed = rid and not ns.ProfessionShown(prof) and ns.CanOpenProfession(prof)
-        if closed then
+        if done then
+            a.primary, a.second = { L.CRAFT_DONE }, onward
+        elseif closed then
             -- the game crafts only with the profession window open: the first click opens it
             a.primary = { L.OPEN_PROF_BTN:format(prof), function()
                 if not ns.OpenProfession(rid) then ns.Print(L.OPEN_PROF); ns.Toast(L.OPEN_PROF) end
@@ -840,7 +842,7 @@ function ns.StopAction(i, aside)
                 end, skip = rid }
             end
         end
-        a.hint = closed and L.HINT_CRAFT_OPEN or L.HINT_CRAFT
+        a.hint = done and L.HINT_MADE or (closed and L.HINT_CRAFT_OPEN or L.HINT_CRAFT)
     elseif n.kind == "trainer" then
         local spot = stopPin(n, p)
         if spot then a.tools[#a.tools + 1] = { L.SHOW_ON_MAP, function() ns.ShowOnMap(spot) end, pin = spot } end
@@ -850,7 +852,28 @@ function ns.StopAction(i, aside)
     else
         a.hint = L.HINT_SELL
     end
+    -- any stop of the run now can be ticked off by hand (made or bought elsewhere), and back
+    if now and #a.tools < 2 then
+        if p and p.marked then
+            a.tools[#a.tools + 1] = { L.MARK_UNDO, function() ns.MarkDone(i, false) end, mark = false }
+            a.hint, a.bad = L.HINT_MARKED, false
+        elseif not done then
+            a.tools[#a.tools + 1] = { L.MARK_DONE, function() ns.MarkDone(i, true) end, mark = true }
+        end
+    end
+    if p and p.marked and not a.second then a.second = onward end
     return a
+end
+
+-- The mark of one craft of a craft stop: made, the one the button makes now, or how far it is.
+local function craftMark(row, e, n, p, rid)
+    if not e then return end
+    if e.done then
+        row.done, row.mark, row.markColor = true, L.MARK_MADE, GOOD
+    elseif ns.NextCraft(n, p) == rid and not row.marked then
+        row.now, row.mark, row.markColor = true, L.MARK_NEXT, S.Accent()
+        if e.got > 0 then row.right = L.MADE_OF:format(e.got, e.got + e.left) end
+    end
 end
 
 -- The rows of the chosen stop: its items, each with where it stands.
@@ -860,13 +883,15 @@ local function detailRows(n, i, a)
     local st = ns.view.state
     local p = ns.RunProgress()[i]
     -- a craft: the recipe with its skill stretch, then each reagent on its own row
-    for _, sg in ipairs(n.segs or {}) do
+    for si, sg in ipairs(n.segs or {}) do
         local r = st.recipes[sg.rid]
         local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
-        rows[#rows + 1] = { rid = sg.rid, seg = sg, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
+        local row = { rid = sg.rid, seg = sg, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
                             note = sg.from .. " - " .. sg.to .. (r.cd and ("  ·  " .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
                             right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
+        craftMark(row, p and p.segs and p.segs[si], n, p, sg.rid)
+        rows[#rows + 1] = row
         local ids = {}
         for id in pairs(r.r) do ids[#ids + 1] = id end
         table.sort(ids, function(x, y) return tostring(x) < tostring(y) end)
@@ -906,7 +931,11 @@ local function detailRows(n, i, a)
                     text = name .. color(S.MUTED) .. " x" .. l.n .. "|r" }
         local q1 = byLine[k]
         e.done = (p and p.lines[k] and p.lines[k].done) or (q1 and q1.done) or false
-        if e.done then
+        -- bought for a later run of the way
+        if l.ahead and not spot and not l.guess then note = L.SRC_AHEAD:format(l.ahead) end
+        if n.kind == "craft" and l.recipe then
+            craftMark(e, p and p.lines[k], n, p, l.recipe)
+        elseif e.done then
             e.mark, e.markColor = taken and L.MARK_TAKEN or L.MARK_BOUGHT, GOOD
         elseif q1 and q1.hand then
             e.mark, e.markColor = L.MARK_HAND, GOLD
@@ -926,7 +955,7 @@ local function detailRows(n, i, a)
         if vb and vb.extra > 0 then note = L.NOTE_STACK:format(vb.need, vb.stack, vb.units) end
         if vb then right = S.MoneyText(vb.cost) end -- what the click pays, whole stacks
         if a and a.vendor and not vb and not e.done and not spot then note = L.NOTE_NOT_HERE end -- else: who has it
-        e.note, e.right = note, right
+        e.note, e.right = note, e.right or right
         rows[#rows + 1] = e
     end
     return rows

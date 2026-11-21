@@ -750,6 +750,19 @@ S.craftprofit.sidetabs = { spec = cpSpec(), before = S.craftprofit.default.befor
         ns.Skin.SideOpen("CraftProfit", true)
     end }
 -- A craft stop while the profession window is closed: the button opens it first.
+-- A craft stop part made: the first craft done, the button on the next one, and Mark done.
+S.craftprofit.made = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W)
+        S.craftprofit.default.open(ns, W)
+        for i, n in ipairs(ns.view.route) do
+            if n.kind == "craft" then
+                local rid = n.segs and n.segs[1].rid or n.lines[1].recipe
+                ns.view.made[rid] = 2
+                ns.Select(i)
+                break
+            end
+        end
+    end }
 S.craftprofit.craftopen = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W)
         S.craftprofit.craft.open(ns, W)
