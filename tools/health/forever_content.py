@@ -38,6 +38,10 @@
 8. My BiS List: the wowtbc.gg snapshot (tools/bislist/wowtbc.json) is no older than BIS_DAYS; the
    weekly job fetches it, and when the site refuses the server it is collected on a computer.
 
+9. Translations: every English text from game data that a player reads (tools/i18n) has its
+   translation in every language that needs it; a generator that found a new text left it in
+   English until then.
+
 Prints the report (empty when all is well) and writes it to --out.
 """
 import ast
@@ -315,6 +319,20 @@ def check_journal(path=JOURNAL):
     return lines
 
 
+def check_translations():
+    """Texts of tools/i18n without a translation, per domain and language."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("i18n", os.path.join(ROOT, "tools", "i18n", "i18n.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    lines = []
+    for d in mod.domains():
+        for lang, texts in mod.pending(d).items():
+            if texts:
+                lines.append("- %s, %s: %d, such as \"%s\"" % (d, lang, len(texts), texts[0][:80]))
+    return lines
+
+
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
@@ -330,6 +348,7 @@ def main(argv):
     bagquest_lines = check_bagquests()
     journal_lines = check_journal()
     bis_lines = check_bislist()
+    i18n_lines = check_translations()
     if "--update-seen" in argv:
         with open(os.path.join(ROOT, "tools", "worthit", "seen.txt"), "a", encoding="utf-8") as f:
             for iid, name, kind in bags:
@@ -375,6 +394,11 @@ def main(argv):
                    "Wowhead and QuestieDB have no level for WoW Forever's own bosses: put the level the "
                    "game shows into LEVELS (a boss neither source lists into EXTRA) in "
                    "tools/dungeonprep/build_journal.py and run it.", ""] + journal_lines + [""]
+    if i18n_lines:
+        report += ["### Texts to translate", "",
+                   "Run `python3 tools/i18n/i18n.py export <domain> <lang> todo.json`, translate the values "
+                   "(names stay in English), `python3 tools/i18n/i18n.py merge <domain> <lang> todo.json`, "
+                   "then run the module's generator again.", ""] + i18n_lines + [""]
     if tip_lines:
         report += ["### Worth It: what to do", ""] + tip_lines + [""]
     if bis_lines:
