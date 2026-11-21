@@ -142,6 +142,8 @@ function Fake(spec)
     W.pins, W.cleared, W.toasts, W.notes, W.maps = {}, 0, {}, {}, {}
     UnitRace = function() return "Race", "Race", spec.raceId or 1 end
     UnitClass = function() return "Class", spec.class or "PRIEST", CLASS_ID[spec.class or "PRIEST"] end
+    LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue",
+        PRIEST = "Priest", SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid" }
     CONTAINER_SLOTS = spec.slotText or "%d Slot %s"
     C_QuestLog = {
         IsQuestFlaggedCompleted = function(id) return W.done[id] == true end,

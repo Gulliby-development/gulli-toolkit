@@ -1450,6 +1450,8 @@ S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show
                        done = { [1505] = true, [1498] = true, [1502] = true, [1503] = true, [1823] = true, [1824] = true },
                        log = { [1825] = true } },
               open = function(ns) wiOpen(ns); ns.Show(1845) end },
+    other = { spec = { level = 30, class = "WARRIOR", faction = "Horde", raceId = 2, zone = 17, bags = { 6, 6, 8, 8 } },
+              open = function(ns) wiOpen(ns); ns.Show(1845); ns.ViewClass(9) end },
     empty = { spec = { level = 60, bags = { 18, 18, 18, 18 } }, open = function(ns) ns.Toggle() end } }
 -- Vendor Flip: the market after a scan, the belt bought, a price asked for the copper ore.
 local VF_ICONS = { [2770] = "INV_Ore_Copper_01", [3300] = "INV_Misc_Bone_08", [5001] = "INV_Belt_03", [5002] = "INV_Misc_Cape_01",
