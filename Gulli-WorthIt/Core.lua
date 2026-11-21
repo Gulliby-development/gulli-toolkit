@@ -67,11 +67,50 @@ local function bagItem(bag)
 end
 local function playerLevel() return UnitLevel("player") or 1 end
 
+-- Item data: each id is asked for once (again only after ns.ASK_AGAIN seconds), so a page that
+-- paints an item the server never sends does not ask for it on every paint. An item the server
+-- refused (GET_ITEM_INFO_RECEIVED with success false) is in ns.failed.
+ns.ASK_AGAIN = 30
+ns.asked, ns.failed = {}, {}
+local function now() return GetTime and GetTime() or 0 end
+function ns.Ask(id)
+    if not id or ns.failed[id] or not CI.RequestLoadItemDataByID then return end
+    local at = ns.asked[id]
+    if at and now() - at < ns.ASK_AGAIN then return end
+    ns.asked[id] = now()
+    CI.RequestLoadItemDataByID(id)
+end
+function ns.Known(id)
+    return (CI.GetItemNameByID and CI.GetItemNameByID(id)) and true or false
+end
+-- The client's name; meanwhile the English one of the data, then "..." while it loads and
+-- "Item <id>" when the server does not know it.
 function ns.ItemName(id)
     local name = CI.GetItemNameByID and CI.GetItemNameByID(id)
     if name then return name end
-    if CI.RequestLoadItemDataByID then CI.RequestLoadItemDataByID(id) end
+    ns.Ask(id)
+    local D = ns.Data or {}
+    if D.names and D.names[id] then return D.names[id] end
+    if ns.failed[id] then return L.ITEM_ID:format(id) end
     return "..."
+end
+-- Every item the window can show, of every class, so a page is ready when it opens.
+function ns.Prefetch()
+    local D = ns.Data or {}
+    for _, r in ipairs(D.rewards or {}) do ns.Ask(r[1]) end
+    for _, c in ipairs(D.class or {}) do
+        for _, id in ipairs(c[3] or {}) do ns.Ask(id) end
+    end
+    for _, b in ipairs(D.books or {}) do ns.Ask(b[2]) end
+    for _, t in ipairs(D.tiers or {}) do
+        for _, id in ipairs(t[4] or {}) do ns.Ask(id) end
+    end
+end
+-- An item the client loaded (or refused): repaint only for the items we asked for.
+function ns.OnItemInfo(id, success)
+    if not (id and ns.asked[id]) then return false end
+    if success == false then ns.failed[id] = true end
+    return true
 end
 function ns.ItemIcon(id)
     return (CI.GetItemIconByID and CI.GetItemIconByID(id)) or "Interface\\Icons\\INV_Misc_Bag_08"
@@ -1190,7 +1229,7 @@ ns.Later = later
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1)
+f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliWorthItDB = GulliWorthItDB or {}
@@ -1212,7 +1251,13 @@ f:SetScript("OnEvent", function(self, event, a1)
     if event == "PLAYER_ENTERING_WORLD" then
         -- a guide kept over a reload leads on
         if ns.Guiding() then claim() end
+        if not ns.prefetched then
+            ns.prefetched = true
+            C_Timer.After(3, ns.Prefetch)
+        end
         later()
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+        if ns.OnItemInfo(a1, a2) then later() end
     elseif event == "QUEST_TURNED_IN" then
         ns.OnTurnedIn(a1)
     else
