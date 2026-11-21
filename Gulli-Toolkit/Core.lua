@@ -12,7 +12,7 @@ Toolkit.api = 1
 -- Modules we make, shown in the hub even before they are installed.
 ns.KNOWN = { "QuestCleaner", "MobFinder", "Attune", "GroupBuffs", "Bulletin", "PartyQuests", "InstanceLimit",
              "BagSpace", "DungeonPrep", "QuickChat", "Chores", "Restock", "Merchant", "Mail",
-             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates", "FarmTrack", "Fishing", "WorthIt", "VendorFlip", "MyBisList", "WritRunner" }
+             "AutoQuest", "Tooltip", "XP", "Loot", "Social", "Reminders", "CraftProfit", "Legacy", "Crates", "FarmTrack", "Fishing", "WorthIt", "VendorFlip", "MyBisList", "CraftsmansWrit" }
 
 -- The hub's categories in sidebar order. A known module has its category here; another module
 -- names one of these keys in Register (category = "Items") or in its TOC (## X-Gulli-Category).
@@ -20,7 +20,7 @@ ns.CATEGORIES = { "Quests", "Group", "Items", "Social", "Info" }
 ns.CATEGORY_OF = {
     QuestCleaner = "Quests", AutoQuest = "Quests", PartyQuests = "Quests", WorthIt = "Quests",
     GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group",
-    BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items", Crates = "Items", FarmTrack = "Items", Fishing = "Items", VendorFlip = "Items", WritRunner = "Items",
+    BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items", Crates = "Items", FarmTrack = "Items", Fishing = "Items", VendorFlip = "Items", CraftsmansWrit = "Items",
     Bulletin = "Social", QuickChat = "Social", Social = "Social",
     XP = "Info", Legacy = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info", MyBisList = "Info",
 }
@@ -499,7 +499,7 @@ end
 ns.PIN_TRIES = 40
 -- The modules whose button shows until the player turns it off; true: every module.
 ns.PIN_DEFAULT = { CraftProfit = true, Crates = true, DungeonPrep = true, GroupBuffs = true,
-                   WorthIt = true, VendorFlip = true, MyBisList = true, WritRunner = true }
+                   WorthIt = true, VendorFlip = true, MyBisList = true, CraftsmansWrit = true }
 
 function ns.PinDefault(key)
     return ns.PIN_DEFAULT == true or (type(ns.PIN_DEFAULT) == "table" and ns.PIN_DEFAULT[key] == true)

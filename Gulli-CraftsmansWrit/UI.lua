@@ -19,7 +19,7 @@ local setCard, pouchStats, pouchNote, histCard
 local tab, period, rankFilter = 1, "all", nil
 local ROW, HEAD, HIST_ROW = 38, 26, 38
 
-ns.ICON = "Interface\\AddOns\\Gulli-WritRunner\\icon"
+ns.ICON = "Interface\\AddOns\\Gulli-CraftsmansWrit\\icon"
 local WRIT_ICON = "Interface\\Icons\\INV_Scroll_03"
 local POUCH_ICON = "Interface\\Icons\\INV_Misc_Coin_02"
 local REP_ICON = "Interface\\Icons\\INV_Misc_Ribbon_01"
@@ -457,7 +457,7 @@ local function goalLabels()
 end
 
 local function build()
-    frame = S.Window("GulliWritRunnerFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
+    frame = S.Window("GulliCraftsmansWritFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local ft = S.Footer(frame)
     buyBtn = S.Primary(S.Button(ft, 200, 32))
     ft:Add(buyBtn)
@@ -625,8 +625,8 @@ local function build()
 end
 
 function ns.Toggle()
-    local open, shown = S.SideIs("WritRunner")
-    if open and not shown then S.SideOpen("WritRunner", true); ns.Refresh(); return end
+    local open, shown = S.SideIs("CraftsmansWrit")
+    if open and not shown then S.SideOpen("CraftsmansWrit", true); ns.Refresh(); return end
     S.ToggleWindow(ns.Window())
 end
 
@@ -647,14 +647,14 @@ function ns.ShowAtAH()
     local w = ns.Window()
     if w.docked then if w:IsShown() then ns.Refresh() end return end
     ns.byAH = true
-    S.SideOpen("WritRunner")
+    S.SideOpen("CraftsmansWrit")
     tabs:Select(2)
     ns.Refresh()
 end
 
 function ns.HideAtAH()
     ns.byAH = false
-    S.SideClose("WritRunner")
+    S.SideClose("CraftsmansWrit")
     ns.Refresh()
 end
 
@@ -665,7 +665,7 @@ function ns.LinesLeft()
     return math.max(0, #b.queue - (b.i or 1) + 1)
 end
 
-S.SideAdd({ key = "WritRunner", order = 15, title = function() return L.TITLE end, icon = ns.ICON,
+S.SideAdd({ key = "CraftsmansWrit", order = 15, title = function() return L.TITLE end, icon = ns.ICON,
             window = function() return ns.Window() end, badge = function() return ns.LinesLeft() end,
             closed = function() ns.byAH = false end })
 
@@ -723,7 +723,7 @@ local function trackerRow(parent)
 end
 
 local function buildTracker()
-    tracker = CreateFrame("Frame", "GulliWritRunnerTracker", UIParent)
+    tracker = CreateFrame("Frame", "GulliCraftsmansWritTracker", UIParent)
     tracker:SetSize(TW, T_HEAD + 40)
     tracker:SetFrameStrata("MEDIUM")
     tracker:SetClampedToScreen(true)

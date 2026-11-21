@@ -1,4 +1,4 @@
--- A fake WoW client for the Gulli-WritRunner tests: the shared basics plus bags, a bank, the quest
+-- A fake WoW client for the Gulli-CraftsmansWrit tests: the shared basics plus bags, a bank, the quest
 -- log, the camp's reputation, the daily reset, Auctionator and the commodity auction house.
 local W = {}
 
@@ -210,8 +210,8 @@ function Fake(spec)
     UiMapPoint = { CreateFromCoordinates = function(m, x, y) return { map = m, x = x, y = y } end }
     GetMoney = function() return W.money end
     OpenWorldMap = function() error("the global OpenWorldMap must not be called") end
-    GulliWritRunnerDB = spec.db
-    GulliWritRunnerCharDB = spec.cdb
+    GulliCraftsmansWritDB = spec.db
+    GulliCraftsmansWritCharDB = spec.cdb
     return W
 end
 
@@ -229,7 +229,7 @@ function W.AnswerSearches()
 end
 
 function Load()
-    return W.Load("Gulli-WritRunner", { "Locales.lua", "Data.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-CraftsmansWrit", { "Locales.lua", "Data.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W

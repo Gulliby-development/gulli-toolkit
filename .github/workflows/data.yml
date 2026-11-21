@@ -41,7 +41,7 @@ jobs:
           python3 tools/worthit/build_data.py /tmp/questiedb
           python3 tools/partyquests/build_events.py /tmp/questiedb
           python3 tools/autoquest/build_drops.py /tmp/questiedb
-          python3 tools/writrunner/build_data.py /tmp/att
+          python3 tools/craftsmanswrit/build_data.py /tmp/att
 
       - name: BiS lists from wowtbc.gg
         # the site may refuse a server: then the last snapshot stays and forever_content tells its age

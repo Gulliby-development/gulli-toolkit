@@ -10,6 +10,6 @@
     "WorthIt": { "id": 1821802 },
     "VendorFlip": { "id": 1821814 },
     "MyBisList": { "id": 1821807 },
-    "WritRunner": { "id": null, "optional": ["auctionator"] }
+    "CraftsmansWrit": { "id": null, "optional": ["auctionator"] }
   }
 }
