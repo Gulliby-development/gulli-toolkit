@@ -16,6 +16,7 @@ them and where, who takes it back, its reward items, the dungeon mobs it needs (
 first, a rough boss order), and its place in a chain. Repeatable quests and item exchanges at a machine (started and finished by
 the same object, such as the Sparklematic 5200) give no experience and are left out.
 """
+import json
 import os
 import re
 import sys
@@ -771,9 +772,17 @@ def main(root, att_root=None, gdq_root=None):
     lines.append("-- Quest -> the experience it gives at its own level (less for a character far above it).")
     lines.append("D.xp = {")
     # The chain steps outside the dungeon (D.pre) too: their pages show it.
+    # QuestieDB first, else the Wowhead snapshot of tools/dungeonprep/questxp.py (WoW Forever's own quests).
+    wowhead_xp = {}
+    if os.path.exists(os.path.join(HERE, "wowhead-questxp.json")):
+        with open(os.path.join(HERE, "wowhead-questxp.json"), encoding="utf-8") as fh:
+            wowhead_xp = {int(k): v for k, v in json.load(fh)["quests"].items()}
     for qid in sorted(used | others):
-        if qid in quest_xp and quest_xp[qid][1] > 0:
-            lines.append("[%d]=%d," % (qid, quest_xp[qid][1]))
+        xp = quest_xp[qid][1] if qid in quest_xp else 0
+        if xp <= 0:
+            xp = wowhead_xp.get(qid, 0)
+        if xp > 0:
+            lines.append("[%d]=%d," % (qid, xp))
     lines.append("}")
     lines.append("-- Dungeon -> quest -> what of it happens inside the dungeon: t taken, d done, h handed in.")
     lines.append("D.inside = {")
