@@ -736,8 +736,6 @@ function ns.StopAction(i, aside)
         a.pill = done and { L.STOP_DONE, GOOD } or (ns.atAH and { L.OPEN_ah, GOOD } or { L.AWAY_ah })
         if done then
             a.primary, a.second, a.hint = { L.BUY_DONE }, onward, L.HINT_BOUGHT
-        elseif not now then
-            a.primary, a.hint = { L.BUY_AH }, L.HINT_LATER
         elseif not ns.atAH then
             a.primary, a.hint = { L.BUY_AH }, L.HINT_AH_AWAY
         elseif not ns.CanBuy() then
@@ -782,8 +780,6 @@ function ns.StopAction(i, aside)
         a.pill = done and { L.STOP_DONE, GOOD } or (ns.atVendor and { L.OPEN_vendor, GOOD } or { L.AWAY_vendor })
         if done then
             a.primary, a.second, a.hint = { L.BUY_DONE }, onward, L.HINT_BOUGHT
-        elseif not now then
-            a.primary, a.hint = { L.BUY_VENDOR }, L.HINT_LATER
         elseif not ns.atVendor then
             a.primary, a.hint = { L.BUY_VENDOR }, L.HINT_V_AWAY
         else
@@ -862,6 +858,10 @@ function ns.StopAction(i, aside)
         end
     end
     if p and p.marked and not a.second then a.second = onward end
+    -- a later run's buy stop buys for that stage alone, before its turn
+    local lg = not now and v.legs and v.legs[v.leg]
+    local open = (n.kind == "ah" and ns.atAH) or (n.kind == "vendor" and ns.atVendor)
+    if lg and ns.Gets(n) and not done and not open then a.hint = L.HINT_STAGE:format(lg.to or 0) end
     return a
 end
 
