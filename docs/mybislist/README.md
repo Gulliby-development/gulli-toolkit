@@ -23,6 +23,7 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 - **Against what you wear.** Each slot says what you have: the best item, its place on the list (`Worn: #2 of 5`), or a better one waiting in your bags. A bar shows how many best items you wear.
 - **Where to get it.** Each item says where it comes from: a boss and its dungeon, a quest, a reputation, a craft or a world drop.
 - **Realistic before the raids.** The switch **Realistic** shows the list without the hardest items to get.
+- **Your own lists.** **Copy to mine** makes a copy of any list that you can change: move items up and down, remove them, and add others with a search over the items your class can use (the ones of your spec first). Rename it in the box at the top. When the site later changes the first item of a slot, a line over the list says which slots. Your lists are for every character of your account.
 - **Favourite lists.** The star keeps a list at the top of the picker, for an alt or a second spec.
 - **Your main list.** **Make main list** chooses the list the tooltips and notices follow. Until you choose, it is the list of your spec and level.
 - **In the tooltip.** An item on your main list shows its place in its slot, and the place of what you wear there.
@@ -40,6 +41,7 @@ My BiS List works alone. With [Gulli Toolkit](../../README.md) installed, it als
 1. Type `/gbis`.
 2. Click a slot to see its five best items.
 3. Shift-click an item to put its link in the chat.
+4. To change a list, press **Copy to mine**, then **Add item** or the arrows on a row.
 
 Commands: `/gbis` opens the window, `/gbis reset` puts the settings back.
 
