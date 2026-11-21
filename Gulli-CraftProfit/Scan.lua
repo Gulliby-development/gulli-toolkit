@@ -1004,9 +1004,28 @@ end
 -- way has no progress: its plan starts from bags that are not there yet.
 function ns.RunProgress()
     local v = ns.view
-    if not v.route or not v.state or (v.leg or 1) > 1 then return {} end
+    if not v.route or not v.state then return {} end
     local prof = ns.char and ns.char.profs and ns.char.profs[v.state.name or ""]
-    return ns.Progress(v.route, v.state, count, v.made, v.marks, prof and prof.skill)
+    local leg = v.leg or 1
+    if leg == 1 then return ns.Progress(v.route, v.state, count, v.made, v.marks, prof and prof.skill) end
+    -- a later run: only its buy stops can be walked now (bought ahead, stage by stage). What came
+    -- into the bags since the plan goes to the runs before it first, in their order.
+    if not v.legs or not v.legs[leg] then return {} end
+    local all, at = {}, 0
+    for k = 1, leg - 1 do
+        local l = v.legs[k]
+        local plan = k == 1 and v.plan or (l and l.plan)
+        local st = k == 1 and v.state or (l and l.state)
+        if plan and st then
+            for _, n in ipairs(ns.Route(st, plan)) do if ns.Gets(n) then all[#all + 1] = n end end
+        end
+    end
+    at = #all
+    for _, n in ipairs(v.route) do all[#all + 1] = n end
+    local prog = ns.Progress(all, v.state, count)
+    local out = {}
+    for i, n in ipairs(v.route) do out[i] = ns.Gets(n) and prog[at + i] or { lines = {}, left = 0, done = false } end
+    return out
 end
 
 -- Marks stop i done by hand, or not done again: the stops after it go on, whatever the bags say.

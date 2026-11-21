@@ -2530,6 +2530,67 @@ test("the ahead switch changes the buy stops, not the plan", function()
     eq(n.view.plan, plan)
 end)
 
+test("a later stage's buy stop buys for that stage now; what came in goes to the stages before it first", function()
+    -- a second stage: past 185 only the vest raises the skill
+    local n = game({
+        items = {
+            [1] = { name = "Silk Cloth", ah = 160, sell = 38 },
+            [2] = { name = "Bolt of Silk Cloth", ah = 900, sell = 150 },
+            [3] = { name = "Blue Dye", sell = 12 },
+            [4] = { name = "Azure Silk Hood", ah = 1500, sell = 420, quality = 2 },
+            [5] = { name = "Fine Thread", sell = 25 },
+            [6] = { name = "Silk Headband", ah = 2600, sell = 520, quality = 2 },
+            [8] = { name = "Bolt of Mageweave", ah = 4000, sell = 250 },
+            [9] = { name = "Black Mageweave Vest", ah = 2400, sell = 900, quality = 2 },
+        },
+        prof = { name = "Tailoring", skill = SKILL, cap = 225, recipes = {
+            { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+            { id = 102, name = "Azure Silk Hood", learned = true, diff = 0, grey = 175, out = 4, r = { [2] = 2, [3] = 2 } },
+            { id = 103, name = "Silk Headband", learned = true, diff = 0, grey = 185, out = 6, r = { [2] = 3, [5] = 2 } },
+            { id = 105, name = "Black Mageweave Vest", learned = true, diff = 0, grey = 230, out = 9, r = { [2] = 2, [8] = 1 } },
+        } },
+    })
+    n.db.prefs.ahead, n.db.prefs.target = false, 225
+    n.Toggle(); n.Calculate()
+    local legs = n.view.legs or {}
+    local leg, stop
+    for i = 2, #legs do
+        if legs[i].plan then
+            n.SelectLeg(i)
+            for k, s in ipairs(n.view.route) do if s.kind == "ah" and s.title == "STOP_AH_BUY" then leg, stop = i, k end end
+            if stop then break end
+        end
+    end
+    assert(stop, "a later stage buys at the auction")
+    eq(n.view.leg, leg)
+    local a = n.StopAction(stop)
+    eq(a.hint, n.L.HINT_STAGE:format(legs[leg].to), "away from the auction it says it can buy now")
+    n.atAH = true
+    a = n.StopAction(stop)
+    assert(a.primary and a.primary[2], "the Buy button works for a later stage")
+    n.atAH = false
+    -- the earlier stages' buys come first: their units do not tick this stage off
+    local line, before
+    for _, l in ipairs(n.view.route[stop].lines) do
+        local b = 0
+        for k = 1, leg - 1 do
+            local plan = k == 1 and legs[1].plan or legs[k].plan
+            local st = legs[k].state or n.view.state
+            for _, nd in ipairs(n.Route(st, plan)) do
+                if nd.kind == "ah" then for _, x in ipairs(nd.lines) do if x.id == l.id then b = b + x.n end end end
+            end
+        end
+        if l.id and b > 0 then line, before = l, b end
+    end
+    assert(line, "an item both stages buy")
+    local at
+    for k, l in ipairs(n.view.route[stop].lines) do if l == line then at = k end end
+    W.items[line.id].bags = before
+    eq(n.RunProgress()[stop].lines[at].done, false)
+    W.items[line.id].bags = before + line.n
+    eq(n.RunProgress()[stop].lines[at].done, true)
+end)
+
 test("an item the client had not loaded gets its name once the game sends it", function()
     local n = game()
     W.items[3].pending = true
