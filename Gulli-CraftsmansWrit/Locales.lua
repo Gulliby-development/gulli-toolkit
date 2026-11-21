@@ -10,7 +10,7 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
-    TITLE = "Writ Runner",
+    TITLE = "Craftsman's Writ",
     CAMP = "Trade camp",
     TAB_TODAY = "Today",
     TAB_PLAN = "Plan",
@@ -166,7 +166,7 @@ T.en = {
 }
 
 T.de = {
-    TITLE = "Writ Runner",
+    TITLE = "Handwerksauftrag",
     CAMP = "Handelslager",
     TAB_TODAY = "Heute",
     TAB_PLAN = "Plan",
@@ -322,7 +322,7 @@ T.de = {
 }
 
 T.es = {
-    TITLE = "Writ Runner",
+    TITLE = "Encargo de artesano",
     CAMP = "Campamento comercial",
     TAB_TODAY = "Hoy",
     TAB_PLAN = "Plan",
@@ -478,7 +478,7 @@ T.es = {
 }
 
 T.fr = {
-    TITLE = "Writ Runner",
+    TITLE = "Commande d'artisan",
     CAMP = "Camp marchand",
     TAB_TODAY = "Aujourd'hui",
     TAB_PLAN = "Plan",
@@ -634,7 +634,7 @@ T.fr = {
 }
 
 T.pl = {
-    TITLE = "Writ Runner",
+    TITLE = "Zlecenie rzemieślnicze",
     CAMP = "Obóz handlowy",
     TAB_TODAY = "Dziś",
     TAB_PLAN = "Plan",
@@ -790,7 +790,7 @@ T.pl = {
 }
 
 T.pt = {
-    TITLE = "Writ Runner",
+    TITLE = "Encomenda de artesão",
     CAMP = "Acampamento comercial",
     TAB_TODAY = "Hoje",
     TAB_PLAN = "Plano",
@@ -946,7 +946,7 @@ T.pt = {
 }
 
 T.ru = {
-    TITLE = "Writ Runner",
+    TITLE = "Ремесленные заказы",
     CAMP = "Торговый лагерь",
     TAB_TODAY = "Сегодня",
     TAB_PLAN = "План",
@@ -1102,7 +1102,7 @@ T.ru = {
 }
 
 T.zh = {
-    TITLE = "Writ Runner",
+    TITLE = "工匠委托",
     CAMP = "贸易营地",
     TAB_TODAY = "今天",
     TAB_PLAN = "计划",

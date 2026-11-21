@@ -1,4 +1,4 @@
--- Writ Runner: the Craftsman's Writs of WoW Forever. Each writ is a daily quest that asks for one
+-- Craftsman's Writ: the Craftsman's Writs of WoW Forever. Each writ is a daily quest that asks for one
 -- crafted item and pays reputation with the trade camp (75, 125 or 200) and a Coin Pouch. This
 -- file tracks what is done today, plans the cheapest way to a standing in a number of days from
 -- the bags, the bank and the auction house, buys what the plan needs (one click a step), learns
@@ -8,14 +8,14 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local CALLER = "Gulli-WritRunner"
+local CALLER = "Gulli-CraftsmansWrit"
 local QUOTE_WAIT = 8 -- seconds the auction house has to answer a price request
 
 ns.DEFAULTS = { bank = true, sealed = true, pouch = true, live = true, auto = true, tooltip = true,
                 goal = 0, days = 3 }
 
-local function say(msg) print("|cff9ad0ffWrit Runner|r: " .. msg) end
-local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("WritRunner", msg) end end
+local function say(msg) print("|cff9ad0ffCraftsman's Writ|r: " .. msg) end
+local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("CraftsmansWrit", msg) end end
 ns.Say = say
 
 -- ---------- the rules of the writs ----------
@@ -1217,8 +1217,8 @@ end
 local function claim()
     GulliHUD = GulliHUD or {}
     local g = GulliHUD.guide
-    if g and g.owner ~= "WritRunner" and g.stop then pcall(g.stop) end
-    GulliHUD.guide = { owner = "WritRunner", stop = function() ns.StopGuide() end }
+    if g and g.owner ~= "CraftsmansWrit" and g.stop then pcall(g.stop) end
+    GulliHUD.guide = { owner = "CraftsmansWrit", stop = function() ns.StopGuide() end }
 end
 
 function ns.Guiding() return ns.guide ~= nil end
@@ -1233,7 +1233,7 @@ end
 
 function ns.StopGuide()
     ns.guide = nil
-    if GulliHUD and GulliHUD.guide and GulliHUD.guide.owner == "WritRunner" then GulliHUD.guide = nil end
+    if GulliHUD and GulliHUD.guide and GulliHUD.guide.owner == "CraftsmansWrit" then GulliHUD.guide = nil end
     if ns.pinned and MAP.ClearUserWaypoint then MAP.ClearUserWaypoint() end
     ns.pinned, ns.stop = nil, nil
     if ns.RefreshTracker then ns.RefreshTracker() end
@@ -1362,9 +1362,9 @@ f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
-        GulliWritRunnerDB = GulliWritRunnerDB or {}
-        GulliWritRunnerCharDB = GulliWritRunnerCharDB or {}
-        ns.db, ns.cdb = GulliWritRunnerDB, GulliWritRunnerCharDB
+        GulliCraftsmansWritDB = GulliCraftsmansWritDB or {}
+        GulliCraftsmansWritCharDB = GulliCraftsmansWritCharDB or {}
+        ns.db, ns.cdb = GulliCraftsmansWritDB, GulliCraftsmansWritCharDB
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.history = ns.db.history or {}
         ns.db.lots = ns.db.lots or {}
@@ -1382,7 +1382,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                        "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR" })
         if ns.Skin then
             if ns.Skin.ClosesWith then ns.Skin.ClosesWith("auction", ns.AuctionClosed) end
-            if ns.Skin.TipProvider then ns.Skin.TipProvider("item", "WritRunner", function(id) return ns.TipLines(id) end) end
+            if ns.Skin.TipProvider then ns.Skin.TipProvider("item", "CraftsmansWrit", function(id) return ns.TipLines(id) end) end
         end
         money = GetMoney and GetMoney() or 0
         return
@@ -1451,8 +1451,9 @@ end)
 
 -- ---------- slash command and hub ----------
 
-SLASH_GULLIWRITRUNNER1 = "/gwr"
-SlashCmdList.GULLIWRITRUNNER = function(msg)
+SLASH_GULLICRAFTSMANSWRIT1 = "/gcw"
+SLASH_GULLICRAFTSMANSWRIT2 = "/gwr" -- the name of 1.0.0
+SlashCmdList.GULLICRAFTSMANSWRIT = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "lead" then if not ns.StartGuide() then say(L.GUIDE_NONE) end return end
     if msg == "stop" then ns.StopGuide() return end
@@ -1466,7 +1467,7 @@ SlashCmdList.GULLIWRITRUNNER = function(msg)
     end
     if ns.Toggle then ns.Toggle() end
 end
-function GulliWritRunner_Toggle() if ns.Toggle then ns.Toggle() end end
+function GulliCraftsmansWrit_Toggle() if ns.Toggle then ns.Toggle() end end
 
 ns.OPT_ICON = {
     bank = "Interface\\Minimap\\Tracking\\Banker",
@@ -1486,9 +1487,9 @@ end
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
-        key = "WritRunner",
-        icon = "Interface\\AddOns\\Gulli-WritRunner\\icon",
-        slash = "/gwr",
+        key = "CraftsmansWrit",
+        icon = "Interface\\AddOns\\Gulli-CraftsmansWrit\\icon",
+        slash = "/gcw",
         category = "Items",
         open = function() if ns.Toggle then ns.Toggle() end end,
         window = function() return ns.Window and ns.Window() end,

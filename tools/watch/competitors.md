@@ -34,7 +34,7 @@ one that is dead. Links are where releases or changelogs are read.
 | Fishing | Obvious Fishing (github.com/tehwave/wow-obvious-fishing), Fishing Buddy, Angleur, Fishing Ace! (curseforge) |
 | WorthIt | BagQuests Forever (github.com/pmgower/bagquests-forever), Questie (reward filters), news of new bag, quiver and other lasting quest rewards in WoW Forever (forums, Reddit, Wowhead news) |
 | VendorFlip | Auctionator (vendor price in tooltips), TSM (sniper and vendor sell price), Vendor Price |
-| WritRunner | Craftman's Helper (github.com/emsw0rth/craftmanshelper, curseforge), Polestar guides (Merchant's Favor) |
+| CraftsmansWrit | Craftman's Helper (github.com/emsw0rth/craftmanshelper, curseforge), Polestar guides (Merchant's Favor) |
 
 ## Runeloader
 

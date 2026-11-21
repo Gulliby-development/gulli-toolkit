@@ -1,5 +1,5 @@
--- Run from the repository root: lua5.1 tests/writrunner/test.lua
-local W = dofile("tests/writrunner/wow.lua")
+-- Run from the repository root: lua5.1 tests/craftsmanswrit/test.lua
+local W = dofile("tests/craftsmanswrit/wow.lua")
 local test, eq = W.test, W.eq
 
 local OGRE = 264011     -- Craftsman's Writ (J, Alchemy): 1 Elixir of Ogre's Strength, quest 94004
@@ -362,7 +362,7 @@ test("the guide pins the nearest customer and takes over another module's guide"
     GulliHUD.guide = { owner = "WorthIt", stop = function() stopped = true end }
     assert(ns.StartGuide(), "two writs are ready")
     eq(stopped, true)
-    eq(GulliHUD.guide.owner, "WritRunner")
+    eq(GulliHUD.guide.owner, "CraftsmansWrit")
     eq(#ns.stops, 2)
     eq(ns.stop.spot.map, 1416, "the customer in the player's zone first")
     eq(W.waypoints[1].map, 1416)
@@ -402,8 +402,8 @@ test("the module registers for the hub with its window and its tracker", functio
     Fake({})
     local ns = Load()
     local a = ns.alone
-    eq(a.key, "WritRunner")
-    eq(a.slash, "/gwr")
+    eq(a.key, "CraftsmansWrit")
+    eq(a.slash, "/gcw")
     assert(a.window() == ns.Window())
     eq(a.frames[1].key, "tracker")
     assert(a.frames[1].frame())

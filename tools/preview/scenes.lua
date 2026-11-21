@@ -1632,7 +1632,7 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
         ns.OpenAdd(select(1, ns.Parts()).card.add)
     end } }
 
--- Writ Runner: a Friendly character with writs in the bags, two of them ready, and a plan.
+-- Craftsman's Writ: a Friendly character with writs in the bags, two of them ready, and a plan.
 local WR_NAMES = { [264011] = "Craftsman's Writ: Elixir of Ogre's Strength", [3391] = "Elixir of Ogre's Strength",
     [264012] = "Craftsman's Writ: Elixir of Wisdom", [3383] = "Elixir of Wisdom",
     [264056] = "Craftsman's Writ: Frost Protection Potion", [6050] = "Frost Protection Potion",
@@ -1667,7 +1667,7 @@ local function wrOpen(tab, plan)
         ns.Refresh()
     end
 end
-S.writrunner = { default = { spec = wrSpec(), open = wrOpen(1) },
+S.craftsmanswrit = { default = { spec = wrSpec(), open = wrOpen(1) },
     ru = { spec = wrSpec("ruRU"), open = wrOpen(1) },
     de = { spec = wrSpec("deDE"), open = wrOpen(1) },
     plan = { spec = wrSpec(), open = wrOpen(2, true) },
