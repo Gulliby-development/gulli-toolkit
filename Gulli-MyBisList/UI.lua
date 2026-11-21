@@ -13,7 +13,7 @@ local current = 1       -- the page tab shown
 ns.view = nil           -- the list shown (a ref); nil shows the main list
 ns.slot = "head"        -- the slot whose list the card shows
 
-local SLOT_W, SLOT_H, SLOT_GAP, ROW_H = 196, 44, 4, 46
+local SLOT_W, SLOT_H, SLOT_GAP, ROW_H = 196, 44, 4, 40
 local LEFT = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands" }
 local RIGHT = { "waist", "legs", "feet", "finger1", "finger2", "trinket1", "trinket2" }
 local WEAPONS = { "main", "off", "ranged" }
@@ -25,10 +25,9 @@ local SLOT_ART = {
 }
 local STAR_ON, STAR_OFF = "Interface\\Icons\\INV_Misc_Gem_Topaz_02", "Interface\\Icons\\INV_Misc_Gem_Topaz_01"
 local OWN_ICON = "Interface\\Icons\\INV_Misc_Note_05"
-local UP, DOWN = "Interface\\Buttons\\Arrow-Up-Up", "Interface\\Buttons\\Arrow-Down-Up"
 local DEL = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local TARGET = "Interface\\Icons\\Ability_Hunter_SniperShot"
-local SEP_H = 18        -- the line over what is worn when it is not on the list
+local SEP_H = 16        -- the line over what is worn when it is not on the list
 
 function ns.ClassIcon(class)
     return "Interface\\Icons\\ClassIcon_" .. class:sub(1, 1) .. class:sub(2):lower()
@@ -154,7 +153,7 @@ local function makeRow(r)
     r.rank:SetPoint("LEFT", r.body, "LEFT", 4, 0)
     r.rank:SetWidth(22)
     r.rank:SetJustifyH("CENTER")
-    r.icon = S.IconBox(r, 32)
+    r.icon = S.IconBox(r, 30)
     r.icon:SetPoint("LEFT", r.body, "LEFT", 30, 0)
     -- an own list's row: up, down, remove (the hit area lies under them)
     r.tools = CreateFrame("Frame", nil, r)
@@ -186,18 +185,17 @@ local function makeRow(r)
     end)
     r.sep = S.Text(r, 12, S.MUTED, nil, "bold")
     r.sep:SetPoint("TOPLEFT", 4, -2)
+    r.sep:SetPoint("TOPRIGHT", -4, -2)
+    r.sep:SetJustifyH("LEFT")
+    r.sep:SetWordWrap(false)
     r.sep:SetText(S.Upper(L.WORN_NOW))
     r.sepLine = S.Divider(r)
     r.sepLine:SetPoint("TOPLEFT", 0, 0)
     r.sepLine:SetPoint("TOPRIGHT", 0, 0)
     r.sepLine:SetHeight(1)
-    r.up = tool(UP, L.MOVE_UP, function(it) ns.OwnMove(it.ref, it.slot, it.id, -1) end)
-    r.down = tool(DOWN, L.MOVE_DOWN, function(it) ns.OwnMove(it.ref, it.slot, it.id, 1) end)
     r.del = tool(DEL, L.REMOVE, function(it) ns.OwnRemove(it.ref, it.slot, it.id) end)
     r.aim:SetPoint("LEFT", 0, 0)
-    r.up:SetPoint("LEFT", r.aim, "RIGHT", 2, 0)
-    r.down:SetPoint("LEFT", r.up, "RIGHT", 2, 0)
-    r.del:SetPoint("LEFT", r.down, "RIGHT", 2, 0)
+    r.del:SetPoint("LEFT", r.aim, "RIGHT", 2, 0)
     r.tag = S.Text(r, 12, S.MUTED)
     r.tag:SetPoint("TOPRIGHT", r.tools, "TOPLEFT", -4, 3)
     r.tag:SetJustifyH("RIGHT")
@@ -251,14 +249,10 @@ local function fillRow(r, it)
     local edit = own and onList
     local aim = it.rank ~= 1
     r.aim:SetShown(aim)
-    for _, b in ipairs({ r.up, r.down, r.del }) do b:SetShown(edit) end
-    r.up:ClearAllPoints()
-    if aim then r.up:SetPoint("LEFT", r.aim, "RIGHT", 2, 0) else r.up:SetPoint("LEFT", 0, 0) end
-    r.tools:SetWidth((aim and 28 or 0) + (edit and 82 or 0) + 1)
-    if edit then
-        r.up:SetEnabled(it.rank > 1)
-        r.down:SetEnabled(not it.last)
-    end
+    r.del:SetShown(edit)
+    r.del:ClearAllPoints()
+    if aim then r.del:SetPoint("LEFT", r.aim, "RIGHT", 2, 0) else r.del:SetPoint("LEFT", 0, 0) end
+    r.tools:SetWidth((aim and 28 or 0) + (edit and 28 or 0) + 1)
     r.rank:SetText(onList and tostring(it.rank) or "")
     r.rank:SetTextColor(unpack(it.rank == 1 and S.GOLD or S.MUTED))
     r.icon:SetIcon(ns.ItemIcon(it.id))
