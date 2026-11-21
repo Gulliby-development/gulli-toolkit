@@ -62,16 +62,26 @@ def save(snap):
 
 
 def experience(page, qid):
-    """The experience a quest page names under "Gains" (div quest-reward-xp); 0 when the quest's own
+    """The experience a quest page gives under "Gains" (div quest-reward-xp); 0 when the quest's own
     page shows none; None when the page is not that quest's page (empty, challenge, Human Verification)."""
+    # The page script fills quest-reward-xp from this object; its highest level is the quest's own.
+    m = re.search(r"setupScalingRewards\((\{.*?\})\);</script>", page)
+    if m:
+        try:
+            levels = (json.loads(m.group(1)).get("xp") or {}).get("levels") or {}
+        except ValueError:
+            levels = None
+        if levels is not None:
+            return int(levels[max(levels, key=int)]) if levels else 0
     m = re.search(r'id="quest-reward-xp"[^>]*>(.*?)</div>', page, re.S)
     if m:
         n = re.search(r"(\d[\d,.\s]*)\s*experience", re.sub(r"<[^>]+>", " ", m.group(1)), re.I)
         if n:
             return int(re.sub(r"\D", "", n.group(1)))
+        return None
     if re.search(r"Human Verification|challenge-platform|cf-chl-", page, re.I):
         return None
-    own = re.search(r'rel="canonical"[^>]*/quest=%d' % qid, page) and re.search(r"<h1[^>]*>\s*[^<\s]", page)
+    own = re.search(r'rel="canonical"[^>]*/quest=%d(?!\d)' % qid, page) and re.search(r"<h1[^>]*>\s*[^<\s]", page)
     return 0 if own else None
 
 
