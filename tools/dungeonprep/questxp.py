@@ -11,7 +11,8 @@ The snapshot is tools/dungeonprep/wowhead-questxp.json:
     { "collected": "YYYY-MM-DD", "site": ..., "quests": { "<id>": <experience> } }
 
 build_data.py takes it where QuestieDB's QuestXP tables have nothing; QuestieDB wins where it has
-a number. A quest whose page shows no experience is kept as 0, so it is not asked for again.
+a number. A quest whose own page shows no experience is kept as 0, so it is not asked for again.
+An empty, challenge or Human Verification page is never saved.
 """
 import datetime
 import json
@@ -60,14 +61,18 @@ def save(snap):
         fh.write("\n")
 
 
-def experience(page):
-    """The experience a quest page names under "Gains" (or anywhere, as "N experience"); 0 when none."""
-    at = page.find(">Gains<")
-    part = page[at:at + 3000] if at >= 0 else page
-    m = re.search(r"([\d][\d,.\s]*)\s*experience", part, re.I)
-    if not m:
-        m = re.search(r"([\d][\d,.\s]*)\s*experience", page, re.I)
-    return int(re.sub(r"\D", "", m.group(1))) if m else 0
+def experience(page, qid):
+    """The experience a quest page names under "Gains" (div quest-reward-xp); 0 when the quest's own
+    page shows none; None when the page is not that quest's page (empty, challenge, Human Verification)."""
+    m = re.search(r'id="quest-reward-xp"[^>]*>(.*?)</div>', page, re.S)
+    if m:
+        n = re.search(r"(\d[\d,.\s]*)\s*experience", re.sub(r"<[^>]+>", " ", m.group(1)), re.I)
+        if n:
+            return int(re.sub(r"\D", "", n.group(1)))
+    if re.search(r"Human Verification|challenge-platform|cf-chl-", page, re.I):
+        return None
+    own = re.search(r'rel="canonical"[^>]*/quest=%d' % qid, page) and re.search(r"<h1[^>]*>\s*[^<\s]", page)
+    return 0 if own else None
 
 
 def fetch(url):
@@ -82,9 +87,13 @@ def collect():
     print("%d quests to read" % len(todo))
     for n, qid in enumerate(todo, 1):
         try:
-            xp = experience(fetch("%s/quest=%d" % (SITE, qid)))
+            xp = experience(fetch("%s/quest=%d" % (SITE, qid)), qid)
         except Exception as e:
             print("quest %d: %s (try again later)" % (qid, e))
+            continue
+        if xp is None:
+            print("quest %d: not the quest's page (verification or empty), try again later" % qid)
+            time.sleep(PAUSE)
             continue
         snap["quests"][str(qid)] = xp
         print("%d/%d quest %d: %d" % (n, len(todo), qid, xp))
