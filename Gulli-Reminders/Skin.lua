@@ -123,6 +123,9 @@ S.GOLD_DIM = { 0.788, 0.651, 0.275, 1 }
 -- bronze in tone with the brown, so what can be clicked stands out without shouting.
 S.FILL = { 0.416, 0.318, 0.180, 1 }
 S.FILL_EDGE = { 0.643, 0.514, 0.310, 1 }
+S.BACK_FILL = { 0.784, 0.604, 0.204, 1 }
+S.BACK_EDGE = { 1, 0.82, 0.30, 1 }
+S.BACK_TEXT = { 0.130, 0.085, 0.035, 1 }
 S.DANGER_FILL = { 0.557, 0.133, 0.094, 1 }
 S.DANGER_EDGE = { 0.851, 0.345, 0.298, 1 }
 -- The thin dark gold ring around round icons, and the off state of a switch.
@@ -710,6 +713,13 @@ local function paint(b)
         S.SetBorder(b, e)
         b.text:SetTextColor(1, 1, 1, 1)
         b.text:SetShadowColor(0, 0, 0, 1)
+    elseif b.kind == "back" then
+        -- a way back: gold, so it is found at once (owner's decision of 2026-11-21)
+        local c, k = S.BACK_FILL, down and 0.82 or hover and 1.12 or 1
+        S.Fill(b, { math.min(1, c[1] * k), math.min(1, c[2] * k), math.min(1, c[3] * k), 1 })
+        S.SetBorder(b, S.BACK_EDGE)
+        b.text:SetTextColor(S.BACK_TEXT[1], S.BACK_TEXT[2], S.BACK_TEXT[3], 1)
+        b.text:SetShadowColor(0, 0, 0, 0)
     elseif b.kind == "ghost" then
         S.Fill(b, (hover or down) and S.HOVER or S.CLEAR)
         S.SetBorder(b, S.CLEAR)
@@ -851,6 +861,13 @@ end
 -- An action that removes something for good: filled red.
 function S.Danger(b)
     b.kind = "danger"
+    paint(b)
+    return b
+end
+
+-- A way back to the page before (a list, a grid): gold with dark text, before the page's tabs.
+function S.Return(b)
+    b.kind = "back"
     paint(b)
     return b
 end
