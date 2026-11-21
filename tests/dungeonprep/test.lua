@@ -895,6 +895,43 @@ test("AllTheThings fills the gaps: its dungeon quests join, its faction wins for
     assert(not has("GNOMER", 2951), "a Sparklematic exchange stays out")
 end)
 
+test("State Secrets waits for the Document Box of More Valuable Than Gold (ATT's sourceQuest)", function()
+    Fake({ level = 52, raceID = 2, faction = "Horde", className = "PRIEST" })
+    local ns = Load()
+    local d = ns.Data.quest
+    eq(table.concat(d[96376][9], ","), "96337", "the Horde copy needs More Valuable Than Gold")
+    eq(table.concat(d[96377][9], ","), "96337", "the Alliance copy too")
+    eq(table.concat(d[96376][10], ","), "96377,96379", "the Steamwheedle and Alliance copies close it")
+    eq(d[96335][6], "Mason Connery", "The Man in the Iron Chains: Mason Connery in the prison")
+    eq(d[96335][3], 48, "ATT's level where QuestieDB has none")
+    assert(ns.Data.inside.ALCAZ[96335]:find("t"), "taken inside the dungeon")
+    eq(table.concat(d[95284][9], ","), "95283", "The Elite of the Elite after The Missing Kor'kron (ATT zone file)")
+    local q = ns.Quests("ALCAZ", 52)
+    local found
+    for _, l in ipairs({ "log", "take", "later" }) do
+        for _, e in ipairs(q[l]) do
+            if e.id == 96376 then error("State Secrets is its own card: " .. l) end
+            if e.head and e.head.id == 96376 then found = { list = l, e = e } end
+        end
+    end
+    assert(found, "the Mason Connery steps and State Secrets are one card")
+    eq(found.e.id, 96335, "the step to do now: The Man in the Iron Chains")
+    eq(#found.e.members, 3)
+    -- With the Document Box quest done, Nazgrel offers it.
+    Fake({ level = 52, raceID = 2, faction = "Horde", className = "PRIEST", done = { [96335] = true, [96337] = true } })
+    ns = Load()
+    q = ns.Quests("ALCAZ", 52)
+    local take
+    for _, e in ipairs(q.take) do if e.id == 96376 then take = e end end
+    assert(take, "can take State Secrets once More Valuable Than Gold is done")
+    -- Before that, its own page says what it waits for.
+    Fake({ level = 52, raceID = 2, faction = "Horde", className = "PRIEST" })
+    ns = Load()
+    local e = ns.Quest(96376, 53)
+    eq(e.state, "later")
+    eq(e.need and e.need.id, 96337)
+end)
+
 test("levelling chains: a quest the guides leave out comes in by hand (D.main, MAIN_EXTRA)", function()
     Fake({ level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()

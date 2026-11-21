@@ -364,11 +364,21 @@ function ns.Quests(key, level, filter)
     -- The head of a quest: the last step of its chain that is a quest of this list (two
     -- quests that both lead to it, such as Testing the Wells and Murloc Gills, share it).
     local chainOf = function(id) return (D.chain and D.chain[id]) or { id } end
+    -- A chain step that is not on the list may have a copy that is (q[10]: State Secrets ends
+    -- at Nazgrel for the Horde, Renzik for the Alliance or Rix Xizzix for both).
+    local onList = function(id)
+        if mine[id] then return id end
+        local q = D.quest[id]
+        for _, other in ipairs(q and q[10] or {}) do
+            if mine[other] then return other end
+        end
+    end
     local groups, heads = {}, {}
     for _, id in ipairs(order) do
         local chain, head = chainOf(id), id
         for i = #chain, 1, -1 do
-            if mine[chain[i]] then head = chain[i] break end
+            local step = onList(chain[i])
+            if step then head = step break end
         end
         if not groups[head] then groups[head] = {}; heads[#heads + 1] = head end
         local g = groups[head]
