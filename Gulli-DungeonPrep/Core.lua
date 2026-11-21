@@ -282,7 +282,7 @@ local function entryOf(id, q)
                     level = q[2], minLevel = q[3], who = q[6], area = q[7], side = q[11] or "",
                     x = q[12] or 0, y = q[13] or 0, step = q[18] or 0, steps = q[19] or 0,
                     reward = D.reward and D.reward[id], targets = D.target and D.target[id],
-                    text = D.text and D.text[id] }
+                    text = D.text and D.text[id], tips = D.tips and D.tips[id] }
     if q[14] and q[14] ~= "" then
         entry.turnin = { who = q[14], area = q[15] or 0, zone = areaName(q[15]), x = q[16] or 0, y = q[17] or 0 }
     end
@@ -483,12 +483,12 @@ function ns.Stages(q, key)
     local done, log = q.state == "done", q.state == "log"
     local ready = log and Q.IsComplete ~= nil and Q.IsComplete(q.id) == true
     local function st(isDone, now) return (isDone and "done") or (now and "now") or "wait" end
-    local t = q.turnin or {}
+    local t, tips = q.turnin or {}, q.tips or {}
     return {
-        { kind = "take", state = st(done or log, q.state == "take"), inside = inside.take,
+        { kind = "take", state = st(done or log, q.state == "take"), inside = inside.take, tip = tips.t,
           who = q.who or "", area = q.area or 0, x = q.x or 0, y = q.y or 0 },
-        { kind = "work", state = st(done or ready, log), inside = inside.work },
-        { kind = "turnin", state = st(done, ready), inside = inside.turnin,
+        { kind = "work", state = st(done or ready, log), inside = inside.work, tip = tips.d },
+        { kind = "turnin", state = st(done, ready), inside = inside.turnin, tip = tips.h,
           who = t.who or "", area = t.area or 0, x = t.x or 0, y = t.y or 0 },
     }
 end
@@ -530,6 +530,57 @@ function ns.Objectives(entry)
         end
     end
     if #out == 0 and entry.text and entry.text ~= "" then out[1] = { text = entry.text } end
+    return out
+end
+
+-- The objective rows of a quest's page: { text, have, need, done, item }. While the quest is in
+-- the log, the game's lines with their counts; else one row per quest item of the data
+-- (D.goal), without a count. `item` is the quest item a row names, `icon` its icon.
+function ns.Goals(entry)
+    local goal = (data().goal or {})[entry.id] or {}
+    local function itemOf(text)
+        for _, g in ipairs(goal) do
+            local name = itemInfo(g[1]) or g[2]
+            if name and text:find(name, 1, true) then return g[1] end
+        end
+    end
+    local out = {}
+    for _, o in ipairs(entry.objectives or {}) do
+        local have, need, what = o.text:match("^(%d+)%s*/%s*(%d+)%s+(.+)$")
+        if not have then what, have, need = o.text:match("^(.-):%s*(%d+)%s*/%s*(%d+)$") end
+        if have then
+            have, need = tonumber(have), tonumber(need)
+            local item = itemOf(what)
+            out[#out + 1] = { text = what, have = have, need = need, done = o.done or have >= need,
+                              item = item, icon = item and select(6, itemInfo(item)) }
+        end
+    end
+    if #out > 0 then return out end
+    for _, g in ipairs(goal) do
+        local name = itemInfo(g[1]) or g[2]
+        out[#out + 1] = { text = name, item = g[1], icon = select(6, itemInfo(g[1])), done = entry.state == "done" }
+    end
+    return out
+end
+
+-- The bosses of the dungeon `key` that a quest needs (its targets): { npc, name, min, max,
+-- display, n, of }, `n` the boss's place in the order a group meets them, of `of` bosses.
+function ns.QuestBosses(q, key)
+    local list = ((data().boss or {})[key]) or {}
+    local of = 0
+    for _, b in ipairs(list) do if b[7] ~= 1 then of = of + 1 end end
+    local out = {}
+    for _, name in ipairs(q.targets or {}) do
+        local n = 0
+        for _, b in ipairs(list) do
+            if b[7] ~= 1 then n = n + 1 end
+            if b[2] == name then
+                out[#out + 1] = { npc = b[1], name = b[2], min = b[4] or 0, max = b[5] or 0, display = b[6] or 0,
+                                  rare = b[7] == 1, n = n, of = of }
+                break
+            end
+        end
+    end
     return out
 end
 

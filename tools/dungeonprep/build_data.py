@@ -92,6 +92,8 @@ NPCS = {
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
 # Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
 STARTERS = {96335: 264770}
+# Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
+FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
 QUESTS = {"BLACKMAW": [92065]}
 WORDS = {
@@ -252,15 +254,17 @@ def add_att_links(quests, links):
 
 
 def add_starters(quests):
-    """Hand-set givers the data lacks (STARTERS)."""
-    for qid, nid in STARTERS.items():
-        q = quests.get(qid)
-        if q is not None and not seq((q.get(Q_STARTED_BY) or {}).get(1) or {}):
-            q.setdefault(Q_STARTED_BY, {})[1] = {1: nid}
+    """Hand-set givers and takers the data lacks (STARTERS, FINISHERS)."""
+    for field, table in ((Q_STARTED_BY, STARTERS), (Q_FINISHED_BY, FINISHERS)):
+        for qid, nid in table.items():
+            q = quests.get(qid)
+            if q is not None and not seq((q.get(field) or {}).get(1) or {}):
+                q.setdefault(field, {})[1] = {1: nid}
 
 
-def load_guides(root):
-    """Dungeon key -> set of quest ids from a Guidelime_DungeonQuests checkout, or {}."""
+def load_guides(root, tips=None):
+    """Dungeon key -> set of quest ids from a Guidelime_DungeonQuests checkout, or {}. `tips`
+    gets each quest's tips by stage (guides.tips), the first guide's first."""
     if not root:
         return {}
     names = os.listdir(root)
@@ -271,7 +275,12 @@ def load_guides(root):
             if len(found) != 1:
                 print("no Guidelime_DungeonQuests guide for %s: %s" % (key, f))
                 continue
-            out.setdefault(key, set()).update(guides.quests(os.path.join(root, found[0])))
+            path = os.path.join(root, found[0])
+            out.setdefault(key, set()).update(guides.quests(path))
+            if tips is not None:
+                for qid, by in guides.tips(path).items():
+                    for stage, text in by.items():
+                        tips.setdefault(qid, {}).setdefault(stage, text)
     return out
 
 
@@ -282,7 +291,8 @@ def main(root, att_root=None, gdq_root=None):
     att_quests, att_links = load_att(att_root)
     add_att_links(quests, att_links)
     add_starters(quests)
-    guide_quests = load_guides(gdq_root)
+    guide_tips = {}
+    guide_quests = load_guides(gdq_root, guide_tips)
     att_side = {}
     for listed in att_quests.values():
         att_side.update(listed)
@@ -705,6 +715,24 @@ def main(root, att_root=None, gdq_root=None):
         t = targets(quests[qid], key_of[qid])
         if t:
             lines.append("[%d]={%s}," % (qid, ",".join(lua_str(n) for n in t)))
+    lines.append("}")
+    lines.append("-- Quest -> its quest items: { item id, English name }, for the objective rows before")
+    lines.append("--   the quest is in the log (the game gives the counts then).")
+    lines.append("D.goal = {")
+    for qid in sorted(used):
+        obj = quests[qid].get(Q_OBJECTIVES) or {}
+        goal = [(o.get(1), (items.get(o.get(1)) or {}).get(I_NAME)) for o in seq(obj.get(3) or {})]
+        goal = [(i, n) for i, n in goal if i and n][:4]
+        if goal:
+            lines.append("[%d]={%s}," % (qid, ",".join("{%d,%s}" % (i, lua_str(n)) for i, n in goal)))
+    lines.append("}")
+    lines.append("-- Quest -> tips from its Guidelime_DungeonQuests guide (GPLv3), in English:")
+    lines.append("--   t taking it, d its work, h handing it in.")
+    lines.append("D.tips = {")
+    for qid in sorted(used):
+        by = guide_tips.get(qid)
+        if by:
+            lines.append("[%d]={%s}," % (qid, ",".join("%s=%s" % (k, lua_str(by[k])) for k in "tdh" if k in by)))
     lines.append("}")
     lines.append("-- Area ids on Kalimdor; the rest are in the Eastern Kingdoms.")
     lines.append("D.kalimdor = %s" % lua_list(KALIMDOR))
