@@ -1392,7 +1392,8 @@ S.crates.tabs = { spec = crSpec(), open = function(ns, W)
 end }
 
 S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle() end },
-    settings = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(2) end },
+    farm = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(2) end },
+    settings = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.Toggle(); select(3, ns.Parts()):Select(3) end },
     panel = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns, W); ns.AddTarget("item", 3858) ; ns.Refresh() end,
               crop = "GulliFarmTrackPanel" },
     worth = { spec = { now = 0, ah = { [4338] = 1800, [4306] = 400, [10285] = 3500, [8838] = 900 },
@@ -1400,6 +1401,14 @@ S.farmtrack = { default = { spec = { now = 0 }, open = function(ns, W) ftPlay(ns
                                  [8838] = { class = 7 } } },
               open = function(ns, W) ftPlay(ns, W); ns.SetPref("panel", true); ns.SetPref("value", true) end,
               crop = "GulliFarmTrackPanel" },
+    session = { spec = { now = 0, ah = { [4338] = 1800, [10285] = 3500, [8838] = 900 },
+                         items = { [4338] = { class = 7, sell = 25 }, [4306] = { class = 7, sell = 38 },
+                                   [10285] = { class = 7, sell = 120 }, [8838] = { class = 7, sell = 15 } } },
+                open = function(ns, W)
+                    ftPlay(ns, W)
+                    W.Fire("MERCHANT_SHOW"); W.Money(20400); W.Fire("MERCHANT_CLOSED")
+                    ns.Toggle()
+                end },
     empty = { spec = { now = 0 }, open = function(ns) ns.Toggle() end } }
 
 -- Fishing: half an hour at a pool, a lure on the pole.

@@ -22,11 +22,11 @@ function ns.BarText(st)
     st = st or ns.Stats()
     local mode = ns.db.text or "all"
     local eta = st.toLevel and ns.Span(st.toLevel) or "-"
-    if mode == "rate" then return L.RATE:format(ns.Short(st.rate)) end
+    if mode == "rate" then return L.RATE:format(ns.Short(st.avg)) end
     if mode == "eta" then return st.toLevel and L.TO_LEVEL:format(eta) or L.NO_RATE_SHORT end
     if mode == "left" then return L.LEFT_SHORT:format(ns.Short(st.left), st.percent) end
     if mode == "pct" then return L.LEVEL_PCT:format(st.level, st.percent) end
-    local parts = { L.RATE:format(ns.Short(st.rate)) }
+    local parts = { L.RATE:format(ns.Short(st.avg)) }
     if st.toLevel then parts[#parts + 1] = eta end
     if st.killsToLevel then parts[#parts + 1] = L.KILLS:format(st.killsToLevel) end
     return table.concat(parts, "  ·  ")
@@ -40,7 +40,8 @@ local TIP = { pace = { 0.79, 0.63, 1 }, ready = { 1, 0.78, 0.25 }, rested = { 0.
 function ns.TipRows(st)
     st = st or ns.Stats()
     local rows = { { head = L.SEC_PACE } }
-    rows[#rows + 1] = { L.STAT_RATE, ns.Short(st.rate) }
+    rows[#rows + 1] = { L.STAT_RATE, ns.Short(st.avg) }
+    rows[#rows + 1] = { L.ROW_RATE_NOW, ns.Short(st.rate) }
     rows[#rows + 1] = { L.TIP_TO_LEVEL, st.toLevel and ns.Span(st.toLevel) or "-", st.toLevel and TIP.pace }
     if st.killsToLevel then rows[#rows + 1] = { L.ROW_KILLS_TO, tostring(st.killsToLevel) } end
     if st.questsToLevel then rows[#rows + 1] = { L.ROW_QUESTS_TO, tostring(st.questsToLevel) } end
@@ -270,7 +271,8 @@ function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local st = ns.Stats()
     local t = tiles.tiles
-    t[1]:Set(ns.Short(st.rate), st.rate > 0 and S.Accent() or S.MUTED)
+    -- big: the whole session; small: the last hour, which the time to the level goes by
+    t[1]:Set(L.STAT_AVG:format(ns.Short(st.avg)), st.avg > 0 and S.Accent() or S.MUTED, L.STAT_RATE_NOW:format(ns.Short(st.rate)))
     t[2]:Set(st.toLevel and ns.Span(st.toLevel) or "-", st.toLevel and S.TEXT or S.MUTED)
     t[3]:Set(st.killsToLevel and tostring(st.killsToLevel) or "-", st.killsToLevel and S.TEXT or S.MUTED)
     left:SetText(L.LEFT:format(ns.Short(st.left), st.percent) .. (st.toLevel and "" or ("   " .. S.Hex(S.FAINT) .. L.NO_RATE .. "|r")))
@@ -306,19 +308,21 @@ local function infoRow(parent, i, label, icon)
     return r
 end
 
--- The session in two cards: where the XP came from, and the pace to the next level.
+-- The session in two cards: where the XP came from (kills + quests + other = the total, then
+-- the total once the finished quests are handed in), and the pace to the next level.
 local SOURCES = {
     { "ROW_KILLS", "Interface\\Icons\\INV_Sword_04" },
     { "ROW_QUESTS", "Interface\\Icons\\INV_Misc_Note_01" },
     { "ROW_OTHER", "Interface\\Icons\\INV_Misc_Map_01" },
-    { "ROW_RESTED", "Interface\\Icons\\Spell_Nature_Sleep" },
     { "ROW_TOTAL", "Interface\\Icons\\INV_Misc_Book_11" },
+    { "ROW_WITH_READY", "Interface\\Icons\\INV_Misc_Note_02" },
 }
 local PACE = {
     { "ROW_PLAYED", "Interface\\Icons\\INV_Misc_PocketWatch_01" },
     { "ROW_PER_KILL", "Interface\\Icons\\Ability_DualWield" },
     { "ROW_KILLS_TO", "Interface\\Icons\\INV_Sword_04" },
     { "ROW_QUESTS_TO", "Interface\\Icons\\INV_Misc_Note_01" },
+    { "ROW_RESTED", "Interface\\Icons\\Spell_Nature_Sleep" },
 }
 
 local function fillInfo(st)
@@ -329,12 +333,18 @@ local function fillInfo(st)
     info[1]:Set(count(st.kills, ns.Short(st.killXP) .. " XP"), st.killXP > 0 and XP_COLOR or S.MUTED)
     info[2]:Set(count(st.quests, ns.Short(st.questXP) .. " XP"), st.questXP > 0 and READY_COLOR or S.MUTED)
     info[3]:Set(xp(st.otherXP, st.otherXP > 0 and S.TEXT or S.MUTED))
-    info[4]:Set(xp(st.rested, st.rested > 0 and { 0.45, 0.70, 1.00, 1 } or S.MUTED))
-    info[5]:Set(xp(st.gained, st.gained > 0 and S.Accent() or S.MUTED))
+    info[4]:Set(xp(st.gained, st.gained > 0 and S.Accent() or S.MUTED))
+    info[5].label:SetText(L.ROW_WITH_READY:format(st.readyN, ns.Short(st.ready)))
+    if st.readyN > 0 then
+        info[5]:Set(ns.Short(st.withReady) .. " XP", READY_COLOR)
+    else
+        info[5]:Set("-", S.MUTED)
+    end
     info[6]:Set(ns.Span(st.session))
     info[7]:Set(st.avgKill > 0 and (ns.Short(st.avgKill) .. " XP") or "-", st.avgKill > 0 and S.TEXT or S.MUTED)
     info[8]:Set(st.killsToLevel and tostring(st.killsToLevel) or "-", st.killsToLevel and S.TEXT or S.MUTED)
     info[9]:Set(st.questsToLevel and tostring(st.questsToLevel) or "-", st.questsToLevel and S.TEXT or S.MUTED)
+    info[10]:Set(xp(st.rested, st.rested > 0 and { 0.45, 0.70, 1.00, 1 } or S.MUTED))
 end
 ns.FillInfo = fillInfo
 
@@ -345,7 +355,7 @@ local function sessionPage(body, width)
     local pair = CreateFrame("Frame", nil, p)
     local src = S.Card(pair, L.SEC_SOURCES)
     local pace = S.Card(pair, L.SEC_PACE)
-    local h = src:Fit(#SOURCES * ROW_H - 4)
+    local h = src:Fit(math.max(#SOURCES, #PACE) * ROW_H - 4)
     pace:SetHeight(h)
     src:SetPoint("TOPLEFT")
     src:SetWidth(half)

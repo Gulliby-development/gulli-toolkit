@@ -369,18 +369,19 @@ function ns.DisenchantValue(ilvl)
     end
 end
 
--- The worth of one item and how it was judged ("vendor", "auction", "disenchant"); nil, nil
--- while the client has no data for it.
+-- The worth of one item and how it was judged: "vendor", "auction", "disenchant", "quest" (a
+-- quest item, worth nothing) or "noprice" (an auction item without a price, at the vendor's);
+-- nil, nil while the client has no data for it.
 function ns.ItemValue(id, enchanter)
     local f = ns.ItemFacts(id)
     if not f then return nil end
-    if f.class == ns.QUEST_CLASS then return 0, "vendor" end
+    if f.class == ns.QUEST_CLASS then return 0, "quest" end
     local vendor = f.sell
     if f.quality == 0 then return vendor, "vendor" end
     if AUCTION[f.class] or (GEAR[f.class] and f.quality >= 3 and f.bind == 2) then
         local ah = ns.AuctionPrice(id)
         if ah then return ah, "auction" end
-        return vendor, "vendor"
+        return vendor, "noprice"
     end
     if GEAR[f.class] and f.quality == 2 and enchanter then
         local de = ns.DisenchantValue(f.ilvl)
@@ -405,6 +406,43 @@ end
 function ns.SessionValue()
     local total, unknown = ns.ItemsWorth()
     return total + ns.s.money - (ns.s.sold or 0), unknown
+end
+
+-- How the estimate is made, item by item, for the Session tab: { id, n, unit, total, how }, the
+-- most worth first, the items the client does not know yet (how "unknown") last.
+function ns.WorthRows()
+    local out = {}
+    local enchanter = ns.CanDisenchant()
+    for id, n in pairs(ns.s.items) do
+        local v, how = ns.ItemValue(id, enchanter)
+        out[#out + 1] = { id = id, n = n, unit = v, total = v and v * n, how = v and how or "unknown" }
+    end
+    table.sort(out, function(a, b)
+        local x, y = a.total or -1, b.total or -1
+        if x ~= y then return x > y end
+        if a.n ~= b.n then return a.n > b.n end
+        return a.id < b.id
+    end)
+    return out
+end
+
+-- The parts of the estimate: the gold looted (without vendor sales, since what was sold is in
+-- the items already), the items by how they were judged, and the sum, which is SessionValue.
+function ns.WorthParts()
+    local p = { gold = ns.s.money - (ns.s.sold or 0), sold = ns.s.sold or 0, items = 0, unknown = 0,
+                by = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0 },
+                count = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0 } }
+    for _, r in ipairs(ns.WorthRows()) do
+        if r.total then
+            p.items = p.items + r.total
+            p.by[r.how] = p.by[r.how] + r.total
+            p.count[r.how] = p.count[r.how] + r.n
+        else
+            p.unknown = p.unknown + 1
+        end
+    end
+    p.total = p.gold + p.items
+    return p
 end
 
 -- Text ------------------------------------------------------------------------------------------

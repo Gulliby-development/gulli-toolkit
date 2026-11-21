@@ -80,6 +80,64 @@ test("quest XP is counted apart", function()
     eq(ns.Stats().kills, 0)
 end)
 
+test("kills, quests and other XP add up to the total the bar gained", function()
+    Fake({ level = 52, xp = 0, xpMax = 200000, now = 0 })
+    local ns = Load()
+    W.now = 100
+    -- the message first, then the bar
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Boar dies, you gain 300 experience.")
+    W.Gain(300)
+    -- the bar first, then the message a moment later
+    W.Gain(250)
+    W.now = 101
+    W.Fire("CHAT_MSG_COMBAT_XP_GAIN", "Boar dies, you gain 250 experience.")
+    -- a hand-in the game reports bigger than what reaches the bar
+    W.Fire("QUEST_TURNED_IN", 7, 5000, 0)
+    W.Gain(3000)
+    -- exploring: no message claims it
+    W.now = 130
+    W.Gain(510)
+    -- a hand-in that never shows on the bar runs out and claims nothing later
+    W.now = 140
+    W.Fire("QUEST_TURNED_IN", 8, 4000, 0)
+    W.now = 140 + ns.PEND + 1
+    W.Gain(700)
+    local st = ns.Stats()
+    eq(st.kills, 2); eq(st.killXP, 550)
+    eq(st.quests, 2); eq(st.questXP, 3000)
+    eq(st.otherXP, 1210)
+    eq(st.killXP + st.questXP + st.otherXP, st.gained, "the parts make the total")
+    eq(st.gained, 4760)
+    -- the level's history takes the same measured parts
+    eq(ns.cdb.cur.killXP, 550); eq(ns.cdb.cur.questXP, 3000)
+end)
+
+test("an older session whose messages counted more than the bar is cut to the total", function()
+    Fake({ level = 53, now = 1000,
+           cdb = { s = { t = 0, gained = 122794, kills = 160, killXP = 42749, quests = 19, questXP = 99500,
+                         active = 900, lastActive = 990, events = {}, buckets = {} } } })
+    local ns = Load()
+    local st = ns.Stats()
+    eq(st.killXP, 42749)
+    eq(st.questXP, 122794 - 42749)
+    eq(st.otherXP, 0)
+    eq(st.killXP + st.questXP + st.otherXP, st.gained)
+end)
+
+test("the big pace is the whole session, the small one the last hour", function()
+    Fake({ level = 30, xp = 0, xpMax = 1000000, now = 0 })
+    local ns = Load()
+    W.now = 600; W.Gain(6000)
+    W.now = 4200; W.Gain(600)
+    W.now = 4800; W.Gain(600)
+    local st = ns.Stats(4800)
+    eq(st.avg, 7200 * 3600 / (600 + ns.IDLE + 600), "the long gap counts as a break")
+    eq(st.rate, 1200 * 3600 / (ns.IDLE + 600), "the last hour holds only the last two gains")
+    W.Fire("QUEST_TURNED_IN", 1, 0, 0)
+    ns.Toggle()
+    ns.Refresh()
+end)
+
 test("short numbers", function()
     Fake({})
     local ns = Load()
@@ -269,7 +327,7 @@ test("summary, shift-click to chat, move and reset for the hub", function()
     assert(got.summary():find("Level 21", 1, true), got.summary())
     -- the hub's session card: the pace, when the level comes, a column per 10 minutes, the level's bar
     local ses = got.session()
-    eq(ses.value, ns.Short(ns.Rate()))
+    eq(ses.value, ns.Short(ns.SessionRate()), "the whole session's pace")
     eq(ses.unit, ns.L.TEXT_RATE)
     assert(ses.line:find(ns.Span(ns.Stats().toLevel), 1, true), ses.line)
     eq(#ses.bars, 2, "600 seconds in: the second column")

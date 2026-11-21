@@ -137,6 +137,43 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
     eq(ns.ItemValue(BLUE), 1000)
 end)
 
+test("the Session tab shows how the estimate is made, item by item", function()
+    local GREY, CLOTH, NOPRICE, QUEST, UNKNOWN = 1, 2, 3, 4, 5
+    local items = {
+        [GREY] = { quality = 0, sell = 100, class = 4 },
+        [CLOTH] = { quality = 1, sell = 50, class = 7 },
+        [NOPRICE] = { quality = 1, sell = 30, class = 7 },
+        [QUEST] = { quality = 1, sell = 0, class = 12 },
+    }
+    Fake({ items = items, ah = { [CLOTH] = 400 } })
+    local ns = Load()
+    W.Loot(GREY, 2); W.Loot(CLOTH, 10); W.Loot(NOPRICE, 3); W.Loot(QUEST, 1); W.Loot(UNKNOWN, 1)
+    W.Money(1000)
+    W.Fire("MERCHANT_SHOW"); W.Loot(GREY, -2); W.Money(200); W.Fire("MERCHANT_CLOSED")
+    local rows = ns.WorthRows()
+    eq(rows[1].id, CLOTH, "the most worth first"); eq(rows[1].total, 4000); eq(rows[1].how, "auction")
+    eq(rows[2].how, "vendor"); eq(rows[2].total, 200)
+    eq(rows[3].how, "noprice", "an auction item without a price counts at the vendor"); eq(rows[3].total, 90)
+    eq(rows[4].how, "quest"); eq(rows[4].total, 0)
+    eq(rows[5].how, "unknown", "not known yet: last")
+    local p = ns.WorthParts()
+    eq(p.gold, 1000, "the vendor sale is not gold looted")
+    eq(p.sold, 200)
+    eq(p.by.auction, 4000); eq(p.by.vendor, 200); eq(p.by.noprice, 90)
+    eq(p.total, ns.SessionValue(), "the parts make the panel's worth")
+    eq(p.total, 1000 + 4000 + 200 + 90)
+    local lines, note = ns.WorthLines()
+    eq(#lines, 5)
+    assert(note:find("200", 1, true) or note:find("2s", 1, true), note)
+    assert(note:find(ns.L.NOTE_NOPRICE, 1, true), "says why some items count at the vendor")
+    eq(#ns.WorthItems(), 5)
+    ns.Toggle()
+    local _, _, tabs, pages = ns.Parts()
+    eq(#pages, 3, "Session, Farm, Settings")
+    tabs:Select(2); tabs:Select(3); tabs:Select(1)
+    ns.Refresh()
+end)
+
 test("the hub's session card gets the worth of the looted items", function()
     Fake({ items = { [9] = { quality = 0, sell = 100 } } })
     local ns = Load()
