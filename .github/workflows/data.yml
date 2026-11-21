@@ -1,6 +1,7 @@
 name: Game data
 
-# Every week: rebuild the Data.lua files from the newest QuestieDB and Skillet-Classic. When one
+# Every week: rebuild the Data.lua files from the newest QuestieDB and Skillet-Classic (and My BiS
+# List's from wowtbc.gg). When one
 # changed, push a branch, open a pull request and run CI on it (a pull request opened by the
 # Actions token starts no workflow by itself). The Attune chains are checked too, and every
 # module against the Forever dungeons and areas (the forever-content issue).
@@ -40,6 +41,13 @@ jobs:
           python3 tools/worthit/build_data.py /tmp/questiedb
           python3 tools/partyquests/build_events.py /tmp/questiedb
           python3 tools/autoquest/build_drops.py /tmp/questiedb
+
+      - name: BiS lists from wowtbc.gg
+        # the site may refuse a server: then the last snapshot stays and forever_content tells its age
+        continue-on-error: true
+        run: |
+          python3 tools/bislist/fetch.py
+          python3 tools/bislist/build_data.py
 
       - name: Attune chains against the data
         id: attune

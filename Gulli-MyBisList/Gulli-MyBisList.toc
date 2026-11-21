@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff9ad0ffGulli|r-MyBisList
+## Notes: Best gear for every class, spec and level from 20 to pre-raid, slot by slot: what you wear, what is in your bags, and where to get the rest. /gbis
+## Notes-ruRU: Лучшие вещи для каждого класса, специализации и уровня от 20 до рейдов, слот за слотом: что надето, что в сумках и где взять остальное. /gbis
+## Notes-deDE: Die beste Ausrüstung für jede Klasse, Spezialisierung und Stufe von 20 bis vor den Schlachtzügen, Platz für Platz: was du trägst, was in den Taschen ist und wo es den Rest gibt. /gbis
+## Notes-esES: El mejor equipo para cada clase, especialización y nivel de 20 a pre-banda, ranura a ranura: lo que llevas, lo que hay en tus bolsas y dónde conseguir el resto. /gbis
+## Notes-esMX: El mejor equipo para cada clase, especialización y nivel de 20 a pre-banda, ranura a ranura: lo que llevas, lo que hay en tus bolsas y dónde conseguir el resto. /gbis
+## Notes-frFR: Le meilleur équipement pour chaque classe, spécialisation et niveau de 20 au pré-raid, emplacement par emplacement : ce que vous portez, ce qui est dans vos sacs et où trouver le reste. /gbis
+## Notes-ptBR: O melhor equipamento para cada classe, especialização e nível de 20 ao pré-raide, espaço por espaço: o que você usa, o que está nas bolsas e onde conseguir o resto. /gbis
+## Notes-zhCN: 每个职业、专精和等级（20级到团本前）的最佳装备，逐个部位：身上穿的、背包里有的，以及其余的去哪里拿。 /gbis
+## Notes-zhTW: 每个职业、专精和等级（20级到团本前）的最佳装备，逐个部位：身上穿的、背包里有的，以及其余的去哪里拿。 /gbis
+## Author: Gulliby
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\Gulli-MyBisList\icon
+## OptionalDeps: Gulli-Toolkit
+## X-Gulli-Module: MyBisList
+## SavedVariables: GulliMyBisListDB
+## SavedVariablesPerCharacter: GulliMyBisListCharDB
+## AddonCompartmentFunc: GulliMyBisList_Toggle
+## Category: Gulli
+## X-License: GPL-3.0
+
+Locales.lua
+Data.lua
+Core.lua
+Skin.lua
+UI.lua
