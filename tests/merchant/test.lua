@@ -207,7 +207,7 @@ test("the window shows the junk value", function()
     ns.Toggle()
     local _, total = ns.Junk()
     eq(total, 24690)
-    eq(ns.Money(total), "2g 46s 90c")
+    eq(ns.Money(total), "2g 46s")
 end)
 
 test("the hub gets a summary, a reset and a tip on each switch", function()

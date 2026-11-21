@@ -10,7 +10,7 @@
 ## Notes-zhCN: 规划达到贸易营地声望最便宜的工匠委托，在拍卖行购买，计算每个钱币袋，并带你去找委托人。 /gcw
 ## Notes-zhTW: 规划达到贸易营地声望最便宜的工匠委托，在拍卖行购买，计算每个钱币袋，并带你去找委托人。 /gcw
 ## Author: Gulliby
-## Version: 1.2.0
+## Version: 1.2.1
 ## IconTexture: Interface\AddOns\Gulli-CraftsmansWrit\icon
 ## OptionalDeps: Gulli-Toolkit, Auctionator, auxForever, NaowhForever, TradeSkillMaster, Hammerprice, TomTom
 ## X-Gulli-Module: CraftsmansWrit

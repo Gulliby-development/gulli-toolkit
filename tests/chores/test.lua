@@ -338,7 +338,7 @@ test("overview cells are coloured by state, money by coin", function()
     eq(ns.Tone("rested", 1.5), "GOOD"); eq(ns.Tone("rested", 0), "MUTED"); eq(ns.Tone("cd", 0), "GOOD")
     local S = ns.Skin
     local m = S.MoneyText(284205)
-    assert(m:find("28g", 1, true) and m:find("42s", 1, true) and m:find("5c", 1, true), m)
+    assert(m:find("28g", 1, true) and m:find("42s", 1, true) and not m:find("c|r", 1, true), m)
     assert(m:find(S.Hex(S.GOLD), 1, true), "gold in its colour")
     eq(S.MoneyText(0):find("0c", 1, true) ~= nil, true)
     eq(S.MoneyText(10000):find("s", 1, true), nil, "empty parts are left out")

@@ -1064,12 +1064,12 @@ function ns.Money(copper)
     local neg = copper < 0
     copper = math.abs(copper)
     local text
-    if GetCoinTextureString then text = GetCoinTextureString(copper) else
+    if GetCoinTextureString then text = GetCoinTextureString(copper >= 10000 and copper - copper % 100 or copper) else
         local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
         local parts = {}
         if g > 0 then parts[#parts + 1] = g .. "g" end
         if s > 0 then parts[#parts + 1] = s .. "s" end
-        if c > 0 or #parts == 0 then parts[#parts + 1] = c .. "c" end
+        if (c > 0 and g == 0) or #parts == 0 then parts[#parts + 1] = c .. "c" end
         text = table.concat(parts, " ")
     end
     return (neg and "-" or "") .. text

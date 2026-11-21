@@ -104,7 +104,7 @@ test("the auction price comes from Auctionator when it is there", function()
         assert(caller == "Gulli-Tooltip"); return id == 2 and 12345 or nil end } } }
     eq(#W.HoverItem(2), 0, "off by default: Auctionator shows its own line")
     ns.db.auction = true
-    eq(W.HoverItem(2)[1], "Auction=1g 23s 45c")
+    eq(W.HoverItem(2)[1], "Auction=1g 23s")
     eq(#W.HoverItem(2), 1, "the auction pays more: no hint")
     ns.db.auction = false
     eq(#W.HoverItem(2), 0)
