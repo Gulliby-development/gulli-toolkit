@@ -164,6 +164,21 @@ test("Today sorts the writs held: ready, missing their item, handed in", functio
     eq(rows[4].s.w.id, WISDOM)
 end)
 
+test("a writ handed in today says when it can be handed in again, not just Handed in", function()
+    Fake({ bags = { [WISDOM] = 1 }, done = { [WISDOM_Q] = true }, reset = 4 * 3600 + 33 * 60 })
+    local ns = Load()
+    ns.Toggle()
+    eq(ns.DoneText(), "Again in 4 h 33 min")
+    local found
+    for _, l in ipairs(ns.TipLines and ns.TipLines(WISDOM) or {}) do
+        if l.right == "Again in 4 h 33 min" then found = true end
+    end
+    assert(found, "the tooltip names the time to the reset")
+    local before = #W.timers
+    ns.TickClock(); ns.TickClock()
+    eq(#W.timers, before + 1, "one clock counts the time down while the window shows")
+end)
+
 test("Today shows what handing in each held writ costs: the item less its pouch", function()
     Fake({ bags = { [OGRE] = 1 }, bank = { [WISDOM] = 1, [WISDOM_ITEM] = 1 }, prices = { [OGRE_ITEM] = 5000 } })
     local ns = Load()

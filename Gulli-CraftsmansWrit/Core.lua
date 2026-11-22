@@ -96,6 +96,13 @@ function ns.ResetIn()
     return GetQuestResetTime and GetQuestResetTime() or nil
 end
 
+-- What a writ handed in today says: when it can be handed in again, else "Handed in".
+function ns.DoneText()
+    local r = ns.ResetIn()
+    if r and r > 0 and ns.TimeText then return L.AGAIN_IN:format(ns.TimeText(r)) end
+    return L.ST_DONE
+end
+
 local function side()
     local f = UnitFactionGroup and UnitFactionGroup("player")
     return f == "Horde" and "H" or (f == "Alliance" and "A" or nil)
@@ -1299,7 +1306,7 @@ local function writLines(w, S)
                       right = have >= w.count and L.TIP_HAVE:format(have) or L.TIP_MISSING,
                       color = S.MUTED, rcolor = have >= w.count and S.GOOD or S.WARN }
     out[#out + 1] = { group = "quest", sub = true, left = L.TIP_TODAY,
-                      right = s.done and L.ST_DONE or L.TIP_CAN, color = S.MUTED, rcolor = s.done and S.FAINT or S.GOOD }
+                      right = s.done and ns.DoneText() or L.TIP_CAN, color = S.MUTED, rcolor = s.done and S.FAINT or S.GOOD }
     local who = ns.Customer(w)
     if who then
         local zone = ns.ZoneName(ns.Spot(w).map)
@@ -1351,7 +1358,7 @@ function ns.TipLines(id)
     for _, w2 in ipairs(list) do
         if not w2.side or w2.side == side() then
             local s = ns.StateOf(w2)
-            local mark = s.done and L.ST_DONE or ((s.bags > 0 or s.log) and L.TIP_CARRIED or nil)
+            local mark = s.done and ns.DoneText() or ((s.bags > 0 or s.log) and L.TIP_CARRIED or nil)
             out[#out + 1] = { group = "quest", left = S.Cap(L.TIP_FOR_WRIT:format(ns.WritName(w2))),
                               right = L.TIP_REP:format(math.floor(w2.rep * ns.Mult() + 0.5)) .. (mark and (S.DOT .. mark) or ""),
                               color = S.MUTED, rcolor = s.done and S.FAINT or S.TEXT, sub = #out > 0,

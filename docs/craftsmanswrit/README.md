@@ -18,7 +18,7 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 
 ## Features
 
-- **Today.** Your standing with the camp and how much is left to the next one, when the day resets, and every writ you carry: ready to hand in, still missing its item, in the bank or already handed in today. Each one shows what handing it in costs from here: the item you still need at the auction, less its Coin Pouch. Sealed Writs in your bags are listed too.
+- **Today.** Your standing with the camp and how much is left to the next one, when the day resets, and every writ you carry: ready to hand in, still missing its item, in the bank or already handed in today, with the time until you can hand it in again. Each one shows what handing it in costs from here: the item you still need at the auction, less its Coin Pouch. Sealed Writs in your bags are listed too.
 - **A plan for up to 31 days.** Pick the standing you want (the next one, Friendly, Honored, Revered or Exalted) and the days you have. Craftsman's Writ picks the writs that get you there for the least gold. Each writ can be used once a day, so more days let it use the cheap writs again. The plan is shown day by day.
 - **Coin Pouches in plain sight.** Every turn-in gives a Coin Pouch with gold in it. The plan shows it on every line and on top: **Purchases**, minus **Coin Pouches**, equals **Total**. A writ that costs less than its pouch is marked **profit** in green, and the plan always takes it; one that costs more shows its **loss** in red. Craftsman's Writ learns what your pouches really hold when you open them.
 - **Bags and bank first.** Writs and items you already have cost nothing. The bank counts too (switch it off if you like).
@@ -27,7 +27,7 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 - **Buy with clicks.** At the auction house the window opens beside the auction window. The **Buy** button buys the plan line by line: the first press asks the price, the second buys.
 - **Lead me.** With writs ready, **Lead me** puts a map pin on the nearest customer, and a small tracker lists the others. Customers the data does not know yet are learned when you take or hand in their writ.
 - **Diplomat counted.** The Legacy perk Diplomat gives more reputation. Craftsman's Writ reads what you really get after a turn-in and plans with it.
-- **All writs and history.** The Writs tab lists every writ of your side with its customer and what one turn-in costs now, the best gain on top (or by profession). History lists what you handed in, with what it cost and what its pouch gave, for a day, a week or all time.
+- **All writs and history.** The Writs tab lists every writ of your side with its customer and what one turn-in costs now, the best gain on top (or by profession); a writ handed in today shows when it can be handed in again. History lists what you handed in, with what it cost and what its pouch gave, for a day, a week or all time.
 - **Tooltips.** Writs, Sealed Writs, Coin Pouches and the items writs ask for get a line in their tooltip: the rank, the reputation, the customer, the cost per 100 reputation, and your other characters who hold one.
 
 ## Install
