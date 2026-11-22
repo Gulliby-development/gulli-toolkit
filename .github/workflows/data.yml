@@ -48,7 +48,7 @@ jobs:
         continue-on-error: true
         run: |
           python3 tools/bislist/fetch.py
-          python3 tools/bislist/build_data.py
+          python3 tools/bislist/build_data.py tools/bislist/wowtbc.json Gulli-MyBisList/Data.lua /tmp/questiedb
 
       - name: Attune chains against the data
         id: attune

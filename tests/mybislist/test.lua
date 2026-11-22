@@ -526,4 +526,163 @@ test("a wanted item in the loot or a roll rings once, behind its switch", functi
     eq(ns.CheckDrop({ "|Hitem:101|h" }), 0, "paused")
 end)
 
+-- Sets ------------------------------------------------------------------------------------------------
+
+-- Two small sets of our own: 9001 a tier 0 set (head 101, a ring 201) and 9002 the tier 0.5 set
+-- made from it, with two head variants (501, 502: slots only from the game) and a ring.
+local function fakeSets(ns)
+    local D = ns.Data
+    D.item[503] = { "finger", 3, 60, 0, 1, nil, "Ring of Sets" }
+    D.sets = {
+        { 9001, "Old Set", "t0", "WARRIOR", "plate", false, false, { 101, 201 }, { 2 } },
+        { 9002, "New Set", "t05", "WARRIOR", "plate", false, 9001, { 501, 502, 503 }, { 2, 3 } },
+        { 9003, "Mage Set", "pvp", "MAGE", "cloth", "H", false, { 101, 201 }, { 2 } },
+        { 9004, "Any Plate", "any", false, "plate", false, false, { 101, 201 }, { 2 } },
+        { 9005, "Any Cloth", "any", false, "cloth", false, false, { 101, 201 }, { 2 } },
+        { 9006, "Horde Plate", "any", false, "plate", "H", false, { 101, 201 }, { 2 } },
+    }
+    D.setSteps = { "First Quest", "Second Quest" }
+    D.setStep = { [501] = 2, [502] = 2, [503] = 1 }
+    D.names = { [501] = "Helm of Sets" }
+end
+local SET_EQUIP = { [501] = "INVTYPE_HEAD", [502] = "INVTYPE_HEAD" }
+
+test("the data: every set has a known kind, pieces, bonus counts and a class or an armour", function()
+    Fake({})
+    local ns = Load()
+    local D = ns.Data
+    local kinds, ids, t05 = {}, {}, 0
+    for _, g in ipairs(ns.SET_GROUPS) do
+        assert(ns.L["SETS_" .. g[1]] ~= "SETS_" .. g[1], "no text for the group " .. g[1])
+        for k in pairs(g[2]) do
+            kinds[k] = true
+            assert(ns.L["SET_KIND_" .. k:upper()] ~= "SET_KIND_" .. k:upper(), "no text for the kind " .. k)
+        end
+    end
+    assert(#D.sets > 50, "sets")
+    for _, r in ipairs(D.sets) do
+        assert(not ids[r[1]], "a set twice: " .. r[2])
+        ids[r[1]] = r
+        assert(kinds[r[3]], r[2] .. ": unknown kind " .. tostring(r[3]))
+        assert(#r[8] >= 2, r[2] .. " has no pieces")
+        assert(#r[9] >= 1, r[2] .. " has no bonuses")
+        assert(r[4] == false or ns.ARMOR[r[4]], r[2] .. ": unknown class")
+        assert(r[5] == "" or ns.ARMOR.WARRIOR[r[5]], r[2] .. ": unknown armour")
+        for _, piece in ipairs(r[8]) do
+            assert(D.item[piece] or D.names[piece], r[2] .. ": a piece without a name, " .. piece)
+        end
+        if r[3] ~= "any" then assert(r[4], r[2] .. " names no class") end
+    end
+    for _, r in ipairs(D.sets) do
+        if r[3] == "t05" then
+            t05 = t05 + 1
+            local from = ids[r[7]]
+            assert(from and from[3] == "t0" and from[4] == r[4], r[2] .. " is made from no tier 0 set of its class")
+            for _, piece in ipairs(r[8]) do
+                assert(D.setSteps[D.setStep[piece]], r[2] .. ": a piece without its quest, " .. piece)
+            end
+        end
+    end
+    eq(t05, 9, "a tier 0.5 set per class")
+    for _, class in ipairs(ns.CLASSES) do
+        local n = 0
+        for _, it in ipairs(ns.SetList(class)) do if it.set then n = n + 1 end end
+        assert(n >= 3, class .. " has too few sets: " .. n)
+    end
+end)
+
+test("the sets of a class: its own, and any-class sets of its best armour and faction", function()
+    Fake({ class = "WARRIOR", faction = "Alliance" })
+    local ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    local got = {}
+    for _, it in ipairs(ns.SetList("WARRIOR")) do got[#got + 1] = it.head or it.set end
+    eq(table.concat(got, ","), "DUNGEON,9001,9002,ANY,9004", "a warrior's sets, group by group")
+    got = {}
+    for _, it in ipairs(ns.SetList("MAGE")) do got[#got + 1] = it.head or it.set end
+    eq(table.concat(got, ","), "ANY,9005", "the Horde set is not for an Alliance mage")
+end)
+
+test("a set against what is worn: places, variants, the tier 0 piece, bonuses and the chain", function()
+    Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1, [101] = 1 }, equip = SET_EQUIP,
+           setOf = { [503] = 77 }, setNames = { [77] = "Neues Set" },
+           tipLines = { [501] = { "Helm", "|cff808080(2) Set: +10 Armor.|r", "(3) Set: +5 Strength." } } })
+    local ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    local info = ns.SetInfo(9002)
+    eq(info.name, "Neues Set", "the game's name, asked through a piece")
+    eq(info.of, 2, "two head variants are one place")
+    eq(info.worn, 1, "the ring is worn")
+    local head, ring = info.groups[1], info.groups[2]
+    eq(head.code, "head", "the slot comes from the game")
+    eq(#head.ids, 2, "variants")
+    eq(head.id, 501, "the first variant")
+    eq(head.from, 101, "made from the tier 0 helm")
+    eq(head.fromHave, true, "which is in the bags")
+    eq(ring.worn, true, "worn")
+    eq(ring.fromHave, false, "no tier 0 ring")
+    ns.SetTurn(9002, "head", 2)
+    eq(ns.SetInfo(9002).groups[1].id, 502, "the next variant")
+    W.items[501] = 1
+    eq(ns.SetInfo(9002).groups[1].id, 501, "a carried variant wins")
+    W.items[501] = nil
+    ns.setPick = {}
+    eq(ns.SetInfo(9002, { slots = { head = { 502 } } }).groups[1].id, 502, "the variant of the list shown")
+    local b = ns.SetBonuses(info)
+    eq(#b, 2, "bonuses from the tooltip")
+    eq(b[1].count, 2, "count")
+    eq(b[1].text, "+10 Armor.", "text without colour codes")
+    eq(b[1].on, false, "one piece is not two")
+    W.tipLines[501] = { "Set: +10 Armor." }
+    b = ns.SetBonuses(info)
+    eq(b[1].count, 2, "an active bonus takes the data's count")
+    W.tipLines[501] = nil
+    b = ns.SetBonuses(info)
+    eq(#b, 2, "the data's counts until the game shows the bonuses")
+    eq(b[1].text, nil, "no text made up")
+    local chain = ns.SetChain(info)
+    eq(chain.step, 2, "the ring's quest is done, the helm's is next")
+    eq(chain.quest, "Second Quest", "its quest")
+    eq(chain.codes[1], "head", "its slot")
+    eq(ns.SetChain(ns.SetInfo(9001)), nil, "only tier 0.5 has a chain")
+    W.worn[1] = 501
+    eq(ns.SetChain(ns.SetInfo(9002)), nil, "every piece is there")
+    eq(ns.SetBonuses(ns.SetInfo(9002))[1].on, true, "two pieces worn")
+    eq(ns.SetName(9001), "Old Set", "the English name without the game's")
+end)
+
+test("the sets page: a class's list, the chosen set and its pieces on the list", function()
+    Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF } })
+    local ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    ns.Window():Show()
+    ns.ShowTab(2)
+    local _, footer, mainBtn, _, sets = ns.Parts()
+    eq(ns.ShownSet(), 9001, "the class's first set")
+    ns.setId = 9002
+    ns.Refresh()
+    eq(sets.info.id, 9002, "the chosen set")
+    eq(sets.card.cells[1]:IsShown(), true, "a piece")
+    eq(sets.card.cells[3]:IsShown(), false, "two places")
+    eq(sets.card.chain:IsShown(), true, "the chain's step")
+    eq(mainBtn.text:GetText(), ns.L.SET_ADD, "the footer's button")
+    assert(ns.PieceLine(sets.info.groups[1]):find("Item101"), "a tier 0.5 piece names the tier 0 one")
+    eq(ns.AddShownSet(), 1, "the helm goes on the list, the worn ring does not")
+    local mine = ns.MainRef()
+    assert(mine:find("^own:"), "into the own copy of the site list")
+    local head = ns.Resolve(mine).slots.head
+    eq(head[#head], 501, "at the end of its slot")
+    eq(ns.AddShownSet(), 0, "not twice")
+    ns.PickSetClass("MAGE")
+    eq(ns.ShownSet(), 9005, "another class")
+    ns.Refresh()
+    eq(mainBtn:IsEnabled(), false, "another class's set cannot go on the list")
+    eq(ns.AddShownSet(), 0, "and does not")
+    ns.ShowTab(3)
+    eq(footer:IsShown(), false, "the settings have no footer")
+end)
+
 W.finish()

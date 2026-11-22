@@ -94,7 +94,7 @@ function ns.ItemName(id)
     if name then return name end
     if CI.RequestLoadItemDataByID then CI.RequestLoadItemDataByID(id) end
     local it = D.item[id]
-    return it and it[7] or "..."
+    return it and it[7] or (D.names and D.names[id]) or "..."
 end
 function ns.ItemIcon(id)
     return (CI.GetItemIconByID and CI.GetItemIconByID(id)) or "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -724,6 +724,21 @@ function ns.SourceText(id)
     return "", "unknown"
 end
 
+-- The short form of a source, for a narrow row: the dungeon, the faction or the trade alone.
+function ns.SourcePlace(id)
+    local it = D.item[id]
+    local s = it and D.src[it[5]]
+    if not s then return "" end
+    if s[1] == "boss" and s[3] ~= "" then
+        return GulliDungeonJournal and GulliDungeonJournal.Name and GulliDungeonJournal.Name(s[3]) or D.dungeons[s[3]] or ""
+    elseif s[1] == "rep" or s[1] == "craft" then
+        return s[2]
+    elseif s[1] == "zone" then
+        return s[3]
+    end
+    return (ns.SourceText(id))
+end
+
 -- The dungeon an item drops in (a Dungeon Journal key), when it does.
 function ns.DungeonOf(id)
     local it = D.item[id]
@@ -735,6 +750,271 @@ end
 function ns.NeedsLevel(id)
     local it = D.item[id]
     if it and it[4] and it[4] > playerLevel() then return it[4] end
+end
+
+-- Item sets ------------------------------------------------------------------------------------------
+
+-- The groups of the Sets tab, in the window's order, and the kinds of the data in each.
+ns.SET_GROUPS = { { "DUNGEON", { t0 = true, t05 = true } }, { "PVP", { pvp = true } },
+                  { "CLASS", { class = true } }, { "ANY", { any = true } } }
+ns.SET_ICON = "Interface\\Icons\\INV_Helmet_08"
+ns.CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
+-- The game's equip location -> the data's slot code.
+local EQUIP = {
+    INVTYPE_HEAD = "head", INVTYPE_NECK = "neck", INVTYPE_SHOULDER = "shoulder", INVTYPE_CLOAK = "back",
+    INVTYPE_CHEST = "chest", INVTYPE_ROBE = "chest", INVTYPE_WRIST = "wrist", INVTYPE_HAND = "hands",
+    INVTYPE_WAIST = "waist", INVTYPE_LEGS = "legs", INVTYPE_FEET = "feet", INVTYPE_FINGER = "finger",
+    INVTYPE_TRINKET = "trinket", INVTYPE_2HWEAPON = "2h", INVTYPE_WEAPON = "1h", INVTYPE_WEAPONMAINHAND = "mh",
+    INVTYPE_WEAPONOFFHAND = "oh", INVTYPE_SHIELD = "oh", INVTYPE_HOLDABLE = "held", INVTYPE_RANGED = "ranged",
+    INVTYPE_RANGEDRIGHT = "ranged", INVTYPE_THROWN = "ranged", INVTYPE_RELIC = "relic",
+}
+-- The order of the slot codes on a set's page, how many pieces of one code a character wears at
+-- once, and the list slots a code goes into.
+local CODE_ORDER = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist", "legs", "feet",
+                     "finger", "trinket", "2h", "mh", "1h", "oh", "held", "ranged", "relic" }
+local CODE_CAP = { finger = 2, trinket = 2, ["1h"] = 2 }
+local CODE_SLOTS = { finger = { "finger1", "finger2" }, trinket = { "trinket1", "trinket2" }, ["2h"] = { "main" },
+                     mh = { "main" }, ["1h"] = { "main", "off" }, oh = { "off" }, held = { "off" },
+                     ranged = { "ranged" }, relic = { "ranged" } }
+ns.CODE_SLOT = { finger = "finger1", trinket = "trinket1", ["2h"] = "main", mh = "main", ["1h"] = "main", oh = "off",
+                 held = "off", relic = "ranged" }
+
+local function itemInstant(id)
+    if CI.GetItemInfoInstant then return CI.GetItemInfoInstant(id) end
+    if GetItemInfoInstant then return GetItemInfoInstant(id) end
+end
+local function itemSetId(id)
+    if CI.GetItemInfo then return (select(16, CI.GetItemInfo(id))) end
+    if GetItemInfo then return (select(16, GetItemInfo(id))) end
+end
+local function setName(id)
+    if CI.GetItemSetInfo then return CI.GetItemSetInfo(id) end
+    if GetItemSetInfo then return (GetItemSetInfo(id)) end
+end
+local function tipLines(id)
+    local data = C_TooltipInfo and C_TooltipInfo.GetItemByID and C_TooltipInfo.GetItemByID(id)
+    return data and data.lines or nil
+end
+local function wornAll()
+    local t = {}
+    if GetInventoryItemID then
+        for i = 1, 19 do
+            local id = GetInventoryItemID("player", i)
+            if id then t[id] = true end
+        end
+    end
+    return t
+end
+
+-- The slot code of a set piece: the data's, else the game's.
+function ns.PieceCode(id)
+    local it = D.item[id]
+    if it then return it[1] end
+    local _, _, _, loc = itemInstant(id)
+    return loc and EQUIP[loc] or nil
+end
+
+local SETS
+local function setRow(id)
+    if not SETS then
+        SETS = {}
+        for _, r in ipairs(D.sets or {}) do SETS[r[1]] = r end
+    end
+    return SETS[id]
+end
+
+-- The game's name of a set (asked through one of its pieces, so a wrong id never names another
+-- set), else the English one.
+function ns.SetName(id)
+    local r = setRow(id)
+    if not r then return "" end
+    for _, piece in ipairs(r[8]) do
+        local sid = itemSetId(piece)
+        if sid and sid > 0 then
+            local name = setName(sid)
+            if name and name ~= "" then return name end
+            break
+        end
+    end
+    return r[2]
+end
+
+-- Whether a class sees a set: its own class sets, and the sets for anyone of its best armour
+-- (or of no armour: rings, weapons), of the player's faction.
+function ns.SetFits(r, class)
+    local side = playerSide()
+    if r[6] and side and r[6] ~= side then return false end
+    if r[4] then return r[4] == class end
+    return r[5] == "" or (ns.ARMOR[class] or {})[r[5]] == 1
+end
+
+-- The sets of a class for the list: { head = group key } and { set = id }, group by group.
+function ns.SetList(class)
+    local out = {}
+    for _, g in ipairs(ns.SET_GROUPS) do
+        local first = true
+        for _, r in ipairs(D.sets or {}) do
+            if g[2][r[3]] and ns.SetFits(r, class) then
+                if first then out[#out + 1] = { head = g[1] }; first = false end
+                out[#out + 1] = { set = r[1] }
+            end
+        end
+    end
+    return out
+end
+
+ns.setPick = {}         -- set id .. code -> the variant of a slot the player turned to
+
+-- A set against what is worn and carried: { id, name, kind, class, from, groups, worn, of }.
+-- A group is one place of the set: { code, ids (its variants), id (the one shown), at, worn, have,
+-- step, from, fromHave }. A set with more pieces of a slot than a character wears has variants
+-- (the tier 0.5 sets: one per role); the one shown is the worn one, the carried one, the one the
+-- player turned to, the one on the list `on`, else the first.
+function ns.SetInfo(id, on)
+    local r = setRow(id)
+    if not r then return nil end
+    local worn = wornAll()
+    local by, codes = {}, {}
+    for _, piece in ipairs(r[8]) do
+        local code = ns.PieceCode(piece) or "?"
+        if not by[code] then by[code] = {}; codes[#codes + 1] = code end
+        by[code][#by[code] + 1] = piece
+    end
+    local rank = {}
+    for i, c in ipairs(CODE_ORDER) do rank[c] = i end
+    table.sort(codes, function(a, b) return (rank[a] or 99) < (rank[b] or 99) end)
+    local listed = {}
+    if on then
+        for _, ids in pairs(on.slots or {}) do
+            for _, x in ipairs(ids) do listed[x] = true end
+        end
+    end
+    local from = r[7] and setRow(r[7]) or nil
+    local fromBy = {}
+    if from then
+        for _, piece in ipairs(from[8]) do fromBy[ns.PieceCode(piece) or "?"] = piece end
+    end
+    local groups = {}
+    local function group(code, ids)
+        local g = { code = code, ids = ids, at = 1 }
+        local pick = ns.setPick[id .. code]
+        for i, x in ipairs(ids) do
+            if worn[x] then g.at, g.worn = i, true; break end
+        end
+        if not g.worn then
+            for i, x in ipairs(ids) do
+                if itemCount(x) > 0 then g.at, g.have = i, true; break end
+            end
+        end
+        if not (g.worn or g.have) then
+            if pick and ids[pick] then
+                g.at = pick
+            else
+                for i, x in ipairs(ids) do
+                    if listed[x] then g.at = i; break end
+                end
+            end
+        end
+        g.id = ids[g.at]
+        g.step = D.setStep and D.setStep[g.id] or nil
+        g.from = fromBy[code]
+        g.fromHave = g.from ~= nil and (worn[g.from] or itemCount(g.from) > 0) or false
+        groups[#groups + 1] = g
+    end
+    for _, code in ipairs(codes) do
+        local ids = by[code]
+        if #ids <= (CODE_CAP[code] or 1) then
+            for _, x in ipairs(ids) do group(code, { x }) end
+        else
+            group(code, ids)
+        end
+    end
+    local n = 0
+    for _, g in ipairs(groups) do if g.worn then n = n + 1 end end
+    return { id = id, name = ns.SetName(id), kind = r[3], class = r[4] or nil, armor = r[5], from = r[7] or nil,
+             groups = groups, worn = n, of = #groups, counts = r[9] }
+end
+
+-- Turns a place of a set to its next variant.
+function ns.SetTurn(id, code, n)
+    local key = id .. code
+    ns.setPick[key] = ((ns.setPick[key] or 1) % n) + 1
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- "(%d) Set: %s" -> a pattern.
+local function linePattern(fmt)
+    local p = fmt:gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0")
+    p = p:gsub("%%d", "(%%d+)"):gsub("%%s", "(.+)")
+    return "^" .. p .. "$"
+end
+
+-- The bonuses of a set: { count, text, on }. The texts are the game's (read from a piece's
+-- tooltip); until the game gives them, only the piece counts of the data, without a text.
+function ns.SetBonuses(info)
+    local out = {}
+    local grey = linePattern(ITEM_SET_BONUS_GRAY or "(%d) Set: %s")
+    local lit = linePattern(ITEM_SET_BONUS or "Set: %s")
+    -- any piece tells them: the first one whose tooltip the client has
+    for _, g in ipairs(info.groups) do
+        for _, line in ipairs(tipLines(g.id) or {}) do
+            local text = line.leftText
+            if type(text) == "string" and not (issecretvalue and issecretvalue(text)) then
+                text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                local n, what = text:match(grey)
+                if not n then what = text:match(lit) end
+                if what then out[#out + 1] = { count = tonumber(n), text = what } end
+            end
+        end
+        if #out > 0 then break end
+    end
+    if #out == 0 then
+        for _, n in ipairs(info.counts or {}) do out[#out + 1] = { count = n } end
+    end
+    for i, b in ipairs(out) do
+        b.count = b.count or (info.counts or {})[i]
+        b.on = b.count ~= nil and info.worn >= b.count
+    end
+    return out
+end
+
+-- The step of the tier 0.5 chain a set is at: the first quest whose pieces the character lacks,
+-- { step, of, quest, codes }. Nil for another set, or when every piece is there.
+function ns.SetChain(info)
+    if info.kind ~= "t05" or not D.setSteps then return nil end
+    for step, quest in ipairs(D.setSteps) do
+        local codes = {}
+        for _, g in ipairs(info.groups) do
+            if g.step == step and not (g.worn or g.have) then codes[#codes + 1] = g.code end
+        end
+        if #codes > 0 then return { step = step, of = #D.setSteps, quest = quest, codes = codes } end
+    end
+end
+
+-- Whether the character's class can wear a set (so its pieces can go on a list).
+function ns.SetMine(info)
+    local r = setRow(info.id)
+    return r ~= nil and ns.SetFits(r, playerClass())
+end
+
+-- Puts the shown piece of every place of a set on a list (a site list: its own copy). Returns
+-- how many were added.
+function ns.SetAdd(info, ref)
+    local n, used = 0, {}
+    for _, g in ipairs(info.groups) do
+        if not g.worn then
+            for _, slot in ipairs(CODE_SLOTS[g.code] or { g.code }) do
+                if ns.INV[slot] and not used[slot] then
+                    used[slot] = true
+                    local ok, mine = ns.AddTo(ref, slot, g.id)
+                    ref = mine or ref
+                    if ok then n = n + 1 end
+                    break
+                end
+            end
+        end
+    end
+    return n
 end
 
 -- Tooltip, notices, the hub ---------------------------------------------------------------------------

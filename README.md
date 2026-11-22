@@ -48,7 +48,7 @@
 | [Fishing](docs/fishing/README.md) | Double right-click on the water to cast, a loud bobber splash, the catch looted at once and a note when your lure is gone. | `/gfi` |
 | [Worth It](docs/worthit/README.md) | The quests that reward a bag, a quiver, an ammo pouch, WoW Forever's secrets (the Cozy Sleeping Bag, hidden pets, a toy, a hidden quest's cloak), how many slots each adds to what you wear, the class quests of your class with their rewards, the library books of WoW Forever, and a guide that leads you to them. | `/gwi` |
 | [Vendor Flip](docs/vendorflip/README.md) | Lots on the auction house that cost less than a vendor pays, found by a scan every minute (or as often as you set) while it is open, bought with a click and sold at the next vendor. | `/gvf` |
-| [My BiS List](docs/mybislist/README.md) | The best gear for your class, spec and level, five items for each slot from level 20 to the raids, against what you wear and carry, and where each one drops. | `/gbis` |
+| [My BiS List](docs/mybislist/README.md) | The best gear for your class, spec and level, five items for each slot from level 20 to the raids, against what you wear and carry, and where each one drops. Also the best enchants and the item sets of your class. | `/gbis` |
 | [Craftsman's Writ](docs/craftsmanswrit/README.md) | The Craftsman's Writs for the trade camp: what you can hand in today, the cheapest writs to the standing you want in the days you choose (every Coin Pouch taken off), buying at the auction house and a guide to the customers. | `/gcw` |
 
 ## Features

@@ -5,7 +5,11 @@ The snapshot is the WoW Forever BiS lists of wowtbc.gg: for each of the 28 specs
 level (20, 30, 40, 50) and the pre-raid ones (best and realistic), with the items they name.
 fetch.py collects it again; this script only reads it.
 
-    python3 tools/bislist/build_data.py [snapshot] [out]
+    python3 tools/bislist/build_data.py [snapshot] [out] [questiedb]
+
+With a QuestieDB checkout as the third argument, the ids of the set pieces the snapshot does not
+name (the site lists a set's pieces by name, and knows only the items of its lists) are looked up
+in the Forever item data and kept in tools/bislist/set-items.json for a run without it.
 """
 import json
 import os
@@ -14,6 +18,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SNAP = os.path.join(ROOT, "tools", "bislist", "wowtbc.json")
 OUT = os.path.join(ROOT, "Gulli-MyBisList", "Data.lua")
+SET_ITEMS = os.path.join(ROOT, "tools", "bislist", "set-items.json")
 
 CLASS_ORDER = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"]
 TANKS = {"feral tank", "protection"}
@@ -54,6 +59,118 @@ HORDE_REP = {"Warsong Outriders", "Frostwolf Clan", "The Defilers", "Darkspear R
 # PvP ranks in item names.
 ALLIANCE_PVP = ("Knight-", "Marshal", "Lieutenant Commander", "Commander's", "Sergeant Major")
 HORDE_PVP = ("Warlord", "Legionnaire", "General's", "Champion's", "Centurion", "Blood Guard", "Stone Guard")
+
+
+# Item sets. The site names each set's pieces and the piece counts of its bonuses; the class, the
+# tier and the pairs come from here, the bonus texts and the names from the game.
+T0 = {"Battlegear of Valor": "WARRIOR", "Lightforge Armor": "PALADIN", "Beaststalker Armor": "HUNTER",
+      "Shadowcraft Armor": "ROGUE", "Vestments of the Devout": "PRIEST", "The Elements": "SHAMAN",
+      "Magister's Regalia": "MAGE", "Dreadmist Raiment": "WARLOCK", "Wildheart Raiment": "DRUID"}
+# Tier 0.5 -> the tier 0 set it is made from.
+T05 = {"Battlegear of Heroism": "Battlegear of Valor", "Soulforge Armor": "Lightforge Armor",
+       "Beastmaster Armor": "Beaststalker Armor", "Darkmantle Armor": "Shadowcraft Armor",
+       "Vestments of the Virtuous": "Vestments of the Devout", "The Five Thunders": "The Elements",
+       "Sorcerer's Regalia": "Magister's Regalia", "Deathmist Raiment": "Dreadmist Raiment",
+       "Feralheart Raiment": "Wildheart Raiment"}
+# The quests of the tier 0.5 chain that give the pieces, in the chain's order.
+SET_STEPS = ["An Earnest Proposition", "Just Compensation", "Anthion's Parting Words", "Saving the Best for Last"]
+# PvP sets: the rank in front, then the word that names the class.
+PVP_RANKS = {"Champion's": "H", "Warlord's": "H", "Lieutenant Commander's": "A", "Field Marshal's": "A"}
+PVP_CLASS = {"Battlegear": "WARRIOR", "Threads": "WARLOCK", "Pursuit": "HUNTER", "Sanctuary": "DRUID",
+             "Earthshaker": "SHAMAN", "Regalia": "MAGE", "Raiment": "PRIEST", "Vestments": "ROGUE",
+             "Aegis": "PALADIN", "Investiture": "PRIEST", "Wildhide": "DRUID", "Vindication": "PALADIN",
+             "Wartide": "SHAMAN", "Thunderfist": "SHAMAN"}
+# Other sets of one class (Zul'Gurub, Ahn'Qiraj).
+CLASS_SETS = {"Predator's Armor": "HUNTER", "Demoniac's Threads": "WARLOCK", "Illusionist's Attire": "MAGE",
+              "Doomcaller's Malevolence": "WARLOCK"}
+SET_KINDS = ["t0", "t05", "pvp", "class", "any"]
+ARMOR_SUB = {1: "cloth", 2: "leather", 3: "mail", 4: "plate"}
+ARMOR_RANK = {"": 0, "cloth": 1, "leather": 2, "mail": 3, "plate": 4}
+
+
+def set_kind(name):
+    """The kind of a set, its class and its faction: ("pvp", "MAGE", "H")."""
+    if name in T0:
+        return "t0", T0[name], None
+    if name in T05:
+        return "t05", T0[T05[name]], None
+    for rank, side in PVP_RANKS.items():
+        if name.startswith(rank + " "):
+            cls = PVP_CLASS.get(name[len(rank) + 1:])
+            if cls:
+                return "pvp", cls, side
+    if name in CLASS_SETS:
+        return "class", CLASS_SETS[name], None
+    return "any", None, None
+
+
+def lookup_set_items(snap, root):
+    """The ids of the set pieces the snapshot does not name, from the QuestieDB Forever items:
+    name -> [id, armour type]. Of several items with one name, the one with the highest level."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "questcleaner"))
+    import questie
+    items = questie.load_forever(root)[3]
+    by_name = {}
+    for iid, it in items.items():
+        if it.get(1):
+            by_name.setdefault(it[1], []).append(iid)
+    known = {v[0] for v in snap["items"].values()}
+    out = {}
+    for s in snap.get("sets") or []:
+        for piece in s[2]:
+            ids = by_name.get(piece)
+            if piece in known or not ids:
+                continue
+            best = max(ids, key=lambda i: (items[i].get(10) or 0, i))
+            it = items[best]
+            out[piece] = [best, ARMOR_SUB.get(it.get(13), "") if it.get(12) == 4 else ""]
+    return out
+
+
+def build_sets(snap, extra):
+    """The sets for the window: one per name (the site keeps the Classic set beside the one WoW
+    Forever changed; the newer id is Forever's), pieces as item ids. Returns the rows, the snapshot
+    items among the pieces, the names of the other pieces and each tier 0.5 piece's chain step."""
+    by_name = {}
+    for iid, v in snap["items"].items():
+        by_name.setdefault(v[0], []).append(int(iid))
+    newest = {}
+    for s in snap.get("sets") or []:
+        if s[1] not in newest or s[0] > newest[s[1]][0]:
+            newest[s[1]] = s
+    ids_of = {}
+    rows, listed, names, steps = [], set(), {}, {}
+    for name, s in newest.items():
+        kind, cls, side = set_kind(name)
+        pieces, armor, sides = [], "", set()
+        for piece in s[2]:
+            found = sorted(by_name.get(piece) or [])
+            if found:
+                for iid in found[-1:]:
+                    v = snap["items"][str(iid)]
+                    pieces.append(iid)
+                    listed.add(iid)
+                    if ARMOR_RANK.get(v[2] or "", 0) > ARMOR_RANK[armor]:
+                        armor = v[2]
+                    sides.add(faction(v[0], v[7] or "", v[8] or ""))
+                    if kind == "t05" and v[7] in SET_STEPS:
+                        steps[iid] = SET_STEPS.index(v[7]) + 1
+            elif piece in extra:
+                iid, sub = extra[piece]
+                pieces.append(iid)
+                names[iid] = piece
+                if ARMOR_RANK.get(sub, 0) > ARMOR_RANK[armor]:
+                    armor = sub
+        if len(pieces) < 2:
+            continue  # a set whose pieces nobody knows
+        if side is None and len(sides) == 1:
+            side = sides.pop()
+        ids_of[name] = s[0]
+        rows.append([s[0], name, kind, cls or False, armor, side or False, T05.get(name) or False, pieces, s[3]])
+    for r in rows:
+        r[6] = ids_of.get(r[6]) or False
+    rows.sort(key=lambda r: (SET_KINDS.index(r[2]), CLASS_ORDER.index(r[3]) if r[3] else 99, r[0]))
+    return rows, listed, names, steps
 
 
 def enchant_kind(name):
@@ -188,8 +305,9 @@ def stage_lists(info, items):
     return lists
 
 
-def build(snap):
+def build(snap, extra=None):
     items = snap["items"]
+    set_rows, set_listed, set_names, set_steps = build_sets(snap, extra or {})
     specs = []
     for slug, info in snap["specs"].items():
         specs.append((CLASS_ORDER.index(info["class"].upper()), slug, info))
@@ -236,6 +354,17 @@ def build(snap):
             out.append("  " + spec_key(info) + " = {" + ",".join(parts) + "},")
     out += ["}", ""]
 
+    used.update(set_listed)
+    out += ["-- Item sets: { id, English name, kind, class, armour, faction (A/H), the set it is made from,",
+            "-- piece ids, the piece counts of its bonuses }. Kinds: " + ", ".join(SET_KINDS) + ".",
+            "D.sets = {"]
+    out += ["  " + lua(r) + "," for r in set_rows]
+    out += ["}", "", "-- The quests of the tier 0.5 chain that give pieces, and each piece's quest.",
+            "D.setSteps = " + lua(SET_STEPS),
+            "D.setStep = {" + ",".join("[%d]=%d" % kv for kv in sorted(set_steps.items())) + "}", "",
+            "-- English names of the set pieces that are on no list.",
+            "D.names = {" + ",".join("[%d]=%s" % (k, lua(v)) for k, v in sorted(set_names.items())) + "}", ""]
+
     rows = []
     for iid in sorted(used):
         v = items[str(iid)]
@@ -270,7 +399,15 @@ def main():
     dest = sys.argv[2] if len(sys.argv) > 2 else OUT
     with open(snap, encoding="utf-8") as f:
         data = json.load(f)
-    text = build(data)
+    if len(sys.argv) > 3:
+        with open(SET_ITEMS, "w", encoding="utf-8") as f:
+            json.dump(lookup_set_items(data, sys.argv[3]), f, ensure_ascii=False, indent=0, sort_keys=True)
+            f.write("\n")
+    extra = {}
+    if os.path.exists(SET_ITEMS):
+        with open(SET_ITEMS, encoding="utf-8") as f:
+            extra = json.load(f)
+    text = build(data, extra)
     with open(dest, "w", encoding="utf-8") as f:
         f.write(text)
     print("wrote", dest, len(text) // 1024, "KB")
