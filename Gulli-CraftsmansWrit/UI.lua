@@ -172,7 +172,7 @@ local function fillToday(r, row)
     local rep = L.TIP_REP:format(math.floor(w.rep * ns.Mult() + 0.5))
     if s.status == "done" then
         r.value:SetText(S.Hex(S.FAINT) .. rep .. "|r")
-        r.sub:SetText(S.Hex(S[st[2]]) .. ns.DoneText() .. "|r")
+        r.sub:SetText(S.Hex(S.BAD) .. ns.DoneText() .. "|r")
         return
     end
     -- What handing it in costs from here (the group's head names the state); the tooltip splits it.
@@ -309,7 +309,7 @@ local function fillWrit(r, w)
     r.note:SetText(note)
     local c = ns.CostOf(w, ns.db.bank)
     r.value:SetText(c.total and ns.CostText(c.total, true) or (S.Hex(S.FAINT) .. L.NO_PRICE .. "|r"))
-    r.sub:SetText(s.done and (S.Hex(S.FAINT) .. ns.DoneText() .. "|r") or L.TIP_REP:format(math.floor(w.rep * ns.Mult() + 0.5)))
+    r.sub:SetText(s.done and (S.Hex(S.BAD) .. ns.DoneText() .. "|r") or L.TIP_REP:format(math.floor(w.rep * ns.Mult() + 0.5)))
 end
 
 -- ---------- History ----------

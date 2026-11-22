@@ -171,7 +171,7 @@ test("a writ handed in today says when it can be handed in again, not just Hande
     eq(ns.DoneText(), "Again in 4 h 33 min")
     local found
     for _, l in ipairs(ns.TipLines and ns.TipLines(WISDOM) or {}) do
-        if l.right == "Again in 4 h 33 min" then found = true end
+        if l.right == "Again in 4 h 33 min" then found = true; eq(l.rcolor, ns.Skin.BAD, "in red") end
     end
     assert(found, "the tooltip names the time to the reset")
     local before = #W.timers

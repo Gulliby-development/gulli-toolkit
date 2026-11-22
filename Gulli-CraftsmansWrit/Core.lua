@@ -1306,7 +1306,7 @@ local function writLines(w, S)
                       right = have >= w.count and L.TIP_HAVE:format(have) or L.TIP_MISSING,
                       color = S.MUTED, rcolor = have >= w.count and S.GOOD or S.WARN }
     out[#out + 1] = { group = "quest", sub = true, left = L.TIP_TODAY,
-                      right = s.done and ns.DoneText() or L.TIP_CAN, color = S.MUTED, rcolor = s.done and S.FAINT or S.GOOD }
+                      right = s.done and ns.DoneText() or L.TIP_CAN, color = S.MUTED, rcolor = s.done and S.BAD or S.GOOD }
     local who = ns.Customer(w)
     if who then
         local zone = ns.ZoneName(ns.Spot(w).map)
