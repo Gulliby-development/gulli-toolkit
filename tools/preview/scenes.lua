@@ -1677,7 +1677,34 @@ local function wrOpen(tab, plan)
         ns.Refresh()
     end
 end
+-- At the auction house in the middle of a step: its writs bought, part of its items.
+local function wrBuying(ns)
+    ns.atAH = true
+    ns.db.live, ns.db.days = false, 5
+    wrOpen(2, true)(ns)
+    local b = ns.buy
+    for i, line in ipairs(b.queue) do
+        if line.part == "item" and line.n > 1 then
+            for j = 1, i - 1 do b.queue[j].got = b.queue[j].n end
+            line.got = math.floor(line.n / 2)
+            b.i = i
+            break
+        end
+    end
+    ns.Refresh()
+end
+local function wrFind(text)
+    return function(ns)
+        wrOpen(3)(ns)
+        if ns.SetWritFind then ns.SetWritFind(text) end
+    end
+end
 S.craftsmanswrit = { default = { spec = wrSpec(), open = wrOpen(1) },
+    buying = { spec = wrSpec(), open = wrBuying },
+    buying_ru = { spec = wrSpec("ruRU"), open = wrBuying },
+    buying_de = { spec = wrSpec("deDE"), open = wrBuying },
+    writs_find = { spec = wrSpec(), open = wrFind("wetlands") },
+    writs_find_ru = { spec = wrSpec("ruRU"), open = wrFind("алхим") },
     ru = { spec = wrSpec("ruRU"), open = wrOpen(1) },
     de = { spec = wrSpec("deDE"), open = wrOpen(1) },
     plan = { spec = wrSpec(), open = wrOpen(2, true) },

@@ -489,7 +489,7 @@ end
 -- The price the plan uses: mean unit price of n units after skip ones, from the lots read here
 -- or else the lowest price a price addon knows (the plan is then an estimate).
 function ns.Price(id, n, skip)
-    local lots = ns.lots[id]
+    local lots = ns.atAH and ns.lots[id]
     if lots and time() - lots.t <= ns.LOTS_FRESH then return ns.LadderPrice(lots.l, n, skip) end
     local unit = ns.AuctionPrice(id)
     if unit then ns.flat[id] = true end
@@ -508,7 +508,7 @@ function ns.CostOf(w, useBank)
     local need = math.max(0, w.count - items)
     c.item = need == 0 and 0 or (ns.Price(w.item, need, 0) and math.floor(ns.Price(w.item, need, 0) * need + 0.5))
     if c.writ and c.item then c.total = c.writ + c.item - c.pouch end
-    local function fresh(id) local l = ns.lots[id]; return l and time() - l.t <= ns.LOTS_FRESH end
+    local function fresh(id) local l = ns.atAH and ns.lots[id]; return l and time() - l.t <= ns.LOTS_FRESH end
     c.estimate = (c.writ ~= 0 and not fresh(w.id)) or (need > 0 and not fresh(w.item)) or false
     return c
 end
@@ -563,11 +563,15 @@ function ns.Plan(input)
             if p[id] == nil then p[id] = stock(id) or 0 end
             local own = math.min(n, p[id])
             local need = n - own
-            local unit = need > 0 and price(id, need, bought[id] or 0) or 0
-            if need > 0 and not unit then return nil end
+            -- (never `need > 0 and price() or 0`: an item sold out would come out free)
+            local unit = 0
+            if need > 0 then
+                unit = price(id, need, bought[id] or 0)
+                if not unit then return nil end
+            end
             p[id] = p[id] - own
             bought[id] = (bought[id] or 0) + need
-            return math.floor(need * unit + 0.5), own == n
+            return math.floor(need * unit + 0.5), own == n, need
         end
         return take
     end
@@ -585,11 +589,11 @@ function ns.Plan(input)
                 if not unit then break end
                 wc, wfrom, got = math.floor(unit + 0.5), "ah", got + 1
             end
-            local ic, mine = take(w.item, w.count)
+            local ic, mine, need = take(w.item, w.count)
             if not ic then break end
             local p = pouch(w.rank)
             steps[#steps + 1] = { k = k, day = k + (w.done and 1 or 0), writ = wc, item = ic, pouch = p,
-                                  cost = wc + ic - p, writFrom = wfrom, itemFrom = mine and "own" or "ah" }
+                                  cost = wc + ic - p, writFrom = wfrom, itemFrom = mine and "own" or "ah", itemN = need }
         end
         if #steps > 0 then
             types[#types + 1] = { kind = "writ", id = w.id, w = w, u = math.floor(w.rep / UNIT), steps = steps }
@@ -668,7 +672,7 @@ function ns.Plan(input)
             local st = ty.steps[k]
             local line = { kind = ty.kind, id = ty.id, w = ty.w, rank = ty.w and ty.w.rank or ty.rank, k = k,
                            day = st.day, writ = st.writ, item = st.item, pouch = st.pouch, cost = st.cost,
-                           writFrom = st.writFrom, itemFrom = st.itemFrom, estimate = st.estimate,
+                           writFrom = st.writFrom, itemFrom = st.itemFrom, itemN = st.itemN, estimate = st.estimate,
                            rep = math.floor(ty.u * UNIT * mult + 0.5) }
             result.lines[#result.lines + 1] = line
             result.total = result.total + st.cost
@@ -707,7 +711,7 @@ function ns.ShoppingList(plan)
     end
     for _, l in ipairs(plan and plan.lines or {}) do
         if l.writFrom == "ah" then add(l.id, 1, l.writ) end
-        if l.kind == "writ" and l.itemFrom == "ah" and l.item > 0 then add(l.w.item, l.w.count, l.item) end
+        if l.kind == "writ" and (l.itemN or 0) > 0 then add(l.w.item, l.itemN, l.item) end
     end
     return out
 end
@@ -762,17 +766,24 @@ end
 
 ns.plan = nil
 ns.tried = {}
-local live
+local live, busy, cancelQuote, canSearch
 
+-- Calculate (and Recalculate) plans the whole way anew from what the bags and the bank hold now.
+-- At the auction house it reads again every lot the plan buys, so what is sold out or dearer now
+-- shows; away from it the plan takes the price addon's prices and checks nothing on sale.
 function ns.Calculate(round)
     if not ns.db or ns.paused then return end
+    if not round then
+        if busy() then cancelQuote() end
+        if ns.atAH and ns.db.live and canSearch() then ns.lots = {}; ns.StopScan() end
+    end
     round = round or 1
     if round == 1 then ns.flat, ns.tried = {}, {} end
     local input = ns.PlanInput()
     local plan = ns.Plan(input)
     fixLines(plan, input)
     for id in pairs(ns.flat) do
-        local lots = ns.lots[id]
+        local lots = ns.atAH and ns.lots[id]
         if not lots or time() - lots.t > ns.LOTS_FRESH then plan.estimate = true; break end
     end
     plan.goal, plan.need, plan.days = input.goal, input.need, input.days
@@ -797,7 +808,7 @@ local SEARCH_WAIT, SEARCH_GAP, LIVE_ROUNDS = 5, 0.3, 4
 local scan = { queue = {}, busy = nil, n = 0, done = 0 }
 ns.scan = scan
 
-local function canSearch()
+canSearch = function()
     local a = C_AuctionHouse
     return a and a.SendSearchQuery and a.MakeItemKey and true or false
 end
@@ -885,33 +896,103 @@ live = function(round)
 end
 
 -- ---------- buying at the auction house ----------
--- The game runs the purchase calls only inside a click, and asking the price is protected too.
--- A commodity takes two clicks (the price, then the purchase); an item that is not one (gear,
--- maybe the writs) takes two as well: the first searches its auctions, the second buys the
--- cheapest one out. Never call these from an event or a timer.
+-- The plan is bought step by step, one writ type a step: its writs, then the item it asks for.
+-- What the bags and the bank hold counts as done from the start. The game runs the purchase
+-- calls only inside a click, and asking a commodity's price is protected too, so a commodity
+-- takes two clicks (the price, then all units of the step at once). An item that is no commodity
+-- (gear, the writs themselves) is one auction per unit: the first click finds the cheapest lot,
+-- each further click buys one, and the next lot comes from the same results, without the auction
+-- just bought. An item the client does not know yet is tried as a commodity first and, when the
+-- auction house has no commodity of it, searched as an item at once. Never call the purchase
+-- calls from an event or a timer.
 
-ns.buy = { queue = {}, i = 1, phase = "done", bought = 0, spent = 0 }
+ns.buy = { queue = {}, steps = {}, i = 1, phase = "done", bought = 0, spent = 0 }
+ns.pending = {} -- auction id -> line: item purchases sent and not confirmed yet
 
 local function AH() return C_AuctionHouse end
 function ns.CanBuy()
     local a = AH()
     return a and a.StartCommoditiesPurchase and a.ConfirmCommoditiesPurchase and true or false
 end
-local function cancelQuote()
+cancelQuote = function()
     local a = AH()
-    if ns.buy.phase == "ready" and a and a.CancelCommoditiesPurchase then pcall(a.CancelCommoditiesPurchase) end
+    if ns.buy.phase == "ready" and ns.buy.quote and not ns.buy.quote.auction and a and a.CancelCommoditiesPurchase then
+        pcall(a.CancelCommoditiesPurchase)
+    end
 end
+local function ready()
+    local a = AH()
+    return not (a and a.IsThrottledMessageSystemReady) or a.IsThrottledMessageSystemReady() and true or false
+end
+
+-- The plan as buying steps, one a writ type in the plan's order: { kind, id, w, rank, copies,
+-- writOwn, itemOwn, writ = { id, n, got, cost }, item = { id, n, got, cost, copies } }.
+-- n is what the auction house sells the step, got what was bought of it here.
+function ns.BuySteps(plan)
+    local steps, at = {}, {}
+    for _, l in ipairs(plan and plan.lines or {}) do
+        local key = l.kind .. ":" .. l.id
+        local s = at[key]
+        if not s then
+            s = { kind = l.kind, id = l.id, w = l.w, rank = l.rank, copies = 0, writOwn = 0, itemOwn = 0,
+                  writ = { id = l.id, n = 0, got = 0, cost = 0, part = "writ" } }
+            if l.kind == "writ" then s.item = { id = l.w.item, n = 0, got = 0, cost = 0, copies = 0, part = "item" } end
+            s.writ.step = s
+            if s.item then s.item.step = s end
+            at[key] = s
+            steps[#steps + 1] = s
+        end
+        s.copies = s.copies + 1
+        if l.writFrom == "ah" then s.writ.n, s.writ.cost = s.writ.n + 1, s.writ.cost + l.writ
+        else s.writOwn = s.writOwn + 1 end
+        if s.item then
+            if (l.itemN or 0) > 0 then
+                s.item.n, s.item.cost, s.item.copies = s.item.n + l.itemN, s.item.cost + l.item, s.item.copies + 1
+            else s.itemOwn = s.itemOwn + 1 end
+        end
+    end
+    for _, s in ipairs(steps) do
+        for _, line in ipairs({ s.writ, s.item }) do
+            if line.n > 0 then line.unit = line.cost / line.n end
+        end
+    end
+    return steps
+end
+
+-- How far a step is: { writ = { done, of }, item = { done, of } } in copies (one node a day).
+function ns.StepNodes(s)
+    local out = { writ = { done = math.min(s.copies, s.writOwn + s.writ.got), of = s.copies } }
+    if s.item then
+        local bought = s.item.n > 0 and math.floor(s.item.got * s.item.copies / s.item.n) or 0
+        out.item = { done = math.min(s.copies, s.itemOwn + bought), of = s.copies }
+    end
+    return out
+end
+
+-- The step a line belongs to and its place: step index, steps.
+function ns.StepOf(line)
+    if not line then return nil end
+    for i, s in ipairs(ns.buy.steps) do if s == line.step then return i, #ns.buy.steps end end
+end
+
+local function left(line) return line and (line.n - line.got) or 0 end
+ns.Left = left
 
 function ns.ResetBuy()
     local b = ns.buy
     cancelQuote()
-    b.queue = ns.ShoppingList(ns.plan)
+    b.steps = ns.BuySteps(ns.plan)
+    b.queue = {}
+    for _, s in ipairs(b.steps) do
+        if s.writ.n > 0 then b.queue[#b.queue + 1] = s.writ end
+        if s.item and s.item.n > 0 then b.queue[#b.queue + 1] = s.item end
+    end
     b.i, b.quote, b.err, b.spent, b.bought, b.token = 1, nil, nil, 0, 0, nil
     b.phase = #b.queue > 0 and "idle" or "done"
 end
 function ns.Current() return ns.buy.queue[ns.buy.i] end
 
-local function busy()
+busy = function()
     local p = ns.buy.phase
     return p == "quote" or p == "ready" or p == "buying"
 end
@@ -933,20 +1014,28 @@ local function nextLine()
     end
 end
 
-local function notCommodity(id)
+-- "c" a commodity, "i" an item sold one auction at a time, nil while the client does not know.
+local function modeOf(line)
+    if line.mode then return line.mode end
     local a = AH()
-    if not a or not a.GetItemCommodityStatus then return false end
-    local ok, status = pcall(a.GetItemCommodityStatus, id)
-    return ok and status == 1
+    if a and a.GetItemCommodityStatus then
+        local ok, status = pcall(a.GetItemCommodityStatus, line.id)
+        if ok and status == 1 then line.mode = "i" elseif ok and status == 2 then line.mode = "c" end
+    end
+    if not line.mode and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, line.id) end
+    return line.mode
 end
+ns.ModeOf = modeOf
+
 local function canBuyItems()
     local a = AH()
     return a and a.MakeItemKey and a.SendSearchQuery and a.GetNumItemSearchResults and a.GetItemSearchResultInfo
         and a.PlaceBid and true or false
 end
 
--- The cheapest auction of the line's item with a buyout that is not the player's own. An item
--- result is one price for `quantity` items; PlaceBid with that buyout buys one of them.
+-- The cheapest auction of the line's item with a buyout that is not the player's own and was not
+-- bought or refused already (line.gone). An item result is one price for `quantity` items;
+-- PlaceBid with that buyout buys one of them.
 function ns.ItemQuote(line)
     local a = AH()
     if not line or not line.key or not canBuyItems() then return nil end
@@ -954,52 +1043,79 @@ function ns.ItemQuote(line)
     local ok, num = pcall(a.GetNumItemSearchResults, line.key)
     for i = 1, ok and tonumber(num) or 0 do
         local okr, r = pcall(a.GetItemSearchResultInfo, line.key, i)
-        if okr and type(r) == "table" and r.auctionID and (r.buyoutAmount or 0) > 0 and not r.containsOwnerItem then
+        if okr and type(r) == "table" and r.auctionID and (r.buyoutAmount or 0) > 0 and not r.containsOwnerItem
+            and not (line.gone and line.gone[r.auctionID]) then
             if not best or r.buyoutAmount < best.total then
-                best = { auction = r.auctionID, total = r.buyoutAmount, unit = r.buyoutAmount, qty = 1 }
+                best = { auction = r.auctionID, total = r.buyoutAmount, unit = r.buyoutAmount, n = 1 }
             end
         end
     end
     return best
 end
 
-local function itemAnswer(final)
+local function fullResults(line)
+    local a = AH()
+    if not (a and a.HasFullItemSearchResults) then return true end
+    local ok, full = pcall(a.HasFullItemSearchResults, line.key)
+    return not ok or full
+end
+
+local function wait()
+    local b, token = ns.buy, {}
+    b.token = token
+    C_Timer.After(QUOTE_WAIT, function()
+        if b.token == token and (b.phase == "quote" or b.phase == "buying") then
+            b.phase, b.err = "idle", "ERR_NO_ANSWER"
+            if ns.Refresh then ns.Refresh() end
+        end
+    end)
+end
+
+-- An item line: the next lot from the results the client holds, else a new search.
+local function askItem(line)
+    local b = ns.buy
+    if not canBuyItems() then b.phase, b.err = "idle", "ERR_HAND"; return end
+    line.mode = "i"
+    if not line.key then
+        local ok, key = pcall(AH().MakeItemKey, line.id)
+        line.key = ok and key or nil
+    end
+    -- the first unit searches for today's lots; the next ones come from those results
+    local q = line.searched and ns.ItemQuote(line)
+    if q then b.phase, b.quote = "ready", q; return end
+    b.phase = "quote"
+    line.searched = true
+    if not line.key or not pcall(AH().SendSearchQuery, line.key, { { sortOrder = 0, reverseSort = false } }, true) then
+        b.phase, b.err = "idle", "ERR_START"
+        return
+    end
+    wait()
+end
+
+local function itemAnswer()
     local b, line = ns.buy, ns.Current()
-    if b.phase ~= "quote" or not line or not line.item then return end
+    if not line or line.mode ~= "i" or not line.key or (b.phase ~= "quote" and b.phase ~= "idle") then return end
+    if b.phase == "idle" and (b.err or not line.searched) then return end
     local q = ns.ItemQuote(line)
-    if q then b.phase, b.quote = "ready", q
-    elseif final then b.phase, b.err = "idle", "ERR_SOLD_OUT" end
+    if q then b.phase, b.quote, b.err = "ready", q, nil
+    elseif b.phase == "quote" and fullResults(line) then b.phase, b.err = "idle", "ERR_SOLD_OUT" end
 end
 
 local function ask()
     local b, line = ns.buy, ns.Current()
     if not line then b.phase = "done"; return end
     b.quote, b.err = nil, nil
-    if notCommodity(line.id) then
-        if not canBuyItems() then b.err = "ERR_HAND"; line.skipped = true; return nextLine() end
-        local a = AH()
-        local okk, key = pcall(a.MakeItemKey, line.id)
-        line.item, line.key = true, okk and key or nil
-        b.phase = "quote"
-        local sort = { { sortOrder = 0, reverseSort = false } }
-        if not line.key or not pcall(a.SendSearchQuery, line.key, sort, true) then
-            b.phase, b.err = "idle", "ERR_START"
-            return
-        end
-        itemAnswer(false)
-    else
-        b.phase = "quote"
-        if not pcall(AH().StartCommoditiesPurchase, line.id, line.n) then b.phase, b.err = "idle", "ERR_START"; return end
+    if not ready() then b.err = "ERR_WAIT"; return end
+    local mode = modeOf(line)
+    if mode == "i" then return askItem(line) end
+    line.guess = mode == nil
+    b.phase = "quote"
+    if not pcall(AH().StartCommoditiesPurchase, line.id, left(line)) then
+        if line.guess and canBuyItems() then return askItem(line) end
+        b.phase, b.err = "idle", "ERR_START"
+        return
     end
-    if b.phase ~= "quote" then return end
-    local token = {}
-    b.token = token
-    C_Timer.After(QUOTE_WAIT, function()
-        if b.token == token and b.phase == "quote" then
-            b.phase, b.err = "idle", "ERR_NO_ANSWER"
-            if ns.Refresh then ns.Refresh() end
-        end
-    end)
+    wait()
 end
 
 -- The Buy button: one step a click.
@@ -1009,11 +1125,16 @@ function ns.BuyClick()
     if b.phase == "idle" then ask()
     elseif b.phase == "ready" then
         local line = ns.Current()
+        local q = b.quote
         b.phase = "buying"
         local ok
-        if line.item then ok = pcall(AH().PlaceBid, b.quote.auction, b.quote.total)
-        else ok = pcall(AH().ConfirmCommoditiesPurchase, line.id, line.n) end
-        if not ok then b.phase, b.err = "idle", "ERR_BUY" end
+        if q.auction then
+            ok = pcall(AH().PlaceBid, q.auction, q.total)
+            if ok then ns.pending[q.auction] = line end
+        else
+            ok = pcall(AH().ConfirmCommoditiesPurchase, line.id, q.n or left(line))
+        end
+        if ok then wait() else b.phase, b.err = "idle", "ERR_BUY" end
     end
     if ns.Refresh then ns.Refresh() end
 end
@@ -1027,41 +1148,62 @@ function ns.Skip()
     if ns.Refresh then ns.Refresh() end
 end
 
+-- n units of a line were bought for paid copper.
+local function gotUnits(line, n, paid)
+    local b = ns.buy
+    b.spent, b.bought = b.spent + paid, b.bought + n
+    line.got = math.min(line.n, line.got + n)
+    ns.AddLot(line.id, n, paid)
+end
+
 function ns.OnAuction(event, a1, a2)
     local b = ns.buy
     local line = ns.Current()
     if event == "COMMODITY_PRICE_UPDATED" then
-        if b.phase == "quote" and line and not line.item then
-            b.phase, b.quote = "ready", { unit = (a1 or 0), total = a2 or 0 }
+        if b.phase == "quote" and line and line.mode ~= "i" then
+            line.mode, line.guess = "c", nil
+            b.phase, b.quote = "ready", { unit = (a1 or 0), total = a2 or 0, n = left(line) }
         end
     elseif event == "COMMODITY_PRICE_UNAVAILABLE" then
-        if b.phase == "quote" then b.phase, b.err = "idle", "ERR_SOLD_OUT" end
+        if b.phase == "quote" and line and line.mode ~= "i" then
+            -- not known as a commodity: it is sold one auction at a time, search it as such
+            if line.guess and canBuyItems() then line.guess = nil; askItem(line)
+            else b.phase, b.err = "idle", "ERR_SOLD_OUT" end
+        end
     elseif event == "COMMODITY_PURCHASE_SUCCEEDED" then
-        if b.phase == "buying" and line and not line.item then
-            local paid = b.quote and b.quote.total or line.cost
-            b.spent, b.bought = b.spent + paid, b.bought + 1
-            ns.AddLot(line.id, line.n, paid)
-            line.done = true
-            nextLine()
+        if b.phase == "buying" and line and line.mode ~= "i" then
+            gotUnits(line, b.quote and b.quote.n or left(line), b.quote and b.quote.total or line.cost)
+            if left(line) > 0 then b.phase, b.quote = "idle", nil else nextLine() end
         end
     elseif event == "COMMODITY_PURCHASE_FAILED" then
-        if b.phase == "buying" then b.phase, b.err = "idle", "ERR_BUY" end
-    elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
-        itemAnswer(true)
+        if b.phase == "buying" then b.phase, b.quote, b.err = "idle", nil, "ERR_BUY" end
+    elseif event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_ADDED" then
+        itemAnswer()
     elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
-        if b.phase == "buying" and line and line.item and b.quote and a1 == b.quote.auction then
-            b.spent = b.spent + b.quote.total
-            ns.AddLot(line.id, 1, b.quote.total)
-            line.n = line.n - 1
-            if line.n > 0 then b.phase, b.quote = "idle", nil -- the next click searches again
-            else
-                b.bought = b.bought + 1
-                line.done = true
-                nextLine()
+        local l = a1 and ns.pending[a1]
+        if l then
+            ns.pending[a1] = nil
+            l.gone = l.gone or {}
+            l.gone[a1] = true
+            local paid = (b.quote and b.quote.auction == a1) and b.quote.total or l.unit or 0
+            gotUnits(l, 1, paid)
+            if l == line and (b.phase == "buying" or b.phase == "idle") then
+                b.err = nil
+                if left(line) > 0 then
+                    -- the next unit: the next lot of the same results, one click
+                    local q = ns.ItemQuote(line)
+                    if q then b.phase, b.quote = "ready", q else b.phase, b.quote = "idle", nil end
+                else nextLine() end
             end
         end
     elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
-        if b.phase == "buying" and line and line.item then b.phase, b.quote, b.err = "idle", nil, "ERR_BUY" end
+        if b.phase == "buying" and line and b.quote and b.quote.auction then
+            -- that lot is gone (sold to someone else): the next click takes the next one
+            ns.pending[b.quote.auction] = nil
+            line.gone = line.gone or {}
+            line.gone[b.quote.auction] = true
+            b.phase, b.quote, b.err = "idle", nil, "ERR_GONE"
+        end
     end
     if ns.Refresh then ns.Refresh() end
 end
@@ -1413,7 +1555,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
                        "UPDATE_FACTION", "PLAYER_MONEY", "LOOT_OPENED", "LOOT_CLOSED", "MERCHANT_SHOW",
                        "MERCHANT_CLOSED", "ZONE_CHANGED_NEW_AREA", "BANKFRAME_OPENED",
                        "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
-                       "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED",
+                       "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED",
                        "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED",
                        "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR" })
         if ns.Skin then

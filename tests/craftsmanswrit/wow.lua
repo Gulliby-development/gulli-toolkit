@@ -183,6 +183,27 @@ function Fake(spec)
             end
         end
     end
+    -- spec.auctions = { [item id] = { { auction id, buyout, quantity } } }: auctions of items that
+    -- are no commodity; spec.status = { [item id] = 1 item | 2 commodity } (else unknown)
+    if C_AuctionHouse and spec.auctions then
+        W.auctions, W.bids, W.itemSearches = spec.auctions, {}, {}
+        W.throttled = false
+        local A = C_AuctionHouse
+        A.MakeItemKey = A.MakeItemKey or function(id) return { itemID = id } end
+        local send = A.SendSearchQuery
+        A.SendSearchQuery = function(key, ...)
+            W.itemSearches[#W.itemSearches + 1] = key.itemID
+            if send then send(key, ...) end
+        end
+        A.GetItemCommodityStatus = function(id) return (spec.status or {})[id] or 0 end
+        A.IsThrottledMessageSystemReady = function() return not W.throttled end
+        A.GetNumItemSearchResults = function(key) return #(W.auctions[key.itemID] or {}) end
+        A.GetItemSearchResultInfo = function(key, i)
+            local r = W.auctions[key.itemID][i]
+            return { auctionID = r[1], buyoutAmount = r[2], quantity = r[3] or 1 }
+        end
+        A.PlaceBid = function(auction, total) W.bids[#W.bids + 1] = auction .. " " .. total end
+    end
     AuctionHouseFrame = W.stub()
     -- spec.done = { [quest] = true } handed in today, spec.log = { [quest] = true } in the log,
     -- spec.rep = { reaction, value }, spec.reset = seconds to the daily reset
