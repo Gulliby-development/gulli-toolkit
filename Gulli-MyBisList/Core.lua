@@ -840,21 +840,30 @@ function ns.SetName(id)
 end
 
 -- Whether a class sees a set: its own class sets, and the sets for anyone of its best armour
--- (or of no armour: rings, weapons), of the player's faction.
-function ns.SetFits(r, class)
+-- (or of no armour: rings, weapons), of the player's faction. A dungeon or class set is for the
+-- class on either side (the data reads Soulforge as Alliance from its pieces, and the class
+-- picker shows every class to both sides). `anySide` lets the other side's PvP sets through.
+function ns.SetFits(r, class, anySide)
     local side = playerSide()
-    if r[6] and side and r[6] ~= side then return false end
+    local sided = r[3] == "pvp" or not r[4]
+    if sided and not anySide and r[6] and side and r[6] ~= side then return false end
     if r[4] then return r[4] == class end
     return r[5] == "" or (ns.ARMOR[class] or {})[r[5]] == 1
 end
 
 -- The sets of a class for the list: { head = group key } and { set = id }, group by group.
+-- A class with no PvP set on the player's side (a paladin seen from the Horde) shows the other
+-- side's, so its page is never without them.
 function ns.SetList(class)
     local out = {}
+    local mine = false
+    for _, r in ipairs(D.sets or {}) do
+        if r[3] == "pvp" and r[4] == class and ns.SetFits(r, class) then mine = true; break end
+    end
     for _, g in ipairs(ns.SET_GROUPS) do
         local first = true
         for _, r in ipairs(D.sets or {}) do
-            if g[2][r[3]] and ns.SetFits(r, class) then
+            if g[2][r[3]] and ns.SetFits(r, class, r[3] == "pvp" and r[4] == class and not mine) then
                 if first then out[#out + 1] = { head = g[1] }; first = false end
                 out[#out + 1] = { set = r[1] }
             end

@@ -472,12 +472,28 @@ function ns.PickItems()
     return out
 end
 
+-- A menu over the window: the hub sets the strata of a docked window again on every show, and a
+-- child follows its parent unless its own strata and level are fixed, so the menu sank under the
+-- slot cards. Fixed and raised each time it shows.
+local function onTop(p)
+    local function raise(self)
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        self:SetFrameStrata("FULLSCREEN_DIALOG")
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
+        self:SetFrameLevel(200)
+        if self.Raise then self:Raise() end
+    end
+    raise(p)
+    p:HookScript("OnShow", raise)
+    ns.menus = ns.menus or {}
+    ns.menus[#ns.menus + 1] = p
+end
+
 local function buildPicker(anchor)
     local p = CreateFrame("Frame", nil, frame)
     p:SetSize(300, 380)
     p:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
-    p:SetFrameStrata("FULLSCREEN_DIALOG")
-    if p.SetToplevel then p:SetToplevel(true) end
+    onTop(p)
     p:EnableMouse(true)
     S.Box(p, S.SOLID, S.EDGE, S.R_LG)
     p.list = S.List(p, 30, pickRow, pickFill)
@@ -537,8 +553,7 @@ end
 local function buildAdder()
     local p = CreateFrame("Frame", nil, frame)
     p:SetSize(420, 400)
-    p:SetFrameStrata("FULLSCREEN_DIALOG")
-    if p.SetToplevel then p:SetToplevel(true) end
+    onTop(p)
     p:EnableMouse(true)
     S.Box(p, S.SOLID, S.EDGE, S.R_LG)
     p.title = S.Text(p, 13, S.GOLD, nil, "bold")
@@ -1080,8 +1095,7 @@ local function setsPage(body)
             classMenu = CreateFrame("Frame", nil, frame)
             classMenu:SetSize(SET_LEFT, 9 * 30 + 12)
             classMenu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
-            classMenu:SetFrameStrata("FULLSCREEN_DIALOG")
-            if classMenu.SetToplevel then classMenu:SetToplevel(true) end
+            onTop(classMenu)
             classMenu:EnableMouse(true)
             S.Box(classMenu, S.SOLID, S.EDGE, S.R_LG)
             classMenu.list = S.List(classMenu, 30, classRow, classFill)
