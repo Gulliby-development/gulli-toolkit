@@ -228,6 +228,11 @@ local function readyAt(start, duration, now, clock, max)
     return now + math.max(0, math.floor(left)), left > 0
 end
 
+function ns.HasProf(profs, name)
+    for _, p in ipairs(profs or {}) do if p.name == name then return true end end
+    return false
+end
+
 local function profName(profs, line)
     for _, p in ipairs(profs or {}) do if line and p.line == line then return p.name end end
 end
@@ -293,6 +298,15 @@ function ns.ReadCooldowns(c, old, now, clock)
             c.cooldowns[cr.key] = best
             c.cdProf[cr.key] = profName(c.profs, cr.line)
             c.cdNames[cr.key] = gameName(cr)
+        end
+    end
+    -- A recipe the profession window showed with a cooldown stays while its profession does.
+    c.cdOther = {}
+    for rid, o in pairs(old.cdOther or {}) do
+        if not ns.CD_KEY[rid] and not cp[rid] and (o.prof == nil or #c.profs == 0 or ns.HasProf(c.profs, o.prof)) then
+            c.cdOther[rid] = o
+            local key = "R" .. rid
+            c.cooldowns[key], c.cdProf[key], c.cdNames[key] = spellReady(rid) or now, o.prof, o.name
         end
     end
     for rid, r in pairs(cp) do
@@ -377,8 +391,35 @@ function ns.ReadTrade()
     local T = C_TradeSkillUI
     local c = ns.db and ns.db.chars[ns.CharKey()]
     if not (c and T and T.GetRecipeInfo) then return end
-    c.cdSpells, c.cdTrade = c.cdSpells or {}, c.cdTrade or {}
+    -- Another player's window (a link, the guild, an NPC) says nothing about this character.
+    for _, f in ipairs({ "IsTradeSkillLinked", "IsTradeSkillGuild", "IsNPCCrafting" }) do
+        if T[f] then
+            local ok, yes = pcall(T[f])
+            if ok and yes then return end
+        end
+    end
+    c.cdSpells, c.cdTrade, c.cdOther = c.cdSpells or {}, c.cdTrade or {}, c.cdOther or {}
     local now = time()
+    -- Every other learned recipe of this window whose cooldown runs: c.cdOther rid -> name, prof.
+    if T.GetAllRecipeIDs and T.GetRecipeCooldown then
+        local ok, ids = pcall(T.GetAllRecipeIDs)
+        local prof
+        if T.GetBaseProfessionInfo then
+            local ok2, pi = pcall(T.GetBaseProfessionInfo)
+            prof = ok2 and type(pi) == "table" and pi.professionName or nil
+        end
+        for _, rid in ipairs(ok and type(ids) == "table" and ids or {}) do
+            if not ns.CD_KEY[rid] then
+                local ok2, info = pcall(T.GetRecipeInfo, rid)
+                local ok3, left = pcall(T.GetRecipeCooldown, rid)
+                left = ok3 and tonumber(left)
+                if ok2 and type(info) == "table" and info.learned and left and left > 0 then
+                    c.cdOther[rid] = { name = info.name, prof = prof }
+                    c.cdTrade[rid] = now + math.ceil(left)
+                end
+            end
+        end
+    end
     for spell in pairs(ns.CD_KEY) do
         local ok, info = pcall(T.GetRecipeInfo, spell)
         if ok and type(info) == "table" and info.learned then

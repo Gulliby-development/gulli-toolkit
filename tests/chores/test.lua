@@ -473,6 +473,34 @@ test("the profession window and a craft tell a cooldown the spell does not show"
     eq(ns.OnCast(17187), false, "a secret spell id is left alone")
 end)
 
+test("any learned recipe the profession window shows with a cooldown is kept", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    local linked = true
+    C_TradeSkillUI = {
+        IsTradeSkillLinked = function() return linked end,
+        GetAllRecipeIDs = function() return { 1300001, 1300002, 1300003 } end,
+        GetBaseProfessionInfo = function() return { professionName = "Tailoring" } end,
+        GetRecipeInfo = function(id)
+            if id == 1300001 then return { learned = true, name = "Bolt of Starweave" } end
+            if id == 1300002 then return { learned = false, name = "Not learned" } end
+            return { learned = true, name = "No cooldown" }
+        end,
+        GetRecipeCooldown = function(id) if id <= 1300002 then return 7200 end return 0 end,
+    }
+    W.Fire("TRADE_SKILL_SHOW")
+    eq(ns.Snapshot().cooldowns.R1300001, nil, "another player's window is left alone")
+    linked = false
+    W.Fire("TRADE_SKILL_SHOW")
+    local c = ns.Snapshot()
+    eq(c.cooldowns.R1300001, 50000 + 7200); eq(ns.CdName(c, "R1300001"), "Bolt of Starweave")
+    eq(c.cdProf.R1300001, "Tailoring")
+    eq(c.cooldowns.R1300002, nil); eq(c.cooldowns.R1300003, nil)
+    C_TradeSkillUI = nil
+    W.now = 60000
+    eq(ns.Snapshot().cooldowns.R1300001, 60000, "it counts down with the window closed and stays")
+end)
+
 test("a cooldown that Gulli Craft Profit found joins its profession", function()
     Fake({ now = 50000 })
     GulliCraftProfitCharDB = { profs = { Alchemy = { recipes = {
