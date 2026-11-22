@@ -601,7 +601,15 @@ test("the sets of a class: its own, and any-class sets of its best armour and fa
     eq(table.concat(got, ","), "DUNGEON,9001,9002,ANY,9004", "a warrior's sets, group by group")
     got = {}
     for _, it in ipairs(ns.SetList("MAGE")) do got[#got + 1] = it.head or it.set end
-    eq(table.concat(got, ","), "ANY,9005", "the Horde set is not for an Alliance mage")
+    eq(table.concat(got, ","), "PVP,9003,ANY,9005", "no Alliance PvP set of the mage: the Horde one shows")
+    ns.Data.sets[#ns.Data.sets + 1] = { 9007, "Mage Set A", "pvp", "MAGE", "cloth", "A", false, { 101, 201 }, { 2 } }
+    got = {}
+    for _, it in ipairs(ns.SetList("MAGE")) do got[#got + 1] = it.head or it.set end
+    eq(table.concat(got, ","), "PVP,9007,ANY,9005", "with one of its own side only that one")
+    ns.Data.sets[2][6] = "H"
+    got = {}
+    for _, it in ipairs(ns.SetList("WARRIOR")) do got[#got + 1] = it.head or it.set end
+    eq(table.concat(got, ","), "DUNGEON,9001,9002,ANY,9004", "a dungeon set is the class's on either side")
 end)
 
 test("a set against what is worn: places, variants, the tier 0 piece, bonuses and the chain", function()
@@ -707,6 +715,26 @@ test("the set bonuses: no scrolling, they come by themselves and stay over a log
     eq(b[3].text, "+1.", "with their texts")
 end)
 
+test("a menu over the window fixes its strata and rises each time it shows", function()
+    Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF } })
+    local ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    ns.Window():Show()
+    ns.ShowTab(2)
+    local _, _, _, _, sets = ns.Parts()
+    sets.chip._OnClick(sets.chip)
+    eq(#ns.menus, 1, "the class menu is a menu on top")
+    local menu, got = ns.menus[1], {}
+    rawset(menu, "SetFrameStrata", function(_, v) got.strata = v end)
+    rawset(menu, "SetFixedFrameStrata", function(_, v) got.fixed = v end)
+    rawset(menu, "SetFrameLevel", function(_, v) got.level = v end)
+    menu._OnShow(menu)
+    eq(got.strata, "FULLSCREEN_DIALOG", "over the window on every show")
+    eq(got.fixed, true, "and the parent's strata no longer moves it")
+    assert(got.level >= 100, "above the slot cards")
+end)
+
 test("the sets page: a class's list, the chosen set and its pieces on the list", function()
     Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF } })
     local ns = Load()
@@ -731,7 +759,7 @@ test("the sets page: a class's list, the chosen set and its pieces on the list",
     eq(head[#head], 501, "at the end of its slot")
     eq(ns.AddShownSet(), 0, "not twice")
     ns.PickSetClass("MAGE")
-    eq(ns.ShownSet(), 9005, "another class")
+    eq(ns.ShownSet(), 9003, "another class")
     ns.Refresh()
     eq(mainBtn:IsEnabled(), false, "another class's set cannot go on the list")
     eq(ns.AddShownSet(), 0, "and does not")
