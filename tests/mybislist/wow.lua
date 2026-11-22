@@ -46,8 +46,9 @@ function W.Base(spec)
     time = function() return W.now end
     GetTime = function() return W.now end
     SlashCmdList = {}
-    CreateFrame = function(_, name)
+    CreateFrame = function(_, name, parent)
         local f = stub()
+        rawset(f, "_parent", parent)
         rawset(f, "_events", {})
         rawset(f, "_attr", {})
         rawset(f, "_name", name)
