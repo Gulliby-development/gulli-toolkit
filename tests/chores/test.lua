@@ -79,12 +79,14 @@ test("a crafting cooldown is saved as real time and is ready later", function()
     eq(ns.NextReady(c, ready), nil)
 end)
 
-test("a cooldown the character does not know is not tracked", function()
+test("a cooldown is tracked once the game, its running cooldown or the window says it is learned", function()
     Fake({})
     local ns = Load()
     eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil)
-    W.char.cooldowns[18560] = { W.now, 86400 } -- the game shows it for recipes nobody learned too
-    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil, "a running cooldown alone proves nothing")
+    W.char.cooldowns[18560] = { W.now, 86400 } -- a cooldown that runs proves the recipe is learned
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now + 86400)
+    W.char.cooldowns[18560] = nil
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now, "and stays known once it ran")
     W.char.items[15846] = 1 -- the Salt Shaker is tracked while it is in the bags
     local texts = {}
     for _, t in ipairs(ns.Tasks(ns.Snapshot())) do texts[t.text] = true end
@@ -115,7 +117,7 @@ test("cooldowns of 50 days saved by 1.14.0 are dropped once", function()
     local c = ns.db.chars["Alt-Realm"]
     eq(c.cooldowns.CD_MOONCLOTH, nil); eq(c.cdProf.CD_MOONCLOTH, nil); eq(c.cdTrade[18560], nil)
     eq(c.cooldowns.CD_HIDE, 40000 + 3600, "a cooldown that can be stays")
-    eq(next(c.cdSpells), nil); eq(c.hearth, 40000); eq(ns.db.cdFix, 1)
+    eq(c.cdSpells[18560], true, "the recipe stays learned"); eq(c.hearth, 40000); eq(ns.db.cdFix, 1)
     c.cooldowns.CD_MOONCLOTH = 40000 + 51 * 86400
     ns.FixCooldowns()
     eq(c.cooldowns.CD_MOONCLOTH, 40000 + 51 * 86400, "only once")
