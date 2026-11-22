@@ -365,6 +365,15 @@ function ns.TargetOverlay() return overlay end
 -- Quests are cards: a status icon, the name, a status tag, the levels and the chain, and what
 -- comes next (the earlier quest to do first, where to hand in). Headers and route stops stay short.
 local HEAD_H, STOP_H, CARD_H, STEP_H, STEPS_MAX = 28, 40, 64, 16, 8
+-- "Priest only" in the class colour, for a class quest (the list holds only the player's own).
+function ns.ClassTag()
+    local name, file = UnitClass("player")
+    if not name then return "" end
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[file or ""]
+    local text = L.CLASS_ONLY:format(name)
+    return c and S.Hex({ c.r, c.g, c.b }) .. text .. "|r" or text
+end
+
 local STATUS = {
     log = { "Q_LOG", S.TAB.quests }, take = { "Q_TAKE", TI .. "INV_Misc_Note_01" },
     later = { "Q_LATER", ACT_ICON.later }, done = { "Q_DONE", TI .. "INV_Misc_Ribbon_01" },
@@ -552,6 +561,7 @@ local function fillRow(r, item)
     -- The quest's level in its colour, the level it opens at, the step of its chain.
     local parts = { S.Hex(ns.DiffColor(diff)) .. L.LEVEL:format(q.level) .. "|r" }
     if q.minLevel and q.minLevel > 0 then parts[2] = L.FROM_LEVEL:format(q.minLevel) end
+    if q.class then parts[#parts + 1] = ns.ClassTag() end
     if q.steps and q.steps > 1 then parts[#parts + 1] = L.STEP:format(q.step, q.steps) end
     if group ~= "done" then parts[#parts + 1] = ns.XPText(q.id, ns.level) end
     r.sub:SetText(table.concat(parts, "  ·  "))
@@ -1723,6 +1733,7 @@ function ns.FillDetail(level)
     if not q.outside then sub[1] = L.FROM_LEVEL:format(q.minLevel > 0 and q.minLevel or 1) end
     if q.steps and q.steps > 1 then sub[#sub + 1] = L.STEP:format(q.step, q.steps) end
     if not q.outside then sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"] end
+    if q.class then sub[#sub + 1] = ns.ClassTag() end
     sub[#sub + 1] = ns.XPText(q.id, level)
     d.sub:SetText(table.concat(sub, "  ·  "))
     local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state

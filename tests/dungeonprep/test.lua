@@ -951,6 +951,50 @@ test("levelling chains: a quest the guides leave out comes in by hand (D.main, M
     assert(seen, "Rot and Regret is in the Maraudon list")
 end)
 
+test("class quests: every class sees its own Sunken Temple quest with Chains only, and no other class's", function()
+    -- classID -> its class quest of the temple (the guide leaves them to class guides).
+    local ST = { [1] = 8425, [2] = 8418, [3] = 8232, [4] = 8236, [5] = 8257, [7] = 8413, [8] = 8253,
+                 [9] = 8422, [11] = 9053 }
+    local FILE = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", nil, "SHAMAN", "MAGE", "WARLOCK", nil, "DRUID" }
+    for classID, id in pairs(ST) do
+        Fake({ level = 52, raceID = 1, faction = "Alliance", classID = classID, className = FILE[classID] })
+        local ns = Load()
+        -- A quest for one faction only is checked on that faction.
+        local side = ns.Data.quest[id][11]
+        if side == "H" then
+            Fake({ level = 52, raceID = 2, faction = "Horde", classID = classID, className = FILE[classID] })
+            ns = Load()
+        end
+        eq(ns.Get("mainOnly"), true)
+        assert(ns.MainSet("ST")[id], "a chain of the temple: " .. id)
+        local seen = {}
+        for _, l in ipairs({ "log", "take", "later", "hidden" }) do
+            for _, x in ipairs(ns.Quests("ST", 52)[l]) do
+                seen[x.id] = x
+                for _, m in ipairs(x.members or {}) do seen[m] = x end
+            end
+        end
+        assert(seen[id], FILE[classID] .. " sees " .. id)
+        eq(seen[id].class, true, "marked as a class quest")
+        for other, oid in pairs(ST) do
+            if other ~= classID then assert(not seen[oid], FILE[classID] .. " does not see " .. oid) end
+        end
+    end
+    -- Every class quest a dungeon lists is a chain of it, but the tier 0.5 set exchanges are not.
+    Fake({ level = 60, raceID = 1, faction = "Alliance" })
+    local ns = Load()
+    for _, id in ipairs({ 1956, 80411, 82084, 81790, 7581, 7631, 7643, 7629, 7647, 8258, 97169, 7642 }) do
+        local found
+        for key in pairs(ns.Data.main) do if ns.MainSet(key)[id] then found = true end end
+        assert(found, "a chain: " .. id)
+    end
+    for _, id in ipairs({ 8907, 8926, 8999, 8951, 97179 }) do
+        for key in pairs(ns.Data.main) do assert(not ns.MainSet(key)[id], "a set exchange: " .. id) end
+    end
+    -- The Alliance Darkreaver Menace has its class from Wowhead (QuestieDB gives none).
+    eq(ns.Data.quest[97169][5], 64, "shaman only")
+end)
+
 test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
     Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()

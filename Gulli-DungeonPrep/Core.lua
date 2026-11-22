@@ -282,7 +282,8 @@ local function entryOf(id, q)
                     level = q[2], minLevel = q[3], who = q[6], area = q[7], side = q[11] or "",
                     x = q[12] or 0, y = q[13] or 0, step = q[18] or 0, steps = q[19] or 0,
                     reward = D.reward and D.reward[id], targets = D.target and D.target[id],
-                    text = (D.L and D.L.text[id]) or (D.text and D.text[id]), tips = D.tips and D.tips[id] }
+                    text = (D.L and D.L.text[id]) or (D.text and D.text[id]), tips = D.tips and D.tips[id],
+                    class = (q[5] or 0) ~= 0 }
     -- The client's language where Data_<lang>.lua has it (D.L), else English.
     local own = D.L and D.L.tips[id]
     if own and entry.tips then
