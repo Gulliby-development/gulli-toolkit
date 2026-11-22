@@ -1630,9 +1630,12 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
         W.items[226863], W.items[226864] = 1, 1
         W.worn[1], W.worn[3] = 16731, 16733
         W.items[16731], W.items[16733], W.items[16737] = 1, 1, 1
-        W.tipLines[226857] = { "(2) Set: +200 Armor.", "(3) Set: +40 Attack Power.",
-            "(4) Set: Chance on melee attack to heal you for 88 to 132.", "(5) Set: +8 All Resistances.",
-            "(6) Set: Your melee attacks have a chance to grant you 20 Strength for 10 sec." }
+        W.tipLines[226857] = { "(2) Set: +200 Armor.",
+            "(3) Set: Increases damage and healing done by magical spells and effects by up to 18.",
+            "(4) Set: +40 Attack Power.",
+            "(5) Set: When struck in combat has a 2% chance of shielding the wearer in a protective shield which will absorb 488 damage. Can only occur once every 30 sec.",
+            "(6) Set: Your melee attacks have a chance to grant you 20 Strength for 10 sec.",
+            "(8) Set: +8 All Resistances." }
         ns.setId = 1778
         ns.ShowTab(2)
     end },

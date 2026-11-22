@@ -640,8 +640,12 @@ test("a set against what is worn: places, variants, the tier 0 piece, bonuses an
     eq(b[1].count, 2, "an active bonus takes the data's count")
     W.tipLines[501] = nil
     b = ns.SetBonuses(info)
+    eq(b[1].text, "+10 Armor.", "what the game told once is kept")
+    eq(ns.bonusWait, 9002, "and the game is asked again")
+    ns.db.bonusLang = "deDE"
+    b = ns.SetBonuses(info)
     eq(#b, 2, "the data's counts until the game shows the bonuses")
-    eq(b[1].text, nil, "no text made up")
+    eq(b[1].text, nil, "no text made up, none of another client language")
     local chain = ns.SetChain(info)
     eq(chain.step, 2, "the ring's quest is done, the helm's is next")
     eq(chain.quest, "Second Quest", "its quest")
@@ -651,6 +655,56 @@ test("a set against what is worn: places, variants, the tier 0 piece, bonuses an
     eq(ns.SetChain(ns.SetInfo(9002)), nil, "every piece is there")
     eq(ns.SetBonuses(ns.SetInfo(9002))[1].on, true, "two pieces worn")
     eq(ns.SetName(9001), "Old Set", "the English name without the game's")
+end)
+
+test("the set bonuses: no scrolling, they come by themselves and stay over a login", function()
+    Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF } })
+    local ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    local h, lines = ns.BonusLayout(5, 177)
+    eq(h, 34, "five rows keep the full height")
+    eq(lines, 2, "and two lines")
+    h, lines = ns.BonusLayout(6, 177)
+    assert(h * 6 <= 177 and lines == 2, "six rows share the room")
+    h, lines = ns.BonusLayout(8, 177)
+    assert(h * 8 <= 177 and lines == 1, "eight rows take one line each")
+    ns.Window():Show()
+    ns.ShowTab(2)
+    ns.setId = 9002
+    ns.Refresh()
+    local _, _, _, _, sets = ns.Parts()
+    local box = sets.card.bonuses
+    eq(box.n, 2, "the data's counts")
+    eq(box.rows[1].item.text, nil, "the game has not told yet")
+    eq(ns.bonusWait, 9002, "the page waits for it")
+    -- the client loads the piece: the page draws itself again
+    W.tipLines[501] = { "(2) Set: +10 Armor.", "(3) Set: +5 Strength.", "(4) Set: +1.", "(5) Set: +2.", "(6) Set: +3." }
+    W.Fire("TOOLTIP_DATA_UPDATE")
+    W.now = W.now + 1
+    W.RunTimers()
+    eq(box.n, 5, "five bonuses, all shown")
+    eq(box.rows[5]:IsShown(), true, "the fifth row")
+    eq(box.rows[6]:IsShown(), false, "no sixth")
+    eq(box.rows[1].item.text, "+10 Armor.", "its text")
+    eq(ns.bonusWait, nil, "nothing to wait for")
+    eq(#GulliMyBisListDB.bonus[9002], 5, "kept in the saved variables")
+    -- a paused module does not listen
+    ns.bonusWait = 9002
+    ns.Pause(true)
+    W.Fire("TOOLTIP_DATA_UPDATE")
+    eq(ns.pending, nil, "paused: no refresh")
+    ns.Pause(false)
+    -- after a login the client has nothing loaded: the saved texts show at once
+    local saved = GulliMyBisListDB
+    Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF },
+           db = saved })
+    ns = Load()
+    fakeData(ns)
+    fakeSets(ns)
+    local b = ns.SetBonuses(ns.SetInfo(9002))
+    eq(#b, 5, "five bonuses from the save")
+    eq(b[3].text, "+1.", "with their texts")
 end)
 
 test("the sets page: a class's list, the chosen set and its pieces on the list", function()
