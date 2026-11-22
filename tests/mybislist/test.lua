@@ -715,24 +715,39 @@ test("the set bonuses: no scrolling, they come by themselves and stay over a log
     eq(b[3].text, "+1.", "with their texts")
 end)
 
-test("a menu over the window fixes its strata and rises each time it shows", function()
+test("a menu is a frame of the screen in the tooltip strata, never a child of the window", function()
     Fake({ class = "WARRIOR", worn = { [11] = 503 }, items = { [503] = 1 }, equip = SET_EQUIP, cdb = { main = REF } })
     local ns = Load()
     fakeData(ns)
     fakeSets(ns)
-    ns.Window():Show()
+    local win = ns.Window()
+    win:Show()
     ns.ShowTab(2)
-    local _, _, _, _, sets = ns.Parts()
+    local gear, _, _, _, sets = ns.Parts()
     sets.chip._OnClick(sets.chip)
-    eq(#ns.menus, 1, "the class menu is a menu on top")
-    local menu, got = ns.menus[1], {}
-    rawset(menu, "SetFrameStrata", function(_, v) got.strata = v end)
-    rawset(menu, "SetFixedFrameStrata", function(_, v) got.fixed = v end)
-    rawset(menu, "SetFrameLevel", function(_, v) got.level = v end)
-    menu._OnShow(menu)
-    eq(got.strata, "FULLSCREEN_DIALOG", "over the window on every show")
-    eq(got.fixed, true, "and the parent's strata no longer moves it")
-    assert(got.level >= 100, "above the slot cards")
+    ns.ShowTab(1)
+    gear.chip._OnClick(gear.chip)
+    ns.OpenAdd(gear.chip)
+    eq(#ns.menus, 3, "the class menu, the list picker and the adder")
+    eq(ns.MENU_STRATA, "TOOLTIP", "the strata over the hub's FULLSCREEN_DIALOG")
+    for i, menu in ipairs(ns.menus) do
+        eq(rawget(menu, "_parent"), UIParent, "menu " .. i .. " hangs on the screen, so the hub's levels never reach it")
+        local got = {}
+        rawset(menu, "SetFrameStrata", function(_, v) got.strata = v end)
+        rawset(menu, "SetFixedFrameStrata", function(_, v) got.fixed = v end)
+        rawset(menu, "SetScale", function(_, v) got.scale = v end)
+        rawset(win, "GetEffectiveScale", function() return 0.9 end)
+        rawset(UIParent, "GetEffectiveScale", function() return 0.6 end)
+        menu._OnShow(menu)
+        eq(got.strata, "TOOLTIP", "menu " .. i .. " over every window on each show")
+        eq(got.fixed, true, "and nothing moves its strata")
+        assert(math.abs(got.scale - 1.5) < 1e-9, "at the window's own scale")
+    end
+    -- the window going away closes them, since they are no longer its children
+    local hidden = 0
+    for _, menu in ipairs(ns.menus) do rawset(menu, "Hide", function() hidden = hidden + 1 end) end
+    win._OnHide(win)
+    eq(hidden, 3, "all three close with the window")
 end)
 
 test("the sets page: a class's list, the chosen set and its pieces on the list", function()

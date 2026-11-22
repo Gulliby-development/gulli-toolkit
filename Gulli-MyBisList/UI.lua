@@ -472,30 +472,42 @@ function ns.PickItems()
     return out
 end
 
--- A menu over the window: the hub sets the strata of a docked window again on every show, and a
--- child follows its parent unless its own strata and level are fixed, so the menu sank under the
--- slot cards. Fixed and raised each time it shows.
-local function onTop(p)
+-- A menu over the window. The hub is a toplevel window in FULLSCREEN_DIALOG whose level climbs with
+-- every raise, and a page docked in it follows, so a menu that is a child of the window, or sits at
+-- a fixed level of that strata, ends up under the page's cards. A menu is a frame of UIParent in
+-- TOOLTIP, the one strata over every window: no level of the hub can reach it. It takes the
+-- window's scale each time it shows, and the window's OnHide and the page tabs close it.
+ns.MENU_STRATA, ns.MENU_LEVEL = "TOOLTIP", 10
+local function newMenu(w, h)
+    local p = CreateFrame("Frame", nil, UIParent)
+    p:SetSize(w, h)
     local function raise(self)
         if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
-        self:SetFrameStrata("FULLSCREEN_DIALOG")
+        self:SetFrameStrata(ns.MENU_STRATA)
         if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
-        self:SetFrameLevel(200)
-        if self.Raise then self:Raise() end
+        self:SetFrameLevel(ns.MENU_LEVEL)
+        local mine = frame and frame.GetEffectiveScale and tonumber(frame:GetEffectiveScale())
+        local base = UIParent.GetEffectiveScale and tonumber(UIParent:GetEffectiveScale())
+        if mine and base and mine > 0 and base > 0 then self:SetScale(mine / base) end
     end
     raise(p)
     p:HookScript("OnShow", raise)
+    p:EnableMouse(true)
+    S.Box(p, S.SOLID, S.EDGE, S.R_LG)
     ns.menus = ns.menus or {}
     ns.menus[#ns.menus + 1] = p
+    return p
+end
+-- The game's tooltip lives in the same strata: over a menu's rows it goes above the menu.
+local function tipOverMenu()
+    if GameTooltip and GameTooltip.SetFrameLevel and GameTooltip.IsShown and GameTooltip:IsShown() then
+        GameTooltip:SetFrameLevel(ns.MENU_LEVEL + 100)
+    end
 end
 
 local function buildPicker(anchor)
-    local p = CreateFrame("Frame", nil, frame)
-    p:SetSize(300, 380)
+    local p = newMenu(300, 380)
     p:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
-    onTop(p)
-    p:EnableMouse(true)
-    S.Box(p, S.SOLID, S.EDGE, S.R_LG)
     p.list = S.List(p, 30, pickRow, pickFill)
     p.list:SetPoint("TOPLEFT", 6, -6)
     p.list:SetPoint("BOTTOMRIGHT", -6, 6)
@@ -524,7 +536,7 @@ local function addRow(r)
     r.src:SetWordWrap(false)
     r.hit = CreateFrame("Button", nil, r)
     r.hit:SetAllPoints()
-    r.hit:SetScript("OnEnter", itemTip)
+    r.hit:SetScript("OnEnter", function(self) itemTip(self); tipOverMenu() end)
     r.hit:SetScript("OnLeave", hideTip)
     r.hit:SetScript("OnClick", function(self)
         if self.itemId then ns.AddTo(ns.ShownRef(), ns.slot, self.itemId) end
@@ -551,11 +563,7 @@ function ns.AddItems(query)
 end
 
 local function buildAdder()
-    local p = CreateFrame("Frame", nil, frame)
-    p:SetSize(420, 400)
-    onTop(p)
-    p:EnableMouse(true)
-    S.Box(p, S.SOLID, S.EDGE, S.R_LG)
+    local p = newMenu(420, 400)
     p.title = S.Text(p, 13, S.GOLD, nil, "bold")
     p.title:SetPoint("TOPLEFT", 12, -12)
     p.title:SetPoint("RIGHT", -40, 0)
@@ -1092,12 +1100,8 @@ local function setsPage(body)
     chip:SetPoint("TOPLEFT", 0, 0)
     chip:SetScript("OnClick", function(self)
         if not classMenu then
-            classMenu = CreateFrame("Frame", nil, frame)
-            classMenu:SetSize(SET_LEFT, 9 * 30 + 12)
+            classMenu = newMenu(SET_LEFT, 9 * 30 + 12)
             classMenu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
-            onTop(classMenu)
-            classMenu:EnableMouse(true)
-            S.Box(classMenu, S.SOLID, S.EDGE, S.R_LG)
             classMenu.list = S.List(classMenu, 30, classRow, classFill)
             classMenu.list:SetPoint("TOPLEFT", 6, -6)
             classMenu.list:SetPoint("BOTTOMRIGHT", -6, 6)
