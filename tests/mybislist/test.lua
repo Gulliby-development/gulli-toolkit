@@ -54,6 +54,81 @@ test("the data: every spec has every stage, at most five known items a slot, and
     for _, src in ipairs(D.src) do assert(ns.SRC_ICON[src[1]], "no icon for source " .. src[1]) end
 end)
 
+test("the data: every enchant has a spell, a name, a known kind and a slot", function()
+    Fake({})
+    local ns = Load()
+    local n = 0
+    for spec, stages in pairs(ns.Data.ench) do
+        assert(ns.SpecInfo(spec), "unknown spec " .. spec)
+        for stage, slots in pairs(stages) do
+            for slot, e in pairs(slots) do
+                n = n + 1
+                assert(ns.INV[slot], "unknown slot " .. slot)
+                assert(type(e[1]) == "number" and type(e[2]) == "string" and e[2] ~= "", spec .. " " .. slot)
+                assert(ns.ENCH_ICON[e[3]], "unknown kind " .. tostring(e[3]))
+                if e[3] ~= "other" then assert(rawget(ns.T.en, "ENCH_SRC_" .. e[3]:upper()), "no text for " .. e[3]) end
+            end
+        end
+    end
+    assert(n > 100, "the lists have enchants")
+end)
+
+test("a slot's enchant: the client's name, else English, and whether the worn item has one", function()
+    Fake({ worn = { [1] = 101, [16] = 301 }, enchanted = { [16] = 1900 }, spells = { [20034] = "Рыцарь" } })
+    local ns = Load()
+    fakeData(ns)
+    ns.Data.ench.WARRIOR_ARMS = { L40 = { head = { 15397, "Lesser Arcanum of Voracity", "arcanum" },
+                                          main = { 20034, "Enchant Weapon - Crusader", "ench" },
+                                          finger1 = { 5, "Ring Thing", "new kind" } } }
+    local list = ns.Resolve(REF)
+    local head, main, ring = ns.Enchant(list, "head"), ns.Enchant(list, "main"), ns.Enchant(list, "finger1")
+    eq(head.name, "Lesser Arcanum of Voracity", "English until the client knows the spell")
+    eq(head.icon, ns.ENCH_ICON.arcanum, "the kind's icon until then")
+    eq(head.state, "none", "worn without an enchant")
+    eq(main.name, "Рыцарь", "the client's name")
+    eq(main.icon, "spell20034", "the spell's icon")
+    eq(main.state, "on", "worn with an enchant")
+    eq(ring.state, nil, "nothing worn")
+    eq(ring.kind, "other", "an unknown kind")
+    eq(ns.Enchant(list, "off"), nil, "a slot without an enchant")
+    local have, of = ns.EnchantProgress(list)
+    eq(have, 1, "enchanted"); eq(of, 3, "slots with an enchant")
+    -- the window: the badge on the slot and the row under the list
+    ns.Window():Show()
+    ns.ViewList("WARRIOR_ARMS", "L40")
+    local gear = ns.Parts()
+    eq(gear.slots.head.ench:IsShown(), true, "the badge")
+    eq(gear.slots.head.enchant.state, "none", "its state")
+    eq(gear.slots.off.ench:IsShown(), false, "no badge without an enchant")
+    ns.slot = "main"; ns.Refresh()
+    eq(gear.card.ench:IsShown(), true, "the row")
+    eq(gear.card.ench.enchant.id, 20034, "of the chosen slot")
+    ns.slot = "finger2"; ns.Refresh()
+    eq(gear.card.ench:IsShown(), false, "no row without an enchant")
+end)
+
+test("the tooltip names the best enchant of a list item and what the worn one has", function()
+    Fake({ worn = { [1] = 103, [16] = 999 }, enchanted = { [1] = 77 }, db = { tooltip = true } })
+    local ns = Load()
+    fakeData(ns)
+    ns.Data.ench.WARRIOR_ARMS = { L40 = { head = { 15397, "Lesser Arcanum of Voracity", "arcanum" },
+                                          main = { 20034, "Enchant Weapon - Crusader", "ench" } } }
+    ns.SetMain(REF)
+    local function find(lines, text) for _, l in ipairs(lines or {}) do if l.left == text or l.right == text then return l end end end
+    local L = ns.L
+    local lines = ns.TipLines(101)
+    assert(find(lines, "Lesser Arcanum of Voracity"), "a list item names the enchant")
+    eq(find(lines, L.ENCH_ON), nil, "no state for an item that is not worn")
+    eq(find(lines, L.ENCH_NONE), nil, "no state for an item that is not worn")
+    assert(find(ns.TipLines(103), L.ENCH_ON), "the worn item is enchanted")
+    lines = ns.TipLines(999)
+    assert(find(lines, "Enchant Weapon - Crusader"), "what is worn and not on the list gets the enchant too")
+    assert(find(lines, L.ENCH_NONE), "and that it has none")
+    eq(ns.TipLines(888), nil, "an item that is neither listed nor worn")
+    ns.SetPref("tooltip", false)
+    eq(ns.TipLines(101), nil, "switch off")
+end)
+
 test("the other faction's items leave the list and the rest move up", function()
     Fake({ faction = "Alliance" })
     local ns = Load()

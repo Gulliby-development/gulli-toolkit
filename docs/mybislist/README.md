@@ -22,12 +22,13 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 - **Five items for each slot.** The best first. Items of the other faction leave the list.
 - **Against what you wear.** Each slot shows the best item of the list with a dot: green when you wear it, yellow when it is in your bags or bank, red when you do not have it yet. Open a slot to see its five items, and what you wear under a line when it is not one of them. A bar shows how many best items you wear.
 - **Where to get it.** Each item says where it comes from: a boss and its dungeon, a quest, a reputation, a craft or a world drop.
+- **The best enchants.** The lists before the raids name the best enchant for each slot. A small mark on the slot is bright in a green ring when the item you wear there has an enchant, and grey in a red ring when it has none. Under the slot's items you see the enchant, who makes it (an enchanter, a leatherworker, an engineer or a quest), and point at it for its details.
 - **Realistic before the raids.** The switch **Realistic** shows the list without the hardest items to get.
 - **My target.** The target button on an item makes it the first of its slot. On a site list, the first click makes your own copy of it, and that copy becomes your main list. What you wear can be your target too.
 - **Your own lists.** **Copy to mine** makes a copy of any list that you can change: make an item your target, remove items, and add others with a search over the items your class can use (the ones of your spec first). Type an item id or Shift-click an item into the search to add any item at all. Rename it in the box at the top. When the site later changes the first item of a slot, a line over the list says which slots. Your lists are for every character of your account.
 - **Favourite lists.** The star keeps a list at the top of the picker, for an alt or a second spec.
 - **Your main list.** **Track this list** chooses the list the tooltips and notices follow. Until you choose, it is the list of your spec and level.
-- **In the tooltip.** An item on your main list shows its place in its slot, and the place of what you wear there.
+- **In the tooltip.** An item on your main list shows its place in its slot, and the place of what you wear there. It also names the best enchant for that slot, and on the item you wear, whether it has one.
 - **A sound when it drops.** When an item of your main list that beats what you wear is in the loot window (also master loot) or in a need or greed roll, you hear a sound and get a notice. A switch in the settings turns it off.
 - **A note for a better item.** When an item near the top of your list comes into your bags, a notice says so, once.
 - **In the toolkit.** The home page shows how many best items you wear.

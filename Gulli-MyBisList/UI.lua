@@ -99,17 +99,35 @@ local function slotButton(parent, slot)
     b.state:SetPoint("RIGHT", -8, 0)
     b.state:SetJustifyH("LEFT")
     b.state:SetWordWrap(false)
+    -- the list's enchant of the slot: its icon in the corner, bright in a green ring when the worn
+    -- item has an enchant, grey in a red ring when it has none (the words are in the tooltip)
+    b.ench = S.IconBox(b, 16)
+    b.ench:SetPoint("BOTTOMRIGHT", b.icon, "BOTTOMRIGHT", 5, -3)
+    b.ench:SetFrameLevel((tonumber(b.icon:GetFrameLevel()) or 1) + 2)
+    b.ench:Hide()
     b:SetScript("OnClick", function(self) ns.slot = self.slot; ns.Refresh() end)
     b:SetScript("OnEnter", function(self)
+        local e = self.enchant
         if self.itemId then
             itemTip(self)
             local at = self.row and self.row.topAt
             if at and GameTooltip then
                 local c = ns.AT_COLOR[at]
                 GameTooltip:AddLine(L["AT_" .. at:upper()], c[1], c[2], c[3])
-                GameTooltip:Show()
             end
+        elseif e and GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["SLOT_" .. self.slot])
         end
+        if e and GameTooltip then
+            -- the Gulli block names the enchant itself for an item of the main list
+            if not (self.itemId and ns.EnchantInTip()) then
+                GameTooltip:AddLine(S.Cap(L.TIP_ENCH) .. ": " .. colour(e.name, S.TEXT), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+            end
+            local c = ns.ENCH_COLOR[e.state or "empty"]
+            GameTooltip:AddLine(L["ENCH_" .. (e.state or "empty"):upper()], c[1], c[2], c[3])
+        end
+        if GameTooltip and (self.itemId or e) then GameTooltip:Show() end
         if not self.selected then S.Fill(self, S.RAISED) end
     end)
     b:SetScript("OnLeave", function(self)
@@ -119,8 +137,26 @@ local function slotButton(parent, slot)
     return b
 end
 
-local function paintSlot(b, r)
+-- The badge and the row of an enchant: its icon, bright or grey, in a ring of its state's colour.
+ns.ENCH_COLOR = { on = S.GOOD, none = S.BAD, empty = S.MUTED }
+local function paintEnchant(box, e)
+    box:SetIcon(e.icon)
+    if box.tex.SetDesaturated then box.tex:SetDesaturated(e.state ~= "on") end
+    box.tex:SetAlpha(e.state == "on" and 1 or 0.7)
+    box:SetGlow(e.state and ns.ENCH_COLOR[e.state] or nil)
+end
+
+-- Whether the Gulli block of an item's tooltip already names the shown list's enchants.
+function ns.EnchantInTip()
+    return ns.db ~= nil and ns.db.tooltip == true and not ns.paused and ns.ShownRef() == ns.RefOf(ns.Main())
+end
+
+local function paintSlot(b, r, list)
     b.row = r
+    local e = r.state ~= "covered" and ns.Enchant(list, r.slot) or nil
+    b.enchant = e
+    b.ench:SetShown(e ~= nil)
+    if e then paintEnchant(b.ench, e) end
     local top = r.state ~= "covered" and r.top or nil
     b.itemId = top
     b.icon:SetIcon(top and ns.ItemIcon(top) or (PD .. SLOT_ART[r.slot]))
@@ -284,7 +320,7 @@ local function buildCard(parent)
     c.list = S.List(c.body, ROW_H, makeRow, fillRow)
     c.list.heightOf = function(it) return it.sep and ROW_H + SEP_H or ROW_H end
     c.list:SetPoint("TOPLEFT", 0, -44)
-    c.list:SetPoint("BOTTOMRIGHT", 0, 24)
+    c.list:SetPoint("BOTTOMRIGHT", 0, 0)
     c.empty = S.Text(c.body, 12, S.MUTED)
     c.empty:SetPoint("TOPLEFT", 0, -56)
     c.empty:SetPoint("RIGHT", 0, 0)
@@ -298,11 +334,44 @@ local function buildCard(parent)
     c.add:SetWidth(c.add:GetWidth() + 22)
     c.add:SetPoint("TOPRIGHT", 0, 2)
     c.add:SetScript("OnClick", function(self) ns.OpenAdd(self) end)
-    c.ench = S.Text(c.body, 12, S.MUTED)
-    c.ench:SetPoint("BOTTOMLEFT", 0, 2)
-    c.ench:SetPoint("RIGHT", 0, 0)
-    c.ench:SetJustifyH("LEFT")
-    c.ench:SetWordWrap(false)
+    -- the slot's enchant, under the list: who makes it, its icon and name, and what is on the worn item
+    local e = CreateFrame("Button", nil, c.body)
+    e:SetHeight(ROW_H)
+    e:SetPoint("BOTTOMLEFT", 0, 0)
+    e:SetPoint("BOTTOMRIGHT", 0, 0)
+    e.line = S.Divider(e)
+    e.line:SetPoint("TOPLEFT", 0, 0)
+    e.line:SetPoint("TOPRIGHT", 0, 0)
+    e.line:SetHeight(1)
+    e.kind = S.IconBox(e, 16)
+    e.kind:SetPoint("LEFT", 7, 0)
+    e.icon = S.IconBox(e, 30)
+    e.icon:SetPoint("LEFT", 30, 0)
+    e.src = S.Text(e, 12, S.MUTED)
+    e.src:SetPoint("TOPRIGHT", -4, -6)
+    e.src:SetJustifyH("RIGHT")
+    e.src:SetWordWrap(false)
+    e.name = S.Text(e, 13)
+    e.name:SetPoint("TOPLEFT", e.icon, "TOPRIGHT", 9, 0)
+    e.name:SetPoint("RIGHT", e.src, "LEFT", -6, 0)
+    e.name:SetJustifyH("LEFT")
+    e.name:SetWordWrap(false)
+    e.dot = S.Circle(e, 8, S.BAD, "OVERLAY")
+    e.dot:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", 9, 3)
+    e.state = S.Text(e, 12, S.MUTED)
+    e.state:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", 21, 0)
+    e.state:SetPoint("RIGHT", -4, 0)
+    e.state:SetJustifyH("LEFT")
+    e.state:SetWordWrap(false)
+    e:SetScript("OnEnter", function(self)
+        local it = self.enchant
+        if not (GameTooltip and it) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetSpellByID then GameTooltip:SetSpellByID(it.id) else GameTooltip:SetText(it.name) end
+        GameTooltip:Show()
+    end)
+    e:SetScript("OnLeave", hideTip)
+    c.ench = e
     return c
 end
 
@@ -633,7 +702,7 @@ local function paintGear()
     local byslot = {}
     for _, r in ipairs(rows) do
         byslot[r.slot] = r
-        paintSlot(gear.slots[r.slot], r)
+        paintSlot(gear.slots[r.slot], r, list)
     end
     local spec = ns.SpecInfo(list.spec)
     gear.chip:SetText(ns.SpecName(list.spec))
@@ -673,8 +742,22 @@ local function paintGear()
     c.list:SetShown(#items > 0)
     c.empty:SetShown(#items == 0)
     c.empty:SetText(r.state == "covered" and L.EMPTY_COVERED or (own and L.EMPTY_OWN) or L.EMPTY_SLOT)
-    local ench = list.ench[r.slot]
-    c.ench:SetText(ench and (L.ENCHANT .. " " .. colour(ench, S.TEXT)) or "")
+    local ench = r.state ~= "covered" and ns.Enchant(list, r.slot) or nil
+    c.ench.enchant = ench
+    c.ench:SetShown(ench ~= nil)
+    if ench then
+        local e = c.ench
+        e.kind:SetIcon(ns.ENCH_ICON[ench.kind])
+        e.icon:SetIcon(ench.icon)
+        e.name:SetText(ench.name)
+        e.src:SetText(ench.kind ~= "other" and L["ENCH_SRC_" .. ench.kind:upper()] or "")
+        local col = ns.ENCH_COLOR[ench.state or "empty"]
+        e.dot:SetShown(ench.state ~= nil)
+        e.dot:SetVertexColor(col[1], col[2], col[3], 1)
+        e.state:SetText(L["ENCH_" .. (ench.state or "empty"):upper()])
+        e.state:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", ench.state and 21 or 9, 0)
+    end
+    c.list:SetPoint("BOTTOMRIGHT", 0, ench and ROW_H + 4 or 0)
     c.add:SetShown(r.state ~= "covered" and (not own or #r.ids < ns.OWN_MAX))
     c.countLabel:SetPoint("RIGHT", c.add:IsShown() and -(c.add:GetWidth() + 8) or 0, 0)
     local news = own and ns.SiteNews(ns.RefOf(list)) or {}

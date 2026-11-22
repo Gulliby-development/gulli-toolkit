@@ -56,6 +56,20 @@ ALLIANCE_PVP = ("Knight-", "Marshal", "Lieutenant Commander", "Commander's", "Se
 HORDE_PVP = ("Warlord", "Legionnaire", "General's", "Champion's", "Centurion", "Blood Guard", "Stone Guard")
 
 
+def enchant_kind(name):
+    """Who makes an enchant, from its English name: ench (an enchanter), kit (a leatherworker's
+    armor kit), scope (an engineer), arcanum (a libram quest), else other."""
+    if name.startswith("Enchant "):
+        return "ench"
+    if name.endswith("Armor Kit"):
+        return "kit"
+    if "Scope" in name:
+        return "scope"
+    if "Arcanum" in name:
+        return "arcanum"
+    return "other"
+
+
 def spec_key(info):
     return info["class"].upper() + "_" + info["spec"].replace(" ", "").upper()
 
@@ -209,14 +223,15 @@ def build(snap):
                     parts.append(s + "=" + lua(lists[key][s]))
             out.append("    " + key + " = {" + ",".join(parts) + "},")
         out.append("  },")
-    out += ["}", "", "-- Enchants of the pre-raid lists: spec -> stage -> slot -> English name.", "D.ench = {"]
+    out += ["}", "", "-- Enchants of the pre-raid lists: spec -> stage -> slot -> { spell id, English name, kind }.",
+            "D.ench = {"]
     for _, slug, info in specs:
         parts = []
         for key, site in (("PRE", "pre-raid"), ("REAL", "pre-raid-realistic")):
             e = info.get("enchants", {}).get(site) or {}
             if e:
                 parts.append(key + "={" + ",".join(
-                    PRE_SLOT.get(s, s) + "=" + lua(v[1]) for s, v in sorted(e.items())) + "}")
+                    PRE_SLOT.get(s, s) + "=" + lua([v[0], v[1], enchant_kind(v[1])]) for s, v in sorted(e.items())) + "}")
         if parts:
             out.append("  " + spec_key(info) + " = {" + ",".join(parts) + "},")
     out += ["}", ""]

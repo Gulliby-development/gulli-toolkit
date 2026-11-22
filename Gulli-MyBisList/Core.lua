@@ -105,6 +105,59 @@ function ns.ItemQuality(id)
 end
 ns.WornItem = wornItem
 
+-- Enchants ----------------------------------------------------------------------------------------
+
+-- Who makes an enchant (the data's kind): the icon of that trade, also the enchant's own icon
+-- until the game gives one.
+ns.ENCH_ICON = {
+    ench = "Interface\\Icons\\Trade_Engraving", kit = "Interface\\Icons\\Trade_LeatherWorking",
+    scope = "Interface\\Icons\\Trade_Engineering", arcanum = "Interface\\Icons\\INV_Misc_Book_11",
+    other = "Interface\\Icons\\INV_Misc_Note_01",
+}
+local CS = C_Spell or {}
+local function spellName(id)
+    if CS.GetSpellName then return CS.GetSpellName(id) end
+    if GetSpellInfo then return (GetSpellInfo(id)) end
+end
+local function spellIcon(id)
+    if CS.GetSpellTexture then return (CS.GetSpellTexture(id)) end
+    if GetSpellTexture then return (GetSpellTexture(id)) end
+end
+local function wornLink(slot)
+    return GetInventoryItemLink and GetInventoryItemLink("player", ns.INV[slot]) or nil
+end
+
+-- Whether what is worn in a slot has an enchant: "on", "none", or nil with nothing worn. The item
+-- link tells only that there is one, not which.
+function ns.EnchantState(slot)
+    local link = wornLink(slot)
+    if type(link) ~= "string" then return nil end
+    local e = link:match("item:%-?%d+:(%d*)")
+    if not e then return nil end
+    return (e ~= "" and e ~= "0") and "on" or "none"
+end
+
+-- The list's enchant of a slot: { id, name (the client's, else English), icon, kind, state }, or nil.
+function ns.Enchant(list, slot)
+    local e = list and list.ench and list.ench[slot]
+    if not e then return nil end
+    local kind = ns.ENCH_ICON[e[3]] and e[3] or "other"
+    return { id = e[1], name = spellName(e[1]) or e[2], icon = spellIcon(e[1]) or ns.ENCH_ICON[kind],
+             kind = kind, state = ns.EnchantState(slot) }
+end
+
+-- The slots of a list that take an enchant and how many of them have one on the worn item.
+function ns.EnchantProgress(list)
+    local have, of = 0, 0
+    for _, slot in ipairs(D.slots) do
+        if list.ench[slot] then
+            of = of + 1
+            if ns.EnchantState(slot) == "on" then have = have + 1 end
+        end
+    end
+    return have, of
+end
+
 -- Specs and stages ----------------------------------------------------------------------------------
 
 local SPEC = {}
@@ -688,22 +741,41 @@ end
 
 local function S_cap(t) return ns.Skin and ns.Skin.Cap and ns.Skin.Cap(t) or t end
 
--- Lines for an item's tooltip: its place on the main list and the place of what is worn there.
+-- Lines for an item's tooltip: its place on the main list and the place of what is worn there,
+-- and the list's enchant of its slot (also for what is worn there and not on the list).
 function ns.TipLines(id)
-    if not ns.db or not ns.db.tooltip or ns.paused or not id or not D.item[id] then return nil end
+    if not ns.db or not ns.db.tooltip or ns.paused or not id then return nil end
+    if not D.item[id] then
+        local worn = false
+        for slot in pairs(ns.INV) do if wornItem(slot) == id then worn = true; break end end
+        if not worn then return nil end
+    end
     local list = ns.Main()
     if not list then return nil end
+    local S = ns.Skin
     local out = {}
     for _, r in ipairs(ns.SlotRows(list)) do
         local rank = rankOf(r.ids, id)
+        local shown = false
         if rank and r.counted then
             local right
             if r.worn == id then right = L.TIP_WORN
             elseif r.rank then right = L.TIP_YOURS:format(r.rank)
             else right = L.TIP_YOURS_OFF end
             out[#out + 1] = { group = "note", icon = ns.ICON, left = S_cap(L.TIP_RANK:format(L["SLOT_" .. r.slot], rank, #r.ids)),
-                              right = right, color = rank == 1 and ns.Skin.GOLD or ns.Skin.TEXT,
-                              rcolor = r.worn == id and ns.Skin.GOOD or ns.Skin.MUTED, sub = #out > 0 }
+                              right = right, color = rank == 1 and S.GOLD or S.TEXT,
+                              rcolor = r.worn == id and S.GOOD or S.MUTED, sub = #out > 0 }
+            shown = true
+        end
+        local e = (shown or r.worn == id) and r.counted and ns.Enchant(list, r.slot) or nil
+        if e then
+            out[#out + 1] = { group = "note", icon = e.icon, left = S_cap(L.TIP_ENCH), right = e.name,
+                              color = S.MUTED, rcolor = S.TEXT, sub = #out > 0 }
+            if r.worn == id and e.state then
+                local on = e.state == "on"
+                out[#out + 1] = { group = "note", left = on and L.ENCH_ON or L.ENCH_NONE,
+                                  color = on and S.GOOD or S.WARN, sub = true }
+            end
         end
     end
     return #out > 0 and out or nil

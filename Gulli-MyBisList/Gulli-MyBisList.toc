@@ -10,7 +10,7 @@
 ## Notes-zhCN: 每个职业、专精和等级（20级到团本前）的最佳装备，逐个部位：身上穿的、背包里有的，以及其余的去哪里拿。 /gbis
 ## Notes-zhTW: 每个职业、专精和等级（20级到团本前）的最佳装备，逐个部位：身上穿的、背包里有的，以及其余的去哪里拿。 /gbis
 ## Author: Gulliby
-## Version: 1.2.2
+## Version: 1.3.0
 ## IconTexture: Interface\AddOns\Gulli-MyBisList\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: MyBisList
