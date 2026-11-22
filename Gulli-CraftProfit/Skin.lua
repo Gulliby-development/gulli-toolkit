@@ -3823,6 +3823,95 @@ do
     end
 end
 
+-- ---------- work in steps ----------
+-- The game has one thread: work that takes long (a plan, a scan of a big list) runs as a job, a
+-- coroutine that gives the frame back once its slice is spent and goes on in the next frame, so
+-- the game never stops. The work calls S.JobTick(share) in its loops (share 0..1 for the
+-- progress bar, optional); outside a job S.JobTick does nothing. Without the game's clock
+-- (debugprofilestop, as in the tests) a job runs to its end at once.
+S.JOB_SLICE = 8 -- milliseconds of a frame
+local jobs, jobOf, jobFrame = {}, {}, nil
+local function jobClock() return debugprofilestop and debugprofilestop() or nil end
+
+local function jobStep(j)
+    j.sliceEnd = (jobClock() or 0) + S.JOB_SLICE
+    local ok, res = coroutine.resume(j.co)
+    if not ok then
+        jobs[j.key], jobOf[j.co] = nil, nil
+        local handler = geterrorhandler and geterrorhandler()
+        if handler then handler(res) end
+        if j.failed then j.failed(res) end
+        return true
+    end
+    if coroutine.status(j.co) == "dead" then
+        jobs[j.key], jobOf[j.co] = nil, nil
+        j.progress = 1
+        if j.done then j.done(res) end
+        return true
+    end
+    return false
+end
+
+local function jobDrive()
+    if jobFrame then jobFrame:Show(); return end
+    jobFrame = CreateFrame("Frame")
+    jobFrame:SetScript("OnUpdate", function(self)
+        -- a done() may start a new job: step a copy of the list
+        local list = {}
+        for _, j in pairs(jobs) do list[#list + 1] = j end
+        for _, j in ipairs(list) do
+            if jobs[j.key] == j then jobStep(j) end
+        end
+        if not next(jobs) then self:Hide() end
+    end)
+end
+
+-- Starts a job: work() returns the result, done(result) takes it on its frame. A job of the same
+-- key that still runs is dropped (its done never comes). Returns true when the job is already
+-- done (no clock: it ran at once).
+function S.Job(key, work, done, failed)
+    local old = jobs[key]
+    if old then jobOf[old.co] = nil end
+    local j = { key = key, co = coroutine.create(work), done = done, failed = failed, progress = 0 }
+    jobs[key], jobOf[j.co] = j, j
+    if not jobClock() or not CreateFrame then
+        while not jobStep(j) do end
+        return true
+    end
+    -- the first slice runs now: a short job is done before the frame ends
+    if jobStep(j) then return true end
+    jobDrive()
+    return false
+end
+
+function S.JobTick(share)
+    local co = coroutine.running()
+    local j = co and jobOf[co]
+    if not j then return end
+    if share then j.progress = math.max(j.progress, math.min(1, share)) end
+    local now = jobClock()
+    if now and now >= j.sliceEnd then coroutine.yield() end
+end
+
+-- Is the job running, and how far it is (0..1).
+function S.JobRunning(key)
+    local j = jobs[key]
+    return j ~= nil, j and j.progress or 0
+end
+
+function S.JobCancel(key)
+    local j = jobs[key]
+    if j then jobs[key], jobOf[j.co] = nil, nil end
+end
+
+-- How long fn took (milliseconds) and its first result; 0 without the game's clock.
+function S.Timed(fn, ...)
+    local t0 = jobClock()
+    local r = fn(...)
+    local t1 = jobClock()
+    return (t0 and t1) and (t1 - t0) or 0, r
+end
+
 -- ---------- auction prices ----------
 -- Every module reads auction prices here, from the addons that know them, each only through
 -- its public calls: `on()` says it is loaded, `price(id, caller)` gives copper and the age in

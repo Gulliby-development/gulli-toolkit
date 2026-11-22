@@ -23,7 +23,7 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 - **Coin Pouches in plain sight.** Every turn-in gives a Coin Pouch with gold in it. The plan shows it on every line and on top: **Purchases**, minus **Coin Pouches**, equals **Total**. A writ that costs less than its pouch is marked **profit** in green, and the plan always takes it; one that costs more shows its **loss** in red. Craftsman's Writ learns what your pouches really hold when you open them.
 - **Bags and bank first.** Writs and items you already have cost nothing. The bank counts too (switch it off if you like).
 - **Sealed Writs.** A Sealed Writ holds a random writ of its rank. The plan can count it at the mean price of that rank's items.
-- **Real auction prices.** Prices come from your price addon (Auctionator and others). At the auction house, **Calculate** (and **Recalculate**) plans the whole way again and reads the real listings, so an item that is sold out stays out of the plan and buying many also counts the dearer ones. Away from the auction house it uses only your price addon.
+- **Real auction prices.** Prices come from your price addon (Auctionator and others). At the auction house, **Calculate** (and **Recalculate**) plans the whole way again and reads the real listings, so an item that is sold out stays out of the plan and buying many also counts the dearer ones. Away from the auction house it uses only your price addon. A long plan (many days, a far standing) is worked out over a few moments with a moving bar, so the game never stops while it counts.
 - **Buy in steps.** At the auction house the window opens beside the auction window. The **Buy** button buys the plan step by step: one writ a step, first the writs, then the item it asks for. Each step shows a dot for every day: green when you have it or bought it, the next one to buy has a ring. Items sold in stacks are bought all at once; writs and other single items are bought one press at a time.
 - **Lead me.** With writs ready, **Lead me** puts a map pin on the nearest customer, and a small tracker lists the others. Customers the data does not know yet are learned when you take or hand in their writ.
 - **Diplomat counted.** The Legacy perk Diplomat gives more reputation. Craftsman's Writ reads what you really get after a turn-in and plans with it.
@@ -44,7 +44,7 @@ Craftsman's Writ works on its own. With the Gulli Toolkit hub it also shows in `
 2. Go to the auction house and press **Calculate**, then **Buy** until everything is bought.
 3. Open the Sealed Writs, take the writs, and press **Lead me** on the **Today** tab.
 
-Type `/gcw` (or the old `/gwr`) to open the window, `/gcw lead` to start the guide, `/gcw stop` to end it, `/gcw pouches` to see what the pouches hold.
+Type `/gcw` (or the old `/gwr`) to open the window, `/gcw lead` to start the guide, `/gcw stop` to end it, `/gcw pouches` to see what the pouches hold, `/gcw perf` to see how long the window and the last plan took.
 
 ## FAQ
 

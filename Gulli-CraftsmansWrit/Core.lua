@@ -57,7 +57,13 @@ local function itemCount(id, bank)
     local f = I.GetItemCount or GetItemCount
     return f and (f(id, bank) or 0) or 0
 end
+-- Asks the client for an item once a minute at most: every request the server answers is a
+-- GET_ITEM_INFO_RECEIVED for every addon, and the lists ask for each name they show.
+local asked = {}
 local function requestItem(id)
+    local now = GetTime and GetTime() or 0
+    if asked[id] and now - asked[id] < 60 then return end
+    asked[id] = now
     if I.RequestLoadItemDataByID then pcall(I.RequestLoadItemDataByID, id) end
 end
 function ns.DisplayName(id)
@@ -173,8 +179,11 @@ function ns.WritsFor(item)
 end
 
 -- Every writ this character's side can do, by rank then name of the item id.
+local writsOf = {}
 function ns.Writs()
-    local me, out = side(), {}
+    local me = side()
+    if writsOf[me or "?"] then return writsOf[me or "?"] end
+    local out = {}
     for id in pairs(ns.WRITS) do
         local w = ns.Writ(id)
         if not w.side or not me or w.side == me then out[#out + 1] = w end
@@ -184,6 +193,7 @@ function ns.Writs()
         if a.rank ~= b.rank then return order[a.rank] < order[b.rank] end
         return a.id < b.id
     end)
+    writsOf[me or "?"] = out
     return out
 end
 
@@ -208,10 +218,40 @@ function ns.StateOf(w)
     return s
 end
 
+-- What the bags, the bank, the quest log and the prices say is read once and kept until one of
+-- them changes (ns.Invalidate from the events), else at most CACHE_TTL seconds: the window, the
+-- hub's line and the tooltips ask for it many times a second.
+local CACHE_TTL = 30
+local cache = { at = 0 }
+function ns.Invalidate()
+    cache = { at = time and time() or 0 }
+end
+-- Events come in bursts (a bag change, the quest log, a page of auctions): the window is drawn
+-- again once, a moment after the last one.
+function ns.RefreshSoon()
+    if not (C_Timer and C_Timer.After) then if ns.Refresh then ns.Refresh() end return end
+    if ns.refreshQueued then return end
+    ns.refreshQueued = true
+    C_Timer.After(0.2, function()
+        ns.refreshQueued = nil
+        if ns.Refresh then ns.Refresh() end
+    end)
+end
+local function cached(key, make)
+    local now = time and time() or 0
+    if now - cache.at > CACHE_TTL then ns.Invalidate() end
+    local v = cache[key]
+    if v == nil then v = make(); cache[key] = v end
+    return v
+end
+ns.Cached = cached
+
 function ns.States()
-    local out = {}
-    for _, w in ipairs(ns.Writs()) do out[#out + 1] = ns.StateOf(w) end
-    return out
+    return cached("states", function()
+        local out = {}
+        for _, w in ipairs(ns.Writs()) do out[#out + 1] = ns.StateOf(w) end
+        return out
+    end)
 end
 
 -- The Sealed Writs in the bags (and the bank): { [rank] = n }.
@@ -272,6 +312,7 @@ function ns.NotePouch(rank, copper)
     ns.db.pouches = ns.db.pouches or {}
     local r = ns.db.pouches[rank] or { n = 0, total = 0 }
     r.n, r.total = r.n + 1, r.total + copper
+    ns.Invalidate()
     r.min, r.max = math.min(r.min or copper, copper), math.max(r.max or copper, copper)
     ns.db.pouches[rank] = r
     if ns.cdb then
@@ -448,6 +489,15 @@ function ns.Snapshot()
     ns.db.chars[key] = { side = side(), class = class, at = time(), writs = writs, items = items }
 end
 
+-- Looting sends a bag update per item: the snapshot (300 counts with the bank) waits for the
+-- bags to be still a few seconds.
+function ns.SnapshotSoon()
+    if not (C_Timer and C_Timer.After) then return ns.Snapshot() end
+    if ns.snapQueued then return end
+    ns.snapQueued = true
+    C_Timer.After(5, function() ns.snapQueued = nil; ns.Snapshot() end)
+end
+
 -- Other characters of this side that hold an item (a writ or an item a writ asks for).
 function ns.AltCounts(id)
     local me, mine, out = charKey(), side(), {}
@@ -465,7 +515,14 @@ end
 
 function ns.HasPrices() return ns.Skin and ns.Skin.HasPrices and ns.Skin.HasPrices() or false end
 function ns.AuctionPrice(id)
-    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
+    if not id then return nil end
+    local prices = cached("prices", function() return {} end)
+    local p = prices[id]
+    if p == nil then
+        p = ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or false
+        prices[id] = p
+    end
+    return p or nil
 end
 
 ns.LOTS_FRESH = 10 * 60
@@ -499,6 +556,13 @@ end
 -- What one turn-in of a writ costs now: { writ, item, pouch, total } (copper; nil parts are not
 -- for sale), counting what the bags and the bank hold as free.
 function ns.CostOf(w, useBank)
+    local costs = cached(useBank and "costsBank" or "costs", function() return {} end)
+    if costs[w.id] then return costs[w.id] end
+    local c = ns.CostNow(w, useBank)
+    costs[w.id] = c
+    return c
+end
+function ns.CostNow(w, useBank)
     local bags, bank = ns.Stock(w.id)
     local own = bags + (useBank and bank or 0)
     local have, haveBank = ns.Stock(w.item)
@@ -522,13 +586,28 @@ end
 
 -- Asks the client for every writ and item name of this side once, so the lists show names
 -- instead of "..." when the window opens; GET_ITEM_INFO_RECEIVED repaints it.
+-- The requests go out PREFETCH_STEP at a time, so the answers do not come in one burst.
+local PREFETCH_STEP = 25
 function ns.Prefetch()
-    for _, w in ipairs(ns.Writs()) do
-        if not itemName(w.id) then requestItem(w.id) end
-        if not itemName(w.item) then requestItem(w.item) end
+    if ns.prefetching then return end
+    local ids = {}
+    for _, w in ipairs(ns.Writs()) do ids[#ids + 1] = w.id; ids[#ids + 1] = w.item end
+    for id in pairs(ns.SEALED) do ids[#ids + 1] = id end
+    for _, id in pairs(ns.POUCH) do ids[#ids + 1] = id end
+    local i = 1
+    local function step()
+        local n = 0
+        while i <= #ids and n < PREFETCH_STEP do
+            local id = ids[i]
+            i = i + 1
+            if not itemName(id) then requestItem(id); n = n + 1 end
+        end
+        if i <= #ids and C_Timer and C_Timer.After then C_Timer.After(0.1, step)
+        elseif i <= #ids then return step()
+        else ns.prefetching = nil end
     end
-    for id in pairs(ns.SEALED) do if not itemName(id) then requestItem(id) end end
-    for _, id in pairs(ns.POUCH) do if not itemName(id) then requestItem(id) end end
+    ns.prefetching = true
+    step()
 end
 
 -- ---------- the plan (no game calls) ----------
@@ -543,7 +622,8 @@ end
 -- input: { need = reputation, days = n, mult = 1.05, writs = { { id, rank, rep, item, count,
 --   own = writs held, done = handed in today } }, sealed = { { id, rank, own = held } },
 --   price = function(id, n, skip) mean unit price or nil, stock = function(item) -> held,
---   pouch = function(rank) -> copper, tick = optional function called once a type }
+--   pouch = function(rank) -> copper, tick = optional function(share 0..1) called in the long loops,
+--   which lets a job give the frame back }
 -- returns { lines = { { kind = "writ"|"sealed", id, w, k, day, writ, item, pouch, cost,
 --   writFrom = "own"|"ah", itemFrom = "own"|"ah", estimate } }, total, buy, pouch, rep, short,
 --   byDay = { [d] = { n, rep, cost } }, profit = n }
@@ -576,8 +656,10 @@ function ns.Plan(input)
         return take
     end
 
+    local tick = input.tick or function() end
+    local nWrits = math.max(1, #(input.writs or {}))
     local types = {}
-    for _, w in ipairs(input.writs or {}) do
+    for wi, w in ipairs(input.writs or {}) do
         local take = pool()
         local cap = days - (w.done and 1 or 0)
         local own, got, steps = w.own or 0, 0, {}
@@ -598,7 +680,7 @@ function ns.Plan(input)
         if #steps > 0 then
             types[#types + 1] = { kind = "writ", id = w.id, w = w, u = math.floor(w.rep / UNIT), steps = steps }
         end
-        if input.tick then input.tick() end
+        tick(0.25 * wi / nWrits)
     end
     -- the mean item cost of a rank, over the writs of that rank with a price
     local mean = {}
@@ -641,6 +723,7 @@ function ns.Plan(input)
         local nd, np = {}, {}
         for x = 0, U do nd[x], np[x] = dp[x], 0 end
         for x = 0, U do
+            if x % 64 == 0 then tick() end
             if dp[x] < INF then
                 local sum = 0
                 for k, st in ipairs(ty.steps) do
@@ -651,7 +734,7 @@ function ns.Plan(input)
             end
         end
         dp, picks[t] = nd, np
-        if input.tick then input.tick() end
+        tick(0.3 + 0.7 * t / #types)
     end
     -- the best reachable: the goal, else the most units the priced copies give
     local best = U
@@ -771,6 +854,17 @@ local live, busy, cancelQuote, canSearch
 -- Calculate (and Recalculate) plans the whole way anew from what the bags and the bank hold now.
 -- At the auction house it reads again every lot the plan buys, so what is sold out or dearer now
 -- shows; away from it the plan takes the price addon's prices and checks nothing on sale.
+--
+-- A plan of many days and a far goal is a long knapsack, so it runs as a job over several frames
+-- (S.Job) with a progress bar; the window keeps the last plan meanwhile. Returns the plan when it
+-- was done at once (no frame clock, as in the tests), else nil: the plan comes a few frames later.
+ns.perf = {}
+local JOB = "CraftsmansWritPlan"
+function ns.Calculating()
+    local S = ns.Skin
+    if not (S and S.JobRunning) then return false, 0 end
+    return S.JobRunning(JOB)
+end
 function ns.Calculate(round)
     if not ns.db or ns.paused then return end
     if not round then
@@ -779,25 +873,52 @@ function ns.Calculate(round)
     end
     round = round or 1
     if round == 1 then ns.flat, ns.tried = {}, {} end
-    local input = ns.PlanInput()
-    local plan = ns.Plan(input)
-    fixLines(plan, input)
-    for id in pairs(ns.flat) do
-        local lots = ns.atAH and ns.lots[id]
-        if not lots or time() - lots.t > ns.LOTS_FRESH then plan.estimate = true; break end
+    ns.Invalidate()
+    local S = ns.Skin
+    local t0 = debugprofilestop and debugprofilestop()
+    local function work()
+        local input = ns.PlanInput()
+        -- each price once: the knapsack asks for the same copies again and again
+        local memo, price = {}, input.price
+        input.price = function(id, n, skip)
+            local key = id .. ":" .. n .. ":" .. skip
+            local v = memo[key]
+            if v == nil then v = price(id, n, skip) or false; memo[key] = v end
+            return v or nil
+        end
+        input.tick = S and S.JobTick
+        return { input = input, plan = ns.Plan(input) }
     end
-    plan.goal, plan.need, plan.days = input.goal, input.need, input.days
-    ns.plan, ns.stale = plan, nil
-    ns.ResetBuy()
-    if live then live(round) end
-    if ns.Refresh then ns.Refresh() end
-    return plan
+    local result
+    local function done(r)
+        local input, plan = r.input, r.plan
+        fixLines(plan, input)
+        for id in pairs(ns.flat) do
+            local lots = ns.atAH and ns.lots[id]
+            if not lots or time() - lots.t > ns.LOTS_FRESH then plan.estimate = true; break end
+        end
+        plan.goal, plan.need, plan.days = input.goal, input.need, input.days
+        ns.plan, ns.stale = plan, nil
+        if t0 and debugprofilestop then ns.perf.calc = debugprofilestop() - t0 end
+        ns.ResetBuy()
+        result = plan
+        if live then live(round) end
+        if ns.Refresh then ns.Refresh() end
+    end
+    if S and S.Job then
+        S.Job(JOB, work, done, function() if ns.Refresh then ns.Refresh() end end)
+    else
+        done(work())
+    end
+    if not result and ns.Refresh then ns.Refresh() end
+    return result
 end
 
 -- A change of the goal or the days marks the plan outdated; Calculate plans anew.
 function ns.SetPref(key, value)
     if not ns.db then return end
     ns.db[key] = value
+    ns.Invalidate()
     if ns.plan then ns.stale = true end
     if ns.Refresh then ns.Refresh() end
 end
@@ -844,6 +965,7 @@ nextSearch = function()
         scan.busy, scan.queue = nil, {}
         local after = scan.after
         scan.after = nil
+        ns.Invalidate()
         if after and ns.atAH then after() elseif ns.Refresh then ns.Refresh() end
         return
     end
@@ -855,7 +977,7 @@ nextSearch = function()
     C_Timer.After(SEARCH_WAIT, function()
         if scan.busy == id then scan.done = scan.done + 1; nextSearch() end
     end)
-    if ns.Refresh then ns.Refresh() end
+    ns.RefreshSoon()
 end
 
 function ns.OnSearch(arg)
@@ -864,6 +986,7 @@ function ns.OnSearch(arg)
     local got = type(arg) == "table" and arg.itemID or arg
     if got ~= nil and got ~= id then return end -- the player's own search
     ns.lots[id] = { t = time(), l = readLots(id) }
+    ns.Invalidate()
     scan.done = scan.done + 1
     C_Timer.After(SEARCH_GAP, function() if scan.busy == id then nextSearch() end end)
 end
@@ -1521,6 +1644,7 @@ end
 
 function ns.AuctionClosed()
     ns.atAH = false
+    ns.Invalidate()
     ns.StopScan()
     if ns.buy.phase ~= "done" then ns.buy.phase, ns.buy.quote = "idle", nil end
     if ns.HideAtAH then ns.HideAtAH() end
@@ -1582,10 +1706,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         local r = ns.Rep()
         ns.NoteRep(r and r.value)
         if event == "PLAYER_ENTERING_WORLD" then ns.PouchReset(); ns.Snapshot(); ns.Prefetch() end
-        if ns.Refresh then ns.Refresh() end
+        ns.Invalidate()
+        ns.RefreshSoon()
         return
     end
     if event == "QUEST_TURNED_IN" then
+        ns.Invalidate()
         if ns.TurnedIn(a1) then
             local r = ns.Rep()
             repWas = repWas or (r and r.value)
@@ -1600,6 +1726,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if ns.paused then return end
     if event == "AUCTION_HOUSE_SHOW" then
         ns.atAH = true
+        ns.Invalidate()
         if ns.plan and not busy() then ns.Calculate() end
         if ns.db.auto and ns.WorkAtAH() and ns.ShowAtAH then ns.ShowAtAH() end
         if ns.Refresh then ns.Refresh() end
@@ -1615,9 +1742,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
             end)
         end
     elseif event == "BAG_UPDATE_DELAYED" or event == "QUEST_LOG_UPDATE" then
-        if event == "BAG_UPDATE_DELAYED" then ns.PouchCheck(); ns.Snapshot() end
+        ns.Invalidate()
+        if event == "BAG_UPDATE_DELAYED" then ns.PouchCheck(); ns.SnapshotSoon() end
         if ns.guide and event == "BAG_UPDATE_DELAYED" then ns.StepGuide() end
-        if ns.Refresh then ns.Refresh() end
+        ns.RefreshSoon()
     elseif event == "BANKFRAME_OPENED" then
         ns.Snapshot()
     elseif event == "ZONE_CHANGED_NEW_AREA" then
@@ -1636,6 +1764,11 @@ SlashCmdList.GULLICRAFTSMANSWRIT = function(msg)
     if msg == "lead" then if not ns.StartGuide() then say(L.GUIDE_NONE) end return end
     if msg == "stop" then ns.StopGuide() return end
     if msg == "plan" then ns.Calculate(); if ns.ShowTab then ns.ShowTab(2) end return end
+    if msg == "perf" then
+        local p = ns.perf
+        say(L.PERF_LINE:format(math.floor(p.redraw or 0), p.tab or 0, math.floor(p.calc or 0)))
+        return
+    end
     if msg == "pouches" then
         for _, r in ipairs(ns.RANKS) do
             local avg, n = ns.PouchAvg(r)

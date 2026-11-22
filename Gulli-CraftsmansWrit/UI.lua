@@ -518,13 +518,15 @@ local function refreshFooter()
         return
     end
     if not onPlan then frame.footer:SetStatus(""); return end
-    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning()
-    label(calcBtn, plan and L.RECALC or L.CALCULATE, 110)
-    calcBtn:SetEnabled(not ns.Scanning() and not ns.Busy())
+    local calculating, share = ns.Calculating()
+    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning() or calculating
+    label(calcBtn, calculating and L.CALC_BUSY:format(math.floor(share * 100)) or (plan and L.RECALC or L.CALCULATE), 110)
+    calcBtn:SetEnabled(not ns.Scanning() and not ns.Busy() and not calculating)
     label(buyBtn, buyText(), 160)
     buyBtn:SetEnabled(plan ~= nil and not ns.stale and #b.queue > 0 and b.phase ~= "done" and not busy
         and ns.atAH and ns.CanBuy())
-    frame.footer:SetStatus(buyStatus(plan))
+    if calculating then frame.footer:SetStatus(L.CALC_LINE:format(math.floor(share * 100)), S.Accent())
+    else frame.footer:SetStatus(buyStatus(plan)) end
 end
 
 -- ---------- refresh ----------
@@ -570,6 +572,12 @@ local function refreshPlan()
     elseif plan then planEmpty:Set(L.PLAN_NONE, L.PLAN_NONE_SUB)
     else planEmpty:Set(L.PLAN_EMPTY, L.PLAN_EMPTY_SUB) end
     planCard:SetTitle(L.PLAN, plan and #plan.lines > 0 and L.PLAN_HINT:format(plan.rep, plan.days) or "")
+    local calculating, share = ns.Calculating()
+    planCard.calcBar:SetShown(calculating)
+    if calculating then
+        planCard.calcBar:Set(share)
+        planCard.calcWatch:Show()
+    end
 end
 
 local function refreshWrits()
@@ -601,16 +609,21 @@ local function refreshSettings()
     pouchNote:SetText(L.POUCHES_SUB .. " " .. L.TIP_POUCH_SEEN:format(seen))
 end
 
-function ns.Refresh()
-    S.SideRefresh()
-    if ns.RefreshTracker and ns.guide then ns.RefreshTracker() end
-    if not frame or not frame:IsShown() then return end
+local function refreshTab()
     if tab == 1 then refreshToday()
     elseif tab == 2 then refreshPlan()
     elseif tab == 3 then refreshWrits()
     elseif tab == 4 then refreshHistory()
     else refreshSettings() end
     refreshFooter()
+end
+
+function ns.Refresh()
+    S.SideRefresh()
+    if ns.RefreshTracker and ns.guide then ns.RefreshTracker() end
+    if not frame or not frame:IsShown() then return end
+    -- how long it took, for /gcw perf
+    ns.perf.redraw, ns.perf.tab = S.Timed(refreshTab), tab
 end
 
 -- ---------- build ----------
@@ -743,6 +756,23 @@ local function build()
     planCard:SetPoint("BOTTOMRIGHT")
     planEmpty = S.Empty(planList)
     planEmpty:Set(L.PLAN_EMPTY, L.PLAN_EMPTY_SUB)
+    -- while a plan is calculated: a moving bar over the list, the share on the button and the
+    -- status line, drawn each frame; the list keeps the last plan meanwhile
+    planCard.calcBar = S.Progress(planCard, 6)
+    planCard.calcBar:SetPoint("TOPLEFT", planCard, "TOPLEFT", S.INSET, -34)
+    planCard.calcBar:SetPoint("TOPRIGHT", planCard, "TOPRIGHT", -S.INSET, -34)
+    planCard.calcBar:SetFrameLevel((tonumber(planCard:GetFrameLevel()) or 1) + 20)
+    planCard.calcBar:Hide()
+    planCard.calcWatch = CreateFrame("Frame", nil, frame)
+    planCard.calcWatch:Hide()
+    planCard.calcWatch:SetScript("OnUpdate", function(self)
+        local calculating, share = ns.Calculating()
+        if not calculating then self:Hide(); return end
+        if tab ~= 2 or not frame:IsShown() then return end
+        planCard.calcBar:Set(share)
+        label(calcBtn, L.CALC_BUSY:format(math.floor(share * 100)), 110)
+        frame.footer:SetStatus(L.CALC_LINE:format(math.floor(share * 100)), S.Accent())
+    end)
 
     -- Writs
     local wp = pages[3]
