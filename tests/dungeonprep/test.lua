@@ -1190,10 +1190,14 @@ test("chains: one card per chain, at the step to do now; the tracker opens one t
     eq(#row.steps, 7)
     ns.StartGuide("DM")
     eq(ns.TrackerOpen(166), false)
+    local h = ns.TrackerFrame():GetHeight()
     ns.ToggleTracked(166)
     eq(ns.TrackerOpen(166), true, "a click opens the row to show every step")
+    eq(ns.TrackerFrame():GetHeight(), h, "the panel keeps its size: the steps go into a card beside it")
+    assert(ns.TrackerChainFrame():IsShown(), "the card with the steps shows")
     ns.ToggleTracked(166)
     eq(ns.TrackerOpen(166), false)
+    assert(not ns.TrackerChainFrame():IsShown(), "a second click closes the card")
     -- The whole chain done: one done chain.
     W.done = { [65] = true, [132] = true, [135] = true, [141] = true, [142] = true, [155] = true, [166] = true }
     W.active = {}
