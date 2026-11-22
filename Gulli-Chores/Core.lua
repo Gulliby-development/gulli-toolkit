@@ -217,9 +217,14 @@ local function craftProfitCooldowns()
     return out
 end
 
-local function readyAt(start, duration, now, clock)
+-- GetTime counts milliseconds in 32 bits: a start the game gives ahead of the clock began
+-- 2^32 ms (about 49.7 days) earlier. Time left is never more than the cooldown itself (max).
+ns.CLOCK_WRAP = 4294967.296
+local function readyAt(start, duration, now, clock, max)
     if secret(start) or secret(duration) then return nil end
+    if start > clock then start = start - ns.CLOCK_WRAP end
     local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
+    left = math.min(left, duration, max or duration)
     return now + math.max(0, math.floor(left)), left > 0
 end
 
@@ -260,7 +265,7 @@ function ns.ReadCooldowns(c, old, now, clock)
     c.cooldowns, c.cdProf, c.cdNames, c.cdSpells, c.cdTrade = {}, {}, {}, {}, {}
     local function spellReady(spell)
         local s, d = spellCooldown(spell)
-        local r, running = readyAt(s, d, now, clock)
+        local r, running = readyAt(s, d, now, clock, ns.CD_SECONDS[spell])
         local t = trade[spell]
         if t and t > now then
             c.cdTrade[spell] = t
@@ -277,8 +282,10 @@ function ns.ReadCooldowns(c, old, now, clock)
             end
         elseif hasLine(c.profs, cr.line) then
             for spell in pairs(cr.spells) do
-                local r, running = spellReady(spell)
-                if knows(spell) or running or spells[spell] or cp[spell] or c.cdTrade[spell] then
+                -- A running spell cooldown alone proves nothing: the game also shows the shared
+                -- cooldown of recipes the character never learned.
+                local r = spellReady(spell)
+                if knows(spell) or spells[spell] or cp[spell] or c.cdTrade[spell] then
                     c.cdSpells[spell] = true
                     if r and (not best or r < best) then best = r end
                 end
@@ -298,6 +305,34 @@ function ns.ReadCooldowns(c, old, now, clock)
             c.cooldowns[key], c.cdProf[key], c.cdNames[key] = ready, r.prof, r.name
         end
     end
+end
+
+-- Once: 1.14.0 and 1.14.1 took a running cooldown for a learned recipe and did not undo the
+-- game's clock wrap, so they saved cooldowns of 50 days. Drop what is longer than it can be.
+function ns.FixCooldowns()
+    if ns.db.cdFix then return end
+    local longest = {}
+    for spell, sec in pairs(ns.CD_SECONDS) do
+        local k = ns.CD_KEY[spell]
+        if sec > (longest[k] or 0) then longest[k] = sec end
+    end
+    for _, c in pairs(ns.db.chars) do
+        local t = c.t or 0
+        c.cdSpells = {}
+        for k, ready in pairs(c.cooldowns or {}) do
+            local most = longest[k] or 7 * 86400
+            if ready - t > most then
+                c.cooldowns[k] = nil
+                if c.cdProf then c.cdProf[k] = nil end
+                if c.cdNames then c.cdNames[k] = nil end
+            end
+        end
+        for spell, ready in pairs(c.cdTrade or {}) do
+            if ready - t > (ns.CD_SECONDS[spell] or 7 * 86400) then c.cdTrade[spell] = nil end
+        end
+        if c.hearth and c.hearth - t > 3600 then c.hearth = t end
+    end
+    ns.db.cdFix = 1
 end
 
 -- Takes this character's snapshot. What the game only shows at the mailbox or the bank, and
@@ -330,8 +365,7 @@ function ns.Snapshot()
     ns.ReadCooldowns(c, old, now, clock)
     if itemCount(HEARTHSTONE) > 0 then
         local start, duration = itemCooldown(HEARTHSTONE)
-        local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
-        c.hearth = now + math.max(0, math.floor(left))
+        c.hearth = readyAt(start, duration, now, clock) or now
     end
     c.bind = bindLocation()
     c.lockouts = lockouts(now) or old.lockouts
@@ -602,7 +636,8 @@ function ns.Tone(col, v)
         if v >= RESTED_MAX then return "GOOD" end
         return v <= 0 and "MUTED" or nil
     elseif col == "cd" then
-        return v == 0 and "GOOD" or nil
+        if v == 0 then return "GOOD" end
+        return v ~= math.huge and "BAD" or nil
     end
 end
 
@@ -766,6 +801,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db.off, ns.db.hidden, ns.db.alerted = ns.db.off or {}, ns.db.hidden or {}, ns.db.alerted or {}
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.MergeRealmless()
+        ns.FixCooldowns()
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "TRAINER_SHOW", "PLAYER_LEVEL_UP",
                              "UPDATE_PENDING_MAIL", "MAIL_CLOSED", "BAG_UPDATE_DELAYED", "PLAYER_UPDATE_RESTING",
                              "UPDATE_INVENTORY_DURABILITY", "TRADE_SKILL_CLOSE", "PLAYER_MONEY",

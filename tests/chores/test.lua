@@ -83,14 +83,43 @@ test("a cooldown the character does not know is not tracked", function()
     Fake({})
     local ns = Load()
     eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil)
-    W.char.cooldowns[18560] = { W.now, 86400 } -- a cooldown that runs proves the recipe is learned
-    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now + 86400)
-    W.char.cooldowns[18560] = nil
-    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, W.now, "and stays known once it ran")
+    W.char.cooldowns[18560] = { W.now, 86400 } -- the game shows it for recipes nobody learned too
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil, "a running cooldown alone proves nothing")
     W.char.items[15846] = 1 -- the Salt Shaker is tracked while it is in the bags
     local texts = {}
     for _, t in ipairs(ns.Tasks(ns.Snapshot())) do texts[t.text] = true end
     assert(texts["Salt Shaker is ready"])
+end)
+test("a start past the game's clock wrapped, and time left never passes the cooldown", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    W.char.spells[18560] = true
+    -- the game gave the start 2^32 ms ahead: it really began an hour ago
+    W.char.cooldowns[18560] = { 50000 + 4294967.296 - 3600, 4 * 86400 }
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50000 - 3600 + 4 * 86400)
+    W.char.cooldowns[18560] = { 50000, 60 * 86400 } -- a duration longer than Mooncloth's
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50000 + 4 * 86400)
+    W.char.items[6948] = 1
+    W.char.cooldowns[6948] = { 50000 + 4294967.296 - 600, 1800 }
+    eq(ns.Snapshot().hearth, 50000 + 1200, "the hearthstone wraps the same way")
+end)
+
+test("cooldowns of 50 days saved by 1.14.0 are dropped once", function()
+    Fake({ name = "Me", now = 50000, db = { chars = {
+        ["Alt-Realm"] = { name = "Alt", level = 54, t = 40000, cdSpells = { [18560] = true },
+                          cooldowns = { CD_MOONCLOTH = 40000 + 51 * 86400, CD_HIDE = 40000 + 3600 },
+                          cdProf = { CD_MOONCLOTH = "Tailoring" }, cdTrade = { [18560] = 40000 + 51 * 86400 },
+                          hearth = 40000 + 50 * 86400 },
+    } } })
+    local ns = Load()
+    local c = ns.db.chars["Alt-Realm"]
+    eq(c.cooldowns.CD_MOONCLOTH, nil); eq(c.cdProf.CD_MOONCLOTH, nil); eq(c.cdTrade[18560], nil)
+    eq(c.cooldowns.CD_HIDE, 40000 + 3600, "a cooldown that can be stays")
+    eq(next(c.cdSpells), nil); eq(c.hearth, 40000); eq(ns.db.cdFix, 1)
+    c.cooldowns.CD_MOONCLOTH = 40000 + 51 * 86400
+    ns.FixCooldowns()
+    eq(c.cooldowns.CD_MOONCLOTH, 40000 + 51 * 86400, "only once")
+    eq(ns.Tone("cd", 40000), "BAD"); eq(ns.Tone("cd", math.huge), nil)
 end)
 
 test("login prints what waits on the other characters", function()
