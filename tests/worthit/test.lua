@@ -577,6 +577,45 @@ test("the window opens, picks the first reward and follows the guide", function(
     ns.Slash("stop"); eq(ns.Guiding(), false)
 end)
 
+test("every item the window shows gives the game's tooltip on the mouse: list, page, class quests, books", function()
+    Fake({ level = 20, slots = { [POUCH] = 10 } })
+    local ns = Load()
+    C_Item.GetItemNameByID = function(id) return "Item " .. id end
+    local shown = {}
+    GameTooltip = W.stub()
+    rawset(GameTooltip, "SetItemByID", function(_, id) shown[#shown + 1] = id end)
+    local function hover()
+        local ids, n = {}, 0
+        for _, f in ipairs(W.frames) do
+            local id = rawget(f, "tipItem")
+            if id and rawget(f, "_shown") ~= false then
+                ids[id] = true
+                n = n + 1
+                f._OnEnter(f)
+            end
+        end
+        return ids, n
+    end
+    ns.Toggle()
+    ns.Show(BLANCHY)
+    local e = ns.Entry(BLANCHY)
+    local ids, n = hover()
+    assert(ids[e.item], "the page's reward and its row")
+    assert(n >= 2, "rows and the page")
+    eq(shown[#shown] ~= nil, true, "the game's item tooltip shows")
+    local _, _, _, tabs = ns.Parts()
+    for page = 2, 3 do
+        tabs:Select(page)
+        local before = #shown
+        hover()
+        assert(#shown > before, "page " .. page .. " shows item tooltips")
+    end
+    C_Item.GetItemNameByID = function() return nil end
+    shown = {}
+    hover()
+    eq(#shown, 0, "an item the client has not loaded shows its name, not an empty tooltip")
+end)
+
 test("random characters: the list and the guide never raise an error", function()
     math.randomseed(7)
     local classes = { "HUNTER", "WARLOCK", "PRIEST", "WARRIOR" }
