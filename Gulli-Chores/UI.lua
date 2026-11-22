@@ -225,7 +225,7 @@ local function fillCard(c)
                 r.name:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
                 r.name:SetText(cd.name)
                 r.name:SetTextColor(unpack(S.MUTED))
-                r.value:SetText(cd.done and (S.Hex(S.GOOD) .. L.READY_UP .. "|r") or ns.Span(cd.ready - now))
+                r.value:SetText(cd.done and (S.Hex(S.GOOD) .. L.READY_UP .. "|r") or (S.Hex(S.BAD) .. ns.Span(cd.ready - now) .. "|r"))
                 y = y + CD_H
             end
         end
@@ -405,7 +405,7 @@ local function fillCd(r, e)
     if e.done then
         r.value:SetText(S.Hex(S.GOOD) .. L.READY_UP .. "|r")
     else
-        r.value:SetText(S.Hex(S.MUTED) .. ns.Span(e.ready - time()) .. "|r")
+        r.value:SetText(S.Hex(S.BAD) .. ns.Span(e.ready - time()) .. "|r")
     end
 end
 
