@@ -19,7 +19,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 ## Features
 
 - **Take all.** Money and items from every letter, one after the other.
-- **Take one kind.** Under **Take all**, the same tiles as for sending: cloth, herbs, ore, leather, elemental, dust, gems or all goods. Tap one and only those items come out of every letter, and no money. Each tile shows how many wait in the mail; hover it to see the list.
+- **Take one kind.** Under **Take all**, the same tiles as for sending: cloth, herbs, ore, leather, elemental, dust, gems, consumables (potions, elixirs, flasks, scrolls, oils and stones, handy for what you bought at the auction) or all goods. Tap one and only those items come out of every letter, and no money. Each tile shows how many wait in the mail; hover it to see the list.
 - **Safe.** Letters with cash on delivery are left alone. It stops when your bags are full. An item the game will not give you (a unique item you already have) stays in its letter, and you are told how many.
 - **More than 50 letters.** The game shows 50 letters at a time. When more wait on the server, Take all asks for them and goes on (the server sends them about once a minute).
 - **Choose what to take.** Switches for money, auction sales, auction purchases, expired auctions and letters from players, and how many bag slots to keep free.
@@ -27,7 +27,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 - **A total.** What this visit brought, with the auction sales apart. It also goes to the toolkit's Recent feed.
 - **No lost mail.** A warning when letters with items or money run out within three days, also for your other characters when you log in.
 - **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to or took a letter from, your friends and your guild. Type to search.
-- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust or gems (or all of them) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; the **Auction** tile puts in everything a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice) says sells for more at the auction than at a vendor, after the auction's cut, for the character who sells there; fill in all your gold but what you keep; mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
+- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust, gems or consumables (or all trade goods) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; the **Auction** tile puts in everything a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice) says sells for more at the auction than at a vendor, after the auction's cut, for the character who sells there; fill in all your gold but what you keep; mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
 - **A log** of the last 50 letters you took from.
 
 ## Install

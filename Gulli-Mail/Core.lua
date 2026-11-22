@@ -39,7 +39,18 @@ ns.ATTACH_KINDS = {
     { key = "leather", class = 7, sub = 6, sample = 2318 },     -- Light Leather
     { key = "elemental", class = 7, sub = 10, sample = 7067 },  -- Elemental Earth
     { key = "enchanting", class = 7, sub = 12, sample = 10940 }, -- Strange Dust
-    { key = "gem", class = 3, sample = 774 },                   -- Malachite
+    -- WoW Forever files the mining gems under Trade Goods, Other (7/11), with spices, mojo and
+    -- crate quest items, so the gems go by id (and class 3 Gem for a client that has it).
+    { key = "gem", class = 3, ids = {
+        [774] = true, [818] = true, [1206] = true, [1210] = true, [1529] = true, [1705] = true,
+        [3864] = true, [5498] = true, [5500] = true, [7909] = true, [7910] = true, [7971] = true,
+        [11382] = true, [12361] = true, [12363] = true, [12364] = true, [12799] = true,
+        [12800] = true, [13926] = true,
+    }, sample = 774 },                                          -- Malachite
+    -- Potions, elixirs, flasks, scrolls, oils and stones (Consumable 0: 1-4, 6 and 8 for the
+    -- temporary weapon buffs); not food, bandages or explosives, and not in "all goods".
+    { key = "consumable", class = 0, subs = { [1] = true, [2] = true, [3] = true, [4] = true, [6] = true, [8] = true },
+      goods = false, sample = 13446 },                          -- Major Healing Potion
     { key = "all", all = true, icon = "Interface\\Icons\\INV_Misc_Bag_10" },
     -- Any item a price addon values above what a vendor pays, after the auction's cut: for the
     -- character who sells at the auction. Only on the send side.
@@ -607,10 +618,12 @@ function ns.KindHas(k, class, sub, id)
     if k.auction then return ns.WorthAuction(id) end
     if k.all then
         for _, o in ipairs(ns.ATTACH_KINDS) do
-            if not o.all and not o.auction and ns.KindHas(o, class, sub) then return true end
+            if not o.all and not o.auction and o.goods ~= false and ns.KindHas(o, class, sub, id) then return true end
         end
         return false
     end
+    if k.ids and id and k.ids[id] then return true end
+    if k.subs then return class == k.class and sub ~= nil and k.subs[sub] == true end
     return class == k.class and (not k.sub or sub == k.sub)
 end
 

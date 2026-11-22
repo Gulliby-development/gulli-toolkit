@@ -781,15 +781,16 @@ S.craftprofit.craftopen = { spec = S.craftprofit.default.spec, before = S.craftp
 
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
-                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
+                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589, 13446 } },
                        { sender = "Bob", subject = "Herbs", items = { 765, 785 }, days = 2.4 },
                        { sender = "Auction House", subject = "Auction expired: Copper Ore", items = { 2770 }, days = 25, player = false } },
-             classes = { [2589] = { 7, 5 }, [765] = { 7, 9 }, [785] = { 7, 9 }, [2770] = { 7, 7 } } },
+             classes = { [2589] = { 7, 5 }, [765] = { 7, 9 }, [785] = { 7, 9 }, [2770] = { 7, 7 }, [13446] = { 0, 1 } } },
     open = function(ns, W)
         local icons = { [2589] = "Interface\\Icons\\INV_Fabric_Linen_01", [765] = "Interface\\Icons\\INV_Misc_Flower_02",
                         [785] = "Interface\\Icons\\INV_Misc_Flower_01", [2770] = "Interface\\Icons\\INV_Ore_Copper_01",
                         [2318] = "Interface\\Icons\\INV_Misc_LeatherScrap_03", [10940] = "Interface\\Icons\\INV_Enchant_DustStrange",
-                        [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03", [7067] = "Interface\\Icons\\INV_Stone_02" }
+                        [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03", [7067] = "Interface\\Icons\\INV_Stone_02",
+                        [13446] = "Interface\\Icons\\INV_Potion_54" }
         C_Item.GetItemIconByID = function(id) return icons[id] end
         W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.visit.items, ns.visit.money, ns.visit.sold = 3, 26664, 26664; ns.Refresh() end,
     crop = "GulliMailPanel",
