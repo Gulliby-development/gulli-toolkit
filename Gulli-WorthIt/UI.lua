@@ -120,6 +120,37 @@ function ns.BehindMap()
     end
 end
 
+-- The game's tooltip of an item, or while the client has no data for it (it would only say
+-- "Retrieving item information") its name and what is going on.
+local function setItemTip(id)
+    if ns.Known(id) and GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) return end
+    GameTooltip:AddLine(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
+    GameTooltip:AddLine(ns.failed[id] and L.ITEM_UNKNOWN or L.ITEM_LOADING, unpack(S.MUTED))
+end
+
+local function hideTip() if GameTooltip then GameTooltip:Hide() end end
+local function hoverTip(self)
+    local id = rawget(self, "tipItem")
+    if not (GameTooltip and id) then return end
+    GameTooltip:SetOwner(self, rawget(self, "tipAnchor") or "ANCHOR_RIGHT")
+    setItemTip(id)
+    GameTooltip:Show()
+end
+
+-- Every place that shows an item (a reward, a secret, a book, a worn bag) shows the game's
+-- tooltip of that item on the mouse: `id` nil shows none.
+local function tipOn(f, id, anchor)
+    rawset(f, "tipItem", id)
+    rawset(f, "tipAnchor", anchor)
+    if not rawget(f, "tipSet") then
+        rawset(f, "tipSet", true)
+        f:SetScript("OnEnter", hoverTip)
+        f:SetScript("OnLeave", hideTip)
+    end
+    if id and GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(f) then hoverTip(f) end
+end
+ns.TipOn = tipOn
+
 -- The bags worn ---------------------------------------------------------------------------------
 
 local function buildStrip(body)
@@ -128,6 +159,7 @@ local function buildStrip(body)
     for i = 1, 5 do
         local b = CreateFrame("Frame", nil, c)
         b:SetSize(62, 34)
+        b:EnableMouse(true)
         b:SetPoint("LEFT", 14 + (i - 1) * 64, 0)
         b.icon = S.IconBox(b, 30)
         b.icon:SetPoint("LEFT")
@@ -159,6 +191,7 @@ local function paintStrip(bags)
         slot.icon:SetAlpha(b and 1 or 0.45)
         slot.icon:SetGlow(least and S.WARN or nil)
         slot.n:SetText(b and tostring(b.slots) or "0")
+        tipOn(slot, b and not b.pack and b.item or nil)
         slot.n:SetTextColor(unpack(least and S.WARN or (b and S.TEXT or S.FAINT)))
     end
     strip.total:SetText(L.BAGS_TOTAL:format(bags.total))
@@ -231,6 +264,7 @@ local function fillRow(P)
             return
         end
         r:SetSelected(it.quest == P.selected)
+        tipOn(r.click, it.item)
         r.icon:SetIcon(ns.ItemIcon(it.item))
         r.icon:SetAlpha(it.state == "done" and 0.5 or 1)
         local text, c = ns.StateText(it)
@@ -271,22 +305,6 @@ end
 -- do" line.
 local STEP_H, ITEM_H, TIP_LEFT, TIP_RIGHT, TIP_PAD, TIP_WIDTH = 24, 30, 28, 12, 5, 420
 
--- The game's tooltip of an item, or while the client has no data for it (it would only say
--- "Retrieving item information") its name and what is going on.
-local function setItemTip(id)
-    if ns.Known(id) and GameTooltip.SetItemByID then GameTooltip:SetItemByID(id) return end
-    GameTooltip:AddLine(S.QualityHex(ns.ItemQuality(id)) .. ns.ItemName(id) .. "|r")
-    GameTooltip:AddLine(ns.failed[id] and L.ITEM_UNKNOWN or L.ITEM_LOADING, unpack(S.MUTED))
-end
-
-local function itemTip(self)
-    local id = self:GetParent().itemId
-    if not (GameTooltip and id) then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    setItemTip(id)
-    GameTooltip:Show()
-end
-
 local function buildDetail(parent, P)
     local d = S.Card(parent)
     d.icon = S.IconBox(d, 44)
@@ -301,6 +319,11 @@ local function buildDetail(parent, P)
     d.kind:SetPoint("RIGHT", -14, 0)
     d.kind:SetJustifyH("LEFT")
     d.kind:SetWordWrap(false)
+    -- the reward's icon and name show its tooltip
+    d.hover = CreateFrame("Button", nil, d)
+    d.hover:SetPoint("TOPLEFT", 14, -14)
+    d.hover:SetPoint("RIGHT", -14, 0)
+    d.hover:SetHeight(44)
     local function line(y, size, c, lines)
         local t = S.Text(d, size, c)
         t:SetPoint("TOPLEFT", 14, y)
@@ -353,8 +376,6 @@ local function buildDetail(parent, P)
         r.itemName:SetWordWrap(false)
         r.hover = CreateFrame("Button", nil, r)
         r.hover:SetAllPoints()
-        r.hover:SetScript("OnEnter", itemTip)
-        r.hover:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, function(r, st)
         local item = st.item ~= nil
         local step = not st.head and not st.tip and not item
@@ -367,7 +388,7 @@ local function buildDetail(parent, P)
         r.item:SetShown(item)
         r.itemName:SetShown(item)
         r.hover:SetShown(item)
-        r.itemId = st.item
+        tipOn(r.hover, st.item)
         r.line:SetShown(not st.head)
         if st.head then
             r.head:SetText(st.head)
@@ -427,7 +448,7 @@ local function buildDetail(parent, P)
         local e = P.shown[P.selected]
         if e then ns.SetHidden(e.quest, true) end
     end)
-    d.parts = { d.icon, d.name, d.kind, d.gain, d.state, d.what, d.where, d.offers, d.stepsBox,
+    d.parts = { d.icon, d.name, d.kind, d.hover, d.gain, d.state, d.what, d.where, d.offers, d.stepsBox,
                 d.lead, d.map, d.link, d.hide }
     d.pick = S.Empty(d)
     d.pick:Set(P.class and L.CQ_PICK or L.PICK, "")
@@ -439,6 +460,7 @@ local function paintDetail(P, e, bags)
     for _, p in ipairs(detail.parts) do p:SetShown(e ~= nil) end
     detail.pick:SetShown(e == nil)
     if not e then return end
+    tipOn(detail.hover, e.item)
     detail.icon:SetIcon(ns.ItemIcon(e.item))
     local text, c
     if e.class then
@@ -733,12 +755,7 @@ local function fillBook(r, it)
         return
     end
     r:SetSelected(it.quest == libP.selected)
-    r.itemId = it.item
-    if not rawget(r, "bookTip") then
-        rawset(r, "bookTip", true)
-        r.click:SetScript("OnEnter", itemTip)
-        r.click:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end
+    tipOn(r.click, it.item)
     r.icon:SetIcon(ns.ItemIcon(it.item))
     r.icon:SetAlpha(it.state == "done" and 0.5 or 1)
     r.name:SetText(S.QualityHex(ns.ItemQuality(it.item)) .. ns.ItemName(it.item) .. "|r")
@@ -778,8 +795,6 @@ local function buildBook(parent)
     d.hover:SetPoint("TOPLEFT", 14, -14)
     d.hover:SetPoint("RIGHT", -14, 0)
     d.hover:SetHeight(44)
-    d.hover:SetScript("OnEnter", itemTip)
-    d.hover:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     d.state = line(-72, 12, S.MUTED)
     d.placesHead = line(-102, 12, S.GOLD_DIM)
     d.places = {}
@@ -813,7 +828,7 @@ local function paintBook(e)
     for _, p in ipairs(d.parts) do p:SetShown(e ~= nil) end
     d.pick:SetShown(e == nil)
     if not e then return end
-    d.itemId = e.item
+    tipOn(d.hover, e.item)
     d.icon:SetIcon(ns.ItemIcon(e.item))
     d.name:SetText(S.QualityHex(ns.ItemQuality(e.item)) .. ns.ItemName(e.item) .. "|r")
     d.kind:SetText(L.LIB_KIND .. S.DOT .. L.LEVEL_N:format(e.level))
@@ -1126,10 +1141,10 @@ local function trackerRow(parent)
     r.what = text(-22, 12, S.TEXT)
     r.where = text(-36, 12, S.MUTED)
     r:SetScript("OnClick", function(self) if self.item then ns.Show(self.item.quest) end end)
-    -- a book's name may be cut: its row shows the book's tooltip
+    -- the row shows the tooltip of its reward or book
     r:SetScript("OnEnter", function(self)
         local it = self.item
-        if not (GameTooltip and it and it.book and it.item) then return end
+        if not (GameTooltip and it and it.item) then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         setItemTip(it.item)
         GameTooltip:Show()
