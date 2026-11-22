@@ -408,6 +408,12 @@ function ns.ItemValue(id, enchanter)
         local de = ns.DisenchantValue(f.ilvl)
         if de and de > vendor then return de, "disenchant" end
     end
+    -- An item a vendor pays nothing for that can be traded (a Craftsman's Writ) counts at the
+    -- auction; a plain white item a vendor buys stays at the vendor's price.
+    if vendor <= 1 and not GEAR[f.class] and f.bind ~= 1 and f.bind ~= 4 then
+        local ah = ns.AuctionPrice(id)
+        if ah and ah > vendor then return ah, "auction" end
+    end
     return vendor, "vendor"
 end
 

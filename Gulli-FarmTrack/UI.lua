@@ -388,6 +388,8 @@ end
 function ns.WorthItems()
     local out = {}
     for _, r in ipairs(ns.WorthRows()) do
+        -- an item that adds nothing (a quest item, one the client does not know yet) stays off
+        if not (r.total and r.total > 0) then break end
         local how = ns.HOW[r.how] or ns.HOW.vendor
         local sub = r.unit and L.UNIT:format(r.n, S.MoneyText(r.unit)) or L.UNIT_COUNT:format(r.n)
         out[#out + 1] = { id = r.id, name = ns.ItemName(r.id), icon = ns.ItemIcon(r.id), how = r.how,

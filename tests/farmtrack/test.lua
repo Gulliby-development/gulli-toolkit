@@ -146,8 +146,10 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
         [BLUE_BOP] = { quality = 3, sell = 900, class = 2, bind = 1 }, -- bound: vendor
         [GREEN] = { quality = 2, sell = 300, class = 4, bind = 2, ilvl = 33 },
         [QUEST] = { quality = 1, sell = 0, class = 12 },
+        [9] = { quality = 1, sell = 1, class = 15 },                   -- a writ: no vendor worth
+        [10] = { quality = 1, sell = 1, class = 15, bind = 1 },        -- bound: stays at the vendor
     }
-    Fake({ items = items, ah = { [CLOTH2] = 400, [BLUE] = 50000, [BLUE_BOP] = 99999, [TOOTH] = 9999,
+    Fake({ items = items, ah = { [9] = 25000, [10] = 25000, [CLOTH2] = 400, [BLUE] = 50000, [BLUE_BOP] = 99999, [TOOTH] = 9999,
                                  [11137] = 2000, [11134] = 1500 } })
     local ns = Load()
     W.Loot(GREY, 2); W.Loot(TOOTH, 3); W.Loot(CLOTH2, 10); W.Loot(BLUE, 1); W.Loot(BLUE_BOP, 1)
@@ -158,6 +160,8 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
     eq(select(2, ns.ItemValue(BLUE)), "auction")
     eq(select(2, ns.ItemValue(BLUE_BOP)), "vendor")
     eq(select(2, ns.ItemValue(GREEN)), "vendor", "no Enchanting: a vendor")
+    eq(ns.ItemValue(9), 25000, "a tradeable item a vendor pays nothing for goes to the auction")
+    eq(ns.ItemValue(10), 1)
     local total, unknown = ns.SessionValue()
     eq(unknown, 1, "an item the client does not know yet")
     eq(total, 777 + 200 + 60 + 4000 + 50000 + 900 + 300)
@@ -203,7 +207,7 @@ test("the Session tab shows how the estimate is made, item by item", function()
     eq(#lines, 5)
     assert(note:find("200", 1, true) or note:find("2s", 1, true), note)
     assert(note:find(ns.L.NOTE_NOPRICE, 1, true), "says why some items count at the vendor")
-    eq(#ns.WorthItems(), 5)
+    eq(#ns.WorthItems(), 3, "items that add nothing are left off the list")
     ns.Toggle()
     local _, _, tabs, pages = ns.Parts()
     eq(#pages, 3, "Session, Farm, Settings")
