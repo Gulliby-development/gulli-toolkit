@@ -299,6 +299,138 @@ test("buying: price, then purchase, in two clicks, and the history pays it", fun
     eq(sum.count, 1)
 end)
 
+-- Three days of Elixir of Wisdom: the writ and the elixir are sold one auction at a time.
+local function threeDays(extra)
+    local spec = { rep = { 5, 8775 }, prices = { [WISDOM] = 100, [WISDOM_ITEM] = 200 },
+                   db = { days = 3, sealed = false, live = false },
+                   auctions = { [WISDOM] = { { 11, 120 }, { 12, 130 }, { 13, 140 } },
+                                [WISDOM_ITEM] = { { 21, 200, 2 }, { 22, 210 }, { 23, 220 } } } }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    Fake(spec)
+    local ns = Load()
+    W.Fire("AUCTION_HOUSE_SHOW")
+    ns.Calculate()
+    return ns
+end
+
+test("the plan is bought in steps: a writ type a step, writs first, a node a day", function()
+    local ns = threeDays({ bags = { [WISDOM_ITEM] = 1 } })
+    eq(#ns.buy.steps, 1)
+    local s = ns.buy.steps[1]
+    eq(s.copies, 3)
+    eq(s.writ.n, 3)
+    eq(s.item.n, 2, "the elixir in the bags is one less to buy")
+    local n = ns.StepNodes(s)
+    eq(n.writ.done, 0); eq(n.item.done, 1, "the one in the bags is a filled node")
+    eq(ns.Current().part, "writ")
+    eq(ns.ShoppingList(ns.plan)[2].n, 2)
+end)
+
+test("items that are no commodity: one click finds the lot, then one click a unit", function()
+    local ns = threeDays({ status = { [WISDOM] = 1, [WISDOM_ITEM] = 1 } })
+    ns.BuyClick()
+    eq(W.itemSearches[1], WISDOM, "the first click searches the writ's auctions")
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = WISDOM })
+    eq(ns.buy.phase, "ready")
+    for i = 1, 3 do
+        ns.BuyClick()
+        eq(W.bids[i], (10 + i) .. " " .. (110 + 10 * i))
+        W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 10 + i)
+        if i < 3 then eq(ns.buy.phase, "ready", "the next lot is ready at once, without the one just bought") end
+    end
+    eq(ns.StepNodes(ns.buy.steps[1]).writ.done, 3)
+    eq(ns.Current().part, "item")
+    eq(#W.itemSearches, 1, "no search while the results still have lots")
+    ns.BuyClick()
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = WISDOM_ITEM })
+    ns.BuyClick()
+    W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 21)
+    ns.BuyClick()
+    eq(W.bids[5], "22 210")
+    W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 22)
+    ns.BuyClick()
+    W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 23)
+    eq(ns.buy.phase, "done")
+    eq(ns.buy.bought, 6)
+    eq(ns.buy.spent, 120 + 130 + 140 + 200 + 210 + 220)
+end)
+
+test("a lot sold to someone else: the next click takes the next one", function()
+    local ns = threeDays({ status = { [WISDOM] = 1, [WISDOM_ITEM] = 1 } })
+    ns.BuyClick()
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = WISDOM })
+    ns.BuyClick()
+    W.Fire("AUCTION_HOUSE_SHOW_ERROR")
+    eq(ns.buy.err, "ERR_GONE")
+    ns.BuyClick()
+    eq(ns.buy.phase, "ready")
+    eq(ns.buy.quote.auction, 12)
+end)
+
+test("an item the client does not know yet: no commodity, so it is searched as an item", function()
+    local ns = threeDays()
+    ns.BuyClick()
+    eq(W.calls[1], "start " .. WISDOM .. " 3")
+    W.Fire("COMMODITY_PRICE_UNAVAILABLE")
+    eq(ns.buy.err, nil)
+    eq(W.itemSearches[1], WISDOM)
+    W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = WISDOM })
+    eq(ns.buy.phase, "ready")
+end)
+
+test("a busy auction house: the click waits instead of failing", function()
+    local ns = threeDays({ status = { [WISDOM] = 1 } })
+    W.throttled = true
+    ns.BuyClick()
+    eq(ns.buy.err, "ERR_WAIT")
+    eq(ns.buy.phase, "idle")
+    W.throttled = false
+    ns.BuyClick()
+    eq(ns.buy.phase, "quote")
+end)
+
+test("a commodity of several units is bought at once, and the step's nodes fill", function()
+    local ns = threeDays({ status = { [WISDOM] = 2, [WISDOM_ITEM] = 2 } })
+    ns.BuyClick()
+    eq(W.calls[1], "start " .. WISDOM .. " 3")
+    W.Fire("COMMODITY_PRICE_UPDATED", 110, 330)
+    ns.BuyClick()
+    eq(W.calls[2], "buy " .. WISDOM .. " 3")
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(ns.StepNodes(ns.buy.steps[1]).writ.done, 3)
+    eq(ns.Current().part, "item")
+end)
+
+test("Recalculate at the auction house reads every lot again; away from it no lot counts", function()
+    Fake({ rep = { 5, 8925 }, prices = { [WISDOM] = 100, [WISDOM_ITEM] = 200 }, db = { days = 1, sealed = false },
+           lots = { [WISDOM] = { { 100, 5 } }, [WISDOM_ITEM] = {} } })
+    local ns = Load()
+    ns.lots[WISDOM_ITEM] = { t = time(), l = {} } -- read earlier: sold out
+    local plan = ns.Calculate()
+    eq(#plan.lines, 1, "away from the auction house the old lots say nothing")
+    W.Fire("AUCTION_HOUSE_SHOW") -- plans anew, as Recalculate does
+    local n = W.AnswerSearches()
+    assert(n >= 2, "both lots read again, got " .. n)
+    eq(#ns.plan.lines, 0, "the elixir is sold out now, never free")
+end)
+
+test("the Writs search finds by every word: name, item, trade and zone", function()
+    Fake({})
+    local ns = Load()
+    local w = ns.Writ(OGRE)
+    eq(ns.WritMatches(w, ""), true)
+    local spot = ns.Spot(w)
+    if spot then
+        local zone = ns.ZoneName(spot.map)
+        eq(ns.WritMatches(w, zone:upper()), true)
+    end
+    eq(ns.WritMatches(w, "alchemy"), true)
+    eq(ns.WritMatches(w, "alchemy nothinglikethis"), false)
+    local all, some = #ns.WritRows(nil, "prof", ""), #ns.WritRows(nil, "prof", "alchemy")
+    assert(some > 0 and some < all, "the search narrows the list")
+    eq(ns.Fold("ХИНТЕРЛАНД"), "хинтерланд")
+end)
+
 test("the Buy button never works away from the auction house or while paused", function()
     Fake({ rep = { 5, 8925 }, prices = { [WISDOM] = 100, [WISDOM_ITEM] = 200 }, db = { days = 1, sealed = false } })
     local ns = Load()
