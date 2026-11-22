@@ -350,16 +350,42 @@ end
 -- Only the levelling chains count while ns.ShownSet gives them; `more` is how many other
 -- quests of the dungeon are for this character then.
 local NOW = { log = 1, take = 2, later = 3 }
+-- The tier 0.5 set chain (D.set) shows only at this level, in its own list (`set`), never in
+-- the others or the counts, so a levelling character never sees quests it cannot take.
+ns.SET_LEVEL = 60
+function ns.SetSet(key)
+    local D = data()
+    local ids = D.set and D.set[key]
+    if not ids then return nil end
+    local set = {}
+    for _, id in ipairs(ids) do set[id] = true end
+    return set
+end
+
 function ns.Quests(key, level, filter)
     local D = data()
-    local out = { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0, more = 0 }
+    local function lists() return { log = {}, take = {}, later = {}, hidden = {}, finished = {}, done = 0 } end
+    local out = lists()
+    out.more = 0
     local main, shown = ns.MainSet(key), ns.ShownSet(key)
-    local mine, order = {}, {}
+    local setOf = ns.SetSet(key) or {}
+    local top = (level or 0) >= ns.SET_LEVEL
+    local mine, order, setOrder = {}, {}, {}
     for _, id in ipairs(D.byDungeon[key] or {}) do
         local q = D.quest[id]
-        if q and forMe(q) and shown and not shown[id] then
+        if not q or mine[id] or not forMe(q) then
+            -- not for this character
+        elseif setOf[id] then
+            if top then
+                local entry = entryOf(id, q)
+                entry.set = true
+                entry.state = stateOf(entry, q, level)
+                mine[id] = entry
+                setOrder[#setOrder + 1] = id
+            end
+        elseif shown and not shown[id] then
             out.more = out.more + 1
-        elseif q and forMe(q) and not mine[id] then
+        else
             local entry = entryOf(id, q)
             entry.main = main ~= nil and main[id] == true
             entry.state = stateOf(entry, q, level)
@@ -370,60 +396,65 @@ function ns.Quests(key, level, filter)
     -- The head of a quest: the last step of its chain that is a quest of this list (two
     -- quests that both lead to it, such as Testing the Wells and Murloc Gills, share it).
     local chainOf = function(id) return (D.chain and D.chain[id]) or { id } end
-    -- A chain step that is not on the list may have a copy that is (q[10]: State Secrets ends
-    -- at Nazgrel for the Horde, Renzik for the Alliance or Rix Xizzix for both).
-    local onList = function(id)
-        if mine[id] then return id end
-        local q = D.quest[id]
-        for _, other in ipairs(q and q[10] or {}) do
-            if mine[other] then return other end
-        end
-    end
-    local groups, heads = {}, {}
-    for _, id in ipairs(order) do
-        local chain, head = chainOf(id), id
-        for i = #chain, 1, -1 do
-            local step = onList(chain[i])
-            if step then head = step break end
-        end
-        if not groups[head] then groups[head] = {}; heads[#heads + 1] = head end
-        local g = groups[head]
-        g[#g + 1] = id
-    end
-    for _, head in ipairs(heads) do
-        local ids, chain = groups[head], chainOf(head)
-        local pos = function(id) for i, c in ipairs(chain) do if c == id then return i end end return 0 end
-        table.sort(ids, function(a, b) return pos(a) < pos(b) end)
-        -- A step before a done one counts as done too (the game may not flag every old step).
-        local last = 0
-        for i, id in ipairs(ids) do if mine[id].state == "done" then last = i end end
-        -- The step to do now: one in the log first, then one to take, then one for later.
-        local cur, hidden, found = nil, nil, false
-        for i, id in ipairs(ids) do
-            local e = mine[id]
-            if e.state == "hidden" then hidden = hidden or e end
-            if i > last and NOW[e.state] and (not cur or NOW[e.state] < NOW[cur.state]) then cur = e end
-            if filter and filter ~= "" and matches(e, filter) then found = true end
-        end
-        local h = mine[head]
-        local entry = hidden or cur or h
-        if #ids > 1 then
-            entry.head = { id = head, name = h.name, level = h.level }
-            entry.members = ids
-        end
-        if not filter or filter == "" then found = true end
-        local state = hidden and "hidden" or (cur and cur.state) or h.state
-        if state == "done" then
-            out.done = out.done + 1
-            if found then out.finished[#out.finished + 1] = entry end
-        elseif state ~= "closed" and found then
-            local list = out[state]
-            list[#list + 1] = entry
-        end
-    end
     local byLevel = function(a, b) if a.level ~= b.level then return a.level < b.level end return a.name < b.name end
-    table.sort(out.log, byLevel); table.sort(out.take, byLevel); table.sort(out.later, byLevel)
-    table.sort(out.hidden, byLevel); table.sort(out.finished, byLevel)
+    local function group(ids, into, isSet)
+        -- A chain step that is not on the list may have a copy that is (q[10]: State Secrets ends
+        -- at Nazgrel for the Horde, Renzik for the Alliance or Rix Xizzix for both).
+        local onList = function(id)
+            if mine[id] and (mine[id].set == true) == isSet then return id end
+            local q = D.quest[id]
+            for _, other in ipairs(q and q[10] or {}) do
+                if mine[other] and (mine[other].set == true) == isSet then return other end
+            end
+        end
+        local groups, heads = {}, {}
+        for _, id in ipairs(ids) do
+            local chain, head = chainOf(id), id
+            for i = #chain, 1, -1 do
+                local step = onList(chain[i])
+                if step then head = step break end
+            end
+            if not groups[head] then groups[head] = {}; heads[#heads + 1] = head end
+            local g = groups[head]
+            g[#g + 1] = id
+        end
+        for _, head in ipairs(heads) do
+            local members, chain = groups[head], chainOf(head)
+            local pos = function(id) for i, c in ipairs(chain) do if c == id then return i end end return 0 end
+            table.sort(members, function(a, b) return pos(a) < pos(b) end)
+            -- A step before a done one counts as done too (the game may not flag every old step).
+            local last = 0
+            for i, id in ipairs(members) do if mine[id].state == "done" then last = i end end
+            -- The step to do now: one in the log first, then one to take, then one for later.
+            local cur, hidden, found = nil, nil, false
+            for i, id in ipairs(members) do
+                local e = mine[id]
+                if e.state == "hidden" then hidden = hidden or e end
+                if i > last and NOW[e.state] and (not cur or NOW[e.state] < NOW[cur.state]) then cur = e end
+                if filter and filter ~= "" and matches(e, filter) then found = true end
+            end
+            local h = mine[head]
+            local entry = hidden or cur or h
+            if #members > 1 then
+                entry.head = { id = head, name = h.name, level = h.level }
+                entry.members = members
+            end
+            if not filter or filter == "" then found = true end
+            local state = hidden and "hidden" or (cur and cur.state) or h.state
+            if state == "done" then
+                into.done = into.done + 1
+                if found then into.finished[#into.finished + 1] = entry end
+            elseif state ~= "closed" and found then
+                local list = into[state]
+                list[#list + 1] = entry
+            end
+        end
+        table.sort(into.log, byLevel); table.sort(into.take, byLevel); table.sort(into.later, byLevel)
+        table.sort(into.hidden, byLevel); table.sort(into.finished, byLevel)
+    end
+    group(order, out, false)
+    out.set = lists()
+    group(setOrder, out.set, true)
     return out
 end
 

@@ -995,6 +995,45 @@ test("class quests: every class sees its own Sunken Temple quest with Chains onl
     eq(ns.Data.quest[97169][5], 64, "shaman only")
 end)
 
+test("the tier 0.5 set: hidden while levelling, its own folded list at the top level", function()
+    local function ids(q)
+        local t = {}
+        for _, l in ipairs({ q.log, q.take, q.later, q.hidden, q.finished }) do
+            for _, x in ipairs(l) do
+                t[x.id] = x
+                for _, m in ipairs(x.members or {}) do t[m] = x end
+            end
+        end
+        return t
+    end
+    for _, mainOnly in ipairs({ true, false }) do
+        Fake({ level = 59, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+        local ns = Load()
+        ns.Set("mainOnly", mainOnly)
+        local setOf = ns.SetSet("STRAT")
+        assert(setOf[8937], "Just Compensation is in the set chain")
+        local q = ns.Quests("STRAT", 59)
+        for id in pairs(ids(q)) do assert(not setOf[id], "no set quest while levelling: " .. id) end
+        eq(#q.set.take + #q.set.later + #q.set.log, 0, "no set list below the top level")
+        local before = ns.Quests("STRAT", 60)
+        for id in pairs(ids(before)) do assert(not setOf[id], "never in the normal lists: " .. id) end
+        local set = ids(before.set)
+        local n = 0
+        for id, x in pairs(set) do
+            n = n + 1
+            assert(setOf[id], "only set quests: " .. id)
+            eq(x.set, true)
+        end
+        assert(n > 0, "the set list at the top level")
+        -- Only the warrior's own pieces.
+        for id in pairs(set) do
+            local mask = ns.Data.quest[id][5]
+            assert(mask == 0 or mask % 2 == 1, "a warrior quest: " .. id)
+        end
+        eq(ns.Counts("STRAT", 60).take, #before.take, "the counts leave the set out")
+    end
+end)
+
 test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
     Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()

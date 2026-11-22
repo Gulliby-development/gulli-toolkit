@@ -307,6 +307,11 @@ local function onRowClick(self, button)
         ns.Refresh()
         return
     end
+    if item.toggleSet then
+        ns.showSet = not ns.showSet
+        ns.Refresh()
+        return
+    end
     if item.stop then ns.SetPin(item.stop, true) return end
     local q = item.quest
     if not q then return end
@@ -498,7 +503,7 @@ local function fillRow(r, item)
         plainRow(r)
         r.text:SetPoint("LEFT", 10, 0)
         r.text:SetPoint("RIGHT", -8, 0)
-        r.text:SetTextColor(unpack(item.toggleHidden and S.Accent() or S.GOLD_DIM))
+        r.text:SetTextColor(unpack((item.toggleHidden or item.toggleSet) and S.Accent() or S.GOLD_DIM))
         r.text:SetText(S.Upper(item.text))
         r.sub:SetText("")
         return
@@ -716,6 +721,17 @@ local function listItems(current, level)
             add({ header = true, toggleHidden = true, text = (showHidden and L.HIDDEN_OPEN or L.HIDDEN_N):format(#q.hidden) })
             if showHidden then
                 for _, x in ipairs(q.hidden) do add({ quest = x, group = "hidden", hidden = true }) end
+            end
+        end
+        -- The tier 0.5 set chain, only at the top level and folded until clicked.
+        local set = q.set
+        local n = set and (#set.log + #set.take + #set.later) or 0
+        if n > 0 then
+            add({ header = true, toggleSet = true, text = (ns.showSet and L.SET_OPEN or L.SET_N):format(n) })
+            if ns.showSet then
+                for _, g in ipairs({ "log", "take", "later" }) do
+                    for _, x in ipairs(set[g]) do add({ quest = x, group = g }) end
+                end
             end
         end
     end
