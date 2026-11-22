@@ -778,7 +778,10 @@ end
 
 -- The sets page ----------------------------------------------------------------------------------------
 
-local SET_LEFT, SET_ROW, PIECE_H, PIECE_ROWS, BONUS_H, CHAIN_H = 236, 44, 42, 4, 32, 44
+local SET_LEFT, SET_ROW, PIECE_H, PIECE_ROWS = 236, 44, 36, 4
+-- the bonuses never scroll: every row gets its share of the room left, two lines of text while
+-- a row is BONUS_TWO high or more, and no more than BONUS_MAX of it
+local BONUS_ROWS, BONUS_MAX, BONUS_TWO, PIECES_Y = 8, 34, 28, 80
 local PIP = 7
 
 function ns.SetClass()
@@ -902,10 +905,10 @@ local function pieceCell(parent)
     b.line:SetPoint("TOPLEFT", 0, 0)
     b.line:SetPoint("TOPRIGHT", 0, 0)
     b.line:SetHeight(1)
-    b.icon = S.IconBox(b, 30)
+    b.icon = S.IconBox(b, 28)
     b.icon:SetPoint("LEFT", 4, 0)
     b.tag = S.Text(b, 12, S.MUTED)
-    b.tag:SetPoint("TOPRIGHT", -4, -5)
+    b.tag:SetPoint("TOPRIGHT", -4, -4)
     b.tag:SetJustifyH("RIGHT")
     b.tag:SetWordWrap(false)
     b.dot = S.Circle(b, 8, S.BAD, "OVERLAY")
@@ -926,6 +929,8 @@ local function pieceCell(parent)
         S.Fill(self, S.HOVER)
         self.itemId = g.id
         itemTip(self)
+        -- the tooltip makes the client load the piece: the bonuses it waits for come with it
+        if ns.bonusWait and ns.Later then ns.Later() end
         if not GameTooltip then return end
         local c = ns.AT_COLOR[self.at]
         GameTooltip:AddLine(L["AT_" .. self.at:upper()], c[1], c[2], c[3])
@@ -964,11 +969,17 @@ local function paintPiece(b, g)
     b.sub:SetText(ns.PieceLine(g))
 end
 
-local function bonusRow(r)
+local function bonusRow(parent)
+    local r = CreateFrame("Frame", nil, parent)
+    r.line = S.Divider(r)
+    r.line:SetPoint("TOPLEFT", 0, 0)
+    r.line:SetPoint("TOPRIGHT", 0, 0)
+    r.line:SetHeight(1)
     r.pill = CreateFrame("Frame", nil, r)
     r.pill:SetSize(30, 20)
     r.pill:SetPoint("LEFT", 2, 0)
-    S.Box(r.pill, S.CLEAR, S.EDGE, S.R_MD)
+    -- a filled chip with no outline: a 1 pixel edge drops out at some window scales
+    S.Box(r.pill, S.INPUT, S.CLEAR, S.R_MD)
     r.n = S.Text(r.pill, 12, S.MUTED, nil, "bold")
     r.n:SetPoint("CENTER")
     r.state = S.Text(r, 12, S.MUTED)
@@ -979,7 +990,6 @@ local function bonusRow(r)
     r.text:SetPoint("LEFT", r.pill, "RIGHT", 8, 0)
     r.text:SetPoint("RIGHT", r.state, "LEFT", -8, 0)
     r.text:SetJustifyH("LEFT")
-    if r.text.SetMaxLines then r.text:SetMaxLines(2) end
     r.hit = CreateFrame("Button", nil, r)
     r.hit:SetAllPoints()
     r.hit:SetScript("OnEnter", function(self)
@@ -990,13 +1000,34 @@ local function bonusRow(r)
         GameTooltip:Show()
     end)
     r.hit:SetScript("OnLeave", hideTip)
+    return r
+end
+
+-- How high each of n bonus rows is in a box of that height, and how many lines its text takes.
+function ns.BonusLayout(n, height)
+    if n < 1 then return BONUS_MAX, 2 end
+    local h = math.max(1, math.min(BONUS_MAX, math.floor(height / n)))
+    return h, h >= BONUS_TWO and 2 or 1
+end
+
+local function layBonuses(box)
+    local n = box.n or 0
+    local h, lines = ns.BonusLayout(n, box:GetHeight() or 0)
+    for i, r in ipairs(box.rows) do
+        r:SetShown(i <= n)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 0, -(i - 1) * h)
+        r:SetPoint("RIGHT", 0, 0)
+        r:SetHeight(h)
+        if r.text.SetMaxLines then r.text:SetMaxLines(lines) end
+        r.text:SetWordWrap(lines > 1)
+    end
 end
 
 local function bonusFill(r, b)
     r.item = b
     r.n:SetText(b.count and tostring(b.count) or "")
-    S.Fill(r.pill, b.on and S.GOOD or S.CLEAR)
-    S.SetBorder(r.pill, b.on and S.GOOD or S.EDGE)
+    S.Fill(r.pill, b.on and S.GOOD or S.INPUT)
     r.n:SetTextColor(unpack(b.on and S.BG or S.MUTED))
     r.text:SetText(b.text or L.SET_BONUS_WAIT)
     r.text:SetTextColor(unpack((b.on and S.TEXT) or (b.text and S.MUTED) or S.FAINT))
@@ -1104,11 +1135,10 @@ local function setsPage(body)
     c.sub:SetJustifyH("LEFT")
     c.sub:SetWordWrap(false)
     c.bar = S.Progress(b, 6)
-    c.bar:SetPoint("TOPLEFT", 0, -48)
-    c.bar:SetPoint("TOPRIGHT", 0, -48)
+    c.bar:SetPoint("TOPLEFT", 0, -46)
+    c.bar:SetPoint("TOPRIGHT", 0, -46)
     c.piecesHead = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
-    c.piecesHead:SetPoint("TOPLEFT", 0, -64)
-    c.piecesHead:SetPoint("RIGHT", 0, 0)
+    c.piecesHead:SetPoint("TOPLEFT", 0, -60)
     c.piecesHead:SetJustifyH("LEFT")
     c.piecesHead:SetWordWrap(false)
     c.piecesHead:SetText(S.Upper(L.SET_PIECES))
@@ -1117,10 +1147,10 @@ local function setsPage(body)
         local cell = pieceCell(b)
         local row, right = math.floor((i - 1) / 2), i % 2 == 0
         if right then
-            cell:SetPoint("TOPLEFT", b, "TOP", S.GAP / 2, -(84 + row * PIECE_H))
+            cell:SetPoint("TOPLEFT", b, "TOP", S.GAP / 2, -(PIECES_Y + row * PIECE_H))
             cell:SetPoint("RIGHT", 0, 0)
         else
-            cell:SetPoint("TOPLEFT", 0, -(84 + row * PIECE_H))
+            cell:SetPoint("TOPLEFT", 0, -(PIECES_Y + row * PIECE_H))
             cell:SetPoint("RIGHT", b, "CENTER", -S.GAP / 2, 0)
         end
         c.cells[i] = cell
@@ -1129,28 +1159,30 @@ local function setsPage(body)
     c.bonusHead:SetText(S.Upper(L.SET_BONUSES))
     c.bonusHead:SetJustifyH("LEFT")
     c.bonusHead:SetWordWrap(false)
-    c.bonuses = S.List(b, BONUS_H, bonusRow, bonusFill)
-    -- the tier 0.5 chain, under everything: the step the character is at
-    local ch = CreateFrame("Frame", nil, b)
-    ch:SetHeight(CHAIN_H)
-    ch:SetPoint("BOTTOMLEFT", 0, 0)
-    ch:SetPoint("BOTTOMRIGHT", 0, 0)
-    ch.line = S.Divider(ch)
-    ch.line:SetPoint("TOPLEFT", 0, 0)
-    ch.line:SetPoint("TOPRIGHT", 0, 0)
-    ch.line:SetHeight(1)
-    ch.icon = S.IconBox(ch, 30, "Interface\\Icons\\INV_Misc_Book_09")
-    ch.icon:SetPoint("LEFT", 4, -2)
-    ch.title = S.Text(ch, 13)
-    ch.title:SetPoint("TOPLEFT", ch.icon, "TOPRIGHT", 10, 0)
-    ch.title:SetPoint("RIGHT", -4, 0)
-    ch.title:SetJustifyH("LEFT")
-    ch.title:SetWordWrap(false)
+    local box = CreateFrame("Frame", nil, b)
+    box.rows = {}
+    for i = 1, BONUS_ROWS do box.rows[i] = bonusRow(box) end
+    box:SetScript("OnSizeChanged", layBonuses)
+    c.bonuses = box
+    -- the tier 0.5 chain, on the line of the pieces' head: the step the character is at
+    local ch = CreateFrame("Button", nil, b)
+    ch:SetHeight(18)
+    ch:SetPoint("LEFT", c.piecesHead, "RIGHT", 12, 0)
+    ch:SetPoint("RIGHT", b, "RIGHT", 0, 0)
     ch.text = S.Text(ch, 12, S.MUTED)
-    ch.text:SetPoint("BOTTOMLEFT", ch.icon, "BOTTOMRIGHT", 10, 0)
-    ch.text:SetPoint("RIGHT", -4, 0)
-    ch.text:SetJustifyH("LEFT")
+    ch.text:SetPoint("LEFT", 0, 0)
+    ch.text:SetPoint("RIGHT", 0, 0)
+    ch.text:SetJustifyH("RIGHT")
     ch.text:SetWordWrap(false)
+    ch:SetScript("OnEnter", function(self)
+        if not (GameTooltip and self.title) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
+        GameTooltip:AddLine(self.quest, 1, 1, 1, true)
+        GameTooltip:AddLine(self.slots, S.MUTED[1], S.MUTED[2], S.MUTED[3], true)
+        GameTooltip:Show()
+    end)
+    ch:SetScript("OnLeave", hideTip)
     c.chain = ch
     sets.card = c
     return p
@@ -1196,7 +1228,7 @@ local function paintSets()
         if g then paintPiece(cell, g) end
     end
     local rows = math.ceil(math.min(#info.groups, #c.cells) / 2)
-    local y = 84 + rows * PIECE_H + 12
+    local y = PIECES_Y + rows * PIECE_H + 8
     c.bonusHead:ClearAllPoints()
     c.bonusHead:SetPoint("TOPLEFT", 0, -y)
     c.bonusHead:SetPoint("RIGHT", 0, 0)
@@ -1205,15 +1237,20 @@ local function paintSets()
     if chain then
         local names = {}
         for _, code in ipairs(chain.codes) do names[#names + 1] = codeName(code) end
-        c.chain.title:SetText(L.SET_CHAIN:format(chain.step, chain.of))
-        c.chain.text:SetText(chain.quest .. " · " .. table.concat(names, ", "))
+        c.chain.title = L.SET_CHAIN:format(chain.step, chain.of)
+        c.chain.quest, c.chain.slots = chain.quest, table.concat(names, ", ")
+        c.chain.text:SetText(c.chain.title .. S.DOT .. colour(chain.quest, S.TEXT))
     end
     local bonuses = ns.SetBonuses(info)
     for _, x in ipairs(bonuses) do x.worn = info.worn end
     c.bonuses:ClearAllPoints()
-    c.bonuses:SetPoint("TOPLEFT", 0, -(y + 20))
-    c.bonuses:SetPoint("BOTTOMRIGHT", 0, chain and CHAIN_H + 4 or 0)
-    c.bonuses:SetData(bonuses)
+    c.bonuses:SetPoint("TOPLEFT", 0, -(y + 18))
+    c.bonuses:SetPoint("BOTTOMRIGHT", 0, 0)
+    c.bonuses.n = math.min(#bonuses, BONUS_ROWS)
+    for i, r in ipairs(c.bonuses.rows) do
+        if bonuses[i] then bonusFill(r, bonuses[i]) end
+    end
+    layBonuses(c.bonuses)
 end
 
 -- The footer's button on the sets page: the set's pieces go on the list shown on the gear page.
@@ -1295,6 +1332,8 @@ local function paintFooter()
     end
     footer.status:SetPoint("RIGHT", last, "LEFT", -12, 0)
 end
+
+function ns.SetsShown() return frame ~= nil and frame:IsShown() and current == SETS end
 
 function ns.Refresh()
     if not ns.db then return end

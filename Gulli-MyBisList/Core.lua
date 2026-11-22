@@ -968,6 +968,30 @@ function ns.SetBonuses(info)
         end
         if #out > 0 then break end
     end
+    -- What the game told once is kept for the account (per client language), so the texts are
+    -- there after a login before the client has loaded the pieces again; the game's own win.
+    local db = ns.db
+    local lang = GetLocale and GetLocale() or "enUS"
+    if db and (type(db.bonus) ~= "table" or db.bonusLang ~= lang) then db.bonus, db.bonusLang = {}, lang end
+    if #out > 0 then
+        if db and info.id then
+            local keep = {}
+            for i, b in ipairs(out) do keep[i] = { b.count or false, b.text } end
+            db.bonus[info.id] = keep
+        end
+        if ns.bonusWait == info.id then ns.bonusWait = nil end
+    else
+        for _, k in ipairs(db and info.id and db.bonus[info.id] or {}) do
+            out[#out + 1] = { count = k[1] or nil, text = k[2] }
+        end
+        -- still unknown: ask the client for the pieces; TOOLTIP_DATA_UPDATE, GET_ITEM_INFO_RECEIVED
+        -- or the mouse on a piece draw the page again
+        ns.bonusWait = info.id
+        local ask = C_Item and C_Item.RequestLoadItemDataByID
+        if ask then
+            for _, g in ipairs(info.groups) do pcall(ask, g.id) end
+        end
+    end
     if #out == 0 then
         for _, n in ipairs(info.counts or {}) do out[#out + 1] = { count = n } end
     end
@@ -1218,11 +1242,19 @@ f:SetScript("OnEvent", function(self, event, a1)
                              "START_LOOT_ROLL" }) do
             self:RegisterEvent(e)
         end
+        -- the client has a tooltip it lacked: only a set that waits for its bonuses listens
+        if not (C_EventUtils and C_EventUtils.IsEventValid) or C_EventUtils.IsEventValid("TOOLTIP_DATA_UPDATE") then
+            pcall(self.RegisterEvent, self, "TOOLTIP_DATA_UPDATE")
+        end
         return
     end
     if event == "PLAYER_LOGIN" then
         local S = ns.Skin
         if S and S.TipProvider then S.TipProvider("item", "MyBisList", function(id) return ns.TipLines(id) end) end
+        return
+    end
+    if event == "TOOLTIP_DATA_UPDATE" then
+        if ns.bonusWait and not ns.paused and ns.SetsShown and ns.SetsShown() then later() end
         return
     end
     if ns.paused then return end
