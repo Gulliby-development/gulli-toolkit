@@ -1,5 +1,6 @@
 -- Worth It: the quests whose reward is worth the walk (a bag, a quiver, an ammo pouch, a soul
--- bag, a profession bag, the Cozy Sleeping Bag), against the bags the character wears, and a guide that leads to them.
+-- bag, a profession bag, and the secrets: the Cozy Sleeping Bag, hidden pets, a toy, a hidden
+-- quest's gear), against the bags the character wears, and a guide that leads to them.
 -- It only reads the game and sets map pins; it never takes, hands in or equips anything.
 
 local ADDON, ns = ...
@@ -11,10 +12,11 @@ ns.ICON = "Interface\\AddOns\\Gulli-WorthIt\\icon"
 ns.KIND_ICON = {
     bag = "Interface\\Icons\\INV_Misc_Bag_08", ammo = "Interface\\Icons\\INV_Misc_Quiver_03",
     soul = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02", prof = "Interface\\Icons\\Trade_Herbalism",
-    rest = "Interface\\Icons\\Spell_Nature_Sleep",
+    secret = "Interface\\Icons\\INV_Misc_Spyglass_02",
 }
--- Kinds that are no bag: they have no slots and are worth it until the quest is done.
-ns.PERKS = { rest = true }
+-- Kinds that are no bag: they have no slots and are worth it until the quest is done (or, for
+-- a pet or toy, until the game says it is known). What each gives is D.perk (xp, pet, toy, gear).
+ns.PERKS = { secret = true }
 ns.OPT_ICON = {
     better = "Interface\\Icons\\INV_Misc_Bag_10", notify = "Interface\\Icons\\INV_Misc_Bell_01",
     showDone = "Interface\\Icons\\INV_Misc_Ribbon_01",
@@ -30,20 +32,26 @@ local CC = C_Container or {}
 local CI = C_Item or {}
 local turned = {}       -- handed in this session: the game flags a quest a moment later
 
+-- A negative quest id is a secret no quest gives (minus the item's id, D.rewards): it is done
+-- once the item is got (ns.Owned).
 local function questDone(id)
+    if id < 0 then return ns.Owned(-id) end
     if turned[id] then return true end
     if Q.IsQuestFlaggedCompleted then return Q.IsQuestFlaggedCompleted(id) and true or false end
     return false
 end
 local function onQuest(id)
+    if id < 0 then return false end
     if Q.IsOnQuest then return Q.IsOnQuest(id) and true or false end
     return Q.GetLogIndexForQuestID and Q.GetLogIndexForQuestID(id) ~= nil or false
 end
 local function questReady(id)
+    if id < 0 then return false end
     if Q.ReadyForTurnIn then return Q.ReadyForTurnIn(id) and true or false end
     return Q.IsComplete and Q.IsComplete(id) and true or false
 end
 local function questTitle(id)
+    if id < 0 then return ns.ItemName(-id) end
     local t = Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)
     if type(t) == "string" and t ~= "" then return t end
     local q = ns.Data.quest[id]
@@ -119,6 +127,26 @@ function ns.ItemQuality(id)
     return (CI.GetItemQualityByID and CI.GetItemQualityByID(id)) or 1
 end
 ns.QuestTitle = questTitle
+
+-- What a secret gives (xp, pet, toy, gear): the GAIN_ and SHORT_ texts of its row.
+function ns.Perk(item)
+    return (ns.Data.perk and ns.Data.perk[item]) or "gear"
+end
+
+-- Whether the character has a secret's item: a toy or pet the game says is known, else the item
+-- in the bags or the bank. A repeatable quest (the Excitable Slime's) never counts as done, so
+-- a pet or toy reward is done by this too.
+function ns.Owned(item)
+    local what = ns.Data.perk and ns.Data.perk[item]
+    if what == "toy" and PlayerHasToy and PlayerHasToy(item) then return true end
+    if what == "pet" and C_PetJournal and C_PetJournal.GetPetInfoByItemID and C_PetJournal.GetNumCollectedInfo then
+        local species = select(13, C_PetJournal.GetPetInfoByItemID(item))
+        local n = species and C_PetJournal.GetNumCollectedInfo(species)
+        if n and n > 0 then return true end
+    end
+    local count = CI.GetItemCount and CI.GetItemCount(item, true) or 0
+    return count > 0
+end
 ns.AreaName = areaName
 
 -- Whether bit `id` (1-based) is set in a race or class mask; 0 means everyone. Masks pass
@@ -266,7 +294,8 @@ local function settle(e, level)
     local chain = ns.ChainOf(e.quest)
     e.chain, e.steps = chain, #chain
     local progress = 0
-    if questDone(e.quest) then
+    local what = D.perk and D.perk[e.item]
+    if questDone(e.quest) or ((what == "pet" or what == "toy") and ns.Owned(e.item)) then
         e.state, e.step, e.cur, progress = "done", #chain, e.quest, 1000
     else
         for i, id in ipairs(chain) do
@@ -571,6 +600,8 @@ function ns.DetailRows(e, chainHead, tipsHead, rewardHead)
         out[#out + 1] = { head = tipsHead or ns.L.TIPS }
         for i, text in ipairs(tips) do out[#out + 1] = { tip = text, n = i } end
     end
+    -- a secret no quest gives has no chain
+    if e.quest < 0 then return out end
     out[#out + 1] = { head = chainHead or ns.L.CHAIN }
     for _, st in ipairs(ns.Steps(e)) do out[#out + 1] = st end
     return out
@@ -584,8 +615,12 @@ function ns.Stop(e)
     local q = ns.Data.quest[e.cur]
     if not q then return nil end
     local kind, who, area, x, y, at = "take", q[7], q[8], q[9], q[10], nil
+    if e.cur < 0 then kind = "find" end
     if e.state == "ready" then
         kind, who, area, x, y = "turnin", q[11], q[12], q[13], q[14]
+        local own = ns.Data.sides and ns.Data.sides[e.cur]
+        own = own and own[FACTION[UnitFactionGroup("player") or ""] or ""]
+        if own then who, area, x, y = own[1], own[2], own[3], own[4] end
     elseif e.state == "log" then
         if (q[16] or 0) > 0 or (q[17] or 0) > 0 then
             kind, who, area, x, y = "work", questTitle(e.cur), q[15], q[16], q[17]

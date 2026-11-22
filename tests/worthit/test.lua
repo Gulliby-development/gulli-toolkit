@@ -175,32 +175,110 @@ test("the gain: over the smallest bag of the kind, or the whole bag into an empt
     eq(ns.Gain("bag", 8, ns.Bags()), 8, "an empty bag slot")
 end)
 
-test("the Cozy Sleeping Bag: a reward of its own kind, no bag, worth it until it is got, for both sides", function()
+test("the Cozy Sleeping Bag: a secret, no bag, worth it until it is got, for both sides", function()
     for _, side in ipairs({ { "Alliance", 1, 79008 }, { "Horde", 2, 79007 } }) do
         Fake({ level = 20, faction = side[1], raceId = side[2], bags = { 20, 20, 20, 20 } })
         local ns = Load()
         local e = find((ns.Rewards()), 79976)
         assert(e, side[1] .. " sees This Must Be The Place")
         eq(e.item, 211527)
-        eq(e.kind, "rest")
+        eq(e.kind, "secret")
         eq(e.slots, nil, "no slots")
         eq(e.chain[1], side[3], side[1] .. "'s first step")
         eq(#e.chain, 6, "note, Stepping Stones, Scramble, Wet Job, Eagle's Fist, the bag")
         assert(ns.IsBetter(e), "better than any bags worn")
         local text = ns.GainText(e, ns.Bags())
-        eq(text, ns.L.GAIN_REST)
+        eq(text, ns.L.GAIN_XP)
         local listed = false
-        for _, it in ipairs((ns.List("rest"))) do if it.quest == 79976 then listed = true end end
+        for _, it in ipairs((ns.List("secret"))) do if it.quest == 79976 then listed = true end end
         assert(listed, "listed under its kind with the better switch on")
         local kinds = {}
         for _, k in ipairs(ns.Kinds()) do kinds[k] = true end
-        assert(kinds.rest, "the kind has its tab")
-        assert(ns.KIND_ICON.rest and ns.L.KIND_REST and ns.L.SHORT_REST, "icon and texts")
+        assert(kinds.secret, "the kind has its tab")
+        assert(ns.KIND_ICON.secret and ns.L.KIND_SECRET and ns.L.SHORT_XP, "icon and texts")
         eq(ns.Potential(), 0, "it adds no bag slots")
         for _, id in ipairs(e.chain) do W.done[id] = true end
         e = find((ns.Rewards()), 79976)
         eq(e.state, "done")
     end
+end)
+
+test("secrets: every one has what it gives, with its texts, and a place to go", function()
+    Fake({})
+    local ns = Load()
+    local D = ns.Data
+    local secrets = 0
+    for _, r in ipairs(D.rewards) do
+        if r[2] == "secret" then
+            secrets = secrets + 1
+            local what = D.perk[r[1]]
+            assert(what, "what " .. r[1] .. " gives")
+            assert(ns.L["GAIN_" .. what:upper()] and ns.L["SHORT_" .. what:upper()], "texts of " .. what)
+            local q = D.quest[r[3]]
+            assert(q and q[8] > 0 and (q[9] > 0 or q[10] > 0), "a place for " .. r[1])
+        end
+    end
+    assert(secrets >= 8, "the sleeping bag, the pets, the toy, the cloak and the sword")
+end)
+
+test("a secret no quest gives: led to its place, done once the toy is known", function()
+    -- Traveler's Symbols lies on a ledge in Blackrock Depths; the pin is the dungeon's entrance.
+    local TOY = 221315
+    Fake({ level = 55 })
+    local ns = Load()
+    local e = find((ns.Rewards()), -TOY)
+    assert(e, "listed")
+    eq(e.item, TOY)
+    eq(e.state, "take")
+    local stop = ns.Stop(e)
+    eq(stop.kind, "find")
+    eq(stop.area, 46, "Burning Steppes, at the entrance")
+    assert(stop.pin, "it has a pin")
+    local what = ns.StopText(stop)
+    eq(what, ns.L.DO_FIND:format("Item" .. TOY))
+    eq(ns.GainText(e, ns.Bags()), ns.L.GAIN_TOY)
+    eq(#ns.Tips(-TOY), 3, "its steps")
+    Fake({ level = 55, toys = { [TOY] = true } })
+    ns = Load()
+    eq(find((ns.Rewards()), -TOY).state, "done", "the game knows the toy")
+    Fake({ level = 55, items = { [TOY] = 1 } })
+    ns = Load()
+    eq(find((ns.Rewards()), -TOY).state, "done", "picked up, not learned yet")
+    Fake({ level = 40 })
+    ns = Load()
+    eq(find((ns.Rewards()), -TOY).state, "later", "below the level")
+end)
+
+test("a pet from a quest one can repeat is done once the pet is known", function()
+    -- WRIGGLE. (the Excitable Slime, Undercity) can be taken again; only the pet journal tells.
+    local SLIME, WRIGGLE = 275682, 97583
+    Fake({ level = 10, faction = "Horde", raceId = 2 })
+    local ns = Load()
+    local e = find((ns.Rewards()), WRIGGLE)
+    assert(e, "the Horde sees it")
+    eq(e.state, "take")
+    eq(ns.GainText(e, ns.Bags()), ns.L.GAIN_PET)
+    Fake({ level = 10, faction = "Horde", raceId = 2, pets = { [SLIME] = true } })
+    ns = Load()
+    eq(find((ns.Rewards()), WRIGGLE).state, "done")
+    Fake({ level = 10 })
+    ns = Load()
+    eq(find((ns.Rewards()), WRIGGLE), nil, "not for the Alliance")
+end)
+
+test("a quest each side hands in to its own NPC: Strahnbrad Mystery", function()
+    for _, side in ipairs({ { "Alliance", 1, "Kundric Zanden" }, { "Horde", 2, "Shara Blazen" } }) do
+        Fake({ level = 30, faction = side[1], raceId = side[2], log = { [95534] = true }, ready = { [95534] = true } })
+        local ns = Load()
+        local e = find((ns.Rewards()), 95534)
+        eq(e.state, "ready")
+        eq(ns.Stop(e).who, side[3], side[1] .. " hands it in to its own NPC")
+    end
+    Fake({ level = 30, log = { [95534] = true } })
+    local ns = Load()
+    local stop = ns.Stop(find((ns.Rewards()), 95534))
+    eq(stop.kind, "work")
+    eq(stop.area, 36, "the work is at the Strahnbrad forge")
 end)
 
 test("rewards are only the ones this character can get", function()

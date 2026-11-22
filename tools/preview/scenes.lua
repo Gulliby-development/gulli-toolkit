@@ -1485,6 +1485,8 @@ end
 local wiLibSpec = { level = 38, class = "MAGE", zone = 38, x = 60, y = 30, bags = { 10, 10, 12, 12 } }
 S.worthit = { default = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show(140) end },
     rest = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.Show(79976) end },
+    secret = { spec = { level = 55, zone = 46, x = 30, y = 40, bags = { 14, 14, 16, 16 } },
+               open = function(ns) wiOpen(ns); ns.Show(-221315) end },
     lead = { spec = wiSpec, open = function(ns) wiOpen(ns); ns.StartGuide(); ns.Refresh() end },
     settings = { spec = wiSpec, open = function(ns) wiOpen(ns); select(4, ns.Parts()):Select(4) end },
     library = { spec = wiLibSpec, open = function(ns, W) wiOpen(ns); wiLibrary(ns, W); ns.Show(79093) end },

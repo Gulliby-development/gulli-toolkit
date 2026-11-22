@@ -5,10 +5,12 @@ local D = {}
 ns.Data = D
 
 -- The kinds of reward, in window order.
-D.kinds = {"bag","ammo","soul","prof","rest"}
+D.kinds = {"bag","ammo","soul","prof","secret"}
 
 -- Rewards: { item, kind, the quest that gives it }, lowest quest level first.
 D.rewards = {
+{276188,"secret",97029}, -- Eluvi'ana
+{275682,"secret",97583}, -- Excitable Slime
 {277200,"bag",95805}, -- Scorched Leather Pouch
 {279936,"bag",91775}, -- Book Bag
 {256935,"bag",92515}, -- Simple Leather Satchel
@@ -38,7 +40,9 @@ D.rewards = {
 {3604,"ammo",58}, -- Bandolier of the Night Watch
 {3605,"ammo",58}, -- Quiver of the Night Watch
 {22244,"soul",1795}, -- Box of Souls
-{211527,"rest",79976}, -- Cozy Sleeping Bag
+{211527,"secret",79976}, -- Cozy Sleeping Bag
+{280456,"secret",93176}, -- Weevil K. Neevil
+{277206,"secret",95534}, -- Brilliant Cloak
 {274926,"ammo",96109}, -- Matriarch Quiver
 {9587,"bag",2439}, -- Thawpelt Sack
 {9587,"bag",2440}, -- Thawpelt Sack
@@ -46,6 +50,28 @@ D.rewards = {
 {260307,"bag",93269}, -- Hyjal Postal Satchel
 {10959,"bag",3628}, -- Demon Hide Sack
 {226697,"bag",84146}, -- Red Bag
+{221315,"secret",-221315}, -- Traveler's Symbols
+{268109,"secret",-268109}, -- Musical Gustjumper
+{282047,"secret",-282047}, -- Baby Crocolisk
+}
+
+-- What a reward that is no bag gives: item -> xp, pet, toy or gear. A negative quest id of
+-- D.rewards is a secret no quest gives (minus the item's id); its D.quest row is the place.
+D.perk = {
+[211527]="xp",
+[221315]="toy",
+[268109]="pet",
+[275682]="pet",
+[276188]="gear",
+[277206]="gear",
+[280456]="pet",
+[282047]="pet",
+}
+
+-- Quest -> who takes it back on each side, when the sides have their own: { A = { name, area, x, y }, H = ... }.
+D.sides = {
+[82084]={A={"Garion Wendell",1519,48.9,86.5},H={"Owen Thadd",1497,73.4,33}},
+[95534]={A={"Kundric Zanden",267,48.6,59},H={"Shara Blazen",267,63.7,21.2}},
 }
 
 -- Class quests: { quest, class mask (1 warrior ... 1024 druid), items it gives }, lowest level first.
@@ -179,6 +205,9 @@ D.class = {
 --   giver, its area, x, y, who takes it back, area, x, y, the area of its work, x, y }.
 -- x, y are map percent; 0, 0 is a place with no map (a dungeon) or one the data lacks.
 D.quest = {
+[-282047]={"Baby Crocolisk",50,45,0,0,"A","Sewer Beast",1519,71.2,48.8,"Sewer Beast",1519,71.2,48.8,1519,71.2,48.8},
+[-268109]={"Musical Gustjumper",5,1,0,0,"","Musical Gustjumper",16593,51.5,72.2,"Musical Gustjumper",16593,51.5,72.2,16593,51.5,72.2},
+[-221315]={"Traveler's Symbols",55,50,0,0,"","Blackrock Depths",46,29.4,37.6,"Blackrock Depths",46,29.4,37.6,46,29.4,37.6},
 [26]={"A Lesson to Learn",16,16,32,1024,"H","Turak Runetotem",1638,76.5,27.2,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
 [27]={"A Lesson to Learn",16,16,8,1024,"A","Mathrengyl Bearwalker",1657,35.4,8.4,"Dendrite Starblaze",493,56.2,30.6,0,0,0},
 [28]={"Trial of the Lake",16,16,32,1024,"H","Dendrite Starblaze",493,56.2,30.6,"Tajarri",493,36.5,40.1,0,0,0},
@@ -554,6 +583,8 @@ D.quest = {
 [92468]={"Call of Earth",4,3,8589934770,64,"H","Minor Manifestation of Earth",16593,49.7,23.8,"Windshaper Boro",16593,42.8,23.6,0,0,0},
 [92514]={"Welcome to Shen'dar Village",6,4,8589934770,0,"H","Constable Aonda",16593,45.7,45.5,"Constable Aonda",16593,45.7,45.5,16593,43,43.2},
 [92515]={"The Problem With Prideclaws",6,4,0,0,"","Indari Sunseam",16593,44.7,44.5,"Indari Sunseam",16593,44.7,44.5,16593,45.7,52.7},
+[93161]={"The Ancient Hilt",14,1,0,0,"","Ancient Hilt",16593,58.2,24,"Ealaane Nimbuswalker",16593,66,74.3,0,0,0},
+[93176]={"My Little Friends",35,25,0,0,"","Amaryllis Webb",8,25.2,54,"Amaryllis Webb",8,25.2,54,45,52.8,41.7},
 [93197]={"Mending Communications",58,0,0,0,"","Sebelia",616,70.9,51.5,"Innkeeper Vizzie",618,61.4,38.8,0,0,0},
 [93269]={"Top of the Post",58,0,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Sebelia",616,70.9,51.5,0,0,0},
 [93406]={"Unfrozen Deliveries",56,56,0,0,"","Innkeeper Vizzie",618,61.4,38.8,"Innkeeper Vizzie",618,61.4,38.8,618,64,39.8},
@@ -584,6 +615,7 @@ D.quest = {
 [95125]={"Ott's Masterwork",25,20,8589934770,2,"H","Ott",267,60.4,26.2,"Ott",267,60.4,26.2,267,60.4,26.2},
 [95126]={"The Moonsilver Blade",25,20,8589934770,2,"H","Ott",267,60.4,26.2,"Trevan Rol",130,43.4,41.1,0,0,0},
 [95140]={"Old Fire-Eye",26,20,16,2,"H","Lumina Windsinger",130,43.4,41,"Lumina Windsinger",130,43.4,41,130,49.4,85.6},
+[95534]={"Strahnbrad Mystery",36,25,0,0,"","Singed Note (Syndicate Wizard)",36,58.1,67.3,"Kundric Zanden",267,48.6,59,36,59.4,46.4},
 [95805]={"Grace of An'she and Mu'sha",4,1,48,0,"H","Seer Graytongue",215,42.5,90.1,"Ritual Fire",215,56.6,88.7,0,0,0},
 [96016]={"The Tempest's Weapons",40,30,4294967373,64,"A","Veyric Thunderhame",45,59.8,27.6,"Bath'rah the Windwatcher",36,80.5,66.9,0,0,0},
 [96107]={"Feathers for Fletching",40,36,8589934770,0,"H","Neza Bloodsnout",16591,60.5,47.9,"Neza Bloodsnout",16591,60.5,47.9,16591,63.8,55.7},
@@ -593,6 +625,7 @@ D.quest = {
 [96136]={"Call of Air",35,30,8589934592,0,"","Alaana Stormwalker",215,33.4,22.6,"Prate Cloudseer",400,53.5,42.6,0,0,0},
 [96204]={"The Windshaper's Wrath",22,18,8589934770,2,"H","Lumina Windsinger",130,65.5,23.3,"Lumina Windsinger",130,43.4,41,130,65.5,23.3},
 [96260]={"Stronger than Steel",29,23,8589934770,0,"H","Yorn Grimtotem",215,32.5,20,"Yorn Grimtotem",215,32.5,20,215,33.8,11.4},
+[97029]={"Eluvi'ana",14,1,0,0,"","Ealaane Nimbuswalker",16593,66,74.3,"Ealaane Nimbuswalker",16593,66,74.3,16593,48.9,72.7},
 [97169]={"The Darkreaver Menace",60,0,0,0,"A","Eldrun Stormbreaker",1537,47.1,13.8,"Eldrun Stormbreaker",1537,47.1,13.8,0,0,0},
 [97243]={"Call of Fire",10,10,8589934592,64,"","Sessaria Skystride",16593,58.3,78.5,"Olariaan Swiftburn",16593,51.2,86.2,0,0,0},
 [97244]={"Call of Fire",10,10,8589934770,64,"H","Olariaan Swiftburn",16593,51.2,86.2,"Olariaan Swiftburn",16593,51.2,86.2,16593,64.4,63.7},
@@ -600,6 +633,7 @@ D.quest = {
 [97253]={"Parts and Pieces",15,9,0,0,"","Wrenix the Wretched",17,63.1,36.3,"Wrenix the Wretched",17,63.1,36.3,17,62.3,46.2},
 [97257]={"Call of Fire",10,10,8589934770,64,"H","Olariaan Swiftburn",16593,51.2,86.2,"Sessaria Skystride",16593,58.3,78.5,16593,58.4,78.8},
 [97277]={"Grund and Gozwin",6,4,4294967373,0,"A","Grund Drokda",1,28.7,67.5,"Grund Drokda",1,28.7,67.5,1,27.3,62.9},
+[97583]={"WRIGGLE.",1,1,8589934770,0,"H","Excitable Slime",1497,57.2,64.8,"Excitable Slime",1497,57.2,64.8,0,0,0},
 [97914]={"Expanding Horizons",17,13,4294967373,0,"A","Thundris Windweaver",148,37.4,40.1,"Baros Alexston",1519,57.7,47.9,0,0,0},
 [97926]={"Making Do",17,13,4294967373,0,"A","Baros Alexston",1519,57.7,47.9,"Thundris Windweaver",148,37.4,40.1,0,0,0},
 [99053]={"Escaping Ban'ethil",10,4,4294967373,0,"A","Sentinel Lynessa Duskblossom",141,44.7,58.9,"Sentinel Kyra Starsong",141,56,59.5,0,0,0},
@@ -707,6 +741,7 @@ D.chain = {
 [95805]={752,753,755,95805},
 [96016]={1531,79360,79364,79361,79366,96016},
 [96109]={96107,96108,96109},
+[97029]={93161,97029},
 [97257]={97243,97244,97245,97257},
 [97926]={97914,97926},
 }
@@ -979,6 +1014,7 @@ D.names = {
 [220350]="Venomous Journeys",
 [220352]="A Mind of Metal",
 [220353]="Conjurer's Codex",
+[221315]="Traveler's Symbols",
 [221344]="Personal Spellbook",
 [221498]="Old Toolbox",
 [221518]="Whisper",
@@ -1011,10 +1047,13 @@ D.names = {
 [263412]="Totem of Charged Flames",
 [263430]="Windbough Wand",
 [267369]="Wolfsbane",
+[268109]="Musical Gustjumper",
 [268484]="Moonsilver Blade",
 [270017]="Hunting Satchel",
 [274926]="Matriarch Quiver",
 [275290]="Stormforged Protector",
+[275682]="Excitable Slime",
+[276188]="Eluvi'ana",
 [276891]="Spidersilk Pouch",
 [276892]="Spidersilk Sack",
 [277200]="Scorched Leather Pouch",
@@ -1022,6 +1061,7 @@ D.names = {
 [277203]="Scholarly Pendant",
 [277204]="Erudite's Amulet",
 [277205]="Cloak of the Divine Storm",
+[277206]="Brilliant Cloak",
 [277210]="Pyrewood Signet Ring",
 [277236]="Pauldrons of Vindication",
 [277246]="Ruby-Adorned Blade",
@@ -1033,6 +1073,7 @@ D.names = {
 [279936]="Book Bag",
 [279939]="Collecting Basket",
 [280088]="Soft Saber Sack",
+[280456]="Weevil K. Neevil",
 [280604]="Rage of the Storm",
 [280605]="Tidebringer's Claw",
 [280607]="Lightning's Grasp",
@@ -1041,6 +1082,7 @@ D.names = {
 [281635]="Philanthropist's Ring",
 [281636]="Museum Keeper's Chain",
 [281637]="Antique Bulwark",
+[282047]="Baby Crocolisk",
 [282286]="Shipwright's Satchel",
 [286408]="Sword of Mourning",
 [286734]="Ban'ethil Quiver",

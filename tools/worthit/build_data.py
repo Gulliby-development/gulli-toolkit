@@ -54,14 +54,39 @@ KINDS = [
     ("ammo", lambda c, s: c == 11),
     ("soul", lambda c, s: c == 1 and s == 1),
     ("prof", lambda c, s: c == 1 and (s or 0) >= 2),
-    ("rest", lambda c, s: False),
+    ("secret", lambda c, s: False),
 ]
 
-# Lasting rewards no item class marks (a misc item that is a tool for good): item id -> kind of
-# KINDS. A kind used only here tests False above, so it keeps its place in the window order.
+# Lasting rewards no item class marks, or that a hidden quest gives: item id -> (kind of KINDS,
+# what it is: xp, pet, toy, gear; the window's GAIN_<WHAT> and SHORT_<WHAT> texts). A kind used
+# only here tests False above, so it keeps its place in the window order. A secret goes in here
+# only once players found the whole way to it (a guide or the quest's page, named in a comment).
 ITEM_KINDS = {
-    211527: "rest",  # Cozy Sleeping Bag: sleeping in it gives up to +3% XP (This Must Be The Place)
+    211527: ("secret", "xp"),    # Cozy Sleeping Bag: sleeping in it gives up to +3% XP (This Must Be The Place)
+    275682: ("secret", "pet"),   # Excitable Slime: /dance with the Undercity canal slime (WRIGGLE.)
+    277206: ("secret", "gear"),  # Brilliant Cloak: Strahnbrad Mystery, from the Singed Note
+    280456: ("secret", "pet"),   # Weevil K. Neevil: My Little Friends, Amaryllis Webb in Elwynn
+    276188: ("secret", "gear"),  # Eluvi'ana: the solved first part of the Dawn Waker secret
 }
+
+# Secrets no quest gives: the item lies somewhere or a hidden creature gives it. Each gets a
+# made-up quest id, minus the item's id, and the place to go: an NPC of the data (`npc`) or a
+# place by hand (`at`: label, area, x, y). The window counts one as got when the game says the
+# toy or pet is known, or the item is in the bags (wowhandbook.com/secrets, the ATT data).
+SPOTS = [
+    # Traveler's Symbols: a ledge in Blackrock Depths; the pin is the dungeon's entrance
+    {"item": 221315, "what": "toy", "level": 55, "req": 50, "at": ("Blackrock Depths", 46, 29.4, 37.6)},
+    # Musical Gustjumper: /sing to the frogs on the rock above the waterfall, Zephras Isle
+    {"item": 268109, "what": "pet", "level": 5, "req": 1, "npc": 259843},
+    # Baby Crocolisk: a drop of the Sewer Beast, level 50, in the Stormwind canals
+    {"item": 282047, "what": "pet", "level": 50, "req": 45, "npc": 3581, "side": "A"},
+]
+
+# Where a quest's work is when its objectives do not say (area, x, y): the Strahnbrad forge.
+WORK_FIX = {95534: (36, 59.4, 46.4)}
+
+# Quest levels the data gives as -1 (the quest takes the player's level): the level players do it at.
+LEVEL_FIX = {97029: 14, 93161: 14}
 
 # Rewards the data does not link to their quest: (item id, quest id). Only with a source a
 # player can check (the quest's page), named in a comment.
@@ -121,7 +146,7 @@ def num(v):
 
 def kind_of(item, iid=None):
     if iid in ITEM_KINDS:
-        return ITEM_KINDS[iid]
+        return ITEM_KINDS[iid][0]
     for key, test in KINDS:
         if test(item.get(I_CLASS), item.get(I_SUBCLASS)):
             return key
@@ -223,6 +248,15 @@ def build(quests, npcs, objects, items, classq=()):
         label = name if best[0] in ("", name) else "%s (%s)" % (name, best[0])
         return label, best[1], best[2], best[3]
 
+    def takers_by_side(q):
+        """side -> (name, area, x, y) of who takes the quest back, when each side has its own."""
+        out = {}
+        for nid in seq((q.get(Q_FINISHED_BY) or {}).get(1) or {}):
+            rec = npcs.get(nid) or {}
+            if rec.get(N_FACTION) in ("A", "H") and rec[N_FACTION] not in out:
+                out[rec[N_FACTION]] = place(rec, N_SPAWNS, N_ZONE, N_NAME)
+        return out
+
     def faction(q):
         races = q.get(Q_RACES) or 0
         low = races % 2 ** 32
@@ -246,9 +280,11 @@ def build(quests, npcs, objects, items, classq=()):
                 return ""
         return ""
 
-    def work(q):
+    def work(q, qid=None):
         """Where the quest's work is: the zone with the most spawns of what it asks for, and
         the middle spawn there. 0, 0 for a zone without a map (a dungeon)."""
+        if qid in WORK_FIX:
+            return WORK_FIX[qid]
         by_zone = {}
 
         def add(rec, spawns_key):
@@ -341,12 +377,26 @@ def build(quests, npcs, objects, items, classq=()):
         if len(path) > 1:
             chains[qid] = path
 
-    rows = {}
+    rows, sides = {}, {}
     for qid in sorted(used):
         q = quests[qid]
-        rows[qid] = (q.get(Q_NAME) or "", q.get(Q_LEVEL) or 0, q.get(Q_REQ_LEVEL) or 0, q.get(Q_RACES) or 0,
-                     q.get(Q_CLASSES) or 0, faction(q)) + who(q, Q_STARTED_BY) + who(q, Q_FINISHED_BY) + work(q)
-    return rewards, rows, chains, alt, classes
+        by_side = takers_by_side(q)
+        if len(by_side) > 1:
+            sides[qid] = by_side
+        rows[qid] = (q.get(Q_NAME) or "", LEVEL_FIX.get(qid, q.get(Q_LEVEL) or 0), q.get(Q_REQ_LEVEL) or 0, q.get(Q_RACES) or 0,
+                     q.get(Q_CLASSES) or 0, faction(q)) + who(q, Q_STARTED_BY) + who(q, Q_FINISHED_BY) + work(q, qid)
+    for spot in SPOTS:
+        iid = spot["item"]
+        if "npc" in spot:
+            label, area, x, y = place(npcs.get(spot["npc"]) or {}, N_SPAWNS, N_ZONE, N_NAME)
+            side = spot.get("side") or (npcs.get(spot["npc"]) or {}).get(N_FACTION)
+            side = side if side in ("A", "H") else ""
+        else:
+            (label, area, x, y), side = spot["at"], spot.get("side", "")
+        name = (items.get(iid) or {}).get(I_NAME) or ""
+        rewards.append((iid, "secret", -iid))
+        rows[-iid] = (name, spot["level"], spot["req"], 0, 0, side, label, area, x, y, label, area, x, y, area, x, y)
+    return rewards, rows, chains, alt, classes, sides
 
 
 def library(quests, npcs, objects, items):
@@ -426,7 +476,7 @@ def unlinked(items):
     return out
 
 
-def write(rewards, rows, chains, names, alt=None, classes=(), lib=None):
+def write(rewards, rows, chains, names, alt=None, classes=(), lib=None, sides=None):
     lines = [
         "-- Generated by tools/worthit/build_data.py from QuestieDB (Forever data). Do not edit.",
         "-- Quest data (c) the Questie team and contributors, GPLv3.",
@@ -442,6 +492,18 @@ def write(rewards, rows, chains, names, alt=None, classes=(), lib=None):
     ]
     for iid, k, qid in rewards:
         lines.append("{%d,%s,%d}, -- %s" % (iid, lua_str(k), qid, names.get(iid, "")))
+    perks = dict((iid, what) for iid, (_, what) in ITEM_KINDS.items())
+    perks.update((s["item"], s["what"]) for s in SPOTS)
+    lines += ["}", "",
+              "-- What a reward that is no bag gives: item -> xp, pet, toy or gear. A negative quest id of",
+              "-- D.rewards is a secret no quest gives (minus the item's id); its D.quest row is the place.",
+              "D.perk = {"]
+    lines += ["[%d]=%s," % (iid, lua_str(perks[iid])) for iid in sorted(perks)]
+    lines += ["}", "", "-- Quest -> who takes it back on each side, when the sides have their own: { A = { name, area, x, y }, H = ... }.",
+              "D.sides = {"]
+    for qid in sorted(sides or {}):
+        by = sides[qid]
+        lines.append("[%d]={%s}," % (qid, ",".join("%s={%s,%d,%s,%s}" % (sd, lua_str(by[sd][0]), by[sd][1], num(by[sd][2]), num(by[sd][3])) for sd in sorted(by))))
     lines += ["}", "",
               "-- Class quests: { quest, class mask (1 warrior ... 1024 druid), items it gives }, lowest level first.",
               "D.class = {"]
@@ -518,8 +580,8 @@ if __name__ == "__main__":
     with open(CLASS_SNAPSHOT, encoding="utf-8") as f:
         snapshot = json.load(f)["quests"]
     classq = class_links(quests, items, snapshot)
-    rewards, rows, chains, alt, classes = build(quests, npcs, objects, items, classq)
+    rewards, rows, chains, alt, classes, sides = build(quests, npcs, objects, items, classq)
     lib = library(quests, npcs, objects, items)
-    write(rewards, rows, chains, {iid: it.get(I_NAME) or "" for iid, it in items.items()}, alt, classes, lib)
+    write(rewards, rows, chains, {iid: it.get(I_NAME) or "" for iid, it in items.items()}, alt, classes, lib, sides)
     print("%d rewards, %d class quests, %d quests, %d chains, %d books, %d tiers" % (
         len(rewards), len(classes), len(rows), len(chains), len(lib[0]), len(lib[2])))
