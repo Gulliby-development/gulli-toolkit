@@ -529,6 +529,15 @@ function ns.ReadBank()
 end
 
 -- A short time span: "3 d", "5 h", "12 min".
+-- A cooldown's time left: days with hours, hours, or under an hour.
+function ns.CdSpan(sec)
+    sec = math.max(0, math.floor(sec))
+    local d, h = math.floor(sec / 86400), math.floor(sec % 86400 / 3600)
+    if d > 0 then return h > 0 and (L.DAYS:format(d) .. " " .. L.HOURS:format(h)) or L.DAYS:format(d) end
+    if h > 0 then return L.HOURS:format(h) end
+    return "< " .. L.HOURS:format(1)
+end
+
 function ns.Span(sec)
     sec = math.max(0, math.floor(sec))
     if sec >= 86400 then return L.DAYS:format(math.floor(sec / 86400)) end
