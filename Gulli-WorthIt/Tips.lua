@@ -6,6 +6,42 @@ local _, ns = ...
 local T = {}
 
 T.en = {
+[97583] = {
+    "Buy Nutritious Slime Sludge from Boyle by the canal in Undercity, 56, 64.",
+    "Find an Excitable Slime that patrols the canals. Stand on the canal steps, not in the water, target it and type /dance.",
+    "Take the quest it offers, WRIGGLE., and give it the sludge for the pet. If it seems tired, dance with it again.",
+},
+[95534] = {
+    "Loot a Singed Note from the Syndicate Wizards or Argus Shadow Mages in Alterac Mountains. It starts the quest.",
+    "In the Strahnbrad forge, 59, 46, light both bellows close together: a Mage's Flamestrike works, or two players at once.",
+    "Kill the fire elemental that appears.",
+    "Hand it in at Southshore (Alliance, Kundric Zanden) or Tarren Mill (Horde, Shara Blazen) for the Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb in the west of Swamp of Sorrows, 25, 53, gives the quest and an Entomology Starter Kit, from level 25.",
+    "Catch one of each with the kit: an Arbor Tarantula in northern Stranglethorn, 43, 20, a Hay Weevil in Arathi Highlands, 30, 30, and a Flesh Picker in Desolace, 48, 58.",
+    "Bring the three specimens back to Amaryllis for the pet Weevil K. Neevil.",
+},
+[97029] = {
+    "Get the Ancient Heirloom ring: Skyborne take Coming of Age from Ailee Farheart; anyone else loots it on the top floor of the building at Zephras Isle 41.7, 23.4.",
+    "Take a Night Watchman's Torch from the guard's body in Duskwood (An Unfortunate End), light it and use it in the Ruins of Ban'aethal, Zephras Isle 58, 24. The Ancient Hilt appears and starts the quest.",
+    "Bring the hilt to Ealaane Nimbuswalker in Valanaar, 66, 74, then find the Ancient Skyborne Blade: one at a time lies at 49, 73, 50, 44, 66, 43 or 60, 82.",
+    "Bring the blade back to Ealaane for Eluvi'ana. The rest of the Dawn Waker secret is not solved yet: keep the sword and the ring.",
+},
+[-221315] = {
+    "In Blackrock Depths take the bridge just east of the Ring of Law that runs north over the lava.",
+    "On its left side, by a small brazier, jump from the railing onto the platform against the wall. Walk to its end and run along the wall, left shoulder to it, until you drop onto the ledge below.",
+    "The toy Traveler's Symbols lies on the ledge. The door there only takes you down to Lord Incendius.",
+},
+[-268109] = {
+    "Go to the rock at the top of the waterfall on Zephras Isle, 51, 72, where frogs sing.",
+    "Wait until at least two frogs sit on the rock, target one and type /sing.",
+    "The frogs vanish and a Musical Gustjumper appears on the log beside you: click it to get the pet.",
+},
+[-282047] = {
+    "The Sewer Beast, level 50, swims in the Stormwind canals, 71, 49 and 71, 68.",
+    "It drops the Baby Crocolisk pet, but not every time: kill it again when it comes back.",
+},
 [95805] = {
     "Do both parts of A Humble Task first: the chief's mother stands at the water well, 50, 81.",
     "Seer Graytongue is in the hills south of Camp Narache, 42, 92. Any Horde race can take the quest.",
@@ -172,6 +208,42 @@ T.en = {
 }
 
 T.de = {
+[97583] = {
+    "Kaufe Nutritious Slime Sludge bei Boyle am Kanal in Undercity, 56, 64.",
+    "Suche einen Excitable Slime, der durch die Kanäle zieht. Stell dich auf die Kanalstufen, nicht ins Wasser, nimm ihn ins Ziel und tippe /dance.",
+    "Nimm seine Quest WRIGGLE. an und gib ihm den Schleim für das Haustier. Wirkt er müde, tanze noch einmal mit ihm.",
+},
+[95534] = {
+    "Erbeute eine Singed Note von den Syndicate Wizards oder Argus Shadow Mages im Alterac-Gebirge. Sie startet die Quest.",
+    "Entzünde in der Schmiede von Strahnbrad, 59, 46, beide Blasebälge kurz nacheinander: ein Flammenstoß des Magiers klappt, oder zwei Spieler zugleich.",
+    "Töte den Feuerelementar, der erscheint.",
+    "Gib sie in Southshore (Allianz, Kundric Zanden) oder Tarren Mill (Horde, Shara Blazen) ab: dafür gibt es den Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb im Westen der Sümpfe des Elends, 25, 53, gibt ab Stufe 25 die Quest und ein Entomology Starter Kit.",
+    "Fange mit dem Kit je eins: eine Arbor Tarantula im Norden von Stranglethorn, 43, 20, einen Hay Weevil im Arathihochland, 30, 30, und einen Flesh Picker in Desolace, 48, 58.",
+    "Bring die drei Proben zu Amaryllis zurück: dafür gibt es das Haustier Weevil K. Neevil.",
+},
+[97029] = {
+    "Hol dir den Ring Ancient Heirloom: Skyborne nehmen Coming of Age bei Ailee Farheart an, alle anderen finden ihn im obersten Stock des Gebäudes auf Zephras Isle, 41.7, 23.4.",
+    "Nimm eine Night Watchman's Torch von der Leiche der Wache in Duskwood (An Unfortunate End), entzünde sie und benutze sie in den Ruins of Ban'aethal, Zephras Isle 58, 24. Der Ancient Hilt erscheint und startet die Quest.",
+    "Bring den Griff zu Ealaane Nimbuswalker in Valanaar, 66, 74, und suche dann die Ancient Skyborne Blade: sie liegt immer an einer Stelle von 49, 73, 50, 44, 66, 43 oder 60, 82.",
+    "Bring die Klinge zu Ealaane zurück: dafür gibt es Eluvi'ana. Der Rest des Dawn-Waker-Geheimnisses ist noch ungelöst: behalte Schwert und Ring.",
+},
+[-221315] = {
+    "Nimm in den Schwarzfelstiefen die Brücke gleich östlich vom Ring des Gesetzes, die nach Norden über die Lava führt.",
+    "Spring auf ihrer linken Seite beim kleinen Kohlebecken vom Geländer auf die Plattform an der Wand. Geh bis zu ihrem Ende und lauf mit der linken Schulter an der Wand entlang, bis du auf den Vorsprung darunter fällst.",
+    "Das Spielzeug Traveler's Symbols liegt auf dem Vorsprung. Die Tür dort führt nur hinunter zu Lord Incendius.",
+},
+[-268109] = {
+    "Geh zum Felsen oben am Wasserfall auf Zephras Isle, 51, 72, wo Frösche singen.",
+    "Warte, bis mindestens zwei Frösche auf dem Felsen sitzen, nimm einen ins Ziel und tippe /sing.",
+    "Die Frösche verschwinden und ein Musical Gustjumper erscheint auf dem Baumstamm neben dir: klick ihn an, um das Haustier zu bekommen.",
+},
+[-282047] = {
+    "Das Sewer Beast, Stufe 50, schwimmt in den Kanälen von Stormwind, 71, 49 und 71, 68.",
+    "Es lässt das Haustier Baby Crocolisk fallen, aber nicht jedes Mal: töte es wieder, wenn es zurückkommt.",
+},
 [95805] = {
     "Erledige zuerst beide Teile von A Humble Task: Die Mutter des Häuptlings steht am Brunnen, 50, 81.",
     "Seer Graytongue wohnt in den Hügeln südlich von Camp Narache, 42, 92. Jedes Volk der Horde kann die Quest annehmen.",
@@ -338,6 +410,42 @@ T.de = {
 }
 
 T.es = {
+[97583] = {
+    "Compra Nutritious Slime Sludge a Boyle junto al canal de Entrañas, 56, 64.",
+    "Busca un Excitable Slime que patrulla los canales. Ponte en los escalones del canal, no en el agua, selecciónalo y escribe /dance.",
+    "Acepta la misión que ofrece, WRIGGLE., y dale el lodo para conseguir la mascota. Si parece cansado, vuelve a bailar con él.",
+},
+[95534] = {
+    "Despoja una Singed Note de los Syndicate Wizards o Argus Shadow Mages de las Montañas de Alterac. Inicia la misión.",
+    "En la forja de Strahnbrad, 59, 46, enciende los dos fuelles casi a la vez: sirve el Fogonazo de un mago, o dos jugadores a la vez.",
+    "Mata al elemental de fuego que aparece.",
+    "Entrégala en Costasur (Alianza, Kundric Zanden) o Molino Tarren (Horda, Shara Blazen) para obtener la Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb, al oeste del Pantano de las Penas, 25, 53, da la misión y un Entomology Starter Kit desde el nivel 25.",
+    "Atrapa uno de cada con el kit: una Arbor Tarantula en el norte de Tuercespina, 43, 20, un Hay Weevil en las Tierras Altas de Arathi, 30, 30, y un Flesh Picker en Desolace, 48, 58.",
+    "Lleva los tres ejemplares a Amaryllis para conseguir la mascota Weevil K. Neevil.",
+},
+[97029] = {
+    "Consigue el anillo Ancient Heirloom: los Skyborne hacen Coming of Age de Ailee Farheart; los demás lo cogen en el piso de arriba del edificio de Zephras Isle, 41.7, 23.4.",
+    "Toma una Night Watchman's Torch del cuerpo del guardia en Bosque del Ocaso (An Unfortunate End), enciéndela y úsala en las Ruins of Ban'aethal, Zephras Isle 58, 24. Aparece el Ancient Hilt, que inicia la misión.",
+    "Lleva la empuñadura a Ealaane Nimbuswalker en Valanaar, 66, 74, y busca la Ancient Skyborne Blade: aparece en un solo sitio cada vez, 49, 73, 50, 44, 66, 43 o 60, 82.",
+    "Devuelve la hoja a Ealaane para obtener Eluvi'ana. El resto del secreto Dawn Waker aún no se ha resuelto: guarda la espada y el anillo.",
+},
+[-221315] = {
+    "En las Profundidades de Roca Negra toma el puente justo al este del Anillo de la Ley que va al norte sobre la lava.",
+    "En su lado izquierdo, junto a un pequeño brasero, salta de la barandilla a la plataforma pegada al muro. Ve hasta su final y corre pegado al muro, con el hombro izquierdo, hasta caer en la cornisa de abajo.",
+    "El juguete Traveler's Symbols está en la cornisa. La puerta de allí solo baja hasta Lord Incendius.",
+},
+[-268109] = {
+    "Ve a la roca en lo alto de la cascada de Zephras Isle, 51, 72, donde cantan las ranas.",
+    "Espera a que haya al menos dos ranas en la roca, selecciona una y escribe /sing.",
+    "Las ranas desaparecen y un Musical Gustjumper aparece en el tronco a tu lado: haz clic en él para conseguir la mascota.",
+},
+[-282047] = {
+    "La Sewer Beast, de nivel 50, nada en los canales de Ventormenta, 71, 49 y 71, 68.",
+    "Suelta la mascota Baby Crocolisk, pero no siempre: mátala otra vez cuando vuelva.",
+},
 [95805] = {
     "Haz primero las dos partes de A Humble Task: la madre del jefe está junto al pozo, 50, 81.",
     "Seer Graytongue vive en las colinas al sur de Campamento Narache, 42, 92. Cualquier raza de la Horda puede aceptar la misión.",
@@ -504,6 +612,42 @@ T.es = {
 }
 
 T.fr = {
+[97583] = {
+    "Achetez de la Nutritious Slime Sludge à Boyle près du canal de Fossoyeuse, 56, 64.",
+    "Trouvez un Excitable Slime qui patrouille dans les canaux. Placez-vous sur les marches du canal, pas dans l'eau, ciblez-le et tapez /dance.",
+    "Acceptez sa quête WRIGGLE. et donnez-lui la vase pour obtenir la mascotte. S'il semble fatigué, dansez encore avec lui.",
+},
+[95534] = {
+    "Récupérez une Singed Note sur les Syndicate Wizards ou Argus Shadow Mages des montagnes d'Alterac. Elle lance la quête.",
+    "Dans la forge de Strahnbrad, 59, 46, allumez les deux soufflets presque en même temps : la Choc de flammes d'un mage marche, ou deux joueurs à la fois.",
+    "Tuez l'élémentaire de feu qui apparaît.",
+    "Rendez-la à Austrivage (Alliance, Kundric Zanden) ou à Moulin-de-Tarren (Horde, Shara Blazen) pour la Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb, à l'ouest du marais des Chagrins, 25, 53, donne la quête et un Entomology Starter Kit dès le niveau 25.",
+    "Attrapez-en un de chaque avec le kit : une Arbor Tarantula au nord de Strangleronce, 43, 20, un Hay Weevil dans les hautes-terres d'Arathi, 30, 30, et un Flesh Picker en Désolace, 48, 58.",
+    "Rapportez les trois spécimens à Amaryllis pour la mascotte Weevil K. Neevil.",
+},
+[97029] = {
+    "Obtenez l'anneau Ancient Heirloom : les Skyborne font Coming of Age d'Ailee Farheart, les autres le ramassent au dernier étage du bâtiment de Zephras Isle, 41.7, 23.4.",
+    "Prenez une Night Watchman's Torch sur le corps du garde au bois de la Pénombre (An Unfortunate End), allumez-la et utilisez-la aux Ruins of Ban'aethal, Zephras Isle 58, 24. L'Ancient Hilt apparaît et lance la quête.",
+    "Apportez la poignée à Ealaane Nimbuswalker à Valanaar, 66, 74, puis trouvez l'Ancient Skyborne Blade : elle est à un seul endroit à la fois, 49, 73, 50, 44, 66, 43 ou 60, 82.",
+    "Rapportez la lame à Ealaane pour Eluvi'ana. La suite du secret Dawn Waker n'est pas encore résolue : gardez l'épée et l'anneau.",
+},
+[-221315] = {
+    "Dans les profondeurs de Rochenoire, prenez le pont juste à l'est de l'Arène de la Loi qui part vers le nord au-dessus de la lave.",
+    "Sur son côté gauche, près d'un petit brasero, sautez de la rambarde sur la plateforme contre le mur. Allez au bout et courez le long du mur, épaule gauche contre lui, jusqu'à tomber sur la corniche en dessous.",
+    "Le jouet Traveler's Symbols est sur la corniche. La porte là-bas mène seulement en bas, chez Lord Incendius.",
+},
+[-268109] = {
+    "Allez au rocher en haut de la cascade de Zephras Isle, 51, 72, où chantent des grenouilles.",
+    "Attendez qu'au moins deux grenouilles soient sur le rocher, ciblez-en une et tapez /sing.",
+    "Les grenouilles disparaissent et un Musical Gustjumper apparaît sur le tronc à côté de vous : cliquez dessus pour obtenir la mascotte.",
+},
+[-282047] = {
+    "La Sewer Beast, niveau 50, nage dans les canaux de Hurlevent, 71, 49 et 71, 68.",
+    "Elle laisse la mascotte Baby Crocolisk, mais pas à chaque fois : tuez-la encore quand elle revient.",
+},
 [95805] = {
     "Faites d'abord les deux parties de A Humble Task : la mère du chef se tient près du puits, 50, 81.",
     "Seer Graytongue vit dans les collines au sud du Camp Narache, 42, 92. Toute race de la Horde peut prendre la quête.",
@@ -670,6 +814,42 @@ T.fr = {
 }
 
 T.pl = {
+[97583] = {
+    "Kup Nutritious Slime Sludge u Boyle'a przy kanale w Undercity, 56, 64.",
+    "Znajdź Excitable Slime, który krąży po kanałach. Stań na schodach kanału, nie w wodzie, wybierz go i wpisz /dance.",
+    "Przyjmij jego zadanie WRIGGLE. i daj mu szlam, a dostaniesz zwierzaka. Jeśli wygląda na zmęczonego, zatańcz z nim znowu.",
+},
+[95534] = {
+    "Zdobądź Singed Note z Syndicate Wizards lub Argus Shadow Mages w Alterac Mountains. Ta notatka zaczyna zadanie.",
+    "W kuźni Strahnbrad, 59, 46, zapal oba miechy niemal naraz: działa Flamestrike maga albo dwóch graczy jednocześnie.",
+    "Zabij ognistego żywiołaka, który się pojawi.",
+    "Oddaj zadanie w Southshore (Przymierze, Kundric Zanden) lub w Tarren Mill (Horda, Shara Blazen), a dostaniesz Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb na zachodzie Swamp of Sorrows, 25, 53, daje zadanie i Entomology Starter Kit od poziomu 25.",
+    "Złap zestawem po jednym: Arbor Tarantula na północy Stranglethorn, 43, 20, Hay Weevil w Arathi Highlands, 30, 30, i Flesh Picker w Desolace, 48, 58.",
+    "Zanieś trzy okazy do Amaryllis, a dostaniesz zwierzaka Weevil K. Neevil.",
+},
+[97029] = {
+    "Zdobądź pierścień Ancient Heirloom: Skyborne robią Coming of Age od Ailee Farheart, reszta podnosi go na najwyższym piętrze budynku na Zephras Isle, 41.7, 23.4.",
+    "Weź Night Watchman's Torch z ciała strażnika w Duskwood (An Unfortunate End), zapal ją i użyj w Ruins of Ban'aethal, Zephras Isle 58, 24. Pojawi się Ancient Hilt, który zaczyna zadanie.",
+    "Zanieś rękojeść do Ealaane Nimbuswalker w Valanaar, 66, 74, a potem znajdź Ancient Skyborne Blade: leży naraz tylko w jednym z miejsc 49, 73, 50, 44, 66, 43 lub 60, 82.",
+    "Oddaj ostrze Ealaane, a dostaniesz Eluvi'ana. Reszta sekretu Dawn Waker nie jest jeszcze rozwiązana: zachowaj miecz i pierścień.",
+},
+[-221315] = {
+    "W Blackrock Depths wejdź na most tuż na wschód od Ring of Law, który biegnie na północ nad lawą.",
+    "Po jego lewej stronie, przy małym koksowniku, skocz z barierki na platformę przy ścianie. Dojdź do jej końca i biegnij wzdłuż ściany, lewym ramieniem przy niej, aż spadniesz na półkę niżej.",
+    "Zabawka Traveler's Symbols leży na tej półce. Drzwi tam prowadzą tylko w dół, do Lorda Incendiusa.",
+},
+[-268109] = {
+    "Idź na skałę na szczycie wodospadu na Zephras Isle, 51, 72, gdzie śpiewają żaby.",
+    "Poczekaj, aż na skale siedzą co najmniej dwie żaby, wybierz jedną i wpisz /sing.",
+    "Żaby znikną, a na kłodzie obok pojawi się Musical Gustjumper: kliknij go, by dostać zwierzaka.",
+},
+[-282047] = {
+    "Sewer Beast, poziom 50, pływa w kanałach Stormwind, 71, 49 i 71, 68.",
+    "Wypada z niej zwierzak Baby Crocolisk, ale nie za każdym razem: zabij ją znowu, gdy wróci.",
+},
 [95805] = {
     "Najpierw zrób obie części A Humble Task: matka wodza stoi przy studni, 50, 81.",
     "Seer Graytongue mieszka na wzgórzach na południe od Camp Narache, 42, 92. Zadanie może wziąć każda rasa Hordy.",
@@ -836,6 +1016,42 @@ T.pl = {
 }
 
 T.pt = {
+[97583] = {
+    "Compre Nutritious Slime Sludge com Boyle junto ao canal da Cidade Baixa, 56, 64.",
+    "Encontre um Excitable Slime que patrulha os canais. Fique nos degraus do canal, não na água, selecione-o e digite /dance.",
+    "Aceite a missão que ele oferece, WRIGGLE., e entregue a gosma para ganhar o mascote. Se ele parecer cansado, dance com ele de novo.",
+},
+[95534] = {
+    "Saqueie uma Singed Note dos Syndicate Wizards ou Argus Shadow Mages nas Montanhas de Alterac. Ela inicia a missão.",
+    "Na forja de Strahnbrad, 59, 46, acenda os dois foles quase juntos: o Golpe Flamejante de um mago funciona, ou dois jogadores ao mesmo tempo.",
+    "Mate o elemental de fogo que aparece.",
+    "Entregue em Southshore (Aliança, Kundric Zanden) ou em Tarren Mill (Horda, Shara Blazen) para ganhar a Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb, no oeste do Pântano das Mágoas, 25, 53, dá a missão e um Entomology Starter Kit a partir do nível 25.",
+    "Capture um de cada com o kit: uma Arbor Tarantula no norte de Selva do Espinhaço, 43, 20, um Hay Weevil nas Terras Altas de Arathi, 30, 30, e um Flesh Picker em Desolação, 48, 58.",
+    "Leve os três espécimes de volta a Amaryllis para ganhar o mascote Weevil K. Neevil.",
+},
+[97029] = {
+    "Pegue o anel Ancient Heirloom: os Skyborne fazem Coming of Age de Ailee Farheart; os outros o pegam no último andar do prédio em Zephras Isle, 41.7, 23.4.",
+    "Pegue uma Night Watchman's Torch do corpo do guarda em Floresta do Crepúsculo (An Unfortunate End), acenda e use nas Ruins of Ban'aethal, Zephras Isle 58, 24. O Ancient Hilt aparece e inicia a missão.",
+    "Leve o punho a Ealaane Nimbuswalker em Valanaar, 66, 74, e depois encontre a Ancient Skyborne Blade: ela fica em um lugar por vez, 49, 73, 50, 44, 66, 43 ou 60, 82.",
+    "Devolva a lâmina a Ealaane para ganhar Eluvi'ana. O resto do segredo Dawn Waker ainda não foi resolvido: guarde a espada e o anel.",
+},
+[-221315] = {
+    "Nas Profundezas Rocha Negra, pegue a ponte logo a leste do Anel da Lei que segue para o norte sobre a lava.",
+    "No lado esquerdo dela, perto de um pequeno braseiro, pule do parapeito para a plataforma junto à parede. Vá até o fim e corra rente à parede, ombro esquerdo nela, até cair na saliência abaixo.",
+    "O brinquedo Traveler's Symbols fica na saliência. A porta ali só leva para baixo, até Lord Incendius.",
+},
+[-268109] = {
+    "Vá até a pedra no alto da cachoeira de Zephras Isle, 51, 72, onde os sapos cantam.",
+    "Espere até haver pelo menos dois sapos na pedra, selecione um e digite /sing.",
+    "Os sapos somem e um Musical Gustjumper aparece no tronco ao seu lado: clique nele para ganhar o mascote.",
+},
+[-282047] = {
+    "A Sewer Beast, nível 50, nada nos canais de Ventobravo, 71, 49 e 71, 68.",
+    "Ela dá o mascote Baby Crocolisk, mas não sempre: mate-a de novo quando ela voltar.",
+},
 [95805] = {
     "Faça antes as duas partes de A Humble Task: a mãe do chefe fica junto ao poço, 50, 81.",
     "Seer Graytongue vive nas colinas ao sul da Aldeia Narache, 42, 92. Qualquer raça da Horda pode aceitar a missão.",
@@ -1002,6 +1218,42 @@ T.pt = {
 }
 
 T.ru = {
+[97583] = {
+    "Купите Nutritious Slime Sludge у Boyle у канала в Подгороде, 56, 64.",
+    "Найдите Excitable Slime, который ползает по каналам. Встаньте на ступени канала, не в воду, возьмите его в цель и наберите /dance.",
+    "Возьмите его задание WRIGGLE. и отдайте ему слизь: за неё дают питомца. Если он выглядит уставшим, станцуйте с ним ещё раз.",
+},
+[95534] = {
+    "Добудьте Singed Note с Syndicate Wizards или Argus Shadow Mages в Альтеракских горах. Записка начинает задание.",
+    "В кузнице Стрэнбрэда, 59, 46, подожгите оба меха почти одновременно: подойдёт «Огненный столб» мага или два игрока сразу.",
+    "Убейте огненного элементаля, который появится.",
+    "Сдайте задание в Южнобережье (Альянс, Kundric Zanden) или в Мельнице Таррен (Орда, Shara Blazen): награда Brilliant Cloak.",
+},
+[93176] = {
+    "Amaryllis Webb на западе Болота Печали, 25, 53, с 25 уровня даёт задание и Entomology Starter Kit.",
+    "Поймайте набором по одному: Arbor Tarantula на севере Тернистой долины, 43, 20, Hay Weevil в Арати, 30, 30, и Flesh Picker в Пустошах, 48, 58.",
+    "Принесите три образца Amaryllis: за них дают питомца Weevil K. Neevil.",
+},
+[97029] = {
+    "Добудьте кольцо Ancient Heirloom: Skyborne получают его за Coming of Age у Ailee Farheart, остальные подбирают на верхнем этаже здания на Zephras Isle, 41.7, 23.4.",
+    "Возьмите Night Watchman's Torch с тела стражника в Сумеречном лесу (An Unfortunate End), зажгите и примените в Ruins of Ban'aethal, Zephras Isle 58, 24. Появится Ancient Hilt, он начинает задание.",
+    "Отнесите рукоять Ealaane Nimbuswalker в Valanaar, 66, 74, и найдите Ancient Skyborne Blade: он лежит в одном месте за раз, 49, 73, 50, 44, 66, 43 или 60, 82.",
+    "Принесите клинок Ealaane: награда Eluvi'ana. Остальная часть секрета Dawn Waker ещё не разгадана: не выбрасывайте меч и кольцо.",
+},
+[-221315] = {
+    "В Глубинах Черной горы идите на мост сразу к востоку от Круга Закона, который ведёт на север над лавой.",
+    "На его левой стороне, у маленькой жаровни, прыгните с перил на площадку у стены. Дойдите до её конца и бегите вдоль стены, левым плечом к ней, пока не упадёте на уступ ниже.",
+    "Игрушка Traveler's Symbols лежит на уступе. Дверь там ведёт только вниз, к Lord Incendius.",
+},
+[-268109] = {
+    "Идите к камню на вершине водопада на Zephras Isle, 51, 72, где поют лягушки.",
+    "Дождитесь, пока на камне сидят хотя бы две лягушки, возьмите одну в цель и наберите /sing.",
+    "Лягушки исчезнут, а на бревне рядом появится Musical Gustjumper: нажмите на него, чтобы получить питомца.",
+},
+[-282047] = {
+    "Sewer Beast 50 уровня плавает в каналах Штормграда, 71, 49 и 71, 68.",
+    "С него падает питомец Baby Crocolisk, но не каждый раз: убейте его снова, когда он вернётся.",
+},
 [95805] = {
     "Сначала сделайте обе части A Humble Task: мать вождя стоит у колодца, 50, 81.",
     "Seer Graytongue живёт в холмах к югу от Лагеря Нараче, 42, 92. Задание берёт любая раса Орды.",
@@ -1168,6 +1420,42 @@ T.ru = {
 }
 
 T.zh = {
+[97583] = {
+    "在幽暗城运河边向 Boyle 购买 Nutritious Slime Sludge，56, 64。",
+    "找一只在运河里游荡的 Excitable Slime。站在运河台阶上，不要站在水里，选中它并输入 /dance。",
+    "接受它给的任务 WRIGGLE.，把软泥交给它就能得到宠物。如果它看起来累了，就再和它跳一次舞。",
+},
+[95534] = {
+    "从奥特兰克山脉的 Syndicate Wizards 或 Argus Shadow Mages 身上拾取 Singed Note，它会开启任务。",
+    "在斯坦恩布莱德的锻炉，59, 46，几乎同时点燃两个风箱：法师的烈焰风暴可以，或者两名玩家一起点。",
+    "杀死出现的火元素。",
+    "在南海镇（联盟，Kundric Zanden）或塔伦米尔（部落，Shara Blazen）交任务，奖励 Brilliant Cloak。",
+},
+[93176] = {
+    "悲伤沼泽西部的 Amaryllis Webb，25, 53，25 级起给任务和一个 Entomology Starter Kit。",
+    "用工具包各抓一只：荆棘谷北部的 Arbor Tarantula，43, 20；阿拉希高地的 Hay Weevil，30, 30；凄凉之地的 Flesh Picker，48, 58。",
+    "把三个标本带回给 Amaryllis，奖励宠物 Weevil K. Neevil。",
+},
+[97029] = {
+    "拿到戒指 Ancient Heirloom：Skyborne 做 Ailee Farheart 的 Coming of Age，其他人到 Zephras Isle 41.7, 23.4 那座建筑的顶层拾取。",
+    "从暮色森林卫兵的尸体上拿 Night Watchman's Torch（An Unfortunate End），点燃后在 Ruins of Ban'aethal（Zephras Isle 58, 24）使用。Ancient Hilt 会出现并开启任务。",
+    "把剑柄交给 Valanaar 的 Ealaane Nimbuswalker，66, 74，然后寻找 Ancient Skyborne Blade：每次只在一处出现，49, 73、50, 44、66, 43 或 60, 82。",
+    "把剑刃交回 Ealaane，得到 Eluvi'ana。Dawn Waker 秘密的其余部分还没人解开：留着这把剑和戒指。",
+},
+[-221315] = {
+    "在黑石深渊走法律之环东边那座向北跨过熔岩的桥。",
+    "在桥的左侧小火盆旁，从栏杆跳到贴墙的平台上。走到尽头，左肩贴着墙一直跑，直到掉到下面的岩架上。",
+    "玩具 Traveler's Symbols 就在岩架上。那里的门只会把你带下去，到 Lord Incendius 那里。",
+},
+[-268109] = {
+    "前往 Zephras Isle 瀑布顶上的岩石，51, 72，青蛙在那里唱歌。",
+    "等至少两只青蛙坐在岩石上，选中一只并输入 /sing。",
+    "青蛙消失后，你旁边的木头上会出现一只 Musical Gustjumper：点击它得到宠物。",
+},
+[-282047] = {
+    "50 级的 Sewer Beast 在暴风城的运河里游动，71, 49 和 71, 68。",
+    "它会掉落宠物 Baby Crocolisk，但不是每次都掉：它刷新后再杀。",
+},
 [95805] = {
     "先完成 A Humble Task 的两个部分：酋长的母亲在水井旁，50, 81。",
     "Seer Graytongue 在纳拉其营地以南的山丘上，42, 92。部落任何种族都能接这个任务。",

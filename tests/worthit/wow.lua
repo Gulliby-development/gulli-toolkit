@@ -131,7 +131,7 @@ end
 
 -- spec: done, log, ready (quest id sets), bags (bag 1-4 -> slots), family (bag -> family),
 -- slots (item id -> slots, 10 for the rest), raceId, classId, zone (area id the player is in),
--- kalimdor, x, y, items (item id -> count in the bags), db, cdb.
+-- kalimdor, x, y, items (item id -> count in the bags), toys and pets (item id -> true: known), db, cdb.
 local CLASS_ID = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
 function Fake(spec)
     spec = spec or {}
@@ -141,6 +141,13 @@ function Fake(spec)
     W.zone, W.kalimdor, W.x, W.y = spec.zone, spec.kalimdor, spec.x, spec.y
     W.items = spec.items or {}
     W.bank = spec.bank or {}
+    W.toys, W.pets = spec.toys or {}, spec.pets or {}
+    PlayerHasToy = function(id) return W.toys[id] == true end
+    -- a pet item's species is 100000 + its id; GetNumCollectedInfo counts the pets known of it
+    C_PetJournal = {
+        GetPetInfoByItemID = function(id) return "Pet", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 100000 + id end,
+        GetNumCollectedInfo = function(species) return W.pets[species - 100000] and 1 or 0, 3 end,
+    }
     W.pins, W.cleared, W.toasts, W.notes, W.maps = {}, 0, {}, {}, {}
     UnitRace = function() return "Race", "Race", spec.raceId or 1 end
     UnitClass = function() return "Class", spec.class or "PRIEST", CLASS_ID[spec.class or "PRIEST"] end
