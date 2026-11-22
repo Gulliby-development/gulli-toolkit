@@ -161,7 +161,23 @@ function Fake(spec)
         GetItemQualityByID = function() return 3 end,
         RequestLoadItemDataByID = function() end,
         GetItemCount = function(id) return W.items[id] or 0 end,
+        -- equip: item id -> the game's equip location, for the set pieces the data has no slot for
+        GetItemInfoInstant = function(id) return id, "Armor", "", (W.equip or {})[id] or "" end,
+        GetItemInfo = function(id)
+            return "Item" .. id, nil, 3, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, (W.setOf or {})[id]
+        end,
+        GetItemSetInfo = function(id) return (W.setNames or {})[id] end,
     }
+    -- tips: item id -> the lines of its tooltip
+    W.equip, W.setOf, W.setNames, W.tipLines = spec.equip or {}, spec.setOf or {}, spec.setNames or {}, spec.tipLines or {}
+    C_TooltipInfo = { GetItemByID = function(id)
+        local t = W.tipLines[id]
+        if not t then return nil end
+        local lines = {}
+        for i, x in ipairs(t) do lines[i] = { leftText = x } end
+        return { lines = lines }
+    end }
+    ITEM_SET_BONUS_GRAY, ITEM_SET_BONUS = "(%d) Set: %s", "Set: %s"
     GetSpecialization = spec.spec and function() return 1 end or nil
     GetSpecializationInfo = spec.spec and function() return spec.spec end or nil
     GetTalentTabInfo = spec.tabs and function(i) return i, "Tab", "", "", spec.tabs[i] or 0 end or nil

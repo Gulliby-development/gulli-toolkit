@@ -1620,7 +1620,28 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
     head = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "head") end },
     level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
         mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },
-    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end },
+    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(3) end },
+    -- the Sets tab: the tier 0.5 set, two pieces worn, three tier 0 pieces to make the next from
+    sets = { spec = mbSpec(), open = function(ns, W)
+        mbOpen(ns, W)
+        local D = ns.Data
+        C_Item.GetItemNameByID = function(id) return D.item[id] and D.item[id][7] or D.names[id] or ("Item " .. id) end
+        W.worn[9], W.worn[6] = 226863, 226864
+        W.items[226863], W.items[226864] = 1, 1
+        W.worn[1], W.worn[3] = 16731, 16733
+        W.items[16731], W.items[16733], W.items[16737] = 1, 1, 1
+        W.tipLines[226857] = { "(2) Set: +200 Armor.", "(3) Set: +40 Attack Power.",
+            "(4) Set: Chance on melee attack to heal you for 88 to 132.", "(5) Set: +8 All Resistances.",
+            "(6) Set: Your melee attacks have a chance to grant you 20 Strength for 10 sec." }
+        ns.setId = 1778
+        ns.ShowTab(2)
+    end },
+    setsmage = { spec = { level = 60, class = "MAGE", faction = "Horde", spec = 63 }, open = function(ns, W)
+        mbOpen(ns, W); W.worn = {}; ns.SetMySpec("MAGE_FIRE"); ns.SetMain("auto")
+        local D = ns.Data
+        C_Item.GetItemNameByID = function(id) return D.item[id] and D.item[id][7] or D.names[id] or ("Item " .. id) end
+        ns.ShowTab(2)
+    end },
     four = { spec = mbSpec(), open = function(ns, W)
         mbOpen(ns, W, "neck")
         local ref = ns.CopyList("site:WARRIOR_ARMS:PRE")

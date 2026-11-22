@@ -1,5 +1,5 @@
--- The window: the gear page (the slots worn round a card with the chosen slot's list) and the
--- settings. It only shows what Core.lua worked out.
+-- The window: the gear page (the slots worn round a card with the chosen slot's list), the sets
+-- page (the sets of a class, and the chosen one piece by piece) and the settings. It only shows what Core.lua worked out.
 
 local _, ns = ...
 local L = ns.L
@@ -9,6 +9,10 @@ local D = ns.Data
 local frame, footer, tabs, mainBtn, autoBtn, copyBtn, delBtn
 local pages = {}
 local gear = {}         -- the gear page's parts
+local sets = {}         -- the sets page's parts
+local SETS, SETTINGS = 2, 3
+ns.setClass = nil       -- the class whose sets are shown; nil is the character's
+ns.setId = nil          -- the set shown
 local current = 1       -- the page tab shown
 ns.view = nil           -- the list shown (a ref); nil shows the main list
 ns.slot = "head"        -- the slot whose list the card shows
@@ -772,6 +776,458 @@ local function paintGear()
     c.list:SetPoint("TOPLEFT", 0, c.news:IsShown() and -(44 + S.BANNER_H + 6) or -44)
 end
 
+-- The sets page ----------------------------------------------------------------------------------------
+
+local SET_LEFT, SET_ROW, PIECE_H, PIECE_ROWS, BONUS_H, CHAIN_H = 236, 44, 42, 4, 32, 44
+local PIP = 7
+
+function ns.SetClass()
+    local _, mine = UnitClass("player")
+    return ns.setClass or mine
+end
+
+local function codeName(code) return L["SLOT_" .. (ns.CODE_SLOT[code] or code)] or code end
+
+-- Where a set piece comes from: the data's line, else the boss Dungeon Journal knows.
+function ns.PieceSource(id)
+    local text = ns.SourceText(id)
+    if text ~= "" then return text end
+    local dj = GulliDungeonJournal
+    local d = dj and dj.DropsOf and dj.DropsOf(id)
+    d = d and d[1]
+    if d and d.boss then
+        local where = dj.Name and dj.Name(d.key)
+        return where and (d.boss .. " · " .. where) or d.boss
+    end
+    return ""
+end
+
+-- The second line of a piece: the tier 0 piece it is made from and whether it is there, else
+-- where the piece comes from.
+function ns.PieceLine(g)
+    if g.from then
+        local have = g.fromHave and colour(L.SET_HAVE, S.GOOD) or colour(L.SET_NOT, S.FAINT)
+        return L.SET_FROM:format(S.QualityHex(ns.ItemQuality(g.from)) .. ns.ItemName(g.from) .. "|r") .. " · " .. have
+    end
+    return ns.PieceSource(g.id)
+end
+
+local function pips(parent, n)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(n * (PIP + 2), PIP)
+    f.dots = {}
+    for i = 1, n do
+        local d = S.Circle(f, PIP, S.FAINT, "OVERLAY")
+        d:SetPoint("LEFT", (i - 1) * (PIP + 2), 0)
+        f.dots[i] = d
+    end
+    function f:Set(have, of)
+        of = math.min(of, #self.dots)
+        for i, d in ipairs(self.dots) do
+            d:SetShown(i <= of)
+            local c = i <= have and S.GOOD or S.FAINT
+            d:SetVertexColor(c[1], c[2], c[3], i <= have and 1 or 0.45)
+        end
+        self:SetWidth(math.max(1, of * (PIP + 2)))
+    end
+    return f
+end
+
+local function setRowMake(r)
+    S.NavRow(r)
+    r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
+    r.head:SetPoint("BOTTOMLEFT", 8, 5)
+    r.head:SetPoint("RIGHT", -8, 0)
+    r.head:SetJustifyH("LEFT")
+    r.head:SetWordWrap(false)
+    r.icon = S.IconBox(r, 32)
+    r.icon:SetPoint("LEFT", 6, 0)
+    r.name = S.Text(r, 13)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 0)
+    r.name:SetPoint("RIGHT", -6, 0)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r.pips = pips(r, 8)
+    r.pips:SetPoint("BOTTOMRIGHT", -8, 8)
+    r.sub = S.Text(r, 12, S.MUTED)
+    r.sub:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, 0)
+    r.sub:SetPoint("RIGHT", r.pips, "LEFT", -6, 0)
+    r.sub:SetJustifyH("LEFT")
+    r.sub:SetWordWrap(false)
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnClick", function(self)
+        local it = self:GetParent().item
+        if it then ns.setId = it.set; ns.Refresh() end
+    end)
+    r.hit:SetScript("OnEnter", function(self)
+        local row = self:GetParent()
+        if not (GameTooltip and row.item and row.full) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(row.full)
+        if row.where then GameTooltip:AddLine(row.where, S.MUTED[1], S.MUTED[2], S.MUTED[3]) end
+        GameTooltip:Show()
+    end)
+    r.hit:SetScript("OnLeave", hideTip)
+end
+
+local function setRowFill(r, it)
+    local head = it.head ~= nil
+    r.item = not head and it or nil
+    r.head:SetShown(head)
+    for _, k in ipairs({ "icon", "name", "sub", "pips", "hit" }) do r[k]:SetShown(not head) end
+    if r.line then r.line:SetShown(not head) end
+    if head then r.head:SetText(S.Upper(L["SETS_" .. it.head])); r:SetSelected(false); return end
+    local info = ns.SetInfo(it.set)
+    local first = info.groups[1]
+    local q = first and ns.ItemQuality(first.id) or 3
+    r.icon:SetIcon(first and ns.ItemIcon(first.id) or ns.SET_ICON)
+    r.icon:SetGlow(S.QUALITY[q])
+    r.full = info.name
+    r.name:SetText(S.QualityHex(q) .. info.name .. "|r")
+    -- a set for anyone says where its first piece comes from, when the data knows
+    local where = info.kind == "any" and first and ns.PieceSource(first.id) or ""
+    local place = info.kind == "any" and first and ns.SourcePlace(first.id) or ""
+    r.where = where ~= "" and where or nil
+    r.sub:SetText(place ~= "" and place or L["SET_KIND_" .. info.kind:upper()])
+    r.pips:Set(info.worn, info.of)
+    r:SetSelected(ns.setId == it.set)
+end
+
+local function pieceCell(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetHeight(PIECE_H)
+    S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
+    b.line = S.Divider(b)
+    b.line:SetPoint("TOPLEFT", 0, 0)
+    b.line:SetPoint("TOPRIGHT", 0, 0)
+    b.line:SetHeight(1)
+    b.icon = S.IconBox(b, 30)
+    b.icon:SetPoint("LEFT", 4, 0)
+    b.tag = S.Text(b, 12, S.MUTED)
+    b.tag:SetPoint("TOPRIGHT", -4, -5)
+    b.tag:SetJustifyH("RIGHT")
+    b.tag:SetWordWrap(false)
+    b.dot = S.Circle(b, 8, S.BAD, "OVERLAY")
+    b.dot:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 8, -4)
+    b.name = S.Text(b, 13)
+    b.name:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 20, 0)
+    b.name:SetPoint("RIGHT", b.tag, "LEFT", -6, 0)
+    b.name:SetJustifyH("LEFT")
+    b.name:SetWordWrap(false)
+    b.sub = S.Text(b, 12, S.MUTED)
+    b.sub:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 0)
+    b.sub:SetPoint("RIGHT", -4, 0)
+    b.sub:SetJustifyH("LEFT")
+    b.sub:SetWordWrap(false)
+    b:SetScript("OnEnter", function(self)
+        local g = self.group
+        if not g then return end
+        S.Fill(self, S.HOVER)
+        self.itemId = g.id
+        itemTip(self)
+        if not GameTooltip then return end
+        local c = ns.AT_COLOR[self.at]
+        GameTooltip:AddLine(L["AT_" .. self.at:upper()], c[1], c[2], c[3])
+        local line = ns.PieceLine(g)
+        if line ~= "" then GameTooltip:AddLine(line, S.MUTED[1], S.MUTED[2], S.MUTED[3]) end
+        if g.step then
+            GameTooltip:AddLine(L.SRC_QUEST:format(D.setSteps[g.step]), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+        end
+        if #g.ids > 1 then
+            GameTooltip:AddLine(L.SET_TURN:format(g.at, #g.ids), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+        end
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR); hideTip() end)
+    b:SetScript("OnClick", function(self)
+        local g = self.group
+        if g and #g.ids > 1 and not (g.worn or g.have) then ns.SetTurn(ns.setId, g.code, #g.ids) end
+    end)
+    return b
+end
+
+local function paintPiece(b, g)
+    b.group = g
+    local q = ns.ItemQuality(g.id)
+    b.icon:SetIcon(ns.ItemIcon(g.id))
+    b.icon:SetGlow(S.QUALITY[q])
+    b.name:SetText(S.QualityHex(q) .. ns.ItemName(g.id) .. "|r")
+    b.at = g.worn and "worn" or (g.have and "bag") or "miss"
+    local c = ns.AT_COLOR[b.at]
+    b.dot:SetVertexColor(c[1], c[2], c[3], 1)
+    -- a place with variants says which one is shown; a tier 0.5 piece its step of the chain
+    local tag = ""
+    if #g.ids > 1 then tag = g.at .. "/" .. #g.ids
+    elseif g.step then tag = L.SET_STEP:format(g.step) end
+    b.tag:SetText(tag)
+    b.sub:SetText(ns.PieceLine(g))
+end
+
+local function bonusRow(r)
+    r.pill = CreateFrame("Frame", nil, r)
+    r.pill:SetSize(30, 20)
+    r.pill:SetPoint("LEFT", 2, 0)
+    S.Box(r.pill, S.CLEAR, S.EDGE, S.R_MD)
+    r.n = S.Text(r.pill, 12, S.MUTED, nil, "bold")
+    r.n:SetPoint("CENTER")
+    r.state = S.Text(r, 12, S.MUTED)
+    r.state:SetPoint("RIGHT", -4, 0)
+    r.state:SetJustifyH("RIGHT")
+    r.state:SetWordWrap(false)
+    r.text = S.Text(r, 12)
+    r.text:SetPoint("LEFT", r.pill, "RIGHT", 8, 0)
+    r.text:SetPoint("RIGHT", r.state, "LEFT", -8, 0)
+    r.text:SetJustifyH("LEFT")
+    if r.text.SetMaxLines then r.text:SetMaxLines(2) end
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnEnter", function(self)
+        local it = self:GetParent().item
+        if not (GameTooltip and it and it.text) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(it.text, 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    r.hit:SetScript("OnLeave", hideTip)
+end
+
+local function bonusFill(r, b)
+    r.item = b
+    r.n:SetText(b.count and tostring(b.count) or "")
+    S.Fill(r.pill, b.on and S.GOOD or S.CLEAR)
+    S.SetBorder(r.pill, b.on and S.GOOD or S.EDGE)
+    r.n:SetTextColor(unpack(b.on and S.BG or S.MUTED))
+    r.text:SetText(b.text or L.SET_BONUS_WAIT)
+    r.text:SetTextColor(unpack((b.on and S.TEXT) or (b.text and S.MUTED) or S.FAINT))
+    if b.on then
+        r.state:SetText(colour(L.SET_ACTIVE, S.GOOD))
+    else
+        r.state:SetText(b.count and L.SET_MORE:format(b.count - b.worn) or "")
+    end
+end
+
+local classMenu
+local function classRow(r)
+    S.NavRow(r)
+    r.icon = S.IconBox(r, 20)
+    r.icon:SetPoint("LEFT", 8, 0)
+    r.name = S.Text(r, 13)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    r.name:SetPoint("RIGHT", -8, 0)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnClick", function(self)
+        classMenu:Hide()
+        ns.PickSetClass(self:GetParent().class)
+    end)
+end
+local function classFill(r, class)
+    r.class = class
+    r.icon:SetIcon(ns.ClassIcon(class))
+    r.name:SetText(ns.ClassName(class))
+    r:SetSelected(ns.SetClass() == class)
+end
+
+-- Shows the sets of a class (nil: the character's) and the first of them.
+function ns.PickSetClass(class)
+    local _, mine = UnitClass("player")
+    ns.setClass = class ~= mine and class or nil
+    ns.setId = nil
+    ns.Refresh()
+end
+
+local function setsPage(body)
+    local p = CreateFrame("Frame", nil, body)
+    local chip = S.Button(p, SET_LEFT, 30)
+    S.SetButtonIcon(chip, ns.ClassIcon("WARRIOR"))
+    chip:SetPoint("TOPLEFT", 0, 0)
+    chip:SetScript("OnClick", function(self)
+        if not classMenu then
+            classMenu = CreateFrame("Frame", nil, frame)
+            classMenu:SetSize(SET_LEFT, 9 * 30 + 12)
+            classMenu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
+            classMenu:SetFrameStrata("FULLSCREEN_DIALOG")
+            if classMenu.SetToplevel then classMenu:SetToplevel(true) end
+            classMenu:EnableMouse(true)
+            S.Box(classMenu, S.SOLID, S.EDGE, S.R_LG)
+            classMenu.list = S.List(classMenu, 30, classRow, classFill)
+            classMenu.list:SetPoint("TOPLEFT", 6, -6)
+            classMenu.list:SetPoint("BOTTOMRIGHT", -6, 6)
+            classMenu:Hide()
+        end
+        if classMenu:IsShown() then classMenu:Hide(); return end
+        classMenu:Show()
+        classMenu.list:SetData(ns.CLASSES)
+    end)
+    sets.chip = chip
+    local left = CreateFrame("Frame", nil, p)
+    left:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
+    left:SetPoint("BOTTOMLEFT", 0, 0)
+    left:SetWidth(SET_LEFT)
+    S.Box(left, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    sets.list = S.List(left, SET_ROW, setRowMake, setRowFill)
+    sets.list.heightOf = function(it) return it.head and 26 or SET_ROW end
+    sets.list:SetPoint("TOPLEFT", 4, -4)
+    sets.list:SetPoint("BOTTOMRIGHT", -4, 4)
+    sets.none = S.Text(left, 12, S.MUTED)
+    sets.none:SetPoint("TOPLEFT", 12, -14)
+    sets.none:SetPoint("RIGHT", -12, 0)
+    sets.none:SetJustifyH("LEFT")
+    sets.none:SetText(L.SETS_EMPTY)
+
+    local c = CreateFrame("Frame", nil, p)
+    c:SetPoint("TOPLEFT", SET_LEFT + S.GAP, 0)
+    c:SetPoint("BOTTOMRIGHT", 0, 0)
+    S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(c, S.R_LG)
+    c.body = CreateFrame("Frame", nil, c)
+    c.body:SetPoint("TOPLEFT", S.INSET, -S.INSET)
+    c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    local b = c.body
+    c.icon = S.IconBox(b, 40)
+    c.icon:SetPoint("TOPLEFT", 0, 0)
+    c.count = S.Text(b, 20, S.TEXT, nil, "bold")
+    c.count:SetPoint("TOPRIGHT", 0, -2)
+    c.countLabel = S.Text(b, 12, S.MUTED)
+    c.countLabel:SetPoint("TOPRIGHT", 0, -26)
+    c.name = S.Text(b, 16, S.GOLD, nil, "title")
+    c.name:SetPoint("TOPLEFT", c.icon, "TOPRIGHT", 10, -1)
+    c.name:SetPoint("RIGHT", c.count, "LEFT", -12, 0)
+    c.name:SetJustifyH("LEFT")
+    c.name:SetWordWrap(false)
+    c.sub = S.Text(b, 12, S.MUTED)
+    c.sub:SetPoint("BOTTOMLEFT", c.icon, "BOTTOMRIGHT", 10, 2)
+    c.sub:SetPoint("RIGHT", c.countLabel, "LEFT", -12, 0)
+    c.sub:SetJustifyH("LEFT")
+    c.sub:SetWordWrap(false)
+    c.bar = S.Progress(b, 6)
+    c.bar:SetPoint("TOPLEFT", 0, -48)
+    c.bar:SetPoint("TOPRIGHT", 0, -48)
+    c.piecesHead = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
+    c.piecesHead:SetPoint("TOPLEFT", 0, -64)
+    c.piecesHead:SetPoint("RIGHT", 0, 0)
+    c.piecesHead:SetJustifyH("LEFT")
+    c.piecesHead:SetWordWrap(false)
+    c.piecesHead:SetText(S.Upper(L.SET_PIECES))
+    c.cells = {}
+    for i = 1, PIECE_ROWS * 2 do
+        local cell = pieceCell(b)
+        local row, right = math.floor((i - 1) / 2), i % 2 == 0
+        if right then
+            cell:SetPoint("TOPLEFT", b, "TOP", S.GAP / 2, -(84 + row * PIECE_H))
+            cell:SetPoint("RIGHT", 0, 0)
+        else
+            cell:SetPoint("TOPLEFT", 0, -(84 + row * PIECE_H))
+            cell:SetPoint("RIGHT", b, "CENTER", -S.GAP / 2, 0)
+        end
+        c.cells[i] = cell
+    end
+    c.bonusHead = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
+    c.bonusHead:SetText(S.Upper(L.SET_BONUSES))
+    c.bonusHead:SetJustifyH("LEFT")
+    c.bonusHead:SetWordWrap(false)
+    c.bonuses = S.List(b, BONUS_H, bonusRow, bonusFill)
+    -- the tier 0.5 chain, under everything: the step the character is at
+    local ch = CreateFrame("Frame", nil, b)
+    ch:SetHeight(CHAIN_H)
+    ch:SetPoint("BOTTOMLEFT", 0, 0)
+    ch:SetPoint("BOTTOMRIGHT", 0, 0)
+    ch.line = S.Divider(ch)
+    ch.line:SetPoint("TOPLEFT", 0, 0)
+    ch.line:SetPoint("TOPRIGHT", 0, 0)
+    ch.line:SetHeight(1)
+    ch.icon = S.IconBox(ch, 30, "Interface\\Icons\\INV_Misc_Book_09")
+    ch.icon:SetPoint("LEFT", 4, -2)
+    ch.title = S.Text(ch, 13)
+    ch.title:SetPoint("TOPLEFT", ch.icon, "TOPRIGHT", 10, 0)
+    ch.title:SetPoint("RIGHT", -4, 0)
+    ch.title:SetJustifyH("LEFT")
+    ch.title:SetWordWrap(false)
+    ch.text = S.Text(ch, 12, S.MUTED)
+    ch.text:SetPoint("BOTTOMLEFT", ch.icon, "BOTTOMRIGHT", 10, 0)
+    ch.text:SetPoint("RIGHT", -4, 0)
+    ch.text:SetJustifyH("LEFT")
+    ch.text:SetWordWrap(false)
+    c.chain = ch
+    sets.card = c
+    return p
+end
+
+-- The set shown: the chosen one while the class has it, else the class's first.
+function ns.ShownSet()
+    local items = ns.SetList(ns.SetClass())
+    local first
+    for _, it in ipairs(items) do
+        if it.set then
+            first = first or it.set
+            if it.set == ns.setId then return ns.setId, items end
+        end
+    end
+    ns.setId = first
+    return first, items
+end
+
+local function paintSets()
+    local class = ns.SetClass()
+    sets.chip:SetText(ns.ClassName(class))
+    if sets.chip.btnIcon then sets.chip.btnIcon:SetTexture(ns.ClassIcon(class)) end
+    local id, items = ns.ShownSet()
+    sets.list:SetData(items)
+    sets.none:SetShown(#items == 0)
+    local c = sets.card
+    c:SetShown(id ~= nil)
+    if not id then return end
+    local info = ns.SetInfo(id, ns.Shown())
+    sets.info = info
+    local first = info.groups[1]
+    c.icon:SetIcon(first and ns.ItemIcon(first.id) or ns.SET_ICON)
+    c.icon:SetGlow(first and S.QUALITY[ns.ItemQuality(first.id)] or nil)
+    c.name:SetText(info.name)
+    c.sub:SetText(L.SET_SUB:format(L["SET_KIND_" .. info.kind:upper()], info.of))
+    c.count:SetText(info.worn .. "/" .. info.of)
+    c.countLabel:SetText(L.SET_WORN)
+    c.bar:Set(info.of > 0 and info.worn / info.of or 0, info.worn == info.of and info.of > 0 and S.GOOD or nil)
+    for i, cell in ipairs(c.cells) do
+        local g = info.groups[i]
+        cell:SetShown(g ~= nil)
+        if g then paintPiece(cell, g) end
+    end
+    local rows = math.ceil(math.min(#info.groups, #c.cells) / 2)
+    local y = 84 + rows * PIECE_H + 12
+    c.bonusHead:ClearAllPoints()
+    c.bonusHead:SetPoint("TOPLEFT", 0, -y)
+    c.bonusHead:SetPoint("RIGHT", 0, 0)
+    local chain = ns.SetChain(info)
+    c.chain:SetShown(chain ~= nil)
+    if chain then
+        local names = {}
+        for _, code in ipairs(chain.codes) do names[#names + 1] = codeName(code) end
+        c.chain.title:SetText(L.SET_CHAIN:format(chain.step, chain.of))
+        c.chain.text:SetText(chain.quest .. " · " .. table.concat(names, ", "))
+    end
+    local bonuses = ns.SetBonuses(info)
+    for _, x in ipairs(bonuses) do x.worn = info.worn end
+    c.bonuses:ClearAllPoints()
+    c.bonuses:SetPoint("TOPLEFT", 0, -(y + 20))
+    c.bonuses:SetPoint("BOTTOMRIGHT", 0, chain and CHAIN_H + 4 or 0)
+    c.bonuses:SetData(bonuses)
+end
+
+-- The footer's button on the sets page: the set's pieces go on the list shown on the gear page.
+function ns.AddShownSet()
+    local info = sets.info or (ns.ShownSet() and ns.SetInfo(ns.ShownSet(), ns.Shown()))
+    if not (info and ns.SetMine(info)) then return 0 end
+    local n = ns.SetAdd(info, ns.ViewRef())
+    if S.Toast then
+        S.Toast({ key = "setadd", icon = ns.ICON, title = L.TITLE,
+                  text = n > 0 and L.SET_ADDED:format(n) or L.SET_ADD_NONE, seconds = 6 })
+    end
+    return n
+end
+
 -- Settings ---------------------------------------------------------------------------------------------
 
 local function settingsPage(body, width)
@@ -804,6 +1260,17 @@ end
 local function paintFooter()
     local list = ns.Shown()
     if not list then return end
+    if current == SETS then
+        local info = sets.info
+        footer:SetStatus(L.SETS_STATUS)
+        mainBtn:SetText(L.SET_ADD)
+        mainBtn:SetEnabled(info ~= nil and ns.SetMine(info))
+        mainBtn:SetWidth(math.max(150, math.floor((mainBtn.text:GetStringWidth() or 0) + 40)))
+        autoBtn:Hide(); copyBtn:Hide(); delBtn:Hide()
+        footer.status:SetPoint("RIGHT", mainBtn, "LEFT", -12, 0)
+        return
+    end
+    copyBtn:Show()
     local isMain = ns.ShownRef() == ns.MainRef() or (ns.view == nil)
     local sim = list.simmed and L.SIMMED or L.NOT_SIMMED
     footer:SetStatus(L.STATUS:format(D.ver, sim))
@@ -832,7 +1299,7 @@ end
 function ns.Refresh()
     if not ns.db then return end
     if not (frame and frame:IsShown()) then return end
-    if current == 1 then paintGear() end
+    if current == 1 then paintGear() elseif current == SETS then paintSets() end
     paintFooter()
 end
 
@@ -842,6 +1309,7 @@ local function build()
     footer = S.Footer(frame)
     mainBtn = S.Primary(S.Button(frame, 180, 30))
     mainBtn:SetScript("OnClick", function()
+        if current == SETS then ns.AddShownSet(); return end
         local ref = ns.ShownRef()
         if ref then ns.SetMain(ref); ns.view = nil; ns.Refresh() end
     end)
@@ -871,16 +1339,18 @@ local function build()
         end
     end)
     footer:Add(delBtn)
-    tabs = S.PageTabs(body, { L.TAB_GEAR, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_GEAR, L.TAB_SETS, L.TAB_SETTINGS }, nil, function(i)
         current = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if picker then picker:Hide() end
         if adder then adder:Hide() end
-        footer:SetShown(i ~= 2)
+        if classMenu then classMenu:Hide() end
+        footer:SetShown(i ~= SETTINGS)
         ns.Refresh()
-    end, nil, { "Interface\\Icons\\INV_Chest_Plate06", S.TAB.settings })
+    end, nil, { "Interface\\Icons\\INV_Chest_Plate06", ns.SET_ICON, S.TAB.settings })
     pages[1] = gearPage(body)
-    pages[2] = settingsPage(body, width)
+    pages[SETS] = setsPage(body)
+    pages[SETTINGS] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
         p:SetPoint("BOTTOMRIGHT")
@@ -888,6 +1358,7 @@ local function build()
     end
     frame:HookScript("OnShow", function() ns.Refresh() end)
     frame:HookScript("OnHide", function()
+        if classMenu then classMenu:Hide() end
         if picker then picker:Hide() end
         if adder then adder:Hide() end
     end)
@@ -914,5 +1385,5 @@ function ns.Window()
 end
 
 -- For the tests and the previews.
-function ns.Parts() return gear, footer, mainBtn, tabs end
+function ns.Parts() return gear, footer, mainBtn, tabs, sets end
 function ns.ShowTab(i) ns.Window(); tabs:Select(i) end
