@@ -458,6 +458,24 @@ function ns.Quests(key, level, filter)
     return out
 end
 
+-- The quests Lead me and the tracker follow: ns.Quests, and at the top level the tier 0.5 set
+-- quests in the log; the set's quests to take and waiting join once the player began the set
+-- (one in the log or done) or opened its list, so a 60 who never wanted it is not led to it.
+function ns.GuideQuests(key, level)
+    local q = ns.Quests(key, level)
+    local set = q.set
+    if not set or #set.log + #set.take + #set.later == 0 then return q end
+    local out = { log = {}, take = {}, later = {}, done = q.done, set = set }
+    local begun = #set.log > 0 or set.done > 0 or ns.showSet
+    for _, g in ipairs({ "log", "take", "later" }) do
+        for _, x in ipairs(q[g]) do out[g][#out[g] + 1] = x end
+        if g == "log" or begun then
+            for _, x in ipairs(set[g]) do out[g][#out[g] + 1] = x end
+        end
+    end
+    return out
+end
+
 -- How many quests of a dungeon are in the log, to take, for later and done (for the list
 -- of dungeons and the dungeon's header).
 function ns.Counts(key, level)
@@ -648,7 +666,7 @@ end
 ns.TRACK_MAX = 8
 local TRACK_ORDER = { ready = 1, log = 2, take = 3, chain = 4 }
 function ns.TrackerItems(key, level)
-    local q = ns.Quests(key, level)
+    local q = ns.GuideQuests(key, level)
     local all, ready = {}, 0
     local function pinOf(who, area, x, y)
         if who and who ~= "" and area and area > 0 and x and (x > 0 or y > 0) then

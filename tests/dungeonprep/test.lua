@@ -1034,6 +1034,45 @@ test("the tier 0.5 set: hidden while levelling, its own folded list at the top l
     end
 end)
 
+test("Lead me at the top level: the set quests in the log, the ones to take once the set began", function()
+    local function has(list, id)
+        for _, x in ipairs(list) do
+            if x.id == id then return true end
+            for _, m in ipairs(x.members or {}) do if m == id then return true end end
+        end
+    end
+    Fake({ level = 59, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+    local ns = Load()
+    local g = ns.GuideQuests("STRAT", 59)
+    eq(#g.take, #ns.Quests("STRAT", 59).take, "nothing of the set while levelling")
+    -- At 60, never started: the guide leaves the set's quests to take alone.
+    Fake({ level = 60, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+    ns = Load()
+    local q = ns.Quests("STRAT", 60)
+    assert(#q.set.take > 0, "set quests to take at 60")
+    local first = q.set.take[1].id
+    g = ns.GuideQuests("STRAT", 60)
+    assert(not has(g.take, first), "not led to a set nobody began")
+    -- With its list open, Lead me and the tracker take them.
+    ns.showSet = true
+    g = ns.GuideQuests("STRAT", 60)
+    assert(has(g.take, first), "led to the set once its list is open")
+    local found
+    for _, it in ipairs(select(1, ns.TrackerItems("STRAT", 60))) do if it.id == first then found = true end end
+    local _, _, total = ns.TrackerItems("STRAT", 60)
+    assert(found or total > ns.TRACK_MAX, "the tracker has the set quest")
+    ns.showSet = nil
+    -- A set quest in the log: the guide follows the set, also with its list folded.
+    Fake({ level = 60, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR",
+           active = { [first] = true } })
+    ns = Load()
+    q = ns.Quests("STRAT", 60)
+    assert(#q.set.log > 0, "the set quest is in the log")
+    g = ns.GuideQuests("STRAT", 60)
+    assert(has(g.log, first), "the set quest in the log is led to")
+    eq(ns.StartGuide("STRAT"), true, "Lead me starts on the set")
+end)
+
 test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
     Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()

@@ -309,6 +309,8 @@ local function onRowClick(self, button)
     end
     if item.toggleSet then
         ns.showSet = not ns.showSet
+        -- Lead me takes the set's quests to take while its list is open (ns.GuideQuests).
+        if ns.guide and ns.guide.key == ns.selected then ns.StepGuide() end
         ns.Refresh()
         return
     end
@@ -1262,7 +1264,13 @@ function ns.Refresh()
     local guiding = ns.guide ~= nil and ns.guide.key == ns.selected
     fitIcon(guideBtn, guiding and L.GUIDE_STOP or L.GUIDE, 90)
     -- Something to lead to: a quest to take, or one in the log (who takes it back, the entrance).
-    guideBtn:SetEnabled(guiding or c.take > 0 or c.log > 0)
+    -- The counts leave the tier 0.5 set out; Lead me follows it at the top level (ns.GuideQuests).
+    local lead = c.take > 0 or c.log > 0
+    if not lead and ns.selected then
+        local gq = ns.GuideQuests(ns.selected, level)
+        lead = #gq.take + #gq.log > 0
+    end
+    guideBtn:SetEnabled(guiding or lead)
     -- The list is computed even on a quest's page, so its arrows follow the list.
     local items = ns.selected and listItems(current, level) or {}
     if open then
