@@ -116,7 +116,7 @@ end
 -- Bag slots in the bank: the bank itself and its bags.
 local function bankBags()
     local out = { BANK_CONTAINER or -1 }
-    local first = (NUM_BAG_SLOTS or 4) + 1
+    local first = (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) + 1
     for b = first, first + (NUM_BANKBAGSLOTS or 7) - 1 do out[#out + 1] = b end
     return out
 end
@@ -380,7 +380,9 @@ function ns.Snapshot()
     end
     c.bind = bindLocation()
     c.lockouts = lockouts(now) or old.lockouts
-    c.items = countItems({ 0, 1, 2, 3, 4 })
+    local worn = {}
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do worn[#worn + 1] = bag end
+    c.items = countItems(worn)
     ns.db.chars[key] = c
     return c
 end

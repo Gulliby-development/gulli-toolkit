@@ -113,7 +113,7 @@ ns.READY_ICON = {
 function ns.FoodAndDrink()
     local drinkName = spellName(430)
     local food, drink = 0, 0
-    for bag = 0, 4 do
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         for slot = 1, numSlots(bag) do
             local id, count = slotItem(bag, slot)
             if id then
