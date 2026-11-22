@@ -54,10 +54,18 @@ local function itemName(id)
 end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+-- A list of items the client has not loaded answers in a burst: one redraw for all of it.
+local redrawQueued
 loader:SetScript("OnEvent", function(_, _, id)
     if not (id and waiting[id]) then return end
     waiting[id] = nil
-    if ns.Refresh then ns.Refresh() end
+    if not (C_Timer and C_Timer.After) then if ns.Refresh then ns.Refresh() end return end
+    if redrawQueued then return end
+    redrawQueued = true
+    C_Timer.After(0.2, function()
+        redrawQueued = nil
+        if ns.Refresh then ns.Refresh() end
+    end)
 end)
 
 local function fillRow(r, e)

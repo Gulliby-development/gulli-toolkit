@@ -160,9 +160,11 @@ end
 
 -- Every Legacy challenge: walks the achievement categories once and keeps the ones that give
 -- points. Returns false while the game has not sent the achievements yet.
-local function discover()
+local function discover(tick)
     local found = {}
-    for _, cat in ipairs(categories()) do
+    local cats = categories()
+    for ci, cat in ipairs(cats) do
+        if tick then tick(0.3 * ci / math.max(1, #cats)) end
         if ns.ActivityOf(cat) ~= "ignore" then
             for i = 1, numAchievements(cat) do
                 local id = achievement(cat, i)
@@ -226,18 +228,44 @@ local function build(e, dungeonIndex)
 end
 
 -- Reads every challenge again. Returns the list (empty while the game is not ready).
-function ns.Scan()
-    if not ns.ids and not discover() then ns.list = {}; return ns.list end
+-- tick(share): called in the loops when the scan runs as a job (ns.ScanJob).
+local function scan(tick)
+    if not ns.ids and not discover(tick) then ns.list = {}; return ns.list end
     local list, dungeons = {}, 0
-    for _, e in ipairs(ns.ids) do
+    local n = math.max(1, #ns.ids)
+    for i, e in ipairs(ns.ids) do
         local d
         if ns.ActivityOf(e.cat) == "dungeon" then dungeons = dungeons + 1; d = dungeons end
         list[#list + 1] = build(e, d)
+        if tick then tick(0.3 + 0.5 * i / n) end
     end
-    ns.list = list
-    ns.byID = {}
-    for _, ch in ipairs(list) do ns.byID[ch.id] = ch; ns.Refine(ch) end
+    local byID = {}
+    for i, ch in ipairs(list) do
+        byID[ch.id] = ch
+        ns.Refine(ch)
+        if tick then tick(0.8 + 0.2 * i / #list) end
+    end
+    -- the window keeps the last list until the new one is whole
+    ns.list, ns.byID = list, byID
+    ns.scannedAt = GetTime and GetTime() or 0
     return list
+end
+function ns.Scan() return scan() end
+
+-- The same scan over several frames (hundreds of achievements, each with its parts: the game
+-- would stop for a moment), then after(). A scan of the last SCAN_FRESH seconds is kept on show.
+ns.SCAN_FRESH = 20
+function ns.ScanJob(after)
+    local S = ns.Skin
+    if not (S and S.Job) then scan(); if after then after() end return end
+    S.Job("GulliLegacyScan", function() return scan(S.JobTick) end, function() if after then after() end end)
+end
+function ns.ScanFresh()
+    return ns.scannedAt ~= nil and ns.list ~= nil and (GetTime and GetTime() or 0) - ns.scannedAt < ns.SCAN_FRESH
+end
+function ns.Scanning()
+    local S = ns.Skin
+    return S and S.JobRunning and S.JobRunning("GulliLegacyScan") or false
 end
 
 -- Points: earned (account), available and spent (this character).
@@ -1023,9 +1051,10 @@ function ns.Later()
     C_Timer.After(1, function()
         ns.waiting = nil
         if ns.paused then return end
-        ns.Scan()
-        ns.Snapshot()
-        if ns.Refresh then ns.Refresh() end
+        ns.ScanJob(function()
+            ns.Snapshot()
+            if ns.Refresh then ns.Refresh() end
+        end)
     end)
 end
 

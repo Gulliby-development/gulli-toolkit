@@ -215,7 +215,10 @@ test("the writ and item names are asked for at login, only the missing ones", fu
     Fake({ names = { [OGRE] = "Craftsman's Writ: Elixir of Ogre's Strength" } })
     local ns = Load()
     W.requested = {}
+    ns.prefetching = nil
     ns.Prefetch()
+    -- the requests go out a few at a time
+    for _ = 1, 30 do W.RunTimers() end
     eq(W.requested[OGRE], nil)
     eq(W.requested[OGRE_ITEM], true)
     eq(W.requested[SEALED_J], true)
@@ -602,6 +605,47 @@ test("the window builds every tab, with a plan and without", function()
     ns.MoveTracker(true)
     assert(ns.TrackerFrame(), "the tracker for the Unlock mode")
     ns.MoveTracker(false)
+end)
+
+test("a long plan is calculated over several frames, with its share for the bar", function()
+    local prices = {}
+    Fake({ rep = { 5, 3000 }, db = { days = 13, goal = 7, sealed = true, live = false }, prices = prices })
+    local ns = Load()
+    for id, d in pairs(ns.WRITS) do prices[id] = 20000 + id % 97 * 1000; prices[d[4]] = 5000 + d[4] % 53 * 2000 end
+    -- the game's frame clock: each look at it is a millisecond later
+    local ms = 0
+    debugprofilestop = function() ms = ms + 1; return ms end
+    local w = ns.Window()
+    w:Show()
+    ns.ShowTab(2)
+    eq(ns.Calculate(), nil)
+    local running, share = ns.Calculating()
+    eq(running, true)
+    eq(ns.plan, nil)
+    -- the job's frame steps it each frame
+    local frames, last = 0, share
+    while ns.Calculating() and frames < 10000 do
+        for _, g in ipairs(W.frames) do
+            local fn = rawget(g, "_OnUpdate")
+            if fn then fn(g, 0.016) end
+        end
+        frames = frames + 1
+        local _, now = ns.Calculating()
+        if ns.Calculating() then assert(now >= last, "the bar only moves forward"); last = now end
+    end
+    debugprofilestop = nil
+    eq(ns.Calculating(), false)
+    assert(frames > 3, "it took several frames: " .. frames)
+    assert(ns.plan and #ns.plan.lines > 0, "the plan came at the end")
+end)
+
+test("the window reads the bags and prices once until they change", function()
+    Fake({ bags = { [OGRE] = 1 }, prices = { [OGRE_ITEM] = 100 } })
+    local ns = Load()
+    local a = ns.States()
+    eq(ns.States() == a, true)
+    W.Fire("BAG_UPDATE_DELAYED")
+    eq(ns.States() == a, false)
 end)
 
 test("the module registers for the hub with its window and its tracker", function()
