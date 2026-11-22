@@ -536,4 +536,14 @@ test("the cooldowns tab lists every character's cooldowns, the ready ones first"
     ns.Tabs():Select(2)
 end)
 
+test("a cooldown shows days with hours, and under an hour as such", function()
+    Fake({ now = 100000 })
+    local ns = Load()
+    eq(ns.CdSpan(86400 + 21 * 3600 + 59), ns.L.DAYS:format(1) .. " " .. ns.L.HOURS:format(21))
+    eq(ns.CdSpan(2 * 86400 + 600), ns.L.DAYS:format(2))
+    eq(ns.CdSpan(5 * 3600 + 1800), ns.L.HOURS:format(5))
+    eq(ns.CdSpan(600), "< " .. ns.L.HOURS:format(1))
+    eq(ns.CdSpan(-5), "< " .. ns.L.HOURS:format(1))
+end)
+
 W.finish()
