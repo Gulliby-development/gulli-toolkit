@@ -140,6 +140,12 @@
   "ru": "Добудьте Nefarian's Remit у General Drakkisath в Blackrock Spire, Overseer's License у Overlord Wyrmthalak в Blackrock Spire и Bronzebeard Wedding Contract у Emperor Thaurissan в Blackrock Depths и принесите их Pix Xizzix в Booty Bay.",
   "zh": "从 Blackrock Spire 的 General Drakkisath 处取得 Nefarian's Remit，从 Blackrock Spire 的 Overlord Wyrmthalak 处取得 Overseer's License，从 Blackrock Depths 的 Emperor Thaurissan 处取得 Bronzebeard Wedding Contract，交给 Booty Bay 的 Pix Xizzix。"
  },
+ "Acquire special horse feed used for feeding a spirit horse. Merideth Carlson in Southshore apparently is the source for such food. Travel to the Dire Maul dungeon in Feralas and slay Tendris Warpwood. Doing so will free the Ancient Equine Spirit. Feed it the special horse feed, thereby soothing the ": {
+  "_need": [
+   "pl"
+  ],
+  "pl": "Zdobądź specjalną paszę dla ducha konia. Jej źródłem jest podobno Merideth Carlson w Southshore. Udaj się do lochu Dire Maul w Feralas i zabij Tendrisa Warpwooda. To uwolni Ancient Equine Spirit. Nakarm go specjalną paszą, aby go uspokoić"
+ },
  "Acquire the Dalaran Sewer Key for Magus Wordeen Voidglare in Tarren Mill.": {
   "de": "Besorgt den Dalaran Sewer Key für Magus Wordeen Voidglare in Tarren Mill.",
   "es": "Consigue la Dalaran Sewer Key para Magus Wordeen Voidglare en Tarren Mill.",
@@ -943,6 +949,12 @@
    "pl"
   ],
   "pl": "Przynieś Imbued Skeletal Fragments i 15 sztuk złota do Krinkle Goodsteel w Gadgetzanie."
+ },
+ "Bring the Imp in a Jar to the alchemy lab in the Scholomance. After the parchment is created, return the jar to Gorzeeki Wildeyes.": {
+  "_need": [
+   "pl"
+  ],
+  "pl": "Zanieś Imp in a Jar do laboratorium alchemicznego w Scholomance. Gdy pergamin zostanie stworzony, zwróć słój Gorzeekiemu Wildeyesowi."
  },
  "Bring the Lorgalis Manuscript to Gerrig Bonegrip in the Forlorn Cavern in Ironforge.": {
   "_need": [

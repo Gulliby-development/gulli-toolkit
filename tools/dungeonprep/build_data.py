@@ -99,7 +99,10 @@ STARTERS = {96335: 264770}
 # Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
 FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
-QUESTS = {"BLACKMAW": [92065]}
+QUESTS = {"BLACKMAW": [92065],
+          # Class mount steps done in the dungeon whose objective the data cannot place there.
+          "DIREMAUL": [7643],  # Ancient Equine Spirit (Paladin): the spirit in Dire Maul East
+          "SCHOLO": [7629]}  # Imp Delivery (Warlock): the parchment is made in Scholomance
 WORDS = {
     "THANES": ["Hall of Thanes"], "LORDAERON": ["Ruins of Lordaeron"], "EXCAVATION": ["Excavation Site"],
     "DALARAN": ["City of Dalaran"], "DROWNED": ["Drowned City"], "KROLDOK": ["Krol'dok Stronghold"],
@@ -128,6 +131,36 @@ MAIN_EXTRA = {
     "BLACKMAW": [92065, 99187],  # Blackmaw Reclamation, The Reliquary of Tyr
     "DALARAN": [92459, 97287],  # Friend of the Kirin Tor, Shrewd Negotiations
 }
+
+# A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
+# 2026-11-22: every class's quests that lead into or are done in a dungeon show there, also
+# where its levelling guide leaves them to a class guide). Not the tier 0.5 set exchanges, which
+# are gear turn-ins over many runs, not steps of a dungeon run (owner's decision of 2026-11-18).
+SET_QUESTS = {"An Earnest Proposition", "Just Compensation", "Anthion's Parting Words",
+              "Saving the Best for Last"}
+CLASS_SKIP = {97179}  # Collection of Goods, the Forever copy of the set exchange
+ALL_CLASSES = 1 + 2 + 4 + 8 + 16 + 64 + 128 + 256 + 1024
+
+
+def add_class_masks(quests):
+    """WoW Forever's own copies of class quests often have no class mask in QuestieDB (the
+    Alliance Darkreaver Menace): Wowhead's list of WoW Forever class quests (the Worth It
+    snapshot) gives it, so the quest shows only for its class."""
+    path = os.path.join(HERE, "..", "worthit", "wowhead-classquests.json")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        for w in json.load(fh)["quests"]:
+            q = quests.get(w["id"])
+            if q is not None and not q.get(Q_CLASSES) and w.get("classes"):
+                q[Q_CLASSES] = w["classes"]
+
+
+def class_quest(qid, q):
+    mask = q.get(Q_CLASSES) or 0
+    return (mask and mask & ALL_CLASSES != ALL_CLASSES and qid not in CLASS_SKIP
+            and q.get(Q_NAME) not in SET_QUESTS)
+
 
 # Quests whose work the game moved out of the dungeon: the data still ties it there, so the
 # "inside" mark of that part is dropped by hand (the quest stays in the dungeon's list).
@@ -365,6 +398,7 @@ def main(root, att_root=None, gdq_root=None):
     att_quests, att_links = load_att(att_root)
     add_att_links(quests, att_links)
     add_starters(quests)
+    add_class_masks(quests)
     guide_tips = {}
     guide_quests = load_guides(gdq_root, guide_tips)
     att_side = {}
@@ -709,7 +743,8 @@ def main(root, att_root=None, gdq_root=None):
     lines.append("D.main = {")
     for key, *_ in DUNGEONS:
         ids = sorted(q for q in by_dungeon[key]
-                     if q in guide_quests.get(key, ()) or q in MAIN_EXTRA.get(key, ()))
+                     if q in guide_quests.get(key, ()) or q in MAIN_EXTRA.get(key, ())
+                     or class_quest(q, quests[q]))
         if ids:
             lines.append("%s=%s," % (key, lua_list(ids)))
     lines.append("}")
