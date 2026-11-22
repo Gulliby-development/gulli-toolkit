@@ -99,6 +99,43 @@ test("looted gold counts; vendor sales only with their switch; mail never", func
     eq(ns.s.money, 750, "mail is not farmed")
 end)
 
+test("mail and the auction house count only with their switch", function()
+    Fake({ now = 100, money = 1000 })
+    local ns = Load()
+    eq(ns.db.mail, false, "off by default")
+    -- a letter taken through another addon's mail window: the game's frame is hidden
+    W.Fire("MAIL_SHOW")
+    MailFrame = W.stub(); MailFrame:Hide()
+    ns.MailTake()
+    W.Loot(ORE, 4); W.Money(5000)
+    eq(ns.s.items[ORE], nil, "items from a letter")
+    eq(ns.s.money, 0, "gold from a letter")
+    MailFrame = nil
+    W.Fire("MAIL_CLOSED")
+    -- looting while the game still says the auction house is open keeps it closed off
+    C_PlayerInteractionManager = { IsInteractingWithNpcOfType = function(k) return k == 21 end }
+    Enum = { PlayerInteractionType = { MailInfo = 17, Merchant = 5, Banker = 8, Auctioneer = 21, TradePartner = 1 } }
+    W.now = 120
+    W.Fire("AUCTION_HOUSE_SHOW"); W.Fire("LOOT_READY")
+    W.Loot(ORE, 2)
+    eq(ns.s.items[ORE], nil, "an auction buy")
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    C_PlayerInteractionManager, Enum = nil, nil
+    -- with the switch, both count
+    ns.SetPref("mail", true)
+    W.now = 130
+    W.Fire("MAIL_SHOW"); ns.MailTake()
+    W.Loot(ORE, 3); W.Money(700)
+    eq(ns.s.items[ORE], 3, "letters count with the switch")
+    eq(ns.s.money, 700)
+    W.Fire("MAIL_CLOSED")
+    W.Fire("AUCTION_HOUSE_SHOW"); W.Loot(ORE, 1); W.Fire("AUCTION_HOUSE_CLOSED")
+    eq(ns.s.items[ORE], 4, "auction buys count with the switch")
+    -- the bank stays out either way
+    W.Fire("BANKFRAME_OPENED"); W.Loot(ORE, 5); W.Fire("BANKFRAME_CLOSED")
+    eq(ns.s.items[ORE], 4, "the bank never counts")
+end)
+
 test("the loot's worth: vendor, auction, disenchant, and the gold looted", function()
     local GREY, TOOTH, CLOTH2, BLUE, BLUE_BOP, GREEN, QUEST, UNKNOWN = 1, 2, 3, 4, 5, 6, 7, 8
     local items = {
@@ -376,7 +413,7 @@ test("the hub gets the module's window and switches", function()
     local ns = Load()
     eq(got.key, "FarmTrack")
     assert(got.window() == ns.Window())
-    eq(#got.options, 2, "the panel's show switch is the hub's, in Frames on screen")
+    eq(#got.options, 3, "the panel's show switch is the hub's, in Frames on screen")
     got.options[1].set(false)
     eq(ns.db.sales, false)
     local fr = got.frames[1]

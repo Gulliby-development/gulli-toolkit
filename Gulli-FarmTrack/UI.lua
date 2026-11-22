@@ -248,9 +248,15 @@ function ns.AddTyped(box)
     return true
 end
 
+-- The wide window: a column on the left, the list beside it on the right.
+-- The targets need room for their goal box, so the Farm tab gives its left column more.
+local function leftWidth(width, share)
+    return math.floor((width - S.GAP) * (share or 0.44))
+end
+local FARM_SHARE = 0.64
+
 local function farmPage(body, width)
     local p = CreateFrame("Frame", nil, body)
-    local st = S.Stack(p)
     targetCard = S.Card(p, L.SEC_TARGETS)
     for k = 1, ns.MAX_TARGETS do targetRows[k] = targetRow(targetCard.body, k) end
     targetEmpty = S.Note(targetCard.body, 12)
@@ -298,10 +304,12 @@ local function farmPage(body, width)
             if box:HasFocus() and type(link) == "string" and link:find("item:") then box:SetText(link) end
         end)
     end
-    st:Add(targetCard, targetCard:Fit(ns.MAX_TARGETS * 38 + 84))
+    targetCard:SetPoint("TOPLEFT")
+    targetCard:SetWidth(leftWidth(width, FARM_SHARE))
+    targetCard:Fit(ns.MAX_TARGETS * 38 + 84)
 
     local loot = S.Card(p, L.SEC_LOOT)
-    loot:SetPoint("TOPLEFT", 0, -st.y)
+    loot:SetPoint("TOPLEFT", leftWidth(width, FARM_SHARE) + S.GAP, 0)
     loot:SetPoint("BOTTOMRIGHT")
     lootList = S.List(loot.body, 34, function(r)
         r.icon = S.IconBox(r, 24)
@@ -410,17 +418,18 @@ end
 
 local function sessionPage(body, width)
     local p = CreateFrame("Frame", nil, body)
-    local st = S.Stack(p)
     local card = S.Card(p, L.SEC_ESTIMATE)
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("BOTTOMLEFT")
+    card:SetWidth(leftWidth(width))
     for i, d in ipairs(PARTS) do worthRows[i] = partRow(card.body, i, d) end
     worthNote = S.Note(card.body, 12)
-    worthNote:SetPoint("TOPLEFT", 0, -#PARTS * PART_H - 2)
+    worthNote:SetPoint("TOPLEFT", 0, -#PARTS * PART_H - 8)
     worthNote:SetPoint("RIGHT")
-    worthNote:SetMaxLines(3)
-    st:Add(card, card:Fit(#PARTS * PART_H + 46))
+    worthNote:SetMaxLines(10)
 
     local items = S.Card(p, L.SEC_WORTH_ITEMS)
-    items:SetPoint("TOPLEFT", 0, -st.y)
+    items:SetPoint("TOPLEFT", leftWidth(width) + S.GAP, 0)
     items:SetPoint("BOTTOMRIGHT")
     worthList = S.List(items.body, 40, function(r)
         r.icon = S.IconBox(r, 26)
@@ -473,6 +482,8 @@ local function settingsPage(body, width)
     local count, ch = S.SettingsCard(p, L.SEC_COUNT, {
         { L.OPT_SALES, L.OPT_SALES_TIP, function() return ns.db.sales end, function(v) ns.SetPref("sales", v) end,
           icon = ns.OPT_ICON.sales },
+        { L.OPT_MAIL, L.OPT_MAIL_TIP, function() return ns.db.mail end, function(v) ns.SetPref("mail", v) end,
+          icon = ns.OPT_ICON.mail },
         { L.OPT_ALERT, L.OPT_ALERT_TIP, function() return ns.db.alert end, function(v) ns.SetPref("alert", v) end,
           icon = ns.OPT_ICON.alert },
         { L.OPT_VALUE, L.OPT_VALUE_TIP, function() return ns.db.value end, function(v) ns.SetPref("value", v) end,
@@ -540,7 +551,7 @@ function ns.Refresh()
 end
 
 local function build()
-    frame = S.Window("GulliFarmTrackFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
+    frame = S.Window("GulliFarmTrackFrame", L.TITLE, S.WIDE_W, S.DOCK_H)
     local body, width = frame.body, frame.inner[1]
     local ft = S.Footer(frame)
     local new = S.Primary(S.FitButton(frame, L.NEW_SESSION, 30, 120))
