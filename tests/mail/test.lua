@@ -286,6 +286,17 @@ test("a quick attach tile counts the stacks that fit and shows the icon of the i
     eq(ns.KindInfo("cloth").going, 1, "one place left in the letter")
 end)
 
+test("quick attach and the kind tiles also take the reagent bag (bag 5 on WoW Forever)", function()
+    Fake({ bags = { [5] = { [1] = { id = 10, count = 7 } } }, classes = { [10] = { 7, 5 } } })
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = 5
+    local ns = Load()
+    eq(ns.KindInfo("cloth").stacks, 1)
+    SendMailFrame:Show()
+    eq(ns.AttachKind("cloth"), 1)
+    eq(W.used[1], 10)
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = nil
+end)
+
 test("the auction tile takes what sells better at the auction than at a vendor, only with prices", function()
     Fake({ bags = { [0] = { [1] = { id = 10 }, [2] = { id = 30 }, [3] = { id = 31 }, [4] = { id = 32 }, [5] = { id = 33, bound = true } } },
            classes = { [10] = { 7, 5 }, [30] = { 4, 2 }, [31] = { 7, 5 }, [32] = { 4, 1 }, [33] = { 4, 2 } } })

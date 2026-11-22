@@ -92,7 +92,11 @@ local function pickup(bag, slot) (C.PickupContainerItem or PickupContainerItem)(
 local function say(msg) print("|cff9ad0ffGulli Restock|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("Restock", msg) end end
 
-ns.BAGS = { 0, 1, 2, 3, 4 }
+-- The bags the player wears, with WoW Forever's reagent bag (5) after the four bags. Only the
+-- first five take any item (normal()).
+ns.BAGS = {}
+for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do ns.BAGS[#ns.BAGS + 1] = bag end
+local function normal(bag) return bag < 0 or bag > (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) or bag <= (NUM_BAG_SLOTS or 4) end
 -- The bank: its own slots (-1) and the bank bags, which sit after the bags the player wears.
 function ns.BankBags()
     local out = { BANK_CONTAINER or -1 }
@@ -273,7 +277,7 @@ function ns.Room(id)
     local free, partial = 0, 0
     for _, bag in ipairs(ns.BAGS) do
         local n, family = freeSlots(bag)
-        if family == 0 or classID == PROJECTILE then free = free + n end
+        if (family == 0 and normal(bag)) or classID == PROJECTILE then free = free + n end
         for slot = 1, numSlots(bag) do
             local sid, c = slotInfo(bag, slot)
             if sid == id and c < stack then partial = partial + stack - c end
@@ -463,7 +467,7 @@ end
 local function freeSlot(bags)
     for _, bag in ipairs(bags) do
         local _, family = freeSlots(bag)
-        if family == 0 then
+        if family == 0 and normal(bag) then
             for slot = 1, numSlots(bag) do
                 if not slotInfo(bag, slot) then return bag, slot end
             end

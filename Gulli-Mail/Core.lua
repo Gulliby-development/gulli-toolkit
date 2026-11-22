@@ -84,6 +84,8 @@ local function freeSlots()
     return free
 end
 local function numSlots(bag) return (C.GetContainerNumSlots or GetContainerNumSlots)(bag) or 0 end
+-- The last bag the player wears: WoW Forever has the reagent bag (5) after the four bags.
+local function lastBag() return NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4 end
 local function slotItem(bag, slot)
     if C.GetContainerItemInfo then
         local i = C.GetContainerItemInfo(bag, slot)
@@ -711,7 +713,7 @@ function ns.ItemsOfKind(key)
     local k = kindOf(key)
     local out = {}
     if not k then return out end
-    for bag = 0, 4 do
+    for bag = 0, lastBag() do
         for slot = 1, numSlots(bag) do
             local id, locked = slotItem(bag, slot)
             if id and not locked and not protected(id) then
