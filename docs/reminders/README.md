@@ -33,7 +33,7 @@ Pulled without Inner Fire again? Gulli Reminders puts an icon on screen while so
 - **Food, elixirs and flasks.** Well Fed shows when it is gone or ends soon; a click eats the best buff food in your bags, or the food you dropped on **Your food**.
 - **Your own reminders.** Drop any item on the window: an elixir or a flask reminds you of its buff, other items (water, bandages, potions, reagents) of how many you want to keep. Or type `/grm item <link>` or `/grm spell <id>`. At an open vendor, a click on a count icon buys what is missing.
 - **Repairs and bag space.** An icon when an item is below the durability you set, or your bags have too few free slots.
-- **Weapon skill behind.** An icon with your weapon when its skill is far under the cap for your level (25 points at first, you set it), such as "Swords skill: 40 of 150". A new kind of weapon misses a lot until you train it.
+- **Weapon skill behind.** An icon with your weapon when its skill is far under the cap for your level (25 points at first, you set it), such as "Swords skill: 40 of 150". A new kind of weapon misses a lot until you train it. Only the weapons your class fights with count: priests, mages and warlocks see only the wand, hunters only the ranged weapon, druids nothing, the other classes the weapons in their hands.
 - **Buffs from your group.** Turn it on, and when you lack Fortitude, Mark of the Wild, Intellect or a blessing, it shows who in your group can give it.
 - **Where it counts.** Class checks and consumables each have their own place: everywhere, only in a group, or only in dungeons and raids. Consumables start with dungeons and raids.
 - **A sound and a line on screen** when a new reminder shows up: always, only in dungeons and raids (the default), or never.
