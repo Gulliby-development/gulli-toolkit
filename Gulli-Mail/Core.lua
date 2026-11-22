@@ -41,7 +41,11 @@ ns.ATTACH_KINDS = {
     { key = "enchanting", class = 7, sub = 12, sample = 10940 }, -- Strange Dust
     { key = "gem", class = 3, sample = 774 },                   -- Malachite
     { key = "all", all = true, icon = "Interface\\Icons\\INV_Misc_Bag_10" },
+    -- Any item a price addon values above what a vendor pays, after the auction's cut: for the
+    -- character who sells at the auction. Only on the send side.
+    { key = "auction", auction = true, send = true, icon = "Interface\\Minimap\\Tracking\\Auctioneer" },
 }
+ns.AH_CUT = 0.05
 
 -- Game API wrappers.
 local C = C_Container or {}
@@ -243,7 +247,7 @@ function ns.Next(skip, only, force, kind)
                     local name, id, _, count = GetInboxItem(i, j)
                     if name and want then
                         local class, sub = classNow(id)
-                        if not (id and ns.KindHas(want, class, sub)) then name = nil end
+                        if not (id and ns.KindHas(want, class, sub, id)) then name = nil end
                     end
                     if name then
                         k, what = takeKey(i, h, j .. ":" .. tostring(id or name))
@@ -586,11 +590,24 @@ function ns.KindOf(key)
 end
 local kindOf = ns.KindOf
 
--- Whether an item of this class and subclass belongs to the kind (`all`: to any kind).
-function ns.KindHas(k, class, sub)
+-- Whether an item sells for more at the auction (after its cut) than at a vendor. Needs a
+-- price addon: without one nothing counts.
+function ns.WorthAuction(id)
+    local S = ns.Skin
+    if not (id and S and S.AuctionPrice) then return false end
+    local price = S.AuctionPrice(id)
+    if not price or price <= 0 then return false end
+    local sell = select(11, ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)) or 0
+    return price * (1 - ns.AH_CUT) > sell
+end
+
+-- Whether an item of this class and subclass (and id) belongs to the kind (`all`: to any
+-- trade goods kind above it).
+function ns.KindHas(k, class, sub, id)
+    if k.auction then return ns.WorthAuction(id) end
     if k.all then
         for _, o in ipairs(ns.ATTACH_KINDS) do
-            if not o.all and ns.KindHas(o, class, sub) then return true end
+            if not o.all and not o.auction and ns.KindHas(o, class, sub) then return true end
         end
         return false
     end
@@ -653,7 +670,7 @@ function ns.InboxKindInfo(key)
                 local name, id, _, count = GetInboxItem(i, j)
                 if name and id then
                     local class, sub = classNow(id)
-                    if ns.KindHas(k, class, sub) then
+                    if ns.KindHas(k, class, sub, id) then
                         count = count or 1
                         local e = by[id]
                         if not e then
@@ -686,7 +703,7 @@ function ns.ItemsOfKind(key)
             local id, locked = slotItem(bag, slot)
             if id and not locked and not protected(id) then
                 local class, sub = itemClass(id)
-                if ns.KindHas(k, class, sub) and not bound(bag, slot) then
+                if ns.KindHas(k, class, sub, id) and not bound(bag, slot) then
                     out[#out + 1] = { bag = bag, slot = slot, id = id }
                 end
             end

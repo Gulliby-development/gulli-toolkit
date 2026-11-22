@@ -134,7 +134,7 @@ ns.DEFAULTS = {
     ammoMin = 200, shardsMin = 3, soonMin = 3,
     size = 40, alpha = 100, labels = true, vertical = false, classes = {},
     food = true, where = "always", whereItems = "instance", alert = "instance",
-    durability = true, durMin = 20, bags = true, bagsMin = 2, others = false, custom = {},
+    durability = true, durMin = 20, bags = true, bagsMin = 2, weaponSkill = true, skillGap = 25, others = false, custom = {},
 }
 ns.PANEL_POINT = { "TOP", 0, -190 }
 
@@ -472,6 +472,39 @@ function ns.Durability()
     return low
 end
 
+-- Weapon subclass -> its skill line, for the weapon skill check (fishing poles have none).
+ns.WEAPON_SKILL = { [0] = 44, [1] = 172, [2] = 45, [3] = 46, [4] = 54, [5] = 160, [6] = 229, [7] = 43,
+                    [8] = 55, [10] = 136, [13] = 473, [15] = 173, [16] = 176, [18] = 226, [19] = 228 }
+local SKILL_SLOTS = { 16, 17, 18 }
+
+local function skillLine(id)
+    if not (C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID) then return nil end
+    local ok, info = pcall(C_SkillInfo.GetSkillLineInfoByID, id)
+    return ok and type(info) == "table" and info or nil
+end
+
+-- The equipped weapons whose skill is more than `gap` points under its cap for the level:
+-- { slot, item, skill, name, rank, max }, each skill once.
+function ns.LowSkills(gap)
+    local out, seen = {}, {}
+    for _, slot in ipairs(SKILL_SLOTS) do
+        local id = GetInventoryItemID and GetInventoryItemID("player", slot)
+        if id then
+            local _, _, _, _, _, _, _, _, _, _, _, classID, sub = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
+            local line = classID == ITEM_WEAPON and ns.WEAPON_SKILL[sub]
+            local info = line and not seen[line] and skillLine(line)
+            if info and info.maxRank and info.maxRank > 0 then
+                seen[line] = true
+                local rank = info.rank or 0
+                if info.maxRank - rank > gap then
+                    out[#out + 1] = { slot = slot, item = id, skill = line, name = info.name, rank = rank, max = info.maxRank }
+                end
+            end
+        end
+    end
+    return out
+end
+
 -- Free slots in the general bags (not in a quiver, a soul bag or a herb bag).
 function ns.FreeSlots()
     local get = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
@@ -723,6 +756,12 @@ function ns.Missing()
         if pct and pct < db.durMin then
             out[#out + 1] = { key = "DURABILITY", text = L.DURABILITY:format(math.floor(pct)),
                               icon = "Interface\\Icons\\Trade_BlackSmithing" }
+        end
+    end
+    if here and db.weaponSkill then
+        for _, w in ipairs(ns.LowSkills(db.skillGap or 25)) do
+            out[#out + 1] = { key = "SKILL" .. w.skill, text = L.WEAPON_SKILL:format(w.name or "?", w.rank, w.max),
+                              cap = L.CAP_SKILL, icon = itemIcon(w.item) }
         end
     end
     if here and db.bags then
@@ -1051,6 +1090,7 @@ ns.OPT_ICON = {
     food = "Interface\\Icons\\INV_Misc_Food_14",
     durability = "Interface\\Icons\\Trade_BlackSmithing",
     bags = "Interface\\Icons\\INV_Misc_Bag_08",
+    weaponSkill = "Interface\\Icons\\Ability_MeleeDamage",
     others = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
     where = "Interface\\Icons\\INV_Misc_Map_01",
     whereItems = "Interface\\Icons\\INV_Drink_05",

@@ -484,6 +484,30 @@ test("durability, bag space; group buffs others can give, with their name", func
     UnitPowerType = nil
 end)
 
+test("weapon skill far under its cap shows the weapon, once per skill, with a switch", function()
+    Fake({ class = "WARRIOR", mainHand = 5, sub = { [5] = 7, [6] = 7, [7] = 20 } })
+    W.offHand = 6
+    local skills = { [43] = { name = "Swords", rank = 40, maxRank = 150, modifier = 5 } }
+    C_SkillInfo = { GetSkillLineInfoByID = function(id) return skills[id] end }
+    local ns = Load()
+    local list = ns.Missing()
+    eq(W.Keys(list), "SKILL43", "two swords: one entry")
+    eq(list[1].text, "Swords skill: 40 of 150")
+    eq(list[1].icon, "icon5")
+    skills[43].rank = 130
+    eq(W.Keys(ns.Missing()), "", "20 under: within the gap")
+    ns.SetPref("skillGap", 10)
+    eq(W.Keys(ns.Missing()), "SKILL43", "a smaller gap")
+    ns.SetPref("weaponSkill", false)
+    eq(W.Keys(ns.Missing()), "", "switched off")
+    ns.SetPref("weaponSkill", true)
+    W.mainHand, W.offHand = 7, nil
+    eq(W.Keys(ns.Missing()), "", "a fishing pole has no skill")
+    C_SkillInfo = nil
+    W.mainHand = 5
+    eq(W.Keys(ns.Missing()), "", "no skill API: nothing")
+end)
+
 test("Righteous Fury is on for a tank unless switched off", function()
     Fake({ class = "PALADIN", known = { 25780 } })
     local ns = Load()
