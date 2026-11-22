@@ -129,7 +129,7 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec: class, faction, level, worn (inventory slot -> item id), items (item id -> count, bags and
+-- spec: class, faction, level, worn (inventory slot -> item id), enchanted, spells, items (item id -> count, bags and
 -- bank, worn ones included as the game counts them), spec (retail specialization id), tabs
 -- (points per talent tab), db, cdb, hub.
 local CLASS_ID = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
@@ -143,6 +143,13 @@ function Fake(spec)
     LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue",
         PRIEST = "Priest", SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid" }
     GetInventoryItemID = function(_, slot) return W.worn[slot] end
+    -- enchanted: inventory slot -> the enchant id in the worn item's link; spells: id -> name
+    W.enchanted, W.spells = spec.enchanted or {}, spec.spells or {}
+    GetInventoryItemLink = function(_, slot)
+        return W.worn[slot] and ("|Hitem:" .. W.worn[slot] .. ":" .. (W.enchanted[slot] or "") .. ":::|h[x]|h") or nil
+    end
+    C_Spell = { GetSpellName = function(id) return W.spells[id] end,
+                GetSpellTexture = function(id) return W.spells[id] and ("spell" .. id) or nil end }
     W.loot, W.rolls, W.sounds = spec.loot or {}, spec.rolls or {}, 0
     GetNumLootItems = function() return #W.loot end
     GetLootSlotLink = function(i) return W.loot[i] and ("|Hitem:" .. W.loot[i] .. "::|h[x]|h") or nil end
