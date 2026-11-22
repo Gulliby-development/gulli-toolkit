@@ -683,14 +683,19 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db.session = ns.db.session or {}
         ns.db.mobIds = ns.db.mobIds or {}
         for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM",
-                             "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_ACCEPTED", "PLAYER_ENTERING_WORLD" }) do
+                             "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_ACCEPTED", "PLAYER_ENTERING_WORLD",
+                             "PLAYER_LOGOUT" }) do
             self:RegisterEvent(e)
         end
         return
     end
     if event == "PLAYER_ENTERING_WORLD" then
-        -- A new login starts a new session; a /reload keeps it.
-        if a1 then ns.db.session = {} end
+        -- Only leaving the game starts a new session; a /reload or a quick relog keeps it.
+        if ns.Skin.NewSession(a1, select(1, ...), ns.db.seen) then ns.db.session = {} end
+        return
+    end
+    if event == "PLAYER_LOGOUT" then
+        ns.db.seen = time()
         return
     end
     if ns.paused then return end

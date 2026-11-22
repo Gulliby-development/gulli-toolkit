@@ -623,7 +623,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if not ns.db.hudHidden then ns.db.panel, ns.db.hudHidden = false, true end
         ns.db.locked = nil
         ns.cdb.targets = ns.cdb.targets or {}
-        local events = { "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED", "LOOT_READY" }
+        local events = { "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED", "LOOT_READY" }
         for e in pairs(BUSY) do events[#events + 1] = e end
         for _, e in ipairs(events) do self:RegisterEvent(e) end
         if hooksecurefunc then
@@ -642,8 +642,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         end
     end
     if event == "PLAYER_ENTERING_WORLD" then
-        -- a1: a real login, which starts a new session; a2: a /reload, which keeps it.
-        if a1 and not a2 then ns.Start() else ns.last, ns.lastMoney = ns.CountBags(), money() end
+        -- a1: a real login; a2: a /reload. Only leaving the game ends the session.
+        if ns.Skin.NewSession(a1, a2, ns.s.seen) then ns.Start() else ns.last, ns.lastMoney = ns.CountBags(), money() end
+    elseif event == "PLAYER_LOGOUT" then
+        ns.s.seen = time()
     elseif event == "BAG_UPDATE_DELAYED" or event == "CURSOR_CHANGED" then
         ns.OnBags()
     elseif event == "PLAYER_MONEY" then

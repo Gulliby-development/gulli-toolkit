@@ -558,11 +558,16 @@ f:SetScript("OnEvent", function(self, event, a1, a2, _, _, _, _, _, _, a9, _, _,
         self:RegisterEvent("CHAT_MSG_SAY")
         self:RegisterEvent("CHAT_MSG_YELL")
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self:RegisterEvent("PLAYER_LOGOUT")
+        return
+    end
+    if event == "PLAYER_LOGOUT" then
+        ns.db.seen = time()
         return
     end
     if event == "PLAYER_ENTERING_WORLD" then
-        -- A new login starts a new board; a /reload keeps it.
-        if a1 then
+        -- Only leaving the game starts a new board; a /reload or a quick relog keeps it.
+        if ns.Skin.NewSession(a1, a2, ns.db.seen) then
             wipe(ns.posts)
             if ns.Feed then ns.Feed() end
         end

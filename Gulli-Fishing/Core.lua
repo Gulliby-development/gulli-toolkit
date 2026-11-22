@@ -386,7 +386,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         return
     end
     if event == "PLAYER_ENTERING_WORLD" then
-        if a1 and not a2 then ns.Start() end
+        -- Only leaving the game ends the session.
+        if ns.Skin.NewSession(a1, a2, ns.s.seen) then ns.Start() end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
         if a1 == "player" and ns.IsFishing(a3) and not ns.paused then ns.OnCast() end
     elseif event == "LOOT_READY" then
@@ -397,6 +398,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         if ns.restoreLater then ns.Restore() end
         if ns.disarmLater then ns.Disarm() end
     elseif event == "PLAYER_LOGOUT" then
+        ns.s.seen = time()
         ns.Restore()
     elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then
         if (event ~= "UNIT_INVENTORY_CHANGED" or a1 == "player") and ns.HasPole() and ns.LureLeft() > 0 then ns.told = nil end

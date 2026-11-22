@@ -27,7 +27,7 @@ You go out to farm Mageweave, Mithril or gold. Farm Tracker counts what comes in
 - **How the estimate is made.** The **Session** tab (the first one) shows the parts of the estimate: gold from mobs and quests, items at the auction, items at a vendor, items to disenchant, and their sum. Beside it, every item you looted with its price, how many and what it adds, and how it was judged (auction, vendor, disenchant). It also says why: vendor sales are not added again, since what you sold is already counted as items, and items with no auction price count at the vendor price.
 - **Everything you looted.** The **Farm** tab lists every item that came into your bags this session, the most first, with the gold on top.
 - **Goal reached.** A notice and a sound tell you, once. A switch turns it off. The toolkit's **Recent** list keeps it.
-- **One session.** A `/reload` keeps the count. Logging in again, or **New session**, starts from zero. Your targets and goals stay.
+- **One session, until you leave the game.** A `/reload`, a dungeon and a quick relog (within 15 minutes) keep the count. Coming back to the game later, or **New session**, starts from zero. Your targets and goals stay.
 - **Breaks do not count.** A long break between loots counts as 10 minutes at most, so the rate stays honest.
 - **Move it.** The panel starts hidden. Turn it on and drag it in **Unlock frames** in `/gulli` (`/gulli unlock`); a right-click there puts it back. Opacity and size are settings in the window.
 

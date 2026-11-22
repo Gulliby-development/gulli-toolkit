@@ -187,6 +187,10 @@ test("counters survive a reload, a login resets them; undo abandons the last que
     eq(ns.db.session.taken, 1, "a reload keeps the session")
     ns.Undo()
     eq(W.did[#W.did], "abandon")
+    W.Fire("PLAYER_LOGOUT")
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(ns.db.session.taken, 1, "a quick relog keeps the session")
+    W.now = W.now + ns.Skin.RELOG_KEEP + 1
     W.Fire("PLAYER_ENTERING_WORLD", true, false)
     eq(ns.db.session.taken, nil, "a new login starts over")
     ns.db.accept = false; ns.db.paused = true

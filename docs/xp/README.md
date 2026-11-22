@@ -26,7 +26,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 - **Choose the text** on the bar: everything, XP per hour, time to level, XP to go or percent.
 - **Your last levels:** how long each one took in play time, and the XP from kills and quests. The Gulli Toolkit shows a line when you level up.
 - **Where the XP came from:** kills, quests and the rest (exploring and so on). They always add up to the **total** of the session, because each part counts only the XP your bar really got. Under the total, **with your finished quests**: the total once you hand them in. Next to it your **pace** (play time, XP per kill, kills and quests to level, rested XP left), plus a small graph of XP per 10 minutes.
-- **A /reload keeps the session.** A new one starts when you log in again or after a long break.
+- **The session lasts until you leave the game.** A `/reload`, a loading screen, a dungeon or a long break keep it. A disconnect or a quick relog (within 15 minutes) keeps it too. A new one starts when you come back to the game later.
 - **Place** the bar in **Unlock frames** in `/gulli`. **Across the whole screen** makes it as wide as the screen. Set the **background opacity** (0% shows only the text) and the **size** (60-200%).
 - At the top level the bar shows the **reputation** you watch, or hides.
 
@@ -48,7 +48,7 @@ How long until the next level? Gulli XP tells you on a small bar.
 <details>
 <summary><b>The numbers start again after a login</b></summary>
 
-Yes. Each login is a new session, so the rate shows how you play now. A `/reload` keeps the session.
+Yes. Each time you come back to the game is a new session, so the rate shows how you play now. A `/reload`, a dungeon or a quick relog keep the session.
 </details>
 
 <details>
