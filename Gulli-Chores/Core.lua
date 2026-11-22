@@ -282,10 +282,8 @@ function ns.ReadCooldowns(c, old, now, clock)
             end
         elseif hasLine(c.profs, cr.line) then
             for spell in pairs(cr.spells) do
-                -- A running spell cooldown alone proves nothing: the game also shows the shared
-                -- cooldown of recipes the character never learned.
-                local r = spellReady(spell)
-                if knows(spell) or spells[spell] or cp[spell] or c.cdTrade[spell] then
+                local r, running = spellReady(spell)
+                if knows(spell) or running or spells[spell] or cp[spell] or c.cdTrade[spell] then
                     c.cdSpells[spell] = true
                     if r and (not best or r < best) then best = r end
                 end
@@ -307,8 +305,8 @@ function ns.ReadCooldowns(c, old, now, clock)
     end
 end
 
--- Once: 1.14.0 and 1.14.1 took a running cooldown for a learned recipe and did not undo the
--- game's clock wrap, so they saved cooldowns of 50 days. Drop what is longer than it can be.
+-- Once: 1.14.0 and 1.14.1 did not undo the game's clock wrap, so they saved cooldowns of
+-- 50 days. Drop what is longer than it can be.
 function ns.FixCooldowns()
     if ns.db.cdFix then return end
     local longest = {}
@@ -318,7 +316,6 @@ function ns.FixCooldowns()
     end
     for _, c in pairs(ns.db.chars) do
         local t = c.t or 0
-        c.cdSpells = {}
         for k, ready in pairs(c.cooldowns or {}) do
             local most = longest[k] or 7 * 86400
             if ready - t > most then
