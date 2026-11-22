@@ -508,6 +508,41 @@ test("weapon skill far under its cap shows the weapon, once per skill, with a sw
     eq(W.Keys(ns.Missing()), "", "no skill API: nothing")
 end)
 
+test("weapon skill: casters only the wand, hunters only the ranged weapon, druids none", function()
+    -- 5 a mace, 6 a wand, 7 a bow
+    local function skillKeys(list)
+        local k = {}
+        for _, e in ipairs(list) do if e.key:find("^SKILL") then k[#k + 1] = e.key end end
+        return table.concat(k, ",")
+    end
+    local skills = { [54] = { name = "Maces", rank = 1, maxRank = 150 },
+                     [228] = { name = "Wands", rank = 20, maxRank = 150 },
+                     [45] = { name = "Bows", rank = 10, maxRank = 150 } }
+    for _, class in ipairs({ "PRIEST", "MAGE", "WARLOCK" }) do
+        Fake({ class = class, mainHand = 5, sub = { [5] = 4, [6] = 19 } })
+        C_SkillInfo = { GetSkillLineInfoByID = function(id) return skills[id] end }
+        local ns = Load()
+        eq(skillKeys(ns.Missing()), "", class .. ": a mace is not its weapon")
+        W.ranged = 6
+        eq(skillKeys(ns.Missing()), "SKILL228", class .. ": the wand")
+    end
+    Fake({ class = "HUNTER", mainHand = 5, sub = { [5] = 4, [7] = 2 } })
+    C_SkillInfo = { GetSkillLineInfoByID = function(id) return skills[id] end }
+    local ns = Load()
+    W.ranged = 7
+    eq(skillKeys(ns.Missing()), "SKILL45", "hunter: only the bow")
+    Fake({ class = "DRUID", mainHand = 5, sub = { [5] = 4 } })
+    C_SkillInfo = { GetSkillLineInfoByID = function(id) return skills[id] end }
+    ns = Load()
+    eq(skillKeys(ns.Missing()), "", "druid: forms, no weapon skill")
+    Fake({ class = "WARRIOR", mainHand = 5, sub = { [5] = 4, [7] = 2 } })
+    C_SkillInfo = { GetSkillLineInfoByID = function(id) return skills[id] end }
+    ns = Load()
+    W.ranged = 7
+    eq(skillKeys(ns.Missing()), "SKILL54", "warrior: the hands, not the bow")
+    C_SkillInfo = nil
+end)
+
 test("Righteous Fury is on for a tank unless switched off", function()
     Fake({ class = "PALADIN", known = { 25780 } })
     local ns = Load()

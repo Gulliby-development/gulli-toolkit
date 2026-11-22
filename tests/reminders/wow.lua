@@ -129,7 +129,7 @@ function Fake(spec)
     W.Base(spec)
     W.known, W.auras = spec.known or {}, spec.auras or {}
     W.weapon, W.ammo, W.shards, W.resting = spec.weapon or { false, 0, false, 0 }, spec.ammo or 0, spec.shards or 0, false
-    W.offHand = spec.offHand
+    W.offHand, W.ranged = spec.offHand, spec.ranged
     W.form = spec.form or 0
     GetShapeshiftForm = function() return W.form end
     -- W.formSpells: the spells on the stance bar (form i is formSpells[i]).
@@ -180,6 +180,7 @@ function Fake(spec)
     W.mainHand, W.sub = spec.mainHand == nil and 1 or spec.mainHand, spec.sub or {}
     GetInventoryItemID = function(_, slot)
         if slot == 17 then return W.offHand end
+        if slot == 18 then return W.ranged end
         if slot == 16 then return W.mainHand or nil end
     end
     -- W.items[id] = count in the bags; soul shards as before.

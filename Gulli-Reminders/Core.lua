@@ -475,7 +475,10 @@ end
 -- Weapon subclass -> its skill line, for the weapon skill check (fishing poles have none).
 ns.WEAPON_SKILL = { [0] = 44, [1] = 172, [2] = 45, [3] = 46, [4] = 54, [5] = 160, [6] = 229, [7] = 43,
                     [8] = 55, [10] = 136, [13] = 473, [15] = 173, [16] = 176, [18] = 226, [19] = 228 }
-local SKILL_SLOTS = { 16, 17, 18 }
+-- The slots whose weapon skill a class needs: casters fight with a wand, hunters at range,
+-- druids in forms (no weapon skill); the melee classes only in their hands.
+ns.MELEE_SLOTS = { 16, 17 }
+ns.SKILL_SLOTS = { PRIEST = { 18 }, MAGE = { 18 }, WARLOCK = { 18 }, HUNTER = { 18 }, DRUID = {} }
 
 local function skillLine(id)
     if not (C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID) then return nil end
@@ -483,11 +486,11 @@ local function skillLine(id)
     return ok and type(info) == "table" and info or nil
 end
 
--- The equipped weapons whose skill is more than `gap` points under its cap for the level:
+-- The equipped weapons the class fights with whose skill is more than `gap` points under its cap for the level:
 -- { slot, item, skill, name, rank, max }, each skill once.
-function ns.LowSkills(gap)
+function ns.LowSkills(gap, class)
     local out, seen = {}, {}
-    for _, slot in ipairs(SKILL_SLOTS) do
+    for _, slot in ipairs(ns.SKILL_SLOTS[class or playerClass()] or ns.MELEE_SLOTS) do
         local id = GetInventoryItemID and GetInventoryItemID("player", slot)
         if id then
             local _, _, _, _, _, _, _, _, _, _, _, classID, sub = ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(id)
