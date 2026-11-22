@@ -506,6 +506,7 @@ local function build()
     local other = {}
     other[#other + 1] = switch("durability", L.OPT_DURABILITY, nil, numberEdit(body, "durMin"))
     other[#other + 1] = switch("bags", L.OPT_BAGS, nil, numberEdit(body, "bagsMin"))
+    other[#other + 1] = switch("weaponSkill", L.OPT_SKILL, nil, numberEdit(body, "skillGap"))
     other[#other + 1] = switch("others", L.OPT_OTHERS, L.OPT_OTHERS_D)
     other[#other + 1] = { L.OPT_SOON, nil, icon = ns.OPT_ICON.soonMin,
         control = stepper("soonMin", 1, 0, 15, function(v) return v == 0 and L.OFF or L.MIN:format(v) end) }

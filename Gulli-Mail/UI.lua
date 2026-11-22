@@ -24,6 +24,9 @@ local function kindTip(self)
     local info = self.info or ns.KindInfo(self.kind)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText(L["KIND_" .. self.kind:upper()])
+    if self.kind == "auction" then
+        GameTooltip:AddLine(S.HasPrices() and L.TILE_AUCTION or L.TILE_NO_PRICES, 0.8, 0.8, 0.8, true)
+    end
     if info.stacks == 0 then
         GameTooltip:AddLine(L.TILE_NONE, 0.6, 0.6, 0.6)
     else
@@ -56,13 +59,18 @@ local function takeTip(self)
     GameTooltip:Show()
 end
 
--- Four tiles a row, one per quick-attach kind, the same on both tabs.
-local function kindTiles(parent, onClick, tip)
+-- Four tiles a row, one per quick-attach kind; a `send` kind only on the send side.
+local function kindTiles(parent, onClick, tip, sending)
     local row = CreateFrame("Frame", nil, parent)
-    row:SetHeight(TILE_H * 2 + 6)
     row.buttons = {}
     local bw = math.floor((PANEL_W - 2 * S.PAD - 3 * 6) / 4)
-    for k, kind in ipairs(ns.ATTACH_KINDS) do
+    local kinds = {}
+    for _, kind in ipairs(ns.ATTACH_KINDS) do
+        if sending or not kind.send then kinds[#kinds + 1] = kind end
+    end
+    local rows = math.ceil(#kinds / 4)
+    row:SetHeight(TILE_H * rows + 6 * (rows - 1))
+    for k, kind in ipairs(kinds) do
         local b = S.IconTile(row, bw, TILE_H, true)
         local r, col = math.floor((k - 1) / 4), (k - 1) % 4
         b:SetPoint("TOPLEFT", col * (bw + 6), -r * (TILE_H + 6))
@@ -277,8 +285,8 @@ local function buildPanel()
     local tools = CreateFrame("Frame", nil, p)
     tools:SetPoint("BOTTOMLEFT")
     tools:SetPoint("BOTTOMRIGHT")
-    tools:SetHeight(TILE_H * 2 + 6 + 2 * (30 + 6) + 18)
-    attachRow = kindTiles(tools, ns.AttachKind, kindTip)
+    attachRow = kindTiles(tools, ns.AttachKind, kindTip, true)
+    tools:SetHeight(attachRow:GetHeight() + 2 * (30 + 6) + 18)
     attachRow:SetPoint("TOPLEFT")
     attachRow:SetPoint("TOPRIGHT")
     goldBtn = S.Button(tools, 1, 30)

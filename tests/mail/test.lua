@@ -286,6 +286,22 @@ test("a quick attach tile counts the stacks that fit and shows the icon of the i
     eq(ns.KindInfo("cloth").going, 1, "one place left in the letter")
 end)
 
+test("the auction tile takes what sells better at the auction than at a vendor, only with prices", function()
+    Fake({ bags = { [0] = { [1] = { id = 10 }, [2] = { id = 30 }, [3] = { id = 31 }, [4] = { id = 32 }, [5] = { id = 33, bound = true } } },
+           classes = { [10] = { 7, 5 }, [30] = { 4, 2 }, [31] = { 7, 5 }, [32] = { 4, 1 }, [33] = { 4, 2 } } })
+    local ns = Load()
+    SendMailFrame:Show()
+    eq(ns.KindInfo("auction").stacks, 0, "no price addon: nothing")
+    local prices = { [10] = 100, [30] = 50, [31] = 1, [33] = 500 }
+    Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function(_, id) return prices[id] end } } }
+    local info = ns.KindInfo("auction")
+    eq(info.stacks, 2, "cloth and gear above the vendor; 1 copper less the cut is not; no price; bound")
+    eq(ns.KindInfo("all").stacks, 2, "all stays trade goods")
+    eq(ns.AttachKind("auction"), 2)
+    eq(W.used[1], 10); eq(W.used[2], 30)
+    Auctionator = nil
+end)
+
 test("gold for another character keeps what the player asked for", function()
     Fake({})
     local ns = Load()
