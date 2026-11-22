@@ -100,11 +100,12 @@ function ns.Start(now)
     ns.lastXP, ns.lastMax = UnitXP("player"), UnitXPMax("player")
 end
 
--- After a /reload the saved session goes on; after a long break or a new login it starts again.
+-- The saved session goes on after a /reload, however long the break was; only a new login
+-- starts a new one (PLAYER_ENTERING_WORLD, through ns.Skin.NewSession).
 function ns.Resume(now)
     now = now or time()
     local s = ns.cdb and ns.cdb.s
-    if type(s) == "table" and s.t and (now - (s.lastActive or s.t)) <= 2 * ns.IDLE then
+    if type(s) == "table" and s.t then
         ns.s = s
         s.events, s.buckets = s.events or {}, s.buckets or {}
         s.active, s.lastActive = s.active or 0, s.lastActive or s.t
@@ -482,7 +483,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         -- Frames on the screen start hidden: older saves hide the bar once.
         if not ns.db.hudHidden then ns.db.bar, ns.db.hudHidden = false, true end
         ns.db.locked = nil
-        for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "CHAT_MSG_COMBAT_XP_GAIN",
+        for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "PLAYER_XP_UPDATE", "CHAT_MSG_COMBAT_XP_GAIN",
                              "QUEST_TURNED_IN", "PLAYER_LEVEL_UP", "QUEST_LOG_UPDATE", "UPDATE_FACTION" }) do
             self:RegisterEvent(e)
         end
@@ -491,9 +492,11 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         return
     end
     if event == "PLAYER_ENTERING_WORLD" then
-        -- a1: a real login; a2: a /reload, which keeps the session.
-        if a1 and not a2 then ns.Start() else ns.lastXP, ns.lastMax = UnitXP("player"), UnitXPMax("player") end
+        -- a1: a real login; a2: a /reload. Only leaving the game ends the session.
+        if ns.Skin.NewSession(a1, a2, ns.s.seen) then ns.Start() else ns.lastXP, ns.lastMax = UnitXP("player"), UnitXPMax("player") end
         ns.ready = nil
+    elseif event == "PLAYER_LOGOUT" then
+        ns.s.seen = time()
     elseif event == "PLAYER_XP_UPDATE" then
         ns.Update()
     elseif event == "PLAYER_LEVEL_UP" then

@@ -452,11 +452,15 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         if ns.SetupBadge then ns.SetupBadge() end
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "CHAT_MSG_SYSTEM",
                              "UI_ERROR_MESSAGE", "GROUP_LEFT", "GROUP_JOINED", "CHAT_MSG_ADDON",
-                             "CHAT_MSG_COMBAT_XP_GAIN", "GROUP_ROSTER_UPDATE" }) do
+                             "CHAT_MSG_COMBAT_XP_GAIN", "GROUP_ROSTER_UPDATE", "PLAYER_LOGOUT" }) do
             self:RegisterEvent(e)
         end
         ns.lastLeft = ns.Status().left
         if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(5, function() ns.Tick() end) end
+        return
+    end
+    if event == "PLAYER_LOGOUT" then
+        ns.db.seenAt = time()
         return
     end
     if event == "CHAT_MSG_SYSTEM" then
@@ -474,8 +478,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         wipe(ns.group)
         if event == "GROUP_JOINED" and ns.db.sync then sendAddon("HELLO", groupChannel()); ns.Share() end
     else
-        -- a1: a real login, which starts a new session for the hub's card; a /reload keeps it.
-        if event == "PLAYER_ENTERING_WORLD" and ((a1 and not a2) or not ns.db.sessionAt) then
+        -- a1: a real login, a2: a /reload. Only leaving the game starts a new session for the
+        -- hub's card.
+        if event == "PLAYER_ENTERING_WORLD"
+            and (ns.Skin.NewSession(a1, a2, ns.db.seenAt) or not ns.db.sessionAt) then
             ns.db.sessionAt = time()
         end
         local name, kind, mapID = instanceInfo()

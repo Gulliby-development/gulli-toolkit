@@ -3882,3 +3882,16 @@ function S.PriceAddons()
     return out
 end
 function S.HasPrices() return #S.PriceAddons() > 0 end
+
+-- ---------- sessions ----------
+-- A session lasts until the player leaves the game. A /reload, a loading screen and a dungeon
+-- keep it (PLAYER_ENTERING_WORLD without isInitialLogin, or with isReloadingUi). A real login
+-- keeps it too when the character was in the game a moment ago (a disconnect, a quick relog,
+-- a look at another character): `seen` is when the module last saw it, saved at PLAYER_LOGOUT.
+S.RELOG_KEEP = 900
+
+function S.NewSession(isLogin, isReload, seen, now)
+    if not isLogin or isReload then return false end
+    seen = tonumber(seen)
+    return not seen or (now or time()) - seen > S.RELOG_KEEP
+end

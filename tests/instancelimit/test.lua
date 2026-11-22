@@ -388,6 +388,10 @@ test("the hub's session card: the runs of this character since the login", funct
     -- a /reload keeps the session, a login starts a new one
     W.Fire("PLAYER_ENTERING_WORLD", false, true)
     eq(got.session().value, 2)
+    W.Fire("PLAYER_LOGOUT")
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(got.session().value, 2, "a quick relog keeps the session")
+    W.now = W.now + ns.Skin.RELOG_KEEP + 1
     W.Fire("PLAYER_ENTERING_WORLD", true, false)
     eq(got.session(), nil)
     GulliToolkit = nil

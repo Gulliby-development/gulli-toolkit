@@ -364,6 +364,10 @@ test("the board lasts the session: a reload keeps it, a new login clears it", fu
     ns = Load()
     W.Fire("PLAYER_ENTERING_WORLD", false, true)
     eq(#ns.posts, 1, "a /reload keeps old posts")
+    W.Fire("PLAYER_LOGOUT")
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(#ns.posts, 1, "a quick relog keeps the board")
+    W.now = W.now + ns.Skin.RELOG_KEEP + 1
     W.Fire("PLAYER_ENTERING_WORLD", true, false)
     eq(#ns.posts, 0, "a new login starts a new board")
     eq(GulliBulletinDB.only, nil)

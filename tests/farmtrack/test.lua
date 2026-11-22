@@ -326,6 +326,10 @@ test("a /reload keeps the session, a new login starts one; targets stay", functi
     ns = Load()
     W.Fire("PLAYER_ENTERING_WORLD", false, true)
     eq(ns.s.items[CLOTH], 7)
+    W.Fire("PLAYER_LOGOUT")
+    W.Fire("PLAYER_ENTERING_WORLD", true, false)
+    eq(ns.s.items[CLOTH], 7, "a quick relog keeps the session")
+    W.now = W.now + ns.Skin.RELOG_KEEP + 1
     W.Fire("PLAYER_ENTERING_WORLD", true, false)
     eq(ns.s.items[CLOTH], nil)
     eq(#ns.Targets(), 1)

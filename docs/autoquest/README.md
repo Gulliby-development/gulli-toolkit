@@ -29,7 +29,7 @@ Talking to a quest giver takes four or five taps. On a phone that adds up. Gulli
 - **Escorts wait for you in a group.** An escort or event quest ties up its NPC once one player starts it, so in a group Auto Quest leaves it for you to take when everyone is ready (Gulli Party Quests shows who is). Alone it takes them as before.
 - **Quests from your group** are accepted only when you turn that on (escorts can start without warning).
 - **Rules.** Skip elite, dungeon and raid, or group quests; keep some quest log places free; pick the only dialogue line of an NPC.
-- **See what it did.** Taken, handed in and clicks saved for this session (a `/reload` keeps them), a line in the Gulli Toolkit feed, and a chat line if you want.
+- **See what it did.** Taken, handed in and clicks saved for this session (a `/reload`, a dungeon and a quick relog keep them), a line in the Gulli Toolkit feed, and a chat line if you want.
 - **Undo.** **Abandon last** drops the last quest it took for you.
 
 ## Install

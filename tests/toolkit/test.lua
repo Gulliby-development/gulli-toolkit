@@ -501,7 +501,13 @@ test("the session keeps kills, deaths and the best loot, and a reload keeps the 
     eq(ns.ses.kills, 1)
     ns.SesEvent("PLAYER_ENTERING_WORLD", false, false)
     eq(ns.ses.deaths, 1)
+    ns.SesEvent("PLAYER_LOGOUT")
     ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    eq(ns.ses.kills, 1, "a quick relog keeps the session")
+    local clock = time
+    time = function() return clock() + ns.Skin.RELOG_KEEP + 1 end
+    ns.SesEvent("PLAYER_ENTERING_WORLD", true, false)
+    time = clock
     eq(ns.ses.kills, 0)
     eq(GulliToolkitCharDB.session, ns.ses)
     -- an older save without a field

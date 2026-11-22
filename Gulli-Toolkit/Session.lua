@@ -514,8 +514,14 @@ local BUSY = {
 
 function ns.SesEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
     if event == "PLAYER_ENTERING_WORLD" then
-        -- a1: a real login, which starts a new session; a2: a /reload, which keeps it.
-        if a1 and not a2 then ns.SesStart() elseif not ns.ses then ns.SesResume() else baselines() end
+        -- a1: a real login; a2: a /reload. Only leaving the game ends the session.
+        if not ns.ses then ns.SesResume() end
+        local skin = S()
+        if skin and skin.NewSession(a1, a2, ns.ses.seen) then ns.SesStart() else baselines() end
+        return
+    end
+    if event == "PLAYER_LOGOUT" then
+        if ns.ses then ns.ses.seen = time() end
         return
     end
     if not ns.ses then return end
@@ -551,7 +557,7 @@ function ns.SesEvent(event, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
 end
 
 local f = CreateFrame("Frame")
-local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_MONEY", "UPDATE_INVENTORY_DURABILITY", "QUEST_TURNED_IN",
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "PLAYER_MONEY", "UPDATE_INVENTORY_DURABILITY", "QUEST_TURNED_IN",
                  "CHAT_MSG_COMBAT_XP_GAIN", "PLAYER_DEAD", "CHAT_MSG_LOOT", "CHAT_MSG_COMBAT_HONOR_GAIN",
                  "CURRENCY_DISPLAY_UPDATE", "HONOR_XP_UPDATE", "PLAYER_PVP_KILLS_CHANGED", "LOOT_READY" }
 for e in pairs(BUSY) do EVENTS[#EVENTS + 1] = e end
