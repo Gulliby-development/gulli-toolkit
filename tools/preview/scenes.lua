@@ -698,6 +698,52 @@ S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofi
         for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
     end }
 
+-- The simulation: Tailoring 1 » 230 for Mooncloth on a character that has Enchanting.
+do
+    local NAMES = { [2589] = "Linen Cloth", [2996] = "Bolt of Linen Cloth", [2320] = "Coarse Thread", [2321] = "Fine Thread",
+        [2592] = "Wool Cloth", [2997] = "Bolt of Woolen Cloth", [4306] = "Silk Cloth", [4305] = "Bolt of Silk Cloth",
+        [4338] = "Mageweave Cloth", [4339] = "Bolt of Mageweave", [2570] = "Linen Cloak", [4307] = "Heavy Linen Gloves",
+        [2580] = "Reinforced Linen Cape", [2584] = "Woolen Cape", [4314] = "Double-stitched Woolen Shoulders",
+        [7048] = "Azure Silk Hood", [9998] = "Black Mageweave Vest", [9999] = "Black Mageweave Leggings",
+        [10003] = "Black Mageweave Gloves", [14256] = "Felcloth", [14342] = "Mooncloth", [4291] = "Silken Thread",
+        [8343] = "Heavy Silken Thread", [2605] = "Green Dye", [2604] = "Red Dye", [6260] = "Blue Dye", [2318] = "Light Leather" }
+    local function open(then_)
+        return function(ns, W)
+            for _, row in ipairs(ns.Data.book[197]) do
+                for k = 9, #row, 2 do
+                    local id = row[k]
+                    W.items[id] = W.items[id] or { name = NAMES[id] or ("Reagent " .. id), ah = 60 + id % 90, sell = 10, age = 0.1 }
+                end
+                if row[2] > 0 then
+                    W.items[row[2]] = W.items[row[2]] or { name = NAMES[row[2]] or ("Tailored Item " .. row[2]), ah = 150 + row[2] % 400, sell = 30, age = 0.1 }
+                end
+            end
+            W.items[14342] = { name = "Mooncloth", ah = 150000, sell = 4000, age = 0.1, icon = "Interface\\Icons\\INV_Fabric_Moonrag_01" }
+            W.items[14256] = { name = "Felcloth", ah = 40000, sell = 1000, age = 0.1, icon = "Interface\\Icons\\INV_Fabric_FelRag" }
+            ns.Toggle()
+            ns.SimOpen()
+            ns.SimSet({ line = 197, from = 1, to = 230, goal = 18560 })
+            if then_ then then_(ns, W) end
+        end
+    end
+    local before = function()
+        GetProfessions = function() return 1, 2 end
+        GetProfessionInfo = function(i)
+            if i == 1 then return "Enchanting", "Interface\\Icons\\Trade_Engraving", 92, 150, 0, 0, 333 end
+            return "Cooking", "Interface\\Icons\\INV_Misc_Food_15", 40, 75, 0, 0, 185
+        end
+    end
+    local spec = { items = {} }
+    S.craftprofit.simsetup = { spec = spec, before = before, open = open() }
+    S.craftprofit.simfind = { spec = spec, before = before, open = open(function(ns)
+        ns.SimSet({ goal = false }); ns.simUI.find:SetText("cloth"); ns.SimFindRefresh() end) }
+    S.craftprofit.sim = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate() end) }
+    S.craftprofit.simrun = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.SelectLeg(2) end) }
+    S.craftprofit.simcrafts = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.Tab(2) end) }
+    S.craftprofit.simsettings = { spec = spec, before = before, open = open(function(ns)
+        ns.SimCalculate(); ns.Tab(5); ns.SetPref("chance", 60); ns.SetPref("useBank", false) end) }
+end
+
 -- A vendor stop whose patterns name who sells them, with Show on map (`trainer`: the trainer stop).
 local function cpPin(trainer)
     return function(ns, W)
