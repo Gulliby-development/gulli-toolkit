@@ -340,7 +340,8 @@ end
 -- An estimate of what everything looted would bring: grey and plain white things at a vendor,
 -- trade goods, reagents and recipes at the auction, bind-on-equip blue and purple gear at the
 -- auction, green gear disenchanted (with Enchanting, its cheapest result) or sold to a vendor,
--- whichever brings more. Without an auction price an item counts at the vendor's price.
+-- whichever brings more. Without an auction price an item counts at the vendor's price. With
+-- `vendorOnly` every item counts at the vendor's price.
 
 local GEAR = { [2] = true, [4] = true }
 local AUCTION = { [5] = true, [7] = true, [9] = true }
@@ -399,6 +400,8 @@ function ns.ItemValue(id, enchanter)
     if f.class == ns.QUEST_CLASS then return 0, "quest" end
     local vendor = f.sell
     if f.quality == 0 then return vendor, "vendor" end
+    -- The player sells everything to a vendor: no auction and no disenchanting.
+    if ns.db and ns.db.vendorOnly then return vendor, "vendor" end
     if AUCTION[f.class] or (GEAR[f.class] and f.quality >= 3 and f.bind == 2) then
         local ah = ns.AuctionPrice(id)
         if ah then return ah, "auction" end
@@ -534,13 +537,14 @@ end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = false, sales = true, mail = false, alert = true, value = false, alpha = 100, scale = 100 }
+ns.DEFAULTS = { panel = false, sales = true, mail = false, alert = true, value = false, vendorOnly = false, alpha = 100, scale = 100 }
 ns.OPT_ICON = {
     panel = "Interface\\Icons\\INV_Misc_Spyglass_02",
     sales = "Interface\\Icons\\INV_Misc_Coin_02",
     mail = "Interface\\Icons\\INV_Letter_15",
     alert = "Interface\\Icons\\INV_Misc_Bell_01",
     value = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
+    vendorOnly = "Interface\\Icons\\INV_Misc_Coin_01",
 }
 
 function ns.SetPref(key, value)
@@ -692,6 +696,8 @@ do
               get = function() return ns.db ~= nil and ns.db.mail == true end, set = function(v) ns.SetPref("mail", v) end },
             { label = L.OPT_VALUE, icon = ns.OPT_ICON.value, tip = L.OPT_VALUE_TIP,
               get = function() return ns.db ~= nil and ns.db.value == true end, set = function(v) ns.SetPref("value", v) end },
+            { label = L.OPT_VENDOR, icon = ns.OPT_ICON.vendorOnly, tip = L.OPT_VENDOR_TIP,
+              get = function() return ns.db ~= nil and ns.db.vendorOnly == true end, set = function(v) ns.SetPref("vendorOnly", v) end },
         },
     })
 end

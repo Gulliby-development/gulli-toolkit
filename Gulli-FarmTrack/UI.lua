@@ -411,6 +411,7 @@ function ns.WorthLines()
         S.MoneyText(p.total),
     }
     local notes = {}
+    if ns.db.vendorOnly then notes[#notes + 1] = L.NOTE_VENDOR end
     if p.sold > 0 then notes[#notes + 1] = L.NOTE_SOLD:format(S.MoneyText(p.sold)) end
     if p.count.noprice > 0 then notes[#notes + 1] = L.NOTE_NOPRICE end
     if p.unknown > 0 then notes[#notes + 1] = L.NOTE_UNKNOWN:format(p.unknown) end
@@ -490,6 +491,8 @@ local function settingsPage(body, width)
           icon = ns.OPT_ICON.alert },
         { L.OPT_VALUE, L.OPT_VALUE_TIP, function() return ns.db.value end, function(v) ns.SetPref("value", v) end,
           icon = ns.OPT_ICON.value },
+        { L.OPT_VENDOR, L.OPT_VENDOR_TIP, function() return ns.db.vendorOnly end, function(v) ns.SetPref("vendorOnly", v) end,
+          icon = ns.OPT_ICON.vendorOnly },
     })
     st:Add(count, ch)
     page:SetContent(st:Height())
