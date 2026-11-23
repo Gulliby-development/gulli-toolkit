@@ -79,7 +79,7 @@ test("a crafting cooldown is saved as real time and is ready later", function()
     eq(ns.NextReady(c, ready), nil)
 end)
 
-test("a cooldown the character does not know is not tracked", function()
+test("a cooldown is tracked once the game, its running cooldown or the window says it is learned", function()
     Fake({})
     local ns = Load()
     eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, nil)
@@ -91,6 +91,37 @@ test("a cooldown the character does not know is not tracked", function()
     local texts = {}
     for _, t in ipairs(ns.Tasks(ns.Snapshot())) do texts[t.text] = true end
     assert(texts["Salt Shaker is ready"])
+end)
+test("a start past the game's clock wrapped, and time left never passes the cooldown", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    W.char.spells[18560] = true
+    -- the game gave the start 2^32 ms ahead: it really began an hour ago
+    W.char.cooldowns[18560] = { 50000 + 4294967.296 - 3600, 4 * 86400 }
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50000 - 3600 + 4 * 86400)
+    W.char.cooldowns[18560] = { 50000, 60 * 86400 } -- a duration longer than Mooncloth's
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50000 + 4 * 86400)
+    W.char.items[6948] = 1
+    W.char.cooldowns[6948] = { 50000 + 4294967.296 - 600, 1800 }
+    eq(ns.Snapshot().hearth, 50000 + 1200, "the hearthstone wraps the same way")
+end)
+
+test("cooldowns of 50 days saved by 1.14.0 are dropped once", function()
+    Fake({ name = "Me", now = 50000, db = { chars = {
+        ["Alt-Realm"] = { name = "Alt", level = 54, t = 40000, cdSpells = { [18560] = true },
+                          cooldowns = { CD_MOONCLOTH = 40000 + 51 * 86400, CD_HIDE = 40000 + 3600 },
+                          cdProf = { CD_MOONCLOTH = "Tailoring" }, cdTrade = { [18560] = 40000 + 51 * 86400 },
+                          hearth = 40000 + 50 * 86400 },
+    } } })
+    local ns = Load()
+    local c = ns.db.chars["Alt-Realm"]
+    eq(c.cooldowns.CD_MOONCLOTH, nil); eq(c.cdProf.CD_MOONCLOTH, nil); eq(c.cdTrade[18560], nil)
+    eq(c.cooldowns.CD_HIDE, 40000 + 3600, "a cooldown that can be stays")
+    eq(c.cdSpells[18560], true, "the recipe stays learned"); eq(c.hearth, 40000); eq(ns.db.cdFix, 1)
+    c.cooldowns.CD_MOONCLOTH = 40000 + 51 * 86400
+    ns.FixCooldowns()
+    eq(c.cooldowns.CD_MOONCLOTH, 40000 + 51 * 86400, "only once")
+    eq(ns.Tone("cd", 40000), "BAD"); eq(ns.Tone("cd", math.huge), nil)
 end)
 
 test("login prints what waits on the other characters", function()
@@ -442,6 +473,34 @@ test("the profession window and a craft tell a cooldown the spell does not show"
     eq(ns.OnCast(17187), false, "a secret spell id is left alone")
 end)
 
+test("any learned recipe the profession window shows with a cooldown is kept", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    local linked = true
+    C_TradeSkillUI = {
+        IsTradeSkillLinked = function() return linked end,
+        GetAllRecipeIDs = function() return { 1300001, 1300002, 1300003 } end,
+        GetBaseProfessionInfo = function() return { professionName = "Tailoring" } end,
+        GetRecipeInfo = function(id)
+            if id == 1300001 then return { learned = true, name = "Bolt of Starweave" } end
+            if id == 1300002 then return { learned = false, name = "Not learned" } end
+            return { learned = true, name = "No cooldown" }
+        end,
+        GetRecipeCooldown = function(id) if id <= 1300002 then return 7200 end return 0 end,
+    }
+    W.Fire("TRADE_SKILL_SHOW")
+    eq(ns.Snapshot().cooldowns.R1300001, nil, "another player's window is left alone")
+    linked = false
+    W.Fire("TRADE_SKILL_SHOW")
+    local c = ns.Snapshot()
+    eq(c.cooldowns.R1300001, 50000 + 7200); eq(ns.CdName(c, "R1300001"), "Bolt of Starweave")
+    eq(c.cdProf.R1300001, "Tailoring")
+    eq(c.cooldowns.R1300002, nil); eq(c.cooldowns.R1300003, nil)
+    C_TradeSkillUI = nil
+    W.now = 60000
+    eq(ns.Snapshot().cooldowns.R1300001, 60000, "it counts down with the window closed and stays")
+end)
+
 test("a cooldown that Gulli Craft Profit found joins its profession", function()
     Fake({ now = 50000 })
     GulliCraftProfitCharDB = { profs = { Alchemy = { recipes = {
@@ -475,6 +534,16 @@ test("the cooldowns tab lists every character's cooldowns, the ready ones first"
     ns.Toggle()
     ns.Window():GetScript("OnShow")()
     ns.Tabs():Select(2)
+end)
+
+test("a cooldown shows days with hours, and under an hour as such", function()
+    Fake({ now = 100000 })
+    local ns = Load()
+    eq(ns.CdSpan(86400 + 21 * 3600 + 59), ns.L.DAYS:format(1) .. " " .. ns.L.HOURS:format(21))
+    eq(ns.CdSpan(2 * 86400 + 600), ns.L.DAYS:format(2))
+    eq(ns.CdSpan(5 * 3600 + 1800), ns.L.HOURS:format(5))
+    eq(ns.CdSpan(600), "< " .. ns.L.HOURS:format(1))
+    eq(ns.CdSpan(-5), "< " .. ns.L.HOURS:format(1))
 end)
 
 W.finish()

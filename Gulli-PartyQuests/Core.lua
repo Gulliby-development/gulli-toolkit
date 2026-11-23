@@ -139,7 +139,7 @@ end
 -- Quest items in the bags above what my objectives need: { [objective name] = extra }.
 local function bagCounts()
     local counts = {}
-    for b = 0, 4 do
+    for b = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         for s = 1, numSlots(b) do
             local id, count = slotItem(b, s)
             if id then

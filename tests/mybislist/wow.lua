@@ -46,8 +46,9 @@ function W.Base(spec)
     time = function() return W.now end
     GetTime = function() return W.now end
     SlashCmdList = {}
-    CreateFrame = function(_, name)
+    CreateFrame = function(_, name, parent)
         local f = stub()
+        rawset(f, "_parent", parent)
         rawset(f, "_events", {})
         rawset(f, "_attr", {})
         rawset(f, "_name", name)
@@ -129,7 +130,7 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec: class, faction, level, worn (inventory slot -> item id), items (item id -> count, bags and
+-- spec: class, faction, level, worn (inventory slot -> item id), enchanted, spells, items (item id -> count, bags and
 -- bank, worn ones included as the game counts them), spec (retail specialization id), tabs
 -- (points per talent tab), db, cdb, hub.
 local CLASS_ID = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
@@ -143,6 +144,13 @@ function Fake(spec)
     LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue",
         PRIEST = "Priest", SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid" }
     GetInventoryItemID = function(_, slot) return W.worn[slot] end
+    -- enchanted: inventory slot -> the enchant id in the worn item's link; spells: id -> name
+    W.enchanted, W.spells = spec.enchanted or {}, spec.spells or {}
+    GetInventoryItemLink = function(_, slot)
+        return W.worn[slot] and ("|Hitem:" .. W.worn[slot] .. ":" .. (W.enchanted[slot] or "") .. ":::|h[x]|h") or nil
+    end
+    C_Spell = { GetSpellName = function(id) return W.spells[id] end,
+                GetSpellTexture = function(id) return W.spells[id] and ("spell" .. id) or nil end }
     W.loot, W.rolls, W.sounds = spec.loot or {}, spec.rolls or {}, 0
     GetNumLootItems = function() return #W.loot end
     GetLootSlotLink = function(i) return W.loot[i] and ("|Hitem:" .. W.loot[i] .. "::|h[x]|h") or nil end
@@ -154,7 +162,23 @@ function Fake(spec)
         GetItemQualityByID = function() return 3 end,
         RequestLoadItemDataByID = function() end,
         GetItemCount = function(id) return W.items[id] or 0 end,
+        -- equip: item id -> the game's equip location, for the set pieces the data has no slot for
+        GetItemInfoInstant = function(id) return id, "Armor", "", (W.equip or {})[id] or "" end,
+        GetItemInfo = function(id)
+            return "Item" .. id, nil, 3, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, (W.setOf or {})[id]
+        end,
+        GetItemSetInfo = function(id) return (W.setNames or {})[id] end,
     }
+    -- tips: item id -> the lines of its tooltip
+    W.equip, W.setOf, W.setNames, W.tipLines = spec.equip or {}, spec.setOf or {}, spec.setNames or {}, spec.tipLines or {}
+    C_TooltipInfo = { GetItemByID = function(id)
+        local t = W.tipLines[id]
+        if not t then return nil end
+        local lines = {}
+        for i, x in ipairs(t) do lines[i] = { leftText = x } end
+        return { lines = lines }
+    end }
+    ITEM_SET_BONUS_GRAY, ITEM_SET_BONUS = "(%d) Set: %s", "Set: %s"
     GetSpecialization = spec.spec and function() return 1 end or nil
     GetSpecializationInfo = spec.spec and function() return spec.spec end or nil
     GetTalentTabInfo = spec.tabs and function(i) return i, "Tab", "", "", spec.tabs[i] or 0 end or nil

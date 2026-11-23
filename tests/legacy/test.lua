@@ -52,6 +52,32 @@ test("the challenges are the achievements that give Legacy points", function()
     eq(c[70040].total, 3)
 end)
 
+test("the scan runs over several frames and keeps the last list until it is whole", function()
+    Fake(world())
+    local ns = Load()
+    ns.Scan()
+    local old = ns.list
+    local ms = 0
+    debugprofilestop = function() ms = ms + 3; return ms end
+    ns.scannedAt = nil
+    local done = false
+    ns.ScanJob(function() done = true end)
+    local frames = 0
+    while not done and frames < 1000 do
+        eq(ns.list, old, "the old list stays while it scans")
+        for _, g in ipairs(W.frames) do
+            local fn = rawget(g, "_OnUpdate")
+            if fn then fn(g, 0.016) end
+        end
+        frames = frames + 1
+    end
+    debugprofilestop = nil
+    eq(done, true)
+    assert(frames > 1, "it took more than one frame")
+    eq(#ns.list, 11)
+    eq(ns.ScanFresh(), true)
+end)
+
 test("points: earned on the account, spent and free on this character", function()
     Fake(world())
     local ns = Load()

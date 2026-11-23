@@ -116,7 +116,7 @@ end
 -- Bag slots in the bank: the bank itself and its bags.
 local function bankBags()
     local out = { BANK_CONTAINER or -1 }
-    local first = (NUM_BAG_SLOTS or 4) + 1
+    local first = (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) + 1
     for b = first, first + (NUM_BANKBAGSLOTS or 7) - 1 do out[#out + 1] = b end
     return out
 end
@@ -217,10 +217,20 @@ local function craftProfitCooldowns()
     return out
 end
 
-local function readyAt(start, duration, now, clock)
+-- GetTime counts milliseconds in 32 bits: a start the game gives ahead of the clock began
+-- 2^32 ms (about 49.7 days) earlier. Time left is never more than the cooldown itself (max).
+ns.CLOCK_WRAP = 4294967.296
+local function readyAt(start, duration, now, clock, max)
     if secret(start) or secret(duration) then return nil end
+    if start > clock then start = start - ns.CLOCK_WRAP end
     local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
+    left = math.min(left, duration, max or duration)
     return now + math.max(0, math.floor(left)), left > 0
+end
+
+function ns.HasProf(profs, name)
+    for _, p in ipairs(profs or {}) do if p.name == name then return true end end
+    return false
 end
 
 local function profName(profs, line)
@@ -260,7 +270,7 @@ function ns.ReadCooldowns(c, old, now, clock)
     c.cooldowns, c.cdProf, c.cdNames, c.cdSpells, c.cdTrade = {}, {}, {}, {}, {}
     local function spellReady(spell)
         local s, d = spellCooldown(spell)
-        local r, running = readyAt(s, d, now, clock)
+        local r, running = readyAt(s, d, now, clock, ns.CD_SECONDS[spell])
         local t = trade[spell]
         if t and t > now then
             c.cdTrade[spell] = t
@@ -290,6 +300,15 @@ function ns.ReadCooldowns(c, old, now, clock)
             c.cdNames[cr.key] = gameName(cr)
         end
     end
+    -- A recipe the profession window showed with a cooldown stays while its profession does.
+    c.cdOther = {}
+    for rid, o in pairs(old.cdOther or {}) do
+        if not ns.CD_KEY[rid] and not cp[rid] and (o.prof == nil or #c.profs == 0 or ns.HasProf(c.profs, o.prof)) then
+            c.cdOther[rid] = o
+            local key = "R" .. rid
+            c.cooldowns[key], c.cdProf[key], c.cdNames[key] = spellReady(rid) or now, o.prof, o.name
+        end
+    end
     for rid, r in pairs(cp) do
         if not ns.CD_KEY[rid] and (r.cd or 0) > 0 then
             local key = "R" .. rid
@@ -298,6 +317,33 @@ function ns.ReadCooldowns(c, old, now, clock)
             c.cooldowns[key], c.cdProf[key], c.cdNames[key] = ready, r.prof, r.name
         end
     end
+end
+
+-- Once: 1.14.0 and 1.14.1 did not undo the game's clock wrap, so they saved cooldowns of
+-- 50 days. Drop what is longer than it can be.
+function ns.FixCooldowns()
+    if ns.db.cdFix then return end
+    local longest = {}
+    for spell, sec in pairs(ns.CD_SECONDS) do
+        local k = ns.CD_KEY[spell]
+        if sec > (longest[k] or 0) then longest[k] = sec end
+    end
+    for _, c in pairs(ns.db.chars) do
+        local t = c.t or 0
+        for k, ready in pairs(c.cooldowns or {}) do
+            local most = longest[k] or 7 * 86400
+            if ready - t > most then
+                c.cooldowns[k] = nil
+                if c.cdProf then c.cdProf[k] = nil end
+                if c.cdNames then c.cdNames[k] = nil end
+            end
+        end
+        for spell, ready in pairs(c.cdTrade or {}) do
+            if ready - t > (ns.CD_SECONDS[spell] or 7 * 86400) then c.cdTrade[spell] = nil end
+        end
+        if c.hearth and c.hearth - t > 3600 then c.hearth = t end
+    end
+    ns.db.cdFix = 1
 end
 
 -- Takes this character's snapshot. What the game only shows at the mailbox or the bank, and
@@ -330,12 +376,13 @@ function ns.Snapshot()
     ns.ReadCooldowns(c, old, now, clock)
     if itemCount(HEARTHSTONE) > 0 then
         local start, duration = itemCooldown(HEARTHSTONE)
-        local left = (start > 0 and duration > 1.5) and (start + duration - clock) or 0
-        c.hearth = now + math.max(0, math.floor(left))
+        c.hearth = readyAt(start, duration, now, clock) or now
     end
     c.bind = bindLocation()
     c.lockouts = lockouts(now) or old.lockouts
-    c.items = countItems({ 0, 1, 2, 3, 4 })
+    local worn = {}
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do worn[#worn + 1] = bag end
+    c.items = countItems(worn)
     ns.db.chars[key] = c
     return c
 end
@@ -346,8 +393,35 @@ function ns.ReadTrade()
     local T = C_TradeSkillUI
     local c = ns.db and ns.db.chars[ns.CharKey()]
     if not (c and T and T.GetRecipeInfo) then return end
-    c.cdSpells, c.cdTrade = c.cdSpells or {}, c.cdTrade or {}
+    -- Another player's window (a link, the guild, an NPC) says nothing about this character.
+    for _, f in ipairs({ "IsTradeSkillLinked", "IsTradeSkillGuild", "IsNPCCrafting" }) do
+        if T[f] then
+            local ok, yes = pcall(T[f])
+            if ok and yes then return end
+        end
+    end
+    c.cdSpells, c.cdTrade, c.cdOther = c.cdSpells or {}, c.cdTrade or {}, c.cdOther or {}
     local now = time()
+    -- Every other learned recipe of this window whose cooldown runs: c.cdOther rid -> name, prof.
+    if T.GetAllRecipeIDs and T.GetRecipeCooldown then
+        local ok, ids = pcall(T.GetAllRecipeIDs)
+        local prof
+        if T.GetBaseProfessionInfo then
+            local ok2, pi = pcall(T.GetBaseProfessionInfo)
+            prof = ok2 and type(pi) == "table" and pi.professionName or nil
+        end
+        for _, rid in ipairs(ok and type(ids) == "table" and ids or {}) do
+            if not ns.CD_KEY[rid] then
+                local ok2, info = pcall(T.GetRecipeInfo, rid)
+                local ok3, left = pcall(T.GetRecipeCooldown, rid)
+                left = ok3 and tonumber(left)
+                if ok2 and type(info) == "table" and info.learned and left and left > 0 then
+                    c.cdOther[rid] = { name = info.name, prof = prof }
+                    c.cdTrade[rid] = now + math.ceil(left)
+                end
+            end
+        end
+    end
     for spell in pairs(ns.CD_KEY) do
         local ok, info = pcall(T.GetRecipeInfo, spell)
         if ok and type(info) == "table" and info.learned then
@@ -457,6 +531,15 @@ function ns.ReadBank()
 end
 
 -- A short time span: "3 d", "5 h", "12 min".
+-- A cooldown's time left: days with hours, hours, or under an hour.
+function ns.CdSpan(sec)
+    sec = math.max(0, math.floor(sec))
+    local d, h = math.floor(sec / 86400), math.floor(sec % 86400 / 3600)
+    if d > 0 then return h > 0 and (L.DAYS:format(d) .. " " .. L.HOURS:format(h)) or L.DAYS:format(d) end
+    if h > 0 then return L.HOURS:format(h) end
+    return "< " .. L.HOURS:format(1)
+end
+
 function ns.Span(sec)
     sec = math.max(0, math.floor(sec))
     if sec >= 86400 then return L.DAYS:format(math.floor(sec / 86400)) end
@@ -602,7 +685,8 @@ function ns.Tone(col, v)
         if v >= RESTED_MAX then return "GOOD" end
         return v <= 0 and "MUTED" or nil
     elseif col == "cd" then
-        return v == 0 and "GOOD" or nil
+        if v == 0 then return "GOOD" end
+        return v ~= math.huge and "BAD" or nil
     end
 end
 
@@ -766,6 +850,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db.off, ns.db.hidden, ns.db.alerted = ns.db.off or {}, ns.db.hidden or {}, ns.db.alerted or {}
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.MergeRealmless()
+        ns.FixCooldowns()
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "TRAINER_SHOW", "PLAYER_LEVEL_UP",
                              "UPDATE_PENDING_MAIL", "MAIL_CLOSED", "BAG_UPDATE_DELAYED", "PLAYER_UPDATE_RESTING",
                              "UPDATE_INVENTORY_DURABILITY", "TRADE_SKILL_CLOSE", "PLAYER_MONEY",

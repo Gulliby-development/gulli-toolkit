@@ -136,7 +136,7 @@ function ns.CardInfo(c, key, now)
     local seen = key == ns.CharKey() and L.SEEN_NOW or L.SEEN_AGO:format(ns.Span(now - (c.t or now)))
     info.played = { c.played and ns.Span(c.played) or "-", c.played and S.TEXT or S.MUTED, seen }
     local nextCd = ns.NextReady(c, now)
-    if nextCd then info.extra[#info.extra + 1] = L.NEXT_CD:format(ns.Span(nextCd - now)) end
+    if nextCd then info.extra[#info.extra + 1] = L.NEXT_CD:format(ns.CdSpan(nextCd - now)) end
     if c.mailUntil and c.mailUntil > now then
         info.extra[#info.extra + 1] = L.MAIL_LINE:format(c.mailItems or 0, ns.Span(c.mailUntil - now))
     end
@@ -166,14 +166,14 @@ function ns.CardInfo(c, key, now)
     return info
 end
 
-local tiles, extra, top, profCard, profRows, taskCard
+local tiles, extra, top, profCard, profRows, taskCard, cols
 -- The task list takes what is left under the professions, or under the card without them.
 local function placeTasks(withProfs)
     taskCard:ClearAllPoints()
     taskCard:SetPoint("TOPLEFT", withProfs and profCard or top, "BOTTOMLEFT", 0, -S.GAP)
     taskCard:SetPoint("BOTTOMRIGHT")
 end
-local PROF_MAX, PROF_H, CD_H = 10, 26, 22
+local PROF_MAX, PROF_H, CD_H = 16, 26, 22
 local TILE_H, HEAD_H = 80, 28
 
 local function fillCard(c)
@@ -186,21 +186,35 @@ local function fillCard(c)
     extra:SetText(table.concat(info.extra, "\n"))
     local lines = #info.extra
     top:Fit(HEAD_H + 10 + TILE_H + (lines > 0 and (8 + lines * 16) or 0))
-    -- One line per profession, its cooldowns under it.
-    local lines = {}
+    -- Each profession with its cooldowns under it, in two columns so the tasks keep their room.
+    local groups, total = {}, 0
     for _, p in ipairs(info.profs) do
-        if not p.only then lines[#lines + 1] = { prof = p } end
-        for _, cd in ipairs(p.cds or {}) do lines[#lines + 1] = { cd = cd } end
+        local g = { h = 0 }
+        if not p.only then g[#g + 1] = { prof = p }; g.h = PROF_H end
+        for _, cd in ipairs(p.cds or {}) do g[#g + 1] = { cd = cd }; g.h = g.h + CD_H end
+        if #g > 0 then groups[#groups + 1] = g; total = total + g.h end
     end
-    local n = math.min(#lines, PROF_MAX)
-    local y, now = 0, time()
-    for i = 1, PROF_MAX do
-        local r, line = profRows[i], lines[i]
-        r:SetShown(i <= n)
-        if line and i <= n then
+    local half, lh, rh = math.ceil(total / 2), 0, 0
+    for _, g in ipairs(groups) do
+        if rh == 0 and (lh == 0 or lh + g.h <= half) then g.col, g.y = 1, lh; lh = lh + g.h
+        else g.col, g.y = 2, rh; rh = rh + g.h end
+    end
+    local wide = rh == 0
+    cols[1]:ClearAllPoints()
+    cols[1]:SetPoint("TOPLEFT")
+    if wide then cols[1]:SetPoint("TOPRIGHT") else cols[1]:SetPoint("TOPRIGHT", profCard.body, "TOP", -12, 0) end
+    local n, now = 0, time()
+    for _, g in ipairs(groups) do
+        local y = g.y
+        for _, line in ipairs(g) do
+            n = n + 1
+            local r = profRows[n]
+            if not r then break end
+            r:Show()
+            local col = cols[g.col]
             r:ClearAllPoints()
-            r:SetPoint("TOPLEFT", 0, -y)
-            r:SetPoint("RIGHT")
+            r:SetPoint("TOPLEFT", col, "TOPLEFT", 0, -y)
+            r:SetPoint("RIGHT", col, "RIGHT")
             local p, cd = line.prof, line.cd
             r.bar:SetShown(p ~= nil)
             if p then
@@ -225,11 +239,14 @@ local function fillCard(c)
                 r.name:SetPoint("RIGHT", r.value, "LEFT", -10, 0)
                 r.name:SetText(cd.name)
                 r.name:SetTextColor(unpack(S.MUTED))
-                r.value:SetText(cd.done and (S.Hex(S.GOOD) .. L.READY_UP .. "|r") or ns.Span(cd.ready - now))
+                r.value:SetText(cd.done and (S.Hex(S.GOOD) .. L.READY_UP .. "|r") or (S.Hex(S.BAD) .. ns.CdSpan(cd.ready - now) .. "|r"))
                 y = y + CD_H
             end
         end
     end
+    for i = n + 1, PROF_MAX do profRows[i]:Hide() end
+    n = math.min(n, PROF_MAX)
+    local y = math.max(lh, rh)
     profCard:SetShown(n > 0)
     if n > 0 then profCard:Fit(y) end
     placeTasks(n > 0)
@@ -358,6 +375,10 @@ local function buildChars(page)
     profCard = S.Card(page, L.SEC_PROFS)
     profCard:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -S.GAP)
     profCard:SetPoint("TOPRIGHT", top, "BOTTOMRIGHT", 0, -S.GAP)
+    cols = {}
+    for i = 1, 2 do cols[i] = CreateFrame("Frame", nil, profCard.body); cols[i]:SetHeight(1) end
+    cols[2]:SetPoint("TOPLEFT", profCard.body, "TOP", 12, 0)
+    cols[2]:SetPoint("TOPRIGHT")
     profRows = {}
     for i = 1, PROF_MAX do profRows[i] = makeProf(profCard.body, i) end
     profCard:Fit(PROF_H)
@@ -405,7 +426,7 @@ local function fillCd(r, e)
     if e.done then
         r.value:SetText(S.Hex(S.GOOD) .. L.READY_UP .. "|r")
     else
-        r.value:SetText(S.Hex(S.MUTED) .. ns.Span(e.ready - time()) .. "|r")
+        r.value:SetText(S.Hex(S.BAD) .. ns.CdSpan(e.ready - time()) .. "|r")
     end
 end
 
@@ -496,7 +517,7 @@ local function fillOver(r, e)
     tint(cell[5], ns.Tone("durability", e.durability))
     cell[6]:SetText(tostring(e.free))
     tint(cell[6], ns.Tone("free", e.free))
-    cell[7]:SetText(e.cd == 0 and L.READY_UP or e.cd == math.huge and "-" or ns.Span(e.cd - now))
+    cell[7]:SetText(e.cd == 0 and L.READY_UP or e.cd == math.huge and "-" or ns.CdSpan(e.cd - now))
     tint(cell[7], e.cd == math.huge and "MUTED" or ns.Tone("cd", e.cd))
     cell[8]:SetText(tostring(e.tasks))
     tint(cell[8], e.tasks == 0 and "MUTED" or ns.Tone("tasks", e.tasks))

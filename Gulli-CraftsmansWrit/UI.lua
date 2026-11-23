@@ -13,7 +13,8 @@ local frame, tabs, pages = nil, nil, {}
 local calcBtn, buyBtn, skipBtn, leadBtn
 local repCard, repBar, repText, repSub, todayStats, todayCard, todayList, todayEmpty
 local goalTabs, planCard, planStats, planList, planEmpty
-local writTabs, sortTabs, writCard, writList
+local writTabs, sortTabs, writCard, writList, writFind, writEmpty
+local stepStrip
 local SORT_W = 170
 local periodTabs, histStats, histList, histEmpty
 local setCard, pouchStats, pouchNote, histCard
@@ -276,10 +277,34 @@ end
 
 -- sort "gain" (the default): the best gain first, the dearest last, writs without a price at
 -- the end; "prof": the data's order, by profession.
-function ns.WritRows(rank, sort)
+-- Lower case, Cyrillic too, so a search finds "Хинтерланд" by "хинтерланд".
+function ns.Fold(text)
+    local s = tostring(text or ""):lower()
+    s = s:gsub("\208([\144-\159])", function(c) return "\208" .. string.char(c:byte() + 32) end)
+    s = s:gsub("\208([\160-\175])", function(c) return "\209" .. string.char(c:byte() - 32) end)
+    s = s:gsub("\208\129", "\209\145")
+    return s
+end
+
+-- Does a writ match the search? Every word of it must be in the writ's name, the item it asks
+-- for, its trade, its rank, the customer or the zone the customer stands in.
+function ns.WritMatches(w, text)
+    local words = {}
+    for word in ns.Fold(text):gmatch("%S+") do words[#words + 1] = word end
+    if #words == 0 then return true end
+    local spot = ns.Spot(w)
+    local hay = ns.Fold(table.concat({ ns.WritName(w), ns.DisplayName(w.item), profName(w.prof),
+        L["RANK_" .. w.rank] or "", ns.Customer(w) or "", spot and ns.ZoneName(spot.map) or "" }, "\n"))
+    for _, word in ipairs(words) do
+        if not hay:find(word, 1, true) then return false end
+    end
+    return true
+end
+
+function ns.WritRows(rank, sort, text)
     local rows = {}
     for _, w in ipairs(ns.Writs()) do
-        if not rank or w.rank == rank then rows[#rows + 1] = w end
+        if (not rank or w.rank == rank) and ns.WritMatches(w, text) then rows[#rows + 1] = w end
     end
     if (sort or (ns.db and ns.db.writSort) or "gain") == "gain" then
         local cost, at = {}, {}
@@ -335,7 +360,7 @@ end
 
 local function lineText(line)
     if not line then return "" end
-    return line.n .. " × " .. ns.ShortName(ns.DisplayName(line.id))
+    return ns.Left(line) .. " × " .. ns.ShortName(ns.DisplayName(line.id))
 end
 
 local function buyText()
@@ -359,10 +384,123 @@ local function buyStatus(plan)
     if not ns.atAH then return plan.estimate and L.ESTIMATE or L.NOT_AT_AH, S.WARN end
     if b.err then return lineText(ns.Current()) .. ": " .. L[b.err], S.BAD end
     if b.phase == "ready" and ns.Dear() then return lineText(ns.Current()) .. ": " .. L.DEAR, S.WARN end
-    return b.i .. " / " .. #queue .. S.DOT .. lineText(ns.Current())
+    return lineText(ns.Current())
+end
+
+-- ---------- the buying steps ----------
+-- Over the status line: the step the Buy button is at (one writ type: its writs, then its item)
+-- and a node per copy, one a day: filled green when the bags hold it or it was bought here, the
+-- next one to buy ringed in the accent, the rest hollow.
+
+local DOT_MAX, DOT_MIN = 10, 4
+
+local function makeDots(parent)
+    local g = CreateFrame("Frame", nil, parent)
+    g:SetHeight(18)
+    g.icon = S.IconBox(g, 18)
+    g.icon:SetPoint("LEFT")
+    g.dots = {}
+    function g:Set(icon, done, of, current, width)
+        self.icon:SetIcon(icon)
+        local room = width - 26
+        local size = math.max(DOT_MIN, math.min(DOT_MAX, math.floor(room / math.max(1, of)) - 3))
+        local gap = size >= 8 and 4 or 2
+        for i = 1, math.max(of, #self.dots) do
+            local d = self.dots[i]
+            if i <= of and not d then
+                d = { ring = S.Circle(self, size, S.FAINT, "ARTWORK", 1), fill = S.Circle(self, size - 2, S.BG, "ARTWORK", 2) }
+                self.dots[i] = d
+            end
+            if d then
+                local show = i <= of
+                d.ring:SetShown(show)
+                d.fill:SetShown(show)
+                if show then
+                    d.ring:SetSize(size, size)
+                    d.fill:SetSize(size - 2, size - 2)
+                    d.ring:ClearAllPoints()
+                    d.ring:SetPoint("LEFT", 26 + (i - 1) * (size + gap), 0)
+                    d.fill:ClearAllPoints()
+                    d.fill:SetPoint("CENTER", d.ring)
+                    local ring, fill = S.FAINT, S.BG
+                    if i <= done then ring, fill = S.GOOD, S.GOOD
+                    elseif current and i == done + 1 then ring = S.Accent() end
+                    d.ring:SetVertexColor(ring[1], ring[2], ring[3], ring[4] or 1)
+                    d.fill:SetVertexColor(fill[1], fill[2], fill[3], fill[4] or 1)
+                    d.done = i <= done
+                end
+            end
+        end
+        self:SetWidth(26 + of * (size + gap))
+    end
+    return g
+end
+
+local function buildSteps(ft)
+    local f = CreateFrame("Frame", nil, ft)
+    f:SetHeight(18)
+    f:SetPoint("TOPLEFT", S.PAD, -8)
+    f:SetPoint("TOPRIGHT", -S.PAD, -8)
+    f:EnableMouse(true)
+    f.label = S.Text(f, 12, S.GOLD_DIM, nil, "bold")
+    f.label:SetPoint("LEFT")
+    f.label:SetWordWrap(false)
+    f.writ = makeDots(f)
+    f.item = makeDots(f)
+    f:SetScript("OnEnter", function(self)
+        if not (GameTooltip and self.lines) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        for i, l in ipairs(self.lines) do
+            if i == 1 then GameTooltip:AddLine(l, 1, 0.82, 0) else GameTooltip:AddLine(l, 1, 1, 1) end
+        end
+        GameTooltip:Show()
+    end)
+    f:SetScript("OnLeave", hideTip)
+    return f
+end
+
+-- What the strip shows now: the current line's step, or the last one when all is bought.
+function ns.StepView()
+    local b = ns.buy
+    if not ns.plan or ns.stale or not b.steps or #b.steps == 0 or #b.queue == 0 then return nil end
+    local line = ns.Current() or b.queue[#b.queue]
+    local i, of = ns.StepOf(line)
+    if not i then return nil end
+    local s = b.steps[i]
+    local nodes = ns.StepNodes(s)
+    return { i = i, of = of, step = s, nodes = nodes, part = b.phase ~= "done" and line.part or nil }
+end
+
+local function refreshSteps()
+    local v = tab == 2 and ns.StepView()
+    stepStrip:SetShown(v and true or false)
+    if not v then return end
+    local f = stepStrip
+    f.label:SetText(S.Upper(L.STEP:format(v.i, v.of)))
+    local width = (f:GetWidth() or 480)
+    if width < 100 then width = 480 end
+    local room = width - (f.label:GetStringWidth() or 80) - 16
+    local s, n = v.step, v.nodes
+    local itemName = s.item and ns.ShortName(ns.DisplayName(s.item.id))
+    f.writ:ClearAllPoints()
+    f.writ:SetPoint("LEFT", f.label, "RIGHT", 12, 0)
+    f.writ:Set(ns.ItemIcon(s.id), n.writ.done, n.writ.of, v.part == "writ", n.item and math.floor(room / 2) - 8 or room)
+    f.item:SetShown(n.item ~= nil)
+    if n.item then
+        f.item:ClearAllPoints()
+        f.item:SetPoint("LEFT", f.writ, "RIGHT", 16, 0)
+        f.item:Set(ns.ItemIcon(s.item.id), n.item.done, n.item.of, v.part == "item", math.floor(room / 2) - 8)
+    end
+    f.lines = { s.kind == "sealed" and ns.DisplayName(s.id) or ns.WritName(s.w),
+                L.NODE_WRITS:format(n.writ.done, n.writ.of) }
+    if n.item then f.lines[3] = L.NODE_ITEM:format(itemName, n.item.done, n.item.of) end
 end
 
 local function refreshFooter()
+    -- only Today and Plan have actions: the other tabs give the footer's place to their lists
+    frame.footer:SetShown(tab <= 2)
+    if ns.FitFooter then ns.FitFooter() end
+    refreshSteps()
     local onPlan = tab == 2
     local plan = ns.plan
     local b = ns.buy
@@ -380,13 +518,15 @@ local function refreshFooter()
         return
     end
     if not onPlan then frame.footer:SetStatus(""); return end
-    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning()
-    label(calcBtn, plan and L.RECALC or L.CALCULATE, 110)
-    calcBtn:SetEnabled(not ns.Scanning() and not ns.Busy())
+    local calculating, share = ns.Calculating()
+    local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning() or calculating
+    label(calcBtn, calculating and L.CALC_BUSY:format(math.floor(share * 100)) or (plan and L.RECALC or L.CALCULATE), 110)
+    calcBtn:SetEnabled(not ns.Scanning() and not ns.Busy() and not calculating)
     label(buyBtn, buyText(), 160)
     buyBtn:SetEnabled(plan ~= nil and not ns.stale and #b.queue > 0 and b.phase ~= "done" and not busy
         and ns.atAH and ns.CanBuy())
-    frame.footer:SetStatus(buyStatus(plan))
+    if calculating then frame.footer:SetStatus(L.CALC_LINE:format(math.floor(share * 100)), S.Accent())
+    else frame.footer:SetStatus(buyStatus(plan)) end
 end
 
 -- ---------- refresh ----------
@@ -432,11 +572,19 @@ local function refreshPlan()
     elseif plan then planEmpty:Set(L.PLAN_NONE, L.PLAN_NONE_SUB)
     else planEmpty:Set(L.PLAN_EMPTY, L.PLAN_EMPTY_SUB) end
     planCard:SetTitle(L.PLAN, plan and #plan.lines > 0 and L.PLAN_HINT:format(plan.rep, plan.days) or "")
+    local calculating, share = ns.Calculating()
+    planCard.calcBar:SetShown(calculating)
+    if calculating then
+        planCard.calcBar:Set(share)
+        planCard.calcWatch:Show()
+    end
 end
 
 local function refreshWrits()
-    local rows = ns.WritRows(rankFilter, ns.db.writSort)
+    local text = writFind and writFind:GetText() or ""
+    local rows = ns.WritRows(rankFilter, ns.db.writSort, text)
     writList:SetData(rows)
+    writEmpty:SetShown(#rows == 0)
     writCard:SetTitle(L.WRITS, tostring(#rows))
 end
 
@@ -461,16 +609,21 @@ local function refreshSettings()
     pouchNote:SetText(L.POUCHES_SUB .. " " .. L.TIP_POUCH_SEEN:format(seen))
 end
 
-function ns.Refresh()
-    S.SideRefresh()
-    if ns.RefreshTracker and ns.guide then ns.RefreshTracker() end
-    if not frame or not frame:IsShown() then return end
+local function refreshTab()
     if tab == 1 then refreshToday()
     elseif tab == 2 then refreshPlan()
     elseif tab == 3 then refreshWrits()
     elseif tab == 4 then refreshHistory()
     else refreshSettings() end
     refreshFooter()
+end
+
+function ns.Refresh()
+    S.SideRefresh()
+    if ns.RefreshTracker and ns.guide then ns.RefreshTracker() end
+    if not frame or not frame:IsShown() then return end
+    -- how long it took, for /gcw perf
+    ns.perf.redraw, ns.perf.tab = S.Timed(refreshTab), tab
 end
 
 -- ---------- build ----------
@@ -511,18 +664,26 @@ local function build()
         ns.Refresh()
     end)
     -- the status line takes the whole width above the buttons, so its long texts are never cut
-    local extra = 38
+    local extra = 56
     ft:SetHeight(S.FOOTER_H + extra)
+    stepStrip = buildSteps(ft)
     ft.status:ClearAllPoints()
-    ft.status:SetPoint("TOPLEFT", S.PAD, -8)
-    ft.status:SetPoint("TOPRIGHT", -S.PAD, -8)
-    ft.status:SetHeight(extra)
+    ft.status:SetPoint("TOPLEFT", S.PAD, -30)
+    ft.status:SetPoint("TOPRIGHT", -S.PAD, -30)
+    ft.status:SetHeight(extra - 22)
     ft.status:SetJustifyV("TOP")
     buyBtn:ClearAllPoints()
     buyBtn:SetPoint("BOTTOMRIGHT", -S.PAD, 12)
+    -- the step strip shows only on the Plan tab: elsewhere the status line moves up and the
+    -- footer is lower, so the lists keep that room
     local function fit(self)
-        frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, (self:IsShown() and S.FOOTER_H + extra or 0) + S.PAD)
+        local steps = tab == 2
+        ft:SetHeight(S.FOOTER_H + (steps and extra or 38))
+        ft.status:SetPoint("TOPLEFT", S.PAD, steps and -30 or -8)
+        ft.status:SetPoint("TOPRIGHT", -S.PAD, steps and -30 or -8)
+        frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, (self:IsShown() and ft:GetHeight() or 0) + S.PAD)
     end
+    ns.FitFooter = function() fit(ft) end
     ft:HookScript("OnShow", fit)
     ft:HookScript("OnHide", fit)
     fit(ft)
@@ -595,6 +756,23 @@ local function build()
     planCard:SetPoint("BOTTOMRIGHT")
     planEmpty = S.Empty(planList)
     planEmpty:Set(L.PLAN_EMPTY, L.PLAN_EMPTY_SUB)
+    -- while a plan is calculated: a moving bar over the list, the share on the button and the
+    -- status line, drawn each frame; the list keeps the last plan meanwhile
+    planCard.calcBar = S.Progress(planCard, 6)
+    planCard.calcBar:SetPoint("TOPLEFT", planCard, "TOPLEFT", S.INSET, -34)
+    planCard.calcBar:SetPoint("TOPRIGHT", planCard, "TOPRIGHT", -S.INSET, -34)
+    planCard.calcBar:SetFrameLevel((tonumber(planCard:GetFrameLevel()) or 1) + 20)
+    planCard.calcBar:Hide()
+    planCard.calcWatch = CreateFrame("Frame", nil, frame)
+    planCard.calcWatch:Hide()
+    planCard.calcWatch:SetScript("OnUpdate", function(self)
+        local calculating, share = ns.Calculating()
+        if not calculating then self:Hide(); return end
+        if tab ~= 2 or not frame:IsShown() then return end
+        planCard.calcBar:Set(share)
+        label(calcBtn, L.CALC_BUSY:format(math.floor(share * 100)), 110)
+        frame.footer:SetStatus(L.CALC_LINE:format(math.floor(share * 100)), S.Accent())
+    end)
 
     -- Writs
     local wp = pages[3]
@@ -614,9 +792,18 @@ local function build()
     sortTabs.frame:SetPoint("TOPRIGHT")
     sortTabs.frame:SetWidth(SORT_W)
     sortTabs:Select(ns.db.writSort == "prof" and 2 or 1, true)
+    writFind = S.Edit(wp, 100, 28)
+    writFind:SetPoint("TOPLEFT", 0, -(28 + S.GAP))
+    writFind:SetPoint("TOPRIGHT", 0, -(28 + S.GAP))
+    writFind:SetJustifyH("LEFT")
+    S.Placeholder(writFind, L.WRIT_FIND)
+    writFind:SetScript("OnTextChanged", function() ns.Refresh() end)
+    writFind:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
     writCard, writList = listCard(wp, L.WRITS, WRIT_ICON, makeRow, fillWrit)
-    writCard:SetPoint("TOPLEFT", 0, -(28 + S.GAP))
+    writCard:SetPoint("TOPLEFT", 0, -2 * (28 + S.GAP))
     writCard:SetPoint("BOTTOMRIGHT")
+    writEmpty = S.Empty(writList)
+    writEmpty:Set(L.FIND_NONE, "")
 
     -- History
     local hp = pages[4]
@@ -852,4 +1039,11 @@ end
 function ns.TrackerFrame()
     if not tracker and ns.db then buildTracker() end
     return tracker
+end
+
+-- The search of the Writs tab (for the previews and the tests).
+function ns.SetWritFind(text)
+    ns.Window()
+    writFind:SetText(text or "")
+    ns.Refresh()
 end

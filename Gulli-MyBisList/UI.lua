@@ -1,5 +1,5 @@
--- The window: the gear page (the slots worn round a card with the chosen slot's list) and the
--- settings. It only shows what Core.lua worked out.
+-- The window: the gear page (the slots worn round a card with the chosen slot's list), the sets
+-- page (the sets of a class, and the chosen one piece by piece) and the settings. It only shows what Core.lua worked out.
 
 local _, ns = ...
 local L = ns.L
@@ -9,6 +9,10 @@ local D = ns.Data
 local frame, footer, tabs, mainBtn, autoBtn, copyBtn, delBtn
 local pages = {}
 local gear = {}         -- the gear page's parts
+local sets = {}         -- the sets page's parts
+local SETS, SETTINGS = 2, 3
+ns.setClass = nil       -- the class whose sets are shown; nil is the character's
+ns.setId = nil          -- the set shown
 local current = 1       -- the page tab shown
 ns.view = nil           -- the list shown (a ref); nil shows the main list
 ns.slot = "head"        -- the slot whose list the card shows
@@ -99,17 +103,35 @@ local function slotButton(parent, slot)
     b.state:SetPoint("RIGHT", -8, 0)
     b.state:SetJustifyH("LEFT")
     b.state:SetWordWrap(false)
+    -- the list's enchant of the slot: its icon in the corner, bright in a green ring when the worn
+    -- item has an enchant, grey in a red ring when it has none (the words are in the tooltip)
+    b.ench = S.IconBox(b, 16)
+    b.ench:SetPoint("BOTTOMRIGHT", b.icon, "BOTTOMRIGHT", 5, -3)
+    b.ench:SetFrameLevel((tonumber(b.icon:GetFrameLevel()) or 1) + 2)
+    b.ench:Hide()
     b:SetScript("OnClick", function(self) ns.slot = self.slot; ns.Refresh() end)
     b:SetScript("OnEnter", function(self)
+        local e = self.enchant
         if self.itemId then
             itemTip(self)
             local at = self.row and self.row.topAt
             if at and GameTooltip then
                 local c = ns.AT_COLOR[at]
                 GameTooltip:AddLine(L["AT_" .. at:upper()], c[1], c[2], c[3])
-                GameTooltip:Show()
             end
+        elseif e and GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["SLOT_" .. self.slot])
         end
+        if e and GameTooltip then
+            -- the Gulli block names the enchant itself for an item of the main list
+            if not (self.itemId and ns.EnchantInTip()) then
+                GameTooltip:AddLine(S.Cap(L.TIP_ENCH) .. ": " .. colour(e.name, S.TEXT), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+            end
+            local c = ns.ENCH_COLOR[e.state or "empty"]
+            GameTooltip:AddLine(L["ENCH_" .. (e.state or "empty"):upper()], c[1], c[2], c[3])
+        end
+        if GameTooltip and (self.itemId or e) then GameTooltip:Show() end
         if not self.selected then S.Fill(self, S.RAISED) end
     end)
     b:SetScript("OnLeave", function(self)
@@ -119,8 +141,26 @@ local function slotButton(parent, slot)
     return b
 end
 
-local function paintSlot(b, r)
+-- The badge and the row of an enchant: its icon, bright or grey, in a ring of its state's colour.
+ns.ENCH_COLOR = { on = S.GOOD, none = S.BAD, empty = S.MUTED }
+local function paintEnchant(box, e)
+    box:SetIcon(e.icon)
+    if box.tex.SetDesaturated then box.tex:SetDesaturated(e.state ~= "on") end
+    box.tex:SetAlpha(e.state == "on" and 1 or 0.7)
+    box:SetGlow(e.state and ns.ENCH_COLOR[e.state] or nil)
+end
+
+-- Whether the Gulli block of an item's tooltip already names the shown list's enchants.
+function ns.EnchantInTip()
+    return ns.db ~= nil and ns.db.tooltip == true and not ns.paused and ns.ShownRef() == ns.RefOf(ns.Main())
+end
+
+local function paintSlot(b, r, list)
     b.row = r
+    local e = r.state ~= "covered" and ns.Enchant(list, r.slot) or nil
+    b.enchant = e
+    b.ench:SetShown(e ~= nil)
+    if e then paintEnchant(b.ench, e) end
     local top = r.state ~= "covered" and r.top or nil
     b.itemId = top
     b.icon:SetIcon(top and ns.ItemIcon(top) or (PD .. SLOT_ART[r.slot]))
@@ -284,7 +324,7 @@ local function buildCard(parent)
     c.list = S.List(c.body, ROW_H, makeRow, fillRow)
     c.list.heightOf = function(it) return it.sep and ROW_H + SEP_H or ROW_H end
     c.list:SetPoint("TOPLEFT", 0, -44)
-    c.list:SetPoint("BOTTOMRIGHT", 0, 24)
+    c.list:SetPoint("BOTTOMRIGHT", 0, 0)
     c.empty = S.Text(c.body, 12, S.MUTED)
     c.empty:SetPoint("TOPLEFT", 0, -56)
     c.empty:SetPoint("RIGHT", 0, 0)
@@ -298,11 +338,44 @@ local function buildCard(parent)
     c.add:SetWidth(c.add:GetWidth() + 22)
     c.add:SetPoint("TOPRIGHT", 0, 2)
     c.add:SetScript("OnClick", function(self) ns.OpenAdd(self) end)
-    c.ench = S.Text(c.body, 12, S.MUTED)
-    c.ench:SetPoint("BOTTOMLEFT", 0, 2)
-    c.ench:SetPoint("RIGHT", 0, 0)
-    c.ench:SetJustifyH("LEFT")
-    c.ench:SetWordWrap(false)
+    -- the slot's enchant, under the list: who makes it, its icon and name, and what is on the worn item
+    local e = CreateFrame("Button", nil, c.body)
+    e:SetHeight(ROW_H)
+    e:SetPoint("BOTTOMLEFT", 0, 0)
+    e:SetPoint("BOTTOMRIGHT", 0, 0)
+    e.line = S.Divider(e)
+    e.line:SetPoint("TOPLEFT", 0, 0)
+    e.line:SetPoint("TOPRIGHT", 0, 0)
+    e.line:SetHeight(1)
+    e.kind = S.IconBox(e, 16)
+    e.kind:SetPoint("LEFT", 7, 0)
+    e.icon = S.IconBox(e, 30)
+    e.icon:SetPoint("LEFT", 30, 0)
+    e.src = S.Text(e, 12, S.MUTED)
+    e.src:SetPoint("TOPRIGHT", -4, -6)
+    e.src:SetJustifyH("RIGHT")
+    e.src:SetWordWrap(false)
+    e.name = S.Text(e, 13)
+    e.name:SetPoint("TOPLEFT", e.icon, "TOPRIGHT", 9, 0)
+    e.name:SetPoint("RIGHT", e.src, "LEFT", -6, 0)
+    e.name:SetJustifyH("LEFT")
+    e.name:SetWordWrap(false)
+    e.dot = S.Circle(e, 8, S.BAD, "OVERLAY")
+    e.dot:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", 9, 3)
+    e.state = S.Text(e, 12, S.MUTED)
+    e.state:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", 21, 0)
+    e.state:SetPoint("RIGHT", -4, 0)
+    e.state:SetJustifyH("LEFT")
+    e.state:SetWordWrap(false)
+    e:SetScript("OnEnter", function(self)
+        local it = self.enchant
+        if not (GameTooltip and it) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetSpellByID then GameTooltip:SetSpellByID(it.id) else GameTooltip:SetText(it.name) end
+        GameTooltip:Show()
+    end)
+    e:SetScript("OnLeave", hideTip)
+    c.ench = e
     return c
 end
 
@@ -399,14 +472,42 @@ function ns.PickItems()
     return out
 end
 
-local function buildPicker(anchor)
-    local p = CreateFrame("Frame", nil, frame)
-    p:SetSize(300, 380)
-    p:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
-    p:SetFrameStrata("FULLSCREEN_DIALOG")
-    if p.SetToplevel then p:SetToplevel(true) end
+-- A menu over the window. The hub is a toplevel window in FULLSCREEN_DIALOG whose level climbs with
+-- every raise, and a page docked in it follows, so a menu that is a child of the window, or sits at
+-- a fixed level of that strata, ends up under the page's cards. A menu is a frame of UIParent in
+-- TOOLTIP, the one strata over every window: no level of the hub can reach it. It takes the
+-- window's scale each time it shows, and the window's OnHide and the page tabs close it.
+ns.MENU_STRATA, ns.MENU_LEVEL = "TOOLTIP", 10
+local function newMenu(w, h)
+    local p = CreateFrame("Frame", nil, UIParent)
+    p:SetSize(w, h)
+    local function raise(self)
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        self:SetFrameStrata(ns.MENU_STRATA)
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
+        self:SetFrameLevel(ns.MENU_LEVEL)
+        local mine = frame and frame.GetEffectiveScale and tonumber(frame:GetEffectiveScale())
+        local base = UIParent.GetEffectiveScale and tonumber(UIParent:GetEffectiveScale())
+        if mine and base and mine > 0 and base > 0 then self:SetScale(mine / base) end
+    end
+    raise(p)
+    p:HookScript("OnShow", raise)
     p:EnableMouse(true)
     S.Box(p, S.SOLID, S.EDGE, S.R_LG)
+    ns.menus = ns.menus or {}
+    ns.menus[#ns.menus + 1] = p
+    return p
+end
+-- The game's tooltip lives in the same strata: over a menu's rows it goes above the menu.
+local function tipOverMenu()
+    if GameTooltip and GameTooltip.SetFrameLevel and GameTooltip.IsShown and GameTooltip:IsShown() then
+        GameTooltip:SetFrameLevel(ns.MENU_LEVEL + 100)
+    end
+end
+
+local function buildPicker(anchor)
+    local p = newMenu(300, 380)
+    p:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
     p.list = S.List(p, 30, pickRow, pickFill)
     p.list:SetPoint("TOPLEFT", 6, -6)
     p.list:SetPoint("BOTTOMRIGHT", -6, 6)
@@ -435,7 +536,7 @@ local function addRow(r)
     r.src:SetWordWrap(false)
     r.hit = CreateFrame("Button", nil, r)
     r.hit:SetAllPoints()
-    r.hit:SetScript("OnEnter", itemTip)
+    r.hit:SetScript("OnEnter", function(self) itemTip(self); tipOverMenu() end)
     r.hit:SetScript("OnLeave", hideTip)
     r.hit:SetScript("OnClick", function(self)
         if self.itemId then ns.AddTo(ns.ShownRef(), ns.slot, self.itemId) end
@@ -462,12 +563,7 @@ function ns.AddItems(query)
 end
 
 local function buildAdder()
-    local p = CreateFrame("Frame", nil, frame)
-    p:SetSize(420, 400)
-    p:SetFrameStrata("FULLSCREEN_DIALOG")
-    if p.SetToplevel then p:SetToplevel(true) end
-    p:EnableMouse(true)
-    S.Box(p, S.SOLID, S.EDGE, S.R_LG)
+    local p = newMenu(420, 400)
     p.title = S.Text(p, 13, S.GOLD, nil, "bold")
     p.title:SetPoint("TOPLEFT", 12, -12)
     p.title:SetPoint("RIGHT", -40, 0)
@@ -633,7 +729,7 @@ local function paintGear()
     local byslot = {}
     for _, r in ipairs(rows) do
         byslot[r.slot] = r
-        paintSlot(gear.slots[r.slot], r)
+        paintSlot(gear.slots[r.slot], r, list)
     end
     local spec = ns.SpecInfo(list.spec)
     gear.chip:SetText(ns.SpecName(list.spec))
@@ -673,8 +769,22 @@ local function paintGear()
     c.list:SetShown(#items > 0)
     c.empty:SetShown(#items == 0)
     c.empty:SetText(r.state == "covered" and L.EMPTY_COVERED or (own and L.EMPTY_OWN) or L.EMPTY_SLOT)
-    local ench = list.ench[r.slot]
-    c.ench:SetText(ench and (L.ENCHANT .. " " .. colour(ench, S.TEXT)) or "")
+    local ench = r.state ~= "covered" and ns.Enchant(list, r.slot) or nil
+    c.ench.enchant = ench
+    c.ench:SetShown(ench ~= nil)
+    if ench then
+        local e = c.ench
+        e.kind:SetIcon(ns.ENCH_ICON[ench.kind])
+        e.icon:SetIcon(ench.icon)
+        e.name:SetText(ench.name)
+        e.src:SetText(ench.kind ~= "other" and L["ENCH_SRC_" .. ench.kind:upper()] or "")
+        local col = ns.ENCH_COLOR[ench.state or "empty"]
+        e.dot:SetShown(ench.state ~= nil)
+        e.dot:SetVertexColor(col[1], col[2], col[3], 1)
+        e.state:SetText(L["ENCH_" .. (ench.state or "empty"):upper()])
+        e.state:SetPoint("BOTTOMLEFT", e.icon, "BOTTOMRIGHT", ench.state and 21 or 9, 0)
+    end
+    c.list:SetPoint("BOTTOMRIGHT", 0, ench and ROW_H + 4 or 0)
     c.add:SetShown(r.state ~= "covered" and (not own or #r.ids < ns.OWN_MAX))
     c.countLabel:SetPoint("RIGHT", c.add:IsShown() and -(c.add:GetWidth() + 8) or 0, 0)
     local news = own and ns.SiteNews(ns.RefOf(list)) or {}
@@ -687,6 +797,490 @@ local function paintGear()
         c.news:Hide()
     end
     c.list:SetPoint("TOPLEFT", 0, c.news:IsShown() and -(44 + S.BANNER_H + 6) or -44)
+end
+
+-- The sets page ----------------------------------------------------------------------------------------
+
+local SET_LEFT, SET_ROW, PIECE_H, PIECE_ROWS = 236, 44, 36, 4
+-- the bonuses never scroll: every row gets its share of the room left, two lines of text while
+-- a row is BONUS_TWO high or more, and no more than BONUS_MAX of it
+local BONUS_ROWS, BONUS_MAX, BONUS_TWO, PIECES_Y = 8, 34, 28, 80
+local PIP = 7
+
+function ns.SetClass()
+    local _, mine = UnitClass("player")
+    return ns.setClass or mine
+end
+
+local function codeName(code) return L["SLOT_" .. (ns.CODE_SLOT[code] or code)] or code end
+
+-- Where a set piece comes from: the data's line, else the boss Dungeon Journal knows.
+function ns.PieceSource(id)
+    local text = ns.SourceText(id)
+    if text ~= "" then return text end
+    local dj = GulliDungeonJournal
+    local d = dj and dj.DropsOf and dj.DropsOf(id)
+    d = d and d[1]
+    if d and d.boss then
+        local where = dj.Name and dj.Name(d.key)
+        return where and (d.boss .. " · " .. where) or d.boss
+    end
+    return ""
+end
+
+-- The second line of a piece: the tier 0 piece it is made from and whether it is there, else
+-- where the piece comes from.
+function ns.PieceLine(g)
+    if g.from then
+        local have = g.fromHave and colour(L.SET_HAVE, S.GOOD) or colour(L.SET_NOT, S.FAINT)
+        return L.SET_FROM:format(S.QualityHex(ns.ItemQuality(g.from)) .. ns.ItemName(g.from) .. "|r") .. " · " .. have
+    end
+    return ns.PieceSource(g.id)
+end
+
+local function pips(parent, n)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(n * (PIP + 2), PIP)
+    f.dots = {}
+    for i = 1, n do
+        local d = S.Circle(f, PIP, S.FAINT, "OVERLAY")
+        d:SetPoint("LEFT", (i - 1) * (PIP + 2), 0)
+        f.dots[i] = d
+    end
+    function f:Set(have, of)
+        of = math.min(of, #self.dots)
+        for i, d in ipairs(self.dots) do
+            d:SetShown(i <= of)
+            local c = i <= have and S.GOOD or S.FAINT
+            d:SetVertexColor(c[1], c[2], c[3], i <= have and 1 or 0.45)
+        end
+        self:SetWidth(math.max(1, of * (PIP + 2)))
+    end
+    return f
+end
+
+local function setRowMake(r)
+    S.NavRow(r)
+    r.head = S.Text(r, 12, S.GOLD_DIM, nil, "bold")
+    r.head:SetPoint("BOTTOMLEFT", 8, 5)
+    r.head:SetPoint("RIGHT", -8, 0)
+    r.head:SetJustifyH("LEFT")
+    r.head:SetWordWrap(false)
+    r.icon = S.IconBox(r, 32)
+    r.icon:SetPoint("LEFT", 6, 0)
+    r.name = S.Text(r, 13)
+    r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 8, 0)
+    r.name:SetPoint("RIGHT", -6, 0)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r.pips = pips(r, 8)
+    r.pips:SetPoint("BOTTOMRIGHT", -8, 8)
+    r.sub = S.Text(r, 12, S.MUTED)
+    r.sub:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 8, 0)
+    r.sub:SetPoint("RIGHT", r.pips, "LEFT", -6, 0)
+    r.sub:SetJustifyH("LEFT")
+    r.sub:SetWordWrap(false)
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnClick", function(self)
+        local it = self:GetParent().item
+        if it then ns.setId = it.set; ns.Refresh() end
+    end)
+    r.hit:SetScript("OnEnter", function(self)
+        local row = self:GetParent()
+        if not (GameTooltip and row.item and row.full) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(row.full)
+        if row.where then GameTooltip:AddLine(row.where, S.MUTED[1], S.MUTED[2], S.MUTED[3]) end
+        GameTooltip:Show()
+    end)
+    r.hit:SetScript("OnLeave", hideTip)
+end
+
+local function setRowFill(r, it)
+    local head = it.head ~= nil
+    r.item = not head and it or nil
+    r.head:SetShown(head)
+    for _, k in ipairs({ "icon", "name", "sub", "pips", "hit" }) do r[k]:SetShown(not head) end
+    if r.line then r.line:SetShown(not head) end
+    if head then r.head:SetText(S.Upper(L["SETS_" .. it.head])); r:SetSelected(false); return end
+    local info = ns.SetInfo(it.set)
+    local first = info.groups[1]
+    local q = first and ns.ItemQuality(first.id) or 3
+    r.icon:SetIcon(first and ns.ItemIcon(first.id) or ns.SET_ICON)
+    r.icon:SetGlow(S.QUALITY[q])
+    r.full = info.name
+    r.name:SetText(S.QualityHex(q) .. info.name .. "|r")
+    -- a set for anyone says where its first piece comes from, when the data knows
+    local where = info.kind == "any" and first and ns.PieceSource(first.id) or ""
+    local place = info.kind == "any" and first and ns.SourcePlace(first.id) or ""
+    r.where = where ~= "" and where or nil
+    r.sub:SetText(place ~= "" and place or L["SET_KIND_" .. info.kind:upper()])
+    r.pips:Set(info.worn, info.of)
+    r:SetSelected(ns.setId == it.set)
+end
+
+local function pieceCell(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetHeight(PIECE_H)
+    S.Box(b, S.CLEAR, S.CLEAR, S.R_MD)
+    b.line = S.Divider(b)
+    b.line:SetPoint("TOPLEFT", 0, 0)
+    b.line:SetPoint("TOPRIGHT", 0, 0)
+    b.line:SetHeight(1)
+    b.icon = S.IconBox(b, 28)
+    b.icon:SetPoint("LEFT", 4, 0)
+    b.tag = S.Text(b, 12, S.MUTED)
+    b.tag:SetPoint("TOPRIGHT", -4, -4)
+    b.tag:SetJustifyH("RIGHT")
+    b.tag:SetWordWrap(false)
+    b.dot = S.Circle(b, 8, S.BAD, "OVERLAY")
+    b.dot:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 8, -4)
+    b.name = S.Text(b, 13)
+    b.name:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 20, 0)
+    b.name:SetPoint("RIGHT", b.tag, "LEFT", -6, 0)
+    b.name:SetJustifyH("LEFT")
+    b.name:SetWordWrap(false)
+    b.sub = S.Text(b, 12, S.MUTED)
+    b.sub:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 0)
+    b.sub:SetPoint("RIGHT", -4, 0)
+    b.sub:SetJustifyH("LEFT")
+    b.sub:SetWordWrap(false)
+    b:SetScript("OnEnter", function(self)
+        local g = self.group
+        if not g then return end
+        S.Fill(self, S.HOVER)
+        self.itemId = g.id
+        itemTip(self)
+        -- the tooltip makes the client load the piece: the bonuses it waits for come with it
+        if ns.bonusWait and ns.Later then ns.Later() end
+        if not GameTooltip then return end
+        local c = ns.AT_COLOR[self.at]
+        GameTooltip:AddLine(L["AT_" .. self.at:upper()], c[1], c[2], c[3])
+        local line = ns.PieceLine(g)
+        if line ~= "" then GameTooltip:AddLine(line, S.MUTED[1], S.MUTED[2], S.MUTED[3]) end
+        if g.step then
+            GameTooltip:AddLine(L.SRC_QUEST:format(D.setSteps[g.step]), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+        end
+        if #g.ids > 1 then
+            GameTooltip:AddLine(L.SET_TURN:format(g.at, #g.ids), S.MUTED[1], S.MUTED[2], S.MUTED[3])
+        end
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self) S.Fill(self, S.CLEAR); hideTip() end)
+    b:SetScript("OnClick", function(self)
+        local g = self.group
+        if g and #g.ids > 1 and not (g.worn or g.have) then ns.SetTurn(ns.setId, g.code, #g.ids) end
+    end)
+    return b
+end
+
+local function paintPiece(b, g)
+    b.group = g
+    local q = ns.ItemQuality(g.id)
+    b.icon:SetIcon(ns.ItemIcon(g.id))
+    b.icon:SetGlow(S.QUALITY[q])
+    b.name:SetText(S.QualityHex(q) .. ns.ItemName(g.id) .. "|r")
+    b.at = g.worn and "worn" or (g.have and "bag") or "miss"
+    local c = ns.AT_COLOR[b.at]
+    b.dot:SetVertexColor(c[1], c[2], c[3], 1)
+    -- a place with variants says which one is shown; a tier 0.5 piece its step of the chain
+    local tag = ""
+    if #g.ids > 1 then tag = g.at .. "/" .. #g.ids
+    elseif g.step then tag = L.SET_STEP:format(g.step) end
+    b.tag:SetText(tag)
+    b.sub:SetText(ns.PieceLine(g))
+end
+
+local function bonusRow(parent)
+    local r = CreateFrame("Frame", nil, parent)
+    r.line = S.Divider(r)
+    r.line:SetPoint("TOPLEFT", 0, 0)
+    r.line:SetPoint("TOPRIGHT", 0, 0)
+    r.line:SetHeight(1)
+    r.pill = CreateFrame("Frame", nil, r)
+    r.pill:SetSize(30, 20)
+    r.pill:SetPoint("LEFT", 2, 0)
+    -- a filled chip with no outline: a 1 pixel edge drops out at some window scales
+    S.Box(r.pill, S.INPUT, S.CLEAR, S.R_MD)
+    r.n = S.Text(r.pill, 12, S.MUTED, nil, "bold")
+    r.n:SetPoint("CENTER")
+    r.state = S.Text(r, 12, S.MUTED)
+    r.state:SetPoint("RIGHT", -4, 0)
+    r.state:SetJustifyH("RIGHT")
+    r.state:SetWordWrap(false)
+    r.text = S.Text(r, 12)
+    r.text:SetPoint("LEFT", r.pill, "RIGHT", 8, 0)
+    r.text:SetPoint("RIGHT", r.state, "LEFT", -8, 0)
+    r.text:SetJustifyH("LEFT")
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnEnter", function(self)
+        local it = self:GetParent().item
+        if not (GameTooltip and it and it.text) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(it.text, 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    r.hit:SetScript("OnLeave", hideTip)
+    return r
+end
+
+-- How high each of n bonus rows is in a box of that height, and how many lines its text takes.
+function ns.BonusLayout(n, height)
+    if n < 1 then return BONUS_MAX, 2 end
+    local h = math.max(1, math.min(BONUS_MAX, math.floor(height / n)))
+    return h, h >= BONUS_TWO and 2 or 1
+end
+
+local function layBonuses(box)
+    local n = box.n or 0
+    local h, lines = ns.BonusLayout(n, box:GetHeight() or 0)
+    for i, r in ipairs(box.rows) do
+        r:SetShown(i <= n)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 0, -(i - 1) * h)
+        r:SetPoint("RIGHT", 0, 0)
+        r:SetHeight(h)
+        if r.text.SetMaxLines then r.text:SetMaxLines(lines) end
+        r.text:SetWordWrap(lines > 1)
+    end
+end
+
+local function bonusFill(r, b)
+    r.item = b
+    r.n:SetText(b.count and tostring(b.count) or "")
+    S.Fill(r.pill, b.on and S.GOOD or S.INPUT)
+    r.n:SetTextColor(unpack(b.on and S.BG or S.MUTED))
+    r.text:SetText(b.text or L.SET_BONUS_WAIT)
+    r.text:SetTextColor(unpack((b.on and S.TEXT) or (b.text and S.MUTED) or S.FAINT))
+    if b.on then
+        r.state:SetText(colour(L.SET_ACTIVE, S.GOOD))
+    else
+        r.state:SetText(b.count and L.SET_MORE:format(b.count - b.worn) or "")
+    end
+end
+
+local classMenu
+local function classRow(r)
+    S.NavRow(r)
+    r.icon = S.IconBox(r, 20)
+    r.icon:SetPoint("LEFT", 8, 0)
+    r.name = S.Text(r, 13)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+    r.name:SetPoint("RIGHT", -8, 0)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r.hit = CreateFrame("Button", nil, r)
+    r.hit:SetAllPoints()
+    r.hit:SetScript("OnClick", function(self)
+        classMenu:Hide()
+        ns.PickSetClass(self:GetParent().class)
+    end)
+end
+local function classFill(r, class)
+    r.class = class
+    r.icon:SetIcon(ns.ClassIcon(class))
+    r.name:SetText(ns.ClassName(class))
+    r:SetSelected(ns.SetClass() == class)
+end
+
+-- Shows the sets of a class (nil: the character's) and the first of them.
+function ns.PickSetClass(class)
+    local _, mine = UnitClass("player")
+    ns.setClass = class ~= mine and class or nil
+    ns.setId = nil
+    ns.Refresh()
+end
+
+local function setsPage(body)
+    local p = CreateFrame("Frame", nil, body)
+    local chip = S.Button(p, SET_LEFT, 30)
+    S.SetButtonIcon(chip, ns.ClassIcon("WARRIOR"))
+    chip:SetPoint("TOPLEFT", 0, 0)
+    chip:SetScript("OnClick", function(self)
+        if not classMenu then
+            classMenu = newMenu(SET_LEFT, 9 * 30 + 12)
+            classMenu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
+            classMenu.list = S.List(classMenu, 30, classRow, classFill)
+            classMenu.list:SetPoint("TOPLEFT", 6, -6)
+            classMenu.list:SetPoint("BOTTOMRIGHT", -6, 6)
+            classMenu:Hide()
+        end
+        if classMenu:IsShown() then classMenu:Hide(); return end
+        classMenu:Show()
+        classMenu.list:SetData(ns.CLASSES)
+    end)
+    sets.chip = chip
+    local left = CreateFrame("Frame", nil, p)
+    left:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
+    left:SetPoint("BOTTOMLEFT", 0, 0)
+    left:SetWidth(SET_LEFT)
+    S.Box(left, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    sets.list = S.List(left, SET_ROW, setRowMake, setRowFill)
+    sets.list.heightOf = function(it) return it.head and 26 or SET_ROW end
+    sets.list:SetPoint("TOPLEFT", 4, -4)
+    sets.list:SetPoint("BOTTOMRIGHT", -4, 4)
+    sets.none = S.Text(left, 12, S.MUTED)
+    sets.none:SetPoint("TOPLEFT", 12, -14)
+    sets.none:SetPoint("RIGHT", -12, 0)
+    sets.none:SetJustifyH("LEFT")
+    sets.none:SetText(L.SETS_EMPTY)
+
+    local c = CreateFrame("Frame", nil, p)
+    c:SetPoint("TOPLEFT", SET_LEFT + S.GAP, 0)
+    c:SetPoint("BOTTOMRIGHT", 0, 0)
+    S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_LG)
+    S.Depth(c, S.R_LG)
+    c.body = CreateFrame("Frame", nil, c)
+    c.body:SetPoint("TOPLEFT", S.INSET, -S.INSET)
+    c.body:SetPoint("BOTTOMRIGHT", -S.INSET, S.INSET)
+    local b = c.body
+    c.icon = S.IconBox(b, 40)
+    c.icon:SetPoint("TOPLEFT", 0, 0)
+    c.count = S.Text(b, 20, S.TEXT, nil, "bold")
+    c.count:SetPoint("TOPRIGHT", 0, -2)
+    c.countLabel = S.Text(b, 12, S.MUTED)
+    c.countLabel:SetPoint("TOPRIGHT", 0, -26)
+    c.name = S.Text(b, 16, S.GOLD, nil, "title")
+    c.name:SetPoint("TOPLEFT", c.icon, "TOPRIGHT", 10, -1)
+    c.name:SetPoint("RIGHT", c.count, "LEFT", -12, 0)
+    c.name:SetJustifyH("LEFT")
+    c.name:SetWordWrap(false)
+    c.sub = S.Text(b, 12, S.MUTED)
+    c.sub:SetPoint("BOTTOMLEFT", c.icon, "BOTTOMRIGHT", 10, 2)
+    c.sub:SetPoint("RIGHT", c.countLabel, "LEFT", -12, 0)
+    c.sub:SetJustifyH("LEFT")
+    c.sub:SetWordWrap(false)
+    c.bar = S.Progress(b, 6)
+    c.bar:SetPoint("TOPLEFT", 0, -46)
+    c.bar:SetPoint("TOPRIGHT", 0, -46)
+    c.piecesHead = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
+    c.piecesHead:SetPoint("TOPLEFT", 0, -60)
+    c.piecesHead:SetJustifyH("LEFT")
+    c.piecesHead:SetWordWrap(false)
+    c.piecesHead:SetText(S.Upper(L.SET_PIECES))
+    c.cells = {}
+    for i = 1, PIECE_ROWS * 2 do
+        local cell = pieceCell(b)
+        local row, right = math.floor((i - 1) / 2), i % 2 == 0
+        if right then
+            cell:SetPoint("TOPLEFT", b, "TOP", S.GAP / 2, -(PIECES_Y + row * PIECE_H))
+            cell:SetPoint("RIGHT", 0, 0)
+        else
+            cell:SetPoint("TOPLEFT", 0, -(PIECES_Y + row * PIECE_H))
+            cell:SetPoint("RIGHT", b, "CENTER", -S.GAP / 2, 0)
+        end
+        c.cells[i] = cell
+    end
+    c.bonusHead = S.Text(b, 12, S.GOLD_DIM, nil, "bold")
+    c.bonusHead:SetText(S.Upper(L.SET_BONUSES))
+    c.bonusHead:SetJustifyH("LEFT")
+    c.bonusHead:SetWordWrap(false)
+    local box = CreateFrame("Frame", nil, b)
+    box.rows = {}
+    for i = 1, BONUS_ROWS do box.rows[i] = bonusRow(box) end
+    box:SetScript("OnSizeChanged", layBonuses)
+    c.bonuses = box
+    -- the tier 0.5 chain, on the line of the pieces' head: the step the character is at
+    local ch = CreateFrame("Button", nil, b)
+    ch:SetHeight(18)
+    ch:SetPoint("LEFT", c.piecesHead, "RIGHT", 12, 0)
+    ch:SetPoint("RIGHT", b, "RIGHT", 0, 0)
+    ch.text = S.Text(ch, 12, S.MUTED)
+    ch.text:SetPoint("LEFT", 0, 0)
+    ch.text:SetPoint("RIGHT", 0, 0)
+    ch.text:SetJustifyH("RIGHT")
+    ch.text:SetWordWrap(false)
+    ch:SetScript("OnEnter", function(self)
+        if not (GameTooltip and self.title) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.title, S.GOLD[1], S.GOLD[2], S.GOLD[3])
+        GameTooltip:AddLine(self.quest, 1, 1, 1, true)
+        GameTooltip:AddLine(self.slots, S.MUTED[1], S.MUTED[2], S.MUTED[3], true)
+        GameTooltip:Show()
+    end)
+    ch:SetScript("OnLeave", hideTip)
+    c.chain = ch
+    sets.card = c
+    return p
+end
+
+-- The set shown: the chosen one while the class has it, else the class's first.
+function ns.ShownSet()
+    local items = ns.SetList(ns.SetClass())
+    local first
+    for _, it in ipairs(items) do
+        if it.set then
+            first = first or it.set
+            if it.set == ns.setId then return ns.setId, items end
+        end
+    end
+    ns.setId = first
+    return first, items
+end
+
+local function paintSets()
+    local class = ns.SetClass()
+    sets.chip:SetText(ns.ClassName(class))
+    if sets.chip.btnIcon then sets.chip.btnIcon:SetTexture(ns.ClassIcon(class)) end
+    local id, items = ns.ShownSet()
+    sets.list:SetData(items)
+    sets.none:SetShown(#items == 0)
+    local c = sets.card
+    c:SetShown(id ~= nil)
+    if not id then return end
+    local info = ns.SetInfo(id, ns.Shown())
+    sets.info = info
+    local first = info.groups[1]
+    c.icon:SetIcon(first and ns.ItemIcon(first.id) or ns.SET_ICON)
+    c.icon:SetGlow(first and S.QUALITY[ns.ItemQuality(first.id)] or nil)
+    c.name:SetText(info.name)
+    c.sub:SetText(L.SET_SUB:format(L["SET_KIND_" .. info.kind:upper()], info.of))
+    c.count:SetText(info.worn .. "/" .. info.of)
+    c.countLabel:SetText(L.SET_WORN)
+    c.bar:Set(info.of > 0 and info.worn / info.of or 0, info.worn == info.of and info.of > 0 and S.GOOD or nil)
+    for i, cell in ipairs(c.cells) do
+        local g = info.groups[i]
+        cell:SetShown(g ~= nil)
+        if g then paintPiece(cell, g) end
+    end
+    local rows = math.ceil(math.min(#info.groups, #c.cells) / 2)
+    local y = PIECES_Y + rows * PIECE_H + 8
+    c.bonusHead:ClearAllPoints()
+    c.bonusHead:SetPoint("TOPLEFT", 0, -y)
+    c.bonusHead:SetPoint("RIGHT", 0, 0)
+    local chain = ns.SetChain(info)
+    c.chain:SetShown(chain ~= nil)
+    if chain then
+        local names = {}
+        for _, code in ipairs(chain.codes) do names[#names + 1] = codeName(code) end
+        c.chain.title = L.SET_CHAIN:format(chain.step, chain.of)
+        c.chain.quest, c.chain.slots = chain.quest, table.concat(names, ", ")
+        c.chain.text:SetText(c.chain.title .. S.DOT .. colour(chain.quest, S.TEXT))
+    end
+    local bonuses = ns.SetBonuses(info)
+    for _, x in ipairs(bonuses) do x.worn = info.worn end
+    c.bonuses:ClearAllPoints()
+    c.bonuses:SetPoint("TOPLEFT", 0, -(y + 18))
+    c.bonuses:SetPoint("BOTTOMRIGHT", 0, 0)
+    c.bonuses.n = math.min(#bonuses, BONUS_ROWS)
+    for i, r in ipairs(c.bonuses.rows) do
+        if bonuses[i] then bonusFill(r, bonuses[i]) end
+    end
+    layBonuses(c.bonuses)
+end
+
+-- The footer's button on the sets page: the set's pieces go on the list shown on the gear page.
+function ns.AddShownSet()
+    local info = sets.info or (ns.ShownSet() and ns.SetInfo(ns.ShownSet(), ns.Shown()))
+    if not (info and ns.SetMine(info)) then return 0 end
+    local n = ns.SetAdd(info, ns.ViewRef())
+    if S.Toast then
+        S.Toast({ key = "setadd", icon = ns.ICON, title = L.TITLE,
+                  text = n > 0 and L.SET_ADDED:format(n) or L.SET_ADD_NONE, seconds = 6 })
+    end
+    return n
 end
 
 -- Settings ---------------------------------------------------------------------------------------------
@@ -721,6 +1315,17 @@ end
 local function paintFooter()
     local list = ns.Shown()
     if not list then return end
+    if current == SETS then
+        local info = sets.info
+        footer:SetStatus(L.SETS_STATUS)
+        mainBtn:SetText(L.SET_ADD)
+        mainBtn:SetEnabled(info ~= nil and ns.SetMine(info))
+        mainBtn:SetWidth(math.max(150, math.floor((mainBtn.text:GetStringWidth() or 0) + 40)))
+        autoBtn:Hide(); copyBtn:Hide(); delBtn:Hide()
+        footer.status:SetPoint("RIGHT", mainBtn, "LEFT", -12, 0)
+        return
+    end
+    copyBtn:Show()
     local isMain = ns.ShownRef() == ns.MainRef() or (ns.view == nil)
     local sim = list.simmed and L.SIMMED or L.NOT_SIMMED
     footer:SetStatus(L.STATUS:format(D.ver, sim))
@@ -746,10 +1351,12 @@ local function paintFooter()
     footer.status:SetPoint("RIGHT", last, "LEFT", -12, 0)
 end
 
+function ns.SetsShown() return frame ~= nil and frame:IsShown() and current == SETS end
+
 function ns.Refresh()
     if not ns.db then return end
     if not (frame and frame:IsShown()) then return end
-    if current == 1 then paintGear() end
+    if current == 1 then paintGear() elseif current == SETS then paintSets() end
     paintFooter()
 end
 
@@ -759,6 +1366,7 @@ local function build()
     footer = S.Footer(frame)
     mainBtn = S.Primary(S.Button(frame, 180, 30))
     mainBtn:SetScript("OnClick", function()
+        if current == SETS then ns.AddShownSet(); return end
         local ref = ns.ShownRef()
         if ref then ns.SetMain(ref); ns.view = nil; ns.Refresh() end
     end)
@@ -788,16 +1396,18 @@ local function build()
         end
     end)
     footer:Add(delBtn)
-    tabs = S.PageTabs(body, { L.TAB_GEAR, L.TAB_SETTINGS }, nil, function(i)
+    tabs = S.PageTabs(body, { L.TAB_GEAR, L.TAB_SETS, L.TAB_SETTINGS }, nil, function(i)
         current = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
         if picker then picker:Hide() end
         if adder then adder:Hide() end
-        footer:SetShown(i ~= 2)
+        if classMenu then classMenu:Hide() end
+        footer:SetShown(i ~= SETTINGS)
         ns.Refresh()
-    end, nil, { "Interface\\Icons\\INV_Chest_Plate06", S.TAB.settings })
+    end, nil, { "Interface\\Icons\\INV_Chest_Plate06", ns.SET_ICON, S.TAB.settings })
     pages[1] = gearPage(body)
-    pages[2] = settingsPage(body, width)
+    pages[SETS] = setsPage(body)
+    pages[SETTINGS] = settingsPage(body, width)
     for i, p in ipairs(pages) do
         p:SetPoint("TOPLEFT", 0, -(30 + S.GAP))
         p:SetPoint("BOTTOMRIGHT")
@@ -805,6 +1415,7 @@ local function build()
     end
     frame:HookScript("OnShow", function() ns.Refresh() end)
     frame:HookScript("OnHide", function()
+        if classMenu then classMenu:Hide() end
         if picker then picker:Hide() end
         if adder then adder:Hide() end
     end)
@@ -831,5 +1442,5 @@ function ns.Window()
 end
 
 -- For the tests and the previews.
-function ns.Parts() return gear, footer, mainBtn, tabs end
+function ns.Parts() return gear, footer, mainBtn, tabs, sets end
 function ns.ShowTab(i) ns.Window(); tabs:Select(i) end

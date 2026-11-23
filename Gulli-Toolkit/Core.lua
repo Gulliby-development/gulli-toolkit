@@ -54,11 +54,24 @@ local function enableState(name)
     return low or 0
 end
 local function version() return metadata(ADDON, "Version") end
+-- UpdateAddOnMemoryUsage walks every loaded addon and can take a long moment with a big UI:
+-- it runs at most once in MEMORY_EVERY seconds, the numbers in between are the last ones.
+local MEMORY_EVERY = 10
+local memoryAt
+local function updateMemory()
+    local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
+    if not update then return end
+    local now = GetTime and GetTime() or 0
+    if memoryAt and now - memoryAt < MEMORY_EVERY then return end
+    memoryAt = now
+    pcall(update)
+end
+ns.UpdateMemory = updateMemory
 local function memoryKB(name)
     local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
     local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
     if not (update and get) then return nil end
-    pcall(update)
+    updateMemory()
     local ok, kb = pcall(get, name)
     return ok and tonumber(kb) or nil
 end
@@ -841,7 +854,7 @@ function ns.Overview(rows)
     local o = { on = 0, total = 0, running = 0, reload = {}, blocked = {}, new = {}, paused = {}, heavy = {}, kb = 0 }
     local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
     local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
-    if update and get then pcall(update) end
+    if update and get then updateMemory() end
     for _, r in ipairs(rows) do
         o.total = o.total + 1
         if r.on then o.on = o.on + 1 end

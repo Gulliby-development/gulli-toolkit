@@ -286,6 +286,17 @@ test("a quick attach tile counts the stacks that fit and shows the icon of the i
     eq(ns.KindInfo("cloth").going, 1, "one place left in the letter")
 end)
 
+test("quick attach and the kind tiles also take the reagent bag (bag 5 on WoW Forever)", function()
+    Fake({ bags = { [5] = { [1] = { id = 10, count = 7 } } }, classes = { [10] = { 7, 5 } } })
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = 5
+    local ns = Load()
+    eq(ns.KindInfo("cloth").stacks, 1)
+    SendMailFrame:Show()
+    eq(ns.AttachKind("cloth"), 1)
+    eq(W.used[1], 10)
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = nil
+end)
+
 test("the auction tile takes what sells better at the auction than at a vendor, only with prices", function()
     Fake({ bags = { [0] = { [1] = { id = 10 }, [2] = { id = 30 }, [3] = { id = 31 }, [4] = { id = 32 }, [5] = { id = 33, bound = true } } },
            classes = { [10] = { 7, 5 }, [30] = { 4, 2 }, [31] = { 7, 5 }, [32] = { 4, 1 }, [33] = { 4, 2 } } })
@@ -431,6 +442,29 @@ test("take by kind takes only the items of that kind, from every letter, and no 
     W.Drain()
     eq(#W.taken, 3, "all goods: the cloth too, not the armour")
     eq(W.taken[3], 20)
+end)
+
+test("gems go by id as WoW Forever files them, consumables by subclass and not in all goods", function()
+    -- Forever: Malachite and Hot Spices are both Trade Goods, Other (7/11); a potion 0/1, a
+    -- sharpening stone 0/8, food 0/5, Linen 7/5.
+    Fake({ classes = { [774] = { 7, 11 }, [2692] = { 7, 11 }, [13446] = { 0, 1 }, [2862] = { 0, 8 },
+                       [1645] = { 0, 5 }, [2589] = { 7, 5 }, [12800] = { 7, 11 } },
+           inbox = { { sender = "A", items = { 774, 2692, 2589 } }, { sender = "AH", invoice = "buyer", items = { 13446, 2862, 1645 } },
+                     { sender = "B", items = { 12800 } } } })
+    local ns = Load()
+    W.Fire("MAIL_SHOW")
+    eq(ns.InboxKindInfo("gem").stacks, 2, "Malachite and the diamond, not the spices")
+    eq(ns.InboxKindInfo("consumable").stacks, 2, "the potion and the stone, not the food")
+    eq(ns.InboxKindInfo("cloth").stacks, 1)
+    eq(ns.InboxKindInfo("all").stacks, 3, "all goods: cloth and gems, no potions")
+    ns.TakeAll(nil, "consumable")
+    W.Drain()
+    table.sort(W.taken)
+    eq(#W.taken, 2); eq(W.taken[1], 2862); eq(W.taken[2], 13446)
+    ns.TakeAll(nil, "gem")
+    W.Drain()
+    eq(#W.taken, 4)
+    eq(ns.KindHas(ns.KindOf("gem"), 3, 0, 99999), true, "a client with the Gem class still counts it")
 end)
 
 test("take by kind stops when the bags are full", function()

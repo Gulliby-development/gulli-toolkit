@@ -810,9 +810,12 @@ local function build()
     pages[1]:Show()
     -- The hub shows the window itself, so the scan runs on show, not only from Toggle.
     frame:SetScript("OnShow", function()
-        if not ns.paused then ns.Scan(); ns.Snapshot() end
         alpha:Refresh()
         ns.Refresh()
+        -- the last scan shows at once; an old one is read again over a few frames
+        if not ns.paused and not ns.ScanFresh() then
+            ns.ScanJob(function() ns.Snapshot(); ns.Refresh() end)
+        end
     end)
 end
 
@@ -1068,8 +1071,10 @@ local function buildCompact()
     end
 
     w:HookScript("OnShow", function()
-        if not ns.paused then ns.Scan(); ns.Snapshot() end
         ns.Refresh()
+        if not ns.paused and not ns.ScanFresh() then
+            ns.ScanJob(function() ns.Snapshot(); ns.Refresh() end)
+        end
     end)
     S.Ghost(gear)
     compact = w

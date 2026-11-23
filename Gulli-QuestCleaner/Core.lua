@@ -311,7 +311,7 @@ local function bankBags()
         return out
     end
     local out = { BANK_CONTAINER or -1 }
-    local first = (NUM_BAG_SLOTS or 4) + 1
+    local first = lastBag() + 1
     for b = first, first + (NUM_BANKBAGSLOTS or 7) - 1 do out[#out + 1] = b end
     return out
 end

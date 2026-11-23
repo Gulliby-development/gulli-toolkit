@@ -781,15 +781,16 @@ S.craftprofit.craftopen = { spec = S.craftprofit.default.spec, before = S.craftp
 
 S.mail = { panel = {
     spec = { inbox = { { sender = "Auction House", subject = "Auction successful: Linen Cloth", invoice = "seller", money = 4210 },
-                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589 } },
+                       { sender = "Auction House", subject = "Auction won: Silk Cloth", invoice = "buyer", items = { 2589, 13446 } },
                        { sender = "Bob", subject = "Herbs", items = { 765, 785 }, days = 2.4 },
                        { sender = "Auction House", subject = "Auction expired: Copper Ore", items = { 2770 }, days = 25, player = false } },
-             classes = { [2589] = { 7, 5 }, [765] = { 7, 9 }, [785] = { 7, 9 }, [2770] = { 7, 7 } } },
+             classes = { [2589] = { 7, 5 }, [765] = { 7, 9 }, [785] = { 7, 9 }, [2770] = { 7, 7 }, [13446] = { 0, 1 } } },
     open = function(ns, W)
         local icons = { [2589] = "Interface\\Icons\\INV_Fabric_Linen_01", [765] = "Interface\\Icons\\INV_Misc_Flower_02",
                         [785] = "Interface\\Icons\\INV_Misc_Flower_01", [2770] = "Interface\\Icons\\INV_Ore_Copper_01",
                         [2318] = "Interface\\Icons\\INV_Misc_LeatherScrap_03", [10940] = "Interface\\Icons\\INV_Enchant_DustStrange",
-                        [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03", [7067] = "Interface\\Icons\\INV_Stone_02" }
+                        [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03", [7067] = "Interface\\Icons\\INV_Stone_02",
+                        [13446] = "Interface\\Icons\\INV_Potion_54" }
         C_Item.GetItemIconByID = function(id) return icons[id] end
         W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.visit.items, ns.visit.money, ns.visit.sold = 3, 26664, 26664; ns.Refresh() end,
     crop = "GulliMailPanel",
@@ -1616,6 +1617,13 @@ local function mbOpen(ns, W, slot)
                [16] = l.main[1], [11] = l.finger1[1], [13] = l.trinket1[2], [8] = l.feet[4] }
     W.items = { [l.legs[1]] = 1, [l.hands[3]] = 1 }
     for _, id in pairs(W.worn) do W.items[id] = (W.items[id] or 0) + 1 end
+    -- head, cloak, chest and weapon are enchanted; the game names the enchants and gives their icons
+    W.enchanted = { [1] = 1, [15] = 1, [5] = 1, [16] = 1 }
+    local icon = { ench = "Spell_Holy_GreaterHeal", arcanum = "INV_Misc_Gem_02", kit = "INV_Misc_ArmorKit_17" }
+    local names, icons = {}, {}
+    for _, e in pairs(D.ench.WARRIOR_ARMS.PRE) do names[e[1]], icons[e[1]] = e[2], icon[e[3]] end
+    C_Spell.GetSpellName = function(id) return names[id] end
+    C_Spell.GetSpellTexture = function(id) return icons[id] and ("Interface\\Icons\\" .. icons[id]) or nil end
     ns.SetMySpec("WARRIOR_ARMS")
     ns.Toggle()
     ns.Show(slot or "head")
@@ -1625,7 +1633,31 @@ S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W
     head = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "head") end },
     level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
         mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },
-    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(2) end },
+    settings = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W); ns.ShowTab(3) end },
+    -- the Sets tab: the tier 0.5 set, two pieces worn, three tier 0 pieces to make the next from
+    sets = { spec = mbSpec(), open = function(ns, W)
+        mbOpen(ns, W)
+        local D = ns.Data
+        C_Item.GetItemNameByID = function(id) return D.item[id] and D.item[id][7] or D.names[id] or ("Item " .. id) end
+        W.worn[9], W.worn[6] = 226863, 226864
+        W.items[226863], W.items[226864] = 1, 1
+        W.worn[1], W.worn[3] = 16731, 16733
+        W.items[16731], W.items[16733], W.items[16737] = 1, 1, 1
+        W.tipLines[226857] = { "(2) Set: +200 Armor.",
+            "(3) Set: Increases damage and healing done by magical spells and effects by up to 18.",
+            "(4) Set: +40 Attack Power.",
+            "(5) Set: When struck in combat has a 2% chance of shielding the wearer in a protective shield which will absorb 488 damage. Can only occur once every 30 sec.",
+            "(6) Set: Your melee attacks have a chance to grant you 20 Strength for 10 sec.",
+            "(8) Set: +8 All Resistances." }
+        ns.setId = 1778
+        ns.ShowTab(2)
+    end },
+    setsmage = { spec = { level = 60, class = "MAGE", faction = "Horde", spec = 63 }, open = function(ns, W)
+        mbOpen(ns, W); W.worn = {}; ns.SetMySpec("MAGE_FIRE"); ns.SetMain("auto")
+        local D = ns.Data
+        C_Item.GetItemNameByID = function(id) return D.item[id] and D.item[id][7] or D.names[id] or ("Item " .. id) end
+        ns.ShowTab(2)
+    end },
     four = { spec = mbSpec(), open = function(ns, W)
         mbOpen(ns, W, "neck")
         local ref = ns.CopyList("site:WARRIOR_ARMS:PRE")
@@ -1689,7 +1721,34 @@ local function wrOpen(tab, plan)
         ns.Refresh()
     end
 end
+-- At the auction house in the middle of a step: its writs bought, part of its items.
+local function wrBuying(ns)
+    ns.atAH = true
+    ns.db.live, ns.db.days = false, 5
+    wrOpen(2, true)(ns)
+    local b = ns.buy
+    for i, line in ipairs(b.queue) do
+        if line.part == "item" and line.n > 1 then
+            for j = 1, i - 1 do b.queue[j].got = b.queue[j].n end
+            line.got = math.floor(line.n / 2)
+            b.i = i
+            break
+        end
+    end
+    ns.Refresh()
+end
+local function wrFind(text)
+    return function(ns)
+        wrOpen(3)(ns)
+        if ns.SetWritFind then ns.SetWritFind(text) end
+    end
+end
 S.craftsmanswrit = { default = { spec = wrSpec(), open = wrOpen(1) },
+    buying = { spec = wrSpec(), open = wrBuying },
+    buying_ru = { spec = wrSpec("ruRU"), open = wrBuying },
+    buying_de = { spec = wrSpec("deDE"), open = wrBuying },
+    writs_find = { spec = wrSpec(), open = wrFind("wetlands") },
+    writs_find_ru = { spec = wrSpec("ruRU"), open = wrFind("алхим") },
     ru = { spec = wrSpec("ruRU"), open = wrOpen(1) },
     de = { spec = wrSpec("deDE"), open = wrOpen(1) },
     plan = { spec = wrSpec(), open = wrOpen(2, true) },

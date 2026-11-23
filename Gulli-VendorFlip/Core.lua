@@ -784,7 +784,7 @@ end
 function ns.ToSell()
     local o, out, worth, left = ns.Owed(), {}, 0, {}
     for id, n in pairs(o) do left[id] = n end
-    for bag = 0, 4 do
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         for slot = 1, numSlots(bag) do
             local id, count = slotItem(bag, slot)
             if id and left[id] and left[id] >= (count or 1) and not protected(id) then

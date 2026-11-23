@@ -14,7 +14,7 @@ local names, noNames, search, attachRow, goldBtn, ruleBtn
 local settings, rulesList, logList
 local selected = {}
 
-local PANEL_W, PANEL_H = 380, 670
+local PANEL_W, PANEL_H = 380, 728
 local TILE_H = 52
 local GOLD_ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 

@@ -1183,6 +1183,25 @@ test("the home page counts what runs, waits, is refused or updated, and lists ev
     UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
 end)
 
+test("the memory of the addons is read at most once in ten seconds", function()
+    Fake({ addons = { { name = "Gulli-Chores", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Chores" } } } })
+    local calls = 0
+    UpdateAddOnMemoryUsage = function() calls = calls + 1 end
+    GetAddOnMemoryUsage = function() return 100 end
+    local ns = Load()
+    GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
+    local t = 1000
+    local was = GetTime
+    GetTime = function() return t end
+    ns.Overview(); ns.Overview(); ns.Overview()
+    eq(calls, 1, "a burst of redraws reads it once")
+    t = t + 11
+    ns.Overview()
+    eq(calls, 2, "ten seconds later it reads again")
+    GetTime = was
+    UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
+end)
+
 test("the minimap button sits on the circle, or on the edge of a square minimap", function()
     Fake({})
     local ns = Load()
