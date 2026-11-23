@@ -1206,25 +1206,37 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     assert(folded[1].folded and folded[1].folded >= 3, "the done steps fold")
     W.active[4003] = nil
     W.active[4134] = true
-    -- The panel keeps its height; the wheel, the footer and the numbers on top move through the rows.
+    -- The panel keeps its height and is always full: the list moves by pixels behind it. The
+    -- wheel, the footer and the numbers on top move it, never past its ends.
     ns.ShowTracker("BRD")
     local f = ns.TrackerFrame()
     local h = f:GetHeight()
-    local first, last, n = ns.TrackerView()
+    local first, last, n, at, max = ns.TrackerView()
     eq(first, 1)
     eq(n, total)
-    assert(last < total, "more rows than fit")
+    eq(at, 0)
+    assert(last < total and max > 0, "more rows than fit")
+    ns.TrackerScroll(1)
+    eq(select(4, ns.TrackerView()), math.min(max, ns.TRACK_STEP), "one notch moves by pixels, not by a row")
+    ns.TrackerScroll(-1)
     ns.TrackerNextPage()
     local first2 = ns.TrackerView()
-    eq(first2, last + 1)
+    assert(first2 > 1 and first2 <= last + 1, "the first row that was cut off leads the next page")
     eq(f:GetHeight(), h, "the panel does not change its size")
-    ns.TrackerScroll(-1)
-    eq((ns.TrackerView()), last)
+    ns.TrackerScroll(1000)
+    local _, lastEnd, _, atEnd = ns.TrackerView()
+    eq(atEnd, max, "the list stops with its last row at the bottom: no empty room under it")
+    eq(lastEnd, total)
+    ns.TrackerNextPage()
+    eq(select(4, ns.TrackerView()), 0, "after the end, the footer goes back to the top")
     ns.TrackerScroll(-100)
     eq((ns.TrackerView()), 1)
     ns.TrackerGoTo("later")
-    eq(items[(ns.TrackerView())].group, "later")
-    for _ = 1, 10 do ns.TrackerNextPage() end
+    local gf, gl = ns.TrackerView()
+    assert(items[gf].group == "later" or gl == total, "the group is in view")
+    -- A tooltip stands beside the panel, not over its rows.
+    local point, rel = ns.TrackerTipPlace(f)
+    assert((point == "TOPLEFT" or point == "TOPRIGHT") and rel == f, "the tooltip hangs on the panel's side")
     ns.HideTracker()
     -- The Chains tab: the side quest is a lane of its own, right under the chain it comes after.
     local map = ns.ChainMap("BRD", 54)
@@ -1252,6 +1264,16 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     local shown = ns.ChainLanes()
     eq(#shown, #map.lanes + (#map.singles > 0 and 1 or 0))
     eq(shown[1].steps[1], map.lanes[1].steps[1].id)
+    -- A step whose work is inside the dungeon carries the dungeon's icon.
+    local marked, plain = 0, 0
+    for i, l in ipairs(map.lanes) do
+        for _, st in ipairs(l.steps) do
+            eq(shown[i].inside[st.id] or false, st.inside and true or false, "the pill follows the step")
+            if st.inside then marked = marked + 1 else plain = plain + 1 end
+        end
+    end
+    assert(marked > 0, "some steps are done in the dungeon")
+    assert(plain > 0, "and some outside it")
 end)
 
 test("the tracker starts hidden, once also for older saves; the hub's switch shows it", function()

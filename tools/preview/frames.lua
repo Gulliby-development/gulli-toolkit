@@ -280,6 +280,7 @@ function Region:SetScrollChild(c)
     c.__scrollParent = self
     changed()
 end
+function Region:SetClipsChildren(on) self.__clips = on and true or nil; changed() end
 function Region:GetScrollChild() return self.__scrollChild end
 function Region:SetVerticalScroll(v) self.__vscroll = v; changed() end
 function Region:GetVerticalScroll() return self.__vscroll or 0 end
@@ -648,7 +649,7 @@ end
 local function frameHtml(f, prect, out)
     if not f.__shown then return end
     local rect = R.Rect(f)
-    local clip = f.__kind == "ScrollFrame" and "overflow:hidden;" or ""
+    local clip = (f.__kind == "ScrollFrame" or f.__clips) and "overflow:hidden;" or ""
     out[#out + 1] = string.format('<div class="fr" data-k="%s" style="%s%sopacity:%.2f">', f.__kind,
         box(rect, prect), clip, f.__alpha or 1)
     local regs = {}
@@ -785,7 +786,7 @@ function R.Outside(root)
     local box, found = R.Rect(root), {}
     local function walk(f, clipped)
         if not f.__shown then return end
-        clipped = clipped or f.__kind == "ScrollFrame"
+        clipped = clipped or f.__kind == "ScrollFrame" or f.__clips
         if not clipped then
             for _, r in ipairs(f.__regions) do
                 if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" then

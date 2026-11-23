@@ -2135,6 +2135,9 @@ local function chainPill(parent)
     b.text:SetPoint("RIGHT", -8, 0)
     b.text:SetJustifyH("LEFT")
     b.text:SetWordWrap(false)
+    -- The dungeon's icon at the right: this step's work is done inside the dungeon.
+    b.inside = S.IconBox(b, 16)
+    b.inside:SetPoint("RIGHT", -6, 0)
     b.arrow = S.Text(b, 12, S.FAINT)
     b.arrow:SetPoint("RIGHT", b, "LEFT", -7, 0)
     b.arrow:SetText("»")
@@ -2180,7 +2183,8 @@ local function buildChainPage(parent)
     for _, st in ipairs({ "done", "ready", "now", "take" }) do
         parts[#parts + 1] = "|T" .. STEP_MARK[st] .. ":13|t " .. L[STEP_WORD[st]]
     end
-    p.legend:SetText(table.concat(parts, "   "))
+    p.legendBase = table.concat(parts, "   ")
+    p.legend:SetText(p.legendBase)
     p.page = S.ScrollPage(p, S.WIDE_W - 2 * S.PAD)
     p.page:SetPoint("TOPLEFT", 0, -24)
     p.page:SetPoint("BOTTOMRIGHT")
@@ -2211,6 +2215,10 @@ function fillChainPage(level)
     p.empty:SetShown(#rows == 0)
     p.page:SetShown(#rows > 0)
     p.legend:SetShown(#rows > 0)
+    -- The legend also names the dungeon's icon: a step done inside the dungeon.
+    if ns.selected then
+        p.legend:SetText(p.legendBase .. "   " .. S.IconTag(ns.Icon(ns.selected)) .. " " .. L.CM_INSIDE)
+    end
     p.shown = {}
     local used, y = 0, 0
     for i, l in ipairs(rows) do
@@ -2248,7 +2256,13 @@ function fillChainPage(level)
             b.text:SetTextColor(c[1], c[2], c[3])
             b.edge = (s.state == "now" or s.state == "ready" or s.state == "take") and S.EDGE or S.CARD_EDGE
             S.SetBorder(b, b.edge)
-            local w = math.min(PILL_MAX, math.floor((b.text:GetStringWidth() or 0) + 36))
+            local inside = s.inside and true or false
+            b.inside:SetShown(inside)
+            if inside then b.inside:SetIcon(ns.Icon(ns.selected)) end
+            b.text:ClearAllPoints()
+            b.text:SetPoint("LEFT", 25, 0)
+            b.text:SetPoint("RIGHT", inside and -26 or -8, 0)
+            local w = math.min(PILL_MAX, math.floor((b.text:GetStringWidth() or 0) + 36 + (inside and 18 or 0)))
             w = math.max(60, math.min(w, laneW - 2 * LANE_PAD))
             b:SetWidth(w)
             local arrow = (not l.single) and n > 1
@@ -2269,7 +2283,9 @@ function fillChainPage(level)
         lane:SetSize(laneW, h)
         lane:Show()
         y = y + h + 6
-        p.shown[#p.shown + 1] = { from = l.from and l.from.id or nil, single = l.single, steps = ids }
+        local ins = {}
+        for _, s in ipairs(l.steps) do if s.inside then ins[s.id] = true end end
+        p.shown[#p.shown + 1] = { from = l.from and l.from.id or nil, single = l.single, steps = ids, inside = ins }
     end
     for i = #rows + 1, #p.lanes do p.lanes[i]:Hide() end
     for i = used + 1, #p.pills do p.pills[i]:Hide(); p.pills[i].arrow:Hide() end
