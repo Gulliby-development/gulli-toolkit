@@ -10,6 +10,10 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    MEM_TITLE = "Memory",
+    MEM_TIP = "Measured at the last loading screen. Click to measure now: with many addons the game may stop for a moment.",
+    PERF_HEAD = "Hub opened in %d ms. The slowest parts:",
+    PERF_NONE = "Open the hub first, then type /gulli perf.",
     TW_QUESTSPARKLE = "Quest item sparkle",
     TW_QUESTSPARKLE_D = "Quest items glow bright in the world and in your bags",
     TW_QUESTSPARKLE_T = "The quest object in front of you gets a bright mark, and quest items in the game's bags glow. The game picks one object at a time, the nearest you face.",
@@ -346,6 +350,10 @@ T.en = {
 }
 
 T.de = {
+    MEM_TITLE = "Speicher",
+    MEM_TIP = "Gemessen beim letzten Ladebildschirm. Klicken, um jetzt zu messen: mit vielen Addons hält das Spiel kurz an.",
+    PERF_HEAD = "Hub geöffnet in %d ms. Die langsamsten Teile:",
+    PERF_NONE = "Öffne zuerst den Hub, dann tippe /gulli perf.",
     TW_QUESTSPARKLE = "Glitzern für Questgegenstände",
     TW_QUESTSPARKLE_D = "Questgegenstände leuchten hell in der Welt und in den Taschen",
     TW_QUESTSPARKLE_T = "Das Questobjekt vor dir bekommt eine helle Markierung, Questgegenstände in den Taschen des Spiels leuchten. Das Spiel wählt immer ein Objekt, das nächste vor dir.",
@@ -682,6 +690,10 @@ T.de = {
 }
 
 T.es = {
+    MEM_TITLE = "Memoria",
+    MEM_TIP = "Medida en la última pantalla de carga. Haz clic para medir ahora: con muchos addons el juego puede pararse un momento.",
+    PERF_HEAD = "Centro abierto en %d ms. Las partes más lentas:",
+    PERF_NONE = "Abre primero el centro y luego escribe /gulli perf.",
     TW_QUESTSPARKLE = "Brillo de objetos de misión",
     TW_QUESTSPARKLE_D = "Los objetos de misión brillan en el mundo y en tus bolsas",
     TW_QUESTSPARKLE_T = "El objeto de misión frente a ti recibe una marca brillante y los objetos de misión brillan en las bolsas del juego. El juego elige un objeto a la vez, el más cercano frente a ti.",
@@ -1018,6 +1030,10 @@ T.es = {
 }
 
 T.fr = {
+    MEM_TITLE = "Mémoire",
+    MEM_TIP = "Mesurée au dernier écran de chargement. Cliquez pour mesurer maintenant : avec beaucoup d'addons, le jeu peut s'arrêter un instant.",
+    PERF_HEAD = "Hub ouvert en %d ms. Les parties les plus lentes :",
+    PERF_NONE = "Ouvrez d'abord le hub, puis tapez /gulli perf.",
     TW_QUESTSPARKLE = "Éclat des objets de quête",
     TW_QUESTSPARKLE_D = "Les objets de quête brillent dans le monde et dans vos sacs",
     TW_QUESTSPARKLE_T = "L'objet de quête devant vous reçoit une marque vive et les objets de quête brillent dans les sacs du jeu. Le jeu choisit un objet à la fois, le plus proche devant vous.",
@@ -1354,6 +1370,10 @@ T.fr = {
 }
 
 T.pl = {
+    MEM_TITLE = "Pamięć",
+    MEM_TIP = "Zmierzona przy ostatnim ekranie ładowania. Kliknij, aby zmierzyć teraz: przy wielu addonach gra może na chwilę stanąć.",
+    PERF_HEAD = "Centrum otwarte w %d ms. Najwolniejsze części:",
+    PERF_NONE = "Najpierw otwórz centrum, potem wpisz /gulli perf.",
     TW_QUESTSPARKLE = "Blask przedmiotów zadań",
     TW_QUESTSPARKLE_D = "Przedmioty zadań świecą jasno w świecie i w torbach",
     TW_QUESTSPARKLE_T = "Obiekt zadania przed tobą dostaje jasny znak, a przedmioty zadań świecą w torbach gry. Gra wybiera jeden obiekt naraz, najbliższy przed tobą.",
@@ -1690,6 +1710,10 @@ T.pl = {
 }
 
 T.pt = {
+    MEM_TITLE = "Memória",
+    MEM_TIP = "Medida na última tela de carregamento. Clique para medir agora: com muitos addons o jogo pode parar por um momento.",
+    PERF_HEAD = "Central aberta em %d ms. As partes mais lentas:",
+    PERF_NONE = "Abra a central primeiro, depois digite /gulli perf.",
     TW_QUESTSPARKLE = "Brilho de itens de missão",
     TW_QUESTSPARKLE_D = "Itens de missão brilham no mundo e nas bolsas",
     TW_QUESTSPARKLE_T = "O objeto de missão à sua frente ganha uma marca brilhante e os itens de missão brilham nas bolsas do jogo. O jogo escolhe um objeto por vez, o mais próximo à sua frente.",
@@ -2026,6 +2050,10 @@ T.pt = {
 }
 
 T.ru = {
+    MEM_TITLE = "Память",
+    MEM_TIP = "Измерено на последнем экране загрузки. Нажмите, чтобы измерить сейчас: с большим числом аддонов игра может на миг замереть.",
+    PERF_HEAD = "Хаб открылся за %d мс. Самые медленные части:",
+    PERF_NONE = "Сначала откройте хаб, потом введите /gulli perf.",
     TW_QUESTSPARKLE = "Блеск квестовых предметов",
     TW_QUESTSPARKLE_D = "Предметы для заданий ярко светятся в мире и в сумках",
     TW_QUESTSPARKLE_T = "Квестовый объект перед тобой получает яркую метку, а квестовые предметы светятся в сумках игры. Игра выбирает один объект за раз, ближайший перед тобой.",
@@ -2362,6 +2390,10 @@ T.ru = {
 }
 
 T.zh = {
+    MEM_TITLE = "内存",
+    MEM_TIP = "在上一次载入画面时测量。点击立即测量：插件很多时游戏可能会停顿片刻。",
+    PERF_HEAD = "中心在 %d 毫秒内打开。最慢的部分：",
+    PERF_NONE = "请先打开中心，再输入 /gulli perf。",
     TW_QUESTSPARKLE = "任务物品闪光",
     TW_QUESTSPARKLE_D = "任务物品在世界和背包中明亮发光",
     TW_QUESTSPARKLE_T = "你面前的任务物体会有明亮的标记，游戏背包里的任务物品会发光。游戏每次只选一个物体：你面前最近的那个。",
