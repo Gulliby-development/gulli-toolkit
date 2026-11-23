@@ -86,6 +86,10 @@ T.en = {
     TAB_MAIN = "Main",
     TAB_RULES = "Rules",
     TAB_IGNORED = "Ignored",
+    TWK_GOSSIP = "Pick the only chat line",
+    TWK_GOSSIP_D = "Chooses the line when an NPC offers just one",
+    TWK_QUESTS = "Accept and hand in quests",
+    TWK_QUESTS_D = "Takes new quests and hands in finished ones by itself",
 }
 
 T.de = {
@@ -165,6 +169,10 @@ T.de = {
     TAB_MAIN = "Haupt",
     TAB_RULES = "Regeln",
     TAB_IGNORED = "Ignoriert",
+    TWK_GOSSIP = "Einzige Gesprächszeile wählen",
+    TWK_GOSSIP_D = "Wählt die Zeile, wenn ein NPC nur eine anbietet",
+    TWK_QUESTS = "Quests annehmen und abgeben",
+    TWK_QUESTS_D = "Nimmt neue Quests an und gibt fertige von selbst ab",
 }
 
 T.es = {
@@ -244,6 +252,10 @@ T.es = {
     TAB_MAIN = "Principal",
     TAB_RULES = "Reglas",
     TAB_IGNORED = "Ignorados",
+    TWK_GOSSIP = "Elegir la única línea",
+    TWK_GOSSIP_D = "La elige cuando un PNJ ofrece solo una",
+    TWK_QUESTS = "Aceptar y entregar misiones",
+    TWK_QUESTS_D = "Acepta misiones nuevas y entrega las terminadas",
 }
 
 T.fr = {
@@ -323,6 +335,10 @@ T.fr = {
     TAB_MAIN = "Général",
     TAB_RULES = "Règles",
     TAB_IGNORED = "Ignorés",
+    TWK_GOSSIP = "Choisir la seule réplique",
+    TWK_GOSSIP_D = "La choisit quand un PNJ n'en propose qu'une",
+    TWK_QUESTS = "Accepter et rendre les quêtes",
+    TWK_QUESTS_D = "Prend les nouvelles quêtes et rend celles terminées",
 }
 
 T.pl = {
@@ -402,6 +418,10 @@ T.pl = {
     TAB_MAIN = "Główne",
     TAB_RULES = "Zasady",
     TAB_IGNORED = "Ignorowane",
+    TWK_GOSSIP = "Wybierz jedyną linię rozmowy",
+    TWK_GOSSIP_D = "Wybiera ją, gdy NPC ma tylko jedną",
+    TWK_QUESTS = "Przyjmuj i oddawaj zadania",
+    TWK_QUESTS_D = "Sam bierze nowe zadania i oddaje gotowe",
 }
 
 T.pt = {
@@ -481,6 +501,10 @@ T.pt = {
     TAB_MAIN = "Principal",
     TAB_RULES = "Regras",
     TAB_IGNORED = "Ignorados",
+    TWK_GOSSIP = "Escolher a única fala",
+    TWK_GOSSIP_D = "Escolhe a fala quando o PNJ oferece só uma",
+    TWK_QUESTS = "Aceitar e entregar missões",
+    TWK_QUESTS_D = "Aceita missões novas e entrega as prontas",
 }
 
 T.ru = {
@@ -560,6 +584,10 @@ T.ru = {
     TAB_MAIN = "Главное",
     TAB_RULES = "Правила",
     TAB_IGNORED = "Исключения",
+    TWK_GOSSIP = "Единственная строка разговора",
+    TWK_GOSSIP_D = "Сам выбирает строку, если у NPC она одна",
+    TWK_QUESTS = "Брать и сдавать задания",
+    TWK_QUESTS_D = "Сам берёт новые задания и сдаёт готовые",
 }
 
 T.zh = {
@@ -639,6 +667,10 @@ T.zh = {
     TAB_MAIN = "常用",
     TAB_RULES = "规则",
     TAB_IGNORED = "忽略",
+    TWK_GOSSIP = "自动选择唯一对话",
+    TWK_GOSSIP_D = "NPC 只有一个选项时自动选择",
+    TWK_QUESTS = "自动接受和交付任务",
+    TWK_QUESTS_D = "自动接受新任务并交付已完成的任务",
 }
 
 ns.T = T

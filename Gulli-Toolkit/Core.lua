@@ -1460,6 +1460,8 @@ SlashCmdList.GULLITOOLKIT = function(msg)
     elseif msg:lower() == "errors" then
         ns.Print(L.ERRORS_COUNT:format(#ns.Errors()))
         if ns.OpenErrors then ns.OpenErrors() end
+    elseif msg:lower() == "tweaks" then
+        if ns.OpenTweaks then ns.OpenTweaks() end
     elseif msg:lower() == "setup" then
         if ns.OpenSetup then ns.OpenSetup() end
     elseif msg:lower() == "help" then

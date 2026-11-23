@@ -114,10 +114,20 @@ function Fake(spec)
     return W
 end
 
+-- The toolkit's files in the order of its TOC, so a new file (a tweak) needs no change here.
+function W.TocFiles(dir)
+    local out = {}
+    for line in io.lines(dir .. "Gulli-Toolkit.toc") do
+        line = line:gsub("\r", ""):match("^%s*(.-)%s*$")
+        if line ~= "" and not line:match("^#") then out[#out + 1] = (line:gsub("\\", "/")) end
+    end
+    return out
+end
+
 function Load(dir)
     dir = dir or "Gulli-Toolkit/"
     local ns = {}
-    for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Session.lua", "Skin.lua", "UI.lua" }) do
+    for _, f in ipairs(W.TocFiles(dir)) do
         assert(loadfile(dir .. f))("Gulli-Toolkit", ns)
     end
     for _, f in ipairs(W.frames) do

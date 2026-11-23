@@ -788,6 +788,20 @@ do
             option("turnIn", ns.L.OPT_TURNIN, ns.L.NOTE),
             option("skipTrivial", ns.L.OPT_TRIVIAL),
         },
+        -- Rows on the hub's Tweaks page.
+        tweaks = {
+            { key = "gossip", group = "quests", label = ns.L.TWK_GOSSIP, desc = ns.L.TWK_GOSSIP_D,
+              icon = "Interface\\Icons\\INV_Letter_02",
+              get = function() return ns.db ~= nil and ns.db.gossip == true end,
+              set = function(on) if ns.db then ns.db.gossip = on and true or false end end },
+            { key = "quests", group = "quests", label = ns.L.TWK_QUESTS, desc = ns.L.TWK_QUESTS_D, tip = ns.L.NOTE,
+              icon = "Interface\\Icons\\INV_Misc_Book_07", shift = true,
+              get = function() return ns.db ~= nil and ns.db.accept == true and ns.db.turnIn == true end,
+              set = function(on)
+                  if not ns.db then return end
+                  ns.db.accept, ns.db.turnIn = on and true or false, on and true or false
+              end },
+        },
         summary = function() return ns.Summary() end,
         reset = function() ns.Reset() end,
     })

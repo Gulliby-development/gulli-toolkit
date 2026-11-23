@@ -135,6 +135,67 @@ S.toolkit.setuppage = { spec = S.toolkit.default.spec,
     end,
 }
 
+-- The Tweaks page: own tweaks (two sample ones with settings that later files bring), rows that
+-- modules lend, a paused module's row, and the settings of two tweaks open.
+S.toolkit.tweaks = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        local L = ns.T.en
+        L.TW_SKIPGOSSIP, L.TW_SKIPGOSSIP_D = "Skip NPC talk", "Opens the flight map, shop or bank at once. Shift shows the talk"
+        L.TW_HIDETRACKER, L.TW_HIDETRACKER_D = "Hide quest tracker", "Hides the game's quest tracker when it is in the way"
+        ns.AddTweak({ key = "skipGossip", group = "quests", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", star = true,
+            shift = true, defaults = { flight = true, vendor = true, bank = true },
+            panel = { { kind = "head", label = "Open at once" },
+                { kind = "check", key = "flight", label = "Flight masters" }, { kind = "check", key = "vendor", label = "Vendors" },
+                { kind = "check", key = "bank", label = "Bank" }, { kind = "check", key = "trainer", label = "Trainers" },
+                { kind = "check", key = "inn", label = "Innkeepers" } } })
+        ns.AddTweak({ key = "hideTracker", group = "quests", icon = "Interface\\Icons\\Ability_Vanish",
+            defaults = { when = "places", dungeon = true, bg = true, guide = true },
+            panel = { { kind = "choice", key = "when", label = "When to hide it",
+                        values = { { "places", "Only in these places" }, { "always", "Always" } } },
+                { kind = "switch", key = "dungeon", label = "In dungeons and raids", when = function(g) return g("when") == "places" end },
+                { kind = "switch", key = "bg", label = "In battlegrounds", when = function(g) return g("when") == "places" end },
+                { kind = "switch", key = "combat", label = "In combat", when = function(g) return g("when") == "places" end },
+                { kind = "switch", key = "guide", label = "While a Gulli guide leads", when = function(g) return g("when") == "places" end },
+                { kind = "step", key = "delay", label = "Show again after (seconds)", min = 0, max = 10 } } })
+        local db = { gossip = true, quests = true, repair = true, sell = false }
+        local function row(key, group, label, desc, icon)
+            return { key = key, group = group, label = label, desc = desc, icon = "Interface\\Icons\\" .. icon,
+                     get = function() return db[key] end, set = function(on) db[key] = on end }
+        end
+        GulliToolkit.modules.AutoQuest.tweaks = { row("gossip", "quests", "Pick the only chat line", "Chooses the line when an NPC offers just one", "INV_Letter_02") }
+        GulliToolkit.modules.Merchant.tweaks = { row("repair", "loot", "Repair at a vendor", "Repairs your gear when you open a vendor who can", "Trade_BlackSmithing"),
+            row("sell", "loot", "Sell junk", "Sells grey items when you open a vendor", "INV_Misc_Coin_02") }
+        GulliToolkit.modules.Restock.tweaks = { row("quests", "loot", "Buy reagents", "Restock is paused in this sample", "INV_Misc_Bag_08") }
+        ns.SetTweak("levelShot", true)
+        ns.SetTweak("skipGossip", true)
+        ns.OpenTweaks()
+        ns.TweaksView().open.skipGossip = true
+        ns.TweaksView().open.hideTracker = true
+        ns.TweaksView().open.levelShot = true
+        ns.Refresh()
+    end,
+}
+
+-- The Tweaks page on its Loot & bags group: rows that modules lend, one of a paused module.
+S.toolkit.tweaksloot = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.tweaks.open(ns, W, R)
+        ns.TweaksView().filter = "loot"
+        ns.TweaksPage().track:Select(6, true)
+        ns.Refresh()
+    end,
+}
+
+-- The hub's search finds tweaks too.
+S.toolkit.tweakssearch = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.tweaks.open(ns, W, R)
+        ns.Enter(nil)
+        ns.HubSearch("vendor")
+    end,
+}
+
 -- The session card in other sessions: nothing yet, honor and dungeons at the top level, only
 -- dungeons, only gold with a Farm Tracker goal.
 local function sessionScene(change)

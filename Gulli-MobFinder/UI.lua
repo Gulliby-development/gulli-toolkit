@@ -659,6 +659,13 @@ do
               get = function() return ns.db ~= nil and ns.db.flash end,
               set = function(on) if ns.db then ns.db.flash = on; ns.Refresh() end end },
         },
+        -- A row on the hub's Tweaks page.
+        tweaks = {
+            { key = "rares", group = "combat", label = L.TWK_RARES, desc = L.TWK_RARES_D, tip = L.DESC,
+              icon = "Interface\\Icons\\Ability_EyeOfTheOwl",
+              get = function() return ns.db ~= nil and ns.db.enabled == true end,
+              set = function(on) if ns.db then ns.SetEnabled(on) end end },
+        },
         summary = function()
             if not ns.db or not ns.db.enabled or ns.paused then return nil end
             if ns.lastFound then return L.STATUS_LAST:format(table.concat(ns.lastFound.names, ", ")) end

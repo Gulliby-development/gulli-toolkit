@@ -49,7 +49,7 @@ local MARK_SIZE, MARK_CUT_X, MARK_CUT_Y = 430, 34, 46
 local view = { page = "home", query = "" }
 local frame, side, search, placeholder, scroll, list, empty
 local scaleText, protectBtn, protectFrame, transfer, errorsFrame, readyFrame
-local host, hubSwitch, pinBox, offWin, insideWin, card, home, homeRow, setupRow, setupFrame, unlockLink
+local host, hubSwitch, pinBox, offWin, insideWin, card, home, homeRow, tweaksRow, setupRow, setupFrame, unlockLink
 local rows, heads = {}, {}
 local fillSetup
 
@@ -182,6 +182,7 @@ local function hidePanels()
     if errorsFrame then errorsFrame:Hide() end
     if readyFrame then readyFrame:Hide() end
     if setupFrame then setupFrame:Hide() end
+    if ns.TweaksPage and ns.TweaksPage() then ns.TweaksPage():Hide() end
 end
 
 -- Takes the docked module out, without choosing another page.
@@ -255,6 +256,7 @@ local function showPanel(name, from)
     view.page, view.from = name, from
     if name == "protect" then protectFrame:Show()
     elseif name == "setup" then setupFrame:Show()
+    elseif name == "tweaks" then ns.TweaksPage():Show()
     elseif name == "errors" then errorsFrame:Show()
     elseif name == "ready" then readyFrame:Show()
     else transfer:Show() end
@@ -388,10 +390,23 @@ local function fillSide(data)
     local selY
     homeRow:SetShown(not searching)
     setupRow:SetShown(not searching)
+    -- While searching, a row says how many tweaks the words find; a click shows them.
+    local found = searching and #ns.TweakFilter(ns.TweakRows(data), "all", view.query) or 0
+    tweaksRow:SetShown(not searching or found > 0)
+    tweaksRow.text:SetText(searching and (L.TW_PAGE .. "  " .. S.Emph(tostring(found))) or L.TW_PAGE)
+    if searching and found > 0 then
+        place(tweaksRow, y)
+        tweaksRow:SetSelected(false)
+        y = y + ROW_H
+    end
     if not searching then
         place(homeRow, y)
         homeRow:SetSelected(view.page == "home")
         if view.page == "home" then selY = y end
+        y = y + ROW_H
+        place(tweaksRow, y)
+        tweaksRow:SetSelected(view.page == "tweaks")
+        if view.page == "tweaks" then selY = y end
         y = y + ROW_H
         place(setupRow, y)
         setupRow:SetSelected(view.page == "setup")
@@ -420,7 +435,7 @@ local function fillSide(data)
     for i = ri + 1, #rows do rows[i]:Hide() end
     for i = hi + 1, #heads do heads[i]:Hide() end
     moveSel(selY)
-    empty:SetShown(#shown == 0)
+    empty:SetShown(#shown == 0 and found == 0)
     list:SetHeight(math.max(1, y))
     scroll:Update(y)
     return shown
@@ -1109,6 +1124,7 @@ function ns.Refresh()
     if view.page == "home" then fillHome(data) end
 
     if view.page == "setup" and setupFrame then fillSetup(data) end
+    if view.page == "tweaks" then ns.FillTweaks(data) end
     -- How many frames show on the screen, beside the link that places them.
     local fon, ftotal = ns.FrameCount()
     unlockLink:Set(ns.moving and L.MOVE_DONE or L.UNLOCK, ftotal > 0 and (fon .. "/" .. ftotal) or "")
@@ -1495,7 +1511,30 @@ local function buildSide()
     homeRow:SetScript("OnClick", goHome)
     homeRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
 
-    -- Setup, right under Home: the presets, the tools and the hub's own switches.
+    -- Tweaks, right under Home: the small switches of the toolkit and the ones modules lend.
+    tweaksRow = CreateFrame("Button", nil, list)
+    tweaksRow:SetHeight(ROW_H)
+    selectable(tweaksRow)
+    local twi = S.IconBox(tweaksRow, 20, ns.TWEAKS_ICON)
+    twi:SetPoint("LEFT", 8, 0)
+    tweaksRow.text = S.Text(tweaksRow, 13)
+    tweaksRow.text:SetPoint("LEFT", twi, "RIGHT", 9, 0)
+    tweaksRow.text:SetPoint("RIGHT", -8, 0)
+    tweaksRow.text:SetWordWrap(false)
+    tweaksRow.text:SetText(L.TW_PAGE)
+    tweaksRow:SetScript("OnClick", function()
+        local q = view.query
+        if q:match("%S") then
+            search:SetText("")
+            search:ClearFocus()
+        else
+            q = nil
+        end
+        ns.OpenTweaks(q)
+    end)
+    tweaksRow:SetScript("OnEnter", function(self) if not self.selected then S.Fill(self, HOVER) end end)
+
+    -- Setup, under Tweaks: the presets, the tools and the hub's own switches.
     setupRow = CreateFrame("Button", nil, list)
     setupRow:SetHeight(ROW_H)
     selectable(setupRow)
@@ -2087,6 +2126,16 @@ function buildSetupPage()
 end
 end
 
+-- The Tweaks page; query (optional) is put into its search.
+function ns.OpenTweaks(query)
+    if not frame or not frame:IsShown() then ns.Toggle() end
+    if not ns.TweaksPage() then
+        ns.BuildTweaksPage(host, HOST_W, HOST_H, { tip = tip, hideTip = hideTip, enter = enter })
+    end
+    if query then ns.TweaksSearch(query) end
+    showPanel("tweaks")
+end
+
 function ns.OpenSetupPage()
     if not setupFrame then buildSetupPage() end
     showPanel("setup")
@@ -2353,6 +2402,8 @@ function ns.Enter(key)
     if not key then return goHome() end
     return enter(findRow(key))
 end
+-- Types into the hub's search, for the tests and previews.
+function ns.HubSearch(text) search:SetText(text or "") end
 function ns.Inside() return insideWin end
 function ns.Home() return home end
 function ns.UnlockLink() return unlockLink end

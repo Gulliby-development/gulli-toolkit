@@ -48,7 +48,12 @@ C_AddOns = {
 local savedSlash = SlashCmdList
 SlashCmdList = SlashCmdList or {}
 local hub = { }
-for _, f in ipairs({ "Locales.lua", "Core.lua", "Setup.lua", "Ready.lua", "Session.lua", "Skin.lua", "UI.lua" }) do
+local tocFiles = {}
+for line in io.lines("Gulli-Toolkit/Gulli-Toolkit.toc") do
+    line = line:gsub("\r", ""):match("^%s*(.-)%s*$")
+    if line ~= "" and not line:match("^#") then tocFiles[#tocFiles + 1] = (line:gsub("\\", "/")) end
+end
+for _, f in ipairs(tocFiles) do
     assert(loadfile("Gulli-Toolkit/" .. f))("Gulli-Toolkit", hub)
 end
 SlashCmdList = savedSlash or SlashCmdList

@@ -22,7 +22,8 @@ GAME_TABLES = {"SlashCmdList", "StaticPopupDialogs", "ChatFrame_DisplayTimePlaye
 def main():
     files = sorted(
         os.path.join(d, f)
-        for d in os.listdir(ROOT) if d.startswith("Gulli-") and os.path.isdir(os.path.join(ROOT, d))
+        for top in os.listdir(ROOT) if top.startswith("Gulli-") and os.path.isdir(os.path.join(ROOT, top))
+        for d in (top, os.path.join(top, "Tweaks")) if os.path.isdir(os.path.join(ROOT, d))
         for f in os.listdir(os.path.join(ROOT, d)) if f.endswith(".lua") and f != "Data.lua"
     )
     out = subprocess.run(["luacheck", "--std", "lua51", "--codes", "--no-color", "--formatter", "plain", "-q"] + files,

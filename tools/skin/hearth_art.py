@@ -3,6 +3,7 @@
 with an alpha channel (the game tints them):
 Grain (128 px, tiles without a seam): soft paper fibres and fine grain under every window.
 Arc (256 px, Gulli-Toolkit/Art only): one mark of the Ready ring on the hub's home page.
+Star (64 px, Gulli-Toolkit/Art only): the five-pointed star of the Recommended tweaks.
 Mark (512 px, Gulli-Toolkit/Art only, not shared): the toolkit's satchel as a pale silhouette, the
 dim emblem behind the hub's centre.
 Needs Pillow for Mark. It reads docs/toolkit/emblem.png, the satchel cut out of the painted logo
@@ -118,7 +119,40 @@ def arc():
     write_tga("Gulli-Toolkit/Art/Arc.tga", ARC, ARC, out)
 
 
+STAR = 64
+
+
+def star():
+    """A five-pointed star (Gulli-Toolkit/Art only), white, for the Recommended tweaks; the game
+    tints it gold. The font has no star glyph, so it is a texture."""
+    pts = []
+    for i in range(10):
+        r = 0.48 if i % 2 == 0 else 0.20
+        a = math.radians(-90 + i * 36)
+        pts.append((0.5 + r * math.cos(a), 0.53 + r * math.sin(a)))
+
+    def inside(px, py):
+        hit = False
+        j = len(pts) - 1
+        for i in range(len(pts)):
+            xi, yi = pts[i]
+            xj, yj = pts[j]
+            if (yi > py) != (yj > py) and px < (xj - xi) * (py - yi) / (yj - yi) + xi:
+                hit = not hit
+            j = i
+        return hit
+
+    ss, out = 4, []
+    for y in range(STAR):
+        for x in range(STAR):
+            hit = sum(inside((x + (sx + 0.5) / ss) / STAR, (y + (sy + 0.5) / ss) / STAR)
+                      for sy in range(ss) for sx in range(ss))
+            out.append(hit / (ss * ss))
+    write_tga("Gulli-Toolkit/Art/Star.tga", STAR, STAR, out)
+
+
 if __name__ == "__main__":
     grain()
     mark()
     arc()
+    star()
