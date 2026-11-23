@@ -7,7 +7,7 @@ local L = ns.L
 
 local J = ns.J
 local BATCH, STEP = J.BATCH, J.STEP
-ns.DEFAULTS = { want = 5, warnAt = 2, unusable = true, counter = true, popup = true, disenchant = true }
+ns.DEFAULTS = { want = 5, warnAt = 2, unusable = true, counter = true, popup = true, disenchant = true, bank = false }
 local AH_FACTOR = 2 -- an auction price this many times the vendor price keeps an item off the ticks
 
 -- Game API wrappers.
@@ -449,6 +449,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.keep = ns.db.keep or {}
         ns.db.junk = ns.db.junk or {}
+        ns.db.bankNever = ns.db.bankNever or {}
         J.Attach(ns.db.junk)
         J.OnChange(function() if ns.Refresh then ns.Refresh(true) end end)
         J.InstallMarks({ JUNK_TIP = L.JUNK_TIP, ALWAYS_TIP = L.ALWAYS_TIP, MARKED = L.MARKED, UNMARKED = L.UNMARKED })
@@ -459,6 +460,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         self:RegisterEvent("LOOT_CLOSED")
         self:RegisterEvent("PLAYER_LOGIN")
+        self:RegisterEvent("BANKFRAME_OPENED")
         return
     end
     if event == "PLAYER_LOGIN" then
@@ -472,6 +474,11 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         if ns.CheckArmed then ns.CheckArmed() end
         if ns.UpdatePopup then ns.UpdatePopup() end
         if ns.Refresh then ns.Refresh(true) end
+        if ns.RefreshBank then ns.RefreshBank() end
+        return
+    end
+    if event == "BANKFRAME_OPENED" then
+        if ns.BankOpened then ns.BankOpened() end
         return
     end
     if event == "LOOT_CLOSED" then
@@ -504,6 +511,7 @@ SlashCmdList.GULLIBAGSPACE = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "reset" then
         wipe(ns.db.keep)
+        wipe(ns.db.bankNever)
         print("|cff9ad0ffGulli Bag Space|r: " .. L.RESET_DONE)
         if ns.Refresh then ns.Refresh(true) end
         return
@@ -522,6 +530,7 @@ ns.OPT_ICON = {
     counter = "Interface\\Icons\\INV_Misc_Bag_08",
     popup = "Interface\\Icons\\INV_Misc_Bag_10",
     disenchant = "Interface\\Icons\\INV_Enchant_Disenchant",
+    bank = "Interface\\Minimap\\Tracking\\Banker",
 }
 
 local function option(key, label)
@@ -531,6 +540,7 @@ local function option(key, label)
                  ns.db[key] = on and true or false
                  if key == "counter" and ns.UpdateCounter then ns.UpdateCounter() end
                  if key == "disenchant" and not on and ns.HideDisenchant then ns.HideDisenchant() end
+                 if key == "bank" and ns.RefreshBank then ns.RefreshBank(on) end
              end }
 end
 
@@ -539,7 +549,8 @@ do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
         options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
-                    option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT) },
+                    option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT),
+                    option("bank", ns.L.OPT_BANK) },
         key = "BagSpace",
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",
@@ -556,6 +567,7 @@ do
             for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
             if ns.UpdateCounter then ns.UpdateCounter() end
             if ns.HideDisenchant then ns.HideDisenchant() end
+            if ns.RefreshBank then ns.RefreshBank() end
             if ns.Refresh then ns.Refresh(true) end
         end,
     })

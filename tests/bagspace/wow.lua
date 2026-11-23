@@ -175,7 +175,7 @@ function Fake(spec)
     C_Item = { GetItemInfo = function(id)
         local it = W.items[id]
         if not it then return nil end
-        return it.name, "item:" .. id, it.quality, 1, 1, "", "", it.maxStack or 1, it.equipLoc or "", 1, it.price or 0, it.classID or 15,
+        return it.name, "item:" .. id, it.quality, 1, it.minLevel or 1, "", "", it.maxStack or 1, it.equipLoc or "", 1, it.price or 0, it.classID or 15,
             it.subclassID or 0
     end }
     W.sets, W.refuse = spec.sets or {}, {}
@@ -221,7 +221,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-BagSpace", { "Locales.lua", "Junk.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-BagSpace", { "Locales.lua", "Junk.lua", "Core.lua", "Skin.lua", "UI.lua", "Bank.lua" })
 end
 
 return W
