@@ -143,6 +143,8 @@ def clean(body):
 def main(argv):
     if "--collect" in argv:
         collect()
+    elif "--check" in argv:
+        check()
     else:
         print(__doc__)
     return 0
@@ -150,3 +152,51 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+
+
+# Words that say where a part of a quest happens. --check prints each sentence with one of them
+# beside the quest's inside marks, for a person to judge (a comment is a hint, never a rule).
+WHERE = re.compile(r"\b(outside|inside|instance|entrance|portal|zone[ds]? in|zone-in|in front of|"
+                   r"before (?:you )?(?:enter|go in|zone)|don'?t (?:need|have) to (?:go|enter)|"
+                   r"no need to (?:go|enter)|not in the (?:dungeon|instance)|in the (?:dungeon|instance)|"
+                   r"mountain|summon|spawns?|respawn|escort|cave|courtyard|upstairs|downstairs|"
+                   r"in town|in the city|the (?:inn|bar|tavern))\b", re.I)
+
+
+def data():
+    text = open(DATA, encoding="utf-8").read()
+    names, givers = {}, {}
+    for m in re.finditer(r'^\[(\d+)\]=\{"((?:[^"\\]|\\.)*)",.*?,"((?:[^"\\]|\\.)*)",(\d+),.*?,"([AH]?)",[^,]*,[^,]*,"((?:[^"\\]|\\.)*)",(\d+)',
+                         block(text, "D.quest"), re.M):
+        names[int(m.group(1))] = m.group(2)
+        givers[int(m.group(1))] = (m.group(3), m.group(6))
+    inside = {}
+    for line in block(text, "D.inside").splitlines():
+        m = re.match(r"(\w+)=\{(.*)\},?$", line)
+        if m:
+            for q, f in re.findall(r'\[(\d+)\]="(\w+)"', m.group(2)):
+                inside.setdefault(int(q), {})[m.group(1)] = f
+    dungeon = {}
+    for line in block(text, "D.byDungeon").splitlines():
+        m = re.match(r"(\w+)=\{(.*)\},?$", line)
+        if m:
+            for q in re.findall(r"\d+", m.group(2)):
+                dungeon.setdefault(int(q), []).append(m.group(1))
+    return names, givers, inside, dungeon
+
+
+def check():
+    snap = load()
+    names, givers, inside, dungeon = data()
+    for qid in quests():
+        lines = []
+        for site, items in sorted(snap["quests"].get(str(qid), {}).items()):
+            for c in items:
+                for s in re.split(r"(?<=[.!?])\s+", clean(c["body"])):
+                    if WHERE.search(s):
+                        lines.append("    [%s %s %s] %s" % (site, c.get("date", ""), c.get("rating", ""), s[:300]))
+        if lines:
+            print("%d %s | %s | marks %s | from %s, to %s" % (
+                qid, names.get(qid, "?"), ",".join(dungeon.get(qid, [])), inside.get(qid, {}) or "-",
+                *givers.get(qid, ("?", "?"))))
+            print("\n".join(lines))
