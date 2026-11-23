@@ -74,6 +74,8 @@ local function reset()
     SOUNDKIT = { MAP_PING = 7 }
     PlaySound = function(id) W.sounds[#W.sounds + 1] = id end
     issecretvalue = nil
+    UnitIsInInteractRange = nil
+    W.calm = nil
     Enum = nil
     GulliToolkitDB = {}
     W.tweak = nil
@@ -276,6 +278,76 @@ test("every style lays out and brightness and size grow", function()
     W.calm = true
     Q.Animate(m, 0.1)
     assert(m.alpha == 1, "moves with Reduce motion")
+    Q.Disable()
+end)
+
+test("the light arrives, flares in reach, fades where it stood, and stands still when calm", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    local reach = false
+    UnitIsInInteractRange = function() return reach end
+    W.soft = { guid = "GameObject-6", name = "Crate", related = true }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    assert(m.v.appear == 0, "a new object does not arrive")
+    Q.Animate(m, 0.2)
+    assert(m.v.state == false, "far at first")
+    assert(m.v.appear > 0 and m.v.appear < 1, "arrives over time")
+    for _ = 1, 10 do Q.Animate(m, 0.1) end
+    assert(m.v.appear == 1, "arrived")
+    -- in reach: only once it held, then a flare and a ring that closes in
+    reach = true
+    Q.Animate(m, 0.2)
+    assert(m.v.state == false, "a change shows before it held")
+    Q.Animate(m, 0.2)
+    assert(m.v.state == true and m.v.flash > 0, "no flare in reach")
+    local closing = false
+    for _, w in ipairs(m.waves) do if w.age and w.inward then closing = true end end
+    assert(closing, "no ring closes in")
+    -- the same object again does not arrive again
+    Q.Refresh()
+    assert(m.v.appear == 1, "arrived again for the same object")
+    -- gone: fades where it stood, then hides
+    m.GetCenter = function() return 300, 200 end
+    W.soft = nil
+    Q.Refresh()
+    assert(m.shown and m.v.leaving == 0, "does not fade where it stood")
+    for _ = 1, 6 do Q.Animate(m, 0.1) end
+    assert(not m.shown, "still shows after the fade")
+    -- back: arrives again
+    W.soft = { guid = "GameObject-7", name = "Crate", related = true }
+    Q.Refresh()
+    assert(m.shown and m.v.appear == 0 and not m.v.leaving)
+    -- Reduce motion: whole at once, nothing turns, and it goes at once
+    W.calm = true
+    local spin = m.v.spin
+    Q.Animate(m, 0.5)
+    assert(m.v.appear == 1 and m.v.spin == spin, "moves with Reduce motion")
+    W.soft = nil
+    Q.Refresh()
+    assert(not m.shown, "fades with Reduce motion")
+    Q.Disable()
+end)
+
+test("every style draws the light brighter than its dark veil and whiter in the middle", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "GameObject-8", name = "Crate", related = true }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    for _, style in ipairs(Q.STYLES) do
+        W.opts.style = style
+        Q.Style(m, Q.Get)
+        for _ = 1, 8 do Q.Animate(m, 0.1) end
+        local c = Q.context
+        assert(c.wr >= c.hr and c.hr >= c.r and c.wb > c.b, style .. ": the glint is not whiter")
+        local star = false
+        for _, t in ipairs(m.stars) do star = star or t.shown end
+        assert(m.flare.shown or m.arrow.shown or star, style .. ": no glint")
+        assert(m.shade.shown and m.shade.color[1] == 0, style .. ": no dark veil")
+    end
     Q.Disable()
 end)
 
