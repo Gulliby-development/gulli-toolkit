@@ -22,6 +22,8 @@ ns.LOG_MAX = 30
 ns.DEFAULTS = {
     on = true, report = true, where = "always", greedUnusable = false, needUpgrade = false,
     fastLoot = false, soloConfirm = false,
+    window = false,   -- our loot window instead of the game's
+    rollScale = 100,  -- the size of the group loot rolls, in percent
 }
 
 -- Equip slots by the item's equip location, for the upgrade check.
@@ -226,6 +228,8 @@ end
 
 function ns.SetPref(key, value)
     ns.db[key] = value
+    if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
+    if key == "rollScale" and ns.PlaceRolls then ns.PlaceRolls() end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -299,7 +303,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
-        for _, e in ipairs({ "START_LOOT_ROLL", "CONFIRM_LOOT_ROLL", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_BIND_CONFIRM" }) do
+        for _, e in ipairs({ "START_LOOT_ROLL", "CONFIRM_LOOT_ROLL", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_BIND_CONFIRM",
+                             "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_SLOT_CHANGED", "LOOT_CLOSED",
+                             "PLAYER_ENTERING_WORLD" }) do
             self:RegisterEvent(e)
         end
         if hooksecurefunc and HandleModifiedItemClick then
@@ -312,7 +318,18 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     -- Paused from the hub: only the closing events still run, so nothing stays open.
     if ns.paused and not event:find("_CLOSED$") then return end
-    if event == "START_LOOT_ROLL" then ns.OnRoll(a1)
+    if event == "PLAYER_ENTERING_WORLD" then
+        if ns.ApplyWindow then ns.ApplyWindow() end
+        if ns.PlaceRolls then ns.PlaceRolls() end
+        return
+    elseif event == "LOOT_OPENED" or event == "LOOT_SLOT_CLEARED" or event == "LOOT_SLOT_CHANGED"
+        or event == "LOOT_CLOSED" then
+        if ns.OnLootEvent then ns.OnLootEvent(event, a1) end
+        return
+    end
+    if event == "START_LOOT_ROLL" then
+        if ns.PlaceRolls then ns.PlaceRolls() end
+        ns.OnRoll(a1)
     elseif event == "CONFIRM_LOOT_ROLL" then ns.OnConfirm(a1, a2)
     elseif event == "CHAT_MSG_LOOT" then ns.OnLootMessage(a1)
     elseif event == "LOOT_READY" then ns.FastLoot()
@@ -365,6 +382,8 @@ ns.OPT_ICON = {
     greedUnusable = "Interface\\Icons\\INV_Misc_Coin_02",
     needUpgrade = "Interface\\Icons\\INV_Chest_Plate06",
     fastLoot = "Interface\\Icons\\Ability_Rogue_Sprint",
+    window = "Interface\\Icons\\INV_Misc_Bag_08",
+    rollScale = "Interface\\Icons\\INV_Misc_Dice_01",
     soloConfirm = "Interface\\Icons\\INV_Misc_Key_03",
     where = "Interface\\Icons\\INV_Misc_Map_01",
 }
@@ -379,8 +398,18 @@ end
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
-        pause = function(on) ns.paused = on end,
+        pause = function(on)
+            ns.paused = on
+            if ns.ApplyWindow then ns.ApplyWindow() end
+            if ns.PlaceRolls then ns.PlaceRolls() end
+        end,
         key = "Loot",
+        move = function(on) if ns.MoveFrames then ns.MoveFrames(on) end end,
+        frames = {
+            { key = "window", label = L.FR_WINDOW, icon = ns.OPT_ICON.window,
+              frame = function() return ns.LootWindowFrame and ns.LootWindowFrame() end },
+            { key = "rolls", label = L.FR_ROLLS, icon = ns.OPT_ICON.rollScale },
+        },
         icon = "Interface\\AddOns\\Gulli-Loot\\icon",
         slash = "/glt",
         open = function() ns.Toggle() end,
@@ -389,6 +418,7 @@ do
             option("on", L.OPT_ON, L.OPT_ON_D),
             option("report", L.OPT_REPORT),
             option("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
+            option("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
         },
         summary = function()
             if not ns.db then return nil end
