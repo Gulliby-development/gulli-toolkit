@@ -9,22 +9,22 @@ T.en = {
 [97583] = {
     "Buy Nutritious Slime Sludge from Boyle by the canal in Undercity, 56, 64.",
     "Find an Excitable Slime that patrols the canals. Stand on the canal steps, not in the water, target it and type /dance.",
-    "Take the quest it offers, WRIGGLE., and give it the sludge for the pet. If it seems tired, dance with it again.",
+    "It can take from 5 to 100 dances. When it wriggles in place and faces you, take its quest, WRIGGLE., and give it the sludge for the pet.",
 },
 [95534] = {
     "Loot a Singed Note from the Syndicate Wizards or Argus Shadow Mages in Alterac Mountains. It starts the quest.",
-    "In the Strahnbrad forge, 59, 46, light both bellows close together: a Mage's Flamestrike works, or two players at once.",
-    "Kill the fire elemental that appears.",
+    "In the Strahnbrad forge, 59, 46, set both bellows on fire close together: a Mage's Flamestrike, Easy Throw Dynamite, a Hunter's fire trap, Rain of Fire or Hellfire, or two players at once.",
+    "The fire elemental lands between the bellows. Stay where it lands, or it vanishes, and kill it. Standing by the forge pulls the Syndicate nearby.",
     "Hand it in at Southshore (Alliance, Kundric Zanden) or Tarren Mill (Horde, Shara Blazen) for the Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb in the west of Swamp of Sorrows, 25, 53, gives the quest and an Entomology Starter Kit, from level 25.",
-    "Catch one of each with the kit: an Arbor Tarantula in northern Stranglethorn, 43, 20, a Hay Weevil in Arathi Highlands, 30, 30, and a Flesh Picker in Desolace, 48, 58.",
+    "Catch one of each with the kit: an Arbor Tarantula at the logging camp of northern Stranglethorn, 44, 20, a Hay Weevil on the Arathi farms, 31, 28, and a Flesh Picker at Desolace's Kodo Graveyard, 52, 58.",
     "Bring the three specimens back to Amaryllis for the pet Weevil K. Neevil.",
 },
 [97029] = {
     "Get the Ancient Heirloom ring: Skyborne take Coming of Age from Ailee Farheart; anyone else loots it on the top floor of the building at Zephras Isle 41.7, 23.4.",
-    "Take a Night Watchman's Torch from the guard's body in Duskwood (An Unfortunate End), light it and use it in the Ruins of Ban'aethal, Zephras Isle 58, 24. The Ancient Hilt appears and starts the quest.",
+    "Take a Night Watchman's Torch from the guard's body in Duskwood (An Unfortunate End), light it and use it in the Ruins of Ban'aethal, Zephras Isle 58, 24, while the dragon there sleeps. The Ancient Hilt appears.",
     "Bring the hilt to Ealaane Nimbuswalker in Valanaar, 66, 74, then find the Ancient Skyborne Blade: one at a time lies at 49, 73, 50, 44, 66, 43 or 60, 82.",
     "Bring the blade back to Ealaane for Eluvi'ana. The rest of the Dawn Waker secret is not solved yet: keep the sword and the ring.",
 },
@@ -146,7 +146,7 @@ T.en = {
 [79976] = {
     "First do Stepping Stones (see that reward). The camp's next note, Scramble, sends you north up the hill to a Mound of Dirt in Stonetalon, 39, 49.",
     "Wet Job: in Loch Modan go to the middle of the big dam in the north and drop onto the ledge with the Carved Figurine, 49, 12. Horde: the guards there are strong.",
-    "Eagle's Fist: the Messenger Bag lies on top of Thoradin's Wall in the Arathi Highlands, 22, 24. From the broken cart at the gap, jump up the beams and the rocks.",
+    "Eagle's Fist: the Messenger Bag is on Thoradin's Wall, Arathi 22, 24. North of the gate, on the Hillsbrad side, jump from a broken cart: the barrel, the plank on the right, the cart, the ladder, then the rocks.",
     "Hand it in and open the Hastily Rolled-Up Satchel beside it for the Cozy Sleeping Bag. Each minute of sleep in it gives +1% XP, up to +3%.",
 },
 [93269] = {
@@ -211,22 +211,22 @@ T.de = {
 [97583] = {
     "Kaufe Nutritious Slime Sludge bei Boyle am Kanal in Undercity, 56, 64.",
     "Suche einen Excitable Slime, der durch die Kanäle zieht. Stell dich auf die Kanalstufen, nicht ins Wasser, nimm ihn ins Ziel und tippe /dance.",
-    "Nimm seine Quest WRIGGLE. an und gib ihm den Schleim für das Haustier. Wirkt er müde, tanze noch einmal mit ihm.",
+    "Es kann 5 bis 100 Tänze dauern. Wenn er sich auf der Stelle windet und dich ansieht, nimm seine Quest WRIGGLE. an und gib ihm den Schleim für das Haustier.",
 },
 [95534] = {
     "Erbeute eine Singed Note von den Syndicate Wizards oder Argus Shadow Mages im Alterac-Gebirge. Sie startet die Quest.",
-    "Entzünde in der Schmiede von Strahnbrad, 59, 46, beide Blasebälge kurz nacheinander: ein Flammenstoß des Magiers klappt, oder zwei Spieler zugleich.",
-    "Töte den Feuerelementar, der erscheint.",
+    "Setze in der Schmiede von Strahnbrad, 59, 46, beide Blasebälge kurz nacheinander in Brand: Flammenstoß des Magiers, Easy Throw Dynamite, eine Feuerfalle des Jägers, Feuerregen oder Höllenfeuer, oder zwei Spieler zugleich.",
+    "Der Feuerelementar landet zwischen den Blasebälgen. Bleib dort stehen, sonst verschwindet er, und töte ihn. Wer an der Schmiede steht, zieht das Syndikat in der Nähe an.",
     "Gib sie in Southshore (Allianz, Kundric Zanden) oder Tarren Mill (Horde, Shara Blazen) ab: dafür gibt es den Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb im Westen der Sümpfe des Elends, 25, 53, gibt ab Stufe 25 die Quest und ein Entomology Starter Kit.",
-    "Fange mit dem Kit je eins: eine Arbor Tarantula im Norden von Stranglethorn, 43, 20, einen Hay Weevil im Arathihochland, 30, 30, und einen Flesh Picker in Desolace, 48, 58.",
+    "Fange mit dem Kit je eins: eine Arbor Tarantula am Holzfällerlager im Norden von Stranglethorn, 44, 20, einen Hay Weevil auf den Höfen von Arathi, 31, 28, und einen Flesh Picker auf dem Kodofriedhof in Desolace, 52, 58.",
     "Bring die drei Proben zu Amaryllis zurück: dafür gibt es das Haustier Weevil K. Neevil.",
 },
 [97029] = {
     "Hol dir den Ring Ancient Heirloom: Skyborne nehmen Coming of Age bei Ailee Farheart an, alle anderen finden ihn im obersten Stock des Gebäudes auf Zephras Isle, 41.7, 23.4.",
-    "Nimm eine Night Watchman's Torch von der Leiche der Wache in Duskwood (An Unfortunate End), entzünde sie und benutze sie in den Ruins of Ban'aethal, Zephras Isle 58, 24. Der Ancient Hilt erscheint und startet die Quest.",
+    "Nimm eine Night Watchman's Torch von der Leiche der Wache in Duskwood (An Unfortunate End), entzünde sie und benutze sie in den Ruins of Ban'aethal, Zephras Isle 58, 24, während der Drache dort schläft. Der Ancient Hilt erscheint.",
     "Bring den Griff zu Ealaane Nimbuswalker in Valanaar, 66, 74, und suche dann die Ancient Skyborne Blade: sie liegt immer an einer Stelle von 49, 73, 50, 44, 66, 43 oder 60, 82.",
     "Bring die Klinge zu Ealaane zurück: dafür gibt es Eluvi'ana. Der Rest des Dawn-Waker-Geheimnisses ist noch ungelöst: behalte Schwert und Ring.",
 },
@@ -348,7 +348,7 @@ T.de = {
 [79976] = {
     "Mach zuerst Stepping Stones (siehe diese Belohnung). Die nächste Notiz im Lager, Scramble, schickt dich nach Norden den Hügel hinauf zu einem Mound of Dirt im Steinkrallengebirge, 39, 49.",
     "Wet Job: Geh in Loch Modan zur Mitte des großen Damms im Norden und lass dich auf den Vorsprung mit der Carved Figurine fallen, 49, 12. Horde: Die Wachen dort sind stark.",
-    "Eagle's Fist: Die Messenger Bag liegt oben auf Thoradins Wall im Arathihochland, 22, 24. Spring vom kaputten Karren an der Lücke über die Balken und Felsen hinauf.",
+    "Eagle's Fist: Die Messenger Bag liegt auf Thoradins Wall, Arathi 22, 24. Nördlich des Tores, auf der Seite von Hillsbrad, spring von einem kaputten Karren hoch: Fass, Brett rechts, Karren, Leiter, dann die Felsen.",
     "Gib sie ab und öffne die Hastily Rolled-Up Satchel daneben: darin ist der Cozy Sleeping Bag. Jede Minute Schlaf darin gibt +1% EP, bis zu +3%.",
 },
 [93269] = {
@@ -413,22 +413,22 @@ T.es = {
 [97583] = {
     "Compra Nutritious Slime Sludge a Boyle junto al canal de Entrañas, 56, 64.",
     "Busca un Excitable Slime que patrulla los canales. Ponte en los escalones del canal, no en el agua, selecciónalo y escribe /dance.",
-    "Acepta la misión que ofrece, WRIGGLE., y dale el lodo para conseguir la mascota. Si parece cansado, vuelve a bailar con él.",
+    "Puede llevar de 5 a 100 bailes. Cuando se retuerce en el sitio mirándote, acepta su misión, WRIGGLE., y dale el lodo para conseguir la mascota.",
 },
 [95534] = {
     "Despoja una Singed Note de los Syndicate Wizards o Argus Shadow Mages de las Montañas de Alterac. Inicia la misión.",
-    "En la forja de Strahnbrad, 59, 46, enciende los dos fuelles casi a la vez: sirve el Fogonazo de un mago, o dos jugadores a la vez.",
-    "Mata al elemental de fuego que aparece.",
+    "En la forja de Strahnbrad, 59, 46, prende fuego a los dos fuelles casi a la vez: Fogonazo de mago, Easy Throw Dynamite, una trampa de fuego de cazador, Lluvia de fuego o Llamas infernales, o dos jugadores a la vez.",
+    "El elemental de fuego cae entre los fuelles. Quédate donde cae, o desaparece, y mátalo. Estar junto a la forja atrae a la Hermandad cercana.",
     "Entrégala en Costasur (Alianza, Kundric Zanden) o Molino Tarren (Horda, Shara Blazen) para obtener la Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb, al oeste del Pantano de las Penas, 25, 53, da la misión y un Entomology Starter Kit desde el nivel 25.",
-    "Atrapa uno de cada con el kit: una Arbor Tarantula en el norte de Tuercespina, 43, 20, un Hay Weevil en las Tierras Altas de Arathi, 30, 30, y un Flesh Picker en Desolace, 48, 58.",
+    "Atrapa uno de cada con el kit: una Arbor Tarantula en el campamento maderero del norte de Tuercespina, 44, 20, un Hay Weevil en las granjas de Arathi, 31, 28, y un Flesh Picker en el Cementerio de Kodos de Desolace, 52, 58.",
     "Lleva los tres ejemplares a Amaryllis para conseguir la mascota Weevil K. Neevil.",
 },
 [97029] = {
     "Consigue el anillo Ancient Heirloom: los Skyborne hacen Coming of Age de Ailee Farheart; los demás lo cogen en el piso de arriba del edificio de Zephras Isle, 41.7, 23.4.",
-    "Toma una Night Watchman's Torch del cuerpo del guardia en Bosque del Ocaso (An Unfortunate End), enciéndela y úsala en las Ruins of Ban'aethal, Zephras Isle 58, 24. Aparece el Ancient Hilt, que inicia la misión.",
+    "Toma una Night Watchman's Torch del cuerpo del guardia en Bosque del Ocaso (An Unfortunate End), enciéndela y úsala en las Ruins of Ban'aethal, Zephras Isle 58, 24, mientras el dragón de allí duerme. Aparece el Ancient Hilt.",
     "Lleva la empuñadura a Ealaane Nimbuswalker en Valanaar, 66, 74, y busca la Ancient Skyborne Blade: aparece en un solo sitio cada vez, 49, 73, 50, 44, 66, 43 o 60, 82.",
     "Devuelve la hoja a Ealaane para obtener Eluvi'ana. El resto del secreto Dawn Waker aún no se ha resuelto: guarda la espada y el anillo.",
 },
@@ -550,7 +550,7 @@ T.es = {
 [79976] = {
     "Haz primero Stepping Stones (mira esa recompensa). La nota siguiente del campamento, Scramble, te manda al norte, cuesta arriba, a un Mound of Dirt en Sierra Espolón, 39, 49.",
     "Wet Job: en Loch Modan ve al centro de la gran presa del norte y déjate caer a la cornisa con la Carved Figurine, 49, 12. Horda: los guardias de allí son fuertes.",
-    "Eagle's Fist: la Messenger Bag está en lo alto de la Muralla de Thoradin, en las Tierras Altas de Arathi, 22, 24. Desde el carro roto del hueco, salta por las vigas y las rocas.",
+    "Eagle's Fist: la Messenger Bag está en la Muralla de Thoradin, Arathi 22, 24. Al norte de la puerta, del lado de Trabalomas, sube desde un carro roto: el barril, el tablón de la derecha, el carro, la escalera y las rocas.",
     "Entrégala y abre la Hastily Rolled-Up Satchel de al lado: dentro está el Cozy Sleeping Bag. Cada minuto de sueño en él da +1% de PX, hasta +3%.",
 },
 [93269] = {
@@ -615,22 +615,22 @@ T.fr = {
 [97583] = {
     "Achetez de la Nutritious Slime Sludge à Boyle près du canal de Fossoyeuse, 56, 64.",
     "Trouvez un Excitable Slime qui patrouille dans les canaux. Placez-vous sur les marches du canal, pas dans l'eau, ciblez-le et tapez /dance.",
-    "Acceptez sa quête WRIGGLE. et donnez-lui la vase pour obtenir la mascotte. S'il semble fatigué, dansez encore avec lui.",
+    "Il peut falloir de 5 à 100 danses. Quand il se tortille sur place en vous regardant, acceptez sa quête WRIGGLE. et donnez-lui la vase pour obtenir la mascotte.",
 },
 [95534] = {
     "Récupérez une Singed Note sur les Syndicate Wizards ou Argus Shadow Mages des montagnes d'Alterac. Elle lance la quête.",
-    "Dans la forge de Strahnbrad, 59, 46, allumez les deux soufflets presque en même temps : la Choc de flammes d'un mage marche, ou deux joueurs à la fois.",
-    "Tuez l'élémentaire de feu qui apparaît.",
+    "Dans la forge de Strahnbrad, 59, 46, mettez le feu aux deux soufflets presque en même temps : Choc de flammes de mage, Easy Throw Dynamite, piège de feu de chasseur, Pluie de feu ou Flammes infernales, ou deux joueurs à la fois.",
+    "L'élémentaire de feu atterrit entre les soufflets. Restez là où il atterrit, sinon il disparaît, et tuez-le. Rester près de la forge attire le Syndicat alentour.",
     "Rendez-la à Austrivage (Alliance, Kundric Zanden) ou à Moulin-de-Tarren (Horde, Shara Blazen) pour la Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb, à l'ouest du marais des Chagrins, 25, 53, donne la quête et un Entomology Starter Kit dès le niveau 25.",
-    "Attrapez-en un de chaque avec le kit : une Arbor Tarantula au nord de Strangleronce, 43, 20, un Hay Weevil dans les hautes-terres d'Arathi, 30, 30, et un Flesh Picker en Désolace, 48, 58.",
+    "Attrapez-en un de chaque avec le kit : une Arbor Tarantula au camp de bûcherons au nord de Strangleronce, 44, 20, un Hay Weevil dans les fermes d'Arathi, 31, 28, et un Flesh Picker au cimetière des Kodos en Désolace, 52, 58.",
     "Rapportez les trois spécimens à Amaryllis pour la mascotte Weevil K. Neevil.",
 },
 [97029] = {
     "Obtenez l'anneau Ancient Heirloom : les Skyborne font Coming of Age d'Ailee Farheart, les autres le ramassent au dernier étage du bâtiment de Zephras Isle, 41.7, 23.4.",
-    "Prenez une Night Watchman's Torch sur le corps du garde au bois de la Pénombre (An Unfortunate End), allumez-la et utilisez-la aux Ruins of Ban'aethal, Zephras Isle 58, 24. L'Ancient Hilt apparaît et lance la quête.",
+    "Prenez une Night Watchman's Torch sur le corps du garde au bois de la Pénombre (An Unfortunate End), allumez-la et utilisez-la aux Ruins of Ban'aethal, Zephras Isle 58, 24, pendant que le dragon y dort. L'Ancient Hilt apparaît.",
     "Apportez la poignée à Ealaane Nimbuswalker à Valanaar, 66, 74, puis trouvez l'Ancient Skyborne Blade : elle est à un seul endroit à la fois, 49, 73, 50, 44, 66, 43 ou 60, 82.",
     "Rapportez la lame à Ealaane pour Eluvi'ana. La suite du secret Dawn Waker n'est pas encore résolue : gardez l'épée et l'anneau.",
 },
@@ -752,7 +752,7 @@ T.fr = {
 [79976] = {
     "Faites d'abord Stepping Stones (voir cette récompense). La note suivante du camp, Scramble, vous envoie au nord, en haut de la colline, vers un Mound of Dirt dans les Serres-Rocheuses, 39, 49.",
     "Wet Job : dans le Loch Modan, allez au milieu du grand barrage au nord et laissez-vous tomber sur la corniche de la Carved Figurine, 49, 12. Horde : les gardes y sont forts.",
-    "Eagle's Fist : le Messenger Bag est en haut du mur de Thoradin, dans les Hautes-terres d'Arathi, 22, 24. Depuis la charrette cassée à la brèche, sautez sur les poutres et les rochers.",
+    "Eagle's Fist : le Messenger Bag est sur le mur de Thoradin, Arathi 22, 24. Au nord de la porte, côté Hautebrande, montez depuis une charrette cassée : le tonneau, la planche à droite, la charrette, l'échelle, puis les rochers.",
     "Rendez-la et ouvrez la Hastily Rolled-Up Satchel à côté : le Cozy Sleeping Bag est dedans. Chaque minute de sommeil dedans donne +1% d'XP, jusqu'à +3%.",
 },
 [93269] = {
@@ -817,22 +817,22 @@ T.pl = {
 [97583] = {
     "Kup Nutritious Slime Sludge u Boyle'a przy kanale w Undercity, 56, 64.",
     "Znajdź Excitable Slime, który krąży po kanałach. Stań na schodach kanału, nie w wodzie, wybierz go i wpisz /dance.",
-    "Przyjmij jego zadanie WRIGGLE. i daj mu szlam, a dostaniesz zwierzaka. Jeśli wygląda na zmęczonego, zatańcz z nim znowu.",
+    "Może to zająć od 5 do 100 tańców. Gdy wije się w miejscu, zwrócony do ciebie, przyjmij jego zadanie WRIGGLE. i daj mu szlam, a dostaniesz zwierzaka.",
 },
 [95534] = {
     "Zdobądź Singed Note z Syndicate Wizards lub Argus Shadow Mages w Alterac Mountains. Ta notatka zaczyna zadanie.",
-    "W kuźni Strahnbrad, 59, 46, zapal oba miechy niemal naraz: działa Flamestrike maga albo dwóch graczy jednocześnie.",
-    "Zabij ognistego żywiołaka, który się pojawi.",
+    "W kuźni Strahnbrad, 59, 46, podpal oba miechy niemal naraz: Flamestrike maga, Easy Throw Dynamite, ognista pułapka łowcy, Rain of Fire albo Hellfire, albo dwóch graczy jednocześnie.",
+    "Ognisty żywiołak ląduje między miechami. Stój tam, gdzie wylądował, bo inaczej zniknie, i zabij go. Stanie przy kuźni ściąga pobliski Syndykat.",
     "Oddaj zadanie w Southshore (Przymierze, Kundric Zanden) lub w Tarren Mill (Horda, Shara Blazen), a dostaniesz Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb na zachodzie Swamp of Sorrows, 25, 53, daje zadanie i Entomology Starter Kit od poziomu 25.",
-    "Złap zestawem po jednym: Arbor Tarantula na północy Stranglethorn, 43, 20, Hay Weevil w Arathi Highlands, 30, 30, i Flesh Picker w Desolace, 48, 58.",
+    "Złap zestawem po jednym: Arbor Tarantula przy obozie drwali na północy Stranglethorn, 44, 20, Hay Weevil na farmach Arathi, 31, 28, i Flesh Picker na Cmentarzysku Kodo w Desolace, 52, 58.",
     "Zanieś trzy okazy do Amaryllis, a dostaniesz zwierzaka Weevil K. Neevil.",
 },
 [97029] = {
     "Zdobądź pierścień Ancient Heirloom: Skyborne robią Coming of Age od Ailee Farheart, reszta podnosi go na najwyższym piętrze budynku na Zephras Isle, 41.7, 23.4.",
-    "Weź Night Watchman's Torch z ciała strażnika w Duskwood (An Unfortunate End), zapal ją i użyj w Ruins of Ban'aethal, Zephras Isle 58, 24. Pojawi się Ancient Hilt, który zaczyna zadanie.",
+    "Weź Night Watchman's Torch z ciała strażnika w Duskwood (An Unfortunate End), zapal ją i użyj w Ruins of Ban'aethal, Zephras Isle 58, 24, gdy smok tam śpi. Pojawi się Ancient Hilt.",
     "Zanieś rękojeść do Ealaane Nimbuswalker w Valanaar, 66, 74, a potem znajdź Ancient Skyborne Blade: leży naraz tylko w jednym z miejsc 49, 73, 50, 44, 66, 43 lub 60, 82.",
     "Oddaj ostrze Ealaane, a dostaniesz Eluvi'ana. Reszta sekretu Dawn Waker nie jest jeszcze rozwiązana: zachowaj miecz i pierścień.",
 },
@@ -954,7 +954,7 @@ T.pl = {
 [79976] = {
     "Najpierw zrób Stepping Stones (zobacz tę nagrodę). Następna notatka z obozu, Scramble, wysyła cię na północ, w górę wzgórza, do Mound of Dirt w Stonetalon, 39, 49.",
     "Wet Job: w Loch Modan idź na środek dużej tamy na północy i zeskocz na półkę z Carved Figurine, 49, 12. Horda: tamtejsi strażnicy są silni.",
-    "Eagle's Fist: Messenger Bag leży na szczycie Thoradin's Wall w Arathi Highlands, 22, 24. Od rozbitego wozu przy wyrwie skacz po belkach i skałach w górę.",
+    "Eagle's Fist: Messenger Bag leży na Thoradin's Wall, Arathi 22, 24. Na północ od bramy, po stronie Hillsbrad, wskocz z rozbitego wozu: beczka, deska po prawej, wóz, drabina, potem skały.",
     "Oddaj zadanie i otwórz Hastily Rolled-Up Satchel obok: w środku jest Cozy Sleeping Bag. Każda minuta snu w nim daje +1% PD, do +3%.",
 },
 [93269] = {
@@ -1019,22 +1019,22 @@ T.pt = {
 [97583] = {
     "Compre Nutritious Slime Sludge com Boyle junto ao canal da Cidade Baixa, 56, 64.",
     "Encontre um Excitable Slime que patrulha os canais. Fique nos degraus do canal, não na água, selecione-o e digite /dance.",
-    "Aceite a missão que ele oferece, WRIGGLE., e entregue a gosma para ganhar o mascote. Se ele parecer cansado, dance com ele de novo.",
+    "Pode levar de 5 a 100 danças. Quando ele se contorcer no lugar olhando para você, aceite a missão dele, WRIGGLE., e entregue a gosma para ganhar o mascote.",
 },
 [95534] = {
     "Saqueie uma Singed Note dos Syndicate Wizards ou Argus Shadow Mages nas Montanhas de Alterac. Ela inicia a missão.",
-    "Na forja de Strahnbrad, 59, 46, acenda os dois foles quase juntos: o Golpe Flamejante de um mago funciona, ou dois jogadores ao mesmo tempo.",
-    "Mate o elemental de fogo que aparece.",
+    "Na forja de Strahnbrad, 59, 46, ponha fogo nos dois foles quase juntos: Golpe Flamejante de mago, Easy Throw Dynamite, armadilha de fogo de caçador, Chuva de Fogo ou Fogo do Inferno, ou dois jogadores ao mesmo tempo.",
+    "O elemental de fogo cai entre os foles. Fique onde ele cai, senão some, e mate-o. Ficar junto à forja atrai o Sindicato por perto.",
     "Entregue em Southshore (Aliança, Kundric Zanden) ou em Tarren Mill (Horda, Shara Blazen) para ganhar a Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb, no oeste do Pântano das Mágoas, 25, 53, dá a missão e um Entomology Starter Kit a partir do nível 25.",
-    "Capture um de cada com o kit: uma Arbor Tarantula no norte de Selva do Espinhaço, 43, 20, um Hay Weevil nas Terras Altas de Arathi, 30, 30, e um Flesh Picker em Desolação, 48, 58.",
+    "Capture um de cada com o kit: uma Arbor Tarantula no acampamento madeireiro do norte de Selva do Espinhaço, 44, 20, um Hay Weevil nas fazendas de Arathi, 31, 28, e um Flesh Picker no Cemitério dos Kodos em Desolação, 52, 58.",
     "Leve os três espécimes de volta a Amaryllis para ganhar o mascote Weevil K. Neevil.",
 },
 [97029] = {
     "Pegue o anel Ancient Heirloom: os Skyborne fazem Coming of Age de Ailee Farheart; os outros o pegam no último andar do prédio em Zephras Isle, 41.7, 23.4.",
-    "Pegue uma Night Watchman's Torch do corpo do guarda em Floresta do Crepúsculo (An Unfortunate End), acenda e use nas Ruins of Ban'aethal, Zephras Isle 58, 24. O Ancient Hilt aparece e inicia a missão.",
+    "Pegue uma Night Watchman's Torch do corpo do guarda em Floresta do Crepúsculo (An Unfortunate End), acenda e use nas Ruins of Ban'aethal, Zephras Isle 58, 24, enquanto o dragão de lá dorme. O Ancient Hilt aparece.",
     "Leve o punho a Ealaane Nimbuswalker em Valanaar, 66, 74, e depois encontre a Ancient Skyborne Blade: ela fica em um lugar por vez, 49, 73, 50, 44, 66, 43 ou 60, 82.",
     "Devolva a lâmina a Ealaane para ganhar Eluvi'ana. O resto do segredo Dawn Waker ainda não foi resolvido: guarde a espada e o anel.",
 },
@@ -1156,7 +1156,7 @@ T.pt = {
 [79976] = {
     "Faça primeiro Stepping Stones (veja essa recompensa). O bilhete seguinte do acampamento, Scramble, manda você ao norte, morro acima, até um Mound of Dirt na Serra das Torres de Pedra, 39, 49.",
     "Wet Job: em Loch Modan vá ao meio da grande represa do norte e desça até a saliência com a Carved Figurine, 49, 12. Horda: os guardas de lá são fortes.",
-    "Eagle's Fist: a Messenger Bag fica no alto da Muralha de Thoradin, no Planalto Arathi, 22, 24. Da carroça quebrada na brecha, pule pelas vigas e pelas rochas.",
+    "Eagle's Fist: a Messenger Bag fica na Muralha de Thoradin, Arathi 22, 24. Ao norte do portão, do lado de Eira dos Montes, suba por uma carroça quebrada: o barril, a tábua à direita, a carroça, a escada e as rochas.",
     "Entregue e abra a Hastily Rolled-Up Satchel ao lado: dentro está o Cozy Sleeping Bag. Cada minuto de sono nele dá +1% de XP, até +3%.",
 },
 [93269] = {
@@ -1221,22 +1221,22 @@ T.ru = {
 [97583] = {
     "Купите Nutritious Slime Sludge у Boyle у канала в Подгороде, 56, 64.",
     "Найдите Excitable Slime, который ползает по каналам. Встаньте на ступени канала, не в воду, возьмите его в цель и наберите /dance.",
-    "Возьмите его задание WRIGGLE. и отдайте ему слизь: за неё дают питомца. Если он выглядит уставшим, станцуйте с ним ещё раз.",
+    "Танцевать может понадобиться от 5 до 100 раз. Когда он извивается на месте, глядя на вас, возьмите его задание WRIGGLE. и отдайте ему слизь: за неё дают питомца.",
 },
 [95534] = {
     "Добудьте Singed Note с Syndicate Wizards или Argus Shadow Mages в Альтеракских горах. Записка начинает задание.",
-    "В кузнице Стрэнбрэда, 59, 46, подожгите оба меха почти одновременно: подойдёт «Огненный столб» мага или два игрока сразу.",
-    "Убейте огненного элементаля, который появится.",
+    "В кузнице Стрэнбрэда, 59, 46, подожгите оба меха почти одновременно: «Огненный столб» мага, Easy Throw Dynamite, огненная ловушка охотника, «Огненный ливень» или «Адское пламя», или два игрока сразу.",
+    "Огненный элементаль приземлится между мехами. Стойте там, где он приземлился, иначе он исчезнет, и убейте его. У кузницы на вас сбегается Синдикат вокруг.",
     "Сдайте задание в Южнобережье (Альянс, Kundric Zanden) или в Мельнице Таррен (Орда, Shara Blazen): награда Brilliant Cloak.",
 },
 [93176] = {
     "Amaryllis Webb на западе Болота Печали, 25, 53, с 25 уровня даёт задание и Entomology Starter Kit.",
-    "Поймайте набором по одному: Arbor Tarantula на севере Тернистой долины, 43, 20, Hay Weevil в Арати, 30, 30, и Flesh Picker в Пустошах, 48, 58.",
+    "Поймайте набором по одному: Arbor Tarantula у лагеря лесорубов на севере Тернистой долины, 44, 20, Hay Weevil на фермах Арати, 31, 28, и Flesh Picker на Кладбище кодо в Пустошах, 52, 58.",
     "Принесите три образца Amaryllis: за них дают питомца Weevil K. Neevil.",
 },
 [97029] = {
     "Добудьте кольцо Ancient Heirloom: Skyborne получают его за Coming of Age у Ailee Farheart, остальные подбирают на верхнем этаже здания на Zephras Isle, 41.7, 23.4.",
-    "Возьмите Night Watchman's Torch с тела стражника в Сумеречном лесу (An Unfortunate End), зажгите и примените в Ruins of Ban'aethal, Zephras Isle 58, 24. Появится Ancient Hilt, он начинает задание.",
+    "Возьмите Night Watchman's Torch с тела стражника в Сумеречном лесу (An Unfortunate End), зажгите и примените в Ruins of Ban'aethal, Zephras Isle 58, 24, пока дракон там спит. Появится Ancient Hilt.",
     "Отнесите рукоять Ealaane Nimbuswalker в Valanaar, 66, 74, и найдите Ancient Skyborne Blade: он лежит в одном месте за раз, 49, 73, 50, 44, 66, 43 или 60, 82.",
     "Принесите клинок Ealaane: награда Eluvi'ana. Остальная часть секрета Dawn Waker ещё не разгадана: не выбрасывайте меч и кольцо.",
 },
@@ -1358,7 +1358,7 @@ T.ru = {
 [79976] = {
     "Сначала пройдите Stepping Stones (см. эту награду). Следующая записка в лагере, Scramble, ведёт на север вверх по холму к Mound of Dirt в Когтистых горах, 39, 49.",
     "Wet Job: в Лок Модане идите на середину большой плотины на севере и спрыгните на уступ с Carved Figurine, 49, 12. Орде: стража там сильная.",
-    "Eagle's Fist: Messenger Bag лежит наверху Стены Торадина в Нагорье Арати, 22, 24. От сломанной телеги у пролома прыгайте наверх по балкам и камням.",
+    "Eagle's Fist: Messenger Bag на Стене Торадина, Арати 22, 24. К северу от ворот, со стороны Хилсбрада, лезьте со сломанной телеги: бочка, доска справа, телега, лестница, потом камни.",
     "Сдайте задание и откройте Hastily Rolled-Up Satchel рядом: в нём Cozy Sleeping Bag. Каждая минута сна в нём даёт +1% опыта, до +3%.",
 },
 [93269] = {
@@ -1423,22 +1423,22 @@ T.zh = {
 [97583] = {
     "在幽暗城运河边向 Boyle 购买 Nutritious Slime Sludge，56, 64。",
     "找一只在运河里游荡的 Excitable Slime。站在运河台阶上，不要站在水里，选中它并输入 /dance。",
-    "接受它给的任务 WRIGGLE.，把软泥交给它就能得到宠物。如果它看起来累了，就再和它跳一次舞。",
+    "可能要跳 5 到 100 次舞。当它在原地扭动并面向你时，接受它的任务 WRIGGLE.，把软泥交给它就能得到宠物。",
 },
 [95534] = {
     "从奥特兰克山脉的 Syndicate Wizards 或 Argus Shadow Mages 身上拾取 Singed Note，它会开启任务。",
-    "在斯坦恩布莱德的锻炉，59, 46，几乎同时点燃两个风箱：法师的烈焰风暴可以，或者两名玩家一起点。",
-    "杀死出现的火元素。",
+    "在斯坦恩布莱德的锻炉，59, 46，几乎同时点燃两个风箱：法师的烈焰风暴、Easy Throw Dynamite、猎人的火焰陷阱、火焰之雨或地狱烈焰，或者两名玩家一起点。",
+    "火元素会落在两个风箱之间。站在它落下的地方，否则它会消失，然后杀死它。站在锻炉旁会引来附近的辛迪加。",
     "在南海镇（联盟，Kundric Zanden）或塔伦米尔（部落，Shara Blazen）交任务，奖励 Brilliant Cloak。",
 },
 [93176] = {
     "悲伤沼泽西部的 Amaryllis Webb，25, 53，25 级起给任务和一个 Entomology Starter Kit。",
-    "用工具包各抓一只：荆棘谷北部的 Arbor Tarantula，43, 20；阿拉希高地的 Hay Weevil，30, 30；凄凉之地的 Flesh Picker，48, 58。",
+    "用工具包各抓一只：荆棘谷北部伐木营地的 Arbor Tarantula，44, 20；阿拉希农场的 Hay Weevil，31, 28；凄凉之地科多兽坟场的 Flesh Picker，52, 58。",
     "把三个标本带回给 Amaryllis，奖励宠物 Weevil K. Neevil。",
 },
 [97029] = {
     "拿到戒指 Ancient Heirloom：Skyborne 做 Ailee Farheart 的 Coming of Age，其他人到 Zephras Isle 41.7, 23.4 那座建筑的顶层拾取。",
-    "从暮色森林卫兵的尸体上拿 Night Watchman's Torch（An Unfortunate End），点燃后在 Ruins of Ban'aethal（Zephras Isle 58, 24）使用。Ancient Hilt 会出现并开启任务。",
+    "从暮色森林卫兵的尸体上拿 Night Watchman's Torch（An Unfortunate End），点燃后趁那里的龙睡着时在 Ruins of Ban'aethal（Zephras Isle 58, 24）使用。Ancient Hilt 会出现。",
     "把剑柄交给 Valanaar 的 Ealaane Nimbuswalker，66, 74，然后寻找 Ancient Skyborne Blade：每次只在一处出现，49, 73、50, 44、66, 43 或 60, 82。",
     "把剑刃交回 Ealaane，得到 Eluvi'ana。Dawn Waker 秘密的其余部分还没人解开：留着这把剑和戒指。",
 },
@@ -1560,7 +1560,7 @@ T.zh = {
 [79976] = {
     "先完成 Stepping Stones（见那个奖励）。营地里的下一张纸条 Scramble 让你往北上山，到石爪山脉 39, 49 的 Mound of Dirt。",
     "Wet Job：在洛克莫丹走到北边大坝的中间，跳到放着 Carved Figurine 的岩架上，49, 12。部落：那里的卫兵很强。",
-    "Eagle's Fist：Messenger Bag 在阿拉希高地索拉丁之墙的顶上，22, 24。从缺口处的破马车起跳，沿着横梁和石头爬上去。",
+    "Eagle's Fist：Messenger Bag 在索拉丁之墙上，阿拉希 22, 24。大门北边、希尔斯布莱德一侧，从破马车往上跳：木桶、右边的木板、马车、梯子，再爬石头。",
     "交任务后打开旁边的 Hastily Rolled-Up Satchel，里面就是 Cozy Sleeping Bag。在里面每睡一分钟经验值 +1%，最多 +3%。",
 },
 [93269] = {
