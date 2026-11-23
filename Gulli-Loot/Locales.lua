@@ -10,6 +10,10 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_FEED_ROWS = "Lines at most",
+    OPT_FEED_ROWS_D = "More loot than this is only in the total.",
+    OPT_FEED_BARE = "No background",
+    OPT_FEED_BARE_D = "Only the lines, without the panel and its frame.",
     SEC_FEED = "Loot feed",
     OPT_FEED_COMPACT = "Compact lines",
     OPT_FEED_COMPACT_D = "One line per item. The notes show in its tooltip.",
@@ -17,7 +21,7 @@ T.en = {
     OPT_FEED_PRICE_D = "What the loot brings at a vendor or the auction, whichever pays more.",
     OPT_FEED_NOTES = "Notes",
     OPT_FEED_NOTES_D = "The quest that needs it, better gear, a farm goal, how many you have.",
-    OPT_FEED_TOTAL = "Total of the lines",
+    OPT_FEED_TOTAL = "Total of the loot",
     FEED_QUEST = "Quest:",
     FEED_SELL = "No quest needs it, can be sold",
     FEED_QUESTITEM = "Quest item",
@@ -138,6 +142,10 @@ T.en = {
 }
 
 T.de = {
+    OPT_FEED_ROWS = "Höchstens Zeilen",
+    OPT_FEED_ROWS_D = "Mehr Beute steht nur in der Summe.",
+    OPT_FEED_BARE = "Ohne Hintergrund",
+    OPT_FEED_BARE_D = "Nur die Zeilen, ohne Feld und Rahmen.",
     SEC_FEED = "Beuteliste",
     OPT_FEED_COMPACT = "Kompakte Zeilen",
     OPT_FEED_COMPACT_D = "Eine Zeile pro Gegenstand. Die Hinweise stehen im Tooltip.",
@@ -145,7 +153,7 @@ T.de = {
     OPT_FEED_PRICE_D = "Was die Beute beim Händler oder im Auktionshaus bringt, je nachdem, wo es mehr gibt.",
     OPT_FEED_NOTES = "Hinweise",
     OPT_FEED_NOTES_D = "Die Quest dazu, bessere Ausrüstung, ein Farmziel, wie viele du hast.",
-    OPT_FEED_TOTAL = "Summe der Zeilen",
+    OPT_FEED_TOTAL = "Summe der Beute",
     FEED_QUEST = "Quest:",
     FEED_SELL = "Keine Quest braucht es, verkaufbar",
     FEED_QUESTITEM = "Questgegenstand",
@@ -266,6 +274,10 @@ T.de = {
 }
 
 T.es = {
+    OPT_FEED_ROWS = "Líneas como máximo",
+    OPT_FEED_ROWS_D = "El botín que no cabe solo cuenta en el total.",
+    OPT_FEED_BARE = "Sin fondo",
+    OPT_FEED_BARE_D = "Solo las líneas, sin panel ni marco.",
     SEC_FEED = "Lista de botín",
     OPT_FEED_COMPACT = "Líneas compactas",
     OPT_FEED_COMPACT_D = "Una línea por objeto. Las notas salen en su descripción.",
@@ -273,7 +285,7 @@ T.es = {
     OPT_FEED_PRICE_D = "Lo que da el botín en un vendedor o en la subasta, donde paguen más.",
     OPT_FEED_NOTES = "Notas",
     OPT_FEED_NOTES_D = "La misión que lo pide, mejor equipo, una meta de farmeo, cuántos tienes.",
-    OPT_FEED_TOTAL = "Total de las líneas",
+    OPT_FEED_TOTAL = "Total del botín",
     FEED_QUEST = "Misión:",
     FEED_SELL = "Ninguna misión lo pide, se puede vender",
     FEED_QUESTITEM = "Objeto de misión",
@@ -394,6 +406,10 @@ T.es = {
 }
 
 T.fr = {
+    OPT_FEED_ROWS = "Lignes au maximum",
+    OPT_FEED_ROWS_D = "Le butin en plus ne compte que dans le total.",
+    OPT_FEED_BARE = "Sans fond",
+    OPT_FEED_BARE_D = "Seulement les lignes, sans panneau ni cadre.",
     SEC_FEED = "Fil du butin",
     OPT_FEED_COMPACT = "Lignes compactes",
     OPT_FEED_COMPACT_D = "Une ligne par objet. Les notes sont dans son infobulle.",
@@ -401,7 +417,7 @@ T.fr = {
     OPT_FEED_PRICE_D = "Ce que le butin rapporte chez un marchand ou aux enchères, selon le mieux payé.",
     OPT_FEED_NOTES = "Notes",
     OPT_FEED_NOTES_D = "La quête qui le demande, meilleur équipement, un objectif de farm, combien tu en as.",
-    OPT_FEED_TOTAL = "Total des lignes",
+    OPT_FEED_TOTAL = "Total du butin",
     FEED_QUEST = "Quête :",
     FEED_SELL = "Aucune quête ne le demande, vendable",
     FEED_QUESTITEM = "Objet de quête",
@@ -522,6 +538,10 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_FEED_ROWS = "Najwięcej wierszy",
+    OPT_FEED_ROWS_D = "Łup ponad tę liczbę jest tylko w sumie.",
+    OPT_FEED_BARE = "Bez tła",
+    OPT_FEED_BARE_D = "Same wiersze, bez panelu i ramki.",
     SEC_FEED = "Lista łupu",
     OPT_FEED_COMPACT = "Zwarte wiersze",
     OPT_FEED_COMPACT_D = "Jeden wiersz na przedmiot. Uwagi są w jego podpowiedzi.",
@@ -529,7 +549,7 @@ T.pl = {
     OPT_FEED_PRICE_D = "Ile łup da u handlarza albo na aukcji, tam gdzie więcej.",
     OPT_FEED_NOTES = "Uwagi",
     OPT_FEED_NOTES_D = "Zadanie, które go wymaga, lepszy sprzęt, cel farmienia, ile już masz.",
-    OPT_FEED_TOTAL = "Suma wierszy",
+    OPT_FEED_TOTAL = "Suma łupu",
     FEED_QUEST = "Zadanie:",
     FEED_SELL = "Żadne zadanie go nie wymaga, można sprzedać",
     FEED_QUESTITEM = "Przedmiot zadania",
@@ -650,6 +670,10 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_FEED_ROWS = "Linhas no máximo",
+    OPT_FEED_ROWS_D = "O saque além disso conta só no total.",
+    OPT_FEED_BARE = "Sem fundo",
+    OPT_FEED_BARE_D = "Só as linhas, sem painel nem moldura.",
     SEC_FEED = "Lista de saque",
     OPT_FEED_COMPACT = "Linhas compactas",
     OPT_FEED_COMPACT_D = "Uma linha por item. As notas ficam na dica dele.",
@@ -657,7 +681,7 @@ T.pt = {
     OPT_FEED_PRICE_D = "Quanto o saque rende no vendedor ou no leilão, onde pagar mais.",
     OPT_FEED_NOTES = "Notas",
     OPT_FEED_NOTES_D = "A missão que pede o item, equipamento melhor, uma meta de farm, quantos você tem.",
-    OPT_FEED_TOTAL = "Total das linhas",
+    OPT_FEED_TOTAL = "Total do saque",
     FEED_QUEST = "Missão:",
     FEED_SELL = "Nenhuma missão pede, pode vender",
     FEED_QUESTITEM = "Item de missão",
@@ -778,6 +802,10 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_FEED_ROWS = "Строк не больше",
+    OPT_FEED_ROWS_D = "Добыча сверх этого идёт только в сумму.",
+    OPT_FEED_BARE = "Без фона",
+    OPT_FEED_BARE_D = "Только строки, без панели и рамки.",
     SEC_FEED = "Лента добычи",
     OPT_FEED_COMPACT = "Компактные строки",
     OPT_FEED_COMPACT_D = "Одна строка на предмет. Пометки видны в подсказке.",
@@ -785,7 +813,7 @@ T.ru = {
     OPT_FEED_PRICE_D = "Сколько даст добыча у торговца или на аукционе, где больше.",
     OPT_FEED_NOTES = "Пометки",
     OPT_FEED_NOTES_D = "Квест, которому нужен предмет, вещь лучше надетой, цель фарма, сколько уже есть.",
-    OPT_FEED_TOTAL = "Сумма строк",
+    OPT_FEED_TOTAL = "Сумма добычи",
     FEED_QUEST = "Квест:",
     FEED_SELL = "Квестам не нужен, можно продать",
     FEED_QUESTITEM = "Квестовый предмет",
@@ -906,6 +934,10 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_FEED_ROWS = "最多行数",
+    OPT_FEED_ROWS_D = "超出的战利品只计入合计。",
+    OPT_FEED_BARE = "无背景",
+    OPT_FEED_BARE_D = "只显示各行，没有面板和边框。",
     SEC_FEED = "拾取列表",
     OPT_FEED_COMPACT = "紧凑行",
     OPT_FEED_COMPACT_D = "每件物品一行。备注显示在提示中。",
@@ -913,7 +945,7 @@ T.zh = {
     OPT_FEED_PRICE_D = "战利品卖给商人或拍卖行能得多少，取较高者。",
     OPT_FEED_NOTES = "备注",
     OPT_FEED_NOTES_D = "需要它的任务、更好的装备、刷怪目标、你已有多少。",
-    OPT_FEED_TOTAL = "各行合计",
+    OPT_FEED_TOTAL = "战利品合计",
     FEED_QUEST = "任务：",
     FEED_SELL = "没有任务需要，可以出售",
     FEED_QUESTITEM = "任务物品",

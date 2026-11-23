@@ -29,7 +29,9 @@ ns.DEFAULTS = {
     feedCompact = false, -- one line per item instead of two
     feedPrice = true,    -- what a looted item is worth, at a vendor or the auction
     feedNotes = true,    -- the quest that needs it, better gear, a farm goal, the count in the bags
-    feedTotal = true,    -- the sum of the lines that show
+    feedTotal = true,    -- the sum of what was just looted
+    feedRows = 5,        -- lines shown at most
+    feedBare = false,    -- no background and no frame, only the lines
     rollers = false,  -- the group's choices under the roll frames
     real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
 }
@@ -414,6 +416,8 @@ ns.OPT_ICON = {
     feedPrice = "Interface\\Minimap\\Tracking\\Auctioneer",
     feedNotes = "Interface\\Icons\\INV_Misc_Book_09",
     feedTotal = "Interface\\Icons\\INV_Misc_Coin_01",
+    feedRows = "Interface\\Icons\\INV_Misc_Note_05",
+    feedBare = "Interface\\Icons\\INV_Misc_Gem_Crystal_02",
     rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     real = "Interface\\Icons\\INV_Misc_Coin_19",
 }
