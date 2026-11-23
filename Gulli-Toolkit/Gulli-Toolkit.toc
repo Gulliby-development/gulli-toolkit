@@ -24,6 +24,13 @@ Tweaks.lua
 Tweaks\LevelShot.lua
 Tweaks\GuildMotd.lua
 Tweaks\QuestSparkle.lua
+Tweaks\SpellRanks.lua
+Tweaks\TrainAll.lua
+Tweaks\SkipGossip.lua
+Tweaks\RewardValue.lua
+Tweaks\HideTracker.lua
+Tweaks\PlateMarks.lua
+Tweaks\QuestSounds.lua
 Setup.lua
 Ready.lua
 Session.lua
