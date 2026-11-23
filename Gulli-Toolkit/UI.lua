@@ -226,8 +226,8 @@ local function enter(row)
     if not row then return end
     local win
     if row.state == "ready" then
-        win = moduleWindow(row)
-        if not win then return open(row) end
+        win = ns.PerfRun(row.title, moduleWindow, row)
+        if not win then ns.PerfEnd(); return open(row) end
     else
         win = offWindow(row)
     end
@@ -241,7 +241,8 @@ local function enter(row)
     card:SetShown(narrow)
     hubSwitch:SetChecked(row.on)
     pinBox.switch:SetChecked(ns.Pinned(row.key))
-    win:Dock(host, {
+    -- the module's own OnShow runs in here: its time counts as the module's
+    ns.PerfRun(row.title, win.Dock, win, host, {
         width = narrow and MID or HOST_W, height = HOST_H, right = { hubSwitch, pinBox },
         back = goHome, popOut = popOut, onHide = windowHidden,
     })
@@ -583,9 +584,10 @@ local function fillReady(width)
     if not ns.ReadyGet("show") then card:Hide() return false end
     card:Show()
     card:SetWidth(width)
-    local list = {}
-    for _, r in ipairs(ns.Readiness()) do if not r.ok then list[#list + 1] = r end end
-    for _, r in ipairs(ns.Readiness()) do if r.ok then list[#list + 1] = r end end
+    local list, all = {}, ns.Readiness()
+    home.readyAll = all
+    for _, r in ipairs(all) do if not r.ok then list[#list + 1] = r end end
+    for _, r in ipairs(all) do if r.ok then list[#list + 1] = r end end
     local ok, n = ns.ReadyCount(list)
     fillRing(list)
     home.ringCount:SetText(ok)
@@ -1050,17 +1052,13 @@ end
 
 local function fillHome(data)
     -- The top row: Ready and the session side by side, or the one that shows across the width.
-    local ses = fillSession(data, SIDE_W)
-    local ready = fillReady(HOST_W - SIDE_W - GAP)
-    if not ready then
-        home.session:SetWidth(HOST_W)
-        fillSession(data, HOST_W)
-    end
+    local ready = ns.PerfRun("Ready", fillReady, HOST_W - SIDE_W - GAP)
+    local ses = ns.PerfRun("Session", fillSession, data, ready and SIDE_W or HOST_W)
     local top = TOP_H + GAP
 
     local shown = {}
-    if ready then for _, r in ipairs(ns.Readiness()) do shown[r.key] = true end end
-    local list2 = ns.Tiles(data, shown, ses.hero and ses.hero.row and ses.hero.row.key or nil)
+    if ready then for _, r in ipairs(home.readyAll or {}) do shown[r.key] = true end end
+    local list2 = ns.PerfRun("Tiles", ns.Tiles, data, shown, ses.hero and ses.hero.row and ses.hero.row.key or nil)
     local n = #list2
     local w = math.floor((HOST_W - (TILE_COLS - 1) * TILE_GAP) / TILE_COLS)
     for i = 1, n do
@@ -1086,8 +1084,25 @@ local function fillHome(data)
     local rest = HOST_H - top - sh - GAP
     home.recent:SetHeight(rest)
     home.overview:SetHeight(rest)
-    fillOverview(data, rest)
-    fillFeed(rest)
+    ns.PerfRun("Modules card", fillOverview, data, rest)
+    ns.PerfRun("Recent", fillFeed, rest)
+end
+
+-- The home page asks every module for its line and its session: that runs as a job, a few
+-- modules a frame, so opening the hub never stops the game. The page keeps what it showed
+-- until the job is done; a Refresh while one runs draws once more after it.
+local homeAgain
+local function drawHome(data)
+    local S_ = S
+    if S_.JobRunning("hubHome") then homeAgain = true; return end
+    homeAgain = false
+    S_.Job("hubHome", function() fillHome(data) end, function()
+        ns.PerfEnd()
+        if homeAgain and frame and frame:IsShown() and view.page == "home" then
+            homeAgain = false
+            drawHome(ns.List())
+        end
+    end, function() ns.PerfEnd() end)
 end
 
 -- The whole window -----------------------------------------------------------------------------
@@ -1109,8 +1124,8 @@ end
 
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
-    local data = ns.List()
-    fillSide(data)
+    local data = ns.PerfRun("Module list", ns.List)
+    ns.PerfRun("Side list", fillSide, data)
     if view.inside then
         local row
         for _, r in ipairs(data) do if r.key == view.inside then row = r end end
@@ -1121,7 +1136,7 @@ function ns.Refresh()
             if card:IsShown() then fillCard(row) end
         end
     end
-    if view.page == "home" then fillHome(data) end
+    if view.page == "home" then drawHome(data) else ns.PerfEnd() end
 
     if view.page == "setup" and setupFrame then fillSetup(data) end
     if view.page == "tweaks" then ns.FillTweaks(data) end
@@ -2275,6 +2290,18 @@ local function buildHome()
     home.ovMemory = S.Text(ov.body, 13, S.MUTED)
     home.ovMemory:SetPoint("BOTTOMRIGHT", ov.body, "TOPRIGHT", 0, -28)
     home.ovMemory:SetJustifyH("RIGHT")
+    -- The figure is from the last loading screen; a click measures now (that stops the game
+    -- for a moment with a big UI, so only when the player asks).
+    local memBtn = CreateFrame("Button", nil, ov.body)
+    memBtn:SetPoint("TOPRIGHT", home.ovMemory, "TOPRIGHT", 2, 4)
+    memBtn:SetSize(90, 22)
+    memBtn:SetScript("OnClick", function()
+        ns.MeasureMemory()
+        ns.Refresh()
+    end)
+    memBtn:SetScript("OnEnter", function(self) tip(self, L.MEM_TITLE, { L.MEM_TIP }, "ANCHOR_TOP") end)
+    memBtn:SetScript("OnLeave", hideTip)
+    home.ovMemoryBtn = memBtn
     home.ovPips = CreateFrame("Frame", nil, ov.body)
     home.ovPips:SetPoint("TOPLEFT", 0, -42)
     home.ovPips:SetPoint("TOPRIGHT", 0, -42)
@@ -2292,12 +2319,28 @@ local function buildHome()
     home.noRecent:SetText(L.NO_RECENT)
 end
 
+local openCount = 0
 local function onOpen()
+    openCount = openCount + 1
+    ns.PerfStart()
     applyScale()
-    -- The hub opens where the player left it: the last module, or the home page.
+    -- The hub opens where the player left it: the last module, or the home page. The module's
+    -- page comes a frame later: the hub shows at once, and the module's own drawing (its
+    -- window's OnShow) gets a frame of its own.
     if not view.inside and view.page == "home" then
         local row = findRow(ns.Last())
-        if row and row.state == "ready" and moduleWindow(row) then return enter(row) end
+        if row and row.state == "ready" and row.info and type(row.info.window) == "function" then
+            ns.PerfRun("Module list", fillSide, ns.List())
+            home:Hide()
+            local function later()
+                if not (frame:IsShown() and not view.inside and view.page == "home") then return ns.PerfEnd() end
+                if moduleWindow(row) then return enter(row) end
+                home:Show()
+                ns.Refresh()
+            end
+            if C_Timer and C_Timer.After and debugprofilestop then C_Timer.After(0, later) else later() end
+            return
+        end
     end
     ns.Refresh()
 end
@@ -2388,8 +2431,10 @@ end
 
 function ns.Toggle()
     if not frame then build() end
+    -- showing the frame runs onOpen through its OnShow; it must not run a second time
+    local was = openCount
     frame:SetShown(not frame:IsShown())
-    if frame:IsShown() then onOpen() end
+    if frame:IsShown() and openCount == was then onOpen() end
 end
 
 -- The view the hub shows now, for the tests.

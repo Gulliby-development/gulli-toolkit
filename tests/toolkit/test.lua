@@ -1162,6 +1162,7 @@ test("the home page counts what runs, waits, is refused or updated, and lists ev
     UpdateAddOnMemoryUsage = function() end
     GetAddOnMemoryUsage = function(name) return ({ ["Gulli-XP"] = 360, ["Gulli-Chores"] = 2048 })[name] or 0 end
     local ns = Load()
+    ns.MeasureMemory()
     GulliToolkit.Register({ key = "XP", open = function() end, slash = "/gxp", summary = function() return "8k XP/h" end })
     GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
     local o = ns.Overview()
@@ -1183,23 +1184,60 @@ test("the home page counts what runs, waits, is refused or updated, and lists ev
     UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
 end)
 
-test("the memory of the addons is read at most once in ten seconds", function()
+test("the hub never measures the addons' memory while it draws: only a loading screen or a click", function()
     Fake({ addons = { { name = "Gulli-Chores", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Chores" } } } })
     local calls = 0
     UpdateAddOnMemoryUsage = function() calls = calls + 1 end
     GetAddOnMemoryUsage = function() return 100 end
     local ns = Load()
     GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
-    local t = 1000
-    local was = GetTime
-    GetTime = function() return t end
-    ns.Overview(); ns.Overview(); ns.Overview()
-    eq(calls, 1, "a burst of redraws reads it once")
-    t = t + 11
-    ns.Overview()
-    eq(calls, 2, "ten seconds later it reads again")
-    GetTime = was
+    eq(ns.Overview().kb, 0, "nothing measured yet: no memory shown")
+    ns.Toggle(); ns.Refresh(); ns.Overview()
+    eq(calls, 0, "opening and drawing the hub never measures")
+    ns.MeasureMemory()
+    eq(calls, 1)
+    eq(ns.Overview().kb, 100, "the last measure shows")
+    ns.Toggle(); ns.Toggle()
+    eq(calls, 1, "a second open reads the last numbers")
     UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
+end)
+
+test("the home page asks the modules a few a frame, so opening the hub never stops the game", function()
+    local addons = {}
+    local keys = { "XP", "Chores", "Loot", "Mail", "Social", "Merchant" }
+    for _, k in ipairs(keys) do
+        addons[#addons + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
+    end
+    Fake({ addons = addons })
+    local ns = Load()
+    local asked = 0
+    for _, k in ipairs(keys) do
+        GulliToolkit.Register({ key = k, open = function() end, summary = function() asked = asked + 1; return "3 things" end })
+    end
+    local t = 0
+    debugprofilestop = function() t = t + 3; return t end -- every look at the clock costs 3 ms
+    ns.Toggle()
+    local S = ns.Skin
+    assert(S.JobRunning("hubHome"), "the home page goes on in the next frames")
+    assert(asked < #keys, "not every module in the first frame: " .. asked)
+    local driver
+    for _, f in ipairs(W.frames) do
+        if f:GetScript("OnUpdate") then driver = f end
+    end
+    local frames = 0
+    while S.JobRunning("hubHome") and frames < 100 do
+        driver:GetScript("OnUpdate")(driver)
+        frames = frames + 1
+    end
+    debugprofilestop = nil
+    assert(not S.JobRunning("hubHome"))
+    assert(frames > 0)
+    eq(asked, #keys, "every module was asked once")
+    assert(ns.perf and ns.perf.total > 0, "/gulli perf has the open")
+    local named = {}
+    for _, st in ipairs(ns.perf.steps) do named[st.name] = true end
+    assert(named.Tiles and named["Module list"], "the steps are named")
+    ns.PrintPerf()
 end)
 
 test("the minimap button sits on the circle, or on the edge of a square minimap", function()

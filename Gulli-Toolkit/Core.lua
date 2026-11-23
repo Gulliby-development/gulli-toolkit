@@ -54,24 +54,24 @@ local function enableState(name)
     return low or 0
 end
 local function version() return metadata(ADDON, "Version") end
--- UpdateAddOnMemoryUsage walks every loaded addon and can take a long moment with a big UI:
--- it runs at most once in MEMORY_EVERY seconds, the numbers in between are the last ones.
-local MEMORY_EVERY = 10
+-- UpdateAddOnMemoryUsage walks the whole memory of every loaded addon: with a big UI it stops
+-- the game for up to a second. So the hub never asks for it while it draws: the numbers come
+-- from the last measure, taken at a loading screen (the game stands still there anyway) or
+-- when the player clicks the memory figure. Between measures GetAddOnMemoryUsage is cheap.
 local memoryAt
-local function updateMemory()
+local function measureMemory()
     local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
-    if not update then return end
-    local now = GetTime and GetTime() or 0
-    if memoryAt and now - memoryAt < MEMORY_EVERY then return end
-    memoryAt = now
+    if not update then return false end
     pcall(update)
+    memoryAt = time and time() or 0
+    return true
 end
-ns.UpdateMemory = updateMemory
+ns.MeasureMemory = measureMemory
+-- When the numbers were measured (time()), nil before the first measure.
+function ns.MemoryAt() return memoryAt end
 local function memoryKB(name)
-    local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
     local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
-    if not (update and get) then return nil end
-    updateMemory()
+    if not get or not memoryAt then return nil end
     local ok, kb = pcall(get, name)
     return ok and tonumber(kb) or nil
 end
@@ -267,15 +267,21 @@ function Toolkit.Open(key)
 end
 
 -- Addons on disk that say they are Gulli modules: key -> addon folder name.
+local installedCache
 local function installed()
+    -- what is on disk does not change until a reload: walk the AddOns list once
+    if installedCache then return installedCache end
     local found = {}
     for i = 1, numAddOns() do
         local name = addOnInfo(i)
         local key = name and metadata(name, "X-Gulli-Module")
         if key and key ~= "" then found[key] = name end
     end
+    installedCache = found
     return found
 end
+-- For the tests: the AddOns list changed.
+function ns.ForgetInstalled() installedCache = nil end
 
 local function stripColors(s)
     return s and s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
@@ -697,6 +703,60 @@ function ns.NeedsReload()
     return false
 end
 
+-- How long the hub's last open took, step by step, for /gulli perf: { total, steps = { { name,
+-- ms } } }. A module's own work (its summary, session, window) is a step named by the module.
+local function clock() return debugprofilestop and debugprofilestop() or nil end
+ns.perf = nil
+function ns.PerfStart()
+    ns.perfRec = { steps = {}, at = clock() }
+end
+function ns.PerfAdd(name, ms)
+    local rec = ns.perfRec
+    if not rec or not ms then return end
+    for _, st in ipairs(rec.steps) do
+        if st.name == name then st.ms = st.ms + ms; return end
+    end
+    rec.steps[#rec.steps + 1] = { name = name, ms = ms }
+end
+-- Runs fn and counts its time as the step `name` of the open being measured.
+function ns.PerfRun(name, fn, ...)
+    local t0 = ns.perfRec and clock()
+    local a, b, c, d = fn(...)
+    if t0 then ns.PerfAdd(name, clock() - t0) end
+    return a, b, c, d
+end
+function ns.PerfEnd()
+    local rec = ns.perfRec
+    if not rec then return end
+    local now = clock()
+    rec.total = (now and rec.at) and (now - rec.at) or 0
+    table.sort(rec.steps, function(a, b) return a.ms > b.ms end)
+    ns.perf, ns.perfRec = rec, nil
+end
+function ns.PrintPerf()
+    local rec = ns.perf
+    if not rec then ns.Print(L.PERF_NONE); return end
+    ns.Print(L.PERF_HEAD:format(math.floor(rec.total + 0.5)))
+    for i = 1, math.min(8, #rec.steps) do
+        local st = rec.steps[i]
+        ns.Print("  " .. st.name .. ": " .. math.floor(st.ms + 0.5) .. " ms")
+    end
+end
+
+-- Calls a module's function (its summary or session) in a pcall, counts its time for /gulli perf,
+-- and then gives the frame back when the hub's drawing job has spent its slice, so twenty
+-- modules never add up to one long frame. The tick is outside the pcall: a coroutine cannot
+-- yield across it in Lua 5.1.
+local function callModule(r, what, fn)
+    local t0 = ns.perfRec and clock()
+    local ok, a, b, c = pcall(fn)
+    if t0 then ns.PerfAdd(r.title or r.key, clock() - t0) end
+    local S = ns.Skin
+    if S and S.JobTick then S.JobTick() end
+    return ok, a, b, c
+end
+ns.CallModule = callModule
+
 -- The home page ---------------------------------------------------------------------------------
 
 -- One short line per module that gives a summary ("Level 24 in 1 h 10 min"), for the hub's home
@@ -707,7 +767,7 @@ function ns.Summaries(rows)
     for _, r in ipairs(rows or ns.List()) do
         local fn = not r.paused and r.info and r.info.summary
         if type(fn) == "function" then
-            local ok, text, icon, stat = pcall(fn)
+            local ok, text, icon, stat = callModule(r, "summary", fn)
             if ok and type(text) == "string" and text ~= "" then
                 out[#out + 1] = { row = r, text = text, icon = (type(icon) == "string" and icon) or r.icon,
                                   stat = type(stat) == "table" and stat or nil }
@@ -779,7 +839,7 @@ local function text(v) return v ~= nil and tostring(v) or nil end
 function ns.SessionOf(r)
     local fn = r and r.running and not r.paused and r.info and r.info.session
     if type(fn) ~= "function" then return nil end
-    local ok, d = pcall(fn)
+    local ok, d = callModule(r, "session", fn)
     if not ok or type(d) ~= "table" then return nil end
     local tile
     if type(d.tile) == "table" and d.tile.value ~= nil then
@@ -852,9 +912,7 @@ end
 function ns.Overview(rows)
     rows = rows or ns.List()
     local o = { on = 0, total = 0, running = 0, reload = {}, blocked = {}, new = {}, paused = {}, heavy = {}, kb = 0 }
-    local update = A.UpdateAddOnMemoryUsage or UpdateAddOnMemoryUsage
-    local get = A.GetAddOnMemoryUsage or GetAddOnMemoryUsage
-    if update and get then updateMemory() end
+    local get = memoryAt and (A.GetAddOnMemoryUsage or GetAddOnMemoryUsage)
     for _, r in ipairs(rows) do
         o.total = o.total + 1
         if r.on then o.on = o.on + 1 end
@@ -1404,6 +1462,7 @@ events:SetScript("OnEvent", function(self, event, a, b, c, d)
         if a == ns.VERSION_PREFIX and who and who ~= player() then ns.OnVersions(b) end
         return
     end
+    if event == "PLAYER_ENTERING_WORLD" then measureMemory() end
     if event == "PLAYER_ENTERING_WORLD" and ns.firstRun then
         -- Every addon is loaded now, so the window sees what else the player runs.
         ns.firstRun = false
@@ -1464,6 +1523,8 @@ SlashCmdList.GULLITOOLKIT = function(msg)
         if ns.OpenTweaks then ns.OpenTweaks() end
     elseif msg:lower() == "setup" then
         if ns.OpenSetup then ns.OpenSetup() end
+    elseif msg:lower() == "perf" then
+        ns.PrintPerf()
     elseif msg:lower() == "help" then
         for _, l in ipairs(ns.HelpLines()) do ns.Print(l) end
     elseif not ns.OpenModule(msg) then
