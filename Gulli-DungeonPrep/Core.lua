@@ -254,7 +254,7 @@ local function missing(q)
     for _, p in ipairs(q[8] or {}) do if not questDone(p) then ids[#ids + 1] = p end end
     if #(q[9] or {}) > 0 then
         local one = false
-        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        for _, p in ipairs(q[9]) do if questDone(p) then one = true end end
         if not one then ids[#ids + 1] = q[9][1] end
     end
     for _, p in ipairs(ids) do
@@ -307,7 +307,7 @@ local function stateOf(entry, q, level)
     for _, p in ipairs(q[8] or {}) do if not questDone(p) then pre = false end end
     if #(q[9] or {}) > 0 then
         local one = false
-        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        for _, p in ipairs(q[9]) do if questDone(p) then one = true end end
         pre = pre and one
     end
     if not pre then
@@ -897,10 +897,13 @@ function ns.ChainMap(key, level)
     return out
 end
 
--- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.
+-- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name;
+-- "After: Name" while that quest is in the log.
 function ns.NeedText(need)
     if not need then return L.WHY_EARLIER end
     if not need.name then return L.WHY_EARLIER end
+    -- The earlier quest is in the log: nothing to go and take, it opens when that one is handed in.
+    if need.id and onQuest(need.id) then return L.AFTER:format(need.name) end
     local where = ns.Where({ who = need.who or "", area = need.area or 0 })
     return where ~= "" and L.NEEDS_AT:format(need.name, where) or L.NEEDS:format(need.name)
 end
