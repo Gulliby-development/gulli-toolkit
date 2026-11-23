@@ -123,12 +123,13 @@ local function build()
 
     local rows = {}
     for _, o in ipairs({ { "unusable", L.OPT_UNUSABLE }, { "counter", L.OPT_COUNTER }, { "popup", L.OPT_POPUP },
-                             { "disenchant", L.OPT_DISENCHANT } }) do
+                             { "disenchant", L.OPT_DISENCHANT }, { "bank", L.OPT_BANK } }) do
         local key = o[1]
         rows[#rows + 1] = { o[2], nil, function() return ns.db[key] end, function(v)
             ns.db[key] = v
             if key == "counter" then ns.UpdateCounter() end
             if key == "disenchant" and not v then ns.HideDisenchant() end
+            if key == "bank" then ns.RefreshBank(v) end
             ns.Refresh(true)
         end, icon = ns.OPT_ICON[key] }
     end
