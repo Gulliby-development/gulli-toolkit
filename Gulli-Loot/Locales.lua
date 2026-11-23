@@ -10,6 +10,12 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    FR_FEED = "Loot feed",
+    OPT_FEED = "Loot feed",
+    OPT_FEED_D = "Shows what you just looted, gold and items, for a few seconds.",
+    OPT_ROLLMOVE = "Move loot rolls",
+    OPT_ROLLMOVE_D = "Need, Greed and Pass stand where you put them in Unlock mode.",
+    SAMPLE_CLOTH = "Linen Cloth",
     TITLE = "Loot",
     ROLLED = "%s on %s.",
     RULE_ASK = "Ask me",
@@ -98,6 +104,12 @@ T.en = {
 }
 
 T.de = {
+    FR_FEED = "Beuteliste",
+    OPT_FEED = "Beuteliste",
+    OPT_FEED_D = "Zeigt kurz, was du gerade erbeutet hast, Gold und Gegenstände.",
+    OPT_ROLLMOVE = "Beutewürfe verschieben",
+    OPT_ROLLMOVE_D = "Bedarf, Gier und Passen stehen dort, wo du sie im Entsperrmodus hinstellst.",
+    SAMPLE_CLOTH = "Leinenstoff",
     TITLE = "Loot",
     ROLLED = "%s auf %s.",
     RULE_ASK = "Fragen",
@@ -186,6 +198,12 @@ T.de = {
 }
 
 T.es = {
+    FR_FEED = "Lista de botín",
+    OPT_FEED = "Lista de botín",
+    OPT_FEED_D = "Muestra unos segundos lo que acabas de despojar, oro y objetos.",
+    OPT_ROLLMOVE = "Mover tiradas de botín",
+    OPT_ROLLMOVE_D = "Necesidad, Codicia y Pasar quedan donde los pongas en el modo Desbloquear.",
+    SAMPLE_CLOTH = "Paño de lino",
     TITLE = "Loot",
     ROLLED = "%s en %s.",
     RULE_ASK = "Preguntar",
@@ -274,6 +292,12 @@ T.es = {
 }
 
 T.fr = {
+    FR_FEED = "Fil du butin",
+    OPT_FEED = "Fil du butin",
+    OPT_FEED_D = "Montre quelques secondes ce que tu viens de ramasser, or et objets.",
+    OPT_ROLLMOVE = "Déplacer les jets de butin",
+    OPT_ROLLMOVE_D = "Besoin, Cupidité et Passer restent où tu les places en mode Déverrouiller.",
+    SAMPLE_CLOTH = "Étoffe de lin",
     TITLE = "Loot",
     ROLLED = "%s sur %s.",
     RULE_ASK = "Me demander",
@@ -362,6 +386,12 @@ T.fr = {
 }
 
 T.pl = {
+    FR_FEED = "Lista łupu",
+    OPT_FEED = "Lista łupu",
+    OPT_FEED_D = "Pokazuje przez chwilę, co właśnie zebrano: złoto i przedmioty.",
+    OPT_ROLLMOVE = "Przesuń rzuty o łup",
+    OPT_ROLLMOVE_D = "Potrzeba, Chciwość i Pas stoją tam, gdzie je ustawisz w trybie Odblokuj.",
+    SAMPLE_CLOTH = "Płótno lniane",
     TITLE = "Loot",
     ROLLED = "%s na %s.",
     RULE_ASK = "Pytaj",
@@ -450,6 +480,12 @@ T.pl = {
 }
 
 T.pt = {
+    FR_FEED = "Lista de saque",
+    OPT_FEED = "Lista de saque",
+    OPT_FEED_D = "Mostra por alguns segundos o que você acabou de saquear, ouro e itens.",
+    OPT_ROLLMOVE = "Mover rolagens de saque",
+    OPT_ROLLMOVE_D = "Necessidade, Ganância e Passar ficam onde você os puser no modo Desbloquear.",
+    SAMPLE_CLOTH = "Tecido de linho",
     TITLE = "Loot",
     ROLLED = "%s em %s.",
     RULE_ASK = "Perguntar",
@@ -538,6 +574,12 @@ T.pt = {
 }
 
 T.ru = {
+    FR_FEED = "Лента добычи",
+    OPT_FEED = "Лента добычи",
+    OPT_FEED_D = "Несколько секунд показывает, что вы только что подобрали: золото и предметы.",
+    OPT_ROLLMOVE = "Двигать броски за добычу",
+    OPT_ROLLMOVE_D = "«Нужно», «Не откажусь» и «Отказ» стоят там, куда вы их поставили в режиме перемещения.",
+    SAMPLE_CLOTH = "Льняная ткань",
     TITLE = "Loot",
     ROLLED = "%s: %s.",
     RULE_ASK = "Спросить",
@@ -626,6 +668,12 @@ T.ru = {
 }
 
 T.zh = {
+    FR_FEED = "拾取信息",
+    OPT_FEED = "拾取信息",
+    OPT_FEED_D = "几秒内显示你刚拾取的金币和物品。",
+    OPT_ROLLMOVE = "移动拾取掷骰",
+    OPT_ROLLMOVE_D = "需求、贪婪和放弃会停在你在解锁模式中放的位置。",
+    SAMPLE_CLOTH = "亚麻布",
     TITLE = "Loot",
     ROLLED = "%s：%s。",
     RULE_ASK = "询问我",

@@ -434,5 +434,14 @@ do
             { label = L.OPT_REMIND, icon = ns.OPT_ICON.remind, tip = L.OPT_REMIND_TIP,
               get = function() return ns.db ~= nil and ns.db.remind == true end, set = function(v) ns.SetPref("remind", v) end },
         },
+        -- Rows of the hub's Tweaks page, on the window's own saved keys.
+        tweaks = {
+            { key = "cast", group = "ui", label = L.OPT_CAST, desc = L.TWK_CAST_D, tip = L.OPT_CAST_TIP, icon = ns.OPT_ICON.cast,
+              get = function() return ns.db ~= nil and ns.db.cast == true end, set = function(v) ns.SetPref("cast", v and true or false) end },
+            { key = "loud", group = "ui", label = L.OPT_LOUD, desc = L.TWK_LOUD_D, tip = L.OPT_LOUD_TIP, icon = ns.OPT_ICON.loud,
+              get = function() return ns.db ~= nil and ns.db.loud == true end, set = function(v) ns.SetPref("loud", v and true or false) end },
+            { key = "loot", group = "loot", label = L.OPT_LOOT, desc = L.OPT_LOOT_TIP, icon = ns.OPT_ICON.loot,
+              get = function() return ns.db ~= nil and ns.db.loot == true end, set = function(v) ns.SetPref("loot", v and true or false) end },
+        },
     })
 end

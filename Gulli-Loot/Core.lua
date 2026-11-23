@@ -24,6 +24,8 @@ ns.DEFAULTS = {
     fastLoot = false, soloConfirm = false,
     window = false,   -- our loot window instead of the game's
     rollScale = 100,  -- the size of the group loot rolls, in percent
+    rollMove = false, -- the group loot rolls stand where the player placed them
+    feed = false,     -- the panel of what was just looted
 }
 
 -- Equip slots by the item's equip location, for the upgrade check.
@@ -229,7 +231,8 @@ end
 function ns.SetPref(key, value)
     ns.db[key] = value
     if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
-    if key == "rollScale" and ns.PlaceRolls then ns.PlaceRolls() end
+    if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
+    if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -300,12 +303,14 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db.items = ns.db.items or {}
         ns.db.types = ns.db.types or {}
         ns.db.log = ns.db.log or {}
+        -- Before the switch, a placed roll frame was moved: it stays so.
+        if ns.db.rollMove == nil and ns.db.rollPoint then ns.db.rollMove = true end
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
         for _, e in ipairs({ "START_LOOT_ROLL", "CONFIRM_LOOT_ROLL", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_BIND_CONFIRM",
                              "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_SLOT_CHANGED", "LOOT_CLOSED",
-                             "PLAYER_ENTERING_WORLD" }) do
+                             "PLAYER_MONEY", "PLAYER_ENTERING_WORLD" }) do
             self:RegisterEvent(e)
         end
         if hooksecurefunc and HandleModifiedItemClick then
@@ -318,6 +323,11 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     -- Paused from the hub: only the closing events still run, so nothing stays open.
     if ns.paused and not event:find("_CLOSED$") then return end
+    if ns.OnFeedEvent and (event == "LOOT_READY" or event == "LOOT_OPENED" or event == "LOOT_CLOSED"
+        or event == "CHAT_MSG_LOOT" or event == "PLAYER_MONEY") then
+        ns.OnFeedEvent(event, a1)
+        if event == "PLAYER_MONEY" then return end
+    end
     if event == "PLAYER_ENTERING_WORLD" then
         if ns.ApplyWindow then ns.ApplyWindow() end
         if ns.PlaceRolls then ns.PlaceRolls() end
@@ -386,6 +396,8 @@ ns.OPT_ICON = {
     rollScale = "Interface\\Icons\\INV_Misc_Dice_01",
     soloConfirm = "Interface\\Icons\\INV_Misc_Key_03",
     where = "Interface\\Icons\\INV_Misc_Map_01",
+    rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
+    feed = "Interface\\Icons\\INV_Misc_Note_01",
 }
 
 local function option(key, label, tip)
@@ -407,15 +419,23 @@ do
     register({
         pause = function(on)
             ns.paused = on
+            if on and ns.FeedClear then ns.FeedClear() end
             if ns.ApplyWindow then ns.ApplyWindow() end
             if ns.PlaceRolls then ns.PlaceRolls() end
         end,
         key = "Loot",
-        move = function(on) if ns.MoveFrames then ns.MoveFrames(on) end end,
+        move = function(on)
+            if ns.MoveFrames then ns.MoveFrames(on) end
+            if ns.MoveFeed and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveFeed(on) end
+        end,
         frames = {
             { key = "window", label = L.FR_WINDOW, icon = ns.OPT_ICON.window,
               frame = function() return ns.LootWindowFrame and ns.LootWindowFrame() end },
             { key = "rolls", label = L.FR_ROLLS, icon = ns.OPT_ICON.rollScale },
+            { key = "feed", label = L.FR_FEED, icon = ns.OPT_ICON.feed,
+              get = function() return ns.db ~= nil and ns.db.feed == true end,
+              set = function(on) if ns.db then ns.SetPref("feed", on and true or false) end end,
+              frame = function() return ns.FeedFrame and ns.FeedFrame() end },
         },
         icon = "Interface\\AddOns\\Gulli-Loot\\icon",
         slash = "/glt",
@@ -431,6 +451,8 @@ do
             tweak("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
             tweak("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
             tweak("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
+            tweak("feed", L.OPT_FEED, L.OPT_FEED_D),
+            tweak("rollMove", L.OPT_ROLLMOVE, L.OPT_ROLLMOVE_D),
         },
         summary = function()
             if not ns.db then return nil end
