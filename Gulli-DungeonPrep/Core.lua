@@ -656,14 +656,88 @@ function ns.Track(id)
     return ns.Tracked(id)
 end
 
--- The tracker's rows for a dungeon, at most ns.TRACK_MAX, one per chain (ns.Quests): ready to
--- hand in, the rest of the log with their objectives, the ones to take, then chains that wait
--- for an earlier step. { id (the step to do now), key (the chain's head), name (the head's),
--- level, state = ready|log|take|chain, lines = { { text, done } }, steps (ns.Chain of the step,
--- for a row opened by a click) or nil, pin = { who, area, x, y } or nil, inside = true when
--- what the row asks for now (taking it, its work, handing it in) happens in the dungeon }, then
--- how many are ready and how many there are. A chain's first line says which step it is at.
-ns.TRACK_MAX = 8
+-- The quests a quest opens for this character, from the data's "needs" lists: more than one
+-- is a fork (Disharmony of Flame opens Commander Gor'shak and Disharmony of Fire). Copies that
+-- close each other (one per faction, or a choice) count once.
+local opens
+function ns.Nexts(id)
+    local D = data()
+    if not opens then
+        opens = {}
+        for qid, q in pairs(D.quest) do
+            for _, list in ipairs({ q[8] or {}, q[9] or {} }) do
+                for _, p in ipairs(list) do
+                    opens[p] = opens[p] or {}
+                    table.insert(opens[p], qid)
+                end
+            end
+        end
+        for _, list in pairs(opens) do table.sort(list) end
+    end
+    local out, seen = {}, {}
+    for _, qid in ipairs(opens[id] or {}) do
+        local q = D.quest[qid]
+        if forMe(q) and not seen[qid] then
+            out[#out + 1] = qid
+            for _, other in ipairs(q[10] or {}) do seen[other] = true end
+        end
+    end
+    return out
+end
+
+-- The steps of the chain a quest is in (ns.Chain), as the tracker's card and the Chains tab
+-- show them: { id, n, name, state = done|now|take|later, who, area, x, y, where (ns.Where),
+-- inside (its work is in the dungeon `key`), this, goal (the last step), and `opens` when the
+-- step opens more than one quest: { { id, name, main (the next step of this chain), more (the
+-- steps after it in its own chain) } } }. The first step that is neither done nor in the log
+-- can be taken (`take`) unless a step before it is still in the log.
+function ns.ChainSteps(key, id)
+    local D = data()
+    local chain = ns.Chain(id)
+    local free = true
+    -- A step before one that is done or in the log was done, whatever the game's flag says.
+    local last = 0
+    for i, s in ipairs(chain) do if s.done or s.active then last = i end end
+    for i, s in ipairs(chain) do
+        if s.done or (i < last and not s.active) then s.state = "done"
+        elseif s.active then s.state, free = "now", false
+        elseif free then s.state, free = "take", false
+        else s.state = "later" end
+        s.where = ns.Where({ who = s.who or "", area = s.area or 0 })
+        s.inside = s.dungeon and ns.Inside(key, s.id).work or nil
+        s.goal = i == #chain and #chain > 1 or nil
+        local nexts = ns.Nexts(s.id)
+        if #nexts > 1 then
+            s.opens = {}
+            local after = chain[i + 1] and chain[i + 1].id
+            for _, n in ipairs(nexts) do
+                local q = D.quest[n]
+                local own = (D.chain and D.chain[n]) or { n }
+                local more = 0
+                for j, c in ipairs(own) do if c == n then more = #own - j end end
+                s.opens[#s.opens + 1] = { id = n, main = n == after or nil, more = more,
+                    name = (Q.GetTitleForQuestID and Q.GetTitleForQuestID(n)) or q[1] }
+            end
+            table.sort(s.opens, function(x, y)
+                if (x.main == true) ~= (y.main == true) then return x.main == true end
+                return x.id < y.id
+            end)
+        end
+    end
+    return chain
+end
+
+-- The tracker's rows for a dungeon, one per chain (ns.GuideQuests), every one of them (the
+-- panel scrolls): { id (the step to do now), key (the chain's head), name (the step's own, so
+-- the row says what to do), goal (the name of the chain's last quest, when that is another
+-- one), at, of (the step's place in its chain), level, state = ready|log|take|chain, group (a
+-- key of ns.TRACK_GROUPS), lines = { { text, done } }, steps (ns.ChainSteps, for the dots and
+-- the card) or nil, fork (how many quests the step opens, when more than one), pin = { who,
+-- area, x, y } or nil, inside = true when what the row asks for now (taking it, its work,
+-- handing it in) happens in the dungeon }, then how many are ready, how many there are and the
+-- count of each group (they add up to the total).
+ns.TRACK_GROUPS = { "hand", "doing", "take", "later" }
+local TRACK_GROUP = { ready = "hand", log = "doing", take = "take", chain = "later" }
 local TRACK_ORDER = { ready = 1, log = 2, take = 3, chain = 4 }
 function ns.TrackerItems(key, level)
     local q = ns.GuideQuests(key, level)
@@ -706,29 +780,121 @@ function ns.TrackerItems(key, level)
                               entry = e }
         end
     end
-    local total = #all
+    local counts = {}
+    for _, g in ipairs(ns.TRACK_GROUPS) do counts[g] = 0 end
     for _, it in ipairs(all) do
         local e = it.entry
         it.entry = nil
         it.key = e.head and e.head.id or e.id
-        if e.head and e.head.id ~= e.id then it.name = e.head.name end
-        local chain = ns.Chain(e.id)
+        it.group = TRACK_GROUP[it.state]
+        counts[it.group] = counts[it.group] + 1
+        local chain = ns.ChainSteps(key, e.id)
         if #chain > 1 then
-            it.steps = chain
-            local at
-            for _, st in ipairs(chain) do if st.this then at = st.n end end
-            if at then
-                table.insert(it.lines, 1, { text = L.STEP:format(at, #chain) .. ":  " .. e.name, step = true })
-            end
+            it.steps, it.of = chain, #chain
+            for _, st in ipairs(chain) do if st.this then it.at = st.n end end
+            local last = chain[#chain]
+            if last.id ~= e.id and last.name ~= e.name then it.goal = last.name end
         end
+        local nexts = ns.Nexts(e.id)
+        if #nexts > 1 then it.fork = #nexts end
     end
     table.sort(all, function(a, b)
         if a.state ~= b.state then return TRACK_ORDER[a.state] < TRACK_ORDER[b.state] end
         if a.level ~= b.level then return a.level < b.level end
         return a.name < b.name
     end)
-    while #all > ns.TRACK_MAX do all[#all] = nil end
-    return all, ready, total
+    return all, ready, #all, counts
+end
+
+-- The Chains tab: every chain of a dungeon as a lane of its steps. { lanes = { { key (the
+-- chain's head), steps (ns.ChainSteps; a branch has only the steps after the one it leaves
+-- from), from = { id, name } (the step of the lane above that opens it) or nil, done (the
+-- whole chain is) } }, singles (the quests that are no chain, as steps), counts (the groups of
+-- ns.TrackerItems), chains, quests, done (quests done) }. A step in the log that is ready to
+-- hand in has the state `ready`; one that waits for a level stays `later` with `minLevel`.
+local LANE_ORDER = { log = 1, take = 2, later = 3, done = 4 }
+function ns.ChainMap(key, level)
+    local q = ns.GuideQuests(key, level)
+    local lanes = {}
+    local function add(list, state)
+        for _, e in ipairs(list) do
+            local steps = ns.ChainSteps(key, e.id)
+            if #steps == 0 then
+                steps = { { id = e.id, n = 1, name = e.name, this = true, where = ns.Where(e),
+                            state = (state == "done" and "done") or (state == "log" and "now") or state,
+                            inside = ns.Inside(key, e.id).work or nil } }
+            end
+            for _, s in ipairs(steps) do
+                if s.state == "now" and Q.IsComplete and Q.IsComplete(s.id) then s.state = "ready" end
+                if s.this and e.state == "later" and e.why == "WHY_LEVEL" and s.state == "take" then
+                    s.state, s.minLevel = "later", e.minLevel
+                end
+                if state == "done" then s.state = "done" end
+            end
+            lanes[#lanes + 1] = { key = e.head and e.head.id or e.id, steps = steps, all = steps,
+                                  order = LANE_ORDER[state], level = e.level, done = state == "done" or nil }
+        end
+    end
+    add(q.log, "log"); add(q.take, "take"); add(q.later, "later"); add(q.finished, "done")
+    -- A lane that starts like a longer one branches from it, after the last step they share.
+    local byLength = {}
+    for i, l in ipairs(lanes) do byLength[i] = l end
+    table.sort(byLength, function(a, b)
+        if #a.all ~= #b.all then return #a.all > #b.all end
+        return a.key < b.key
+    end)
+    for i, l in ipairs(byLength) do
+        for j = 1, i - 1 do
+            local p, k = byLength[j], 0
+            while not p.parent and l.all[k + 1] and p.all[k + 1] and l.all[k + 1].id == p.all[k + 1].id
+                and k + 1 < #l.all do k = k + 1 end
+            if k > 0 then
+                l.parent, l.from = p, { id = l.all[k].id, name = l.all[k].name }
+                l.steps = {}
+                for n = k + 1, #l.all do l.steps[#l.steps + 1] = l.all[n] end
+                break
+            end
+        end
+    end
+    local function before(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        if #a.all ~= #b.all then return #a.all > #b.all end
+        if a.level ~= b.level then return a.level < b.level end
+        return a.key < b.key
+    end
+    table.sort(lanes, before)
+    local out = { lanes = {}, singles = {}, chains = 0, quests = 0, done = 0 }
+    local seen = {}
+    local function count(steps)
+        for _, s in ipairs(steps) do
+            if not seen[s.id] then
+                seen[s.id] = true
+                out.quests = out.quests + 1
+                if s.state == "done" then out.done = out.done + 1 end
+            end
+        end
+    end
+    for _, l in ipairs(lanes) do
+        if not l.parent then
+            count(l.all)
+            out.chains = out.chains + 1
+            if #l.all == 1 then
+                out.singles[#out.singles + 1] = l.all[1]
+            else
+                out.lanes[#out.lanes + 1] = l
+                for _, b in ipairs(lanes) do
+                    if b.parent == l then
+                        count(b.steps)
+                        out.chains = out.chains + 1
+                        out.lanes[#out.lanes + 1] = b
+                    end
+                end
+            end
+        end
+    end
+    for _, l in ipairs(out.lanes) do l.parent, l.all, l.order = nil, nil, nil end
+    out.counts = select(4, ns.TrackerItems(key, level))
+    return out
 end
 
 -- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.

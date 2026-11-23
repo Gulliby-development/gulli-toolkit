@@ -778,7 +778,7 @@ test("the journal window: every tab with and without boss data", function()
     local ns = Load()
     journal(ns)
     SlashCmdList.GULLIDUNGEONPREP("dm")
-    for i = 1, 4 do ns.ShowTab(i); ns.Refresh() end
+    for i = 1, 5 do ns.ShowTab(i); ns.Refresh() end
     ns.boss = 644
     ns.ShowTab(1); ns.Refresh()
     ns.selected = "RFC"
@@ -1074,7 +1074,7 @@ test("Lead me at the top level: the set quests in the log, the ones to take once
     local found
     for _, it in ipairs(select(1, ns.TrackerItems("STRAT", 60))) do if it.id == first then found = true end end
     local _, _, total = ns.TrackerItems("STRAT", 60)
-    assert(found or total > ns.TRACK_MAX, "the tracker has the set quest")
+    assert(found and total > 0, "the tracker has the set quest")
     ns.showSet = nil
     -- A set quest in the log: the guide follows the set, also with its list folded.
     Fake({ level = 60, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR",
@@ -1135,7 +1135,10 @@ test("the tracker: ready quests first, objectives, quests to take; Lead me shows
     eq(items[1].id, 2841)
     eq(items[1].state, "ready")
     eq(ready, 1)
-    assert(total >= #items and #items <= ns.TRACK_MAX, "at most TRACK_MAX rows")
+    local _, _, _, counts = ns.TrackerItems("GNOMER", 33)
+    eq(total, #items, "every row is given: the panel scrolls")
+    eq(counts.hand + counts.doing + counts.take + counts.later, total, "the groups add up to the total")
+    eq(counts.hand, 1)
     local states = {}
     for _, it in ipairs(items) do states[it.state] = true end
     assert(states.take, "quests to take are listed")
@@ -1162,6 +1165,93 @@ test("the tracker: ready quests first, objectives, quests to take; Lead me shows
     assert(ns.TrackerFrame():IsShown(), "in the Unlock mode, it shows")
     ns.MoveTracker(false)
     assert(not ns.TrackerFrame():IsShown(), "with nothing tracked, it hides")
+end)
+
+test("the tracker and the Chains tab: a fork, groups that add up, paging at a fixed size, lanes", function()
+    Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", areas = AREAS,
+           map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } }, active = { [4134] = true } })
+    local ns = Load()
+    -- Disharmony of Flame opens two quests: the chain's next step and a side quest.
+    local nexts = {}
+    for _, n in ipairs(ns.Nexts(3906)) do nexts[n] = true end
+    assert(nexts[3981] and nexts[3907], "both quests after Disharmony of Flame")
+    local items, _, total, counts = ns.TrackerItems("BRD", 54)
+    eq(counts.hand + counts.doing + counts.take + counts.later, total)
+    local fork
+    for _, it in ipairs(items) do
+        assert(it.group and it.name, "a row knows its group")
+        assert(not it.steps or (it.at and it.of), "a chain row knows its place")
+        if it.id == 3906 then fork = it end
+    end
+    assert(fork, "the row is named by the quest to do now")
+    eq(fork.fork, 2)
+    eq(fork.at, 1)
+    assert(fork.goal and fork.goal ~= fork.name, "and names the chain's last quest as its goal")
+    -- Its card: the step, the head of what it opens, the two quests (this chain's first), the rest.
+    local rows = ns.TrackerCardRows(fork)
+    eq(rows[1].step.id, 3906)
+    eq(rows[2].opens, 2)
+    eq(rows[3].open.id, 3981)
+    assert(rows[3].open.main, "the chain's own next step is marked")
+    eq(rows[4].open.id, 3907)
+    eq(rows[#rows].step.goal, true)
+    -- A step before one in the log counts as done; more than three done steps fold into one line.
+    W.active[3906], W.active[4134] = nil, nil
+    W.active[4003] = true
+    local long
+    for _, it in ipairs(ns.TrackerItems("BRD", 54)) do if it.id == 4003 then long = it end end
+    assert(long, "The Royal Rescue leads its chain")
+    eq(long.steps[1].state, "done")
+    local folded = ns.TrackerCardRows(long)
+    assert(folded[1].folded and folded[1].folded >= 3, "the done steps fold")
+    W.active[4003] = nil
+    W.active[4134] = true
+    -- The panel keeps its height; the wheel, the footer and the numbers on top move through the rows.
+    ns.ShowTracker("BRD")
+    local f = ns.TrackerFrame()
+    local h = f:GetHeight()
+    local first, last, n = ns.TrackerView()
+    eq(first, 1)
+    eq(n, total)
+    assert(last < total, "more rows than fit")
+    ns.TrackerNextPage()
+    local first2 = ns.TrackerView()
+    eq(first2, last + 1)
+    eq(f:GetHeight(), h, "the panel does not change its size")
+    ns.TrackerScroll(-1)
+    eq((ns.TrackerView()), last)
+    ns.TrackerScroll(-100)
+    eq((ns.TrackerView()), 1)
+    ns.TrackerGoTo("later")
+    eq(items[(ns.TrackerView())].group, "later")
+    for _ = 1, 10 do ns.TrackerNextPage() end
+    ns.HideTracker()
+    -- The Chains tab: the side quest is a lane of its own, right under the chain it comes after.
+    local map = ns.ChainMap("BRD", 54)
+    eq(map.counts.take, counts.take)
+    local branch
+    for i, l in ipairs(map.lanes) do
+        if l.from and l.from.id == 3906 then
+            branch = l
+            eq(map.lanes[i - 1].steps[1].id, 3906, "it stands under its chain")
+        end
+    end
+    assert(branch, "Disharmony of Fire branches from Disharmony of Flame")
+    eq(branch.steps[1].id, 3907)
+    local seen, quests = {}, 0
+    for _, l in ipairs(map.lanes) do
+        for _, st in ipairs(l.steps) do
+            assert(not seen[st.id], "a quest stands in one lane only")
+            seen[st.id] = true
+            quests = quests + 1
+        end
+    end
+    eq(quests + #map.singles, map.quests)
+    ns.home, ns.selected = false, "BRD"
+    ns.Toggle(); ns.ShowTab(4)
+    local shown = ns.ChainLanes()
+    eq(#shown, #map.lanes + (#map.singles > 0 and 1 or 0))
+    eq(shown[1].steps[1], map.lanes[1].steps[1].id)
 end)
 
 test("the tracker starts hidden, once also for older saves; the hub's switch shows it", function()
@@ -1199,9 +1289,15 @@ test("chains: one card per chain, at the step to do now; the tracker opens one t
     for _, it in ipairs(items) do if it.key == 166 then row = it end end
     assert(row, "the chain is one tracker row")
     eq(row.id, 141, "a click on the map or the journal goes to the step to do now")
-    eq(row.name, "The Defias Brotherhood")
-    eq(row.lines[1].text, "Step 4 of 7:  " .. card.name, "which step the chain is at")
+    eq(row.name, card.name, "the row is named by the quest to do now")
+    eq(row.at, 4, "which step the chain is at")
+    eq(row.of, 7)
     eq(#row.steps, 7)
+    eq(row.group, "doing")
+    eq(row.steps[3].state, "done")
+    eq(row.steps[4].state, "now")
+    eq(row.steps[5].state, "later")
+    eq(row.steps[7].goal, true, "the last step is the chain's goal")
     ns.StartGuide("DM")
     eq(ns.TrackerOpen(166), false)
     local h = ns.TrackerFrame():GetHeight()

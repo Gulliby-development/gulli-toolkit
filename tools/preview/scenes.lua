@@ -884,7 +884,10 @@ S.dungeonprep = {
     loot = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(2) end },
     lootmine = { spec = dpSpec, open = function(ns) dpBosses(ns); ns.home = false; ns.selected = "GNOMER"; ns.lootFilter = "mine"; ns.Toggle(); ns.ShowTab(2) end },
     quests = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(3) end },
-    settings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(4) end },
+    settings = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "GNOMER"; ns.Toggle(); ns.ShowTab(5) end },
+    chains = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                        done = { [3906] = true, [3981] = true }, active = { [3982] = true, [3907] = true, [4134] = true } },
+               open = function(ns) ns.home = false; ns.selected = "BRD"; ns.Toggle(); ns.ShowTab(4) end },
     real = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "THANES"; ns.Toggle() end },
     levels = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "SM"; ns.Toggle() end },
     empty = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DALARAN"; ns.Toggle() end },
@@ -953,6 +956,25 @@ S.dungeonprep = {
                     ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
                     ns.ShowTracker("GNOMER")
                 end },    -- The tracker on the Drowned City, with one chain's steps in the card beside it.
+    -- Blackrock Depths for the Horde: sections, a long list, and a chain that forks in its card.
+    trackbrd = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                          active = { [4134] = true } },
+                 crop = "GulliDungeonPrepTrackerStage",
+                 before = function()
+                     local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                     stage:SetSize(700, 620)
+                     stage:SetPoint("CENTER")
+                     local bg = stage:CreateTexture(nil, "BACKGROUND")
+                     bg:SetAllPoints()
+                     bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                 end,
+                 open = function(ns)
+                     ns.db.trackerPoint = { "CENTER", "CENTER", 170, 0 }
+                     ns.ShowTracker("BRD")
+                     for _, it in ipairs(ns.TrackerItems("BRD", 54)) do
+                         if it.fork then ns.ToggleTracked(it.key) break end
+                     end
+                 end },
     trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
                             areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
                    crop = "GulliDungeonPrepTrackerStage",
