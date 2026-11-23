@@ -1,17 +1,24 @@
 -- The dungeon tracker: a small Gulli HUD panel on the right of the screen for the dungeon of
--- Lead me (ns.ShowTracker). It lists the dungeon's quests (ns.TrackerItems): ready to hand in,
--- in the log with their objectives, to take, and chain quests that wait for an earlier step.
--- A chain is one row with the step it is at; a click shows every step in a card beside the
--- panel (the panel keeps its size, so it never grows over other frames), a right-click
--- opens the quest in the journal; the map button pins who to go to (and targets and marks them
--- when they are near, ns.TargetOver). The dungeon's icon under a row's mark says that what the
--- row asks for now (taking it, its work, handing it in) happens inside the dungeon. The cross closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
+-- Lead me (ns.ShowTracker). It lists the dungeon's chains (ns.TrackerItems) in groups by what
+-- to do: hand in, doing, take, later. The four numbers on top count the groups and add up to
+-- every row there is; a click on one goes to its group. A row is named by the quest to do
+-- now; under it the chain's steps as dots, the step's number and the quest the chain ends
+-- with. The panel keeps its size: rows that do not fit are reached by the mouse wheel or the
+-- line at the bottom, which says which rows show. A click on a chain shows its steps in a card
+-- beside the panel (done, now, later, where each is, and the quests a step opens when it
+-- opens more than one), a right-click opens the quest in the journal; the map button pins who
+-- to go to (and targets them when they are near, ns.TargetOver). The dungeon's icon under a
+-- row's mark says that what the row asks for now happens inside the dungeon. The cross closes
+-- it. In the hub's Unlock mode it shows with its mover to be placed.
 
 local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
 local W, HEAD_H, NAME_H, LINE_H, PAD = 290, 28, 16, 14, 6
+local CHIPS_H, CHAIN_H, GROUP_H, FOOT_H, PIPS_MAX = 40, 15, 20, 22, 8
+-- The room for rows: a list taller than this scrolls.
+ns.TRACK_H = 430
 local STATE_ICON = {
     ready = "Interface\\GossipFrame\\ActiveQuestIcon",
     log = "Interface\\GossipFrame\\IncompleteQuestIcon",
@@ -19,11 +26,13 @@ local STATE_ICON = {
     chain = "Interface\\GossipFrame\\AvailableQuestIcon",
 }
 local PIN_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+local DONE_ICON = "Interface\\RaidFrame\\ReadyCheck-Ready"
+local PIP_TODO = { 1, 1, 1, 0.22 }
 
 local tracker, flyout
 local opened
-local STEP_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", missing = "Interface\\RaidFrame\\ReadyCheck-NotReady",
-                    active = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
+local first = 1          -- the first row in view
+local view = { first = 0, last = 0, total = 0 }
 
 -- Whether a chain's steps show beside the panel, and a switch for it: one chain at a time.
 function ns.TrackerOpen(key) return opened == key end
@@ -32,30 +41,41 @@ function ns.ToggleTracked(key)
     ns.RefreshTracker()
 end
 
--- The lines of a row; a chain's steps go into the card beside the panel (stepLines).
-local function rowLines(it)
-    local lines = {}
-    for _, l in ipairs(it.lines) do lines[#lines + 1] = l end
-    return lines
+-- The rows in view (first, last, how many there are), and moving through them: by rows
+-- (the mouse wheel), to the next page (the line at the bottom, back to the top after the
+-- last) or to a group (a number on top).
+function ns.TrackerView() return view.first, view.last, view.total end
+function ns.TrackerScroll(by)
+    first = math.max(1, math.min(math.max(1, view.total), first + by))
+    ns.RefreshTracker()
 end
-
-local function stepLines(it)
-    local lines = {}
-    for _, st in ipairs(it.steps or {}) do
-        local k = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
-        local mark = k and ("|T" .. STEP_ICON[k] .. ":12|t ") or "|cff666666·|r  "
-        lines[#lines + 1] = { text = mark .. st.n .. ".  " .. st.name, stepOf = st }
+function ns.TrackerNextPage()
+    first = view.last >= view.total and 1 or view.last + 1
+    ns.RefreshTracker()
+end
+function ns.TrackerGoTo(group)
+    if not tracker or not tracker.key then return end
+    for i, it in ipairs(ns.TrackerItems(tracker.key, UnitLevel("player") or 1)) do
+        if it.group == group then first = i; ns.RefreshTracker() return end
     end
-    return lines
 end
 
--- Opens the journal on the quest's page.
-function ns.OpenTracked(key, id)
+-- The line under a chain's name: its place in the chain and the quest it ends with.
+local function chainText(it)
+    local text = it.at .. "/" .. it.of
+    if it.goal then return text .. "  » " .. it.goal end
+    if it.at == it.of then return text .. S.DOT .. L.TR_LAST end
+    return text
+end
+
+-- Opens the journal on the quest's page (`from`: the dungeon quest whose chain a step
+-- outside the dungeon is in).
+function ns.OpenTracked(key, id, from)
     ns.selected, ns.home = key, false
     local f = ns.Window()
     if not f:IsShown() then ns.Toggle() end
     ns.ShowTab(3)
-    ns.OpenQuest(id)
+    ns.OpenQuest(id, from)
 end
 
 local function place()
@@ -66,14 +86,13 @@ local function place()
 end
 
 local function rowHeight(it)
-    return PAD + NAME_H + #rowLines(it) * LINE_H + PAD
+    return PAD + NAME_H + (it.steps and CHAIN_H or 0) + #it.lines * LINE_H + PAD
 end
 
 local function lineOf(r, i)
     if not r.lines[i] then
         local t = S.Text(r, 12, S.MUTED)
-        t:SetPoint("TOPLEFT", 30, -(PAD + NAME_H + (i - 1) * LINE_H))
-        t:SetPoint("RIGHT", -32, 0)
+        t:SetPoint("RIGHT", -10, 0)
         t:SetJustifyH("LEFT")
         t:SetWordWrap(false)
         r.lines[i] = t
@@ -81,20 +100,41 @@ local function lineOf(r, i)
     return r.lines[i]
 end
 
+local function tip(owner, fn)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    fn(GameTooltip)
+    GameTooltip:Show()
+end
+local function hideTip() if GameTooltip then GameTooltip:Hide() end end
+
+local function wheel(f)
+    if f.EnableMouseWheel then f:EnableMouseWheel(true) end
+    f:SetScript("OnMouseWheel", function(_, delta) ns.TrackerScroll(delta > 0 and -1 or 1) end)
+end
+
 local function makeRow(parent)
     local r = CreateFrame("Button", nil, parent)
-    if r.RegisterForClicks then r:RegisterForClicks("LeftButtonUp") end
+    wheel(r)
     r.icon = r:CreateTexture(nil, "ARTWORK")
     r.icon:SetSize(16, 16)
     r.icon:SetPoint("TOPLEFT", 8, -PAD)
     -- Under the mark: the dungeon's icon, when what the row asks for now is done inside it.
     r.inside = S.IconBox(r, 16)
     r.inside:SetPoint("TOP", r.icon, "BOTTOM", 0, -2)
-    r.name = S.Text(r, 12)
+    r.name = S.Text(r, 12, nil, nil, "bold")
     r.name:SetPoint("TOPLEFT", 30, -PAD)
     r.name:SetPoint("RIGHT", -32, 0)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
+    -- The chain: a dot per step, then where the row is in it and where it leads.
+    r.pips = {}
+    for i = 1, PIPS_MAX do r.pips[i] = S.Circle(r, 6, PIP_TODO, "ARTWORK") end
+    r.fork = S.Text(r, 12, S.TEXT)
+    r.fork:SetPoint("TOPRIGHT", -10, -(PAD + NAME_H))
+    r.chain = S.Text(r, 12, S.MUTED)
+    r.chain:SetJustifyH("LEFT")
+    r.chain:SetWordWrap(false)
     r.lines = {}
     r.pin = CreateFrame("Button", nil, r)
     r.pin:SetSize(22, 22)
@@ -106,11 +146,11 @@ local function makeRow(parent)
         if it and it.pin then ns.PinAt(it.pin.who, it.pin.area, it.pin.x, it.pin.y, true) end
     end)
     local function pinTip(owner, it)
-        if not (GameTooltip and it and it.pin) then return end
-        GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
-        GameTooltip:AddLine(L.TR_PIN:format(it.pin.who), 1, 1, 1)
-        GameTooltip:AddLine(L.TR_TARGET, 0.7, 0.7, 0.7)
-        GameTooltip:Show()
+        if not it.pin then return end
+        tip(owner, function(t)
+            t:AddLine(L.TR_PIN:format(it.pin.who), 1, 1, 1)
+            t:AddLine(L.TR_TARGET, 0.7, 0.7, 0.7)
+        end)
     end
     r.pin:SetScript("OnEnter", function(self)
         local it = self:GetParent().item
@@ -118,7 +158,7 @@ local function makeRow(parent)
         pinTip(self, it)
         if ns.TargetOver then ns.TargetOver(self, it.pin.who, function(o) pinTip(o, it) end) end
     end)
-    r.pin:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r.pin:SetScript("OnLeave", hideTip)
     if r.RegisterForClicks then r:RegisterForClicks("LeftButtonUp", "RightButtonUp") end
     r:SetScript("OnClick", function(self, button)
         local it = self.item
@@ -127,23 +167,33 @@ local function makeRow(parent)
         ns.OpenTracked(tracker.key, it.id)
     end)
     r:SetScript("OnEnter", function(self)
-        if not (GameTooltip and self.item) then return end
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine(self.item.name, 1, 0.82, 0)
-        if self.item.inside and tracker.key then
-            local c = S.Accent()
-            GameTooltip:AddLine(S.IconTag(ns.Icon(tracker.key)) .. " " .. L.INSIDE_OF:format(tracker.title:GetText() or ""),
-                c[1], c[2], c[3])
-        end
-        if self.item.steps then
-            GameTooltip:AddLine(opened == self.item.key and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
-            GameTooltip:AddLine(L.TR_OPEN_RIGHT, 1, 1, 1)
-        else
-            GameTooltip:AddLine(L.TR_OPEN, 1, 1, 1)
-        end
-        GameTooltip:Show()
+        local it = self.item
+        if not it then return end
+        tip(self, function(t)
+            t:AddLine(it.name, 1, 0.82, 0)
+            if it.steps then
+                t:AddLine(L.STEP:format(it.at or 1, it.of) .. (it.goal and ("  » " .. it.goal) or ""), 0.8, 0.8, 0.8)
+            end
+            if it.inside and tracker.key then
+                local c = S.Accent()
+                t:AddLine(S.IconTag(ns.Icon(tracker.key)) .. " " .. L.INSIDE_OF:format(tracker.title:GetText() or ""),
+                    c[1], c[2], c[3])
+            end
+            for _, st in ipairs(it.steps or {}) do
+                if st.id == it.id and st.opens then
+                    t:AddLine(L.CS_OPENS:format(#st.opens), 1, 0.82, 0)
+                    for _, o in ipairs(st.opens) do t:AddLine("» " .. o.name, 1, 1, 1) end
+                end
+            end
+            if it.steps then
+                t:AddLine(opened == it.key and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
+                t:AddLine(L.TR_OPEN_RIGHT, 1, 1, 1)
+            else
+                t:AddLine(L.TR_OPEN, 1, 1, 1)
+            end
+        end)
     end)
-    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r:SetScript("OnLeave", hideTip)
     return r
 end
 
@@ -155,19 +205,47 @@ local function fillRow(r, it)
     if it.inside then r.inside:SetIcon(ns.Icon(tracker.key)) end
     r.name:SetText(it.name)
     local diff = ns.Difficulty(it.level or 1, ns.level or UnitLevel("player") or 1)
-    r.name:SetTextColor(unpack(ns.DiffColor(diff)))
-    local lines = rowLines(it)
-    for i = 1, #lines do lineOf(r, i) end
+    r.name:SetTextColor(unpack(it.state == "chain" and S.MUTED or ns.DiffColor(diff)))
+    r.name:SetPoint("RIGHT", it.pin and -32 or -10, 0)
+    local y = PAD + NAME_H
+    local dots = it.steps and #it.steps <= PIPS_MAX and #it.steps or 0
+    local x = 30
+    for i, p in ipairs(r.pips) do
+        local st = i <= dots and it.steps[i]
+        p:SetShown(st ~= false)
+        if st then
+            local now = st.this == true
+            local size = now and 9 or 6
+            p:SetSize(size, size)
+            local c = (now and S.GOLD) or (st.state == "done" and S.GOOD) or PIP_TODO
+            p:SetVertexColor(c[1], c[2], c[3], c[4] or 1)
+            p:ClearAllPoints()
+            p:SetPoint("LEFT", r, "TOPLEFT", x, -(y + CHAIN_H / 2) + 1)
+            x = x + size + 3
+        end
+    end
+    r.chain:SetShown(it.steps ~= nil)
+    r.fork:SetShown(it.steps ~= nil and it.fork ~= nil)
+    if it.steps then
+        r.fork:SetText(it.fork and ("|T" .. STATE_ICON.take .. ":12|t" .. it.fork) or "")
+        r.chain:ClearAllPoints()
+        r.chain:SetPoint("TOPLEFT", x + (dots > 0 and 3 or 0), -y)
+        if it.fork then r.chain:SetPoint("RIGHT", r.fork, "LEFT", -4, 0) else r.chain:SetPoint("RIGHT", -10, 0) end
+        r.chain:SetText(chainText(it))
+        y = y + CHAIN_H
+    end
+    for i = 1, #it.lines do lineOf(r, i) end
     for i, t in ipairs(r.lines) do
-        local line = lines[i]
+        local line = it.lines[i]
         t:SetShown(line ~= nil)
         if line then
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", 30, -(y + (i - 1) * LINE_H))
+            t:SetPoint("RIGHT", -10, 0)
             t:SetText(line.text)
-            local c, st = S.MUTED, line.stepOf
-            if st then
-                c = (st.this and S.Accent()) or (st.missing and S.BAD) or (st.done and S.FAINT) or S.MUTED
-            elseif line.step then c = S.Accent()
-            elseif it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.WARN
+            local c = S.TEXT
+            if it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.FAINT
+            elseif it.state == "take" then c = S.MUTED
             elseif line.done then c = S.FAINT end
             t:SetTextColor(unpack(c))
         end
@@ -176,10 +254,138 @@ local function fillRow(r, it)
     r:SetHeight(rowHeight(it))
 end
 
--- The card beside the panel with the steps of the chain that is open.
+-- The card beside the panel with the steps of the chain that is open: a rail of marks (a
+-- tick for a step done, a gold disc for the one in the log, the game's "!" for one to take,
+-- its number for a later one), each step with where it is, and under a step that opens more
+-- than one quest the quests it opens. Many steps done fold into one line.
+local STEP_H, OPEN_H, FOLD_AT = 32, 15, 3
+local TAG = { done = { "STATE_DONE", "GOOD" }, now = { "STAGE_NOW", "GOLD" }, take = { "Q_TAKE", "GOLD" } }
+
+local function cardRows(it)
+    local rows, done = {}, 0
+    for _, st in ipairs(it.steps) do if st.state == "done" then done = done + 1 end end
+    local fold = done > FOLD_AT and done - 1 or 0
+    if fold > 0 then rows[1] = { folded = fold } end
+    for i, st in ipairs(it.steps) do
+        if i > fold then
+            rows[#rows + 1] = { step = st }
+            for _, o in ipairs((st.state ~= "done" and st.opens) or {}) do
+                if #rows > 0 and not rows[#rows].open then rows[#rows + 1] = { opens = #st.opens } end
+                rows[#rows + 1] = { open = o }
+            end
+        end
+    end
+    return rows
+end
+-- The same rows for the tests.
+function ns.TrackerCardRows(it) return cardRows(it) end
+
+local function makeCardRow(parent)
+    local r = CreateFrame("Button", nil, parent)
+    r.rail = S.Divider(r, S.EDGE)
+    r.rail:SetWidth(2)
+    r.disc = S.Circle(r, 18, S.EDGE, "ARTWORK")
+    r.disc:SetPoint("TOPLEFT", 10, -2)
+    r.mark = r:CreateTexture(nil, "OVERLAY")
+    r.mark:SetSize(14, 14)
+    r.mark:SetPoint("CENTER", r.disc)
+    r.num = S.Text(r, 12, S.TEXT, nil, "bold")
+    r.num:SetPoint("CENTER", r.disc)
+    r.tag = S.Text(r, 12, S.MUTED, nil, "bold")
+    r.tag:SetPoint("TOPRIGHT", -10, -2)
+    r.tag:SetWordWrap(false)
+    r.name = S.Text(r, 12, S.TEXT, nil, "bold")
+    r.name:SetPoint("TOPLEFT", 36, -2)
+    r.name:SetPoint("RIGHT", r.tag, "LEFT", -6, 0)
+    r.name:SetWordWrap(false)
+    r.sub = S.Text(r, 12, S.MUTED)
+    r.sub:SetPoint("TOPLEFT", 36, -16)
+    r.sub:SetPoint("RIGHT", -10, 0)
+    r.sub:SetWordWrap(false)
+    r.pin = CreateFrame("Button", nil, r)
+    r.pin:SetSize(20, 20)
+    r.pin:SetPoint("RIGHT", -8, 0)
+    r.pin.icon = S.IconBox(r.pin, 20, PIN_ICON)
+    r.pin.icon:SetAllPoints()
+    r.pin:SetScript("OnClick", function(self)
+        local st = self:GetParent().step
+        if st then ns.PinAt(st.who, st.area, st.x, st.y, true) end
+    end)
+    r.pin:SetScript("OnEnter", function(self)
+        local st = self:GetParent().step
+        if st then tip(self, function(t) t:AddLine(L.TR_PIN:format(st.who), 1, 1, 1) end) end
+    end)
+    r.pin:SetScript("OnLeave", hideTip)
+    r:SetScript("OnClick", function(self)
+        local id = (self.step and self.step.id) or (self.open and self.open.id)
+        if id and tracker.key and flyout.item then ns.OpenTracked(tracker.key, id, flyout.item.id) end
+    end)
+    r:SetScript("OnEnter", function(self)
+        if self.step or self.open then tip(self, function(t) t:AddLine(L.TR_OPEN, 1, 1, 1) end) end
+    end)
+    r:SetScript("OnLeave", hideTip)
+    return r
+end
+
+local function fillCardRow(r, row, last)
+    local st, o = row.step, row.open
+    r.step, r.open = st, o
+    for _, x in ipairs({ r.rail, r.disc, r.mark, r.num, r.tag, r.sub, r.pin }) do x:Hide() end
+    r.name:ClearAllPoints()
+    r.name:SetPoint("RIGHT", r.tag, "LEFT", -6, 0)
+    if st then
+        local done, now = st.state == "done", st.state == "now"
+        r:SetHeight(STEP_H)
+        r.rail:ClearAllPoints()
+        r.rail:SetPoint("TOP", r.disc, "BOTTOM", 0, 0)
+        r.rail:SetPoint("BOTTOM", r, "BOTTOMLEFT", 19, -2)
+        r.rail:SetShown(not last)
+        r.rail:SetVertexColor(unpack(done and S.GOOD or S.EDGE))
+        r.disc:SetShown(not done and st.state ~= "take")
+        r.disc:SetVertexColor(unpack(now and S.GOLD or S.EDGE))
+        r.mark:SetShown(done or st.state == "take")
+        r.mark:SetTexture(done and DONE_ICON or STATE_ICON.take)
+        r.num:SetShown(not done and st.state ~= "take")
+        r.num:SetText(st.n)
+        r.num:SetTextColor(unpack(now and { 0.10, 0.07, 0.03, 1 } or S.MUTED))
+        local tag = TAG[st.state] or (st.goal and { "CS_GOAL", "GOLD_DIM" })
+        r.tag:SetShown(tag ~= nil)
+        r.tag:SetText(tag and L[tag[1]] or "")
+        if tag then r.tag:SetTextColor(unpack(S[tag[2]])) end
+        r.name:SetPoint("TOPLEFT", 36, -2)
+        r.name:SetText(st.name)
+        r.name:SetTextColor(unpack((done and S.MUTED) or (st.state == "later" and S.MUTED) or S.TEXT))
+        local where = st.where ~= "" and st.where or (st.inside and L.INSIDE) or ""
+        if st.inside and tracker.key then where = S.IconTag(ns.Icon(tracker.key)) .. " " .. where end
+        r.sub:Show()
+        r.sub:SetText(where)
+        local pin = st.state == "take" and st.who ~= "" and st.area > 0 and (st.x > 0 or st.y > 0)
+        r.pin:SetShown(pin)
+        r.tag:ClearAllPoints()
+        r.tag:SetPoint("TOPRIGHT", pin and -34 or -10, -2)
+        r.sub:SetPoint("RIGHT", pin and -32 or -10, 0)
+    else
+        r:SetHeight(OPEN_H + (row.folded and 4 or 0))
+        r.name:SetPoint("TOPLEFT", o and 48 or 36, 0)
+        r.name:SetPoint("RIGHT", -10, 0)
+        if row.folded then
+            r.mark:Show()
+            r.mark:SetTexture(DONE_ICON)
+            r.name:SetText(L.DONE_N:format(row.folded))
+            r.name:SetTextColor(unpack(S.MUTED))
+        elseif row.opens then
+            r.name:SetText(L.CS_OPENS:format(row.opens))
+            r.name:SetTextColor(unpack(S.GOLD_DIM))
+        else
+            r.name:SetText("» " .. o.name .. S.DOT .. (o.main and L.CS_MAIN or L.CS_SIDE))
+            r.name:SetTextColor(unpack(S.TEXT))
+        end
+    end
+end
+
 local function buildFlyout()
     flyout = CreateFrame("Frame", "GulliDungeonPrepTrackerChain", UIParent)
-    flyout:SetSize(W, HEAD_H + 40)
+    flyout:SetSize(W + 20, HEAD_H + 40)
     flyout:SetFrameStrata("MEDIUM")
     flyout:SetClampedToScreen(true)
     flyout:EnableMouse(true)
@@ -187,7 +393,7 @@ local function buildFlyout()
     flyout.close = S.Close(flyout, function() opened = nil; ns.RefreshTracker() end)
     flyout.close:SetSize(24, 24)
     flyout.close:SetPoint("TOPRIGHT", -2, -2)
-    flyout.title = S.Text(flyout, 12, S.GOLD)
+    flyout.title = S.Text(flyout, 12, S.GOLD, nil, "bold")
     flyout.title:SetPoint("TOPLEFT", 10, -8)
     flyout.title:SetPoint("RIGHT", flyout.close, "LEFT", -6, 0)
     flyout.title:SetJustifyH("LEFT")
@@ -196,34 +402,28 @@ local function buildFlyout()
     line:SetPoint("TOPLEFT", 1, -HEAD_H)
     line:SetPoint("TOPRIGHT", -1, -HEAD_H)
     line:SetHeight(1)
-    flyout.lines = {}
+    flyout.rows = {}
     flyout:Hide()
 end
 
 local function showFlyout(row, it)
     if not flyout then buildFlyout() end
-    flyout.title:SetText(it.name)
-    local lines = stepLines(it)
-    for i = 1, #lines do
-        if not flyout.lines[i] then
-            local t = S.Text(flyout, 12, S.MUTED)
-            t:SetPoint("TOPLEFT", 10, -(HEAD_H + PAD + (i - 1) * LINE_H))
-            t:SetPoint("RIGHT", -10, 0)
-            t:SetJustifyH("LEFT")
-            t:SetWordWrap(false)
-            flyout.lines[i] = t
-        end
+    flyout.item = it
+    flyout.title:SetText(L.STEP:format(it.at or 1, it.of) .. (it.goal and ("  » " .. it.goal) or ""))
+    local rows = cardRows(it)
+    local y = HEAD_H + PAD + 2
+    for i, row in ipairs(rows) do
+        local r = flyout.rows[i]
+        if not r then r = makeCardRow(flyout); flyout.rows[i] = r end
+        fillCardRow(r, row, i == #rows)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 1, -y)
+        r:SetPoint("TOPRIGHT", -1, -y)
+        r:Show()
+        y = y + r:GetHeight() + ((row.open and (not rows[i + 1] or not rows[i + 1].open)) and 6 or 0)
     end
-    for i, t in ipairs(flyout.lines) do
-        local l = lines[i]
-        t:SetShown(l ~= nil)
-        if l then
-            local st = l.stepOf
-            t:SetText(l.text)
-            t:SetTextColor(unpack((st.this and S.Accent()) or (st.missing and S.BAD) or (st.done and S.FAINT) or S.MUTED))
-        end
-    end
-    flyout:SetHeight(HEAD_H + PAD + #lines * LINE_H + PAD + 2)
+    for i = #rows + 1, #flyout.rows do flyout.rows[i]:Hide() end
+    flyout:SetHeight(y + PAD)
     -- Beside the row, on the side of the screen with room: left of a panel on the right half.
     flyout:ClearAllPoints()
     local cx = tracker.GetCenter and tracker:GetCenter()
@@ -239,6 +439,38 @@ end
 
 local function hideFlyout() if flyout then flyout:Hide() end end
 
+-- A number on top: how many rows its group has; a click goes to the group.
+local function makeChip(parent, group)
+    local c = CreateFrame("Button", nil, parent)
+    c:SetHeight(CHIPS_H - 6)
+    S.Box(c, S.SURFACE, S.CARD_EDGE, S.R_MD)
+    c.num = S.Text(c, 13, S.TEXT, nil, "bold")
+    c.num:SetPoint("TOP", 0, -3)
+    c.label = S.Text(c, 12, S.MUTED)
+    c.label:SetPoint("BOTTOM", 0, 3)
+    c.label:SetText(L["TG_" .. group:upper()])
+    c.group = group
+    c:SetScript("OnClick", function() ns.TrackerGoTo(group) end)
+    c:SetScript("OnEnter", function(self)
+        tip(self, function(t) t:AddLine(L["TG_" .. group:upper() .. "_D"], 1, 1, 1) end)
+    end)
+    c:SetScript("OnLeave", hideTip)
+    wheel(c)
+    return c
+end
+
+local function makeGroup(parent)
+    local g = CreateFrame("Frame", nil, parent)
+    g:SetHeight(GROUP_H)
+    g.text = S.Text(g, 12, S.GOLD_DIM, nil, "bold")
+    g.text:SetPoint("BOTTOMLEFT", 9, 3)
+    g.line = S.Divider(g, S.EDGE)
+    g.line:SetHeight(1)
+    g.line:SetPoint("LEFT", g.text, "RIGHT", 6, 0)
+    g.line:SetPoint("RIGHT", -9, 0)
+    return g
+end
+
 local function build()
     tracker = CreateFrame("Frame", "GulliDungeonPrepTracker", UIParent)
     tracker:SetSize(W, HEAD_H + 40)
@@ -246,15 +478,14 @@ local function build()
     tracker:SetClampedToScreen(true)
     tracker:EnableMouse(true)
     S.HudPanel(tracker)
+    wheel(tracker)
     tracker.icon = S.IconBox(tracker, 18)
     tracker.icon:SetPoint("TOPLEFT", 8, -5)
-    tracker.count = S.Text(tracker, 12, S.FAINT)
-    tracker.count:SetPoint("LEFT", tracker.icon, "RIGHT", 6, 0)
     tracker.close = S.Close(tracker, function() ns.HideTracker() end)
     tracker.close:SetSize(24, 24)
     tracker.close:SetPoint("TOPRIGHT", -2, -2)
-    tracker.title = S.Text(tracker, 12)
-    tracker.title:SetPoint("LEFT", tracker.count, "RIGHT", 8, 0)
+    tracker.title = S.Text(tracker, 12, S.GOLD, nil, "bold")
+    tracker.title:SetPoint("LEFT", tracker.icon, "RIGHT", 8, 0)
     tracker.title:SetPoint("RIGHT", tracker.close, "LEFT", -6, 0)
     tracker.title:SetJustifyH("LEFT")
     tracker.title:SetWordWrap(false)
@@ -262,13 +493,41 @@ local function build()
     line:SetPoint("TOPLEFT", 1, -HEAD_H)
     line:SetPoint("TOPRIGHT", -1, -HEAD_H)
     line:SetHeight(1)
+    tracker.chips = {}
+    local cw = (W - 16 - 3 * 4) / 4
+    for i, group in ipairs(ns.TRACK_GROUPS) do
+        local c = makeChip(tracker, group)
+        c:SetWidth(cw)
+        c:SetPoint("TOPLEFT", 8 + (i - 1) * (cw + 4), -(HEAD_H + 6))
+        tracker.chips[i] = c
+    end
     tracker.empty = S.Text(tracker, 12, S.FAINT)
-    tracker.empty:SetPoint("TOPLEFT", 10, -HEAD_H - 10)
+    tracker.empty:SetPoint("TOPLEFT", 10, -(HEAD_H + CHIPS_H + 12))
     tracker.empty:SetPoint("RIGHT", -10, 0)
     tracker.empty:SetJustifyH("LEFT")
     tracker.empty:SetText(L.TR_EMPTY)
-    tracker.rows = {}
-    for i = 1, ns.TRACK_MAX do tracker.rows[i] = makeRow(tracker) end
+    tracker.rows, tracker.groups = {}, {}
+    -- The line at the bottom while rows are out of view: which rows show; a click turns the page.
+    local foot = CreateFrame("Button", nil, tracker)
+    foot:SetHeight(FOOT_H)
+    foot:SetPoint("BOTTOMLEFT", 1, 1)
+    foot:SetPoint("BOTTOMRIGHT", -1, 1)
+    foot.line = S.Divider(foot, S.EDGE)
+    foot.line:SetHeight(1)
+    foot.line:SetPoint("TOPLEFT")
+    foot.line:SetPoint("TOPRIGHT")
+    foot.more = S.Text(foot, 12, S.Accent())
+    foot.more:SetPoint("RIGHT", -9, 0)
+    foot.more:SetWordWrap(false)
+    foot.text = S.Text(foot, 12, S.MUTED)
+    foot.text:SetPoint("LEFT", 9, 0)
+    foot.text:SetPoint("RIGHT", foot.more, "LEFT", -6, 0)
+    foot.text:SetWordWrap(false)
+    foot:SetScript("OnClick", function() ns.TrackerNextPage() end)
+    foot:SetScript("OnEnter", function(self) tip(self, function(t) t:AddLine(L.TR_SCROLL, 1, 1, 1) end) end)
+    foot:SetScript("OnLeave", hideTip)
+    wheel(foot)
+    tracker.foot = foot
     S.Mover(tracker, { label = L.TR_TITLE,
         save = function(p, rp, x, y) if ns.db then ns.db.trackerPoint = { p, rp, x, y } end end,
         reset = function() if ns.db then ns.db.trackerPoint = nil end; place() end })
@@ -277,7 +536,10 @@ end
 
 -- Shows the tracker for a dungeon (kept over a reload) or, with nil, the one shown before.
 function ns.ShowTracker(key)
-    if ns.db and key then ns.db.tracker = key end
+    if ns.db and key then
+        if ns.db.tracker ~= key then first, opened = 1, nil end
+        ns.db.tracker = key
+    end
     ns.RefreshTracker()
 end
 
@@ -324,24 +586,65 @@ function ns.RefreshTracker()
     place()
     tracker.icon:SetIcon(ns.Icon(key))
     tracker.title:SetText(ns.DungeonName(d))
-    local items, ready, total = ns.TrackerItems(key, UnitLevel("player") or 1)
-    tracker.count:SetText(ready .. "/" .. total)
-    local y = HEAD_H + 2
-    local openRow
-    for i, r in ipairs(tracker.rows) do
-        local it = items[i]
-        r:SetShown(it ~= nil)
-        if it then
-            fillRow(r, it)
-            r:ClearAllPoints()
-            r:SetPoint("TOPLEFT", 1, -y)
-            r:SetPoint("TOPRIGHT", -1, -y)
-            y = y + rowHeight(it)
-            if it.steps and opened == it.key then openRow = { r, it } end
-        end
+    local items, _, total, counts = ns.TrackerItems(key, UnitLevel("player") or 1)
+    for _, c in ipairs(tracker.chips) do
+        local n = counts[c.group]
+        c.num:SetText(n)
+        c.num:SetTextColor(unpack(n > 0 and S.TEXT or S.FAINT))
     end
-    tracker.empty:SetShown(#items == 0)
-    if #items == 0 then y = y + 34 end
+    -- The rows from the first in view on, while they fit; a group's name stands over its
+    -- first row in view. When all fit from the top, the panel is as high as they are.
+    local top = HEAD_H + CHIPS_H + 2
+    local all = 0
+    for i, it in ipairs(items) do
+        all = all + rowHeight(it) + ((i == 1 or items[i - 1].group ~= it.group) and GROUP_H or 0)
+    end
+    local paged = all > ns.TRACK_H
+    if not paged then first = 1 end
+    first = math.max(1, math.min(first, math.max(1, total)))
+    local y, shown, groups, group = top, 0, 0, nil
+    local openRow
+    for i = first, total do
+        local it = items[i]
+        local h = rowHeight(it) + (it.group ~= group and GROUP_H or 0)
+        if shown > 0 and y - top + h > ns.TRACK_H then break end
+        if it.group ~= group then
+            group, groups = it.group, groups + 1
+            local g = tracker.groups[groups]
+            if not g then g = makeGroup(tracker); tracker.groups[groups] = g end
+            g.text:SetText(S.Upper(L["TG_" .. group:upper()]) .. "  |cffffffff" .. counts[group] .. "|r")
+            g:ClearAllPoints()
+            g:SetPoint("TOPLEFT", 1, -y)
+            g:SetPoint("TOPRIGHT", -1, -y)
+            g:Show()
+            y = y + GROUP_H
+        end
+        shown = shown + 1
+        local r = tracker.rows[shown]
+        if not r then r = makeRow(tracker); tracker.rows[shown] = r end
+        fillRow(r, it)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 1, -y)
+        r:SetPoint("TOPRIGHT", -1, -y)
+        r:Show()
+        y = y + rowHeight(it)
+        if it.steps and opened == it.key then openRow = { r, it } end
+    end
+    for i = shown + 1, #tracker.rows do tracker.rows[i]:Hide() end
+    for i = groups + 1, #tracker.groups do tracker.groups[i]:Hide() end
+    view.first, view.last, view.total = shown > 0 and first or 0, first + shown - 1, total
+    for _, c in ipairs(tracker.chips) do
+        local here = shown > 0 and items[first].group == c.group
+        S.SetBorder(c, here and S.Accent() or S.CARD_EDGE)
+    end
+    tracker.empty:SetShown(total == 0)
+    if total == 0 then y = y + 34 end
+    tracker.foot:SetShown(paged)
+    if paged then
+        tracker.foot.text:SetText(L.TR_RANGE:format(view.first, view.last, total))
+        tracker.foot.more:SetText(view.last >= total and L.TR_TOP or L.TR_NEXT)
+        y = top + ns.TRACK_H + FOOT_H
+    end
     tracker:SetHeight(y + 4)
     tracker:SetMoving(moving and not (InCombatLockdown and InCombatLockdown()))
     tracker:Show()

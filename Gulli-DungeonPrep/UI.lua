@@ -1212,6 +1212,7 @@ local function fillLootPage()
     lootPage.list:SetData(items)
 end
 
+local fillChainPage
 function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     local level = UnitLevel("player") or 1
@@ -1236,9 +1237,10 @@ function ns.Refresh()
     bossCache = tabs.selected == 1 and ns.Bosses(ns.selected) or {}
     if settings then for _, x in ipairs(settings) do x.row:SetChecked(x.get()) end end
     local tab = tabs.selected
-    head:SetShown(tab ~= 4)
-    if tab == 4 then return end
+    head:SetShown(tab ~= 5)
+    if tab == 5 then return end
     fillHead(current, level)
+    if tab == 4 then return fillChainPage(level) end
     if tab == 1 then return fillBossPage() end
     if tab == 2 then return fillLootPage() end
     local open = ns.openQuest ~= nil
@@ -2103,14 +2105,185 @@ local function buildSettings(parent)
     return page
 end
 
+-- The Chains tab: every chain of the dungeon as a lane of its steps, first step first. A chain
+-- that branches from another one stands under it, indented, named by the step it comes after.
+local chainPage
+local PILL_H, PILL_GAP, LANE_PAD, BRANCH_IN, PILL_MAX = 28, 22, 8, 26, 250
+local STEP_MARK = {
+    done = "Interface\\RaidFrame\\ReadyCheck-Ready", ready = "Interface\\GossipFrame\\ActiveQuestIcon",
+    now = "Interface\\GossipFrame\\IncompleteQuestIcon", take = "Interface\\GossipFrame\\AvailableQuestIcon",
+}
+local STEP_WORD = { done = "Q_DONE", ready = "TR_READY", now = "Q_LOG", take = "Q_TAKE", later = "Q_LATER" }
+local function stepColor(state)
+    if state == "done" then return S.FAINT end
+    if state == "ready" or state == "take" then return S.GOOD end
+    if state == "now" then return S.Accent() end
+    return S.MUTED
+end
+
+local function chainPill(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetHeight(PILL_H)
+    S.Box(b, S.SURFACE, S.CARD_EDGE, S.R_MD)
+    b.mark = b:CreateTexture(nil, "ARTWORK")
+    b.mark:SetSize(14, 14)
+    b.mark:SetPoint("LEFT", 7, 0)
+    b.num = S.Text(b, 12, S.FAINT, nil, "bold")
+    b.num:SetPoint("CENTER", b, "LEFT", 14, 0)
+    b.text = S.Text(b, 12)
+    b.text:SetPoint("LEFT", 25, 0)
+    b.text:SetPoint("RIGHT", -8, 0)
+    b.text:SetJustifyH("LEFT")
+    b.text:SetWordWrap(false)
+    b.arrow = S.Text(b, 12, S.FAINT)
+    b.arrow:SetPoint("RIGHT", b, "LEFT", -7, 0)
+    b.arrow:SetText("»")
+    b:SetScript("OnClick", function(self)
+        if not self.step then return end
+        local id, from = self.step.id, self.from
+        tabs:Select(3)
+        ns.OpenQuest(id, from ~= id and from or nil)
+    end)
+    b:SetScript("OnEnter", function(self)
+        local s = self.step
+        S.SetBorder(self, S.Accent())
+        if not (GameTooltip and s) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(s.name, 1, 0.82, 0)
+        local c = stepColor(s.state)
+        local word = L[STEP_WORD[s.state] or "Q_LATER"]
+        if s.minLevel then word = word .. S.DOT .. L.FROM_LEVEL:format(s.minLevel) end
+        GameTooltip:AddLine(word, c[1], c[2], c[3])
+        if s.where and s.where ~= "" then GameTooltip:AddLine(s.where, 1, 1, 1, true) end
+        if s.inside then GameTooltip:AddLine(L.INSIDE_OF:format(ns.DungeonName(ns.selected)), 0.7, 0.7, 0.7, true) end
+        if s.opens then GameTooltip:AddLine(L.CS_OPENS:format(#s.opens), 0.7, 0.7, 0.7, true) end
+        GameTooltip:AddLine(L.CM_HINT, 0.5, 0.5, 0.5, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self)
+        S.SetBorder(self, self.edge or S.CARD_EDGE)
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    return b
+end
+
+local function buildChainPage(parent)
+    local p = CreateFrame("Frame", nil, parent)
+    chainPage = p
+    p.sum = S.Text(p, 13, S.MUTED)
+    p.sum:SetPoint("TOPLEFT", 2, -2)
+    p.sum:SetWordWrap(false)
+    p.legend = S.Text(p, 12, S.MUTED)
+    p.legend:SetPoint("TOPRIGHT", -12, -2)
+    p.legend:SetWordWrap(false)
+    local parts = {}
+    for _, st in ipairs({ "done", "ready", "now", "take" }) do
+        parts[#parts + 1] = "|T" .. STEP_MARK[st] .. ":13|t " .. L[STEP_WORD[st]]
+    end
+    p.legend:SetText(table.concat(parts, "   "))
+    p.page = S.ScrollPage(p, S.WIDE_W - 2 * S.PAD)
+    p.page:SetPoint("TOPLEFT", 0, -24)
+    p.page:SetPoint("BOTTOMRIGHT")
+    p.empty = S.Empty(p)
+    p.empty.title:SetText(L.CM_EMPTY)
+    p.empty.sub:SetText("")
+    p.lanes, p.pills = {}, {}
+    return p
+end
+
+-- The lanes as plain data, for the tests: { { from, steps = { ids } } }, the single quests last.
+function ns.ChainLanes()
+    local out = {}
+    if not chainPage then return out end
+    for _, l in ipairs(chainPage.shown or {}) do out[#out + 1] = l end
+    return out
+end
+
+function fillChainPage(level)
+    local p = chainPage
+    local map = ns.selected and ns.ChainMap(ns.selected, level) or { lanes = {}, singles = {}, chains = 0, quests = 0, done = 0 }
+    local inner = p.page.inner
+    local width = math.max(200, (inner:GetWidth() or 0) > 1 and inner:GetWidth() or (S.WIDE_W - 2 * S.PAD - 10))
+    p.sum:SetText(S.Emph(L.CM_SUM:format(map.chains, map.quests, map.done)))
+    local rows = {}
+    for _, l in ipairs(map.lanes) do rows[#rows + 1] = l end
+    if #map.singles > 0 then rows[#rows + 1] = { steps = map.singles, single = true } end
+    p.empty:SetShown(#rows == 0)
+    p.page:SetShown(#rows > 0)
+    p.legend:SetShown(#rows > 0)
+    p.shown = {}
+    local used, y = 0, 0
+    for i, l in ipairs(rows) do
+        local lane = p.lanes[i]
+        if not lane then
+            lane = CreateFrame("Frame", nil, inner)
+            S.Box(lane, S.SURFACE, S.CARD_EDGE, S.R_LG)
+            lane.label = S.Text(lane, 12, S.GOLD_DIM, nil, "bold")
+            lane.label:SetPoint("TOPLEFT", LANE_PAD + 2, -LANE_PAD)
+            lane.label:SetPoint("RIGHT", -LANE_PAD, 0)
+            lane.label:SetJustifyH("LEFT")
+            lane.label:SetWordWrap(false)
+            p.lanes[i] = lane
+        end
+        local indent = l.from and BRANCH_IN or 0
+        local label = l.single and L.CM_SINGLE or (l.from and L.CM_AFTER:format(l.from.name)) or nil
+        lane.label:SetShown(label ~= nil)
+        lane.label:SetText(label and S.Upper(label) or "")
+        local laneW = width - indent
+        local x, ly = LANE_PAD, LANE_PAD + (label and 18 or 0)
+        local ids = {}
+        for n, s in ipairs(l.steps) do
+            used = used + 1
+            local b = p.pills[used]
+            if not b then b = chainPill(inner); p.pills[used] = b end
+            b:SetParent(lane)
+            b.step, b.from = s, (not l.single) and l.key or nil
+            local c = stepColor(s.state)
+            local mark = STEP_MARK[s.state]
+            b.mark:SetShown(mark ~= nil)
+            if mark then b.mark:SetTexture(mark) end
+            b.num:SetShown(mark == nil)
+            b.num:SetText(l.single and "·" or tostring(s.n or n))
+            b.text:SetText(s.name)
+            b.text:SetTextColor(c[1], c[2], c[3])
+            b.edge = (s.state == "now" or s.state == "ready" or s.state == "take") and S.EDGE or S.CARD_EDGE
+            S.SetBorder(b, b.edge)
+            local w = math.min(PILL_MAX, math.floor((b.text:GetStringWidth() or 0) + 36))
+            w = math.max(60, math.min(w, laneW - 2 * LANE_PAD))
+            b:SetWidth(w)
+            local arrow = (not l.single) and n > 1
+            local gap = (x > LANE_PAD) and (l.single and 6 or PILL_GAP) or 0
+            if x + gap + w > laneW - LANE_PAD and x > LANE_PAD then
+                x, ly, gap = LANE_PAD + (arrow and PILL_GAP or 0), ly + PILL_H + 6, 0
+            end
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", lane, "TOPLEFT", x + gap, -ly)
+            b.arrow:SetShown(arrow)
+            b:Show()
+            x = x + gap + w
+            ids[#ids + 1] = s.id
+        end
+        local h = ly + PILL_H + LANE_PAD
+        lane:ClearAllPoints()
+        lane:SetPoint("TOPLEFT", inner, "TOPLEFT", indent, -y)
+        lane:SetSize(laneW, h)
+        lane:Show()
+        y = y + h + 6
+        p.shown[#p.shown + 1] = { from = l.from and l.from.id or nil, single = l.single, steps = ids }
+    end
+    for i = #rows + 1, #p.lanes do p.lanes[i]:Hide() end
+    for i = used + 1, #p.pills do p.pills[i]:Hide(); p.pills[i].arrow:Hide() end
+    p.page:SetContent(y)
+end
+
 local PAGES
 local function showTab(i)
     for n, p in ipairs(PAGES) do p:SetShown(n == i) end
-    search:SetShown(i ~= 4)
+    search:SetShown(i < 4)
     ns.Refresh()
 end
 
--- Opens a tab: 1 bosses, 2 loot, 3 quests, 4 settings.
+-- Opens a tab: 1 bosses, 2 loot, 3 quests, 4 chains, 5 settings.
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)
@@ -2413,8 +2586,9 @@ local function build()
     homeBtn = S.Return(S.FitButton(area, "« " .. L.ALL_DUNGEONS, 30, 96))
     homeBtn:SetPoint("TOPLEFT")
     homeBtn:SetScript("OnClick", function() ns.home, ns.openQuest = true, nil; ns.Refresh() end)
-    tabs = S.PageTabs(area, { L.TAB_BOSSES, L.TAB_LOOT, L.TAB_QUESTS, L.TAB_SETTINGS }, nil, showTab, nil,
-        { TI .. "INV_Misc_Head_Dragon_01", TI .. "INV_Misc_Bag_10", S.TAB.quests, S.TAB.settings })
+    tabs = S.PageTabs(area, { L.TAB_BOSSES, L.TAB_LOOT, L.TAB_QUESTS, L.TAB_CHAINS, L.TAB_SETTINGS },
+        nil, showTab, nil,
+        { TI .. "INV_Misc_Head_Dragon_01", TI .. "INV_Misc_Bag_10", S.TAB.quests, TI .. "Ability_Hunter_Pathfinding", S.TAB.settings })
     tabs.frame:ClearAllPoints()
     tabs.frame:SetPoint("TOPLEFT", homeBtn, "TOPRIGHT", S.GAP, 0)
     -- beside the page tabs: lower than them and lifted, clear of the hairline under the tabs
@@ -2455,10 +2629,10 @@ local function build()
         return p
     end
     PAGES = { page(buildBossPage(area)), page(buildLootPage(area)), page(buildQuestPage(area)),
-              buildSettings(area) }
-    PAGES[4]:SetPoint("TOPLEFT", 0, -30 - S.GAP)
-    PAGES[4]:SetPoint("BOTTOMRIGHT")
-    PAGES[4]:Hide()
+              page(buildChainPage(area)), buildSettings(area) }
+    PAGES[5]:SetPoint("TOPLEFT", 0, -30 - S.GAP)
+    PAGES[5]:SetPoint("BOTTOMRIGHT")
+    PAGES[5]:Hide()
     PAGES[1]:Show()
     frame:SetScript("OnShow", ns.Refresh)
 end
