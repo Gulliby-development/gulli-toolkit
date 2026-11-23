@@ -10,6 +10,16 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    OPT_ROLLERS = "Who rolled what",
+    OPT_ROLLERS_D = "Under Need, Greed and Pass: what each member of the group chose.",
+    ROLLERS_NONE = "Nobody has chosen yet.",
+    ROLLERS_WAIT = "waiting",
+    SPEC_MAIN = "Main spec",
+    SPEC_OFF = "Off spec",
+    YOU = "You",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Loot feed",
     OPT_FEED = "Loot feed",
     OPT_FEED_D = "Shows what you just looted, gold and items, for a few seconds.",
@@ -104,6 +114,16 @@ T.en = {
 }
 
 T.de = {
+    OPT_ROLLERS = "Wer was würfelt",
+    OPT_ROLLERS_D = "Unter Bedarf, Gier und Passen: was jedes Gruppenmitglied gewählt hat.",
+    ROLLERS_NONE = "Noch hat niemand gewählt.",
+    ROLLERS_WAIT = "wartet",
+    SPEC_MAIN = "Hauptspez.",
+    SPEC_OFF = "Zweitspez.",
+    YOU = "Du",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Beuteliste",
     OPT_FEED = "Beuteliste",
     OPT_FEED_D = "Zeigt kurz, was du gerade erbeutet hast, Gold und Gegenstände.",
@@ -198,6 +218,16 @@ T.de = {
 }
 
 T.es = {
+    OPT_ROLLERS = "Quién tiró qué",
+    OPT_ROLLERS_D = "Bajo Necesidad, Codicia y Pasar: lo que eligió cada miembro del grupo.",
+    ROLLERS_NONE = "Nadie ha elegido aún.",
+    ROLLERS_WAIT = "esperando",
+    SPEC_MAIN = "Spec principal",
+    SPEC_OFF = "Spec secundaria",
+    YOU = "Tú",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Lista de botín",
     OPT_FEED = "Lista de botín",
     OPT_FEED_D = "Muestra unos segundos lo que acabas de despojar, oro y objetos.",
@@ -292,6 +322,16 @@ T.es = {
 }
 
 T.fr = {
+    OPT_ROLLERS = "Qui a tiré quoi",
+    OPT_ROLLERS_D = "Sous Besoin, Cupidité et Passer : le choix de chaque membre du groupe.",
+    ROLLERS_NONE = "Personne n’a encore choisi.",
+    ROLLERS_WAIT = "en attente",
+    SPEC_MAIN = "Spé principale",
+    SPEC_OFF = "Spé secondaire",
+    YOU = "Vous",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Fil du butin",
     OPT_FEED = "Fil du butin",
     OPT_FEED_D = "Montre quelques secondes ce que tu viens de ramasser, or et objets.",
@@ -386,6 +426,16 @@ T.fr = {
 }
 
 T.pl = {
+    OPT_ROLLERS = "Kto co wybrał",
+    OPT_ROLLERS_D = "Pod Potrzeba, Chciwość i Pas: co wybrał każdy członek grupy.",
+    ROLLERS_NONE = "Nikt jeszcze nie wybrał.",
+    ROLLERS_WAIT = "czeka",
+    SPEC_MAIN = "Główna spec.",
+    SPEC_OFF = "Druga spec.",
+    YOU = "Ty",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Lista łupu",
     OPT_FEED = "Lista łupu",
     OPT_FEED_D = "Pokazuje przez chwilę, co właśnie zebrano: złoto i przedmioty.",
@@ -480,6 +530,16 @@ T.pl = {
 }
 
 T.pt = {
+    OPT_ROLLERS = "Quem rolou o quê",
+    OPT_ROLLERS_D = "Sob Necessidade, Ganância e Passar: o que cada membro do grupo escolheu.",
+    ROLLERS_NONE = "Ninguém escolheu ainda.",
+    ROLLERS_WAIT = "aguardando",
+    SPEC_MAIN = "Spec principal",
+    SPEC_OFF = "Spec secundária",
+    YOU = "Você",
+    SAMPLE_P1 = "Brakka",
+    SAMPLE_P2 = "Aldren",
+    SAMPLE_P3 = "Elowen",
     FR_FEED = "Lista de saque",
     OPT_FEED = "Lista de saque",
     OPT_FEED_D = "Mostra por alguns segundos o que você acabou de saquear, ouro e itens.",
@@ -574,6 +634,16 @@ T.pt = {
 }
 
 T.ru = {
+    OPT_ROLLERS = "Кто что выбрал",
+    OPT_ROLLERS_D = "Под «Нужно», «Не откажусь» и «Отказ»: что выбрал каждый в группе.",
+    ROLLERS_NONE = "Пока никто не выбрал.",
+    ROLLERS_WAIT = "ждём",
+    SPEC_MAIN = "Осн. спек",
+    SPEC_OFF = "Доп. спек",
+    YOU = "Вы",
+    SAMPLE_P1 = "Бракка",
+    SAMPLE_P2 = "Алдрен",
+    SAMPLE_P3 = "Эловен",
     FR_FEED = "Лента добычи",
     OPT_FEED = "Лента добычи",
     OPT_FEED_D = "Несколько секунд показывает, что вы только что подобрали: золото и предметы.",
@@ -668,6 +738,16 @@ T.ru = {
 }
 
 T.zh = {
+    OPT_ROLLERS = "谁选了什么",
+    OPT_ROLLERS_D = "在需求、贪婪和放弃下方：显示队伍中每个人的选择。",
+    ROLLERS_NONE = "还没有人选择。",
+    ROLLERS_WAIT = "等待中",
+    SPEC_MAIN = "主天赋",
+    SPEC_OFF = "副天赋",
+    YOU = "你",
+    SAMPLE_P1 = "布拉卡",
+    SAMPLE_P2 = "奥德伦",
+    SAMPLE_P3 = "艾洛雯",
     FR_FEED = "拾取信息",
     OPT_FEED = "拾取信息",
     OPT_FEED_D = "几秒内显示你刚拾取的金币和物品。",

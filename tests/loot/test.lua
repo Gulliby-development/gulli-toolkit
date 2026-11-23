@@ -381,4 +381,114 @@ test("the loot feed is quiet while paused, safe with secret text, and shows a sa
     eq(#ns.FeedEntries(), 0)
 end)
 
+local function rollStrings()
+    LOOT_ROLL_NEED = "%s has selected Need for: %s"
+    LOOT_ROLL_GREED = "%s has selected Greed for: %s"
+    LOOT_ROLL_PASSED = "%s passed on: %s"
+    LOOT_ROLL_PASSED_AUTO = "%s automatically passed on: %s because he cannot loot that item."
+    LOOT_ROLL_NEED_SELF = "You have selected Need for: %s"
+    LOOT_ROLL_PASSED_SELF = "You passed on: %s"
+    LOOT_ROLL_ROLLED_NEED = "Need Roll - %d for %s by %s"
+end
+
+local function lootFrame(i, rollID)
+    local f = W.stub()
+    rawset(f, "rollID", rollID)
+    f:Show()
+    rawset(f, "IsMouseOver", function() return rawget(f, "_over") == true end)
+    _G["GroupLootFrame" .. i] = f
+    return f
+end
+
+test("who rolled what: off by default, then the chat choices of the group under the roll frame", function()
+    Fake({ rolls = { { 7, 2 } } })
+    rollStrings()
+    local ns = Load()
+    eq(ns.db.rollers, false, "off by default")
+    lootFrame(1, 1)
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(ns.RollersFrame():IsShown(), false, "nothing shows while off")
+    ns.SetPref("rollers", true)
+    W.Fire("START_LOOT_ROLL", 1)
+    local item = "|Hitem:7|h[Item]|h"
+    W.Fire("CHAT_MSG_LOOT", "Bob has selected Greed for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Ann has selected Need for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Cid automatically passed on: " .. item .. " because he cannot loot that item.")
+    W.Fire("CHAT_MSG_LOOT", "Bob has selected Need for: |Hitem:99|h[Other]|h")
+    local r, list, counts = ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), true)
+    eq(#list, 4, "three choices and the player still waiting")
+    eq(list[1].name, "Ann"); eq(list[1].choice, "need")
+    eq(list[2].name, "Bob"); eq(list[3].choice, "pass")
+    eq(list[4].name, "Tester"); eq(list[4].choice, "wait"); eq(list[4].self, true)
+    eq(counts.need, 1); eq(counts.greed, 1); eq(counts.pass, 1); eq(counts.wait, 1)
+    W.Fire("CHAT_MSG_LOOT", "You have selected Need for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Need Roll - 87 for " .. item .. " by Ann")
+    r, list, counts = ns.RollersPaint()
+    eq(counts.need, 2); eq(counts.wait, 0)
+    eq(r.by.Ann.roll, 87, "the roll number shows once known")
+    -- a secret line is left alone, and the roll's end hides the panel
+    issecretvalue = function(v) return v == "secret" end
+    eq(ns.RollerChat("secret"), nil)
+    issecretvalue = nil
+    GroupLootFrame1:Hide()
+    ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), false)
+    ns.paused = true
+    GroupLootFrame1:Show()
+    ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), false, "paused from the hub")
+    GroupLootFrame1 = nil
+end)
+
+test("who rolled what: the loot history gives the class, Main or Off spec and those still waiting", function()
+    Fake({ rolls = { { 7, 2 }, { 7, 2 } }, db = { rollers = true } })
+    rollStrings()
+    Enum = { EncounterLootDropRollState = { NeedMainSpec = 0, NeedOffSpec = 1, Transmog = 2, Greed = 3, NoRoll = 4, Pass = 5 } }
+    C_LootHistory = { GetSortedInfoForDrop = function(enc, key)
+        return { itemHyperlink = "|Hitem:7|h[Item]|h", rollInfos = {
+            { playerName = "Ann", playerClass = "WARRIOR", state = 1 },
+            { playerName = "Bob", playerClass = "PALADIN", state = 0 },
+            { playerName = "Tester", playerClass = "PRIEST", state = 4, isSelf = true },
+            { playerName = "Cid", playerClass = "MAGE", state = 5 },
+        } }
+    end }
+    local ns = Load()
+    lootFrame(1, 1)
+    local f2 = lootFrame(2, 2)
+    W.Fire("START_LOOT_ROLL", 1)
+    W.now = W.now + 1
+    W.Fire("START_LOOT_ROLL", 2)
+    W.Fire("LOOT_HISTORY_UPDATE_DROP", 5, 1)
+    eq(ns.RollerData(1).drop, "5:1", "the history drop goes to the older roll of the same item")
+    local _, list, counts = ns.RollersPaint()
+    eq(list[1].name, "Bob"); eq(list[1].spec, "main", "Main spec before Off spec")
+    eq(list[2].name, "Ann"); eq(list[2].spec, "off"); eq(list[2].class, "WARRIOR")
+    eq(list[3].choice, "pass"); eq(list[4].choice, "wait")
+    eq(counts.need, 2); eq(counts.pass, 1)
+    -- the mouse on the second roll frame shows that roll
+    rawset(f2, "_over", true)
+    local r = ns.RollersPaint()
+    eq(r, ns.RollerData(2))
+    -- chat for the same item goes to the roll that lacks that name
+    W.Fire("CHAT_MSG_LOOT", "Ann has selected Greed for: |Hitem:7|h[Item]|h")
+    eq(ns.RollerData(2).by.Ann.choice, "greed")
+    eq(ns.RollerData(1).by.Ann.choice, "need")
+    -- Unlock mode shows a sample under the roll anchor
+    GroupLootFrame1, GroupLootFrame2 = nil, nil
+    ns.MoveRollers(true)
+    eq(ns.RollersFrame():IsShown(), true)
+    ns.MoveRollers(false)
+    eq(ns.RollersFrame():IsShown(), false)
+    C_LootHistory, Enum = nil, nil
+end)
+
+test("a format with numbered arguments is read in its own order", function()
+    Fake({})
+    local ns = Load()
+    local pat, order = ns.CompileFormat("%2$s : %1$s a choisi Besoin")
+    local a, b = ("[Item] : Bob a choisi Besoin"):match(pat)
+    eq(a, "[Item]"); eq(b, "Bob"); eq(order[1], 2); eq(order[2], 1)
+end)
+
 W.finish()

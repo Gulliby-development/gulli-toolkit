@@ -26,6 +26,7 @@ ns.DEFAULTS = {
     rollScale = 100,  -- the size of the group loot rolls, in percent
     rollMove = false, -- the group loot rolls stand where the player placed them
     feed = false,     -- the panel of what was just looted
+    rollers = false,  -- the group's choices under the roll frames
 }
 
 -- Equip slots by the item's equip location, for the upgrade check.
@@ -233,6 +234,7 @@ function ns.SetPref(key, value)
     if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
     if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
     if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
+    if key == "rollers" and ns.SetRollers then ns.SetRollers(value) end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -398,6 +400,7 @@ ns.OPT_ICON = {
     where = "Interface\\Icons\\INV_Misc_Map_01",
     rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
     feed = "Interface\\Icons\\INV_Misc_Note_01",
+    rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
 }
 
 local function option(key, label, tip)
@@ -422,11 +425,13 @@ do
             if on and ns.FeedClear then ns.FeedClear() end
             if ns.ApplyWindow then ns.ApplyWindow() end
             if ns.PlaceRolls then ns.PlaceRolls() end
+            if ns.RollersPaint then ns.RollersPaint() end
         end,
         key = "Loot",
         move = function(on)
             if ns.MoveFrames then ns.MoveFrames(on) end
             if ns.MoveFeed and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveFeed(on) end
+            if ns.MoveRollers and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveRollers(on) end
         end,
         frames = {
             { key = "window", label = L.FR_WINDOW, icon = ns.OPT_ICON.window,
@@ -453,6 +458,7 @@ do
             tweak("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
             tweak("feed", L.OPT_FEED, L.OPT_FEED_D),
             tweak("rollMove", L.OPT_ROLLMOVE, L.OPT_ROLLMOVE_D),
+            tweak("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
         },
         summary = function()
             if not ns.db then return nil end

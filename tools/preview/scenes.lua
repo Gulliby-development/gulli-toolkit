@@ -400,7 +400,11 @@ S.loot = { default = {
         C_Item = C_Item or {}
         C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
     end,
-} }
+},
+-- Who rolled what: the sample the Unlock mode shows under the roll frames.
+rollers = { spec = { db = { rollers = true } }, crop = "GulliLootRollers",
+    open = function(ns) ns.MoveRollers(true) end },
+}
 
 -- PartyQuests: a level 47 character with quests in several zones, and a group of three: Ann runs
 -- the module (progress and zones), Bob does not, Cid is offline.
