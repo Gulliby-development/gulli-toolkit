@@ -471,7 +471,16 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     assert(cloth.right:find("14s") and cloth.right:find("40c"), "the stack's price")
     eq(cloth.src, "auction"); assert(cloth.note:find("43"))
     eq(quest.src, nil); assert(quest.right:find("7/12")); assert(quest.note:find("Hope for Hatchlings", 1, true))
-    eq(junk.src, "vendor")
+    eq(junk.src, "vendor"); assert(junk.note ~= nil)
+    -- a price alone is no reason for a second line, and the panel is only as wide as its text
+    ns.SetPref("feedNotes", false)
+    junk = ns.FeedLine(ns.FeedEntries()[1])
+    eq(junk.note, nil, "one line: the price's icon names the source"); eq(junk.src, nil)
+    assert(junk.right:find("3s"))
+    ns.FeedPaint()
+    eq(ns.feedWidth, 150, "the fake client's texts have no width: the least width")
+    ns.SetPref("feedNotes", true)
+    e = ns.FeedEntries()
     local total, parts = ns.FeedTotal()
     eq(total, 1440 + 375); eq(parts, 2, "the quest item adds nothing")
     -- the bags changed: the count is read again, not on every frame

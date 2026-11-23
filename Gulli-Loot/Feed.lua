@@ -16,7 +16,7 @@ ns.FEED_FADE = 1.5      -- the last part of that it fades
 ns.FEED_MONEY_WAIT = 2  -- money that comes in this long after the loot closed still counts
 ns.FEED_STALE = 0.5     -- the facts of a line are read again this long after the bags or the log changed
 local ROW_H, ROW_H2, FOOT_H, PAD = 26, 40, 24, 6
-local WIDTH, WIDTH_COMPACT = 320, 290
+local WIDTH_MIN, WIDTH_MAX = 150, 320   -- the panel is as wide as its longest line, within these
 
 local entries = {}      -- newest first: { kind = "item"|"money", id, icon, name, quality, count, copper, at }
 local frame, rows, sample, foot
@@ -394,7 +394,7 @@ end
 local function build()
     frame = CreateFrame("Frame", "GulliLootFeed", UIParent)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetSize(WIDTH, PAD * 2 + ROW_H)
+    frame:SetSize(WIDTH_MIN, PAD * 2 + ROW_H)
     S.HudPanel(frame)
     rows = {}
     for i = 1, ns.FEED_ROWS do rows[i] = makeRow() end
@@ -457,8 +457,8 @@ function ns.FeedLine(e)
             out.right = (n.done and S.Hex(S.GOOD) or "|cffffffff") .. n.right .. "|r"
         end
     end
-    if f.total then out.src = L["FEED_SRC_" .. f.how:upper()] end
-    if out.src and not out.note then out.note, out.noteColor = "", S.MUTED end
+    -- the source's word only beside a note: the price's icon says it on a one-line row
+    if f.total and out.note then out.src = L["FEED_SRC_" .. f.how:upper()] end
     return out
 end
 
@@ -472,7 +472,11 @@ function ns.FeedPaint()
     if not frame then build() end
     local list = sample or ns.FeedEntries()
     local t = now()
-    local y = PAD
+    local y, wide = PAD, 0
+    local function width(fs)
+        local w = (fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()) or (fs.GetStringWidth and fs:GetStringWidth()) or 0
+        return type(w) == "number" and w or 0
+    end
     for i, r in ipairs(rows) do
         local e = list[i]
         r:SetShown(e ~= nil)
@@ -503,6 +507,9 @@ function ns.FeedPaint()
                 r.note:SetText(ln.note)
                 r.src:SetText(ln.src or "")
             end
+            local w1 = width(r.text) + ((ln.right and ln.right ~= "") and (width(r.price) + 10) or 0)
+            local w2 = two and (width(r.note) + ((ln.src and ln.src ~= "") and (width(r.src) + 10) or 0)) or 0
+            wide = math.max(wide, 28 + math.max(w1, w2) + 6)
             local left = sample and ns.FEED_SECONDS or (e.at + ns.FEED_SECONDS - t)
             r:SetAlpha(math.max(0, math.min(1, left / ns.FEED_FADE)))
         end
@@ -514,9 +521,11 @@ function ns.FeedPaint()
     if showFoot then
         foot.label:SetText(S.Upper and S.Upper(L.FEED_TOTAL) or L.FEED_TOTAL)
         foot.value:SetText(S.MoneyText(total))
+        wide = math.max(wide, width(foot.label) + width(foot.value) + 24)
         y = y + FOOT_H
     end
-    frame:SetSize(compact() and WIDTH_COMPACT or WIDTH, y + PAD)
+    ns.feedWidth = math.max(WIDTH_MIN, math.min(WIDTH_MAX, math.ceil(wide + PAD * 2)))
+    frame:SetSize(ns.feedWidth, y + PAD)
     if not frame:IsShown() then
         frame:Show()
         if S.MotionIn then S.MotionIn(frame, 6) end

@@ -441,6 +441,11 @@ S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn =
     items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
     before = S.loot.feed.before, open = S.loot.feed.open }
 
+-- One plain line, as most loot is: the panel is only as big as it.
+S.loot.feedone = { spec = { db = { feed = true }, items = { [50004] = { 0, nil, 1, 1, 0, 200 } } }, crop = "GulliLootFeed",
+    before = function() C_Item.GetItemIconByID = function() return "Interface\\Icons\\INV_Mushroom_03" end end,
+    open = function(_, W) W.Fire("CHAT_MSG_LOOT", "You receive loot: |cffffffff|Hitem:50004|h[Dried King Bolete]|h|r.") end }
+
 -- PartyQuests: a level 47 character with quests in several zones, and a group of three: Ann runs
 -- the module (progress and zones), Bob does not, Cid is offline.
 local function pqSpec(party)
