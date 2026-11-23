@@ -151,6 +151,46 @@ test("one hidden buff does not hide the rest: the missing buff is still offered"
     W.combat = false
 end)
 
+test("the pull of a boss: auras the game leaves out are never taken as missing", function()
+    local units = party()
+    for _, k in ipairs({ "player", "party1", "party2", "party3" }) do
+        units[k].auras = { ["Power Word: Fortitude"] = 1800 }
+    end
+    units.party3.auras = {}
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, byName = true }
+    local ns = Load()
+    eq(show(ns.Plan()), "Power Word: Fortitude@party3", "before the pull only the rogue misses it")
+    -- The pull: the game hides auras before the lockdown and the list comes back empty.
+    W.aurasSecret = true
+    W.byNameDrops = true
+    local plan, far = ns.Plan()
+    eq(#plan + #far, 0, "no false alarm while the game hides every aura")
+    eq(ns.info.hidden, 4, "everyone is left alone, counted as hidden")
+    -- By name the game still answers: the ones who have it count, the rest are left alone.
+    W.byNameDrops = false
+    plan, far = ns.Plan()
+    eq(#plan + #far, 0, "a miss by name proves nothing while auras are hidden")
+    -- The bar at the pull: PLAYER_REGEN_DISABLED comes before the lockdown.
+    Fire("PLAYER_LOGIN")
+    W.aurasSecret = false
+    ns.Refresh()
+    W.aurasSecret, W.byNameDrops = true, true
+    Fire("PLAYER_REGEN_DISABLED")
+    W.combat = true
+    eq(GulliGroupBuffsButton.attrs["gb-count"], 0, "the key's list holds no one by mistake")
+    W.combat, W.aurasSecret, W.byNameDrops = false, false, false
+    -- An ordinary fight (the game hides nothing): an empty list is still an empty list.
+    W.combat = true
+    eq(show(ns.Plan()), "Power Word: Fortitude@party3", "a trash fight still offers the missing buff")
+    W.combat = false
+    -- A client without C_Secrets takes every fight as hiding auras.
+    Fake { known = { [1243] = true }, units = units, db = { groupMin = 0 }, byName = true, noSecrets = true }
+    ns = Load()
+    W.combat = true
+    eq(show(ns.Plan()), "", "without C_Secrets a fight never says a buff is missing on an empty list")
+    W.combat = false
+end)
+
 test("in a raid the group spell is counted per party", function()
     local units = { player = { name = "Me", class = "PRIEST", auras = {} } }
     local raid = {}
