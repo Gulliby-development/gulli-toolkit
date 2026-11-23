@@ -343,6 +343,8 @@ Q.FLASH = 0.50         -- the flare when the object comes in reach
 Q.LEAVE = 0.40         -- the fade where it stood
 Q.STATE_DELAY = 0.15   -- a change of reach shows only once it held this long
 Q.POLL = 0.2           -- how often the reach is read
+Q.HOLD = 0.6           -- a plate or a pick the game drops for a moment keeps the light this long
+Q.SCALE_MIN, Q.SCALE_MAX = 0.6, 1.2
 
 local function lerp(a, b, t) return a + (b - a) * t end
 local TWO_PI = math.pi * 2
@@ -639,6 +641,10 @@ function Q.Animate(m, elapsed)
         m.v.poll = (m.v.poll or 0) - elapsed
         if m.v.poll <= 0 then
             m.v.poll = Q.POLL
+            -- a plate that went without an event, or a wait that is over, is looked at again
+            local gone = st.plate and st.plate.IsShown and not st.plate:IsShown()
+            if gone or (st.lostAt and now() - st.lostAt >= Q.HOLD) then Q.Refresh() end
+            if not m:IsShown() or m.v.leaving then Q.Draw(m, elapsed); return end
             local reach = Q.InReach()
             local want = reach ~= false
             if want ~= m.v.state then
@@ -676,7 +682,24 @@ function Q.Leave(m)
     end
     m:ClearAllPoints()
     m:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-    m.v.leaving, m.v.guid = 0, nil
+    m.v.was, m.v.leaving, m.v.guid = m.v.guid, 0, nil
+end
+
+-- Pins the light where it stands now, off a plate the game may hand to another unit.
+local function standStill(m)
+    local ok, x, y = pcall(m.GetCenter, m)
+    if not ok or type(x) ~= "number" or type(y) ~= "number" or secret(x) or secret(y) then return false end
+    m:ClearAllPoints()
+    m:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+    return true
+end
+
+-- Nameplates shrink with distance: the light shrinks with its plate, within bounds.
+function Q.PlateScale(plate)
+    local ok, ps = pcall(plate.GetEffectiveScale, plate)
+    local ok2, us = pcall(UIParent.GetEffectiveScale, UIParent)
+    if not (ok and ok2) or type(ps) ~= "number" or type(us) ~= "number" or us <= 0 then return 1 end
+    return math.max(Q.SCALE_MIN, math.min(Q.SCALE_MAX, ps / us))
 end
 
 local function buildCross()
@@ -714,6 +737,22 @@ function Q.CrossText(key, name)
     return name
 end
 
+-- With the light on the object the crosshair is only its name under the light, so there is one
+-- ring on the object; without it the whole crosshair stands in the middle of the screen.
+function Q.PlaceCross(f, m)
+    f:ClearAllPoints()
+    if m then
+        f:SetPoint("CENTER", m, "CENTER", 0, 0)
+        f.halo:Hide(); f.ring:Hide()
+        for _, t in ipairs(f.ticks) do t:Hide() end
+    else
+        f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+        f.halo:Show(); f.ring:Show()
+        for _, t in ipairs(f.ticks) do t:Show() end
+    end
+    f.onMarker = m ~= nil
+end
+
 local function paintCross(f, name)
     local c, a = Q.Color(Q.Get("color")), Q.Alpha(Q.Get("bright"))
     -- the thin ring closer to white than the soft band under it, as on the marker
@@ -730,20 +769,42 @@ function Q.Refresh()
     if st.on then guid, name = Q.QuestObject() end
     local m = st.marker
     local plate = guid and Q.Get("world") and plateOf("softinteract")
+    local t = now()
     if plate then
+        st.lostAt = nil
         m = buildMarker()
-        if guid ~= m.v.guid then Q.Arrive(m, guid) end
+        if guid ~= m.v.guid then
+            -- the same object back within a moment: the light goes on, it does not arrive again
+            if m:IsShown() and guid == m.v.was and m.v.leaving and m.v.leaving < Q.HOLD then
+                m.v.guid, m.v.leaving = guid, nil
+            else
+                Q.Arrive(m, guid)
+            end
+        end
         m.v.leaving = nil
         if m.v.style ~= Q.Get("style") or m.v.dirty then Q.Style(m); m.v.dirty = false end
+        if m.SetScale then m:SetScale(Q.PlateScale(plate)) end
         m:ClearAllPoints()
         m:SetPoint("TOP", plate, "BOTTOM", 0, 0)
+        st.plate = plate
         m:Show()
+    elseif m and m:IsShown() and not m.v.leaving and guid and guid == m.v.guid and Q.Get("world")
+        and (not st.lostAt or t - st.lostAt < Q.HOLD) then
+        -- the plate went for a moment (far off, or handed over): the light waits where it stood
+        if not st.lostAt then
+            st.lostAt = t
+            if not standStill(m) then Q.Leave(m) end
+        end
+        st.plate = nil
     elseif m then
+        st.lostAt, st.plate = nil, nil
         Q.Leave(m)
     end
+    local onMarker = m and m:IsShown() and not m.v.leaving and m.v.guid ~= nil
     if guid and Q.Get("crosshair") then
         local f = buildCross()
         paintCross(f, name)
+        Q.PlaceCross(f, onMarker and m or nil)
         f:Show()
     elseif st.cross then
         st.cross:Hide()
@@ -876,7 +937,7 @@ function Q.Disable()
     Q.RestoreCVars()
     if st.marker then st.marker:Hide(); st.marker.v.leaving, st.marker.v.guid = nil, nil end
     if st.cross then st.cross:Hide() end
-    st.guid = nil
+    st.guid, st.plate, st.lostAt = nil, nil, nil
     Q.PaintBags()
 end
 

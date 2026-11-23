@@ -316,6 +316,45 @@ test("a secret guid or name shows nothing it cannot read", function()
     Q.Disable()
 end)
 
+test("the crosshair sits on the light, which waits through a plate the game drops for a moment", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    local plate = frame(); plate.shown = true
+    plate.GetEffectiveScale = function() return 0.4 end
+    UIParent.GetEffectiveScale = function() return 1 end
+    W.plate = plate
+    W.soft = { guid = "GameObject-7", name = "Prickly Pine Cluster", related = true }
+    Q.Refresh()
+    local m, c = _G.GulliSparkleMarker, _G.GulliSparkleCrosshair
+    m.GetCenter = function() return 500, 400 end
+    local scale
+    m.SetScale = function(_, v) scale = v end
+    Q.Refresh()
+    assert(scale == Q.SCALE_MIN, "the light does not shrink with a far plate")
+    assert(c.shown and c.points[1][2] == m, "crosshair not on the light")
+    assert(c.onMarker, "a second ring beside the light")
+    m.v.appear = 1
+    -- far off: the plate goes, the picked object stays
+    W.plate = nil
+    Q.Refresh()
+    assert(m.shown and not m.v.leaving, "the light went with the plate at once")
+    assert(m.points[1][2] == UIParent, "the light follows a plate that is gone")
+    W.plate = plate
+    Q.Refresh()
+    assert(m.v.appear == 1, "the light arrived again for the same object")
+    -- the plate goes for good: after the wait the light leaves, the crosshair goes back to the middle
+    W.plate = nil
+    Q.Refresh()
+    W.time = W.time + Q.HOLD + 0.1
+    Q.Refresh()
+    assert(m.v.leaving, "the light stays without its plate")
+    assert(c.shown and not c.onMarker and c.points[1][2] == UIParent, "crosshair not back in the middle")
+    -- the same object back while the light fades: it goes on, no new arrival
+    W.plate = plate
+    Q.Refresh()
+    assert(not m.v.leaving and m.v.appear == 1, "a returning object arrived again")
+end)
+
 test("switches: no marker without world, no crosshair without crosshair", function()
     local Q = reset()
     W.opts.world, W.opts.crosshair, W.opts.sound = false, true, false
