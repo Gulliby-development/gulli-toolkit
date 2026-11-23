@@ -615,10 +615,23 @@ function ns.NextReady(c, now)
     return best
 end
 
--- Does a character pass the realm or faction filter?
+-- The region a realm name tells, to show instead of the realm: WoW Forever is realmless, so
+-- "CAMWOW EU5 Realm 4 PvP" is just EU. Its region word (EU5, US1, CN2, ...) gives EU, US or CH
+-- (China); a realm without one shows as it is.
+local REGIONS = { EU = "EU", US = "US", NA = "US", CN = "CH", CH = "CH" }
+function ns.Region(realm)
+    if type(realm) ~= "string" or realm == "" then return nil end
+    for word in realm:gmatch("[%w]+") do
+        local r = REGIONS[(word:match("^(%a%a)%d*$") or ""):upper()]
+        if r then return r end
+    end
+    return realm
+end
+
+-- Does a character pass the region or faction filter?
 function ns.Passes(c, filter)
     filter = filter or pref("filter")
-    if filter == "realm" then return c.realm == nil or c.realm == ns.Realm() end
+    if filter == "realm" then return c.realm == nil or ns.Region(c.realm) == ns.Region(ns.Realm()) end
     if filter == "faction" then return c.faction == nil or c.faction == faction() end
     return true
 end
@@ -690,11 +703,11 @@ function ns.Tone(col, v)
     end
 end
 
--- Money per realm of the visible characters: { { realm, money } }, the most first.
+-- Money per region of the visible characters: { { realm = region, money } }, the most first.
 function ns.RealmGold()
     local by = {}
     for _, e in ipairs(ns.Chars()) do
-        local r = e.char.realm or e.key:match("%-(.*)$") or "?"
+        local r = ns.Region(e.char.realm or e.key:match("%-(.*)$")) or "?"
         by[r] = (by[r] or 0) + (e.char.money or 0)
     end
     local out = {}

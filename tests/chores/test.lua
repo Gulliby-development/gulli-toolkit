@@ -345,6 +345,24 @@ test("hidden characters and the realm and faction filters", function()
     eq(ns.db.chars["Orc-Realm"].note, nil)
 end)
 
+test("a realm shows as its region (EU, US, CH)", function()
+    Fake({ name = "Me", db = { chars = {
+        ["A-CAMWOW EU5 Realm 4 PvP"] = { name = "A", level = 50, t = 1000, realm = "CAMWOW EU5 Realm 4 PvP", money = 100, cooldowns = {} },
+        ["B-CAMWOW EU3 Realm 1 PvE"] = { name = "B", level = 40, t = 1000, realm = "CAMWOW EU3 Realm 1 PvE", money = 200, cooldowns = {} },
+        ["C-CAMWOW US1 Realm 2"] = { name = "C", level = 30, t = 1000, realm = "CAMWOW US1 Realm 2", money = 50, cooldowns = {} },
+    } } })
+    local ns = Load()
+    eq(ns.Region("CAMWOW EU5 Realm 4 PvP"), "EU")
+    eq(ns.Region("CAMWOW US1 Realm 2"), "US")
+    eq(ns.Region("Forever CN2 Realm 1"), "CH")
+    eq(ns.Region("Plain"), "Plain", "a realm without a region word shows as it is")
+    eq(ns.Region(""), nil)
+    local gold = ns.RealmGold()
+    eq(#gold, 2, "two EU realms are one region")
+    eq(gold[1].realm, "EU"); eq(gold[1].money, 300)
+    eq(gold[2].realm, "US")
+end)
+
 test("the overview sorts by any column", function()
     Fake({ name = "Me", level = 10, db = { chars = {
         ["A-Realm"] = { name = "A", level = 50, t = 1000, money = 10, cooldowns = {} },
