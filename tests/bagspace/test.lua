@@ -593,4 +593,34 @@ test("bank: nothing moves away from the bank or in a fight", function()
     eq(ns.BankOne(e), true)
 end)
 
+test("the hub's Tweaks page gets rows on the window's own saved keys", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local GROUPS = { level = true, quests = true, combat = true, loot = true, people = true, ui = true, requests = true }
+    assert(#reg.tweaks >= 1)
+    local seen = {}
+    for _, o in ipairs(reg.tweaks) do
+        assert(GROUPS[o.group], "a group of the page for " .. o.key)
+        assert(type(o.label) == "string" and o.icon, "label and icon for " .. o.key)
+        assert(not seen[o.key], "one row per key"); seen[o.key] = true
+        o.set(true); eq(ns.db[o.key], true, o.key .. " on"); eq(o.get(), true)
+        o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
+    end
+    assert(seen.bank)
+end)
+
+test("junk rules keep gear whose look the player still collects", function()
+    Fake({})
+    local ns = Load()
+    local gray = { id = 77, quality = 0, price = 5, classID = 4, subclassID = 1 }
+    eq(ns.J.Tier(gray), 1, "gray gear is junk")
+    GulliToolkit = { KeepsAppearance = function(id) return id == 77 end }
+    eq(ns.J.Tier(gray), nil, "a new look stays")
+    eq(ns.J.Tier({ id = 78, quality = 0, price = 5, classID = 4, subclassID = 1 }), 1, "others still go")
+    GulliToolkit = nil
+end)
+
 W.finish()

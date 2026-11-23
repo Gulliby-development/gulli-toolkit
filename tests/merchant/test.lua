@@ -327,4 +327,15 @@ test("a junk item's tooltip line goes into the Gulli block and warns", function(
     eq(#ns.J.TipLines(11), 0, "no line for the rest")
 end)
 
+test("junk rules keep gear whose look the player still collects", function()
+    Fake({})
+    local ns = Load()
+    local gray = { id = 77, quality = 0, price = 5, classID = 4, subclassID = 1 }
+    eq(ns.J.Tier(gray), 1, "gray gear is junk")
+    GulliToolkit = { KeepsAppearance = function(id) return id == 77 end }
+    eq(ns.J.Tier(gray), nil, "a new look stays")
+    eq(ns.J.Tier({ id = 78, quality = 0, price = 5, classID = 4, subclassID = 1 }), 1, "others still go")
+    GulliToolkit = nil
+end)
+
 W.finish()

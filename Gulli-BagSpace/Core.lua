@@ -551,6 +551,12 @@ do
         options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
                     option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT),
                     option("bank", ns.L.OPT_BANK) },
+        -- the hub's Tweaks page: the same saved key as the window
+        tweaks = { (function()
+            local o = option("bank", ns.L.OPT_BANK)
+            o.key, o.group, o.desc, o.tip = "bank", "loot", ns.L.TIP_bank, nil
+            return o
+        end)() },
         key = "BagSpace",
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",

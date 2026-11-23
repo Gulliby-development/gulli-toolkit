@@ -2312,6 +2312,72 @@ test("guild message of the day: a notice once per text, nothing for a secret one
     issecretvalue, IsInGuild, GetGuildRosterMOTD = nil, nil, nil
 end)
 
+test("appearance collector: new looks get a line and keep junk selling away, by its switches", function()
+    local ns = tweakNs()
+    -- item 1: new look; 2: a known look from another item; 3: another class's; 4: known
+    C_TransmogCollection = {
+        GetItemInfo = function(id) return id * 10, id * 100 end,
+        PlayerKnowsSource = function(s) return s == 400 or s == 999 end,
+        PlayerCanCollectSource = function(s) return true, s ~= 300 end,
+        GetAllAppearanceSources = function(look) return look == 20 and { 200, 999 } or { look * 10 } end,
+    }
+    eq(ns.AppearanceState(1), "new"); eq(ns.AppearanceState(2), "source")
+    eq(ns.AppearanceState(3), "alt"); eq(ns.AppearanceState(4), nil)
+    eq(#ns.AppearanceTip(1), 0, "nothing while the tweak is off")
+    eq(GulliToolkit.KeepsAppearance(1), false)
+    ns.SetTweak("appearances", true)
+    eq(#ns.AppearanceTip(1), 1)
+    eq(#ns.AppearanceTip(2), 0, "another item of a known look only with its switch")
+    eq(#ns.AppearanceTip(3), 0)
+    ns.SetTweakOpt("appearances", "source", true)
+    ns.SetTweakOpt("appearances", "alts", true)
+    eq(#ns.AppearanceTip(2), 1); eq(#ns.AppearanceTip(3), 1); eq(#ns.AppearanceTip(4), 0)
+    eq(GulliToolkit.KeepsAppearance(1), true, "junk selling keeps it")
+    ns.SetTweakOpt("appearances", "keep", false)
+    eq(GulliToolkit.KeepsAppearance(1), false, "unless the keep switch is off")
+    ns.SetTweak("appearances", false)
+    C_TransmogCollection = nil
+end)
+
+test("equip new bags: a new plain bag goes into an empty slot, never in a fight or with Shift", function()
+    local ns = tweakNs()
+    local bags = { [0] = { 101 }, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
+    local worn = { [31] = 50, [32] = 50, [33] = 50 }   -- the fourth bag slot is empty
+    local put = {}
+    C_Container = {
+        GetContainerNumSlots = function(b) return (b == 0 and 16) or (worn[30 + b] and 6) or 0 end,
+        GetContainerItemID = function(b, s) return bags[b] and bags[b][s] end,
+        ContainerIDToInventoryID = function(b) return 30 + b end,
+        PickupContainerItem = function(b, s) put.from = bags[b][s] end,
+    }
+    GetInventoryItemID = function(_, inv) return worn[inv] end
+    C_Item.GetItemInfoInstant = function(id) return id, nil, nil, nil, nil, (id >= 100 and 1 or 4), (id == 102 and 2 or 0) end
+    PutItemInBag = function(inv) put[#put + 1] = inv; worn[inv] = put.from end
+    C_TooltipInfo = { GetItemByID = function() return { lines = { { leftText = "10 Slot Bag" } } } end }
+    ns.SetTweak("autoBags", true)
+    eq(#put, 0, "what was in the bags at the start is not new")
+    bags[0][2] = 103
+    IsShiftKeyDown = function() return true end
+    eq(ns.EquipNewBags(), 0, "Shift skips it once"); IsShiftKeyDown = nil
+    bags[0][3] = 102                                     -- a quiver-like bag: not plain
+    InCombatLockdown = function() return true end
+    bags[0][4] = 104
+    eq(ns.EquipNewBags(), 0, "nothing in a fight")
+    InCombatLockdown = nil
+    eq(ns.EquipNewBags(), 1, "after the fight it goes on")
+    eq(put[1], 34); eq(worn[34], 104)
+    local toasts = {}
+    ns.Skin.Toast = function(o) toasts[#toasts + 1] = o end
+    bags[0][5] = 105
+    eq(ns.EquipNewBags(), 0, "no empty slot")
+    eq(#toasts, 1, "a bigger bag gets a notice")
+    eq(toasts[1].buttons[1] ~= nil, true, "the smaller bag is empty: it can swap")
+    toasts[1].buttons[1].onClick()
+    eq(put[2], 31)
+    ns.SetTweak("autoBags", false)
+    C_Container, GetInventoryItemID, PutItemInBag, C_TooltipInfo, C_Item.GetItemInfoInstant = nil, nil, nil, nil, nil
+end)
+
 test("the Tweaks page opens under Home, its gear opens the settings and the hub's search finds tweaks", function()
     local ns = tweakNs()
     ns.OpenTweaks()
