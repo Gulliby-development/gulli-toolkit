@@ -1602,6 +1602,12 @@ test("inside the dungeon: the data's flags, the stages of a quest's way, the tra
     eq(ns.Inside(nil, 96776).work, false)
     -- Agamaggan's Blood: the game moved its work out of Razorfen Downs (OUTSIDE_WORK).
     eq(ns.Inside("RFD", 93604).work, false, "Agamaggan's Blood is done outside too")
+    -- What the players' Wowhead comments put outside or inside (OUTSIDE_WORK, INSIDE_WORK).
+    eq(ns.Inside("WC", 959).work, false, "Mad Magglish walks the cave before the portal")
+    eq(ns.Inside("ULDA", 721).work, false, "Hammertoe Grez camps outside Uldaman")
+    eq(ns.Inside("MARA", 7068).work, false, "the shadowshard elementals stand before the portal")
+    eq(ns.Inside("EXCAVATION", 95647).turnin, true, "handed in by the last boss")
+    eq(ns.Inside("LORDAERON", 92415).take, true, "the letter lies deep in the dungeon")
     -- The way of a quest in the log: taken, its work now, the hand-in waits.
     local function states(id)
         local out = {}
