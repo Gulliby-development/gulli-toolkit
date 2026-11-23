@@ -71,10 +71,24 @@ local function tooltipOf(unit)
     if ok then return data end
 end
 
+-- The nameplate the game gave the picked object; some clients give it only under the plate's
+-- own unit token, so the shown plates are looked through too.
 local function plateOf(unit)
-    if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return nil end
-    local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
-    if ok then return plate end
+    if not C_NamePlate then return nil end
+    if C_NamePlate.GetNamePlateForUnit then
+        local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+        if ok and plate then return plate end
+    end
+    if not (C_NamePlate.GetNamePlates and UnitIsUnit) then return nil end
+    local ok, plates = pcall(C_NamePlate.GetNamePlates)
+    if not ok or type(plates) ~= "table" then return nil end
+    for _, p in ipairs(plates) do
+        local token = p.namePlateUnitToken
+        if token then
+            local same, isSame = pcall(UnitIsUnit, token, unit)
+            if same and isSame == true and not secret(isSame) then return p end
+        end
+    end
 end
 
 -- Settings ---------------------------------------------------------------------------------------
@@ -130,7 +144,7 @@ end
 
 function Q.RestoreCVars() Q.ApplyCVars({}) end
 
-local st = { on = false, guid = nil, rung = {}, overlays = setmetatable({}, { __mode = "k" }) }
+local st = { on = false, guid = nil, rung = {}, learned = {}, overlays = setmetatable({}, { __mode = "k" }) }
 
 -- Rules --------------------------------------------------------------------------------------------
 
@@ -152,64 +166,130 @@ function Q.TooltipNeeds(data)
     return title and not objective
 end
 
--- The quest log's objectives that are not done yet, lowercased (rebuilt on QUEST_LOG_UPDATE).
+-- Objective text without its counter and edges: "0/6 Untainted Soil" -> "untainted soil".
+function Q.Normalize(text)
+    text = text:lower():gsub("\194\160", " "):gsub("\226\128\153", "'")
+    text = text:gsub("%d+%s*/%s*%d+", "")
+    text = text:gsub("^[%s:%-]+", ""):gsub("[%s:%-]+$", "")
+    return text
+end
+
+-- The quest log's objectives that are not done yet (rebuilt on QUEST_LOG_UPDATE): `text`
+-- normalized, `pick` when it is something to pick up or use (never a mob to kill), and the
+-- titles of the quests in the log.
 function Q.OpenObjectives()
-    if st.objectives then return st.objectives end
-    local list = {}
+    if st.objectives then return st.objectives, st.titles end
+    local list, titles = {}, {}
     local log = C_QuestLog
-    if log and log.GetNumQuestLogEntries and log.GetInfo and log.GetQuestObjectives then
+    if log and log.GetNumQuestLogEntries and log.GetQuestObjectives then
         local n = log.GetNumQuestLogEntries() or 0
         for i = 1, n do
-            local info = log.GetInfo(i)
-            if info and not info.isHeader and info.questID then
-                local ok, objs = pcall(log.GetQuestObjectives, info.questID)
+            local id, title
+            if log.GetInfo then
+                local info = log.GetInfo(i)
+                if info and not info.isHeader then id, title = info.questID, info.title end
+            elseif log.GetQuestIDForLogIndex then
+                id = log.GetQuestIDForLogIndex(i)
+            end
+            if type(title) == "string" and not secret(title) then titles[Q.Normalize(title)] = true end
+            if id then
+                local ok, objs = pcall(log.GetQuestObjectives, id)
                 if ok and type(objs) == "table" then
                     for _, o in ipairs(objs) do
-                        if type(o) == "table" and not o.finished and type(o.text) == "string" then
-                            list[#list + 1] = o.text:lower()
+                        local t = type(o) == "table" and o.text
+                        if t and not o.finished and type(t) == "string" and not secret(t) then
+                            t = Q.Normalize(t)
+                            if #t >= 3 then
+                                list[#list + 1] = { text = t, pick = o.type == nil or o.type == "item" or o.type == "object" }
+                            end
                         end
                     end
                 end
             end
         end
     end
-    st.objectives = list
-    return list
+    st.objectives, st.titles = list, titles
+    return list, titles
 end
 
--- Whether an open objective names the object ("0/6 Untainted Soil" for "Untainted Soil").
+-- Words too common to tie an object to an objective on their own.
+Q.COMMON = { small = true, large = true, ancient = true, broken = true, old = true, strange = true,
+    mysterious = true, pile = true, crate = true, sack = true, box = true, barrel = true }
+
+local function sharedWord(a, b)
+    local padded = " " .. b:gsub("%p", " ") .. " "
+    for w in a:gmatch("[^%s%p]+") do
+        if #w >= 4 and not Q.COMMON[w] and padded:find(" " .. w .. " ", 1, true) then return w end
+    end
+end
+
+-- Whether an open objective names the object: "0/6 Untainted Soil" for "Untainted Soil", the
+-- objective inside the name, or, for something to pick up, a word they share ("Prickly Pine
+-- Cone" and "Prickly Pinecone" share "prickly"). A name learned from the object's tooltip counts.
 function Q.NamedInObjectives(name)
     if type(name) ~= "string" or secret(name) or #name < 3 then return false end
-    local low = name:lower()
-    for _, text in ipairs(Q.OpenObjectives()) do
-        if text:find(low, 1, true) then return true end
+    local low = Q.Normalize(name)
+    local list, titles = Q.OpenObjectives()
+    local learned = st.learned[low]
+    if learned and titles[learned] then return true end
+    for _, o in ipairs(list) do
+        if o.text:find(low, 1, true) or (#o.text >= 5 and low:find(o.text, 1, true)) then return true end
+    end
+    for _, o in ipairs(list) do
+        if o.pick and (sharedWord(low, o.text) or sharedWord(o.text, low)) then return true end
     end
     return false
 end
 
+-- The tooltip of an object under the mouse names its quest: remember that name for the session.
+function Q.LearnFromCursor()
+    if not (C_TooltipInfo and C_TooltipInfo.GetWorldCursor) then return end
+    local ok, data = pcall(C_TooltipInfo.GetWorldCursor)
+    local lines = ok and type(data) == "table" and data.lines
+    if type(lines) ~= "table" or not lines[1] then return end
+    local name = lines[1].leftText
+    if type(name) ~= "string" or secret(name) then return end
+    local _, titles = Q.OpenObjectives()
+    for i = 2, #lines do
+        local t = lines[i].leftText
+        if type(t) == "string" and not secret(t) and titles[Q.Normalize(t)] then
+            st.learned[Q.Normalize(name)] = Q.Normalize(t)
+            return
+        end
+    end
+end
+
+local function ask(fn, ...)
+    if not fn then return nil end
+    local ok, v = pcall(fn, ...)
+    if ok and not secret(v) then return v end
+end
+
 -- Only world objects get the mark: the game also picks NPCs (a quest giver is "related" to the
 -- quest it takes back, and its tooltip shows the quest's title), and those must stay dark.
+-- A world object is no unit for UnitExists, so it is asked by UnitIsGameObject and its guid.
 function Q.IsObject(guid)
+    if ask(UnitIsGameObject, "softinteract") == true then return true end
     return type(guid) == "string" and guid:find("^GameObject%-") ~= nil
 end
 
--- The object the game picked, when a quest needs it: guid, name (nil when hidden).
+-- The object the game picked, when a quest needs it: a key (its guid, else its name), name.
 function Q.QuestObject()
-    if not (UnitExists and UnitExists("softinteract")) then return nil end
-    local guid = UnitGUID("softinteract")
-    if guid == nil or secret(guid) or not Q.IsObject(guid) then return nil end
-    local name = UnitName("softinteract")
-    if secret(name) then name = nil end
+    local guid = ask(UnitGUID, "softinteract")
+    if not Q.IsObject(guid) then return nil end
+    local name = ask(UnitName, "softinteract")
+    if type(name) ~= "string" then name = nil end
+    local key = guid or (name and "obj:" .. name)
+    if not key then return nil end
     local need = false
     if C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest then
-        local ok, related = pcall(C_QuestLog.UnitIsRelatedToActiveQuest, "softinteract")
-        need = ok and related == true
+        need = ask(C_QuestLog.UnitIsRelatedToActiveQuest, "softinteract") == true
     end
     -- the game often says nothing about objects: the tooltip, then the objectives by name
     if not need then need = Q.TooltipNeeds(tooltipOf("softinteract")) end
     if not need then need = Q.NamedInObjectives(name) end
     if not need then return nil end
-    return guid, name
+    return key, name
 end
 
 -- What a bag slot shows: "quest" (an item a quest needs), "start" (it starts a quest) or nil.
@@ -762,7 +842,7 @@ end
 
 local events = {
     "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
-    "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "UPDATE_BINDINGS",
+    "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "UPDATE_BINDINGS", "CURSOR_CHANGED",
 }
 
 local function listen()
@@ -772,6 +852,7 @@ local function listen()
         if not st.on then return end
         if event == "BAG_UPDATE_DELAYED" then Q.SoonBags(); return end
         if event == "QUEST_LOG_UPDATE" then st.objectives = nil; Q.SoonBags() end
+        if event == "CURSOR_CHANGED" then Q.LearnFromCursor() end
         Q.Refresh()
     end)
     st.ev = f

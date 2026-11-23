@@ -261,6 +261,46 @@ test("an object the game says nothing about is found by an open objective's name
     Q.Disable()
 end)
 
+test("an object UnitExists denies is still marked, its plate found among the shown ones", function()
+    local Q = reset()
+    UnitExists = function() return false end
+    UnitIsGameObject = function(u) return u == "softinteract" and W.soft ~= nil end
+    UnitGUID = function() return nil end
+    UnitIsUnit = function(a, b) return a == "nameplate3" and b == "softinteract" end
+    local quests = { { questID = 1, title = "Prickly Pinecones", objs = { { text = "Prickly Pinecone: 3/10", type = "item", finished = false } } },
+        { questID = 2, title = "A Prolific Source", objs = { { text = "Noxious Slime slain: 0/8", type = "monster", finished = false } } } }
+    C_QuestLog.GetNumQuestLogEntries = function() return #quests end
+    C_QuestLog.GetInfo = function(i) return quests[i] end
+    C_QuestLog.GetQuestObjectives = function(id) return quests[id].objs end
+    local plate = frame(); plate.namePlateUnitToken = "nameplate3"
+    C_NamePlate.GetNamePlates = function() return { frame(), plate } end
+    Q.Enable(Q.Get)
+    W.soft = { name = "Prickly Pinecone" }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    assert(m and m.shown, "no mark on an object UnitExists denies")
+    assert(m.points[1][2] == plate, "not on the swept plate")
+    assert(_G.GulliSparkleCrosshair.shown, "no crosshair")
+    -- a word they share, for something to pick up
+    W.soft = { name = "Prickly Pine Cluster" }
+    Q.Refresh()
+    assert(_G.GulliSparkleCrosshair.shown, "a shared word did not count")
+    -- a kill objective never ties an object by a shared word
+    W.soft = { name = "Noxious Barrel" }
+    Q.Refresh()
+    assert(not _G.GulliSparkleCrosshair.shown, "a kill objective lit an object")
+    -- the tooltip under the mouse names the quest: that name counts from then on
+    C_TooltipInfo.GetWorldCursor = function()
+        return { lines = { { leftText = "Strange Mound" }, { leftText = "Prickly Pinecones" } } }
+    end
+    Q.LearnFromCursor()
+    W.soft = { name = "Strange Mound" }
+    Q.Refresh()
+    assert(_G.GulliSparkleCrosshair.shown, "a name learned from the tooltip did not count")
+    UnitIsGameObject, UnitIsUnit = nil, nil
+    Q.Disable()
+end)
+
 test("a secret guid or name shows nothing it cannot read", function()
     local Q = reset()
     Q.Enable(Q.Get)
