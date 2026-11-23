@@ -898,6 +898,19 @@ S.dungeonprep = {
     forever = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3) end },
     scholo = { spec = { level = 58, raceID = 2, faction = "Horde", className = "WARRIOR", areas = { [28] = "Western Plaguelands", [85] = "Tirisfal Glades" } },
                open = function(ns) ns.home = false; ns.selected = "SCHOLO"; ns.Toggle(); ns.ShowTab(3) end },
+    -- The tier 0.5 set at the top level, folded and open; a class quest of the Sunken Temple.
+    set = { spec = { level = 60, raceID = 1, faction = "Alliance", className = "WARRIOR", classID = 1 },
+            open = function(ns) ns.home = false; ns.selected = "STRAT"; ns.Toggle(); ns.ShowTab(3) end },
+    setopen = { spec = { level = 60, raceID = 1, faction = "Alliance", className = "WARRIOR", classID = 1 },
+            open = function(ns)
+                -- The levelling chains done, so the open set shows on the first screen.
+                local done, was = {}, C_QuestLog.IsQuestFlaggedCompleted
+                for _, id in ipairs(ns.Data.main.STRAT) do done[id] = true end
+                C_QuestLog.IsQuestFlaggedCompleted = function(id) return done[id] or was(id) end
+                ns.home = false; ns.selected = "STRAT"; ns.showSet = true; ns.Toggle(); ns.ShowTab(3)
+            end },
+    classquest = { spec = { level = 52, raceID = 1, faction = "Alliance", className = "WARRIOR", classID = 1 },
+            open = function(ns) ns.home = false; ns.selected = "ST"; ns.Toggle(); ns.ShowTab(3) end },
     chain = { spec = dpSpec, open = function(ns) ns.home = false; ns.selected = "DROWNED"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(95775) end },
     -- A single quest with no chain and no rewards, done inside the dungeon: the way takes the page.
     inside = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96776) end },
@@ -939,20 +952,20 @@ S.dungeonprep = {
                 open = function(ns)
                     ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
                     ns.ShowTracker("GNOMER")
-                end },    -- The tracker on the Drowned City, with one chain opened to show its steps.
+                end },    -- The tracker on the Drowned City, with one chain's steps in the card beside it.
     trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
                             areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
                    crop = "GulliDungeonPrepTrackerStage",
                    before = function()
                        local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
-                       stage:SetSize(360, 420)
+                       stage:SetSize(680, 420)
                        stage:SetPoint("CENTER")
                        local bg = stage:CreateTexture(nil, "BACKGROUND")
                        bg:SetAllPoints()
                        bg:SetColorTexture(0.16, 0.2, 0.16, 1)
                    end,
                    open = function(ns)
-                       ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                       ns.db.trackerPoint = { "CENTER", "CENTER", 160, 0 }
                        ns.ShowTracker("DROWNED")
                        for _, it in ipairs(ns.TrackerItems("DROWNED", 40)) do
                            if it.steps then ns.ToggleTracked(it.key) break end

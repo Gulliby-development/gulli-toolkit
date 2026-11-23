@@ -839,6 +839,7 @@ tips[7067]={t="Ele anda entre aqui e mais ou menos 43,85. Kaskk (elite raro, ní
 tips[7463]={t="Lydros fica no Athenaeum. Nível 60. Hydrospawn está em Dire Maul East; entregue na próxima visita."}
 tips[7494]={t="Ele anda por aí; Crier Goodman em Stormwind e Herald Moonstalker em Darnassus dão a mesma missão."}
 tips[7703]={h="Num Tribute Run seguinte, quando você tiver o Gauntlet."}
+tips[82062]={t="Do Ring of Law, pegue a ponte a leste que segue para o norte sobre a lava. Junto ao pequeno braseiro do lado esquerdo, pule do parapeito para a plataforma abaixo, siga a parede até o canto e desça para a saliência de rocha: o Rugged Traveler está lá. A porta da saliência leva a um ponto acima de Lord Incendius, sem volta."}
 tips[92066]={d="Encontre o Totem of Ursoc e o Totem of Ursol."}
 tips[92343]={d="Colete 10 Nordrassil Root Caps."}
 tips[92344]={d="Colete 10 Nordrassil Root Caps."}
