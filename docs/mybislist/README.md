@@ -20,7 +20,7 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 
 ## Features
 
-- **Every class and spec.** 28 specs, tanks, healers and damage, with lists for levels 20, 30, 40 and 50 and before the raids. Your spec and level are picked for you; the button at the top left shows the list of any other spec.
+- **Every class and spec.** 30 specs, tanks, healers and damage, with lists for levels 20, 30, 40 and 50 and before the raids. Your spec and level are picked for you; the button at the top left shows the list of any other spec.
 - **Five items for each slot.** The best first. Items of the other faction leave the list.
 - **Against what you wear.** Each slot shows the best item of the list with a dot: green when you wear it, yellow when it is in your bags or bank, red when you do not have it yet. Open a slot to see its five items, and what you wear under a line when it is not one of them. A bar shows how many best items you wear.
 - **Where to get it.** Each item says where it comes from: a boss and its dungeon, a quest, a reputation, a craft or a world drop.
