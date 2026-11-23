@@ -2314,6 +2314,166 @@ test("guild message of the day: a notice once per text, nothing for a secret one
     issecretvalue, IsInGuild, GetGuildRosterMOTD = nil, nil, nil
 end)
 
+test("new spell ranks: a lower rank on a button gets the new one, a higher rank and a fight wait", function()
+    local ns = tweakNs()
+    local names = { [10] = "Fireball", [11] = "Fireball", [12] = "Fireball", [20] = "Frost Nova" }
+    local ranks = { [10] = "Rank 1", [11] = "Rank 2", [12] = "Rank 3", [20] = "Rank 1" }
+    local bar = { [1] = 10, [2] = 20, [3] = 12, [4] = 11 }
+    C_Spell = { GetSpellName = function(id) return names[id] end,
+        GetSpellSubtext = function(id) return ranks[id] end,
+        PickupSpell = function(id) _G.held = id end }
+    GetActionInfo = function(slot) if bar[slot] then return "spell", bar[slot] end end
+    GetCursorInfo = function() return nil end
+    PlaceAction = function(slot) bar[slot] = _G.held end
+    ClearCursor = function() _G.held = nil end
+    local fight = true
+    InCombatLockdown = function() return fight end
+    ns.SetTweak("spellRanks", true)
+    ns.SpellRanksEvent(nil, "LEARNED_SPELL_IN_SKILL_LINE", 11)
+    eq(bar[1], 10, "nothing changes in a fight")
+    fight = false
+    ns.SpellRanksEvent(nil, "PLAYER_REGEN_ENABLED")
+    eq(bar[1], 11, "rank 1 became rank 2 after the fight")
+    eq(bar[3], 12, "rank 3 stays: it is higher")
+    eq(bar[2], 20, "another spell stays")
+    eq(bar[4], 11)
+    eq(#ns.LowerRankSlots(12), 2, "rank 3 would take both rank 2 buttons")
+    C_Spell, GetActionInfo, GetCursorInfo, PlaceAction, ClearCursor, InCombatLockdown = nil, nil, nil, nil, nil, nil
+end)
+
+test("train all: everything the money covers, cheapest first, bought from the last index down", function()
+    local ns = tweakNs()
+    local services = { { "A", "available", 500 }, { "B", "used", 0 }, { "C", "available", 100 },
+        { "D", "available", 2000 }, { "E", "unavailable", 10 } }
+    GetNumTrainerServices = function() return #services end
+    GetTrainerServiceInfo = function(i) return services[i][1], "", services[i][2] end
+    GetTrainerServiceCost = function(i) return services[i][3] end
+    local plan, total = ns.TrainPlan(1000)
+    eq(#plan, 2)
+    eq(plan[1].index, 3, "cheapest first")
+    eq(total, 600)
+    local bought = {}
+    BuyTrainerService = function(i) bought[#bought + 1] = i end
+    GetMoney = function() return 1000 end
+    eq(ns.TrainAll(), 2)
+    eq(bought[1], 3)
+    eq(bought[2], 1, "the highest index first, so the others keep their place")
+    GetNumTrainerServices, GetTrainerServiceInfo, GetTrainerServiceCost, BuyTrainerService, GetMoney = nil, nil, nil, nil, nil
+end)
+
+test("skip NPC talk: one ticked service opens, quests, two services and Shift keep the talk", function()
+    local ns = tweakNs()
+    ns.SetTweak("skipGossip", true)
+    local get = ns.TweakGetter("skipGossip")
+    local taxi = { icon = 132057, gossipOptionID = 7 }
+    local inn = { icon = 132052, gossipOptionID = 8 }
+    local shop = { icon = 132060, gossipOptionID = 9 }
+    eq(ns.GossipPick({ taxi }, get), taxi)
+    eq(ns.GossipPick({ inn, shop }, get), shop, "the innkeeper's shop: innkeepers are off")
+    eq(ns.GossipPick({ taxi, shop }, get), nil, "two services keep the talk")
+    eq(ns.GossipPick({ { icon = "Interface\\GossipFrame\\VendorGossipIcon" } }, get) ~= nil, true, "a classic path")
+    local picked
+    local quests = 0
+    C_GossipInfo = { GetOptions = function() return { taxi } end,
+        GetNumAvailableQuests = function() return quests end, GetNumActiveQuests = function() return 0 end,
+        SelectOption = function(id) picked = id end }
+    ns.SkipGossipEvent()
+    eq(picked, 7)
+    picked, quests = nil, 1
+    ns.SkipGossipEvent()
+    eq(picked, nil, "an NPC with quests keeps its talk")
+    quests = 0
+    IsShiftKeyDown = function() return true end
+    ns.SkipGossipEvent()
+    eq(picked, nil, "Shift shows the talk")
+    IsShiftKeyDown, C_GossipInfo = nil, nil
+end)
+
+test("reward value: the dearest choice, nothing while a price loads or with one reward", function()
+    local ns = tweakNs()
+    eq(ns.BestReward({ 10, 50, 20 }, 3), 2)
+    eq(ns.BestReward({ 10 }, 1), nil, "one reward is no choice")
+    eq(ns.BestReward({ 0, 0 }, 2), nil, "nothing sells")
+    local at, waiting = ns.BestReward({ 10, nil }, 2)
+    eq(at, nil)
+    eq(waiting, true, "waits for the item")
+end)
+
+test("hide quest tracker: always, or only in the places that are on", function()
+    local ns = tweakNs()
+    local o = { where = "places", dungeon = true, pvp = false, combat = false, guide = true }
+    local g = function(k) return o[k] end
+    eq(ns.TrackerHidden(g, { instance = "party" }), true)
+    eq(ns.TrackerHidden(g, { instance = "pvp" }), false, "battlegrounds are off")
+    eq(ns.TrackerHidden(g, { instance = "none", combat = true }), false)
+    eq(ns.TrackerHidden(g, { instance = "none", guide = true }), true)
+    o.where = "always"
+    eq(ns.TrackerHidden(g, { instance = "none" }), true)
+    local tracker = CreateFrame("Frame")
+    tracker:Show()
+    ObjectiveTrackerFrame = tracker
+    IsInInstance = function() return true, "party" end
+    ns.SetTweak("hideTracker", true)
+    eq(tracker:IsShown(), false, "hidden in a dungeon")
+    ns.SetTweak("hideTracker", false)
+    eq(tracker:IsShown(), true, "back when the tweak goes off")
+    ObjectiveTrackerFrame, IsInInstance = nil, nil
+end)
+
+test("quest marks on mobs: an open objective or a rare, never a player or a secret line", function()
+    local ns = tweakNs()
+    eq(ns.OpenObjective({ type = 8, leftText = " - Kobold slain: 3/10" }), true)
+    eq(ns.OpenObjective({ type = 8, leftText = " - Kobold slain: 10/10" }), false)
+    eq(ns.OpenObjective({ type = 8, leftText = "Find it", completed = true }), false)
+    eq(ns.OpenObjective({ type = 0, leftText = "Level 12" }), false)
+    issecretvalue = function(v) return v == "secret" end
+    eq(ns.OpenObjective({ type = 8, leftText = "secret" }), false)
+    local lines = { { type = 8, leftText = "Wolf Meat: 1/8" } }
+    local class = "normal"
+    UnitExists = function() return true end
+    UnitIsPlayer = function(u) return u == "nameplate2" end
+    UnitClassification = function() return class end
+    C_TooltipInfo = { GetUnit = function() return { lines = lines } end }
+    local o = { quest = true, rare = true }
+    local g = function(k) return o[k] end
+    eq(ns.PlateMark("nameplate1", g), "quest")
+    eq(ns.PlateMark("nameplate2", g), nil, "a player gets nothing")
+    lines = {}
+    class = "rareelite"
+    eq(ns.PlateMark("nameplate1", g), "rare")
+    o.rare = false
+    eq(ns.PlateMark("nameplate1", g), nil)
+    issecretvalue, UnitExists, UnitIsPlayer, UnitClassification, C_TooltipInfo = nil, nil, nil, nil, nil
+end)
+
+test("quest progress sounds: an objective, then the whole quest, nothing for a new quest", function()
+    local ns = tweakNs()
+    local before = { [1] = { done = false, obj = { false, false } } }
+    eq(ns.QuestProgress(before, { [1] = { done = false, obj = { true, false } } }), "objective")
+    eq(ns.QuestProgress(before, { [1] = { done = true, obj = { true, true } } }), "complete")
+    eq(ns.QuestProgress(before, { [1] = before[1], [2] = { done = true, obj = { true } } }), nil, "taking a quest is no progress")
+    local log = { { questID = 5 } }
+    local fin = false
+    C_QuestLog = { GetNumQuestLogEntries = function() return #log end, GetInfo = function(i) return log[i] end,
+        IsComplete = function() return fin end,
+        GetQuestObjectives = function() return { { finished = fin } } end }
+    local played = {}
+    PlaySound = function(id) played[#played + 1] = id end
+    ns.SetTweak("questSounds", true)
+    ns.QuestSoundsEvent()
+    eq(#played, 0, "the first look only notes")
+    fin = true
+    ns.QuestSoundsEvent()
+    eq(#played, 1)
+    ns.SetTweakOpt("questSounds", "complete", false)
+    fin = false
+    ns.QuestSoundsEvent()
+    fin = true
+    ns.QuestSoundsEvent()
+    eq(#played, 1, "the switch of the whole quest is off")
+    C_QuestLog, PlaySound = nil, nil
+end)
+
 test("the Tweaks page opens under Home, its gear opens the settings and the hub's search finds tweaks", function()
     local ns = tweakNs()
     ns.OpenTweaks()
