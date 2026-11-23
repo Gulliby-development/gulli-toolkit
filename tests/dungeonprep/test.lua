@@ -1034,6 +1034,20 @@ test("the tier 0.5 set: hidden while levelling, its own folded list at the top l
     end
 end)
 
+test("Ever After: WoW Forever's hidden quest in Blackrock Depths, inside, with its way there", function()
+    Fake({ level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    eq(ns.Get("mainOnly"), true)
+    assert(ns.MainSet("BRD")[82062], "among the chains of Blackrock Depths")
+    local found
+    for _, x in ipairs(ns.Quests("BRD", 50).take) do if x.id == 82062 then found = x end end
+    assert(found, "to take at level 50, for both factions")
+    eq(found.who, "Rugged Traveler")
+    local inside = ns.Inside("BRD", 82062)
+    assert(inside.take and inside.turnin, "taken and handed in inside the dungeon")
+    assert(ns.Data.tips[82062] and ns.Data.tips[82062].t, "the way to the ledge")
+end)
+
 test("Lead me at the top level: the set quests in the log, the ones to take once the set began", function()
     local function has(list, id)
         for _, x in ipairs(list) do

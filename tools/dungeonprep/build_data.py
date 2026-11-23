@@ -91,11 +91,14 @@ NPCS = {
     "ALCAZ": [255391, 255997, 257016, 256236, 255702, 255707, 264770],
     "BLACKMAW": [247195, 247206, 247209, 247198, 247234, 247207, 247231],
     "SHAPERS": [253201, 261812, 261813, 262127, 261974, 261993, 262297, 262081, 272561, 261809],
+    # Blackrock Depths: the Rugged Traveler, on a hidden ledge over the lava (the data files him
+    # under the Burning Steppes).
+    "BRD": [222530],
 }
 # Givers the data does not name, by npc id: Mason Connery, chained at the end of Alcaz Prison,
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
 # Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
-STARTERS = {96335: 264770}
+STARTERS = {96335: 264770, 82062: 222530}  # and the Rugged Traveler's Ever After
 # Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
 FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
@@ -130,6 +133,16 @@ MAIN_EXTRA = {
     "KROLDOK": [94969],  # Krol'dok No More!
     "BLACKMAW": [92065, 99187],  # Blackmaw Reclamation, The Reliquary of Tyr
     "DALARAN": [92459, 97287],  # Friend of the Kirin Tor, Shrewd Negotiations
+    "BRD": [82062],  # Ever After, WoW Forever's hidden quest on a ledge over the lava (owner's word of 2026-11-23)
+}
+
+# Tips for a quest no levelling guide has, by stage (t take, d work, h hand in), in English and
+# in our own words; translated through tools/i18n like the guides' tips.
+TIPS = {
+    82062: {"t": "From the Ring of Law, take the bridge east that runs north over the lava. By the small "
+                 "brazier on its left side, jump from the railing onto the platform below, follow the wall "
+                 "to the corner and drop down onto the rock ledge: the Rugged Traveler stands there. The door "
+                 "on the ledge leads on above Lord Incendius, with no way back."},
 }
 
 # A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
@@ -428,6 +441,9 @@ def main(root, att_root=None, gdq_root=None):
     add_set_masks(quests)
     guide_tips = {}
     guide_quests = load_guides(gdq_root, guide_tips)
+    for qid, by in TIPS.items():
+        for stage, text in by.items():
+            guide_tips.setdefault(qid, {}).setdefault(stage, text)
     att_side = {}
     for listed in att_quests.values():
         att_side.update(listed)
