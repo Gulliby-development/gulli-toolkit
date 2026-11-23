@@ -401,10 +401,45 @@ S.loot = { default = {
         C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
     end,
 },
+-- The loot feed with every kind of line: gold, better gear, cloth, a quest item, a quest item
+-- to sell, junk. `feedcompact` is the same loot in the one-line look.
+feed = { spec = { db = { feed = true }, worn = { [5] = 30 }, bags = { [14047] = 43, [8146] = 7, [50001] = 7 },
+        items = { [10058] = { 4, "INVTYPE_CHEST", 44, 2, 2, 9200 }, [14047] = { 7, nil, 50, 1, 0, 400 },
+                  [8146] = { 7, nil, 45, 1, 0, 505 }, [50001] = { 12, nil, 1, 1, 4, 0 },
+                  [50002] = { 12, nil, 1, 1, 4, 250 }, [50003] = { 15, nil, 1, 0, 0, 375 } },
+        quests = { { 77, "Hope for Hatchlings", { { "7/12 Hyjal Owl Egg", 7, 12 } } } } },
+    crop = "GulliLootFeed",
+    before = function()
+        local names = { [10058] = "Nightscape Tunic", [14047] = "Runecloth", [8146] = "Wicked Claw", [50001] = "Hyjal Owl Egg",
+                        [50002] = "Torn Field Report", [50003] = "Broken Antler" }
+        local icons = { [10058] = "INV_Chest_Leather_08", [14047] = "INV_Fabric_PurpleFire_01", [8146] = "INV_Misc_MonsterClaw_03",
+                        [50001] = "INV_Egg_03", [50002] = "INV_Scroll_03", [50003] = "INV_Misc_Dust_02" }
+        local old = C_Item.GetItemInfo
+        C_Item.GetItemInfo = function(id)
+            local r = { old(id) }
+            r[1] = names[id] or r[1]
+            return unpack(r, 1, 14)
+        end
+        C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (icons[id] or "INV_Misc_QuestionMark") end
+    end,
+    open = function(ns, W)
+        ns.Skin.AuctionPrice = function(id) return ({ [10058] = 18500, [14047] = 480, [8146] = 620 })[id] end
+        local q = { [10058] = "1eff00", [50003] = "9d9d9d" }
+        local function loot(id, name, n)
+            W.Fire("CHAT_MSG_LOOT", "You receive loot: |cff" .. (q[id] or "ffffff") .. "|Hitem:" .. id .. "|h[" .. name .. "]|h|r" .. (n and ("x" .. n) or "") .. ".")
+        end
+        loot(50003, "Broken Antler"); loot(50002, "Torn Field Report"); loot(50001, "Hyjal Owl Egg")
+        loot(8146, "Wicked Claw"); loot(14047, "Runecloth", 3); loot(10058, "Nightscape Tunic")
+        W.Fire("LOOT_READY"); W.money = W.money + 1682; W.Fire("PLAYER_MONEY")
+    end },
 -- Who rolled what: the sample the Unlock mode shows under the roll frames.
 rollers = { spec = { db = { rollers = true } }, crop = "GulliLootRollers",
     open = function(ns) ns.MoveRollers(true) end },
 }
+
+S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
+    items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
+    before = S.loot.feed.before, open = S.loot.feed.open }
 
 -- PartyQuests: a level 47 character with quests in several zones, and a group of three: Ann runs
 -- the module (progress and zones), Bob does not, Cid is offline.

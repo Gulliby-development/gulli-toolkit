@@ -26,6 +26,10 @@ ns.DEFAULTS = {
     rollScale = 100,  -- the size of the group loot rolls, in percent
     rollMove = false, -- the group loot rolls stand where the player placed them
     feed = false,     -- the panel of what was just looted
+    feedCompact = false, -- one line per item instead of two
+    feedPrice = true,    -- what a looted item is worth, at a vendor or the auction
+    feedNotes = true,    -- the quest that needs it, better gear, a farm goal, the count in the bags
+    feedTotal = true,    -- the sum of the lines that show
     rollers = false,  -- the group's choices under the roll frames
     real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
 }
@@ -235,6 +239,7 @@ function ns.SetPref(key, value)
     if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
     if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
     if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
+    if key:find("^feed%u") and ns.FeedRestyle then ns.FeedRestyle() end
     if key == "rollers" and ns.SetRollers then ns.SetRollers(value) end
     if key == "real" and ns.SetReal then ns.SetReal(value) end
     if ns.Refresh then ns.Refresh() end
@@ -316,7 +321,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         end
         for _, e in ipairs({ "START_LOOT_ROLL", "CONFIRM_LOOT_ROLL", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_BIND_CONFIRM",
                              "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_SLOT_CHANGED", "LOOT_CLOSED",
-                             "PLAYER_MONEY", "PLAYER_ENTERING_WORLD" }) do
+                             "PLAYER_MONEY", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE" }) do
             self:RegisterEvent(e)
         end
         if hooksecurefunc and HandleModifiedItemClick then
@@ -330,9 +335,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     -- Paused from the hub: only the closing events still run, so nothing stays open.
     if ns.paused and not event:find("_CLOSED$") then return end
     if ns.OnFeedEvent and (event == "LOOT_READY" or event == "LOOT_OPENED" or event == "LOOT_CLOSED"
-        or event == "CHAT_MSG_LOOT" or event == "PLAYER_MONEY") then
+        or event == "CHAT_MSG_LOOT" or event == "PLAYER_MONEY" or event == "BAG_UPDATE_DELAYED"
+        or event == "QUEST_LOG_UPDATE") then
         ns.OnFeedEvent(event, a1)
-        if event == "PLAYER_MONEY" then return end
+        if event == "PLAYER_MONEY" or event == "BAG_UPDATE_DELAYED" or event == "QUEST_LOG_UPDATE" then return end
     end
     if event == "PLAYER_ENTERING_WORLD" then
         if ns.ApplyWindow then ns.ApplyWindow() end
@@ -404,6 +410,10 @@ ns.OPT_ICON = {
     where = "Interface\\Icons\\INV_Misc_Map_01",
     rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
     feed = "Interface\\Icons\\INV_Misc_Note_01",
+    feedCompact = "Interface\\Icons\\INV_Misc_Note_02",
+    feedPrice = "Interface\\Minimap\\Tracking\\Auctioneer",
+    feedNotes = "Interface\\Icons\\INV_Misc_Book_09",
+    feedTotal = "Interface\\Icons\\INV_Misc_Coin_01",
     rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     real = "Interface\\Icons\\INV_Misc_Coin_19",
 }
