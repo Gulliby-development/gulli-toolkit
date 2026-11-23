@@ -10,7 +10,7 @@
 ## Notes-zhCN: 在小面板中统计本次刷到的布料、矿石、草药或金币，并可设定目标。 /gft
 ## Notes-zhTW: 在小面板中统计本次刷到的布料、矿石、草药或金币，并可设定目标。 /gft
 ## Author: Gulliby
-## Version: 1.10.3
+## Version: 1.11.0
 ## IconTexture: Interface\AddOns\Gulli-FarmTrack\icon
 ## OptionalDeps: Gulli-Toolkit, Auctionator, auxForever, NaowhForever, TradeSkillMaster, Hammerprice
 ## X-Gulli-Module: FarmTrack
