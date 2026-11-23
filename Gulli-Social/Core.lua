@@ -291,6 +291,127 @@ function ns.OnResurrect(name)
     return true
 end
 
+---- Battle.net requests, join requests, shared quests --------------------------------------
+
+-- On WoW Forever the game's Add Friend sends a character's friend request as a Battle.net
+-- invite at the "title" level: that one is a friend request in the game and stays.
+function ns.DeclineBnet()
+    if not ns.db.noBnet or not BNDeclineFriendInvite or not (C_BattleNet and C_BattleNet.GetFriendInviteInfo) then
+        return 0
+    end
+    local title = Enum and Enum.BattleNetFriendLevel and Enum.BattleNetFriendLevel.Title
+    local n = 0
+    for i = (BNGetNumFriendInvites and BNGetNumFriendInvites() or 0), 1, -1 do
+        local inv = C_BattleNet.GetFriendInviteInfo(i)
+        if inv and inv.inviteID and not (title and inv.friendLevel == title) then
+            local who = inv.accountName
+            if secret(who) then who = nil end
+            BNDeclineFriendInvite(inv.inviteID)
+            away("bnet", L.NO_BNET:format(who or "?"), who)
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- A request to join the group (or a member's suggestion to invite someone) from a stranger.
+-- A request stays first until the game took the answer, so each one is answered once.
+function ns.CheckJoin()
+    if not ns.db.noJoin or not GetNextPendingInviteConfirmation or not RespondToInviteConfirmation then return nil end
+    local invite = GetNextPendingInviteConfirmation()
+    if not invite or secret(invite) or invite == ns.answered then return nil end
+    local name
+    if GetInviteConfirmationInfo then name = select(2, GetInviteConfirmationInfo(invite)) end
+    if secret(name) then name = nil end
+    if name and ns.Known(name) then return nil end
+    ns.answered = invite
+    RespondToInviteConfirmation(invite, false)
+    hide("GROUP_INVITE_CONFIRMATION")
+    away("join", L.NO_JOIN:format(name or "?"), name)
+    -- The next request shows once this popup is gone.
+    if C_Timer then C_Timer.After(0, function() if not ns.paused then ns.CheckJoin() end end) end
+    return true
+end
+
+-- Whether a quest this player shares is turned away: Auto Quest asks it too, so it never takes
+-- one that this module declines.
+function ns.DeclinesShare(name)
+    if not ns.db or ns.paused or not ns.db.noShared then return false end
+    if not name or secret(name) then return false end
+    return not ns.Known(name)
+end
+
+-- The quest window opened by a player (a share) rather than by an NPC.
+local function sharer()
+    local ok, isPlayer = pcall(UnitIsPlayer, "questnpc")
+    if not ok or secret(isPlayer) or not isPlayer then return nil end
+    local name = UnitName("questnpc")
+    if not name or secret(name) then return nil end
+    return name
+end
+ns.Sharer = sharer
+
+function ns.OnQuestDetail()
+    local name = sharer()
+    if not name or not ns.DeclinesShare(name) then return nil end
+    DeclineQuest()
+    away("shared", L.NO_SHARED:format(name), name)
+    return true
+end
+
+-- An escort or event quest a member started asks to join it.
+function ns.OnQuestConfirm(name)
+    if not ns.DeclinesShare(name) then return nil end
+    hide("QUEST_ACCEPT")
+    away("shared", L.NO_SHARED:format(name), name)
+    return true
+end
+
+---- Battlegrounds ------------------------------------------------------------------------------
+
+local function inBattleground()
+    if not IsInInstance then return false end
+    local _, kind = IsInInstance()
+    return kind == "pvp"
+end
+
+local function canSelfRes()
+    local D = C_DeathInfo
+    local opts = D and D.GetSelfResurrectOptions and D.GetSelfResurrectOptions()
+    return type(opts) == "table" and #opts > 0
+end
+
+-- Right after a death in a battleground the spirit goes, unless Shift is held, a soulstone or the
+-- like can bring the player back, or someone offers a resurrection.
+ns.RELEASE_DELAY = 0.5
+function ns.OnDead()
+    if not ns.db.bgRelease or not inBattleground() then return nil end
+    if IsShiftKeyDown and IsShiftKeyDown() then return nil end
+    local death = (ns.death or 0) + 1
+    ns.death = death
+    local function release()
+        if ns.paused or death ~= ns.death or not ns.db.bgRelease or not inBattleground() then return end
+        if not UnitIsDead("player") or UnitIsGhost("player") or canSelfRes() then return end
+        if HasResurrectRequest and HasResurrectRequest() then return end
+        if IsShiftKeyDown and IsShiftKeyDown() then return end
+        RepopMe()
+        ns.Log("release")
+    end
+    if C_Timer then C_Timer.After(ns.RELEASE_DELAY, release) else release() end
+    return true
+end
+
+-- The spirit healer's wave in a battleground, taken once per death.
+function ns.OnSpiritHealer()
+    if not ns.db.bgSpirit or not inBattleground() or not AcceptAreaSpiritHeal then return nil end
+    local death = ns.death or 0
+    if ns.healed == death then return nil end
+    ns.healed = death
+    AcceptAreaSpiritHeal()
+    ns.Log("spirit")
+    return true
+end
+
 ---- Spam whispers ------------------------------------------------------------------------------
 
 -- Words of gold sellers and scams; a whisper from a stranger with one of them is hidden.
@@ -324,7 +445,8 @@ end
 ns.DEFAULTS = { invite = true, words = "inv, invite, 123", match = "WHOLE", inviteKnown = false, acceptKnown = true,
                 bnet = true, reply = true, toRaid = false, blockStrangers = false, noDuels = false,
                 duelKnown = true, noGuildInvites = false, noTrade = false, noPetition = false, summon = false,
-                res = false, spam = false, allow = "", deny = "", busy = false, busyAlways = false,
+                res = false, spam = false, noBnet = false, noJoin = false, noShared = false,
+                bgRelease = false, bgSpirit = false, allow = "", deny = "", busy = false, busyAlways = false,
                 busyMinutes = 5, busyText = "" }
 
 function ns.Defaults()
@@ -348,7 +470,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db = GulliSocialDB
         ns.Defaults()
         for _, e in ipairs({ "CHAT_MSG_WHISPER", "PARTY_INVITE_REQUEST", "DUEL_REQUESTED", "GUILD_INVITE_REQUEST",
-                             "TRADE_SHOW", "PETITION_SHOW", "CONFIRM_SUMMON", "RESURRECT_REQUEST" }) do
+                             "TRADE_SHOW", "PETITION_SHOW", "CONFIRM_SUMMON", "RESURRECT_REQUEST",
+                             "BN_FRIEND_INVITE_ADDED", "BN_FRIEND_INVITE_LIST_INITIALIZED", "GROUP_INVITE_CONFIRMATION",
+                             "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST",
+                             "AREA_SPIRIT_HEALER_IN_RANGE" }) do
             self:RegisterEvent(e)
         end
         if ChatFrame_AddMessageEventFilter then ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", spamFilter) end
@@ -371,6 +496,20 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.OnSummon()
     elseif event == "RESURRECT_REQUEST" then
         ns.OnResurrect(a1)
+    elseif event == "BN_FRIEND_INVITE_ADDED" or event == "BN_FRIEND_INVITE_LIST_INITIALIZED" then
+        ns.DeclineBnet()
+    elseif event == "GROUP_INVITE_CONFIRMATION" then
+        ns.CheckJoin()
+    elseif event == "QUEST_DETAIL" then
+        ns.OnQuestDetail()
+    elseif event == "QUEST_ACCEPT_CONFIRM" then
+        ns.OnQuestConfirm(a1)
+    elseif event == "PLAYER_DEAD" then
+        ns.OnDead()
+    elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+        ns.death = (ns.death or 0) + 1
+    elseif event == "AREA_SPIRIT_HEALER_IN_RANGE" then
+        ns.OnSpiritHealer()
     end
 end)
 
@@ -379,6 +518,9 @@ SLASH_GULLISOCIAL2 = "/gullisocial"
 SlashCmdList.GULLISOCIAL = function() ns.Toggle() end
 
 function GulliSocial_Toggle() ns.Toggle() end
+
+-- For other Gulli addons (Auto Quest asks before it takes a shared quest).
+GulliSocial = { DeclinesShare = function(name) return ns.DeclinesShare(name) end }
 
 -- The same switches as in the window, so the Gulli Toolkit hub can show them.
 -- The game icon of each switch, in the window and in the hub.
@@ -400,6 +542,11 @@ ns.OPT_ICON = {
     duelKnown = "Interface\\Icons\\Ability_Warrior_Challange",
     busy = "Interface\\Icons\\INV_Letter_15",
     busyAlways = "Interface\\Icons\\INV_Letter_02",
+    noBnet = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    noJoin = "Interface\\Icons\\Spell_Holy_SealOfProtection",
+    noShared = "Interface\\Icons\\INV_Scroll_03",
+    bgRelease = "Interface\\Icons\\Spell_Holy_SenseUndead",
+    bgSpirit = "Interface\\Icons\\Spell_Holy_Resurrection",
 }
 
 local function option(key, label, tip)

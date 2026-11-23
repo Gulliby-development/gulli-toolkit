@@ -122,6 +122,25 @@ test("quests shared by the group wait for their switch", function()
     W.Fire("QUEST_ACCEPT_CONFIRM"); eq(W.did[1], "confirm")
 end)
 
+test("a quest a player shares waits for the switch and for Gulli Social", function()
+    Fake({})
+    local ns = Load()
+    local sharer
+    UnitIsPlayer = function(u) return u == "questnpc" and sharer ~= nil end
+    local baseName = UnitName
+    UnitName = function(u) if u == "questnpc" then return sharer end return baseName(u) end
+    sharer = "Bob"
+    W.Fire("QUEST_DETAIL"); eq(#W.did, 0, "shared quests need their switch")
+    ns.db.shared = true
+    GulliSocial = { DeclinesShare = function(name) return name == "Bob" end }
+    W.Fire("QUEST_DETAIL"); W.Fire("QUEST_ACCEPT_CONFIRM", "Bob")
+    eq(#W.did, 0, "Social turns Bob away")
+    sharer = "Ann"
+    W.Fire("QUEST_DETAIL")
+    eq(#W.did > 0, true)
+    GulliSocial, UnitIsPlayer = nil, nil
+end)
+
 test("a quest that takes non-quest items is not handed in unless allowed", function()
     Fake({})
     local ns = Load()
