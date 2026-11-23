@@ -130,6 +130,8 @@ end
 
 function Q.RestoreCVars() Q.ApplyCVars({}) end
 
+local st = { on = false, guid = nil, rung = {}, overlays = setmetatable({}, { __mode = "k" }) }
+
 -- Rules --------------------------------------------------------------------------------------------
 
 -- Whether a tooltip (C_TooltipInfo data) says a quest of the player needs the object: an
@@ -150,20 +152,63 @@ function Q.TooltipNeeds(data)
     return title and not objective
 end
 
+-- The quest log's objectives that are not done yet, lowercased (rebuilt on QUEST_LOG_UPDATE).
+function Q.OpenObjectives()
+    if st.objectives then return st.objectives end
+    local list = {}
+    local log = C_QuestLog
+    if log and log.GetNumQuestLogEntries and log.GetInfo and log.GetQuestObjectives then
+        local n = log.GetNumQuestLogEntries() or 0
+        for i = 1, n do
+            local info = log.GetInfo(i)
+            if info and not info.isHeader and info.questID then
+                local ok, objs = pcall(log.GetQuestObjectives, info.questID)
+                if ok and type(objs) == "table" then
+                    for _, o in ipairs(objs) do
+                        if type(o) == "table" and not o.finished and type(o.text) == "string" then
+                            list[#list + 1] = o.text:lower()
+                        end
+                    end
+                end
+            end
+        end
+    end
+    st.objectives = list
+    return list
+end
+
+-- Whether an open objective names the object ("0/6 Untainted Soil" for "Untainted Soil").
+function Q.NamedInObjectives(name)
+    if type(name) ~= "string" or secret(name) or #name < 3 then return false end
+    local low = name:lower()
+    for _, text in ipairs(Q.OpenObjectives()) do
+        if text:find(low, 1, true) then return true end
+    end
+    return false
+end
+
+-- Only world objects get the mark: the game also picks NPCs (a quest giver is "related" to the
+-- quest it takes back, and its tooltip shows the quest's title), and those must stay dark.
+function Q.IsObject(guid)
+    return type(guid) == "string" and guid:find("^GameObject%-") ~= nil
+end
+
 -- The object the game picked, when a quest needs it: guid, name (nil when hidden).
 function Q.QuestObject()
     if not (UnitExists and UnitExists("softinteract")) then return nil end
     local guid = UnitGUID("softinteract")
-    if guid == nil or secret(guid) then return nil end
+    if guid == nil or secret(guid) or not Q.IsObject(guid) then return nil end
+    local name = UnitName("softinteract")
+    if secret(name) then name = nil end
     local need = false
     if C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest then
         local ok, related = pcall(C_QuestLog.UnitIsRelatedToActiveQuest, "softinteract")
         need = ok and related == true
     end
+    -- the game often says nothing about objects: the tooltip, then the objectives by name
     if not need then need = Q.TooltipNeeds(tooltipOf("softinteract")) end
+    if not need then need = Q.NamedInObjectives(name) end
     if not need then return nil end
-    local name = UnitName("softinteract")
-    if secret(name) then name = nil end
     return guid, name
 end
 
@@ -196,7 +241,6 @@ end
 
 -- Frames -------------------------------------------------------------------------------------------
 
-local st = { on = false, guid = nil, rung = {}, overlays = setmetatable({}, { __mode = "k" }) }
 Q.state = st
 
 local function tex(f, path, layer, add)
@@ -727,7 +771,7 @@ local function listen()
     f:SetScript("OnEvent", function(_, event)
         if not st.on then return end
         if event == "BAG_UPDATE_DELAYED" then Q.SoonBags(); return end
-        if event == "QUEST_LOG_UPDATE" then Q.SoonBags() end
+        if event == "QUEST_LOG_UPDATE" then st.objectives = nil; Q.SoonBags() end
         Q.Refresh()
     end)
     st.ev = f

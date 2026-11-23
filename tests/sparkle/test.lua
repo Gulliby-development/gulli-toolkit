@@ -226,6 +226,41 @@ test("an object no quest needs gets nothing", function()
     Q.Disable()
 end)
 
+test("a quest giver or other NPC never gets the mark, even when related", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "Creature-0-1-2-3-4-5", name = "Kaylaena", related = true, lines = { { type = 17 } } }
+    Q.Refresh()
+    assert(not (_G.GulliSparkleMarker and _G.GulliSparkleMarker.shown), "marked a quest giver")
+    assert(not (_G.GulliSparkleCrosshair and _G.GulliSparkleCrosshair.shown), "crosshair on a quest giver")
+    assert(#W.sounds == 0, "rang for a quest giver")
+    Q.Disable()
+end)
+
+test("an object the game says nothing about is found by an open objective's name", function()
+    local Q = reset()
+    local quests = { { questID = 1, objs = { { text = "0/6 Untainted Soil", finished = false } } },
+        { questID = 2, objs = { { text = "Crate: 1/1", finished = true } } } }
+    C_QuestLog.GetNumQuestLogEntries = function() return #quests + 1 end
+    C_QuestLog.GetInfo = function(i)
+        if i == 1 then return { isHeader = true } end
+        return quests[i - 1]
+    end
+    C_QuestLog.GetQuestObjectives = function(id)
+        for _, q in ipairs(quests) do if q.questID == id then return q.objs end end
+    end
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "GameObject-9", name = "Untainted Soil", related = false }
+    Q.Refresh()
+    assert(_G.GulliSparkleMarker and _G.GulliSparkleMarker.shown, "no mark on the soil")
+    W.soft = { guid = "GameObject-10", name = "Crate", related = false }
+    Q.Refresh()
+    assert(not _G.GulliSparkleCrosshair.shown, "lit a done objective")
+    Q.Disable()
+end)
+
 test("a secret guid or name shows nothing it cannot read", function()
     local Q = reset()
     Q.Enable(Q.Get)
