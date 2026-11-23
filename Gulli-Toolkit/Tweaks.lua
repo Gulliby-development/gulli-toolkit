@@ -139,6 +139,13 @@ function ns.TweakSkip()
     return IsShiftKeyDown ~= nil and IsShiftKeyDown() == true
 end
 
+-- Registers an event only when the client has it: one unknown name raises an error, and a
+-- tweak may listen to a retail and a classic name for the same thing.
+function ns.TweakListen(frame, event)
+    if C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(event) then return false end
+    return (pcall(frame.RegisterEvent, frame, event))
+end
+
 -- Starts the tweaks that are on, once the game has loaded the player.
 function ns.StartTweaks()
     ns.tweaksStarted = true

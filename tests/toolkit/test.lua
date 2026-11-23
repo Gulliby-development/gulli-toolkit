@@ -2273,7 +2273,9 @@ test("the filter, the counts and the groups of the page", function()
     eq(c.level.on, 1)
     eq(c.people.total >= 1, true)
     eq(#ns.TweakFilter(rows, "on", ""), 1)
-    eq(ns.TweakFilter(rows, "people", "")[1].key, "guildMotd")
+    local people = {}
+    for _, r in ipairs(ns.TweakFilter(rows, "people", "")) do people[r.key] = r.group end
+    eq(people.guildMotd, "people", "a group's filter keeps its rows")
     eq(#ns.TweakFilter(rows, "all", "screenshot"), 1, "the search reads the name and the line")
     local groups = ns.TweakGroups(rows)
     eq(groups[1].key, "level", "groups in the track's order, empty ones left out")
@@ -2378,6 +2380,166 @@ test("equip new bags: a new plain bag goes into an empty slot, never in a fight 
     C_Container, GetInventoryItemID, PutItemInBag, C_TooltipInfo, C_Item.GetItemInfoInstant = nil, nil, nil, nil, nil
 end)
 
+test("new spell ranks: a lower rank on a button gets the new one, a higher rank and a fight wait", function()
+    local ns = tweakNs()
+    local names = { [10] = "Fireball", [11] = "Fireball", [12] = "Fireball", [20] = "Frost Nova" }
+    local ranks = { [10] = "Rank 1", [11] = "Rank 2", [12] = "Rank 3", [20] = "Rank 1" }
+    local bar = { [1] = 10, [2] = 20, [3] = 12, [4] = 11 }
+    C_Spell = { GetSpellName = function(id) return names[id] end,
+        GetSpellSubtext = function(id) return ranks[id] end,
+        PickupSpell = function(id) _G.held = id end }
+    GetActionInfo = function(slot) if bar[slot] then return "spell", bar[slot] end end
+    GetCursorInfo = function() return nil end
+    PlaceAction = function(slot) bar[slot] = _G.held end
+    ClearCursor = function() _G.held = nil end
+    local fight = true
+    InCombatLockdown = function() return fight end
+    ns.SetTweak("spellRanks", true)
+    ns.SpellRanksEvent(nil, "LEARNED_SPELL_IN_SKILL_LINE", 11)
+    eq(bar[1], 10, "nothing changes in a fight")
+    fight = false
+    ns.SpellRanksEvent(nil, "PLAYER_REGEN_ENABLED")
+    eq(bar[1], 11, "rank 1 became rank 2 after the fight")
+    eq(bar[3], 12, "rank 3 stays: it is higher")
+    eq(bar[2], 20, "another spell stays")
+    eq(bar[4], 11)
+    eq(#ns.LowerRankSlots(12), 2, "rank 3 would take both rank 2 buttons")
+    C_Spell, GetActionInfo, GetCursorInfo, PlaceAction, ClearCursor, InCombatLockdown = nil, nil, nil, nil, nil, nil
+end)
+
+test("train all: everything the money covers, cheapest first, bought from the last index down", function()
+    local ns = tweakNs()
+    local services = { { "A", "available", 500 }, { "B", "used", 0 }, { "C", "available", 100 },
+        { "D", "available", 2000 }, { "E", "unavailable", 10 } }
+    GetNumTrainerServices = function() return #services end
+    GetTrainerServiceInfo = function(i) return services[i][1], "", services[i][2] end
+    GetTrainerServiceCost = function(i) return services[i][3] end
+    local plan, total = ns.TrainPlan(1000)
+    eq(#plan, 2)
+    eq(plan[1].index, 3, "cheapest first")
+    eq(total, 600)
+    local bought = {}
+    BuyTrainerService = function(i) bought[#bought + 1] = i end
+    GetMoney = function() return 1000 end
+    eq(ns.TrainAll(), 2)
+    eq(bought[1], 3)
+    eq(bought[2], 1, "the highest index first, so the others keep their place")
+    GetNumTrainerServices, GetTrainerServiceInfo, GetTrainerServiceCost, BuyTrainerService, GetMoney = nil, nil, nil, nil, nil
+end)
+
+test("skip NPC talk: one ticked service opens, quests, two services and Shift keep the talk", function()
+    local ns = tweakNs()
+    ns.SetTweak("skipGossip", true)
+    local get = ns.TweakGetter("skipGossip")
+    local taxi = { icon = 132057, gossipOptionID = 7 }
+    local inn = { icon = 132052, gossipOptionID = 8 }
+    local shop = { icon = 132060, gossipOptionID = 9 }
+    eq(ns.GossipPick({ taxi }, get), taxi)
+    eq(ns.GossipPick({ inn, shop }, get), shop, "the innkeeper's shop: innkeepers are off")
+    eq(ns.GossipPick({ taxi, shop }, get), nil, "two services keep the talk")
+    eq(ns.GossipPick({ { icon = "Interface\\GossipFrame\\VendorGossipIcon" } }, get) ~= nil, true, "a classic path")
+    local picked
+    local quests = 0
+    C_GossipInfo = { GetOptions = function() return { taxi } end,
+        GetNumAvailableQuests = function() return quests end, GetNumActiveQuests = function() return 0 end,
+        SelectOption = function(id) picked = id end }
+    ns.SkipGossipEvent()
+    eq(picked, 7)
+    picked, quests = nil, 1
+    ns.SkipGossipEvent()
+    eq(picked, nil, "an NPC with quests keeps its talk")
+    quests = 0
+    IsShiftKeyDown = function() return true end
+    ns.SkipGossipEvent()
+    eq(picked, nil, "Shift shows the talk")
+    IsShiftKeyDown, C_GossipInfo = nil, nil
+end)
+
+test("reward value: the dearest choice, nothing while a price loads or with one reward", function()
+    local ns = tweakNs()
+    eq(ns.BestReward({ 10, 50, 20 }, 3), 2)
+    eq(ns.BestReward({ 10 }, 1), nil, "one reward is no choice")
+    eq(ns.BestReward({ 0, 0 }, 2), nil, "nothing sells")
+    local at, waiting = ns.BestReward({ 10, nil }, 2)
+    eq(at, nil)
+    eq(waiting, true, "waits for the item")
+end)
+
+test("hide quest tracker: always, or only in the places that are on", function()
+    local ns = tweakNs()
+    local o = { where = "places", dungeon = true, pvp = false, combat = false, guide = true }
+    local g = function(k) return o[k] end
+    eq(ns.TrackerHidden(g, { instance = "party" }), true)
+    eq(ns.TrackerHidden(g, { instance = "pvp" }), false, "battlegrounds are off")
+    eq(ns.TrackerHidden(g, { instance = "none", combat = true }), false)
+    eq(ns.TrackerHidden(g, { instance = "none", guide = true }), true)
+    o.where = "always"
+    eq(ns.TrackerHidden(g, { instance = "none" }), true)
+    local tracker = CreateFrame("Frame")
+    tracker:Show()
+    ObjectiveTrackerFrame = tracker
+    IsInInstance = function() return true, "party" end
+    ns.SetTweak("hideTracker", true)
+    eq(tracker:IsShown(), false, "hidden in a dungeon")
+    ns.SetTweak("hideTracker", false)
+    eq(tracker:IsShown(), true, "back when the tweak goes off")
+    ObjectiveTrackerFrame, IsInInstance = nil, nil
+end)
+
+test("quest marks on mobs: an open objective or a rare, never a player or a secret line", function()
+    local ns = tweakNs()
+    eq(ns.OpenObjective({ type = 8, leftText = " - Kobold slain: 3/10" }), true)
+    eq(ns.OpenObjective({ type = 8, leftText = " - Kobold slain: 10/10" }), false)
+    eq(ns.OpenObjective({ type = 8, leftText = "Find it", completed = true }), false)
+    eq(ns.OpenObjective({ type = 0, leftText = "Level 12" }), false)
+    issecretvalue = function(v) return v == "secret" end
+    eq(ns.OpenObjective({ type = 8, leftText = "secret" }), false)
+    local lines = { { type = 8, leftText = "Wolf Meat: 1/8" } }
+    local class = "normal"
+    UnitExists = function() return true end
+    UnitIsPlayer = function(u) return u == "nameplate2" end
+    UnitClassification = function() return class end
+    C_TooltipInfo = { GetUnit = function() return { lines = lines } end }
+    local o = { quest = true, rare = true }
+    local g = function(k) return o[k] end
+    eq(ns.PlateMark("nameplate1", g), "quest")
+    eq(ns.PlateMark("nameplate2", g), nil, "a player gets nothing")
+    lines = {}
+    class = "rareelite"
+    eq(ns.PlateMark("nameplate1", g), "rare")
+    o.rare = false
+    eq(ns.PlateMark("nameplate1", g), nil)
+    issecretvalue, UnitExists, UnitIsPlayer, UnitClassification, C_TooltipInfo = nil, nil, nil, nil, nil
+end)
+
+test("quest progress sounds: an objective, then the whole quest, nothing for a new quest", function()
+    local ns = tweakNs()
+    local before = { [1] = { done = false, obj = { false, false } } }
+    eq(ns.QuestProgress(before, { [1] = { done = false, obj = { true, false } } }), "objective")
+    eq(ns.QuestProgress(before, { [1] = { done = true, obj = { true, true } } }), "complete")
+    eq(ns.QuestProgress(before, { [1] = before[1], [2] = { done = true, obj = { true } } }), nil, "taking a quest is no progress")
+    local log = { { questID = 5 } }
+    local fin = false
+    C_QuestLog = { GetNumQuestLogEntries = function() return #log end, GetInfo = function(i) return log[i] end,
+        IsComplete = function() return fin end,
+        GetQuestObjectives = function() return { { finished = fin } } end }
+    local played = {}
+    PlaySound = function(id) played[#played + 1] = id end
+    ns.SetTweak("questSounds", true)
+    ns.QuestSoundsEvent()
+    eq(#played, 0, "the first look only notes")
+    fin = true
+    ns.QuestSoundsEvent()
+    eq(#played, 1)
+    ns.SetTweakOpt("questSounds", "complete", false)
+    fin = false
+    ns.QuestSoundsEvent()
+    fin = true
+    ns.QuestSoundsEvent()
+    eq(#played, 1, "the switch of the whole quest is off")
+    C_QuestLog, PlaySound = nil, nil
+end)
+
 test("the Tweaks page opens under Home, its gear opens the settings and the hub's search finds tweaks", function()
     local ns = tweakNs()
     ns.OpenTweaks()
@@ -2392,6 +2554,273 @@ test("the Tweaks page opens under Home, its gear opens the settings and the hub'
     ns.TweaksSearch("")
     ns.Enter(nil)
     eq(view.page, "home")
+end)
+
+-- Combat, interface and sound tweaks -------------------------------------------------------------
+
+-- A client with these settings (name -> value as text); a name not in the table is missing.
+local function fakeCVars(values)
+    C_CVar = {
+        GetCVarInfo = function(n) return values[n] end,
+        GetCVar = function(n) return values[n] end,
+        SetCVar = function(n, v) if values[n] ~= nil then values[n] = tostring(v) end end,
+    }
+    return values
+end
+
+local function enterWorld()
+    for _, f in ipairs(W.frames) do
+        local onEvent = rawget(f, "_OnEvent")
+        if onEvent then onEvent(f, "PLAYER_ENTERING_WORLD") end
+    end
+end
+
+test("a tweak's game setting goes back to the player's own, unless the player changed it since", function()
+    local cv = fakeCVars({ mapFade = "1", autoQuestWatch = "1" })
+    local ns = tweakNs()
+    eq(ns.HasCVar("mapFade"), true)
+    eq(ns.HasCVar("nothing"), false)
+    eq(ns.TweakCVar("x", "nothing", 1), false, "a setting the client lacks is never touched")
+    ns.TweakCVar("x", "mapFade", 0)
+    eq(cv.mapFade, "0")
+    ns.TweakCVar("x", "mapFade", 0)
+    ns.TweakCVarsRestore("x")
+    eq(cv.mapFade, "1", "the value from before the first change")
+    ns.TweakCVar("x", "autoQuestWatch", 0)
+    cv.autoQuestWatch = "1"
+    ns.TweakCVarsRestore("x")
+    eq(cv.autoQuestWatch, "1", "the player's own later change stays")
+    -- after a crash: saved, but its tweak no longer runs
+    ns.TweakCVar("gameSettings", "mapFade", 0)
+    enterWorld()
+    eq(cv.mapFade, "1", "a setting of a tweak that is off goes back at login")
+    C_CVar = nil
+end)
+
+test("hidden game settings: each switch on its own, a higher value of the player's stays", function()
+    local cv = fakeCVars({ cameraDistanceMaxZoomFactor = "1.9", nameplateMaxDistance = "80", SpellQueueWindow = "400",
+        mapFade = "1", autoQuestWatch = "1", alwaysCompareItems = "0" })
+    local ns = tweakNs()
+    ns.SetTweak("gameSettings", true)
+    eq(cv.cameraDistanceMaxZoomFactor, "2.6")
+    eq(cv.nameplateMaxDistance, "80", "only raised, never lowered")
+    eq(cv.SpellQueueWindow, "400", "the spell queue is off by default")
+    eq(cv.mapFade, "0")
+    eq(cv.autoQuestWatch, "1", "off by default")
+    eq(cv.alwaysCompareItems, "1")
+    ns.SetTweakOpt("gameSettings", "queue", true)
+    eq(cv.SpellQueueWindow, "200")
+    ns.SetTweakOpt("gameSettings", "queueMs", 125)
+    eq(cv.SpellQueueWindow, "125", "the number is the window in ms")
+    ns.SetTweakOpt("gameSettings", "mapFade", false)
+    eq(cv.mapFade, "1", "one switch off gives back only its own setting")
+    eq(cv.cameraDistanceMaxZoomFactor, "2.6")
+    ns.SetTweak("gameSettings", false)
+    eq(cv.cameraDistanceMaxZoomFactor, "1.9")
+    eq(cv.SpellQueueWindow, "400")
+    eq(cv.alwaysCompareItems, "0")
+    local step
+    for _, part in ipairs(ns.Tweak("gameSettings").panel) do if part.key == "queueMs" then step = part end end
+    eq(step.when(function(k) return k == "queue" end), true, "the number shows with its switch")
+    eq(step.when(function() return false end), false)
+    C_CVar = nil
+end)
+
+test("cooldown numbers: only on a client with the setting", function()
+    C_CVar = nil
+    local ns = tweakNs()
+    eq(ns.Tweak("cdNumbers"), nil, "without the setting there is no row")
+    local cv = fakeCVars({ countdownForCooldowns = "0" })
+    ns = tweakNs()
+    assert(ns.Tweak("cdNumbers"))
+    ns.SetTweak("cdNumbers", true)
+    eq(cv.countdownForCooldowns, "1")
+    ns.SetTweak("cdNumbers", false)
+    eq(cv.countdownForCooldowns, "0")
+    C_CVar = nil
+end)
+
+test("error filter: hides the ticked kinds, always or only in a fight, and gives them back", function()
+    local cv = fakeCVars({ Sound_EnableErrorSpeech = "1" })
+    LE_GAME_ERR_OUT_OF_RAGE, LE_GAME_ERR_SPELL_COOLDOWN, LE_GAME_ERR_BADATTACKFACING = 1, 2, 3
+    LE_GAME_ERR_SPELL_FAILED_ANOTHER_IN_PROGRESS = 4
+    BLACK_LISTED_MESSAGE_TYPES = { [4] = true }
+    UIErrorsFrame = { SetMessageTypeEnabled = function(_, t, on) BLACK_LISTED_MESSAGE_TYPES[t] = not on end }
+    local fight = false
+    InCombatLockdown = function() return fight end
+    local ns = tweakNs()
+    local bl = BLACK_LISTED_MESSAGE_TYPES
+    ns.SetTweak("errorFilter", true)
+    eq(bl[1], true, "not enough rage")
+    eq(bl[2], true, "not ready yet")
+    eq(bl[3], nil, "facing is not ticked by default")
+    eq(cv.Sound_EnableErrorSpeech, "0", "no voice for the rest")
+    ns.SetTweak("errorFilter", false)
+    eq(bl[1], nil, "a type goes back as it was")
+    eq(bl[4], true, "and one the game hid itself stays hidden")
+    eq(cv.Sound_EnableErrorSpeech, "1")
+    GulliToolkitDB.tweaks.errorFilter = { combat = true }
+    ns.SetTweak("errorFilter", true)
+    eq(bl[1], nil, "only in combat: nothing hidden out of a fight")
+    fight = true
+    ns.ErrorFilterEvent(nil, "PLAYER_REGEN_DISABLED")
+    eq(bl[1], true)
+    fight = false
+    ns.ErrorFilterEvent(nil, "PLAYER_REGEN_ENABLED")
+    eq(bl[1], nil)
+    ns.SetTweak("errorFilter", false)
+    eq(bl[4], true)
+    LE_GAME_ERR_OUT_OF_RAGE, LE_GAME_ERR_SPELL_COOLDOWN, LE_GAME_ERR_BADATTACKFACING = nil, nil, nil
+    LE_GAME_ERR_SPELL_FAILED_ANOTHER_IN_PROGRESS, BLACK_LISTED_MESSAGE_TYPES, UIErrorsFrame = nil, nil, nil
+    InCombatLockdown, C_CVar = nil, nil
+end)
+
+test("consumable macros: the best item the level allows, made, changed and deleted out of combat", function()
+    local bags = {}
+    local macros, fight, level = {}, false, 30
+    InCombatLockdown = function() return fight end
+    UnitLevel = function() return level end
+    GetNumMacros = function() return 0, #macros end
+    GetMacroIndexByName = function(n) for i, m in ipairs(macros) do if m.name == n then return i end end return 0 end
+    GetMacroInfo = function(i) local m = macros[i]; return m.name, m.icon, m.body end
+    CreateMacro = function(n, icon, body, perChar) assert(perChar, "per character"); macros[#macros + 1] = { name = n, icon = icon, body = body } end
+    EditMacro = function(i, n, icon, body) macros[i] = { name = n, icon = icon, body = body } end
+    DeleteMacro = function(i) table.remove(macros, i) end
+    local ns = tweakNs()
+    C_Item.GetItemCount = function(id) return bags[id] or 0 end
+    local F = ns.MACRO_LISTS
+    bags[4599], bags[4544], bags[8952] = 2, 5, 3 -- level 35, 25 and 45 food
+    eq(ns.BestConsumable(F.FOOD, 30), 4544, "the best one the character may eat")
+    eq(ns.BestConsumable(F.FOOD, 40), 4599)
+    eq(ns.BestConsumable(F.FOOD, 50), 8952)
+    eq(ns.BestConsumable(F.DRINK, 50), nil)
+    ns.SetTweak("macros", true)
+    eq(#macros, 3, "food, drink and health by default")
+    local food = macros[GetMacroIndexByName(ns.L.TWM_FOOD)]
+    eq(food.body, "#showtooltip item:4544\n/use item:4544")
+    local drink = macros[GetMacroIndexByName(ns.L.TWM_DRINK)]
+    assert(drink.body:find("item:19301"), "without a drink: the first of the list, greyed out on the bar")
+    level = 40
+    fight = true
+    ns.UpdateMacros()
+    eq(macros[GetMacroIndexByName(ns.L.TWM_FOOD)].body:find("4599"), nil, "no change in a fight")
+    fight = false
+    ns.MacrosEvent(nil, "PLAYER_REGEN_ENABLED")
+    assert(macros[GetMacroIndexByName(ns.L.TWM_FOOD)].body:find("item:4599"), "after the fight")
+    bags[4599], bags[4544], bags[8952] = nil, nil, nil
+    ns.UpdateMacros()
+    assert(macros[GetMacroIndexByName(ns.L.TWM_FOOD)].body:find("item:4599"), "the last item stays, greyed out")
+    ns.SetTweakOpt("macros", "rest", true)
+    bags[8075], bags[1645] = 1, 1
+    ns.UpdateMacros()
+    eq(macros[GetMacroIndexByName(ns.L.TWM_REST)].body, "#showtooltip item:8075\n/use item:8075\n/use item:1645")
+    ns.SetTweakOpt("macros", "food", false)
+    eq(GetMacroIndexByName(ns.L.TWM_FOOD), 0, "unticked: deleted")
+    ns.SetTweak("macros", false)
+    eq(#macros, 3, "switching the tweak off leaves the macros on the bars")
+    for _, lang in ipairs({ "en", "de", "es", "fr", "pl", "pt", "ru", "zh" }) do
+        for _, m in ipairs(ns.MACROS) do
+            local name = ns.T[lang]["TWM_" .. m.key:upper()]
+            assert(name and #name <= 16, lang .. " " .. m.key .. " macro name fits 16 bytes")
+        end
+    end
+    C_Item.GetItemCount, InCombatLockdown, UnitLevel, GetNumMacros, GetMacroIndexByName = nil, nil, nil, nil, nil
+    GetMacroInfo, CreateMacro, EditMacro, DeleteMacro = nil, nil, nil, nil
+end)
+
+test("quieter game: mutes the ticked kinds and gives every sound back", function()
+    local muted = {}
+    MuteSoundFile = function(id) muted[id] = true end
+    UnmuteSoundFile = function(id) muted[id] = nil end
+    local ns = tweakNs()
+    for _, kind in ipairs(ns.MUTE_KINDS) do
+        assert(#(ns.MUTE_SOUNDS[kind] or {}) > 0, kind .. " has sounds")
+        assert(ns.T.en["TWP_MUTE_" .. kind:upper()], kind .. " has a text")
+    end
+    local rain = ns.MUTE_SOUNDS.weather[1]
+    local hoof = ns.MUTE_SOUNDS.hooves[1]
+    ns.SetTweak("muteSounds", true)
+    eq(muted[hoof], true)
+    eq(muted[rain], nil, "rain is not ticked by default")
+    ns.SetTweakOpt("muteSounds", "weather", true)
+    eq(muted[rain], true)
+    ns.SetTweakOpt("muteSounds", "hooves", false)
+    eq(muted[hoof], nil, "unticked: back at once")
+    ns.SetTweak("muteSounds", false)
+    eq(next(muted), nil, "off: every sound back")
+    MuteSoundFile, UnmuteSoundFile = nil, nil
+end)
+
+test("swing timer style: paints the game's bars, red out of reach, and gives their look back", function()
+    local cv = fakeCVars({ showSwingTimer = "0" })
+    local function swingFrame(atlas)
+        local sb = { tex = atlas, color = { 1, 1, 1 } }
+        function sb:SetStatusBarTexture(t) self.tex = t end
+        function sb:SetStatusBarColor(r, g, b) self.color = { r, g, b } end
+        local bg = { SetVertexColor = function(self, r) self.r = r end }
+        local f = { StatusBar = sb, Background = bg, barTexture = atlas, hooks = {} }
+        function f:ApplyRangePresentation() end
+        return f
+    end
+    SwingTimerMainHandFrame = swingFrame("ui-swingtimerbar-filling-mainhand")
+    SwingTimerRangedFrame = swingFrame("ui-swingtimerbar-filling-ranged")
+    hooksecurefunc = function(t, m, fn) local old = t[m]; t[m] = function(...) old(...); fn(...) end end
+    RAID_CLASS_COLORS = { PRIEST = { r = 1, g = 1, b = 1 } }
+    local ns = tweakNs()
+    ns.SetTweak("swingStyle", true)
+    local mh = SwingTimerMainHandFrame
+    eq(mh.StatusBar.tex, "Interface\\Buttons\\WHITE8X8")
+    eq(mh.StatusBar.color[1], 1, "class colour")
+    eq(cv.showSwingTimer, "1", "the game's bars show")
+    mh.isOutOfRange = true
+    mh:ApplyRangePresentation()
+    eq(mh.StatusBar.color[2], 0.25, "red while out of reach")
+    ns.SetTweakOpt("swingStyle", "range", false)
+    eq(mh.StatusBar.color[2], 1)
+    ns.SetTweakOpt("swingStyle", "color", "bronze")
+    eq(mh.StatusBar.color[1], 0.643)
+    ns.SetTweak("swingStyle", false)
+    eq(mh.StatusBar.tex, "ui-swingtimerbar-filling-mainhand", "the game's own bar again")
+    eq(cv.showSwingTimer, "0")
+    mh:ApplyRangePresentation()
+    eq(mh.StatusBar.tex, "ui-swingtimerbar-filling-mainhand", "a hook does nothing while off")
+    SwingTimerMainHandFrame, SwingTimerRangedFrame, hooksecurefunc, RAID_CLASS_COLORS, C_CVar = nil, nil, nil, nil, nil
+end)
+
+test("right-click guild invite: only for another readable player, only when the player may invite", function()
+    local menus = {}
+    Menu = { ModifyMenu = function(tag, fn) menus[tag] = fn end }
+    local opened
+    ChatFrameUtil = { OpenChat = function(t) opened = t end }
+    local can = true
+    IsInGuild = function() return true end
+    CanGuildInvite = function() return can end
+    UnitIsPlayer = function(u) return u ~= "npc" end
+    local ns = tweakNs()
+    eq(ns.InviteName({ name = "Thrall" }), "Thrall")
+    eq(ns.InviteName({ name = "Tester" }), nil, "never the player's own name")
+    eq(ns.InviteName({ unit = "npc", name = "Hogger" }), nil)
+    issecretvalue = function(v) return v == "secret" end
+    eq(ns.InviteName({ name = "secret" }), nil, "a secret name is left alone")
+    issecretvalue = nil
+    eq(next(menus), nil, "the menu is changed only once the tweak is on")
+    ns.SetTweak("guildInvite", true)
+    local fn = menus.MENU_UNIT_FRIEND
+    assert(fn, "the chat name menu")
+    local made = {}
+    local root = { CreateDivider = function() end, CreateButton = function(_, text, click) made[#made + 1] = { text, click } end }
+    fn(nil, root, { name = "Thrall" })
+    eq(made[1][1], ns.L.TW_GI_MENU)
+    made[1][2]()
+    eq(opened, "/ginvite Thrall", "the chat box gets the command, the player's Enter sends it")
+    can = false
+    fn(nil, root, { name = "Jaina" })
+    eq(#made, 1, "nothing for a player who may not invite")
+    can = true
+    ns.SetTweak("guildInvite", false)
+    fn(nil, root, { name = "Jaina" })
+    eq(#made, 1, "nothing while the tweak is off")
+    Menu, ChatFrameUtil, IsInGuild, CanGuildInvite, UnitIsPlayer = nil, nil, nil, nil, nil
 end)
 
 io.write(string.format("%d/%d passed\n", count - failed, count))

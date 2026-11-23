@@ -398,6 +398,10 @@ test("the Forever dungeons: their quests, names without a client area, entrances
         assert(ns.ICONS[key], "an icon for " .. key)
     end
     eq(ns.DungeonName(byKey.ALCAZ), "Alcaz Prison", "no client area: the DG_ text")
+    -- By key too (the Chains tab's tooltip names the dungeon so), and never an error.
+    eq(ns.DungeonName("ALCAZ"), "Alcaz Prison")
+    eq(ns.DungeonName("NOPE"), "")
+    eq(ns.DungeonName({}), "")
     local q = ns.Quests("KROLDOK", 42)
     local seen = {}
     for _, list in ipairs({ q.take, q.later, q.log }) do for _, x in ipairs(list) do seen[x.id] = true end end
@@ -644,6 +648,38 @@ test("entering a dungeon with quests not taken: one warning per entry, and the j
     ns.Set("warnEnter", false)
     W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
     for _, l in ipairs(W.printed) do assert(not l:find("did not take", 1, true), "the switch stops the warning") end
+    GetInstanceInfo = nil
+end)
+
+test("the entering warning counts only quests taken outside the dungeon, and names them", function()
+    local W = Fake({ level = 56, raceID = 2, faction = "Horde", className = "PRIEST", areas = AREAS, instance = "party" })
+    GetInstanceInfo = function() return "Blackrock Depths" end
+    local ns = Load()
+    local q = ns.Quests("BRD", 56)
+    local out, inside = {}, 0
+    for _, x in ipairs(q.take) do
+        if ns.Inside("BRD", x.id).take then inside = inside + 1
+        elseif x.area and x.area > 0 then out[#out + 1] = x.name end
+    end
+    assert(inside > 0, "some quests are given inside the dungeon")
+    assert(#out > 0, "and some outside")
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local line
+    for _, l in ipairs(W.printed) do if l:find("did not take", 1, true) then line = l end end
+    assert(line, "warned")
+    assert(line:find("take " .. #out .. " ", 1, true), "only the outside ones are counted: " .. line)
+    assert(line:find(out[1], 1, true), "and named: " .. line)
+    -- Franclorn Forgewright is a ghost outside the dungeon: his quest is one to take before.
+    local legacy
+    for _, n in ipairs(out) do if n == "Dark Iron Legacy" then legacy = true end end
+    assert(legacy, "Dark Iron Legacy is taken outside")
+    eq(ns.Inside("BRD", 3801).take, false)
+    eq(ns.Inside("BRD", 82062).take, true, "Ever After is taken on the ledge inside")
+    for _, it in ipairs((ns.TrackerItems("BRD", 56))) do
+        if it.id == 82062 then
+            assert(not it.lines[1].text:find(ns.ZONE_ICON, 1, true), "no zone on a quest taken inside: " .. it.lines[1].text)
+        end
+    end
     GetInstanceInfo = nil
 end)
 
@@ -1048,6 +1084,44 @@ test("Ever After: WoW Forever's hidden quest in Blackrock Depths, inside, with i
     assert(ns.Data.tips[82062] and ns.Data.tips[82062].t, "the way to the ledge")
 end)
 
+test("Lost Thunderbrew Recipe: its work is in the Grim Guzzler, with the way to Hurley", function()
+    Fake({ level = 55, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [4133] = true } })
+    local ns = Load()
+    -- Hurley and his cronies have no spawns in the data: NPCS places them in the dungeon.
+    for _, id in ipairs({ 4134, 4126 }) do
+        assert(ns.Inside("BRD", id).work, id .. ": the recipe drops inside Blackrock Depths")
+        assert(ns.Data.tips[id] and ns.Data.tips[id].d, id .. ": the kegs and Hurley")
+    end
+    -- INSIDE_WORK: work the data cannot place, marked by hand.
+    assert(ns.Inside("BRS", 4735).work, "Egg Collection in the Rookery")
+    assert(ns.Inside("ST", 3528).work, "The God Hakkar at the altar")
+    assert(ns.Inside("ZF", 2770).work, "Gahz'rilla, summoned at the pool")
+end)
+
+test("Grark Lorkrub waits for KILL ON SIGHT: High Ranking Dark Iron Officials", function()
+    local function find(q, id)
+        for _, list in ipairs({ q.log, q.take, q.later }) do
+            for _, x in ipairs(list) do
+                if x.id == id then return x end
+            end
+        end
+    end
+    Fake({ level = 56, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [4081] = true } })
+    local ns = Load()
+    -- ATT's quest before (QuestieDB has none); a breadcrumb never is one.
+    eq(ns.Data.quest[4122][9][1], 4082)
+    eq(#ns.Data.quest[2930][9], 0, "Castpipe's Task only sends the player on")
+    local q = ns.Quests("BRD", 56)
+    assert(not find(q, 4122), "one entry for the whole chain")
+    local chain
+    for _, x in ipairs(q.take) do
+        for _, m in ipairs(x.members or {}) do if m == 4122 then chain = x end end
+    end
+    assert(chain, "the chain is to take")
+    eq(chain.id, 4082, "the step to take now is the high ranking officials, not Grark")
+    assert(ns.Data.tips[4122] and ns.Data.tips[4122].d, "the escort note")
+end)
+
 test("Lead me at the top level: the set quests in the log, the ones to take once the set began", function()
     local function has(list, id)
         for _, x in ipairs(list) do
@@ -1171,10 +1245,11 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", areas = AREAS,
            map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } }, active = { [4134] = true } })
     local ns = Load()
-    -- Disharmony of Flame opens two quests: the chain's next step and a side quest.
+    -- Disharmony of Flame opens three quests: the chain's next step and two side quests
+    -- (The Last Element waits for it too, from ATT).
     local nexts = {}
     for _, n in ipairs(ns.Nexts(3906)) do nexts[n] = true end
-    assert(nexts[3981] and nexts[3907], "both quests after Disharmony of Flame")
+    assert(nexts[3981] and nexts[3907] and nexts[7201], "the quests after Disharmony of Flame")
     local items, _, total, counts = ns.TrackerItems("BRD", 54)
     eq(counts.hand + counts.doing + counts.take + counts.later, total)
     local fork
@@ -1184,16 +1259,32 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
         if it.id == 3906 then fork = it end
     end
     assert(fork, "the row is named by the quest to do now")
-    eq(fork.fork, 2)
+    -- Who to go to is an icon and a name, where an icon and the zone: no words such as "Take from".
+    local tagged = ns.WhereTag({ who = "Thunderheart", area = 17 })
+    assert(tagged:find(ns.WHO_ICON, 1, true) and tagged:find(ns.ZONE_ICON, 1, true), "both icons: " .. tagged)
+    assert(tagged:find("Thunderheart", 1, true), "the name stays")
+    eq(ns.WhereTag({ who = "", area = 0 }), "")
+    assert(not ns.WhereTag({ who = "Thunderheart", area = 0 }):find(ns.ZONE_ICON, 1, true), "no zone, no zone icon")
+    local takes = 0
+    for _, it in ipairs(items) do
+        if it.state == "take" and it.pin then
+            takes = takes + 1
+            assert(it.lines[1].text:find(ns.WHO_ICON, 1, true), "a take row names its giver by the icon: " .. it.lines[1].text)
+        end
+    end
+    assert(takes > 0, "the list has quests to take")
+    assert(ns.L.TR_TAKE == nil or ns.L.TR_TAKE == "TR_TAKE", "the words are gone")
+    eq(fork.fork, 3)
     eq(fork.at, 1)
     assert(fork.goal and fork.goal ~= fork.name, "and names the chain's last quest as its goal")
     -- Its card: the step, the head of what it opens, the two quests (this chain's first), the rest.
     local rows = ns.TrackerCardRows(fork)
     eq(rows[1].step.id, 3906)
-    eq(rows[2].opens, 2)
+    eq(rows[2].opens, 3)
     eq(rows[3].open.id, 3981)
     assert(rows[3].open.main, "the chain's own next step is marked")
-    eq(rows[4].open.id, 3907)
+    local side = { [rows[4].open.id] = true, [rows[5].open.id] = true }
+    assert(side[3907] and side[7201], "then the side quests")
     eq(rows[#rows].step.goal, true)
     -- A step before one in the log counts as done; more than three done steps fold into one line.
     W.active[3906], W.active[4134] = nil, nil
@@ -1206,25 +1297,37 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     assert(folded[1].folded and folded[1].folded >= 3, "the done steps fold")
     W.active[4003] = nil
     W.active[4134] = true
-    -- The panel keeps its height; the wheel, the footer and the numbers on top move through the rows.
+    -- The panel keeps its height and is always full: the list moves by pixels behind it. The
+    -- wheel, the footer and the numbers on top move it, never past its ends.
     ns.ShowTracker("BRD")
     local f = ns.TrackerFrame()
     local h = f:GetHeight()
-    local first, last, n = ns.TrackerView()
+    local first, last, n, at, max = ns.TrackerView()
     eq(first, 1)
     eq(n, total)
-    assert(last < total, "more rows than fit")
+    eq(at, 0)
+    assert(last < total and max > 0, "more rows than fit")
+    ns.TrackerScroll(1)
+    eq(select(4, ns.TrackerView()), math.min(max, ns.TRACK_STEP), "one notch moves by pixels, not by a row")
+    ns.TrackerScroll(-1)
     ns.TrackerNextPage()
     local first2 = ns.TrackerView()
-    eq(first2, last + 1)
+    assert(first2 > 1 and first2 <= last + 1, "the first row that was cut off leads the next page")
     eq(f:GetHeight(), h, "the panel does not change its size")
-    ns.TrackerScroll(-1)
-    eq((ns.TrackerView()), last)
+    ns.TrackerScroll(1000)
+    local _, lastEnd, _, atEnd = ns.TrackerView()
+    eq(atEnd, max, "the list stops with its last row at the bottom: no empty room under it")
+    eq(lastEnd, total)
+    ns.TrackerNextPage()
+    eq(select(4, ns.TrackerView()), 0, "after the end, the footer goes back to the top")
     ns.TrackerScroll(-100)
     eq((ns.TrackerView()), 1)
     ns.TrackerGoTo("later")
-    eq(items[(ns.TrackerView())].group, "later")
-    for _ = 1, 10 do ns.TrackerNextPage() end
+    local gf, gl = ns.TrackerView()
+    assert(items[gf].group == "later" or gl == total, "the group is in view")
+    -- A tooltip stands beside the panel, not over its rows.
+    local point, rel = ns.TrackerTipPlace(f)
+    assert((point == "TOPLEFT" or point == "TOPRIGHT") and rel == f, "the tooltip hangs on the panel's side")
     ns.HideTracker()
     -- The Chains tab: the side quest is a lane of its own, right under the chain it comes after.
     local map = ns.ChainMap("BRD", 54)
@@ -1232,12 +1335,13 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     local branch
     for i, l in ipairs(map.lanes) do
         if l.from and l.from.id == 3906 then
-            branch = l
-            eq(map.lanes[i - 1].steps[1].id, 3906, "it stands under its chain")
+            local above = map.lanes[i - 1]
+            assert(above.steps[1].id == 3906 or (above.from and above.from.id == 3906),
+                "it stands under its chain, or under another branch of it")
+            if l.steps[1].id == 3907 then branch = l end
         end
     end
     assert(branch, "Disharmony of Fire branches from Disharmony of Flame")
-    eq(branch.steps[1].id, 3907)
     local seen, quests = {}, 0
     for _, l in ipairs(map.lanes) do
         for _, st in ipairs(l.steps) do
@@ -1252,6 +1356,41 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     local shown = ns.ChainLanes()
     eq(#shown, #map.lanes + (#map.singles > 0 and 1 or 0))
     eq(shown[1].steps[1], map.lanes[1].steps[1].id)
+    -- A step whose work is inside the dungeon carries the dungeon's icon.
+    local marked, plain = 0, 0
+    for i, l in ipairs(map.lanes) do
+        for _, st in ipairs(l.steps) do
+            eq(shown[i].inside[st.id] or false, st.inside and true or false, "the pill follows the step")
+            if st.inside then marked = marked + 1 else plain = plain + 1 end
+        end
+    end
+    assert(marked > 0, "some steps are done in the dungeon")
+    assert(plain > 0, "and some outside it")
+end)
+
+test("a quest behind a quest still in the log waits in Later, not in Take", function()
+    -- Disharmony of Fire (3907) opens when Disharmony of Flame (3906) is handed in.
+    Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", active = { [3906] = true } })
+    local ns = Load()
+    local function find(list, id)
+        for _, x in ipairs(list) do if x.id == id then return x end end
+    end
+    local q = ns.Quests("BRD", 54)
+    assert(not find(q.take, 3907), "it cannot be taken yet")
+    local e = find(q.later, 3907)
+    assert(e, "it waits")
+    eq(e.why, "WHY_EARLIER"); eq(e.need.id, 3906)
+    eq(ns.Quest(3907, 54).state, "later")
+    eq(ns.NeedText(e.need), ns.L.AFTER:format(e.need.name), "it says after which quest")
+    local all, _, total, counts = ns.TrackerItems("BRD", 54)
+    for _, it in ipairs(all) do
+        if it.id == 3907 then eq(it.group, "later", "the tracker follows") end
+    end
+    eq(counts.hand + counts.doing + counts.take + counts.later, total)
+    Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [3906] = true } })
+    ns = Load()
+    q = ns.Quests("BRD", 54)
+    assert(find(q.take, 3907), "handed in: now it can be taken")
 end)
 
 test("the tracker starts hidden, once also for older saves; the hub's switch shows it", function()

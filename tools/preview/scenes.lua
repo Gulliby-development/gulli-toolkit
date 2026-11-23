@@ -135,29 +135,11 @@ S.toolkit.setuppage = { spec = S.toolkit.default.spec,
     end,
 }
 
--- The Tweaks page: own tweaks (two sample ones with settings that later files bring), rows that
+-- The Tweaks page: own tweaks, rows that
 -- modules lend, a paused module's row, and the settings of two tweaks open.
 S.toolkit.tweaks = { spec = S.toolkit.default.spec,
     open = function(ns, W, R)
         S.toolkit.default.open(ns, W, R)
-        local L = ns.T.en
-        L.TW_SKIPGOSSIP, L.TW_SKIPGOSSIP_D = "Skip NPC talk", "Opens the flight map, shop or bank at once. Shift shows the talk"
-        L.TW_HIDETRACKER, L.TW_HIDETRACKER_D = "Hide quest tracker", "Hides the game's quest tracker when it is in the way"
-        ns.AddTweak({ key = "skipGossip", group = "quests", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", star = true,
-            shift = true, defaults = { flight = true, vendor = true, bank = true },
-            panel = { { kind = "head", label = "Open at once" },
-                { kind = "check", key = "flight", label = "Flight masters" }, { kind = "check", key = "vendor", label = "Vendors" },
-                { kind = "check", key = "bank", label = "Bank" }, { kind = "check", key = "trainer", label = "Trainers" },
-                { kind = "check", key = "inn", label = "Innkeepers" } } })
-        ns.AddTweak({ key = "hideTracker", group = "quests", icon = "Interface\\Icons\\Ability_Vanish",
-            defaults = { when = "places", dungeon = true, bg = true, guide = true },
-            panel = { { kind = "choice", key = "when", label = "When to hide it",
-                        values = { { "places", "Only in these places" }, { "always", "Always" } } },
-                { kind = "switch", key = "dungeon", label = "In dungeons and raids", when = function(g) return g("when") == "places" end },
-                { kind = "switch", key = "bg", label = "In battlegrounds", when = function(g) return g("when") == "places" end },
-                { kind = "switch", key = "combat", label = "In combat", when = function(g) return g("when") == "places" end },
-                { kind = "switch", key = "guide", label = "While a Gulli guide leads", when = function(g) return g("when") == "places" end },
-                { kind = "step", key = "delay", label = "Show again after (seconds)", min = 0, max = 10 } } })
         local db = { gossip = true, quests = true, repair = true, sell = false }
         local function row(key, group, label, desc, icon)
             return { key = key, group = group, label = label, desc = desc, icon = "Interface\\Icons\\" .. icon,
@@ -173,6 +155,19 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
         ns.TweaksView().open.skipGossip = true
         ns.TweaksView().open.hideTracker = true
         ns.TweaksView().open.levelShot = true
+        ns.Refresh()
+    end,
+}
+
+-- The Quests group with the settings of every tweak there open.
+S.toolkit.tweaksquests = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.tweaks.open(ns, W, R)
+        ns.TweaksView().filter = "quests"
+        ns.TweaksPage().track:Select(4, true)
+        for _, k in ipairs({ "skipGossip", "hideTracker", "plateMarks", "questSounds", "spellRanks" }) do
+            ns.TweaksView().open[k] = true
+        end
         ns.Refresh()
     end,
 }
@@ -1036,6 +1031,40 @@ S.dungeonprep = {
                          if it.fork then ns.ToggleTracked(it.key) break end
                      end
                  end },
+    -- The same tracker scrolled by three notches of the wheel, no chain card.
+    trackscroll = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                             active = { [4134] = true } },
+                    crop = "GulliDungeonPrepTrackerStage",
+                    before = function()
+                        local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                        stage:SetSize(420, 620)
+                        stage:SetPoint("CENTER")
+                        local bg = stage:CreateTexture(nil, "BACKGROUND")
+                        bg:SetAllPoints()
+                        bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                    end,
+                    open = function(ns)
+                        ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                        ns.ShowTracker("BRD")
+                        ns.TrackerScroll(3)
+                    end },
+    -- A side quest behind a quest in the log waits in Later ("After: ...").
+    tracklater = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                            active = { [3906] = true } },
+                   crop = "GulliDungeonPrepTrackerStage",
+                   before = function()
+                       local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                       stage:SetSize(420, 620)
+                       stage:SetPoint("CENTER")
+                       local bg = stage:CreateTexture(nil, "BACKGROUND")
+                       bg:SetAllPoints()
+                       bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                   end,
+                   open = function(ns)
+                       ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                       ns.ShowTracker("BRD")
+                       ns.TrackerGoTo("later")
+                   end },
     trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
                             areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
                    crop = "GulliDungeonPrepTrackerStage",

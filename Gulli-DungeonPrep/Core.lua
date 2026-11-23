@@ -234,8 +234,15 @@ function ns.Dungeons(level)
 end
 
 -- The game's name of the dungeon; a Forever dungeon the client has no area for has a DG_ text.
+-- Takes a row of ns.Dungeons or a dungeon's key.
 function ns.DungeonName(d)
-    return areaName(d.areas[1]) or rawget(L, "DG_" .. d.key) and L["DG_" .. d.key] or d.en
+    if type(d) == "string" then
+        local key = d
+        d = nil
+        for _, x in ipairs(ns.Dungeons(1)) do if x.key == key then d = x break end end
+    end
+    if not (d and d.key) then return "" end
+    return areaName(d.areas and d.areas[1]) or rawget(L, "DG_" .. d.key) and L["DG_" .. d.key] or d.en
 end
 
 -- The dungeon for this level: of those whose range holds it, the one that starts highest.
@@ -254,7 +261,7 @@ local function missing(q)
     for _, p in ipairs(q[8] or {}) do if not questDone(p) then ids[#ids + 1] = p end end
     if #(q[9] or {}) > 0 then
         local one = false
-        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        for _, p in ipairs(q[9]) do if questDone(p) then one = true end end
         if not one then ids[#ids + 1] = q[9][1] end
     end
     for _, p in ipairs(ids) do
@@ -307,7 +314,7 @@ local function stateOf(entry, q, level)
     for _, p in ipairs(q[8] or {}) do if not questDone(p) then pre = false end end
     if #(q[9] or {}) > 0 then
         local one = false
-        for _, p in ipairs(q[9]) do if questDone(p) or onQuest(p) then one = true end end
+        for _, p in ipairs(q[9]) do if questDone(p) then one = true end end
         pre = pre and one
     end
     if not pre then
@@ -755,7 +762,7 @@ function ns.TrackerItems(key, level)
         if Q.IsComplete and Q.IsComplete(e.id) then
             it.state, ready = "ready", ready + 1
             it.inside = ins.turnin or nil
-            it.lines[1] = { text = (t and t.who ~= "") and L.TR_READY_TO:format(t.who) or L.TR_READY, done = true }
+            it.lines[1] = { text = (t and t.who ~= "") and ns.WhereTag(t) or L.TR_READY, done = true }
             if t then it.pin = pinOf(t.who, t.area, t.x, t.y) end
         else
             for i, o in ipairs(ns.Objectives(e)) do
@@ -766,11 +773,13 @@ function ns.TrackerItems(key, level)
         all[#all + 1] = it
     end
     for _, e in ipairs(q.take) do
-        local where = ns.Where(e)
+        -- Taken inside: the dungeon's icon says where, not the zone the data files the giver under.
+        local inside = ns.Inside(key, e.id).take or nil
+        local where = ns.WhereTag(inside and { who = e.who, area = 0 } or e)
         all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
-                          lines = { { text = where ~= "" and L.TR_TAKE:format(where) or L.Q_TAKE } },
+                          lines = { { text = where ~= "" and where or L.Q_TAKE } },
                           pin = pinOf(e.who, e.area, e.x, e.y), entry = e,
-                          inside = ns.Inside(key, e.id).take or nil }
+                          inside = inside }
     end
     for _, e in ipairs(q.later) do
         if e.why == "WHY_EARLIER" and e.need and e.need.name then
@@ -897,10 +906,13 @@ function ns.ChainMap(key, level)
     return out
 end
 
--- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name.
+-- Where an earlier quest starts, as one line ("Name (who, zone)"), or just its name;
+-- "After: Name" while that quest is in the log.
 function ns.NeedText(need)
     if not need then return L.WHY_EARLIER end
     if not need.name then return L.WHY_EARLIER end
+    -- The earlier quest is in the log: nothing to go and take, it opens when that one is handed in.
+    if need.id and onQuest(need.id) then return L.AFTER:format(need.name) end
     local where = ns.Where({ who = need.who or "", area = need.area or 0 })
     return where ~= "" and L.NEEDS_AT:format(need.name, where) or L.NEEDS:format(need.name)
 end
@@ -1047,6 +1059,19 @@ function ns.Where(q)
     local zone = areaName(q.area)
     if q.who == "" then return zone or "" end
     return zone and L.WHERE:format(q.who, zone) or q.who
+end
+
+-- The same for a narrow row (the tracker): a small icon stands for "who" and one for
+-- "where", so the row needs no words such as "Take from".
+ns.WHO_ICON = "Interface\\Icons\\INV_Misc_Head_Human_01"
+ns.ZONE_ICON = "Interface\\Icons\\Ability_Hunter_SniperShot"
+local function iconTag(path) return "|T" .. path .. ":13:13:0:0:64:64:5:59:5:59|t " end
+function ns.WhereTag(q)
+    local zone = areaName(q.area)
+    zone = zone and (iconTag(ns.ZONE_ICON) .. zone)
+    if not q.who or q.who == "" then return zone or "" end
+    local who = iconTag(ns.WHO_ICON) .. q.who
+    return zone and L.WHERE:format(who, zone) or who
 end
 
 -- Where the player is: { zone (the zone map's name), x, y (map percent), kalimdor }, from

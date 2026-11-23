@@ -26,13 +26,19 @@ local STATE_ICON = {
     chain = "Interface\\GossipFrame\\AvailableQuestIcon",
 }
 local PIN_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+-- The room the map button takes at a row's right edge, and how far down it reaches.
+local PIN_ROOM, PIN_BOTTOM = 34, PAD - 2 + 22
+ns.TRACK_PIN_ROOM = PIN_ROOM
 local DONE_ICON = "Interface\\RaidFrame\\ReadyCheck-Ready"
 local PIP_TODO = { 1, 1, 1, 0.22 }
 
 local tracker, flyout
 local opened
-local first = 1          -- the first row in view
-local view = { first = 0, last = 0, total = 0 }
+local offset = 0         -- how far the list is scrolled, in pixels
+local goTo               -- a group to scroll to on the next refresh
+local view = { first = 0, last = 0, total = 0, tops = {}, max = 0 }
+-- One notch of the mouse wheel, in pixels.
+ns.TRACK_STEP = 44
 
 -- Whether a chain's steps show beside the panel, and a switch for it: one chain at a time.
 function ns.TrackerOpen(key) return opened == key end
@@ -41,23 +47,25 @@ function ns.ToggleTracked(key)
     ns.RefreshTracker()
 end
 
--- The rows in view (first, last, how many there are), and moving through them: by rows
--- (the mouse wheel), to the next page (the line at the bottom, back to the top after the
--- last) or to a group (a number on top).
-function ns.TrackerView() return view.first, view.last, view.total end
+-- The rows in view (the first and the last that show whole, how many there are, how far the
+-- list is scrolled and how far it can be), and moving through the list: by notches of the
+-- mouse wheel (the list moves by pixels, so the panel is always full to its bottom), to the
+-- next page (the line at the bottom: the first row cut off goes to the top, and back to the
+-- top after the end) or to a group (a number on top).
+function ns.TrackerView() return view.first, view.last, view.total, offset, view.max end
 function ns.TrackerScroll(by)
-    first = math.max(1, math.min(math.max(1, view.total), first + by))
+    offset = offset + by * ns.TRACK_STEP
     ns.RefreshTracker()
 end
 function ns.TrackerNextPage()
-    first = view.last >= view.total and 1 or view.last + 1
+    if offset >= view.max then offset = 0
+    else offset = view.tops[view.last + 1] or view.max end
     ns.RefreshTracker()
 end
 function ns.TrackerGoTo(group)
     if not tracker or not tracker.key then return end
-    for i, it in ipairs(ns.TrackerItems(tracker.key, UnitLevel("player") or 1)) do
-        if it.group == group then first = i; ns.RefreshTracker() return end
-    end
+    goTo = group
+    ns.RefreshTracker()
 end
 
 -- The line under a chain's name: its place in the chain and the quest it ends with.
@@ -100,9 +108,27 @@ local function lineOf(r, i)
     return r.lines[i]
 end
 
+-- A tooltip stands beside the panel (and beside the chain's card when that is open), at the
+-- height of what the mouse is on, so it never covers the rows.
+local function tipPlace(owner)
+    local base = tracker
+    local cx, sw = base.GetCenter and base:GetCenter(), UIParent.GetWidth and UIParent:GetWidth()
+    local right = type(cx) == "number" and type(sw) == "number" and cx < sw / 2
+    if flyout and flyout:IsShown() then base = flyout end
+    local dy = 0
+    local top, mine = base.GetTop and base:GetTop(), owner.GetTop and owner:GetTop()
+    if type(top) == "number" and type(mine) == "number" then dy = math.min(0, mine - top) end
+    if right then return "TOPLEFT", base, "TOPRIGHT", 6, dy end
+    return "TOPRIGHT", base, "TOPLEFT", -6, dy
+end
+ns.TrackerTipPlace = tipPlace
 local function tip(owner, fn)
     if not GameTooltip then return end
-    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+    if tracker and GameTooltip.SetPoint then
+        if GameTooltip.ClearAllPoints then GameTooltip:ClearAllPoints() end
+        GameTooltip:SetPoint(tipPlace(owner))
+    end
     fn(GameTooltip)
     GameTooltip:Show()
 end
@@ -206,7 +232,9 @@ local function fillRow(r, it)
     r.name:SetText(it.name)
     local diff = ns.Difficulty(it.level or 1, ns.level or UnitLevel("player") or 1)
     r.name:SetTextColor(unpack(it.state == "chain" and S.MUTED or ns.DiffColor(diff)))
-    r.name:SetPoint("RIGHT", it.pin and -32 or -10, 0)
+    -- The map button stands at the right over the row's first lines: nothing runs under it.
+    local right = it.pin and -PIN_ROOM or -10
+    r.name:SetPoint("RIGHT", right, 0)
     local y = PAD + NAME_H
     local dots = it.steps and #it.steps <= PIPS_MAX and #it.steps or 0
     local x = 30
@@ -230,7 +258,9 @@ local function fillRow(r, it)
         r.fork:SetText(it.fork and ("|T" .. STATE_ICON.take .. ":12|t" .. it.fork) or "")
         r.chain:ClearAllPoints()
         r.chain:SetPoint("TOPLEFT", x + (dots > 0 and 3 or 0), -y)
-        if it.fork then r.chain:SetPoint("RIGHT", r.fork, "LEFT", -4, 0) else r.chain:SetPoint("RIGHT", -10, 0) end
+        r.fork:ClearAllPoints()
+        r.fork:SetPoint("TOPRIGHT", right, -y)
+        if it.fork then r.chain:SetPoint("RIGHT", r.fork, "LEFT", -4, 0) else r.chain:SetPoint("RIGHT", right, 0) end
         r.chain:SetText(chainText(it))
         y = y + CHAIN_H
     end
@@ -241,7 +271,7 @@ local function fillRow(r, it)
         if line then
             t:ClearAllPoints()
             t:SetPoint("TOPLEFT", 30, -(y + (i - 1) * LINE_H))
-            t:SetPoint("RIGHT", -10, 0)
+            t:SetPoint("RIGHT", (y + (i - 1) * LINE_H < PIN_BOTTOM) and right or -10, 0)
             t:SetText(line.text)
             local c = S.TEXT
             if it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.FAINT
@@ -355,7 +385,8 @@ local function fillCardRow(r, row, last)
         r.name:SetPoint("TOPLEFT", 36, -2)
         r.name:SetText(st.name)
         r.name:SetTextColor(unpack((done and S.MUTED) or (st.state == "later" and S.MUTED) or S.TEXT))
-        local where = st.where ~= "" and st.where or (st.inside and L.INSIDE) or ""
+        local where = ns.WhereTag({ who = st.who or "", area = st.area or 0 })
+        if where == "" then where = st.inside and L.INSIDE or "" end
         if st.inside and tracker.key then where = S.IconTag(ns.Icon(tracker.key)) .. " " .. where end
         r.sub:Show()
         r.sub:SetText(where)
@@ -507,6 +538,18 @@ local function build()
     tracker.empty:SetJustifyH("LEFT")
     tracker.empty:SetText(L.TR_EMPTY)
     tracker.rows, tracker.groups = {}, {}
+    -- The list: every row on one sheet that moves behind a window as high as the room for rows.
+    local clip = CreateFrame("Frame", nil, tracker)
+    clip:SetPoint("TOPLEFT", 0, -(HEAD_H + CHIPS_H + 2))
+    clip:SetPoint("TOPRIGHT", 0, -(HEAD_H + CHIPS_H + 2))
+    if clip.SetClipsChildren then clip:SetClipsChildren(true) end
+    local sheet = CreateFrame("Frame", nil, clip)
+    sheet:SetHeight(1)
+    wheel(clip)
+    tracker.clip, tracker.sheet = clip, sheet
+    -- A thin bar at the right edge: how much of the list is in view, and where.
+    tracker.bar = S.Divider(tracker, S.EDGE)
+    tracker.bar:SetWidth(2)
     -- The line at the bottom while rows are out of view: which rows show; a click turns the page.
     local foot = CreateFrame("Button", nil, tracker)
     foot:SetHeight(FOOT_H)
@@ -537,7 +580,7 @@ end
 -- Shows the tracker for a dungeon (kept over a reload) or, with nil, the one shown before.
 function ns.ShowTracker(key)
     if ns.db and key then
-        if ns.db.tracker ~= key then first, opened = 1, nil end
+        if ns.db.tracker ~= key then offset, opened = 0, nil end
         ns.db.tracker = key
     end
     ns.RefreshTracker()
@@ -592,58 +635,84 @@ function ns.RefreshTracker()
         c.num:SetText(n)
         c.num:SetTextColor(unpack(n > 0 and S.TEXT or S.FAINT))
     end
-    -- The rows from the first in view on, while they fit; a group's name stands over its
-    -- first row in view. When all fit from the top, the panel is as high as they are.
+    -- Every row lies on one sheet, a group's name over its first row. A list higher than the
+    -- room for rows scrolls by pixels behind the window, so the panel is full to its bottom
+    -- and a row may show in part; a list that fits makes the panel as high as it is.
     local top = HEAD_H + CHIPS_H + 2
-    local all = 0
+    local sheet = tracker.sheet
+    local y, groups, group = 0, 0, nil
+    local tops, ends, groupTop = {}, {}, {}
     for i, it in ipairs(items) do
-        all = all + rowHeight(it) + ((i == 1 or items[i - 1].group ~= it.group) and GROUP_H or 0)
-    end
-    local paged = all > ns.TRACK_H
-    if not paged then first = 1 end
-    first = math.max(1, math.min(first, math.max(1, total)))
-    local y, shown, groups, group = top, 0, 0, nil
-    local openRow
-    for i = first, total do
-        local it = items[i]
-        local h = rowHeight(it) + (it.group ~= group and GROUP_H or 0)
-        if shown > 0 and y - top + h > ns.TRACK_H then break end
         if it.group ~= group then
             group, groups = it.group, groups + 1
             local g = tracker.groups[groups]
-            if not g then g = makeGroup(tracker); tracker.groups[groups] = g end
+            if not g then g = makeGroup(sheet); wheel(g); tracker.groups[groups] = g end
             g.text:SetText(S.Upper(L["TG_" .. group:upper()]) .. "  |cffffffff" .. counts[group] .. "|r")
             g:ClearAllPoints()
             g:SetPoint("TOPLEFT", 1, -y)
             g:SetPoint("TOPRIGHT", -1, -y)
             g:Show()
+            groupTop[group] = y
+            tops[i] = y
             y = y + GROUP_H
         end
-        shown = shown + 1
-        local r = tracker.rows[shown]
-        if not r then r = makeRow(tracker); tracker.rows[shown] = r end
+        tops[i] = tops[i] or y
+        local r = tracker.rows[i]
+        if not r then r = makeRow(sheet); tracker.rows[i] = r end
         fillRow(r, it)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", 1, -y)
         r:SetPoint("TOPRIGHT", -1, -y)
-        r:Show()
         y = y + rowHeight(it)
-        if it.steps and opened == it.key then openRow = { r, it } end
+        ends[i] = y
     end
-    for i = shown + 1, #tracker.rows do tracker.rows[i]:Hide() end
+    for i = total + 1, #tracker.rows do tracker.rows[i]:Hide() end
     for i = groups + 1, #tracker.groups do tracker.groups[i]:Hide() end
-    view.first, view.last, view.total = shown > 0 and first or 0, first + shown - 1, total
+    local all = y
+    local paged = all > ns.TRACK_H
+    local room = paged and ns.TRACK_H or all
+    view.max = math.max(0, all - room)
+    if goTo then offset, goTo = groupTop[goTo] or offset, nil end
+    offset = math.max(0, math.min(offset, view.max))
+    -- The first and the last row that show whole (a row higher than the room counts as it shows).
+    local firstIn, lastIn, firstSeen, openRow = 0, 0, 0, nil
+    for i, it in ipairs(items) do
+        local r = tracker.rows[i]
+        local seen = ends[i] > offset and tops[i] < offset + room
+        r:SetShown(seen)
+        if seen then
+            if firstSeen == 0 then firstSeen = i end
+            if tops[i] >= offset - 1 and ends[i] <= offset + room + 1 then
+                if firstIn == 0 then firstIn = i end
+                lastIn = i
+            end
+            if it.steps and opened == it.key then openRow = { r, it } end
+        end
+    end
+    if firstIn == 0 then firstIn, lastIn = firstSeen, firstSeen end
+    view.first, view.last, view.total, view.tops = firstIn, lastIn, total, tops
+    tracker.clip:SetHeight(math.max(1, room))
+    sheet:ClearAllPoints()
+    sheet:SetPoint("TOPLEFT", 0, offset)
+    sheet:SetPoint("TOPRIGHT", 0, offset)
+    sheet:SetHeight(math.max(1, all))
     for _, c in ipairs(tracker.chips) do
-        local here = shown > 0 and items[first].group == c.group
+        local here = firstIn > 0 and items[firstIn].group == c.group
         S.SetBorder(c, here and S.Accent() or S.CARD_EDGE)
     end
     tracker.empty:SetShown(total == 0)
+    y = top + room
     if total == 0 then y = y + 34 end
     tracker.foot:SetShown(paged)
+    tracker.bar:SetShown(paged)
     if paged then
         tracker.foot.text:SetText(L.TR_RANGE:format(view.first, view.last, total))
-        tracker.foot.more:SetText(view.last >= total and L.TR_TOP or L.TR_NEXT)
-        y = top + ns.TRACK_H + FOOT_H
+        tracker.foot.more:SetText(offset >= view.max and L.TR_TOP or L.TR_NEXT)
+        local h = math.max(18, room * room / all)
+        tracker.bar:ClearAllPoints()
+        tracker.bar:SetPoint("TOPRIGHT", -2, -(top + (room - h) * (view.max > 0 and offset / view.max or 0)))
+        tracker.bar:SetHeight(h)
+        y = y + FOOT_H
     end
     tracker:SetHeight(y + 4)
     tracker:SetMoving(moving and not (InCombatLockdown and InCombatLockdown()))
