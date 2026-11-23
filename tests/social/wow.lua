@@ -161,6 +161,37 @@ function Fake(spec)
     C_SummonInfo = { ConfirmSummon = function() did("summon") end, GetSummonConfirmSummoner = function() return "Mage" end }
     AcceptResurrect = function() did("res") end
     ChatFrame_AddMessageEventFilter = function(event, fn) W.filters[event] = fn end
+    -- Battle.net invites, join requests, shared quests and battlegrounds.
+    W.bnetInvites = spec.bnetInvites or {}
+    BNGetNumFriendInvites = function() return #W.bnetInvites end
+    C_BattleNet.GetFriendInviteInfo = function(i) return W.bnetInvites[i] end
+    BNDeclineFriendInvite = function(id)
+        did("nobnet:" .. id)
+        for i, v in ipairs(W.bnetInvites) do if v.inviteID == id then table.remove(W.bnetInvites, i) break end end
+    end
+    Enum = { BattleNetFriendLevel = { Title = 2 } }
+    W.joins = spec.joins or {}
+    GetNextPendingInviteConfirmation = function() return W.joins[1] and W.joins[1].guid end
+    GetInviteConfirmationInfo = function(guid)
+        for _, j in ipairs(W.joins) do if j.guid == guid then return 1, j.name, guid end end
+    end
+    RespondToInviteConfirmation = function(guid, ok)
+        did((ok and "join:" or "nojoin:") .. guid)
+        table.remove(W.joins, 1)
+    end
+    W.sharer = nil
+    UnitIsPlayer = function(u) return u == "questnpc" and W.sharer ~= nil end
+    local nameOf = UnitName
+    UnitName = function(u) if u == "questnpc" then return W.sharer end return nameOf(u) end
+    DeclineQuest = function() did("noquest") end
+    W.instance, W.dead, W.ghost, W.shift, W.selfRes = "none", false, false, false, nil
+    IsInInstance = function() return W.instance ~= "none", W.instance end
+    UnitIsDead = function() return W.dead end
+    UnitIsGhost = function() return W.ghost end
+    IsShiftKeyDown = function() return W.shift end
+    C_DeathInfo = { GetSelfResurrectOptions = function() return W.selfRes end }
+    RepopMe = function() did("release") end
+    AcceptAreaSpiritHeal = function() did("spirit") end
     GulliSocialDB = spec.db
     return W
 end
