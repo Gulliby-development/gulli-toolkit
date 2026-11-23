@@ -28,7 +28,9 @@ In a dungeon group, every gray drop asks you to roll. Gulli Loot answers by your
 - **Quiet chat.** Rolls that start together get one chat line.
 - **Looting alone.** Fast loot takes everything at once when auto loot is on. Another switch answers the bind-on-pickup question for you when you are not in a group.
 - **A loot window of its own** (off by default). A short list with **Take all**. With auto loot it shows for a moment what you picked up.
-- **Loot rolls where you want them.** Place the Need, Greed and Pass windows in the hub's **Unlock frames** mode, and set their size in the window.
+- **Loot rolls where you want them.** Turn on **Move loot rolls**, then place the Need, Greed and Pass windows in the hub's **Unlock frames** mode, and set their size in the window.
+- **A loot feed** (off by default). A small panel shows what you just looted for a few seconds: the gold, and each item with its icon, count and quality colour. It works with fast loot and auto loot too. Turn it on in the hub's **Unlock frames** mode or on the **Tweaks** page, and place it there.
+- **On the Tweaks page.** Fast loot, the own loot window, the loot feed, moving the rolls and the bind question alone are rows of the hub's **Tweaks** page too, while Loot is installed.
 - **Your best items stay yours.** Bind-on-pickup and better items are always yours to roll, unless you gave the item its own rule.
 - **Protected items** in the toolkit are never passed by a quality or type rule.
 

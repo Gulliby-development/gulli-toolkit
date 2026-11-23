@@ -732,6 +732,13 @@ do
         window = function() return ns.Window and ns.Window() end,
         options = { option("auto", ns.L.AUTO), option("deposit", ns.L.OPT_DEPOSIT), option("forecast", ns.L.OPT_FORECAST),
                     option("lower", ns.L.OPT_LOWER) },
+        -- A row of the hub's Tweaks page, on the window's own saved key; Shift skips a visit.
+        tweaks = {
+            { key = "auto", group = "loot", label = ns.L.TWK_RESTOCK, desc = ns.L.TWK_RESTOCK_D, tip = ns.L.AUTO,
+              icon = ns.OPT_ICON.auto, shift = true,
+              get = function() return ns.db ~= nil and ns.db.auto == true end,
+              set = function(on) if ns.db then ns.db.auto = on and true or false end end },
+        },
         summary = function()
             if not ns.char then return nil end
             local miss = ns.Missing()

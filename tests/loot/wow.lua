@@ -148,6 +148,8 @@ function Fake(spec)
             return "Item" .. id, "|Hitem:" .. id .. "|h[Item" .. id .. "]|h", x[4] or 1, x[3], 1, "", "", 1, x[2], 1, 1, x[1], 0, x[5] or 0
         end,
         GetItemNameByID = function(id) return "Item" .. id end,
+        GetItemIconByID = function(id) return "icon" .. id end,
+        GetItemQualityByID = function(id) return (W.items[id] or {})[4] end,
     }
     GetInventoryItemLink = function(_, slot) if W.worn[slot] then return "worn:" .. slot end end
     IsShiftKeyDown = function() return W.shift end
@@ -156,6 +158,10 @@ function Fake(spec)
     IsInGroup = function() return W.group or false end
     LOOT_ROLL_WON = "%s won: %s"
     LOOT_ROLL_YOU_WON = "You won: %s"
+    LOOT_ITEM_SELF = "You receive loot: %s."
+    LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
+    W.money = spec.money or 1000
+    GetMoney = function() return W.money end
     W.looted, W.lootN = {}, 0
     GetNumLootItems = function() return W.lootN end
     LootSlot = function(i) W.looted[#W.looted + 1] = i end
@@ -190,7 +196,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-Loot", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua", "Window.lua" })
+    return W.Load("Gulli-Loot", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua", "Window.lua", "Feed.lua" })
 end
 
 return W

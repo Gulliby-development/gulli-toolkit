@@ -216,8 +216,8 @@ function ns.LootPicked() return picked end
 
 ---- Rolls --------------------------------------------------------------------------------------
 
--- The game anchors its roll frames above the action bars on every layout. Once the player placed
--- them, every such anchor is followed by ours: the container sits at the saved place.
+-- The game anchors its roll frames above the action bars on every layout. With `rollMove` (on once
+-- the player placed them), every such anchor is followed by ours: the container sits at our place.
 local anchor, hooked, busy
 
 local function rollAnchor()
@@ -229,7 +229,7 @@ local function rollAnchor()
     anchor.text:SetPoint("CENTER")
     anchor.text:SetText(L.ROLL_SAMPLE)
     S.Mover(anchor, { label = L.FR_ROLLS, hint = L.TIP_MOVE,
-        save = function(p, rp, x, y) ns.db.rollPoint = { p, rp, x, y }; ns.PlaceRolls() end,
+        save = function(p, rp, x, y) ns.db.rollPoint = { p, rp, x, y }; ns.db.rollMove = true; ns.PlaceRolls() end,
         reset = function() ns.db.rollPoint = nil; ns.PlaceRolls() end })
     anchor:Hide()
     return anchor
@@ -244,14 +244,14 @@ local function placeAnchor()
     else a:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 220) end
 end
 
--- Puts the game's roll container on our anchor (only once the player placed it) at its scale.
+-- Puts the game's roll container on our anchor (only with `rollMove`) at its scale.
 function ns.PlaceRolls()
     placeAnchor()
     local c = GroupLootContainer
     if not c then return false end
     if InCombatLockdown and InCombatLockdown() and c.IsProtected and c:IsProtected() then return false end
     S.ApplyScale(c, (ns.db and ns.db.rollScale or 100) / 100)
-    if not (ns.db and ns.db.rollPoint) or ns.paused then return false end
+    if not (ns.db and ns.db.rollMove) or ns.paused then return false end
     busy = true
     c:ClearAllPoints()
     c:SetPoint("BOTTOM", anchor, "BOTTOM", 0, 0)
@@ -259,7 +259,7 @@ function ns.PlaceRolls()
     if not hooked and hooksecurefunc then
         hooked = true
         hooksecurefunc(c, "SetPoint", function()
-            if not busy and ns.db and ns.db.rollPoint and not ns.paused then ns.PlaceRolls() end
+            if not busy and ns.db and ns.db.rollMove and not ns.paused then ns.PlaceRolls() end
         end)
     end
     return true

@@ -269,6 +269,8 @@ test("loot rolls stay where the game puts them until the player placed them", fu
     eq(#GroupLootContainer.points, 0)
     ns.db.rollPoint = { "CENTER", "CENTER", 10, 20 }
     ns.SetPref("rollScale", 120)
+    eq(#GroupLootContainer.points, 0, "only with the switch")
+    ns.SetPref("rollMove", true)
     eq(GroupLootContainer.scale, 1.2)
     -- the game anchors it again: ours follows
     GroupLootContainer:ClearAllPoints()
@@ -308,7 +310,75 @@ test("the hub's Tweaks page gets rows on the window's own saved keys", function(
         o.set(true); eq(ns.db[o.key], true, o.key .. " on"); eq(o.get(), true)
         o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
     end
-    assert(seen.fastLoot and seen.window and seen.soloConfirm)
+    assert(seen.fastLoot and seen.window and seen.soloConfirm and seen.feed and seen.rollMove)
+end)
+
+test("a roll frame placed before the switch keeps its place", function()
+    Fake({ db = { rollPoint = { "CENTER", "CENTER", 0, 0 } } })
+    local ns = Load()
+    eq(ns.db.rollMove, true)
+    Fake({})
+    ns = Load()
+    eq(ns.db.rollMove, false, "off for a new player")
+end)
+
+local LINK = "|cff1eff00|Hitem:7|h[Ruby]|h|r"
+
+test("the loot feed shows what was looted, items and money, and fades away", function()
+    Fake({ items = { [7] = { 7, nil, 10, 3 } } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0, "off by default")
+    local fr
+    for _, x in ipairs(reg.frames) do if x.key == "feed" then fr = x end end
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.db.feed, true)
+    -- fast loot: the window opens, money comes in, the loot chat names the items
+    W.Fire("LOOT_READY")
+    W.money = W.money + 1682
+    W.Fire("PLAYER_MONEY")
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. "x3.")
+    W.Fire("CHAT_MSG_LOOT", "Someone receives loot: " .. LINK .. ".")
+    W.Fire("LOOT_CLOSED")
+    local e = ns.FeedEntries()
+    eq(#e, 2)
+    eq(e[1].kind, "item"); eq(e[1].count, 4, "the same item adds up"); eq(e[1].quality, 3); eq(e[1].icon, "icon7")
+    eq(e[2].kind, "money"); eq(e[2].copper, 1682)
+    eq(ns.FeedFrame():IsShown(), true)
+    -- money that does not come from loot is not in it
+    W.now = W.now + 10
+    W.money = W.money + 500
+    W.Fire("PLAYER_MONEY")
+    ns.FeedTick()
+    eq(#ns.FeedEntries(), 0, "every line goes after a few seconds")
+    eq(ns.FeedFrame():IsShown(), false)
+end)
+
+test("the loot feed is quiet while paused, safe with secret text, and shows a sample in Unlock mode", function()
+    Fake({ db = { feed = true } })
+    local ns = Load()
+    ns.paused = true
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0)
+    ns.paused = false
+    issecretvalue = function() return true end
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    issecretvalue = nil
+    eq(#ns.FeedEntries(), 0)
+    ns.MoveFeed(true)
+    eq(ns.FeedFrame():IsShown(), true)
+    W.now = W.now + 60; ns.FeedTick()
+    eq(ns.FeedFrame():IsShown(), true, "the sample stays while placing")
+    ns.MoveFeed(false)
+    eq(ns.FeedFrame():IsShown(), false)
+    ns.SetPref("feed", false)
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0)
 end)
 
 W.finish()

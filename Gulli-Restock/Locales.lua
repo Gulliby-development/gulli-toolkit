@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    TWK_RESTOCK = "Restock at a vendor",
+    TWK_RESTOCK_D = "Buys your Restock list when you open a vendor, without the preview",
     TITLE = "Restock",
     NO_MONEY = "not enough money for %s; stopped there.",
     LOW = "running low: %s",
@@ -75,6 +77,8 @@ T.en = {
 }
 
 T.de = {
+    TWK_RESTOCK = "Beim Händler auffüllen",
+    TWK_RESTOCK_D = "Kauft deine Liste, sobald du einen Händler öffnest, ohne Vorschau",
     TITLE = "Restock",
     NO_MONEY = "nicht genug Geld für %s; dort angehalten.",
     LOW = "wird knapp: %s",
@@ -140,6 +144,8 @@ T.de = {
 }
 
 T.es = {
+    TWK_RESTOCK = "Reponer en el vendedor",
+    TWK_RESTOCK_D = "Compra tu lista al abrir un vendedor, sin vista previa",
     TITLE = "Restock",
     NO_MONEY = "no hay dinero suficiente para %s; se detuvo ahí.",
     LOW = "queda poco: %s",
@@ -205,6 +211,8 @@ T.es = {
 }
 
 T.fr = {
+    TWK_RESTOCK = "Réapprovisionner chez le marchand",
+    TWK_RESTOCK_D = "Achète ta liste à l'ouverture d'un marchand, sans aperçu",
     TITLE = "Restock",
     NO_MONEY = "pas assez d'argent pour %s ; arrêt ici.",
     LOW = "bientôt épuisé : %s",
@@ -270,6 +278,8 @@ T.fr = {
 }
 
 T.pl = {
+    TWK_RESTOCK = "Uzupełniaj u kupca",
+    TWK_RESTOCK_D = "Kupuje twoją listę, gdy otworzysz kupca, bez podglądu",
     TITLE = "Restock",
     NO_MONEY = "za mało pieniędzy na %s; zatrzymano.",
     LOW = "kończy się: %s",
@@ -335,6 +345,8 @@ T.pl = {
 }
 
 T.pt = {
+    TWK_RESTOCK = "Repor no vendedor",
+    TWK_RESTOCK_D = "Compra sua lista ao abrir um vendedor, sem prévia",
     TITLE = "Restock",
     NO_MONEY = "dinheiro insuficiente para %s; parou aí.",
     LOW = "acabando: %s",
@@ -400,6 +412,8 @@ T.pt = {
 }
 
 T.ru = {
+    TWK_RESTOCK = "Пополнять у торговца",
+    TWK_RESTOCK_D = "Покупает ваш список при открытии торговца, без предпросмотра",
     TITLE = "Restock",
     NO_MONEY = "не хватает денег на %s; остановлено.",
     LOW = "заканчивается: %s",
@@ -465,6 +479,8 @@ T.ru = {
 }
 
 T.zh = {
+    TWK_RESTOCK = "在商人处补货",
+    TWK_RESTOCK_D = "打开商人时直接购买你的补货清单，不预览",
     TITLE = "Restock",
     NO_MONEY = "金钱不足以购买 %s，已停止。",
     LOW = "即将用完：%s",

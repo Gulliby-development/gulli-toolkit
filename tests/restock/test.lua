@@ -347,4 +347,23 @@ test("walking away from the vendor closes the preview", function()
     assert(not ns.PlanShown())
 end)
 
+test("the hub's Tweaks page gets rows on the window's own saved keys", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local GROUPS = { level = true, quests = true, combat = true, loot = true, people = true, ui = true, requests = true }
+    assert(#reg.tweaks >= 1)
+    local seen = {}
+    for _, o in ipairs(reg.tweaks) do
+        assert(GROUPS[o.group], "a group of the page for " .. o.key)
+        assert(type(o.label) == "string" and type(o.desc) == "string" and o.icon, "texts and icon for " .. o.key)
+        assert(not seen[o.key], "one row per key"); seen[o.key] = true
+        o.set(true); eq(ns.db[o.key], true, o.key .. " on"); eq(o.get(), true)
+        o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
+    end
+    assert(seen.auto)
+end)
+
 W.finish()

@@ -10,6 +10,8 @@ local CLIENT = { enUS = "en", enGB = "en", deDE = "de", esES = "es", esMX = "es"
 local T = {}
 
 T.en = {
+    TWK_CAST_D = "A double right-click casts Fishing while you hold a pole",
+    TWK_LOUD_D = "Sound effects at full volume while you fish",
     TITLE = "Fishing",
     TAB_CATCH = "Catch",
     TAB_SETTINGS = "Settings",
@@ -55,6 +57,8 @@ T.en = {
 }
 
 T.de = {
+    TWK_CAST_D = "Ein doppelter Rechtsklick wirft aus, solange du eine Angel trägst",
+    TWK_LOUD_D = "Soundeffekte auf voller Lautstärke, während du angelst",
     TITLE = "Angeln",
     TAB_CATCH = "Fang",
     TAB_SETTINGS = "Optionen",
@@ -100,6 +104,8 @@ T.de = {
 }
 
 T.es = {
+    TWK_CAST_D = "Un doble clic derecho lanza Pesca mientras llevas una caña",
+    TWK_LOUD_D = "Efectos de sonido al máximo mientras pescas",
     TITLE = "Pesca",
     TAB_CATCH = "Capturas",
     TAB_SETTINGS = "Opciones",
@@ -145,6 +151,8 @@ T.es = {
 }
 
 T.fr = {
+    TWK_CAST_D = "Un double clic droit lance Pêche tant que tu tiens une canne",
+    TWK_LOUD_D = "Effets sonores à fond pendant que tu pêches",
     TITLE = "Pêche",
     TAB_CATCH = "Prises",
     TAB_SETTINGS = "Options",
@@ -190,6 +198,8 @@ T.fr = {
 }
 
 T.pl = {
+    TWK_CAST_D = "Podwójny prawy klik zarzuca wędkę, gdy ją trzymasz",
+    TWK_LOUD_D = "Efekty dźwiękowe na pełną głośność podczas łowienia",
     TITLE = "Wędkarstwo",
     TAB_CATCH = "Połów",
     TAB_SETTINGS = "Ustawienia",
@@ -235,6 +245,8 @@ T.pl = {
 }
 
 T.pt = {
+    TWK_CAST_D = "Um duplo clique direito lança Pescaria enquanto você usa uma vara",
+    TWK_LOUD_D = "Efeitos sonoros no máximo enquanto você pesca",
     TITLE = "Pesca",
     TAB_CATCH = "Capturas",
     TAB_SETTINGS = "Opções",
@@ -280,6 +292,8 @@ T.pt = {
 }
 
 T.ru = {
+    TWK_CAST_D = "Двойной правый клик забрасывает удочку, пока она в руках",
+    TWK_LOUD_D = "Звуки на полную громкость, пока вы рыбачите",
     TITLE = "Рыбалка",
     TAB_CATCH = "Улов",
     TAB_SETTINGS = "Настройки",
@@ -325,6 +339,8 @@ T.ru = {
 }
 
 T.zh = {
+    TWK_CAST_D = "装备鱼竿时双击右键即可钓鱼",
+    TWK_LOUD_D = "钓鱼时音效开到最大",
     TITLE = "钓鱼",
     TAB_CATCH = "渔获",
     TAB_SETTINGS = "设置",
