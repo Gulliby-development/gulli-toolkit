@@ -27,6 +27,8 @@ In a dungeon group, every gray drop asks you to roll. Gulli Loot answers by your
 - **Try a rule.** `/glt test <link>` says what the addon would do with that item, and why.
 - **Quiet chat.** Rolls that start together get one chat line.
 - **Looting alone.** Fast loot takes everything at once when auto loot is on. Another switch answers the bind-on-pickup question for you when you are not in a group.
+- **A loot window of its own** (off by default). A short list with **Take all**. With auto loot it shows for a moment what you picked up.
+- **Loot rolls where you want them.** Place the Need, Greed and Pass windows in the hub's **Unlock frames** mode, and set their size in the window.
 - **Your best items stay yours.** Bind-on-pickup and better items are always yours to roll, unless you gave the item its own rule.
 - **Protected items** in the toolkit are never passed by a quality or type rule.
 
