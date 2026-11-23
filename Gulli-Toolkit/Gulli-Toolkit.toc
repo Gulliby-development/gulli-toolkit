@@ -23,6 +23,14 @@ Core.lua
 Tweaks.lua
 Tweaks\LevelShot.lua
 Tweaks\GuildMotd.lua
+Tweaks\CVars.lua
+Tweaks\Macros.lua
+Tweaks\SwingStyle.lua
+Tweaks\ErrorFilter.lua
+Tweaks\GuildInvite.lua
+Tweaks\GameSettings.lua
+Tweaks\CdNumbers.lua
+Tweaks\MuteSounds.lua
 Setup.lua
 Ready.lua
 Session.lua
