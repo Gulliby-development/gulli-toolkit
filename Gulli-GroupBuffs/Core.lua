@@ -188,20 +188,39 @@ local function byName(unit, name)
     return true, e - now()
 end
 
+-- Does the game hide auras now? C_Secrets says so (a boss fight, also the moment of the pull,
+-- before the lockdown); a client without the call is taken as hiding them in every fight.
+-- While it hides them the game can leave buffs out of the list without a sign.
+function ns.AurasHidden()
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret then
+        local ok, v = pcall(C_Secrets.ShouldAurasBeSecret)
+        if ok and v ~= nil then return v and true or false end
+    end
+    return (InCombatLockdown and InCombatLockdown())
+        or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+end
+
 -- The unit's buffs, as readAuras. When the game hides some of them, each of `names` that
 -- did not show is asked for by name; nil when the game cannot tell (the unit is left alone).
 function ns.Auras(unit, names)
     local ok, out, hidden = pcall(readAuras, unit)
     if not ok then return nil end
-    if hidden == 0 then return out end
-    if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then return nil end
-    -- In a fight the game hides names, so "not found" by name proves nothing: then only a
-    -- found buff counts, and a unit with nothing found is left alone.
-    local fighting = (InCombatLockdown and InCombatLockdown())
+    local hiding = ns.AurasHidden()
+    if hidden == 0 and not hiding then return out end
+    -- In a fight the game hides names, so a miss by name proves nothing there either.
+    local fighting = hiding or (InCombatLockdown and InCombatLockdown())
         or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+    if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then
+        -- Without a way to ask by name, only a list the game showed whole counts.
+        if hidden == 0 and next(out) then return out end
+        return nil
+    end
+    -- While the game hides auras, "not found" proves nothing: then only a found buff counts,
+    -- and a unit with nothing found is left alone (no false alarm at the pull).
     local found = false
     for _, n in ipairs(names) do
-        if not out[n] then
+        if out[n] then found = true
+        else
             local has, left = byName(unit, n)
             if has == nil then return nil end
             if has then out[n], found = left, true end
