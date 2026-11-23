@@ -669,6 +669,17 @@ test("the entering warning counts only quests taken outside the dungeon, and nam
     assert(line, "warned")
     assert(line:find("take " .. #out .. " ", 1, true), "only the outside ones are counted: " .. line)
     assert(line:find(out[1], 1, true), "and named: " .. line)
+    -- Franclorn Forgewright is a ghost outside the dungeon: his quest is one to take before.
+    local legacy
+    for _, n in ipairs(out) do if n == "Dark Iron Legacy" then legacy = true end end
+    assert(legacy, "Dark Iron Legacy is taken outside")
+    eq(ns.Inside("BRD", 3801).take, false)
+    eq(ns.Inside("BRD", 82062).take, true, "Ever After is taken on the ledge inside")
+    for _, it in ipairs((ns.TrackerItems("BRD", 56))) do
+        if it.id == 82062 then
+            assert(not it.lines[1].text:find(ns.ZONE_ICON, 1, true), "no zone on a quest taken inside: " .. it.lines[1].text)
+        end
+    end
     GetInstanceInfo = nil
 end)
 

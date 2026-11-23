@@ -104,6 +104,15 @@ NPCS = {
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
 # Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
 STARTERS = {96335: 264770, 82062: 222530}  # and the Rugged Traveler's Ever After
+# NPCs the classic data puts on no map although they stand outside the dungeon (a ghost seen
+# only while dead, an NPC that walks in for an event): name -> area, x, y of where to look for
+# them (0, 0 without a spot). A quest they give or take back is not taken or handed in inside.
+OUTSIDE_NPCS = {
+    "Franclorn Forgewright": (46, 29.4, 37.6),  # a ghost in Blackrock Mountain, by the way to the Depths
+    "Lothos Riftwaker": (46, 29.4, 37.6),       # Blackrock Mountain, by the way to the Depths
+    "Bodley": (46, 29.4, 37.6),                 # a ghost in Blackrock Mountain, by the way to the Spire
+    "Reginald Windsor": (1519, 0, 0),           # rides up to the gates of Stormwind
+}
 # Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
 FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
@@ -605,6 +614,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             zs = sorted(zones_of(n, N_SPAWNS, N_ZONE))
             zone = n.get(N_ZONE) or (zs[0] if zs else 0)
+            if not zone and n.get(N_NAME) in OUTSIDE_NPCS:
+                return (n[N_NAME],) + OUTSIDE_NPCS[n[N_NAME]]
             return (n.get(N_NAME) or "", zone) + spot(n, N_SPAWNS, zone)
         for oid in seq(sb.get(2) or {}):
             o = objects.get(oid) or {}
@@ -671,6 +682,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             zs = sorted(zones_of(n, N_SPAWNS, N_ZONE))
             zone = n.get(N_ZONE) or (zs[0] if zs else 0)
+            if not zone and n.get(N_NAME) in OUTSIDE_NPCS:
+                return (n[N_NAME],) + OUTSIDE_NPCS[n[N_NAME]]
             return (n.get(N_NAME) or "", zone) + spot(n, N_SPAWNS, zone)
         for oid in seq(fb.get(2) or {}):
             o = objects.get(oid) or {}
@@ -716,6 +729,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             if npc_key(nid) == key:
                 return True
+            if n.get(N_NAME) in OUTSIDE_NPCS:
+                return False
             if qid < FOREVER_QUESTS and not zones_of(n, N_SPAWNS, N_ZONE) and not n.get(N_ZONE):
                 return True
             return False
