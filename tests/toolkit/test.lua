@@ -2110,6 +2110,42 @@ test("a bound key works on every keyboard layout", function()
     eq(bound.Q, "B"); eq(bound["Й"], "B"); eq(bound["й"], "B")
 end)
 
+test("a box border stays one screen pixel at any scale, so it never breaks", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local oldPU = PixelUtil
+    PixelUtil = { GetNearestPixelSize = function(u, k, minPx) return math.max(minPx, math.floor(u * k * 0.75 + 0.5)) / (k * 0.75) end }
+    local scale = 1
+    local texs = {}
+    local f = { GetEffectiveScale = function() return scale end, IsVisible = function() return true end }
+    function f:CreateTexture()
+        local t = { w = 0, h = 0 }
+        function t:SetTexture() end; function t:SetVertexColor() end; function t:SetPoint() end
+        function t:SetAllPoints() end; function t:SetTexCoord() end
+        function t:SetWidth(v) self.w = v end; function t:SetHeight(v) self.h = v end
+        function t:SetSize(a, b) self.w, self.h = a, b end
+        texs[#texs + 1] = t
+        return t
+    end
+    S.Box(f, nil, nil, 13)
+    local lines = f.hair
+    eq(#lines, 4, "four straight edges")
+    for _, h in ipairs(lines) do
+        local v = h[2] == "v" and h[1].w or h[1].h
+        assert(math.abs(v * 0.75 - 1) < 1e-9, "one pixel at 0.75 pixels a unit, got " .. v)
+    end
+    scale = 1.2
+    S.SnapLines()
+    for _, h in ipairs(lines) do
+        local v = h[2] == "v" and h[1].w or h[1].h
+        assert(math.abs(v * 1.2 * 0.75 - 1) < 1e-9, "follows a new scale")
+    end
+    local g = { GetEffectiveScale = f.GetEffectiveScale, IsVisible = f.IsVisible, CreateTexture = f.CreateTexture }
+    S.Box(g, nil, nil, 8, "top")
+    eq(#g.hair, 8, "a sharp corner's two short edges are hairlines too")
+    PixelUtil = oldPU
+end)
+
 test("a window that opens at a place closes with it, walking away too, once per visit", function()
     Fake({ addons = { QC } })
     local S = Load().Skin
