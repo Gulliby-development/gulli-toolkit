@@ -231,6 +231,16 @@ def class_quest(qid, q):
 # "inside" mark of that part is dropped by hand (the quest stays in the dungeon's list).
 OUTSIDE_WORK = {
     93604: "d",  # Agamaggan's Blood: the elite area outside Razorfen Downs too (hotfix of 2026-11-17)
+    # What the players' comments on Wowhead put outside the instance (tools/dungeonprep/comments.py):
+    959: "d",  # Trouble at the Docks: Mad Magglish walks the cave before the portal
+    6626: "d",  # A Host of Evil: the elites of the thorny maze outside Razorfen Downs
+    721: "d",  # A Sign of Hope: Hammertoe Grez camps in the cave before Uldaman's portal
+    722: "d",  # Amulet of Secrets: Magregan Deepshadow patrols that cave
+    1360: "d",  # Reclaimed Treasures: the chests in the halls outside Uldaman
+    2342: "d",  # Reclaimed Treasures, the Horde copy
+    7068: "d",  # Shadowshard Fragments: the elementals before Maraudon's purple portal
+    7070: "d",  # Shadowshard Fragments, the Horde copy
+    92432: "d",  # An Alarming Request: a breadcrumb to Archmage Modera outside the portal
 }
 # Quests whose work is done in the dungeon while the data cannot place it there (an object or
 # item with no spawns): quest id -> the flags to add.
@@ -239,6 +249,14 @@ INSIDE_WORK = {
     3374: "d",  # The Essence of Eranikus: from the Shade of Eranikus in the Sunken Temple
     3528: "d",  # The God Hakkar: the egg is filled at the altar of the Sunken Temple
     2930: "d",  # Data Rescue: the punch card machines of Gnomeregan
+    # What the players' comments on Wowhead put inside (tools/dungeonprep/comments.py); the flags
+    # to add are any of t, d, h:
+    92415: "t",  # Remember That I Love You: the letter lies by a boss deep in the Ruins of Lordaeron
+    95161: "t",  # Remember That I Love You, the Horde copy
+    95795: "t",  # Fallen in the Fen: taken in the Excavation
+    95647: "h",  # Lost in the Thicket Things: handed in on the ramp by the last boss
+    95772: "h",  # Songblade Search: handed in at the tent of the Dragonmaw part
+    95790: "t",  # Digestible Research: taken at the start of Shaper's Terrace
 }
 
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
