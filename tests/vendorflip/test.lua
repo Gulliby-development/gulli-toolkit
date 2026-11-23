@@ -30,6 +30,12 @@ test("every language has every text", function()
     W.CheckLocales(Load())
 end)
 
+test("free slots are the bags only, never a quiver", function()
+    Fake(market({ free = 3, quiver = 12 }))
+    local ns = Load()
+    eq(ns.FreeSlots(), 3, "12 free quiver slots are no room for a purchase")
+end)
+
 test("candidates are the items a vendor pays more for, best gain first", function()
     Fake({ items = ITEMS })
     local ns = Load()

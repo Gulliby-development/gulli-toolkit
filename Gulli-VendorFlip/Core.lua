@@ -105,9 +105,12 @@ local function numSlots(bag)
     if C_Container and C_Container.GetContainerNumSlots then return C_Container.GetContainerNumSlots(bag) or 0 end
     return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
 end
+-- Free slots of one bag and its family (0 for a normal bag).
 local function freeSlots(bag)
-    if C_Container and C_Container.GetContainerNumFreeSlots then return C_Container.GetContainerNumFreeSlots(bag) or 0 end
-    return GetContainerNumFreeSlots and GetContainerNumFreeSlots(bag) or 0
+    local get = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
+    if not get then return 0, 0 end
+    local n, family = get(bag)
+    return n or 0, family or 0
 end
 local function slotItem(bag, slot)
     if C_Container and C_Container.GetContainerItemInfo then
@@ -124,9 +127,13 @@ local function useItem(bag, slot)
     if UseContainerItem then return UseContainerItem(bag, slot) end
 end
 
+-- Room for a purchase: the backpack and the bags, never a quiver, a soul bag or the reagent bag.
 function ns.FreeSlots()
     local n = 0
-    for bag = 0, 4 do n = n + freeSlots(bag) end
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
+        local free, family = freeSlots(bag)
+        if family == 0 then n = n + free end
+    end
     return n
 end
 

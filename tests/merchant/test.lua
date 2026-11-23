@@ -130,6 +130,15 @@ test("the always-sell list: /gmc junk adds a white item, it sells, and protected
     GulliToolkit = nil
 end)
 
+test("an \"always sell\" item in WoW Forever's reagent bag is sold too", function()
+    Fake({ slots = { { REAGENT_BAG, 1, 42, 1, 1 } }, prices = { [42] = 9 } })
+    local ns = Load()
+    ns.J.SetAlways(42, true)
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.sold, 1); eq(W.sold[1], 42, "the reagent bag is one of the bags")
+end)
+
 test("both addons share the always-sell list", function()
     Fake({})
     local ns = Load()

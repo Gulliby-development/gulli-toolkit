@@ -120,11 +120,13 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
+REAGENT_BAG = 5   -- WoW Forever's reagent bag, after the four bag slots
 -- W.slots = { { bag, slot, id, count, quality, noValue } }; W.prices = { [id] = copper }.
 -- W.repair = { cost, guild = true/false, limit }; W.sold lists ids; W.repaired = "guild"|"own".
 function Fake(spec)
     W.Base(spec)
     W.slots, W.prices, W.sold, W.money = spec.slots or {}, spec.prices or {}, {}, spec.money or 100000
+    NUM_BAG_SLOTS, NUM_TOTAL_EQUIPPED_BAG_SLOTS = 4, REAGENT_BAG   -- WoW Forever wears a reagent bag
     W.repair, W.repaired, W.shift = spec.repair or { 0 }, nil, false
     local function find(b, s)
         for _, x in ipairs(W.slots) do if x[1] == b and x[2] == s then return x end end
@@ -133,7 +135,7 @@ function Fake(spec)
     W.alt = false
     IsAltKeyDown = function() return W.alt end
     C_Container = {
-        GetContainerNumSlots = function(b) return b == 0 and 16 or 0 end,
+        GetContainerNumSlots = function(b) return (b == 0 and 16) or (b == REAGENT_BAG and 4) or 0 end,
         GetContainerNumFreeSlots = function() return 0, 0 end,
         GetContainerItemInfo = function(b, s)
             local x = find(b, s)

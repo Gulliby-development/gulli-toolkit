@@ -513,7 +513,7 @@ function ns.FreeSlots()
     local get = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
     if not get then return nil end
     local free = 0
-    for bag = 0, 4 do
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         local n, kind = get(bag)
         if n and (kind == nil or kind == 0) then free = free + n end
     end
