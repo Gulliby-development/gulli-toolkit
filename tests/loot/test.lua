@@ -491,4 +491,104 @@ test("a format with numbered arguments is read in its own order", function()
     eq(a, "[Item]"); eq(b, "Bob"); eq(order[1], 2); eq(order[2], 1)
 end)
 
+local function realWorld(spec)
+    Fake(spec)
+    GulliLootCharDB = spec.cdb
+    W.real = { qty = spec.qty or 10, max = spec.max or 250 }
+    C_CurrencyInfo = { GetCurrencyInfo = function(id)
+        if id ~= 3469 then return nil end
+        return { name = "Tarnished Undermine Real", quantity = W.real.qty, maxQuantity = W.real.max, iconFileID = 7 }
+    end }
+    C_DateAndTime = { GetSecondsUntilDailyReset = function() return 3600 end }
+    W.inst = spec.inst or { "Scholomance", "party", 1, "Normal", 5, 0, false, 289 }
+    GetInstanceInfo = function() return unpack(W.inst) end
+    W.bossLevel = spec.bossLevel or 61
+    UnitExists = function(u) return u == "boss1" end
+    UnitCanAttack = function() return true end
+    UnitLevel = function(u) if u == "player" then return W.level end return W.bossLevel end
+end
+
+local function kill(id)
+    W.Fire("ENCOUNTER_START", id, "Boss", 1, 5)
+    W.RunTimers()
+    W.Fire("ENCOUNTER_END", id, "Boss", 1, 5, 1)
+end
+
+local function gain(n)
+    W.real.qty = W.real.qty + n
+    W.Fire("CURRENCY_DISPLAY_UPDATE", 3469, W.real.qty, n)
+end
+
+test("after a boss that drops a Real, an icon shows until it is looted", function()
+    realWorld({ db = {} })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    kill(101)
+    eq(#ns.RealPending(), 0, "off by default")
+    local fr
+    for _, x in ipairs(reg.frames) do if x.key == "real" then fr = x end end
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.db.real, true)
+    W.Fire("PLAYER_ENTERING_WORLD")
+    kill(101)
+    eq(#ns.RealPending(), 1)
+    eq(ns.RealFrame():IsShown(), true)
+    W.Fire("CURRENCY_DISPLAY_UPDATE", 1, 5, 5)
+    eq(ns.RealFrame():IsShown(), true, "another currency changes nothing")
+    gain(1)
+    eq(#ns.RealPending(), 0)
+    eq(ns.RealFrame():IsShown(), false, "looted: the icon goes")
+    eq(ns.RealLootedToday(101), true)
+    kill(101)
+    eq(#ns.RealPending(), 0, "a boss looted today is skipped")
+    kill(102)
+    eq(#ns.RealPending(), 1, "another boss still counts")
+    W.now = W.now + ns.REAL_WAIT + 1
+    ns.RealPaint()
+    eq(ns.RealFrame():IsShown(), false, "it goes when no Real came")
+    W.now = W.now + 3600
+    eq(ns.RealLootedToday(101), false, "a new day after the daily reset")
+end)
+
+test("the Real reminder stays quiet below 60, at the cap, for low bosses and outside its dungeons", function()
+    realWorld({ db = { real = true }, level = 59 })
+    local ns = Load()
+    kill(1); eq(#ns.RealPending(), 0, "below level 60")
+    W.level = 60
+    W.real.qty = 250
+    kill(1); eq(#ns.RealPending(), 0, "at the cap")
+    W.real.qty, W.real.max = 250, 0
+    kill(1); eq(#ns.RealPending(), 0, "the cap of 250 when the game names none")
+    W.real.qty = 10
+    W.bossLevel = 50
+    kill(1); eq(#ns.RealPending(), 0, "a boss below 55")
+    W.bossLevel = -1
+    kill(1); eq(#ns.RealPending(), 1, "a skull counts")
+    ns.RealClear()
+    W.inst = { "Zul'Farrak", "party", 1, "Normal", 5, 0, false, 209 }
+    kill(2); eq(#ns.RealPending(), 0, "a dungeon without Reals")
+    W.inst = { "Blackmaw Hold", "party", 1, "Normal", 5, 0, false, 9001 }
+    kill(3); eq(#ns.RealPending(), 1, "WoW Forever's own dungeon by name")
+    gain(1)
+    eq(ns.db.realLearned[9001], true, "its id is learned with the Real")
+    W.Fire("ENCOUNTER_END", 4, "Boss", 1, 5, 0)
+    eq(#ns.RealPending(), 0, "a wipe is no kill")
+    issecretvalue = function() return true end
+    W.inst = { "Scholomance", "party", 1, "Normal", 5, 0, false, 289 }
+    kill(5)
+    issecretvalue = nil
+    eq(#ns.RealPending(), 1, "secret values are left alone: it still reminds")
+    ns.RealClear()
+    ns.paused = true
+    kill(6); eq(#ns.RealPending(), 0, "paused")
+    ns.paused = false
+    ns.MoveReal(true)
+    eq(ns.RealFrame():IsShown(), true, "Unlock mode shows it to place")
+    ns.MoveReal(false)
+    eq(ns.RealFrame():IsShown(), false)
+end)
+
 W.finish()

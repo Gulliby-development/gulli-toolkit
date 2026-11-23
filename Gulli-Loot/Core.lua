@@ -27,6 +27,7 @@ ns.DEFAULTS = {
     rollMove = false, -- the group loot rolls stand where the player placed them
     feed = false,     -- the panel of what was just looted
     rollers = false,  -- the group's choices under the roll frames
+    real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
 }
 
 -- Equip slots by the item's equip location, for the upgrade check.
@@ -235,6 +236,7 @@ function ns.SetPref(key, value)
     if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
     if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
     if key == "rollers" and ns.SetRollers then ns.SetRollers(value) end
+    if key == "real" and ns.SetReal then ns.SetReal(value) end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -305,6 +307,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db.items = ns.db.items or {}
         ns.db.types = ns.db.types or {}
         ns.db.log = ns.db.log or {}
+        GulliLootCharDB = GulliLootCharDB or {}
+        ns.cdb = GulliLootCharDB
         -- Before the switch, a placed roll frame was moved: it stays so.
         if ns.db.rollMove == nil and ns.db.rollPoint then ns.db.rollMove = true end
         for k, v in pairs(ns.DEFAULTS) do
@@ -401,6 +405,7 @@ ns.OPT_ICON = {
     rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
     feed = "Interface\\Icons\\INV_Misc_Note_01",
     rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    real = "Interface\\Icons\\INV_Misc_Coin_19",
 }
 
 local function option(key, label, tip)
@@ -423,6 +428,7 @@ do
         pause = function(on)
             ns.paused = on
             if on and ns.FeedClear then ns.FeedClear() end
+            if on and ns.RealClear then ns.RealClear() end
             if ns.ApplyWindow then ns.ApplyWindow() end
             if ns.PlaceRolls then ns.PlaceRolls() end
             if ns.RollersPaint then ns.RollersPaint() end
@@ -432,6 +438,7 @@ do
             if ns.MoveFrames then ns.MoveFrames(on) end
             if ns.MoveFeed and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveFeed(on) end
             if ns.MoveRollers and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveRollers(on) end
+            if ns.MoveReal and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveReal(on) end
         end,
         frames = {
             { key = "window", label = L.FR_WINDOW, icon = ns.OPT_ICON.window,
@@ -441,6 +448,10 @@ do
               get = function() return ns.db ~= nil and ns.db.feed == true end,
               set = function(on) if ns.db then ns.SetPref("feed", on and true or false) end end,
               frame = function() return ns.FeedFrame and ns.FeedFrame() end },
+            { key = "real", label = L.FR_REAL, icon = ns.OPT_ICON.real,
+              get = function() return ns.db ~= nil and ns.db.real == true end,
+              set = function(on) if ns.db then ns.SetPref("real", on and true or false) end end,
+              frame = function() return ns.RealFrame and ns.RealFrame() end },
         },
         icon = "Interface\\AddOns\\Gulli-Loot\\icon",
         slash = "/glt",
@@ -459,6 +470,7 @@ do
             tweak("feed", L.OPT_FEED, L.OPT_FEED_D),
             tweak("rollMove", L.OPT_ROLLMOVE, L.OPT_ROLLMOVE_D),
             tweak("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
+            tweak("real", L.OPT_REAL, L.OPT_REAL_D),
         },
         summary = function()
             if not ns.db then return nil end

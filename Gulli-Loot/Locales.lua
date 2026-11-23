@@ -111,6 +111,11 @@ T.en = {
     OPT_ROLL_SCALE = "Size of the loot rolls",
     OPT_ROLL_SCALE_D = "Place them in the hub's Unlock mode.",
     PCT = "%d%%",
+    FR_REAL = "Real reminder",
+    OPT_REAL = "Real reminder",
+    OPT_REAL_D = "At level 60, after a dungeon boss that drops Tarnished Undermine Real: an icon until you loot it. Skips bosses looted today and stays quiet at the cap.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Loot it from the boss",
 }
 
 T.de = {
@@ -215,6 +220,11 @@ T.de = {
     OPT_ROLL_SCALE = "Größe der Beutewürfe",
     OPT_ROLL_SCALE_D = "Platziere sie im Entsperrmodus des Hubs.",
     PCT = "%d %%",
+    FR_REAL = "Real-Erinnerung",
+    OPT_REAL = "Real-Erinnerung",
+    OPT_REAL_D = "Auf Stufe 60, nach einem Dungeonboss, der Tarnished Undermine Real fallen lässt: ein Symbol, bis du ihn plünderst. Heute geplünderte Bosse und die Obergrenze bleiben still.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Plündere ihn beim Boss",
 }
 
 T.es = {
@@ -319,6 +329,11 @@ T.es = {
     OPT_ROLL_SCALE = "Tamaño de las tiradas",
     OPT_ROLL_SCALE_D = "Colócalas en el modo Desbloquear del centro.",
     PCT = "%d %%",
+    FR_REAL = "Aviso de real",
+    OPT_REAL = "Aviso de real",
+    OPT_REAL_D = "A nivel 60, tras un jefe de mazmorra que suelta el Tarnished Undermine Real: un icono hasta que lo despojes. Omite los jefes ya despojados hoy y calla en el tope.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Despójalo del jefe",
 }
 
 T.fr = {
@@ -423,6 +438,11 @@ T.fr = {
     OPT_ROLL_SCALE = "Taille des jets de butin",
     OPT_ROLL_SCALE_D = "Place-les dans le mode Déverrouiller du hub.",
     PCT = "%d %%",
+    FR_REAL = "Rappel du réal",
+    OPT_REAL = "Rappel du réal",
+    OPT_REAL_D = "Au niveau 60, après un boss de donjon qui donne le Tarnished Undermine Real : une icône jusqu’à ce que tu le ramasses. Ignore les boss déjà pillés aujourd’hui et se tait au plafond.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Ramasse-le sur le boss",
 }
 
 T.pl = {
@@ -527,6 +547,11 @@ T.pl = {
     OPT_ROLL_SCALE = "Rozmiar rzutów o łup",
     OPT_ROLL_SCALE_D = "Ustaw je w trybie odblokowania centrum.",
     PCT = "%d%%",
+    FR_REAL = "Przypomnienie o realu",
+    OPT_REAL = "Przypomnienie o realu",
+    OPT_REAL_D = "Na 60. poziomie, po bossie lochu, z którego wypada Tarnished Undermine Real: ikona, dopóki go nie zbierzesz. Pomija bossów zebranych dziś i milczy przy limicie.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Zbierz go z bossa",
 }
 
 T.pt = {
@@ -631,6 +656,11 @@ T.pt = {
     OPT_ROLL_SCALE = "Tamanho das rolagens",
     OPT_ROLL_SCALE_D = "Posicione-as no modo Desbloquear do hub.",
     PCT = "%d%%",
+    FR_REAL = "Lembrete do real",
+    OPT_REAL = "Lembrete do real",
+    OPT_REAL_D = "No nível 60, após um chefe de masmorra que solta o Tarnished Undermine Real: um ícone até você saqueá-lo. Pula chefes saqueados hoje e fica quieto no limite.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Saqueie-o do chefe",
 }
 
 T.ru = {
@@ -735,6 +765,11 @@ T.ru = {
     OPT_ROLL_SCALE = "Размер бросков за добычу",
     OPT_ROLL_SCALE_D = "Место задаётся в режиме «Разблокировать окна» хаба.",
     PCT = "%d%%",
+    FR_REAL = "Напоминание о реале",
+    OPT_REAL = "Напоминание о реале",
+    OPT_REAL_D = "На 60 уровне, после босса подземелья, с которого падает Tarnished Undermine Real: значок, пока вы его не подберёте. Боссы, с которых реал уже взят сегодня, пропускаются; на лимите молчит.",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "Подберите его с босса",
 }
 
 T.zh = {
@@ -839,6 +874,11 @@ T.zh = {
     OPT_ROLL_SCALE = "拾取掷骰的大小",
     OPT_ROLL_SCALE_D = "在中心的解锁模式中放置。",
     PCT = "%d%%",
+    FR_REAL = "雷亚尔提醒",
+    OPT_REAL = "雷亚尔提醒",
+    OPT_REAL_D = "60级时，击败会掉落 Tarnished Undermine Real 的地下城首领后显示图标，直到你拾取它。今天已拾取过的首领会跳过，达到上限时不提示。",
+    REAL_NAME = "Tarnished Undermine Real",
+    REAL_LOOT = "从首领身上拾取",
 }
 
 ns.T = T

@@ -422,7 +422,7 @@ local function buildSettings()
 
     local st = S.Stack(spages[1])
     local rows = {}
-    for _, k in ipairs({ "panel", "money", "sold", "bought", "expired", "player" }) do
+    for _, k in ipairs({ "panel", "money", "sold", "bought", "expired", "player", "subject" }) do
         rows[#rows + 1] = { L["OPT_" .. k:upper()], nil, function() return ns.db[k] end,
                             function(v) ns.db[k] = v; ns.Refresh() end, icon = ns.OPT_ICON[k] }
     end
