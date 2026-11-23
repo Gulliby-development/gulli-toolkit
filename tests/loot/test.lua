@@ -381,6 +381,129 @@ test("the loot feed is quiet while paused, safe with secret text, and shows a sa
     eq(#ns.FeedEntries(), 0)
 end)
 
+local function link(id, name) return "|cffffffff|Hitem:" .. id .. "|h[" .. name .. "]|h|r" end
+local function loot(id, n) W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. link(id, "Item" .. id) .. (n and ("x" .. n) or "") .. ".") end
+
+-- items: 1 grey junk, 2 cloth (trade goods), 3 green BoE chest, 4 quest item a quest asks for,
+-- 5 quest item nobody asks for that a vendor buys, 6 a bound white thing, 10940 strange dust
+local FEED_ITEMS = {
+    [1] = { 15, nil, 1, 0, 0, 375 }, [2] = { 7, nil, 50, 1, 0, 100 },
+    [3] = { 4, "INVTYPE_CHEST", 40, 2, 2, 2000 }, [4] = { 12, nil, 1, 1, 4, 0 },
+    [5] = { 12, nil, 1, 1, 4, 250 }, [6] = { 15, nil, 1, 1, 1, 80 },
+}
+
+test("a feed line prices its item at a vendor or the auction, whichever pays more", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS })
+    local ns = Load()
+    local S = ns.Skin
+    local prices = { [1] = 9000, [2] = 480, [3] = 18500, [6] = 9000 }
+    S.AuctionPrice = function(id) return prices[id] end
+    local v, how = ns.FeedValue(1); eq(v, 375); eq(how, "vendor", "grey never goes to the auction")
+    v, how = ns.FeedValue(2); eq(v, 480); eq(how, "auction")
+    v, how = ns.FeedValue(3); eq(v, 18500); eq(how, "auction")
+    v, how = ns.FeedValue(6); eq(v, 80); eq(how, "vendor", "a plain white thing a vendor buys stays there")
+    eq(ns.FeedValue(4), nil, "nothing to say about an item worth nothing")
+    prices[2] = 60
+    v, how = ns.FeedValue(2); eq(v, 100); eq(how, "vendor", "the vendor pays more than the auction")
+    S.AuctionPrice = function() error("broken price addon") end
+    v, how = ns.FeedValue(2); eq(v, 100, "a failing price addon leaves the vendor price")
+    S.AuctionPrice = function() return nil end
+    v, how = ns.FeedValue(3); eq(v, 2000); eq(how, "vendor", "without a price addon: the vendor")
+    -- an enchanter: green gear as dust when that brings most
+    GetProfessions = function() return 1 end
+    GetProfessionInfo = function() return "Enchanting", nil, 1, 1, 0, 0, 333 end
+    S.AuctionPrice = function(id) if id == 11137 then return 30000 elseif id == 11135 then return 26000 end end
+    v, how = ns.FeedValue(3); eq(v, 26000); eq(how, "disenchant")
+    GetProfessions, GetProfessionInfo = nil, nil
+end)
+
+test("a feed line names the quest, the count in the bags, better gear and a farm goal", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS, worn = { [5] = 30 }, bags = { [2] = 43, [4] = 7 },
+           quests = { { 77, "Hope for Hatchlings", { { "7/12 Item4", 7, 12 } } },
+                      { 78, "Other", { { "Large Item5: 0/3", 0, 3 } } } } })
+    local ns = Load()
+    local S = ns.Skin
+    S.AuctionPrice = function(id) return ({ [2] = 480, [3] = 18500 })[id] end
+    local function facts(id, n) return ns.FeedFacts({ kind = "item", id = id, count = n or 1, name = "Item" .. id, link = link(id, "Item" .. id) }) end
+    local f = facts(4)
+    eq(f.notes[1].key, "quest"); eq(f.notes[1].right, "7/12")
+    assert(f.notes[1].text:find("Hope for Hatchlings", 1, true), "the quest's name")
+    eq(f.total, nil, "an item a quest still needs has no price")
+    f = facts(5)
+    eq(f.notes[1].key, "sell", "the whole name must match: Large Item5 is another item")
+    eq(f.total, 250); eq(f.how, "vendor")
+    f = facts(2, 3)
+    eq(f.total, 1440, "the price of the whole stack"); eq(f.notes[1].key, "bags")
+    assert(f.notes[1].text:find("43"))
+    f = facts(3)
+    eq(f.notes[1].key, "upgrade", "item level 40 over the worn 30")
+    C_PlayerInfo = { CanUseItem = function() return false end }
+    eq(#facts(3).notes, 0, "gear the class cannot use is no upgrade")
+    C_PlayerInfo = nil
+    f = facts(1)
+    eq(f.notes[1].key, "junk")
+    GulliFarmTrackCharDB = { targets = { { kind = "item", id = 2, goal = 60 } }, s = { items = { [2] = 43 } } }
+    f = facts(2, 3)
+    eq(f.notes[1].key, "goal"); assert(f.notes[1].text:find("43/60", 1, true))
+    GulliFarmTrackCharDB = nil
+    -- the switches: no price, no notes
+    ns.SetPref("feedPrice", false)
+    eq(facts(2, 3).total, nil)
+    ns.SetPref("feedPrice", true); ns.SetPref("feedNotes", false)
+    f = facts(2, 3)
+    eq(#f.notes, 0); eq(f.total, 1440)
+    -- secret quest text is left alone
+    ns.SetPref("feedNotes", true)
+    issecretvalue = function(v) return type(v) == "string" and v:find("Hatchlings") ~= nil end
+    eq(facts(4).notes[1].key, "questitem")
+    issecretvalue = nil
+end)
+
+test("the feed's two looks: a second line only when there is a note, a total of the lines", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS, bags = { [2] = 43 },
+           quests = { { 77, "Hope for Hatchlings", { { "7/12 Item4", 7, 12 } } } } })
+    local ns = Load()
+    ns.Skin.AuctionPrice = function(id) return ({ [2] = 480 })[id] end
+    eq(ns.db.feedCompact, false, "detailed by default")
+    loot(2, 3); loot(4); loot(1)
+    local e = ns.FeedEntries()
+    local junk, quest, cloth = ns.FeedLine(e[1]), ns.FeedLine(e[2]), ns.FeedLine(e[3])
+    assert(cloth.right:find("14s") and cloth.right:find("40c"), "the stack's price")
+    eq(cloth.src, "auction"); assert(cloth.note:find("43"))
+    eq(quest.src, nil); assert(quest.right:find("7/12")); assert(quest.note:find("Hope for Hatchlings", 1, true))
+    eq(junk.src, "vendor")
+    local total, parts = ns.FeedTotal()
+    eq(total, 1440 + 375); eq(parts, 2, "the quest item adds nothing")
+    -- the bags changed: the count is read again, not on every frame
+    local reads = 0
+    local count = C_Item.GetItemCount
+    C_Item.GetItemCount = function(id) reads = reads + 1; return count(id) end
+    ns.FeedTick(); ns.FeedTick()
+    eq(reads, 0, "nothing is read again while nothing changed")
+    W.bags[2] = 46
+    W.now = W.now + 1
+    W.Fire("BAG_UPDATE_DELAYED")
+    ns.FeedTick()
+    assert(ns.FeedLine(e[3]).note:find("46"), "the new count after the bags changed")
+    -- compact: one line, the quest's count on the right, no second line
+    ns.SetPref("feedCompact", true)
+    e = ns.FeedEntries()
+    quest, cloth = ns.FeedLine(e[2]), ns.FeedLine(e[3])
+    eq(cloth.note, nil); eq(quest.note, nil)
+    assert(quest.right:find("7/12") and quest.right:find("Quest", 1, true))
+    assert(cloth.right:find("14s"))
+    -- an item without anything to say stays one line in the detailed look
+    ns.SetPref("feedCompact", false)
+    ns.SetPref("feedNotes", false); ns.SetPref("feedPrice", false)
+    eq(ns.FeedLine(ns.FeedEntries()[3]).note, nil)
+    local _, n = ns.FeedTotal()
+    eq(n, 0)
+    -- paused: nothing new comes in
+    ns.FeedClear(); ns.paused = true
+    loot(2)
+    eq(#ns.FeedEntries(), 0)
+end)
+
 local function rollStrings()
     LOOT_ROLL_NEED = "%s has selected Need for: %s"
     LOOT_ROLL_GREED = "%s has selected Greed for: %s"

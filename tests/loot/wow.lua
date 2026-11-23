@@ -134,7 +134,7 @@ function Fake(spec)
     StaticPopup_Hide = function() end
     GetCursorInfo = function() return W.cursor and "item", W.cursor end
     ClearCursor = function() W.cursor = nil end
-    -- W.items[id] = { class, equip, level, quality, bind }; W.worn[slot] = item level.
+    -- W.items[id] = { class, equip, level, quality, bind, sell }; W.bags[id] = count; W.worn[slot] = item level.
     W.items, W.worn, W.shift, W.raid = spec.items or {}, spec.worn or {}, false, false
     C_Item = {
         GetItemInfoInstant = function(id) local x = W.items[id] or {}; return id, "", "", x[2], 1, x[1] end,
@@ -145,9 +145,10 @@ function Fake(spec)
         end,
         GetItemInfo = function(id)
             local x = W.items[id] or {}
-            return "Item" .. id, "|Hitem:" .. id .. "|h[Item" .. id .. "]|h", x[4] or 1, x[3], 1, "", "", 1, x[2], 1, 1, x[1], 0, x[5] or 0
+            return "Item" .. id, "|Hitem:" .. id .. "|h[Item" .. id .. "]|h", x[4] or 1, x[3], 1, "", "", 1, x[2], 1, x[6] or 1, x[1], 0, x[5] or 0
         end,
         GetItemNameByID = function(id) return "Item" .. id end,
+        GetItemCount = function(id) return (W.bags or {})[id] or 0 end,
         GetItemIconByID = function(id) return "icon" .. id end,
         GetItemQualityByID = function(id) return (W.items[id] or {})[4] end,
     }
@@ -161,6 +162,25 @@ function Fake(spec)
     LOOT_ITEM_SELF = "You receive loot: %s."
     LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
     W.money = spec.money or 1000
+    W.bags = spec.bags or {}
+    -- W.quests = { { id, title, { { text, have, need } } } }
+    W.quests = spec.quests or {}
+    C_QuestLog = {
+        GetNumQuestLogEntries = function() return #W.quests end,
+        GetInfo = function(i) local q = W.quests[i]; return q and { questID = q[1], title = q[2], isHeader = false } end,
+        GetQuestObjectives = function(id)
+            for _, q in ipairs(W.quests) do
+                if q[1] == id then
+                    local out = {}
+                    for _, o in ipairs(q[3]) do
+                        out[#out + 1] = { type = "item", text = o[1], numFulfilled = o[2], numRequired = o[3], finished = o[2] >= o[3] }
+                    end
+                    return out
+                end
+            end
+        end,
+    }
+    GulliFarmTrackCharDB = nil
     GetMoney = function() return W.money end
     W.looted, W.lootN = {}, 0
     GetNumLootItems = function() return W.lootN end

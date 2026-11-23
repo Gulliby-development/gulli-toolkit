@@ -199,6 +199,13 @@ local function buildRules(page, width)
               function(v) ns.SetPref("rollScale", v) end, 10, 70, 150, function(v) return L.PCT:format(v) end, 110) },
     })
     st:Add(oc, oh)
+    local fc, fh = S.SettingsCard(page, L.SEC_FEED, {
+        switch("feedCompact", L.OPT_FEED_COMPACT, L.OPT_FEED_COMPACT_D),
+        switch("feedPrice", L.OPT_FEED_PRICE, L.OPT_FEED_PRICE_D),
+        switch("feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
+        switch("feedTotal", L.OPT_FEED_TOTAL),
+    })
+    st:Add(fc, fh)
     local note, nh = S.Paragraph(page, L.NOTE, width)
     st:Add(note, nh)
     return st:Height()
