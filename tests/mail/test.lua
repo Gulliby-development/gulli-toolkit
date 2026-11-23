@@ -522,4 +522,49 @@ test("an empty realm name never splits one realm into two", function()
     eq(ns.db.chars[""], nil, "a snapshot without a realm keeps the saved realm")
 end)
 
+test("a letter of gold alone gets a subject, which the player can change", function()
+    Fake({})
+    local ns = Load()
+    local box = { text = "" }
+    function box:GetText() return self.text end
+    function box:SetText(t) self.text = t end
+    SendMailSubjectEditBox = box
+    local copper = 0
+    MoneyInputFrame_GetCopper = function() return copper end
+    SendMailFrame_Update = function() if W.sendItems > 0 and box.text == "" then box.text = "Item10" end end
+    W.Fire("MAIL_SHOW")
+    assert(W.hooks.SendMailFrame_Update, "hooked once the mail frame exists")
+    SendMailFrame:Show()
+    eq(ns.AutoSubject(), "", "no money, no subject")
+    copper = 125050
+    eq(ns.AutoSubject(), "12g 50s")
+    eq(box.text, "12g 50s")
+    copper = 300000
+    ns.AutoSubject()
+    eq(box.text, "30g", "a filled subject follows the amount")
+    box.text = "Rent"
+    copper = 10
+    ns.AutoSubject()
+    eq(box.text, "Rent", "the player's own subject stays")
+    box.text = ""
+    ns.AutoSubject()
+    eq(box.text, "10c")
+    -- an item in the letter: the game names it
+    W.sendItems = 1
+    ns.AutoSubject()
+    eq(box.text, "Item10")
+    W.sendItems = 0
+    -- off, or paused: nothing
+    box.text = ""
+    ns.db.subject = false
+    eq(ns.AutoSubject(), nil); eq(box.text, "")
+    ns.db.subject = true
+    ns.paused = true
+    eq(ns.AutoSubject(), nil); eq(box.text, "")
+    ns.paused = false
+    SendMailFrame:Hide()
+    eq(ns.AutoSubject(), nil, "only on the send tab")
+    SendMailSubjectEditBox, MoneyInputFrame_GetCopper, SendMailFrame_Update = nil, nil, nil
+end)
+
 W.finish()
