@@ -51,6 +51,7 @@ local function nameFor(id)
     if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
     return "#" .. id
 end
+ns.NameFor = nameFor
 -- Renames every `name = "#<id>"` under `root` whose item is known by now.
 function ns.FixNames(root)
     local seen = {}
@@ -366,11 +367,14 @@ local function itemFor(state, id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
     local alts, who = ns.AltCount(id)
+    local mail, gather = ns.char.mail and ns.char.mail[id] or 0, ns.Gathered()[id] == true
+    -- the simulation with empty bags: a new character owns nothing and gathers nothing
+    if ns.sim and ns.sim.empty then bags, bank, alts, who, mail, gather = 0, 0, 0, nil, 0, false end
     local buy = ns.db.vendor[id] or (ns.VENDOR_ITEMS[id] and sell > 0 and math.floor(sell * 4 * (1 - ns.VendorDiscount()) + 0.5)) or nil
     state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
                         ah = ah, age = age, buy = buy, buyEst = not ns.db.vendor[id] and buy ~= nil or nil, bags = bags, bank = bank,
-                        mail = ns.char.mail and ns.char.mail[id] or 0, alts = alts, altWho = who,
-                        gather = ns.db.gather[id] == true, lots = ns.db.lots[id] }
+                        mail = mail, alts = alts, altWho = who,
+                        gather = gather, lots = ns.db.lots[id] }
 end
 
 -- ---------- the mailbox, the other characters, gathering ----------
@@ -414,18 +418,24 @@ function ns.AltCount(id)
 end
 
 -- Marks an item the player gathers (herbs, ore, skins): the plan never buys it.
+-- In the simulation the marks are the simulation's own copy and go with it.
+function ns.Gathered() return ns.sim and ns.sim.gather or ns.db.gather end
 function ns.SetGather(id, on)
     if not id then return end
-    ns.db.gather[id] = on and true or nil
+    ns.Gathered()[id] = on and true or nil
     ns.Rebuild(true)
 end
 
 -- Takes a craft out of every route (learned, from a trainer or from a pattern alike), or puts it
 -- back. Saved by recipe for every character.
+function ns.SkipSet()
+    if ns.sim then return ns.sim.skip end
+    ns.db.skip = ns.db.skip or {}
+    return ns.db.skip
+end
 function ns.SetSkip(rid, on)
     if not rid then return end
-    ns.db.skip = ns.db.skip or {}
-    ns.db.skip[rid] = on and true or nil
+    ns.SkipSet()[rid] = on and true or nil
     ns.Rebuild(true)
 end
 
@@ -670,6 +680,8 @@ function ns.RepMissing(item)
         if type(text) == "string" and not (issecretvalue and issecretvalue(text)) then
             local fac, label = text:match(pat)
             if fac then
+                -- the simulated character is new: it has no reputation at all
+                if ns.sim then return true, text end
                 local err = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ErrorLine
                 if err and line.type == err then return true, text end
                 local c = line.leftColor
@@ -741,7 +753,7 @@ local function recipeSource(state, rid, rec, skill)
         if missing then src = { t = "rep", item = item, text = line } end
         return src
     end
-    if ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid] then
+    if (rec.book and not rec.pattern) or (ns.Data and ns.Data.spell and rid ~= rec.out and ns.Data.spell[rid]) then
         return { t = "trainer", cost = ns.TrainerGuess(skill and skill[1]), est = true }
     end
     return { t = "text", text = rec.source }
@@ -749,6 +761,11 @@ end
 
 -- The profession the window shows and its saved data; nil before any scan.
 local function current()
+    -- the simulation: a profession built from the recipe book, never saved
+    if ns.sim then
+        if not ns.sim.prof then return nil end -- still on its conditions page
+        return ns.sim.name, ns.sim.prof
+    end
     local db = charDB()
     local name = db.current
     local prof = name and db.profs[name]
@@ -768,8 +785,9 @@ end
 function ns.Skill()
     local name, prof = current()
     if not name then return nil end
-    return { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = UnitLevel("player") or 0,
-             icon = prof.icon, items = {}, recipes = {} }
+    -- the simulation plans the whole way: the level a rank asks for is told, not a stop
+    return { name = name, skill = prof.skill or 0, cap = prof.cap or 0, level = prof.sim and 60 or (UnitLevel("player") or 0),
+             icon = prof.icon, items = {}, recipes = {}, sim = prof.sim or nil }
 end
 
 -- The profession the window shows, as a plain table for Core.lua; nil before any scan.
@@ -782,13 +800,18 @@ function ns.State()
     state.noPrices = not ns.HasPrices() or nil
     state.now = time and time() or nil -- how old the lots read at the auction are (ns.MarketTake)
     local gone = ns.Data and ns.Data.gone or {}
+    local sim = prof.sim
+    local skips = ns.SkipSet()
     ns.ReadRep()
     ns.repUnknown = {}
     for rid, rec in pairs(prof.recipes) do
         ns.Tick()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
-        if (rec.learned or not gone[rid]) and belongs(rid, name) then
-            local skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned)
+        if (rec.learned or not gone[rid]) and (sim or belongs(rid, name)) then
+            local skill, guess
+            -- a recipe of the book has its levels with it
+            if rec.book then skill, guess = { rec.book[1], rec.book[2], rec.book[3] }, false
+            else skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned) end
             -- a trainer that asks for another skill than the data says wins: the levels move with it
             local req = not rec.learned and rec.name and ns.db.trainerReq[rec.name]
             if req and skill and skill[1] and req ~= skill[1] then
@@ -800,12 +823,14 @@ function ns.State()
                 skill = { min, skill[2], skill[3], skill[4] }
             end
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
+            -- a recipe that comes with the profession costs nothing
+            if rec.free and src and src.t == "trainer" then src = { t = "trainer", cost = 0, est = false } end
             -- a recipe of a specialization this character did not choose is no way to go
             local spec = not rec.learned and ns.SPEC_OF[rid]
-            if spec and not ns.HasSpec(spec) then src = { t = "spec", spec = spec, text = ns.SpecName(spec) } end
+            if spec and (sim or not ns.HasSpec(spec)) then src = { t = "spec", spec = spec, text = ns.SpecName(spec) } end
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
-                                   skip = ns.db.skip and ns.db.skip[rid] == true or nil,
+                                   skip = skips[rid] == true or nil,
                                    cd = ns.COOLDOWNS[rid] or rec.cd, cdReady = rec.cdReady }
             for id in pairs(rec.r or {}) do itemFor(state, id) end
             if rec.out then itemFor(state, rec.out) end
@@ -816,12 +841,13 @@ function ns.State()
     local need = {}
     for _, r in pairs(state.recipes) do for id in pairs(r.r) do need[id] = true end end
     for other, p in pairs(charDB().profs) do
-        if other ~= name and not empty(p) and owned(other) ~= false then
+        -- the simulated character has no other professions
+        if not sim and other ~= name and not empty(p) and owned(other) ~= false then
             for rid, rec in pairs(p.recipes or {}) do
                 if rec.learned and rec.out and need[rec.out] and not state.recipes[rid] and belongs(rid, other) then
                     state.recipes[rid] = { name = rec.name or tostring(rid), r = rec.r or {}, out = rec.out,
                                            count = rec.count, learned = true, icon = rec.icon, other = other,
-                                           skip = ns.db.skip and ns.db.skip[rid] == true or nil }
+                                           skip = skips[rid] == true or nil }
                     for id in pairs(rec.r or {}) do itemFor(state, id) end
                     itemFor(state, rec.out)
                 end
@@ -1005,6 +1031,12 @@ end
 function ns.RunProgress()
     local v = ns.view
     if not v.route or not v.state then return {} end
+    -- a simulated run is never walked: nothing of it is done
+    if v.state.sim then
+        local out = {}
+        for i in ipairs(v.route) do out[i] = { lines = {}, segs = {}, left = 0, done = false } end
+        return out
+    end
     local prof = ns.char and ns.char.profs and ns.char.profs[v.state.name or ""]
     local leg = v.leg or 1
     if leg == 1 then return ns.Progress(v.route, v.state, count, v.made, v.marks, prof and prof.skill) end
@@ -1031,6 +1063,7 @@ end
 -- Marks stop i done by hand, or not done again: the stops after it go on, whatever the bags say.
 function ns.MarkDone(i, on)
     local v = ns.view
+    if ns.sim then return end
     local n = v.route and v.route[i]
     if not n or not n.sig then return end
     v.marks = v.marks or {}
@@ -1043,7 +1076,7 @@ end
 function ns.OnCast(spell)
     local v = ns.view
     local st = v and v.state
-    if not st or not spell then return false end
+    if not st or not spell or st.sim then return false end
     local rid = st.recipes[spell] and spell
     -- by name only while a profession window is open: every spell of a fight comes here too
     if not rid and ns.profOpen then
@@ -1098,7 +1131,7 @@ function ns.BuyLine() return ns.buy.queue[ns.buy.i] end
 function ns.BuyDear()
     local b, line = ns.buy, ns.BuyLine()
     if b.phase ~= "ready" or not b.quote or not line then return false end
-    return ns.Dear(b.quote.unit, line.unit, ns.Prefs(ns.db and ns.db.prefs).guard)
+    return ns.Dear(b.quote.unit, line.unit, ns.Prefs(ns.SavedPrefs()).guard)
 end
 
 local function nextLine()
@@ -1387,6 +1420,7 @@ local function skillLineOf(name)
         end
     end
 end
+ns.SkillLineOf = skillLineOf
 
 -- The window of a profession (the current one by default) shows now.
 -- The game's profession window is on the screen. The events alone can mislead: going from one
@@ -1426,6 +1460,7 @@ end
 -- ---------- the run log ----------
 
 function ns.StartRun()
+    if ns.sim then return nil end
     local e = ns.LogStart(ns.view, GetMoney and GetMoney() or 0, time())
     if not e then return nil end
     ns.char.run = e
