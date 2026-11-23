@@ -398,6 +398,10 @@ test("the Forever dungeons: their quests, names without a client area, entrances
         assert(ns.ICONS[key], "an icon for " .. key)
     end
     eq(ns.DungeonName(byKey.ALCAZ), "Alcaz Prison", "no client area: the DG_ text")
+    -- By key too (the Chains tab's tooltip names the dungeon so), and never an error.
+    eq(ns.DungeonName("ALCAZ"), "Alcaz Prison")
+    eq(ns.DungeonName("NOPE"), "")
+    eq(ns.DungeonName({}), "")
     local q = ns.Quests("KROLDOK", 42)
     local seen = {}
     for _, list in ipairs({ q.take, q.later, q.log }) do for _, x in ipairs(list) do seen[x.id] = true end end

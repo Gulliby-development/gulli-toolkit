@@ -234,8 +234,15 @@ function ns.Dungeons(level)
 end
 
 -- The game's name of the dungeon; a Forever dungeon the client has no area for has a DG_ text.
+-- Takes a row of ns.Dungeons or a dungeon's key.
 function ns.DungeonName(d)
-    return areaName(d.areas[1]) or rawget(L, "DG_" .. d.key) and L["DG_" .. d.key] or d.en
+    if type(d) == "string" then
+        local key = d
+        d = nil
+        for _, x in ipairs(ns.Dungeons(1)) do if x.key == key then d = x break end end
+    end
+    if not (d and d.key) then return "" end
+    return areaName(d.areas and d.areas[1]) or rawget(L, "DG_" .. d.key) and L["DG_" .. d.key] or d.en
 end
 
 -- The dungeon for this level: of those whose range holds it, the one that starts highest.
