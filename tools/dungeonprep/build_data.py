@@ -93,7 +93,12 @@ NPCS = {
     "SHAPERS": [253201, 261812, 261813, 262127, 261974, 261993, 262297, 262081, 272561, 261809],
     # Blackrock Depths: the Rugged Traveler, on a hidden ledge over the lava (the data files him
     # under the Burning Steppes).
-    "BRD": [222530],
+    "BRD": [222530,
+            9537, 9541],  # Hurley Blackbreath and his cronies, called in the Grim Guzzler (no spawns)
+    # Bosses the data has no spawns for: they come by an event or a summon inside.
+    "ZF": [7273, 7796],  # Gahz'rilla, Nekrum Gutchewer
+    "BRS": [10339, 10442, 10447],  # Gyth, the Chromatic Whelps and Dragonspawn of Upper Blackrock Spire
+    "DIREMAUL": [14502],  # the Xorothian Dreadsteed, summoned in Dire Maul
 }
 # Givers the data does not name, by npc id: Mason Connery, chained at the end of Alcaz Prison,
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
@@ -143,6 +148,18 @@ TIPS = {
                  "brazier on its left side, jump from the railing onto the platform below, follow the wall "
                  "to the corner and drop down onto the rock ledge: the Rugged Traveler stands there. The door "
                  "on the ledge leads on above Lord Incendius, with no way back."},
+    # The recipe: what the players found on Wowhead's pages, in our own words.
+    4134: {"d": "In the Grim Guzzler, break the three ale kegs in the back room. Hurley Blackbreath then "
+                "comes in with his elite friends, and each of them drops a recipe for everyone in the "
+                "group. If the group dies in that fight, Hurley and the kegs are gone until the dungeon "
+                "resets."},
+    4126: {"d": "In the Grim Guzzler, break the three ale kegs in the back room. Hurley Blackbreath then "
+                "comes in with his elite friends, and each of them drops a recipe for everyone in the "
+                "group. If the group dies in that fight, Hurley and the kegs are gone until the dungeon "
+                "resets."},
+    4122: {"d": "In WoW Forever this escort may fail: players saw Grark fade away at the top of the left "
+                "ramp in Blackrock Mountain. One group got him through by walking right behind him, step "
+                "by step, and without stealth."},
 }
 
 # A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
@@ -205,6 +222,14 @@ def class_quest(qid, q):
 # "inside" mark of that part is dropped by hand (the quest stays in the dungeon's list).
 OUTSIDE_WORK = {
     93604: "d",  # Agamaggan's Blood: the elite area outside Razorfen Downs too (hotfix of 2026-11-17)
+}
+# Quests whose work is done in the dungeon while the data cannot place it there (an object or
+# item with no spawns): quest id -> the flags to add.
+INSIDE_WORK = {
+    4735: "d",  # Egg Collection: the dragon eggs of the Rookery in Upper Blackrock Spire
+    3374: "d",  # The Essence of Eranikus: from the Shade of Eranikus in the Sunken Temple
+    3528: "d",  # The God Hakkar: the egg is filled at the altar of the Sunken Temple
+    2930: "d",  # Data Rescue: the punch card machines of Gnomeregan
 }
 
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
@@ -304,22 +329,33 @@ def load_att(root):
         for f in sorted(files):
             if f.endswith(".lua"):
                 for qid, link in att.links(os.path.join(d, f)).items():
-                    have = links.setdefault(qid, {"pre": [], "alt": [], "lvl": 0})
+                    have = links.setdefault(qid, {"pre": [], "alt": [], "lvl": 0, "breadcrumb": False})
                     have["pre"] += [p for p in link["pre"] if p not in have["pre"]]
                     have["alt"] += [a for a in link["alt"] if a not in have["alt"]]
                     have["lvl"] = have["lvl"] or link["lvl"]
+                    have["breadcrumb"] = have["breadcrumb"] or link["breadcrumb"]
     return out, links
 
 
 def add_att_links(quests, links):
-    """Fills in what QuestieDB lacks for WoW Forever's own quests from ATT: the quests before
-    one (State Secrets needs the Document Box of More Valuable Than Gold), the copies that close
-    it and the level it opens at. QuestieDB's own values always stay."""
+    """Fills in what QuestieDB lacks from ATT: the quests before one (State Secrets needs the
+    Document Box of More Valuable Than Gold; Grark Lorkrub needs KILL ON SIGHT: High Ranking
+    Dark Iron Officials), and for WoW Forever's own quests also the copies that close it and the
+    level it opens at. A quest ATT marks as a breadcrumb is never a quest before: it only sends
+    the player on. QuestieDB's own values always stay."""
     for qid, link in links.items():
         q = quests.get(qid)
-        if q is None or qid < FOREVER_QUESTS:
+        if q is None:
             continue
-        pre = [p for p in link["pre"] if p in quests]
+        races = q.get(Q_RACES) or 0
+        # ATT names the copy of the other faction too (A Light in Dark Places): only a quest
+        # the same races can take stands before this one.
+        pre = [p for p in link["pre"] if p in quests and not (links.get(p) or {}).get("breadcrumb")
+               and (not races or not quests[p].get(Q_RACES) or races & quests[p][Q_RACES])]
+        if qid < FOREVER_QUESTS:
+            if pre and not seq(q.get(Q_PRE_SINGLE) or {}) and not seq(q.get(Q_PRE_GROUP) or {}):
+                q[Q_PRE_GROUP if len(pre) > 1 else Q_PRE_SINGLE] = {i + 1: p for i, p in enumerate(pre)}
+            continue
         if pre and not seq(q.get(Q_PRE_SINGLE) or {}) and not seq(q.get(Q_PRE_GROUP) or {}):
             q[Q_PRE_GROUP if len(pre) > 1 else Q_PRE_SINGLE] = {i + 1: p for i, p in enumerate(pre)}
         alt = [a for a in link["alt"] if a in quests]
@@ -710,6 +746,7 @@ def main(root, att_root=None, gdq_root=None):
             flags += "d"
         if handed:
             flags += "h"
+        flags = "".join(f for f in "tdh" if f in flags or f in INSIDE_WORK.get(qid, ""))
         return "".join(f for f in flags if f not in OUTSIDE_WORK.get(qid, ""))
 
     def pres(qid):

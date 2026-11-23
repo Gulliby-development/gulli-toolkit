@@ -798,7 +798,9 @@ tips[3906]={d="Descendez par la chaîne suspendue depuis la corniche et restez s
 tips[3982]={d="Un seul joueur lance l'événement ; les autres prennent la quête après."}
 tips[4023]={d="Le drake est élite."}
 tips[4121]={d="Des ennemis Dark Iron et Blackrock attaquent l'escorte."}
-tips[4122]={t="Si vous passez ceci, passez aussi les sept étapes suivantes.",h="Grark est élite."}
+tips[4122]={t="Si vous passez ceci, passez aussi les sept étapes suivantes.",d="Dans WoW Forever, cette escorte peut échouer : des joueurs ont vu Grark disparaître en haut de la rampe de gauche dans Blackrock Mountain. Un groupe a réussi en marchant juste derrière lui, pas à pas, sans camouflage.",h="Grark est élite."}
+tips[4126]={d="Au Grim Guzzler, cassez les trois tonneaux de bière de l'arrière-salle. Hurley Blackbreath arrive alors avec ses amis élites, et chacun d'eux laisse une recette pour tout le groupe. Si le groupe meurt pendant ce combat, Hurley et les tonneaux disparaissent jusqu'à la réinitialisation du donjon."}
+tips[4134]={d="Au Grim Guzzler, cassez les trois tonneaux de bière de l'arrière-salle. Hurley Blackbreath arrive alors avec ses amis élites, et chacun d'eux laisse une recette pour tout le groupe. Si le groupe meurt pendant ce combat, Hurley et les tonneaux disparaissent jusqu'à la réinitialisation du donjon."}
 tips[4141]={d="Des raptors et des diablosaures (niveau 48-55) errent aussi là-bas."}
 tips[4182]={d="La plupart sont élites ; venez en groupe.",h="Si vous passez cette chaîne, passez aussi les huit étapes suivantes."}
 tips[4224]={d="Gardes de la Horde à Flame Crest."}
