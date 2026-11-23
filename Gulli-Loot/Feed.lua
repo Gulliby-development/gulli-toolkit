@@ -10,7 +10,9 @@ local _, ns = ...
 local L = ns.L
 local S = ns.Skin
 
-ns.FEED_ROWS = 6        -- lines shown at most, newest on top
+ns.FEED_ROWS = 5        -- lines shown at most by default (the player's `feedRows`), newest on top
+ns.FEED_ROWS_MAX = 8    -- the most the player can ask for
+ns.FEED_KEEP = 20       -- lines kept for the total while they are not too old
 ns.FEED_SECONDS = 6     -- how long a line stays
 ns.FEED_FADE = 1.5      -- the last part of that it fades
 ns.FEED_MONEY_WAIT = 2  -- money that comes in this long after the loot closed still counts
@@ -27,6 +29,12 @@ local function now() return GetTime and GetTime() or 0 end
 local function secret(v) return issecretvalue and issecretvalue(v) end
 
 function ns.FeedOn() return ns.db ~= nil and ns.db.feed == true and not ns.paused end
+
+-- How many lines show at most: the player's number, 1 to FEED_ROWS_MAX.
+function ns.FeedRows()
+    local n = tonumber(ns.db and ns.db.feedRows) or ns.FEED_ROWS
+    return math.max(1, math.min(ns.FEED_ROWS_MAX, math.floor(n)))
+end
 
 -- A Lua pattern from a game format string such as "You receive loot: %sx%d.".
 local function pattern(fmt)
@@ -263,7 +271,7 @@ local function trim()
     for i = #entries, 1, -1 do
         if entries[i].at <= cut then table.remove(entries, i) end
     end
-    for i = #entries, ns.FEED_ROWS + 1, -1 do entries[i] = nil end
+    for i = #entries, ns.FEED_KEEP + 1, -1 do entries[i] = nil end
 end
 
 local function top(e)
@@ -395,9 +403,16 @@ local function build()
     frame = CreateFrame("Frame", "GulliLootFeed", UIParent)
     frame:SetFrameStrata("MEDIUM")
     frame:SetSize(WIDTH_MIN, PAD * 2 + ROW_H)
-    S.HudPanel(frame)
+    -- the panel's look is a frame of its own behind the lines, so the bare look can take it away
+    frame.back = CreateFrame("Frame", nil, frame)
+    frame.back:SetAllPoints()
+    if frame.back.SetFrameLevel and frame.GetFrameLevel then
+        local lvl = frame:GetFrameLevel()
+        frame.back:SetFrameLevel(math.max(0, (type(lvl) == "number" and lvl or 1) - 1))
+    end
+    S.HudPanel(frame.back)
     rows = {}
-    for i = 1, ns.FEED_ROWS do rows[i] = makeRow() end
+    for i = 1, ns.FEED_ROWS_MAX do rows[i] = makeRow() end
     foot = CreateFrame("Frame", nil, frame)
     foot:SetHeight(FOOT_H)
     foot:SetPoint("BOTTOMLEFT", PAD, PAD - 2)
@@ -473,12 +488,15 @@ function ns.FeedPaint()
     local list = sample or ns.FeedEntries()
     local t = now()
     local y, wide = PAD, 0
+    local limit = ns.FeedRows()
+    -- the bare look: no background and no frame, only the lines (the Unlock mode shows the panel)
+    frame.back:SetShown(not (ns.db and ns.db.feedBare == true) or sample ~= nil)
     local function width(fs)
         local w = (fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()) or (fs.GetStringWidth and fs:GetStringWidth()) or 0
         return type(w) == "number" and w or 0
     end
     for i, r in ipairs(rows) do
-        local e = list[i]
+        local e = i <= limit and list[i] or nil
         r:SetShown(e ~= nil)
         r.entry = e
         if e then

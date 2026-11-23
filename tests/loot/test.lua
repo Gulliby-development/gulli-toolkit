@@ -507,6 +507,28 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     eq(ns.FeedLine(ns.FeedEntries()[3]).note, nil)
     local _, n = ns.FeedTotal()
     eq(n, 0)
+    -- the player's limit: only so many lines show, the total still counts all the loot
+    ns.SetPref("feedNotes", true); ns.SetPref("feedPrice", true)
+    eq(ns.FeedRows(), 5, "five lines by default")
+    ns.SetPref("feedRows", 2)
+    ns.FeedPaint()
+    local shown = 0
+    for _, fr in ipairs(W.frames) do if rawget(fr, "entry") and fr:IsShown() then shown = shown + 1 end end
+    eq(shown, 2, "two lines of the three")
+    eq(#ns.FeedEntries(), 3)
+    eq((ns.FeedTotal()), 1440 + 375, "the hidden line is in the total")
+    ns.SetPref("feedRows", 99); eq(ns.FeedRows(), ns.FEED_ROWS_MAX)
+    ns.SetPref("feedRows", 0); eq(ns.FeedRows(), 1)
+    ns.SetPref("feedRows", 5)
+    -- the bare look takes the panel away, not the lines; the Unlock mode shows it for placing
+    local back = ns.FeedFrame().back
+    eq(back:IsShown(), true)
+    ns.SetPref("feedBare", true)
+    eq(back:IsShown(), false, "no background and no frame")
+    eq(ns.FeedFrame():IsShown(), true, "the lines stay")
+    ns.MoveFeed(true); eq(back:IsShown(), true, "placing shows the panel")
+    ns.MoveFeed(false); eq(back:IsShown(), false)
+    ns.SetPref("feedBare", false)
     -- paused: nothing new comes in
     ns.FeedClear(); ns.paused = true
     loot(2)

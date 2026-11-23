@@ -441,6 +441,11 @@ S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn =
     items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
     before = S.loot.feed.before, open = S.loot.feed.open }
 
+-- Three lines at most and no background: the rest of the loot is only in the total.
+S.loot.feedbare = { spec = { db = { feed = true, feedRows = 3, feedBare = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
+    items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
+    before = S.loot.feed.before, open = S.loot.feed.open }
+
 -- One plain line, as most loot is: the panel is only as big as it.
 S.loot.feedone = { spec = { db = { feed = true }, items = { [50004] = { 0, nil, 1, 1, 0, 200 } } }, crop = "GulliLootFeed",
     before = function() C_Item.GetItemIconByID = function() return "Interface\\Icons\\INV_Mushroom_03" end end,
