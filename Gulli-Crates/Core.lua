@@ -180,7 +180,8 @@ function ns.ReadBundles(id)
     local idx, out = nameIndex(), {}
     for _, text in ipairs(lines) do
         for line in tostring(text):gmatch("[^\n]+") do
-            local n, name = line:match("^%s*%-%s*(%d+)%s*[xX×]?%s+(.-)%s*$")
+            -- The game may write "10 × Name": the sign is two bytes, so it becomes an x first.
+            local n, name = line:gsub("\195\151", "x"):match("^%s*%-%s*(%d+)%s*[xX]?%s+(.-)%s*$")
             if n and name and name ~= "" then
                 local item = idx[name:lower()]
                 if not item then return nil end

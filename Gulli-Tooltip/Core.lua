@@ -5,6 +5,9 @@
 -- and ids can wait for Shift. The lines go into the Gulli block that every module shares.
 
 local ADDON, ns = ...
+
+-- The separator between parts of a line: a dot texture (S.DOT), since the game's fonts lack "·".
+function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 
 -- Game API wrappers.
@@ -188,7 +191,7 @@ function ns.StockLines(id, maxStack)
             break
         end
         local right = a.bank > 0 and hex("FAINT", L.BANK_N:format(a.bank)) or ""
-        if a.bags > 0 then right = a.bags .. (right ~= "" and hex("FAINT", " · ") or "") .. right end
+        if a.bags > 0 then right = a.bags .. (right ~= "" and hex("FAINT", ns.Dot()) or "") .. right end
         out[#out + 1] = { group = "stock", sub = true, left = classHex(a.class) .. a.name .. "|r", right = right }
     end
     return out
@@ -210,7 +213,7 @@ function ns.DropLines(id)
         local where = J.Name and J.Name(d.key)
         if where or wished then
             local text = where or ""
-            if wished then text = text .. (where and hex("FAINT", " · ") or "") .. hex("GOOD", where and L.WISHED or ns.Skin.Cap(L.WISHED)) end
+            if wished then text = text .. (where and hex("FAINT", ns.Dot()) or "") .. hex("GOOD", where and L.WISHED or ns.Skin.Cap(L.WISHED)) end
             out[2] = { group = "source", sub = true, left = text, color = C("MUTED") }
         end
     elseif wished then
@@ -243,7 +246,7 @@ function ns.ItemLines(id)
     if ns.db.alts then
         for _, l in ipairs(ns.StockLines(id, maxStack)) do add(l) end
     end
-    local times = maxStack > 1 and hex("FAINT", " ×" .. maxStack) or ""
+    local times = maxStack > 1 and hex("FAINT", " x" .. maxStack) or ""
     local vendor = price * maxStack
     if extra("price") and price > 0 and maxStack > 1 then
         add({ group = "price", icon = ns.OPT_ICON.price, left = L.VENDOR .. times, right = ns.Money(vendor),

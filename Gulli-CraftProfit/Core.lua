@@ -12,6 +12,9 @@
 -- Prices are in copper. Green starts halfway between yellow and grey, as in the game.
 
 local ADDON, ns = ...
+
+-- The separator between parts of a line: a dot texture (S.DOT), since the game's fonts lack "·".
+function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 
 -- Settings a player picks in the right column. A new one gets a default here, a control in
@@ -1908,7 +1911,7 @@ do
             local text = ns.L.SUMMARY:format(ns.char.current, c.skill, c.cap or 0)
             local plan = ns.view and ns.view.plan
             if plan and ns.view.state and ns.view.state.name == ns.char.current and ns.Money then
-                text = text .. "  ·  " .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net)
+                text = text .. ns.Dot() .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net)
             end
             return text, c.icon
         end,

@@ -561,8 +561,8 @@ local function fillDetail()
     local state = ch.done and (S.Hex(S.GOOD) .. L.DONE .. "|r")
         or L.PARTS_N:format(ch.total - ch.open, ch.total)
     local tag = L[KIND_TAG[ch.kind] or "TAG_SOLO"]
-    d.sub:SetText(tag .. "  " .. S.Hex(S.FAINT) .. "·|r  " .. state
-        .. (step and step.eta and ("  " .. S.Hex(S.FAINT) .. "·|r  ~" .. ns.Span(step.eta)) or ""))
+    d.sub:SetText(tag .. S.DOT .. state
+        .. (step and step.eta and (S.DOT .. "~" .. ns.Span(step.eta)) or ""))
     paintPin(d.pin, ns.db.pins[ch.id])
     d.pin:SetShown(not ch.done)
     paintHelper(d.helper, step)

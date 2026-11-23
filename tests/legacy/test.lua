@@ -581,7 +581,7 @@ test("exploring: the time from the dark areas, zones by level, above the level c
     eq(parts[2].text, "Explore Winterspring"); eq(parts[2].minLevel, 55); eq(parts[2].icon, nil, "no question mark")
     eq(parts[3].icon, 236850)
     local s = has(ns.Steps(), 80000)
-    assert(ns.Detail(s):find("Zones left: 2 · above your level: 1", 1, true), ns.Detail(s))
+    assert(ns.Detail(s):find("Zones left: 2, above your level: 1", 1, true), ns.Detail(s))
     eq(ns.ZoneLevels("Explore Western Plaguelands"), nil, "a zone the map does not list")
     ns.ShowDetail(80000)
     C_Map = nil

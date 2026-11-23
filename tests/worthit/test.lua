@@ -371,7 +371,7 @@ test("what the open rewards add together, for the hub's line", function()
     local gain, count = ns.Potential()
     eq(gain, (12 - 6) + (10 - 8)); eq(count, 2)
     local line, _, tile = ns.Summary()
-    eq(line, "+8 slots · rewards: 2"); eq(tile.value, "+8")
+    eq(line, "+8 slots, rewards: 2"); eq(tile.value, "+8")
     W.bags = { 14, 14, 14, 14 }
     eq(ns.Summary(), nil, "nothing beats the bags")
 end)

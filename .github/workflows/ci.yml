@@ -28,6 +28,9 @@ jobs:
       - name: Names and GUIDs of other units are checked for secret values
         run: lua5.1 tools/ci/secret_units.lua Gulli-*/*.lua Gulli-*/Tweaks/*.lua
 
+      - name: Signs the game's fonts lack (an empty box in game)
+        run: python3 tools/ci/glyphs.py
+
       - name: Tests on a fake WoW client
         run: |
           rc=0

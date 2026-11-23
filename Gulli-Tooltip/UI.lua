@@ -31,14 +31,14 @@ local function exampleLines()
     end
     if d.alts then
         add({ group = "stock", icon = I.alts, left = L.YOU_HAVE, right = "34", color = S.MUTED })
-        add({ group = "stock", sub = true, left = (UnitName("player")) or "", right = "12" .. faint(" · " .. L.BANK_N:format(5)) })
+        add({ group = "stock", sub = true, left = (UnitName("player")) or "", right = "12" .. faint(S.DOT .. L.BANK_N:format(5)) })
         add({ group = "stock", sub = true, left = "|cff3fc7eb" .. L.EX_ALT .. "|r", right = "17" })
     end
     if d.price and not shift then
-        add({ group = "price", icon = I.price, left = L.VENDOR .. faint(" ×20"), right = S.MoneyText(260), color = S.MUTED })
+        add({ group = "price", icon = I.price, left = L.VENDOR .. faint(" x20"), right = S.MoneyText(260), color = S.MUTED })
     end
     if d.auction and not shift and S.HasPrices() then
-        add({ group = "price", icon = I.auction, left = L.AUCTION .. faint(" ×20"), right = S.MoneyText(2100), color = S.MUTED })
+        add({ group = "price", icon = I.auction, left = L.AUCTION .. faint(" x20"), right = S.MoneyText(2100), color = S.MUTED })
     end
     if d.reagent then add({ group = "craft", icon = I.reagent, left = L.EX_PROF, color = S.MUTED }) end
     if d.id and not shift then add({ group = "id", left = L.ID:format(2589), color = S.FAINT }) end
@@ -46,7 +46,7 @@ local function exampleLines()
         add({ gap = true })
         add({ head = true, left = L.EX_GEAR, color = { 0.64, 0.21, 0.93 } })
         add({ group = "source", icon = I.drops, left = L.EX_BOSS, right = "0.3" .. faint("%"), color = S.GOLD })
-        add({ group = "source", sub = true, left = L.EX_DUNGEON .. faint(" · ") .. S.Hex(S.GOOD) .. L.WISHED .. "|r",
+        add({ group = "source", sub = true, left = L.EX_DUNGEON .. faint(S.DOT) .. S.Hex(S.GOOD) .. L.WISHED .. "|r",
               color = S.MUTED })
     end
     if d.id and not shift then

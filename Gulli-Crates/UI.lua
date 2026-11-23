@@ -25,7 +25,7 @@ function ns.ShortName(name)
 end
 
 local function itemLine(id, n)
-    return n .. " × " .. ns.ShortName(ns.DisplayName(id))
+    return n .. " x " .. ns.ShortName(ns.DisplayName(id))
 end
 ns.ItemLine = itemLine
 

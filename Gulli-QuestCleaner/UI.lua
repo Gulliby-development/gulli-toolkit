@@ -213,7 +213,7 @@ local function placeItem(it, y, x, width)
     r.check:SetEnabled(not blocked)
     r.icon:SetTexture(it.icon)
     r.text:SetText((it.link or it.name) .. (it.count > 1 and (S.Hex(S.MUTED) .. "  x" .. it.count .. "|r") or ""))
-    r.sub:SetText(L[blocked and "WHY_QUEST_STAYS" or it.why] .. (it.bank and ("  ·  " .. L.IN_BANK) or ""))
+    r.sub:SetText(L[blocked and "WHY_QUEST_STAYS" or it.why] .. (it.bank and (S.DOT .. L.IN_BANK) or ""))
     focusList[#focusList + 1] = r
     r:SetAlpha(ns.ItemGoes(it) and 1 or 0.45)
     return r

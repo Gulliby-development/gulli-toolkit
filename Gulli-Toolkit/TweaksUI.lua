@@ -168,7 +168,7 @@ local function fillRow(f, r, w, first)
     f.tag:SetShown(r.kind == "module")
     if r.kind == "module" then
         local label = r.module.title
-        if not live then label = label .. " · " .. L.TW_OFF end
+        if not live then label = label .. S.DOT .. L.TW_OFF end
         f.tag.text:SetText(label)
         f.tag.icon:SetIcon(r.module.icon)
         f.tag.ring:ClearAllPoints()
