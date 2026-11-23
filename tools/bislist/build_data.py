@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds Gulli-MyBisList/Data.lua from the wowtbc.gg snapshot (tools/bislist/wowtbc.json).
 
-The snapshot is the WoW Forever BiS lists of wowtbc.gg: for each of the 28 specs the lists by
+The snapshot is the WoW Forever BiS lists of wowtbc.gg: for each of the 30 specs the lists by
 level (20, 30, 40, 50) and the pre-raid ones (best and realistic), with the items they name.
 fetch.py collects it again; this script only reads it.
 

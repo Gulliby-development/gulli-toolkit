@@ -27,7 +27,8 @@ test("the data: every spec has every stage, at most five known items a slot, and
     Fake({})
     local ns = Load()
     local D = ns.Data
-    eq(#D.specs, 28, "specs")
+    eq(#D.specs, 30, "specs")
+    assert(ns.SpecName("HUNTER_SURVIVALMELEE") and ns.SpecName("PALADIN_SHOCKADIN"), "the specs wowtbc.gg added")
     for _, s in ipairs(D.specs) do
         assert(ns.SpecName(s[1]), "no name for " .. s[1])
         assert(ns.ROLE_ICON[s[3]], "no role icon for " .. s[1])
