@@ -1276,6 +1276,31 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     assert(plain > 0, "and some outside it")
 end)
 
+test("a quest behind a quest still in the log waits in Later, not in Take", function()
+    -- Disharmony of Fire (3907) opens when Disharmony of Flame (3906) is handed in.
+    Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", active = { [3906] = true } })
+    local ns = Load()
+    local function find(list, id)
+        for _, x in ipairs(list) do if x.id == id then return x end end
+    end
+    local q = ns.Quests("BRD", 54)
+    assert(not find(q.take, 3907), "it cannot be taken yet")
+    local e = find(q.later, 3907)
+    assert(e, "it waits")
+    eq(e.why, "WHY_EARLIER"); eq(e.need.id, 3906)
+    eq(ns.Quest(3907, 54).state, "later")
+    eq(ns.NeedText(e.need), ns.L.AFTER:format(e.need.name), "it says after which quest")
+    local all, _, total, counts = ns.TrackerItems("BRD", 54)
+    for _, it in ipairs(all) do
+        if it.id == 3907 then eq(it.group, "later", "the tracker follows") end
+    end
+    eq(counts.hand + counts.doing + counts.take + counts.later, total)
+    Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [3906] = true } })
+    ns = Load()
+    q = ns.Quests("BRD", 54)
+    assert(find(q.take, 3907), "handed in: now it can be taken")
+end)
+
 test("the tracker starts hidden, once also for older saves; the hub's switch shows it", function()
     Fake({ level = 33, db = { tracker = "GNOMER", trackerLocked = false } })
     local got

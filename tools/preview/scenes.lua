@@ -1048,6 +1048,23 @@ S.dungeonprep = {
                         ns.ShowTracker("BRD")
                         ns.TrackerScroll(3)
                     end },
+    -- A side quest behind a quest in the log waits in Later ("After: ...").
+    tracklater = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                            active = { [3906] = true } },
+                   crop = "GulliDungeonPrepTrackerStage",
+                   before = function()
+                       local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                       stage:SetSize(420, 620)
+                       stage:SetPoint("CENTER")
+                       local bg = stage:CreateTexture(nil, "BACKGROUND")
+                       bg:SetAllPoints()
+                       bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                   end,
+                   open = function(ns)
+                       ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                       ns.ShowTracker("BRD")
+                       ns.TrackerGoTo("later")
+                   end },
     trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
                             areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
                    crop = "GulliDungeonPrepTrackerStage",
