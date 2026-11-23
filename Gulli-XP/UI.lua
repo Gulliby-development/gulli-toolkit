@@ -29,7 +29,7 @@ function ns.BarText(st)
     local parts = { L.RATE:format(ns.Short(st.avg)) }
     if st.toLevel then parts[#parts + 1] = eta end
     if st.killsToLevel then parts[#parts + 1] = L.KILLS:format(st.killsToLevel) end
-    return table.concat(parts, "  ·  ")
+    return table.concat(parts, S.DOT)
 end
 
 -- The bar's colours, also used by its tooltip so the two read the same.

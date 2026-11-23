@@ -16,7 +16,7 @@ end)
 test("a stack item shows the full stack price; a single item does not", function()
     Fake({ items = { [1] = { "Linen", 20, 13 }, [2] = { "Sword", 1, 500 } } })
     Load()
-    eq(W.HoverItem(1)[1], "Vendor ×20=2s 60c")
+    eq(W.HoverItem(1)[1], "Vendor x20=2s 60c")
     eq(#W.HoverItem(2), 0)
 end)
 
@@ -119,7 +119,7 @@ test("a vendor that pays more than the auction after its cut is named", function
     Load()
     Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return 104 end } } }
     local lines = W.HoverItem(1)
-    eq(lines[1], "Auction ×20=20s 80c")
+    eq(lines[1], "Auction x20=20s 80c")
     eq(lines[2], "After the cut a vendor pays more=", "104 less 5% is under 100")
     Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return 106 end } } }
     eq(#W.HoverItem(1), 1, "106 less 5% still beats the vendor")
@@ -141,9 +141,9 @@ test("who holds the item: you from the game, the others from Gulli Chores", func
     local lines = W.HoverItem(7)
     eq(#lines, 5)
     eq(lines[1], "You have=24", "a total first; this character is counted by the game, not twice")
-    eq(lines[2], "Tester=4 · bank 6")
+    eq(lines[2], "Tester=4   bank 6")
     eq(lines[3], "Vault=bank 8", "the others by how many they hold")
-    eq(lines[4], "Alt=3 · bank 2")
+    eq(lines[4], "Alt=3   bank 2")
     eq(lines[5], "Bob=1")
     -- the game gives no realm name: this character is still not one of the others
     local realmName = GetRealmName
@@ -155,7 +155,7 @@ test("who holds the item: you from the game, the others from Gulli Chores", func
     GulliChoresDB = nil
     lines = W.HoverItem(7)
     eq(lines[1], "You have=10")
-    eq(lines[2], "Tester=4 · bank 6")
+    eq(lines[2], "Tester=4   bank 6")
     W.counts[7] = { 4, 0 }
     lines = W.HoverItem(7)
     eq(#lines, 1, "only the bags: the total says it all")
@@ -202,7 +202,7 @@ test("where an item drops comes from the Dungeon Journal", function()
     }
     local lines = W.HoverItem(9)
     eq(lines[1], "Princess=12.5%", "the best chance")
-    eq(lines[2], "Maraudon · on your wish list=")
+    eq(lines[2], "Maraudon   on your wish list=")
     eq(W.HoverItem(10)[1], "On your wish list=", "a wish the bosses do not drop")
     GulliDungeonJournal = { DropsOf = function() return { { key = "MARA", boss = "Princess", pct = 0 } } end }
     lines = W.HoverItem(9)
@@ -225,7 +225,7 @@ test("the lines stand in the block's order, whatever is on", function()
     GulliCraftProfitCharDB = { profs = { Skinning = { recipes = { { learned = true, r = { [7] = 1 } } } } } }
     GulliDungeonJournal = { DropsOf = function() return { { key = "K", boss = "Boss", pct = 2 } } end }
     local lines = W.HoverItem(7)
-    local want = { "Protected=", "Wolves=3/10", "You have=3", "Vendor ×20=1s", "Auction ×20=10s", "Skinning=", "Boss=2%", "ID 7=" }
+    local want = { "Protected=", "Wolves=3/10", "You have=3", "Vendor x20=1s", "Auction x20=10s", "Skinning=", "Boss=2%", "ID 7=" }
     for i, w in ipairs(want) do eq(lines[i], w) end
     eq(#lines, #want)
     eq(W.rules[1], "gold", "one gold line over the block")
@@ -317,7 +317,7 @@ test("the auction line gives a full stack for stack items", function()
     local ns = Load()
     ns.db.auction, ns.db.price = true, false
     Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return 13 end } } }
-    eq(W.HoverItem(1)[1], "Auction ×20=2s 60c")
+    eq(W.HoverItem(1)[1], "Auction x20=2s 60c")
     Auctionator = nil
 end)
 
@@ -347,7 +347,7 @@ test("the lines of several modules make one block, in the groups' order", functi
     S.TipProvider("item", "Broken", function() error("boom") end)
     S.TipProvider("item", "Zeta", function(id, tt) return { { left = "note " .. id .. (tt and "" or "?") } } end)
     local lines = W.HoverItem(7)
-    local want = { "Always kept=", "Wolves=3/10", "Bob=2/8", "Vendor ×20=1s", "note 7=" }
+    local want = { "Always kept=", "Wolves=3/10", "Bob=2/8", "Vendor x20=1s", "note 7=" }
     for i, w in ipairs(want) do eq(lines[i], w) end
     eq(#lines, #want, "the repeat of the quest line is left out; a broken module costs only its own lines")
     ns.db.quest = false

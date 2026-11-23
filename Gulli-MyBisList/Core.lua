@@ -2,6 +2,9 @@
 -- what the character wears and carries. It only reads the game; it never equips or buys anything.
 
 local ADDON, ns = ...
+
+-- The separator between parts of a line: a dot texture (S.DOT), since the game's fonts lack "·".
+function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 local D = ns.Data
 
@@ -293,7 +296,7 @@ end
 function ns.StageName(stage) return L["STAGE_" .. stage] end
 function ns.ListName(list)
     if list.own then return list.name or L.OWN_NAME:format(ns.SpecName(list.spec)) end
-    return ns.SpecName(list.spec) .. " · " .. ns.StageName(list.stage)
+    return ns.SpecName(list.spec) .. ns.Dot() .. ns.StageName(list.stage)
 end
 
 function ns.MainRef() return ns.cdb and ns.cdb.main or "auto" end
@@ -699,24 +702,24 @@ function ns.SourceText(id)
     if kind == "boss" then
         local dg = where ~= "" and (GulliDungeonJournal and GulliDungeonJournal.Name and GulliDungeonJournal.Name(where)
             or D.dungeons[where]) or L.SRC_DUNGEONS
-        return what ~= "" and (what .. " · " .. dg) or dg, kind
+        return what ~= "" and (what .. ns.Dot() .. dg) or dg, kind
     elseif kind == "quest" then
         return L.SRC_QUEST:format(what), kind
     elseif kind == "rep" then
-        return where ~= "" and (what .. " · " .. where) or what, kind
+        return where ~= "" and (what .. ns.Dot() .. where) or what, kind
     elseif kind == "craft" then
         return L.SRC_CRAFT:format(what), kind
     elseif kind == "pvp" then
         return L.SRC_PVP, kind
     elseif kind == "vendor" then
         if what == "" then return L.SRC_VENDORS, kind end
-        return where ~= "" and (what .. " · " .. where) or what, kind
+        return where ~= "" and (what .. ns.Dot() .. where) or what, kind
     elseif kind == "fish" then
         return L.SRC_FISH, kind
     elseif kind == "rare" then
         return where ~= "" and L.SRC_RARE:format(what, where) or what, kind
     elseif kind == "zone" then
-        return what ~= "" and (what .. " · " .. where) or where, kind
+        return what ~= "" and (what .. ns.Dot() .. where) or where, kind
     elseif kind == "world" then
         return L.SRC_WORLD, kind
     elseif kind == "other" then

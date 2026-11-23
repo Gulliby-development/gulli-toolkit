@@ -629,7 +629,7 @@ local function fillNode(b, n, p, here)
     b.icon:SetGlow(kc)
     local done = p and p.done or false
     b.icon:SetAlpha(done and 0.6 or 1)
-    b.head:SetText(n.index .. " · " .. (L["KIND_" .. n.kind] or n.kind))
+    b.head:SetText(n.index .. S.DOT .. (L["KIND_" .. n.kind] or n.kind))
     b.sub:SetText(stopSub(n))
     b.tick:SetShown(done)
     b.here:SetShown(here and not done)
@@ -895,7 +895,7 @@ local function detailRows(n, i, a)
         local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
         local row = { rid = sg.rid, seg = sg, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
-                            note = sg.from .. " - " .. sg.to .. (r.cd and ("  ·  " .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
+                            note = sg.from .. " - " .. sg.to .. (r.cd and (S.DOT .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
                             right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
         craftMark(row, p and p.segs and p.segs[si], n, p, sg.rid)
         rows[#rows + 1] = row
@@ -953,7 +953,7 @@ local function detailRows(n, i, a)
             -- the price the auction just answered, for this many
             if buying.phase == "ready" and buying.quote then
                 local dear = ns.BuyDear()
-                note = L.EACH:format(S.MoneyText(buying.quote.unit)) .. "  ·  "
+                note = L.EACH:format(S.MoneyText(buying.quote.unit)) .. S.DOT
                     .. color(dear and GOLD or GOOD) .. (dear and L.NOTE_DEAR or L.NOTE_PLANNED) .. "|r"
                 right = S.MoneyText(buying.quote.total)
             end
@@ -1125,7 +1125,7 @@ local function makePanel(card, width)
         self.action = a
         self.icon:SetIcon(stopIcon(n))
         self.title:SetText(L["KIND_" .. n.kind] or n.kind)
-        self.sub:SetText(n.segs and (stopTitle(n) .. "  ·  " .. L.CRAFTS_N:format(n.crafts)) or stopTitle(n))
+        self.sub:SetText(n.segs and (stopTitle(n) .. S.DOT .. L.CRAFTS_N:format(n.crafts)) or stopTitle(n))
         self.pill:Set(a.pill and a.pill[1], a.pill and a.pill[2])
         self.list:SetData(detailRows(n, i, a))
         -- the counter: "Click 3 of 4" with a pip per click
@@ -2010,7 +2010,7 @@ function ns.Refresh()
     refreshSettings()
     local v = ns.view
     local age = ns.PriceAge(v.state)
-    local slash = "/gcp  ·  "
+    local slash = "/gcp" .. S.DOT
     if not ns.HasPrices() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
     elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
     else ui.age:SetText("/gcp") end
@@ -2141,7 +2141,7 @@ local function refreshSideWindow()
     local plan, st = v.plan, v.state
     local from, to = st.skill, plan.target or st.skill
     for _, x in ipairs(v.route) do if x.segs then from, to = x.from, x.to end end
-    sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. "  ·  " .. L.SIDE_STOP:format(i, #v.route)))
+    sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. S.DOT .. L.SIDE_STOP:format(i, #v.route)))
     sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
     -- the icons around the stop shown, when the run has more than fit
     local prog = ns.RunProgress()

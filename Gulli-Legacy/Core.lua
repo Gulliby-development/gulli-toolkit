@@ -5,6 +5,9 @@
 -- it plays, so the plan can suggest another character.
 
 local ADDON, ns = ...
+
+-- The separator between parts of a line: a dot texture (S.DOT), since the game's fonts lack "·".
+function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 
 -- Game ids of the Legacy system (WoW Forever 1.60).
@@ -712,7 +715,7 @@ function ns.Detail(s)
     if ch.kind == "level" and s.from then
         local pace = (s.me and ns.MeasuredRate()) and L.D_PACE_XP:format(ns.Short(ns.MeasuredRate()))
             or (s.char and s.char.rate) and L.D_PACE_SAVED:format(ns.Short(s.char.rate)) or L.D_PACE_GUESS
-        return who .. L.D_LEVELS:format(s.to - s.from, s.from, s.to) .. " · " .. pace
+        return who .. L.D_LEVELS:format(s.to - s.from, s.from, s.to) .. ns.Dot() .. pace
     end
     if ch.kind == "skill" and s.from then
         local first = s.needLevel and L.D_FROM_LEVEL:format(s.needLevel, ns.Span(s.levelEta or 0)) or ""

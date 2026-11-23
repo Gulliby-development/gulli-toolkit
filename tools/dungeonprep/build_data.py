@@ -489,13 +489,13 @@ def write_translations(texts, tips, game=None):
         for qid in sorted(texts):
             v = game.get(lang, {}).get(qid) or (tr_text.get(texts[qid]) or {}).get(lang)
             if v and texts[qid]:
-                lines.append("text[%d]=%s" % (qid, lua_str(v)))
+                lines.append("text[%d]=%s" % (qid, lua_str(i18n.font_safe(v, lang))))
         for qid in sorted(tips):
             parts = []
             for k in "tdh":
                 v = (tr_tips.get(tips[qid].get(k)) or {}).get(lang)
                 if v:
-                    parts.append("%s=%s" % (k, lua_str(v)))
+                    parts.append("%s=%s" % (k, lua_str(i18n.font_safe(v, lang))))
             if parts:
                 lines.append("tips[%d]={%s}" % (qid, ",".join(parts)))
         out = os.path.join(os.path.dirname(OUT), "Data_%s.lua" % lang)

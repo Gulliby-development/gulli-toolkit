@@ -105,8 +105,8 @@ local function fillLogRow(r, e)
     r.icon:SetTexture(e.id and itemIcon(e.id) or "Interface\\Icons\\INV_Misc_QuestionMark")
     r.text:SetText(e.link or "?")
     local what = e.rule and L["RULE_" .. e.rule:upper()] or L.RULE_ASK
-    local line = what .. " · " .. L["WHY_" .. (e.reason or "ask"):upper()]
-    if e.winner then line = line .. " · " .. L.WINNER:format(e.winner) end
+    local line = what .. S.DOT .. L["WHY_" .. (e.reason or "ask"):upper()]
+    if e.winner then line = line .. S.DOT .. L.WINNER:format(e.winner) end
     r.sub:SetText(line)
     r.make:SetShown(e.id ~= nil and ns.db.items[e.id] == nil)
 end

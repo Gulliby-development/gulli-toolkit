@@ -224,7 +224,7 @@ local function fillDetail(rows, inGroup)
         end
         parts[#parts + 1] = d.name .. ": " .. s
     end
-    detail.lines:SetText(table.concat(parts, "   ·   "))
+    detail.lines:SetText(table.concat(parts, S.DOT))
     detail.track:Show()
 end
 

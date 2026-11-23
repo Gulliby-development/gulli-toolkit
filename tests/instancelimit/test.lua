@@ -175,7 +175,7 @@ test("run stats: time, XP with a level up, money and kills, and a summary", func
     assert(W.Printed("The Deadmines:"), "the summary")
     local S = ns.Skin
     local line = ns.RunText(e)
-    local plain = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local plain = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "·")
     eq(plain, "25:00  ·  250 XP  ·  20s  ·  2 kills")
     -- every part has its own colour, and silver does not look like plain text
     for _, c in ipairs({ S.TIME, S.XP, S.SILVER, S.KILLS }) do
@@ -213,7 +213,7 @@ test("the list is grouped by character, mine first", function()
     eq(#day, 6)
     eq(day[1].header, true); eq(day[1].char, "Zed"); eq(day[1].count, 2)
     eq(day[4].char, "Ann"); eq(day[4].count, 2)
-    local plain = ns.RunsHint(day):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local plain = ns.RunsHint(day):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "·")
     eq(plain, "Runs: 4  ·  15:00 on average")
     eq(ns.RunsHint({}), "")
     ns.ShowPage(1)

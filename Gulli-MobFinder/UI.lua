@@ -76,7 +76,7 @@ local function cardLine()
     local parts = {}
     for _, p in ipairs(cardMeta or {}) do parts[#parts + 1] = p end
     if cardWaiting then parts[#parts + 1] = L.AFTER_COMBAT end
-    card.text:SetText(table.concat(parts, " · "))
+    card.text:SetText(table.concat(parts, S.DOT))
 end
 
 local function showTarget(on)
@@ -552,8 +552,8 @@ local function fillHistRow(r, e)
     r.text:SetText(e.name)
     local where = e.zone or ""
     if e.x and e.y then where = where .. (" %.0f, %.0f"):format(e.x * 100, e.y * 100) end
-    local line = where .. " · " .. ago(e.t)
-    if e.who then line = line .. " · " .. L.FROM:format(e.who) end
+    local line = where .. S.DOT .. ago(e.t)
+    if e.who then line = line .. S.DOT .. L.FROM:format(e.who) end
     r.sub:SetText(line)
     r.pin:SetEnabled(e.map ~= nil and e.x ~= nil)
 end

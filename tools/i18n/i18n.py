@@ -21,6 +21,20 @@ LANGS = ["de", "es", "fr", "pl", "pt", "ru", "zh"]
 DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+# Signs the game's fonts may draw as an empty box (tools/ci/glyphs.py), with what to write instead.
+# Chinese text keeps its ellipsis and the dot inside names: the Chinese fonts have them.
+SAFE = {"\u2026": "...", "\u00d7": "x", "\u00b7": ", ", "\u2022": ", ", "\u2192": "\u00bb"}
+
+
+def font_safe(text, lang=None):
+    """The text with every sign of SAFE written the safe way (not in Chinese)."""
+    if not text or lang == "zh":
+        return text
+    for sign, instead in SAFE.items():
+        text = text.replace(" " + sign + " ", instead if instead == ", " else " " + instead + " ").replace(sign, instead)
+    return text
+
+
 def path(domain):
     return os.path.join(DIR, domain + ".json")
 

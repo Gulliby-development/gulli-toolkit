@@ -360,7 +360,7 @@ end
 
 local function lineText(line)
     if not line then return "" end
-    return ns.Left(line) .. " × " .. ns.ShortName(ns.DisplayName(line.id))
+    return ns.Left(line) .. " x " .. ns.ShortName(ns.DisplayName(line.id))
 end
 
 local function buyText()

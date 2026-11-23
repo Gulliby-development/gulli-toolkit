@@ -634,7 +634,7 @@ test("no price addon: the auction switches are off and grey, a banner says so, o
     for _, x in ipairs(v.variants) do assert(not n.EARN[x.mode], "no profit route from guessed prices: " .. x.mode) end
     assert(v.plan, "a levelling route all the same")
     assert(n.ui.priceBanner:IsShown(), "the banner tells why")
-    assert(n.ui.priceBanner.text:GetText():find("×" .. n.AH_GUESS, 1, true))
+    assert(n.ui.priceBanner.text:GetText():find("x" .. n.AH_GUESS, 1, true))
     n.Tab(5)
     for _, k in ipairs({ "buyAH", "sellAH" }) do
         eq(n.ui.checks[k]:GetChecked(), false, k .. " shows off")

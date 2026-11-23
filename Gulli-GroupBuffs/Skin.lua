@@ -141,7 +141,10 @@ S.COPPER = { 0.93, 0.65, 0.37, 1 }
 S.TIME = { 0.45, 0.85, 0.80, 1 }
 S.XP = { 0.79, 0.63, 1.00, 1 }
 S.KILLS = { 0.95, 0.55, 0.50, 1 }
-S.DOT = "  |cff9c8f7c·|r  "
+-- The dot is a texture, not the "·" sign: the game's fonts (Friz Quadrata Cyrillic, the fallback
+-- when a font file cannot load) draw that sign as an empty box. S.DOT_MARK is the dot alone.
+S.DOT_MARK = "|TInterface\\AddOns\\" .. tostring(addon) .. "\\Media\\Round:5:5:0:0:64:64:0:64:0:64:156:143:124|t"
+S.DOT = "  " .. S.DOT_MARK .. "  "
 -- A window, a HUD panel or a notice: the dense brown of S.BG (the names stay from Gulli Glass,
 -- so older calls keep working). A frame that must hide what is behind it uses S.SOLID.
 S.GLASS = S.BG
