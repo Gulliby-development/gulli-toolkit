@@ -1036,6 +1036,23 @@ S.dungeonprep = {
                          if it.fork then ns.ToggleTracked(it.key) break end
                      end
                  end },
+    -- The same tracker scrolled by three notches of the wheel, no chain card.
+    trackscroll = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR",
+                             active = { [4134] = true } },
+                    crop = "GulliDungeonPrepTrackerStage",
+                    before = function()
+                        local stage = CreateFrame("Frame", "GulliDungeonPrepTrackerStage", UIParent)
+                        stage:SetSize(420, 620)
+                        stage:SetPoint("CENTER")
+                        local bg = stage:CreateTexture(nil, "BACKGROUND")
+                        bg:SetAllPoints()
+                        bg:SetColorTexture(0.16, 0.2, 0.16, 1)
+                    end,
+                    open = function(ns)
+                        ns.db.trackerPoint = { "CENTER", "CENTER", 0, 0 }
+                        ns.ShowTracker("BRD")
+                        ns.TrackerScroll(3)
+                    end },
     trackchain = { spec = { level = 40, raceID = 2, faction = "Horde", className = "WARRIOR",
                             areas = { [33] = "Stranglethorn Vale" }, done = { [629] = true }, active = { [95748] = true } },
                    crop = "GulliDungeonPrepTrackerStage",
