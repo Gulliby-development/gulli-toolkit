@@ -10,7 +10,7 @@
 ## Notes-zhCN: 拍卖行打开时每分钟扫描一次，列出比商人收购价还便宜的拍品。点击购买，卖给下一个商人。 /gvf
 ## Notes-zhTW: 拍卖行打开时每分钟扫描一次，列出比商人收购价还便宜的拍品。点击购买，卖给下一个商人。 /gvf
 ## Author: Gulliby
-## Version: 1.5.6
+## Version: 1.5.7
 ## IconTexture: Interface\AddOns\Gulli-VendorFlip\icon
 ## OptionalDeps: Gulli-Toolkit
 ## X-Gulli-Module: VendorFlip

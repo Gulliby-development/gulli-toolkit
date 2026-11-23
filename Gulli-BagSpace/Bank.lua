@@ -28,12 +28,6 @@ local function minLevel(id)
     return req or 0
 end
 
--- The bags the player wears, WoW Forever's reagent bag (5) included.
-local function bags()
-    local out = {}
-    for b = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do out[#out + 1] = b end
-    return out
-end
 -- The bank's containers: the bank tabs of the newer client, else the old bank and its bags.
 function ns.BankContainers()
     local B = Enum and Enum.BagIndex
@@ -96,7 +90,7 @@ function ns.BankPlan()
         end
     end
     local keep, out = restocked(), {}
-    for _, b in ipairs(bags()) do
+    for _, b in ipairs(ns.Bags()) do
         for slot = 1, numSlots(b) do
             local it = J.Item(b, slot)
             local why = ns.BankWhy(it, inBank, keep)

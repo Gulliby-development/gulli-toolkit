@@ -222,6 +222,21 @@ test("two loot items that fit no stack need two slots, and the notice frees both
     ns.LootClosed()
 end)
 
+test("loot joins a stack in WoW Forever's reagent bag", function()
+    -- the normal bags are full and hold no cloth; the only room for cloth is the reagent bag
+    local bags = { [0] = { size = 2, slots = { [1] = { id = 9, count = 1 }, [2] = { id = 10, count = 1 } } },
+                   [5] = { size = 1, family = 2048, slots = { [1] = { id = 4, count = 15 } } } }
+    NUM_BAG_SLOTS, NUM_TOTAL_EQUIPPED_BAG_SLOTS = 4, 5
+    Fake({ bags = bags, items = LOOT_ITEMS })
+    local ns = Load()
+    loot({ { 4, 5 } })
+    eq(ns.Space(), 0, "the normal bags are full")
+    eq(ns.LootShort(), 0, "5 cloth fit the 15/20 stack in the reagent bag")
+    loot({ { 9 } })
+    eq(ns.LootShort(), 1, "an item no stack takes still needs a slot")
+    GetNumLootItems = function() return 0 end
+end)
+
 test("loot that joins its own stacks or a special bag needs no slot", function()
     Fake({ bags = fullBags(), items = LOOT_ITEMS })
     local ns = Load()

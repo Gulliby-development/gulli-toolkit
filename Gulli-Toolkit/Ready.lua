@@ -155,7 +155,7 @@ function ns.Readiness()
         lowest / 100, ns.ReadyGet("durMin") / 100)
 
     local free = 0
-    for bag = 0, 4 do
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         local f, family = freeSlots(bag)
         if family == 0 then free = free + f end
     end

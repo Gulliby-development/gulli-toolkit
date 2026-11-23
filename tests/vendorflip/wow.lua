@@ -121,7 +121,7 @@ function W.finish()
 end
 
 -- spec.items = { [id] = { name, quality, sell, stack, class } }, spec.bags = { { id, count } } (one slot
--- each in bag 0), spec.free (free slots), spec.money (copper), spec.browse = { { id, minPrice } },
+-- each in bag 0), spec.free (free slots), spec.quiver (free slots of a quiver in bag 1), spec.money (copper), spec.browse = { { id, minPrice } },
 -- spec.commodity = { [id] = { { unit, count, own } } }, spec.lots = { [id] = { { auction, n, buyout, own } } }.
 function Fake(spec)
     W.Base(spec)
@@ -129,6 +129,8 @@ function Fake(spec)
     W.items = spec.items or {}
     W.bags = spec.bags or {}
     W.free = spec.free or 10
+    W.quiver = spec.quiver
+    NUM_BAG_SLOTS, NUM_TOTAL_EQUIPPED_BAG_SLOTS = 4, 5   -- WoW Forever wears a reagent bag
     W.money = spec.money or 1000000
     W.browse = spec.browse or {}
     W.commodity = spec.commodity or {}
@@ -138,7 +140,12 @@ function Fake(spec)
     GetMoney = function() return W.money end
     C_Container = {
         GetContainerNumSlots = function(b) return b == 0 and math.max(#W.bags, 1) or 0 end,
-        GetContainerNumFreeSlots = function(b) return b == 0 and W.free or 0 end,
+        -- free slots and the bag family: 0 for a normal bag, spec.quiver for a quiver (bag 1)
+        GetContainerNumFreeSlots = function(b)
+            if b == 0 then return W.free, 0 end
+            if b == 1 and W.quiver then return W.quiver, 1 end
+            return 0, 0
+        end,
         GetContainerItemInfo = function(b, s)
             local e = b == 0 and W.bags[s]
             return e and e[2] > 0 and { itemID = e[1], stackCount = e[2] } or nil
