@@ -26,6 +26,9 @@ local STATE_ICON = {
     chain = "Interface\\GossipFrame\\AvailableQuestIcon",
 }
 local PIN_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+-- The room the map button takes at a row's right edge, and how far down it reaches.
+local PIN_ROOM, PIN_BOTTOM = 34, PAD - 2 + 22
+ns.TRACK_PIN_ROOM = PIN_ROOM
 local DONE_ICON = "Interface\\RaidFrame\\ReadyCheck-Ready"
 local PIP_TODO = { 1, 1, 1, 0.22 }
 
@@ -229,7 +232,9 @@ local function fillRow(r, it)
     r.name:SetText(it.name)
     local diff = ns.Difficulty(it.level or 1, ns.level or UnitLevel("player") or 1)
     r.name:SetTextColor(unpack(it.state == "chain" and S.MUTED or ns.DiffColor(diff)))
-    r.name:SetPoint("RIGHT", it.pin and -32 or -10, 0)
+    -- The map button stands at the right over the row's first lines: nothing runs under it.
+    local right = it.pin and -PIN_ROOM or -10
+    r.name:SetPoint("RIGHT", right, 0)
     local y = PAD + NAME_H
     local dots = it.steps and #it.steps <= PIPS_MAX and #it.steps or 0
     local x = 30
@@ -253,7 +258,9 @@ local function fillRow(r, it)
         r.fork:SetText(it.fork and ("|T" .. STATE_ICON.take .. ":12|t" .. it.fork) or "")
         r.chain:ClearAllPoints()
         r.chain:SetPoint("TOPLEFT", x + (dots > 0 and 3 or 0), -y)
-        if it.fork then r.chain:SetPoint("RIGHT", r.fork, "LEFT", -4, 0) else r.chain:SetPoint("RIGHT", -10, 0) end
+        r.fork:ClearAllPoints()
+        r.fork:SetPoint("TOPRIGHT", right, -y)
+        if it.fork then r.chain:SetPoint("RIGHT", r.fork, "LEFT", -4, 0) else r.chain:SetPoint("RIGHT", right, 0) end
         r.chain:SetText(chainText(it))
         y = y + CHAIN_H
     end
@@ -264,7 +271,7 @@ local function fillRow(r, it)
         if line then
             t:ClearAllPoints()
             t:SetPoint("TOPLEFT", 30, -(y + (i - 1) * LINE_H))
-            t:SetPoint("RIGHT", -10, 0)
+            t:SetPoint("RIGHT", (y + (i - 1) * LINE_H < PIN_BOTTOM) and right or -10, 0)
             t:SetText(line.text)
             local c = S.TEXT
             if it.state == "ready" then c = S.GOOD elseif it.state == "chain" then c = S.FAINT
@@ -378,7 +385,8 @@ local function fillCardRow(r, row, last)
         r.name:SetPoint("TOPLEFT", 36, -2)
         r.name:SetText(st.name)
         r.name:SetTextColor(unpack((done and S.MUTED) or (st.state == "later" and S.MUTED) or S.TEXT))
-        local where = st.where ~= "" and st.where or (st.inside and L.INSIDE) or ""
+        local where = ns.WhereTag({ who = st.who or "", area = st.area or 0 })
+        if where == "" then where = st.inside and L.INSIDE or "" end
         if st.inside and tracker.key then where = S.IconTag(ns.Icon(tracker.key)) .. " " .. where end
         r.sub:Show()
         r.sub:SetText(where)
