@@ -150,9 +150,6 @@ def main(argv):
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
-
 
 # Words that say where a part of a quest happens. --check prints each sentence with one of them
 # beside the quest's inside marks, for a person to judge (a comment is a hint, never a rule).
@@ -200,3 +197,7 @@ def check():
                 qid, names.get(qid, "?"), ",".join(dungeon.get(qid, [])), inside.get(qid, {}) or "-",
                 *givers.get(qid, ("?", "?"))))
             print("\n".join(lines))
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
