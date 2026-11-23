@@ -118,11 +118,13 @@ def links(path):
             if (t == "{" and i >= 4 and toks[i - 1] == "," and toks[i - 2].isdigit()
                     and toks[i - 3] == "(" and toks[i - 4] == "q"):
                 quest = int(toks[i - 2])
-                out.setdefault(quest, {"pre": [], "alt": [], "lvl": 0})
+                out.setdefault(quest, {"pre": [], "alt": [], "lvl": 0, "breadcrumb": False})
             stack.append(quest)
         elif t in ")}":
             if stack:
                 stack.pop()
+        elif t == "isBreadcrumb" and stack and stack[-1] and toks[i + 1:i + 3] == ["=", "true"]:
+            out[stack[-1]]["breadcrumb"] = True
         elif (t in ("sourceQuest", "sourceQuests", "altQuests", "lvl") and stack and stack[-1]
               and i + 1 < len(toks) and toks[i + 1] == "="):
             ids, j = [], i + 2
