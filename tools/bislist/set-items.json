@@ -1,4 +1,76 @@
 {
+"Arcanist Belt": [
+16802,
+"cloth"
+],
+"Arcanist Bindings": [
+16799,
+"cloth"
+],
+"Arcanist Boots": [
+16800,
+"cloth"
+],
+"Arcanist Crown": [
+16795,
+"cloth"
+],
+"Arcanist Gloves": [
+16801,
+"cloth"
+],
+"Arcanist Leggings": [
+16796,
+"cloth"
+],
+"Arcanist Mantle": [
+16797,
+"cloth"
+],
+"Arcanist Robes": [
+16798,
+"cloth"
+],
+"Arlokk's Grasp": [
+19910,
+""
+],
+"Avenger's Breastplate": [
+21389,
+"plate"
+],
+"Avenger's Crown": [
+21387,
+"plate"
+],
+"Avenger's Greaves": [
+21388,
+"plate"
+],
+"Avenger's Legguards": [
+21390,
+"plate"
+],
+"Avenger's Pauldrons": [
+21391,
+"plate"
+],
+"Band of Jin": [
+19925,
+""
+],
+"Band of Unending Life": [
+21408,
+""
+],
+"Band of Vaulted Secrets": [
+21414,
+""
+],
+"Band of Veiled Shadows": [
+21405,
+""
+],
 "Band of the Better Half": [
 284716,
 ""
@@ -22,6 +94,58 @@
 "Beaststalker's Mantle": [
 16679,
 "mail"
+],
+"Belt of Faith": [
+22518,
+"cloth"
+],
+"Belt of Might": [
+16864,
+"plate"
+],
+"Belt of Revelation": [
+239590,
+"cloth"
+],
+"Belt of Ten Storms": [
+16944,
+"mail"
+],
+"Belt of Transcendence": [
+16925,
+"cloth"
+],
+"Bindings of Faith": [
+22519,
+"cloth"
+],
+"Bindings of Revelation": [
+239588,
+"cloth"
+],
+"Bindings of Transcendence": [
+16926,
+"cloth"
+],
+"Black Dragonscale Breastplate": [
+15050,
+"mail"
+],
+"Black Dragonscale Leggings": [
+15052,
+"mail"
+],
+"Black Dragonscale Shoulders": [
+15051,
+"mail"
+],
+"Blade of Eternal Justice": [
+21395,
+""
+],
+"Blade of Vaulted Secrets": [
+21413,
+""
 ],
 "Blessed Plate Belt": [
 250592,
@@ -47,9 +171,341 @@
 250591,
 "plate"
 ],
+"Blood Guard's Chain Epaulets": [
+220824,
+"mail"
+],
+"Blood Guard's Chain Greaves": [
+227074,
+"mail"
+],
+"Blood Guard's Chain Grips": [
+227081,
+"mail"
+],
+"Blood Guard's Chain Helmet": [
+220821,
+"mail"
+],
+"Blood Guard's Chain Sabatons": [
+227082,
+"mail"
+],
+"Blood Guard's Chain Vices": [
+227075,
+"mail"
+],
+"Blood Guard's Crackling Leather Helmet": [
+220873,
+"leather"
+],
+"Blood Guard's Crackling Leather Spaulders": [
+220871,
+"leather"
+],
+"Blood Guard's Dragonhide Boots": [
+227188,
+"leather"
+],
+"Blood Guard's Dragonhide Gauntlets": [
+227204,
+"leather"
+],
+"Blood Guard's Dragonhide Gloves": [
+227187,
+"leather"
+],
+"Blood Guard's Dragonhide Greaves": [
+227203,
+"leather"
+],
+"Blood Guard's Dragonhide Grips": [
+227180,
+"leather"
+],
+"Blood Guard's Dragonhide Treads": [
+227181,
+"leather"
+],
+"Blood Guard's Dreadweave Handwraps": [
+227099,
+"cloth"
+],
+"Blood Guard's Dreadweave Hat": [
+220907,
+"cloth"
+],
+"Blood Guard's Dreadweave Mantle": [
+220905,
+"cloth"
+],
+"Blood Guard's Dreadweave Walkers": [
+227098,
+"cloth"
+],
+"Blood Guard's Inscribed Shoulder Pads": [
+220841,
+"mail"
+],
+"Blood Guard's Inscribed Skullcap": [
+220842,
+"mail"
+],
+"Blood Guard's Leather Grips": [
+227063,
+"leather"
+],
+"Blood Guard's Leather Headband": [
+220851,
+"leather"
+],
+"Blood Guard's Leather Shoulders": [
+220853,
+"leather"
+],
+"Blood Guard's Leather Treads": [
+16498,
+"leather"
+],
+"Blood Guard's Leather Vices": [
+16499,
+"leather"
+],
+"Blood Guard's Leather Walkers": [
+227062,
+"leather"
+],
+"Blood Guard's Mail Boots": [
+227170,
+"mail"
+],
+"Blood Guard's Mail Epaulets": [
+220823,
+"mail"
+],
+"Blood Guard's Mail Gauntlets": [
+227163,
+"mail"
+],
+"Blood Guard's Mail Gloves": [
+227169,
+"mail"
+],
+"Blood Guard's Mail Greaves": [
+227158,
+"mail"
+],
+"Blood Guard's Mail Helmet": [
+220820,
+"mail"
+],
+"Blood Guard's Mail Sabatons": [
+227164,
+"mail"
+],
+"Blood Guard's Mail Vices": [
+227159,
+"mail"
+],
+"Blood Guard's Plate Gauntlets": [
+227050,
+"plate"
+],
+"Blood Guard's Plate Greaves": [
+227051,
+"plate"
+],
+"Blood Guard's Plate Helm": [
+220803,
+"plate"
+],
+"Blood Guard's Plate Pauldrons": [
+220796,
+"plate"
+],
+"Blood Guard's Pulsing Helmet": [
+220848,
+"mail"
+],
+"Blood Guard's Pulsing Shoulders": [
+220849,
+"mail"
+],
+"Blood Guard's Restored Leather Helm": [
+220875,
+"leather"
+],
+"Blood Guard's Restored Leather Spaulders": [
+220877,
+"leather"
+],
+"Blood Guard's Satin Boots": [
+17616,
+"cloth"
+],
+"Blood Guard's Satin Cover": [
+220899,
+"cloth"
+],
+"Blood Guard's Satin Gloves": [
+17617,
+"cloth"
+],
+"Blood Guard's Satin Grips": [
+227133,
+"cloth"
+],
+"Blood Guard's Satin Handwraps": [
+227126,
+"cloth"
+],
+"Blood Guard's Satin Pads": [
+220901,
+"cloth"
+],
+"Blood Guard's Satin Treads": [
+227134,
+"cloth"
+],
+"Blood Guard's Satin Walkers": [
+227127,
+"cloth"
+],
+"Blood Guard's Silk Footwraps": [
+16485,
+"cloth"
+],
+"Blood Guard's Silk Gauntlets": [
+227115,
+"cloth"
+],
+"Blood Guard's Silk Gloves": [
+16487,
+"cloth"
+],
+"Blood Guard's Silk Handwraps": [
+227111,
+"cloth"
+],
+"Blood Guard's Silk Walkers": [
+227110,
+"cloth"
+],
+"Blood Tiger Breastplate": [
+19688,
+"leather"
+],
+"Blood Tiger Shoulders": [
+19689,
+"leather"
+],
+"Bloodfang Belt": [
+16910,
+"leather"
+],
+"Bloodfang Boots": [
+16906,
+"leather"
+],
+"Bloodfang Bracers": [
+16911,
+"leather"
+],
+"Bloodfang Chestpiece": [
+16905,
+"leather"
+],
+"Bloodfang Gloves": [
+16907,
+"leather"
+],
+"Bloodfang Hood": [
+16908,
+"leather"
+],
+"Bloodfang Pants": [
+16909,
+"leather"
+],
+"Bloodfang Spaulders": [
+16832,
+"leather"
+],
 "Bloodmail Hauberk": [
 14611,
 "mail"
+],
+"Bloodsoul Breastplate": [
+19690,
+"mail"
+],
+"Bloodsoul Gauntlets": [
+19692,
+"mail"
+],
+"Bloodsoul Shoulders": [
+19691,
+"mail"
+],
+"Bloodvine Boots": [
+19684,
+"cloth"
+],
+"Bloodvine Leggings": [
+19683,
+"cloth"
+],
+"Bloodvine Vest": [
+19682,
+"cloth"
+],
+"Blue Dragonscale Breastplate": [
+15048,
+"mail"
+],
+"Blue Dragonscale Leggings": [
+20295,
+"mail"
+],
+"Blue Dragonscale Shoulders": [
+15049,
+"mail"
+],
+"Bonescythe Bracers": [
+22483,
+"leather"
+],
+"Bonescythe Breastplate": [
+22476,
+"leather"
+],
+"Bonescythe Gauntlets": [
+22481,
+"leather"
+],
+"Bonescythe Helmet": [
+22478,
+"leather"
+],
+"Bonescythe Legplates": [
+22477,
+"leather"
+],
+"Bonescythe Pauldrons": [
+22479,
+"leather"
+],
+"Bonescythe Ring": [
+23060,
+""
+],
+"Bonescythe Sabatons": [
+22480,
+"leather"
+],
+"Bonescythe Waistguard": [
+22482,
+"leather"
 ],
 "Boots of Elements": [
 16670,
@@ -59,13 +515,333 @@
 226879,
 "plate"
 ],
+"Boots of Prophecy": [
+16811,
+"cloth"
+],
+"Boots of Revelation": [
+239572,
+"cloth"
+],
 "Boots of The Five Thunders": [
 227039,
 "mail"
 ],
+"Boots of Transcendence": [
+16919,
+"cloth"
+],
+"Bracelets of Wrath": [
+16959,
+"plate"
+],
+"Bracers of Might": [
+16861,
+"plate"
+],
+"Bracers of Ten Storms": [
+16943,
+"mail"
+],
+"Bracers of Undead Cleansing": [
+23091,
+"cloth"
+],
+"Bracers of Undead Slaying": [
+23090,
+"plate"
+],
+"Breastplate of Might": [
+16865,
+"plate"
+],
+"Breastplate of Ten Storms": [
+16950,
+"mail"
+],
+"Breastplate of Undead Slaying": [
+23087,
+"plate"
+],
+"Breastplate of Wrath": [
+16966,
+"plate"
+],
+"Cape of Eternal Justice": [
+21397,
+"cloth"
+],
+"Cenarion Belt": [
+16828,
+"leather"
+],
+"Cenarion Boots": [
+16829,
+"leather"
+],
+"Cenarion Bracers": [
+16830,
+"leather"
+],
+"Cenarion Gloves": [
+16831,
+"leather"
+],
+"Cenarion Helm": [
+16834,
+"leather"
+],
+"Cenarion Leggings": [
+16835,
+"leather"
+],
+"Cenarion Spaulders": [
+16836,
+"leather"
+],
+"Cenarion Vestments": [
+16833,
+"leather"
+],
+"Champion's Chain Greathelm": [
+227080,
+"mail"
+],
+"Champion's Chain Helm": [
+227067,
+"mail"
+],
+"Champion's Chain Pauldrons": [
+227078,
+"mail"
+],
+"Champion's Chain Shoulders": [
+227069,
+"mail"
+],
+"Champion's Dragonhide Headdress": [
+227205,
+"leather"
+],
+"Champion's Dragonhide Headguard": [
+227174,
+"leather"
+],
+"Champion's Dragonhide Helm": [
+227186,
+"leather"
+],
+"Champion's Dragonhide Pauldrons": [
+227207,
+"leather"
+],
+"Champion's Dragonhide Shoulders": [
+227175,
+"leather"
+],
+"Champion's Dragonhide Spaulders": [
+227184,
+"leather"
+],
+"Champion's Dreadweave Cowl": [
+227090,
+"cloth"
+],
+"Champion's Dreadweave Spaulders": [
+227092,
+"cloth"
+],
+"Champion's Leather Headguard": [
+16506,
+"leather"
+],
+"Champion's Leather Helm": [
+227057,
+"leather"
+],
+"Champion's Leather Mantle": [
+16507,
+"leather"
+],
+"Champion's Leather Shoulders": [
+227056,
+"leather"
+],
+"Champion's Mail Epaulets": [
+227166,
+"mail"
+],
+"Champion's Mail Headguard": [
+227155,
+"mail"
+],
+"Champion's Mail Helm": [
+227162,
+"mail"
+],
+"Champion's Mail Pauldrons": [
+227154,
+"mail"
+],
+"Champion's Mail Skullcap": [
+227168,
+"mail"
+],
+"Champion's Mail Spaulders": [
+227160,
+"mail"
+],
+"Champion's Plate Helm": [
+227043,
+"plate"
+],
+"Champion's Plate Shoulders": [
+227042,
+"plate"
+],
+"Champion's Satin Cowl": [
+17610,
+"cloth"
+],
+"Champion's Satin Crown": [
+227132,
+"cloth"
+],
+"Champion's Satin Epaulets": [
+227130,
+"cloth"
+],
+"Champion's Satin Hood": [
+227118,
+"cloth"
+],
+"Champion's Satin Mantle": [
+227120,
+"cloth"
+],
+"Champion's Satin Shoulderpads": [
+17613,
+"cloth"
+],
+"Champion's Silk Cowl": [
+227105,
+"cloth"
+],
+"Champion's Silk Hood": [
+16489,
+"cloth"
+],
+"Champion's Silk Mantle": [
+227104,
+"cloth"
+],
+"Champion's Silk Shoulderpads": [
+16492,
+"cloth"
+],
+"Chestguard of Undead Slaying": [
+23088,
+"mail"
+],
+"Circlet of Faith": [
+22514,
+"cloth"
+],
+"Circlet of Prophecy": [
+16813,
+"cloth"
+],
+"Circlet of Revelation": [
+239585,
+"cloth"
+],
+"Cloak of Unending Life": [
+21409,
+"cloth"
+],
+"Cloak of Veiled Shadows": [
+21406,
+"cloth"
+],
+"Cloak of the Gathering Storm": [
+21400,
+"cloth"
+],
+"Cloak of the Unseen Path": [
+21403,
+"cloth"
+],
 "Coif of Elements": [
 16667,
 "mail"
+],
+"Conqueror's Breastplate": [
+21331,
+"plate"
+],
+"Conqueror's Crown": [
+21329,
+"plate"
+],
+"Conqueror's Greaves": [
+21333,
+"plate"
+],
+"Conqueror's Helm": [
+254392,
+""
+],
+"Conqueror's Legguards": [
+21332,
+"plate"
+],
+"Conqueror's Spaulders": [
+21330,
+"plate"
+],
+"Crown of Revelation": [
+239575,
+"cloth"
+],
+"Cryptstalker Boots": [
+22440,
+"mail"
+],
+"Cryptstalker Girdle": [
+22442,
+"mail"
+],
+"Cryptstalker Handguards": [
+22441,
+"mail"
+],
+"Cryptstalker Headpiece": [
+22438,
+"mail"
+],
+"Cryptstalker Legguards": [
+22437,
+"mail"
+],
+"Cryptstalker Spaulders": [
+22439,
+"mail"
+],
+"Cryptstalker Tunic": [
+22436,
+"mail"
+],
+"Cryptstalker Wristguards": [
+22443,
+"mail"
+],
+"Dagger of Veiled Shadows": [
+21404,
+""
+],
+"Dal'Rend's Tribal Guardian": [
+12939,
+""
 ],
 "Darkmantle Boots": [
 226851,
@@ -75,12 +851,532 @@
 226850,
 "leather"
 ],
+"Darksoul Breastplate": [
+19693,
+"plate"
+],
+"Darksoul Leggings": [
+19694,
+"plate"
+],
+"Darksoul Shoulders": [
+19695,
+"plate"
+],
+"Dawnstalker Belt": [
+239535,
+"mail"
+],
+"Dawnstalker Boots": [
+239537,
+"mail"
+],
+"Dawnstalker Breastplate": [
+239529,
+"mail"
+],
+"Dawnstalker Gauntlets": [
+239531,
+"mail"
+],
+"Dawnstalker Girdle": [
+239538,
+"mail"
+],
+"Dawnstalker Greaves": [
+239530,
+"mail"
+],
+"Dawnstalker Handguards": [
+239539,
+"mail"
+],
+"Dawnstalker Headpiece": [
+239540,
+"mail"
+],
+"Dawnstalker Leggings": [
+239533,
+"mail"
+],
+"Dawnstalker Legguards": [
+239541,
+"mail"
+],
+"Dawnstalker Pauldrons": [
+239534,
+"mail"
+],
+"Dawnstalker Spaulders": [
+239542,
+"mail"
+],
+"Dawnstalker Tunic": [
+239543,
+"mail"
+],
+"Dawnstalker Vambraces": [
+239536,
+"mail"
+],
+"Dawnstalker Visor": [
+239532,
+"mail"
+],
+"Dawnstalker Wristguards": [
+239544,
+"mail"
+],
+"Deathbone Gauntlets": [
+14622,
+"plate"
+],
+"Deathbone Sabatons": [
+14621,
+"plate"
+],
+"Deathdealer's Boots": [
+21359,
+"leather"
+],
+"Deathdealer's Helm": [
+21360,
+"leather"
+],
+"Deathdealer's Leggings": [
+21362,
+"leather"
+],
+"Deathdealer's Spaulders": [
+21361,
+"leather"
+],
+"Deathdealer's Vest": [
+21364,
+"leather"
+],
+"Defender of the Barkskin": [
+268873,
+""
+],
+"Defender of the Timbermaw": [
+21326,
+""
+],
+"Defiler's Chain Girdle": [
+20150,
+"mail"
+],
+"Defiler's Chain Greaves": [
+20154,
+"mail"
+],
+"Defiler's Chain Pauldrons": [
+20158,
+"mail"
+],
+"Defiler's Cloth Boots": [
+20159,
+"cloth"
+],
+"Defiler's Cloth Girdle": [
+20163,
+"cloth"
+],
+"Defiler's Epaulets": [
+20176,
+"cloth"
+],
+"Defiler's Leather Boots": [
+20186,
+"leather"
+],
+"Defiler's Leather Girdle": [
+20190,
+"leather"
+],
+"Defiler's Leather Shoulders": [
+20194,
+"leather"
+],
+"Defiler's Lizardhide Boots": [
+20167,
+"leather"
+],
+"Defiler's Lizardhide Girdle": [
+20171,
+"leather"
+],
+"Defiler's Lizardhide Shoulders": [
+20175,
+"leather"
+],
+"Defiler's Mail Girdle": [
+20195,
+"mail"
+],
+"Defiler's Mail Greaves": [
+20199,
+"mail"
+],
+"Defiler's Mail Pauldrons": [
+20203,
+"mail"
+],
+"Defiler's Plate Girdle": [
+20204,
+"plate"
+],
+"Defiler's Plate Greaves": [
+20208,
+"plate"
+],
+"Defiler's Plate Spaulders": [
+20212,
+"plate"
+],
+"Doomcaller's Circlet": [
+21337,
+"cloth"
+],
+"Doomcaller's Footwraps": [
+21338,
+"cloth"
+],
+"Doomcaller's Mantle": [
+21335,
+"cloth"
+],
+"Doomcaller's Robes": [
+21334,
+"cloth"
+],
+"Doomcaller's Trousers": [
+21336,
+"cloth"
+],
+"Dragonstalker's Belt": [
+16936,
+"mail"
+],
+"Dragonstalker's Bracers": [
+16935,
+"mail"
+],
+"Dragonstalker's Breastplate": [
+16942,
+"mail"
+],
+"Dragonstalker's Gauntlets": [
+16940,
+"mail"
+],
+"Dragonstalker's Greaves": [
+16941,
+"mail"
+],
+"Dragonstalker's Helm": [
+16939,
+"mail"
+],
+"Dragonstalker's Legguards": [
+16938,
+"mail"
+],
+"Dragonstalker's Spaulders": [
+16937,
+"mail"
+],
+"Drape of Unyielding Strength": [
+21394,
+"cloth"
+],
+"Drape of Vaulted Secrets": [
+21415,
+"cloth"
+],
+"Dreadmist Mantle": [
+16701,
+"cloth"
+],
 "Dreadmist Robe": [
 16700,
 "cloth"
 ],
 "Dreadmist Sandals": [
 16704,
+"cloth"
+],
+"Dreadnaught Bracers": [
+22423,
+"plate"
+],
+"Dreadnaught Breastplate": [
+22416,
+"plate"
+],
+"Dreadnaught Gauntlets": [
+22421,
+"plate"
+],
+"Dreadnaught Helmet": [
+22418,
+"plate"
+],
+"Dreadnaught Legplates": [
+22417,
+"plate"
+],
+"Dreadnaught Pauldrons": [
+22419,
+"plate"
+],
+"Dreadnaught Sabatons": [
+22420,
+"plate"
+],
+"Dreadnaught Waistguard": [
+22422,
+"plate"
+],
+"Dreamwalker Armor": [
+13123,
+"mail"
+],
+"Dreamwalker Boots": [
+22492,
+"leather"
+],
+"Dreamwalker Girdle": [
+22494,
+"leather"
+],
+"Dreamwalker Handguards": [
+22493,
+"leather"
+],
+"Dreamwalker Headpiece": [
+22490,
+"leather"
+],
+"Dreamwalker Legguards": [
+22489,
+"leather"
+],
+"Dreamwalker Spaulders": [
+22491,
+"leather"
+],
+"Dreamwalker Tunic": [
+22488,
+"leather"
+],
+"Dreamwalker Wristguards": [
+22495,
+"leather"
+],
+"Duskwraith Belt": [
+239554,
+"leather"
+],
+"Duskwraith Bracers": [
+239555,
+"leather"
+],
+"Duskwraith Breastplate": [
+239562,
+"leather"
+],
+"Duskwraith Chestguard": [
+239548,
+"leather"
+],
+"Duskwraith Gauntlets": [
+239557,
+"leather"
+],
+"Duskwraith Grips": [
+239549,
+"leather"
+],
+"Duskwraith Helmet": [
+239560,
+"leather"
+],
+"Duskwraith Leggings": [
+239551,
+"leather"
+],
+"Duskwraith Legplates": [
+239561,
+"leather"
+],
+"Duskwraith Mantle": [
+239552,
+"leather"
+],
+"Duskwraith Mask": [
+239550,
+"leather"
+],
+"Duskwraith Pauldrons": [
+239559,
+"leather"
+],
+"Duskwraith Sabatons": [
+239558,
+"leather"
+],
+"Duskwraith Treads": [
+239553,
+"leather"
+],
+"Duskwraith Waistguard": [
+239556,
+"leather"
+],
+"Duskwraith Wristguards": [
+239547,
+"leather"
+],
+"Earthfury Belt": [
+16838,
+"mail"
+],
+"Earthfury Boots": [
+16837,
+"mail"
+],
+"Earthfury Bracers": [
+16840,
+"mail"
+],
+"Earthfury Epaulets": [
+16844,
+"mail"
+],
+"Earthfury Gauntlets": [
+16839,
+"mail"
+],
+"Earthfury Helmet": [
+16842,
+"mail"
+],
+"Earthfury Legguards": [
+16843,
+"mail"
+],
+"Earthfury Vestments": [
+16841,
+"mail"
+],
+"Earthshatter Boots": [
+22468,
+"mail"
+],
+"Earthshatter Girdle": [
+22470,
+"mail"
+],
+"Earthshatter Handguards": [
+22469,
+"mail"
+],
+"Earthshatter Headpiece": [
+22466,
+"mail"
+],
+"Earthshatter Legguards": [
+22465,
+"mail"
+],
+"Earthshatter Spaulders": [
+22467,
+"mail"
+],
+"Earthshatter Tunic": [
+22464,
+"mail"
+],
+"Earthshatter Wristguards": [
+22471,
+"mail"
+],
+"Enigma Boots": [
+21344,
+"cloth"
+],
+"Enigma Circlet": [
+21347,
+"cloth"
+],
+"Enigma Leggings": [
+21346,
+"cloth"
+],
+"Enigma Robes": [
+21343,
+"cloth"
+],
+"Enigma Shoulderpads": [
+21345,
+"cloth"
+],
+"Epaulets of Ten Storms": [
+16945,
+"mail"
+],
+"Eskhandar's Collar": [
+18205,
+""
+],
+"Eskhandar's Left Claw": [
+18202,
+""
+],
+"Eskhandar's Pelt": [
+18204,
+"cloth"
+],
+"Eskhandar's Right Claw": [
+18203,
+""
+],
+"Fang of the Crystal Spider": [
+13218,
+""
+],
+"Felheart Belt": [
+16806,
+"cloth"
+],
+"Felheart Bracers": [
+16804,
+"cloth"
+],
+"Felheart Gloves": [
+16805,
+"cloth"
+],
+"Felheart Horns": [
+16808,
+"cloth"
+],
+"Felheart Pants": [
+16810,
+"cloth"
+],
+"Felheart Robes": [
+16809,
+"cloth"
+],
+"Felheart Shoulder Pads": [
+16807,
+"cloth"
+],
+"Felheart Slippers": [
+16803,
 "cloth"
 ],
 "Feralheart Belt": [
@@ -99,9 +1395,753 @@
 226820,
 "leather"
 ],
+"Field Marshal's Chain Armor": [
+231563,
+"mail"
+],
+"Field Marshal's Chain Greathelm": [
+231562,
+"mail"
+],
+"Field Marshal's Chain Hauberk": [
+231581,
+"mail"
+],
+"Field Marshal's Chain Helm": [
+231580,
+"mail"
+],
+"Field Marshal's Chain Pauldrons": [
+231557,
+"mail"
+],
+"Field Marshal's Chain Shoulders": [
+231576,
+"mail"
+],
+"Field Marshal's Coronal": [
+231584,
+"cloth"
+],
+"Field Marshal's Coronet": [
+231604,
+"cloth"
+],
+"Field Marshal's Dragonhide Armor": [
+231696,
+"leather"
+],
+"Field Marshal's Dragonhide Chestpiece": [
+231690,
+"leather"
+],
+"Field Marshal's Dragonhide Headdress": [
+231701,
+"leather"
+],
+"Field Marshal's Dragonhide Headguard": [
+231689,
+"leather"
+],
+"Field Marshal's Dragonhide Helm": [
+231695,
+"leather"
+],
+"Field Marshal's Dragonhide Pauldrons": [
+231705,
+"leather"
+],
+"Field Marshal's Dragonhide Shoulders": [
+231693,
+"leather"
+],
+"Field Marshal's Dragonhide Spaulders": [
+231699,
+"leather"
+],
+"Field Marshal's Dragonhide Tunic": [
+231702,
+"leather"
+],
+"Field Marshal's Dreadweave Robe": [
+231582,
+"cloth"
+],
+"Field Marshal's Dreadweave Shoulders": [
+231583,
+"cloth"
+],
+"Field Marshal's Lamellar Breastplate": [
+231649,
+"plate"
+],
+"Field Marshal's Lamellar Chestplate": [
+231641,
+"plate"
+],
+"Field Marshal's Lamellar Headguard": [
+231648,
+"plate"
+],
+"Field Marshal's Lamellar Helmet": [
+231640,
+"plate"
+],
+"Field Marshal's Lamellar Pauldrons": [
+231645,
+"plate"
+],
+"Field Marshal's Lamellar Shoulders": [
+231651,
+"plate"
+],
+"Field Marshal's Leather Chestpiece": [
+231543,
+"leather"
+],
+"Field Marshal's Leather Epaulets": [
+231547,
+"leather"
+],
+"Field Marshal's Leather Mask": [
+231545,
+"leather"
+],
+"Field Marshal's Plate Armor": [
+231536,
+"plate"
+],
+"Field Marshal's Plate Helm": [
+231538,
+"plate"
+],
+"Field Marshal's Plate Shoulderguards": [
+231537,
+"plate"
+],
+"Field Marshal's Satin Crown": [
+231616,
+"cloth"
+],
+"Field Marshal's Satin Epaulets": [
+231621,
+"cloth"
+],
+"Field Marshal's Satin Hood": [
+231622,
+"cloth"
+],
+"Field Marshal's Satin Mantle": [
+231628,
+"cloth"
+],
+"Field Marshal's Satin Robe": [
+231618,
+"cloth"
+],
+"Field Marshal's Satin Tunic": [
+231624,
+"cloth"
+],
+"Field Marshal's Silk Spaulders": [
+231602,
+"cloth"
+],
+"Field Marshal's Silk Vestments": [
+231603,
+"cloth"
+],
+"Fireleaf Belt": [
+240053,
+"cloth"
+],
+"Fireleaf Bindings": [
+240052,
+"cloth"
+],
+"Fireleaf Boots": [
+240050,
+"cloth"
+],
+"Fireleaf Circlet": [
+240056,
+"cloth"
+],
+"Fireleaf Garb": [
+240051,
+"cloth"
+],
+"Fireleaf Gloves": [
+240057,
+"cloth"
+],
+"Fireleaf Hood": [
+240048,
+"cloth"
+],
+"Fireleaf Leggings": [
+240055,
+"cloth"
+],
+"Fireleaf Mantle": [
+240046,
+"cloth"
+],
+"Fireleaf Mitts": [
+240049,
+"cloth"
+],
+"Fireleaf Pants": [
+240047,
+"cloth"
+],
+"Fireleaf Robe": [
+240059,
+"cloth"
+],
+"Fireleaf Sandals": [
+240058,
+"cloth"
+],
+"Fireleaf Shoulderpads": [
+240054,
+"cloth"
+],
+"Fireleaf Waistguard": [
+240045,
+"cloth"
+],
+"Fireleaf Wristwraps": [
+240044,
+"cloth"
+],
+"First Sergeant's Chain Gauntlets": [
+220830,
+"mail"
+],
+"First Sergeant's Chain Sabatons": [
+220836,
+"mail"
+],
+"First Sergeant's Crackling Leather Boots": [
+220863,
+"leather"
+],
+"First Sergeant's Crackling Leather Gauntlets": [
+220867,
+"leather"
+],
+"First Sergeant's Dreadweave Boots": [
+220909,
+"cloth"
+],
+"First Sergeant's Dreadweave Gloves": [
+220908,
+"cloth"
+],
+"First Sergeant's Inscribed Gauntlets": [
+220843,
+"mail"
+],
+"First Sergeant's Inscribed Sabatons": [
+220840,
+"mail"
+],
+"First Sergeant's Leather Boots": [
+220861,
+"leather"
+],
+"First Sergeant's Leather Gauntlets": [
+220857,
+"leather"
+],
+"First Sergeant's Mail Gauntlets": [
+220831,
+"mail"
+],
+"First Sergeant's Mail Sabatons": [
+220835,
+"mail"
+],
+"First Sergeant's Plate Gauntlets": [
+220807,
+"plate"
+],
+"First Sergeant's Plate Greaves": [
+220800,
+"plate"
+],
+"First Sergeant's Pulsing Gauntlets": [
+220845,
+"mail"
+],
+"First Sergeant's Pulsing Greaves": [
+220846,
+"mail"
+],
+"First Sergeant's Restored Leather Boots": [
+220885,
+"leather"
+],
+"First Sergeant's Restored Leather Gloves": [
+220881,
+"leather"
+],
+"First Sergeant's Satin Boots": [
+220900,
+"cloth"
+],
+"First Sergeant's Satin Gloves": [
+220898,
+"cloth"
+],
+"Footwraps of the Oracle": [
+21349,
+"cloth"
+],
+"Frostfire Belt": [
+22502,
+"cloth"
+],
+"Frostfire Bindings": [
+22503,
+"cloth"
+],
+"Frostfire Circlet": [
+22498,
+"cloth"
+],
+"Frostfire Gloves": [
+22501,
+"cloth"
+],
+"Frostfire Leggings": [
+22497,
+"cloth"
+],
+"Frostfire Ring": [
+23062,
+""
+],
+"Frostfire Robe": [
+22496,
+"cloth"
+],
+"Frostfire Sandals": [
+22500,
+"cloth"
+],
+"Frostfire Shoulderpads": [
+22499,
+"cloth"
+],
+"Garb of Revelation": [
+239565,
+"cloth"
+],
+"Gauntlets of Might": [
+16863,
+"plate"
+],
+"Gauntlets of Ten Storms": [
+16948,
+"mail"
+],
+"Gauntlets of Undead Slaying": [
+23078,
+"plate"
+],
+"Gauntlets of Wrath": [
+16964,
+"plate"
+],
+"Gavel of Infinite Wisdom": [
+21410,
+""
+],
+"General's Chain Greaves": [
+231570,
+"mail"
+],
+"General's Chain Grips": [
+231569,
+"mail"
+],
+"General's Chain Legguards": [
+231574,
+"mail"
+],
+"General's Chain Legplates": [
+231567,
+"mail"
+],
+"General's Chain Sabatons": [
+231564,
+"mail"
+],
+"General's Chain Vices": [
+231575,
+"mail"
+],
+"General's Dragonhide Boots": [
+231682,
+"leather"
+],
+"General's Dragonhide Gauntlets": [
+231676,
+"leather"
+],
+"General's Dragonhide Gloves": [
+231677,
+"leather"
+],
+"General's Dragonhide Greaves": [
+231671,
+"leather"
+],
+"General's Dragonhide Grips": [
+231688,
+"leather"
+],
+"General's Dragonhide Leggings": [
+231685,
+"leather"
+],
+"General's Dragonhide Legguards": [
+231673,
+"leather"
+],
+"General's Dragonhide Pants": [
+231680,
+"leather"
+],
+"General's Dragonhide Treads": [
+231683,
+"leather"
+],
+"General's Dreadweave Boots": [
+231593,
+"cloth"
+],
+"General's Dreadweave Gloves": [
+231589,
+"cloth"
+],
+"General's Dreadweave Pants": [
+231588,
+"cloth"
+],
+"General's Leather Legguards": [
+231554,
+"leather"
+],
+"General's Leather Mitts": [
+231555,
+"leather"
+],
+"General's Leather Treads": [
+231552,
+"leather"
+],
+"General's Mail Boots": [
+231667,
+"mail"
+],
+"General's Mail Gauntlets": [
+231660,
+"mail"
+],
+"General's Mail Gloves": [
+231666,
+"mail"
+],
+"General's Mail Greaves": [
+231656,
+"mail"
+],
+"General's Mail Leggings": [
+231664,
+"mail"
+],
+"General's Mail Legguards": [
+231658,
+"mail"
+],
+"General's Mail Pants": [
+231670,
+"mail"
+],
+"General's Mail Sabatons": [
+231661,
+"mail"
+],
+"General's Mail Vices": [
+231655,
+"mail"
+],
+"General's Plate Boots": [
+231531,
+"plate"
+],
+"General's Plate Gauntlets": [
+231532,
+"plate"
+],
+"General's Plate Leggings": [
+231533,
+"plate"
+],
+"General's Satin Grips": [
+231613,
+"cloth"
+],
+"General's Satin Handwraps": [
+231633,
+"cloth"
+],
+"General's Satin Leggings": [
+231614,
+"cloth"
+],
+"General's Satin Legguards": [
+231634,
+"cloth"
+],
+"General's Satin Treads": [
+231610,
+"cloth"
+],
+"General's Satin Walkers": [
+231630,
+"cloth"
+],
+"General's Silk Boots": [
+231597,
+"cloth"
+],
+"General's Silk Gauntlets": [
+231599,
+"cloth"
+],
+"General's Silk Handwraps": [
+231600,
+"cloth"
+],
+"General's Silk Trousers": [
+231595,
+"cloth"
+],
+"Genesis Boots": [
+21355,
+"leather"
+],
+"Genesis Helm": [
+21353,
+"leather"
+],
+"Genesis Shoulderpads": [
+21354,
+"leather"
+],
+"Genesis Trousers": [
+21356,
+"leather"
+],
+"Genesis Vest": [
+21357,
+"leather"
+],
+"Giantstalker's Belt": [
+16851,
+"mail"
+],
+"Giantstalker's Boots": [
+16849,
+"mail"
+],
+"Giantstalker's Bracers": [
+16850,
+"mail"
+],
+"Giantstalker's Breastplate": [
+16845,
+"mail"
+],
+"Giantstalker's Epaulets": [
+16848,
+"mail"
+],
+"Giantstalker's Gloves": [
+16852,
+"mail"
+],
+"Giantstalker's Helmet": [
+16846,
+"mail"
+],
+"Giantstalker's Leggings": [
+16847,
+"mail"
+],
+"Girdle of Prophecy": [
+16817,
+"cloth"
+],
+"Girdle of Revelation": [
+239582,
+"cloth"
+],
+"Gloves of Faith": [
+22517,
+"cloth"
+],
+"Gloves of Prophecy": [
+16812,
+"cloth"
+],
+"Gloves of Revelation": [
+239584,
+"cloth"
+],
+"Gloves of Undead Cleansing": [
+23084,
+"cloth"
+],
+"Greaves of Ten Storms": [
+16949,
+"mail"
+],
+"Green Dragonscale Breastplate": [
+15045,
+"mail"
+],
+"Green Dragonscale Gauntlets": [
+20296,
+"mail"
+],
+"Green Dragonscale Leggings": [
+15046,
+"mail"
+],
+"Gri'lek's Charm of Might": [
+19951,
+""
+],
+"Gri'lek's Charm of Valor": [
+19952,
+""
+],
+"Halo of Transcendence": [
+16921,
+"cloth"
+],
+"Hammer of the Gathering Storm": [
+21398,
+""
+],
+"Handguards of Transcendence": [
+16920,
+"cloth"
+],
+"Handguards of Undead Slaying": [
+23082,
+"mail"
+],
+"Hands of Revelation": [
+239574,
+"cloth"
+],
+"Handwraps of Undead Slaying": [
+23081,
+"leather"
+],
+"Hazza'rah's Charm of Healing": [
+19958,
+""
+],
 "Helm of Heroism": [
 226877,
 "plate"
+],
+"Helm of Might": [
+16866,
+"plate"
+],
+"Helm of Wrath": [
+16963,
+"plate"
+],
+"Helmet of Ten Storms": [
+16947,
+"mail"
+],
+"Heretic Belt": [
+240144,
+"cloth"
+],
+"Heretic Bindings": [
+240145,
+"cloth"
+],
+"Heretic Boots": [
+240153,
+"cloth"
+],
+"Heretic Cowl": [
+240141,
+"cloth"
+],
+"Heretic Garb": [
+240146,
+"cloth"
+],
+"Heretic Gloves": [
+240140,
+"cloth"
+],
+"Heretic Handguards": [
+240147,
+"cloth"
+],
+"Heretic Hood": [
+240148,
+"cloth"
+],
+"Heretic Leggings": [
+240142,
+"cloth"
+],
+"Heretic Mantle": [
+240150,
+"cloth"
+],
+"Heretic Pants": [
+240149,
+"cloth"
+],
+"Heretic Robe": [
+240138,
+"cloth"
+],
+"Heretic Sandals": [
+240139,
+"cloth"
+],
+"Heretic Shoulderpads": [
+240143,
+"cloth"
+],
+"Heretic Waistguard": [
+240151,
+"cloth"
+],
+"Heretic Wristguards": [
+240152,
+"cloth"
+],
+"Hero's Brand": [
+19588,
+""
 ],
 "Highlander's Chain Pauldrons": [
 20055,
@@ -123,10 +2163,6 @@
 12426,
 "plate"
 ],
-"Imperial Plate Bracers": [
-12425,
-"plate"
-],
 "Imperial Plate Chest": [
 12422,
 "plate"
@@ -141,6 +2177,102 @@
 ],
 "Imperial Plate Leggings": [
 12429,
+"plate"
+],
+"Inquisition Belt": [
+240024,
+"plate"
+],
+"Inquisition Boots": [
+240022,
+"plate"
+],
+"Inquisition Bracers": [
+240031,
+"plate"
+],
+"Inquisition Breastplate": [
+240030,
+"plate"
+],
+"Inquisition Chestguard": [
+240038,
+"plate"
+],
+"Inquisition Crown": [
+240035,
+"plate"
+],
+"Inquisition Gauntlets": [
+240036,
+"plate"
+],
+"Inquisition Girdle": [
+240043,
+"plate"
+],
+"Inquisition Gloves": [
+240028,
+"plate"
+],
+"Inquisition Greaves": [
+240029,
+"plate"
+],
+"Inquisition Handguards": [
+240041,
+"plate"
+],
+"Inquisition Headpiece": [
+240040,
+"plate"
+],
+"Inquisition Helmet": [
+240027,
+"plate"
+],
+"Inquisition Leggings": [
+240026,
+"plate"
+],
+"Inquisition Legguards": [
+240020,
+"plate"
+],
+"Inquisition Legplates": [
+240034,
+"plate"
+],
+"Inquisition Pauldrons": [
+240033,
+"plate"
+],
+"Inquisition Sabatons": [
+240037,
+"plate"
+],
+"Inquisition Shoulderplates": [
+240025,
+"plate"
+],
+"Inquisition Spaulders": [
+240021,
+"plate"
+],
+"Inquisition Tunic": [
+240039,
+"plate"
+],
+"Inquisition Vambraces": [
+240023,
+"plate"
+],
+"Inquisition Waistguard": [
+240032,
+"plate"
+],
+"Inquisition Wristguards": [
+240042,
 "plate"
 ],
 "Ironweave Belt": [
@@ -167,12 +2299,780 @@
 19601,
 ""
 ],
+"Judgement Belt": [
+16952,
+"plate"
+],
+"Judgement Bindings": [
+16951,
+"plate"
+],
+"Judgement Breastplate": [
+16958,
+"plate"
+],
+"Judgement Crown": [
+16955,
+"plate"
+],
+"Judgement Gauntlets": [
+16956,
+"plate"
+],
+"Judgement Legplates": [
+16954,
+"plate"
+],
+"Judgement Sabatons": [
+16957,
+"plate"
+],
+"Judgement Spaulders": [
+16953,
+"plate"
+],
 "Kezan's Unstoppable Taint": [
 19605,
 ""
 ],
-"Lightforge Boots": [
-16725,
+"Kingsfall": [
+22802,
+""
+],
+"Knight's Chain Armor": [
+220828,
+"mail"
+],
+"Knight's Chain Legplates": [
+220832,
+"mail"
+],
+"Knight's Crackling Leather Leggings": [
+220864,
+"leather"
+],
+"Knight's Crackling Leather Tunic": [
+220868,
+"leather"
+],
+"Knight's Dreadweave Leggings": [
+220888,
+"cloth"
+],
+"Knight's Dreadweave Vest": [
+220886,
+"cloth"
+],
+"Knight's Imbued Armor": [
+220813,
+"plate"
+],
+"Knight's Imbued Leggings": [
+220809,
+"plate"
+],
+"Knight's Lamellar Chestplate": [
+220815,
+"plate"
+],
+"Knight's Lamellar Legplates": [
+220816,
+"plate"
+],
+"Knight's Leather Armor": [
+220854,
+"leather"
+],
+"Knight's Leather Pants": [
+220858,
+"leather"
+],
+"Knight's Mail Armor": [
+223078,
+"mail"
+],
+"Knight's Mail Legplates": [
+223074,
+"mail"
+],
+"Knight's Plate Hauberk": [
+220794,
+"plate"
+],
+"Knight's Plate Leggings": [
+220797,
+"plate"
+],
+"Knight's Restored Leather Jerkin": [
+220878,
+"leather"
+],
+"Knight's Restored Leather Leggings": [
+220882,
+"leather"
+],
+"Knight's Satin Armor": [
+220892,
+"cloth"
+],
+"Knight's Satin Leggings": [
+220893,
+"cloth"
+],
+"Knight-Captain's Chain Armor": [
+227089,
+"mail"
+],
+"Knight-Captain's Chain Hauberk": [
+227070,
+"mail"
+],
+"Knight-Captain's Chain Legguards": [
+227072,
+"mail"
+],
+"Knight-Captain's Chain Legplates": [
+227085,
+"mail"
+],
+"Knight-Captain's Dragonhide Armor": [
+227195,
+"leather"
+],
+"Knight-Captain's Dragonhide Chestpiece": [
+227176,
+"leather"
+],
+"Knight-Captain's Dragonhide Leggings": [
+227178,
+"leather"
+],
+"Knight-Captain's Dragonhide Legguards": [
+227200,
+"leather"
+],
+"Knight-Captain's Dragonhide Pants": [
+227191,
+"leather"
+],
+"Knight-Captain's Dragonhide Tunic": [
+227196,
+"leather"
+],
+"Knight-Captain's Dreadweave Legguards": [
+227095,
+"cloth"
+],
+"Knight-Captain's Dreadweave Tunic": [
+227096,
+"cloth"
+],
+"Knight-Captain's Lamellar Breastplate": [
+227142,
+"plate"
+],
+"Knight-Captain's Lamellar Chestplate": [
+227151,
+"plate"
+],
+"Knight-Captain's Lamellar Leggings": [
+227143,
+"plate"
+],
+"Knight-Captain's Lamellar Legguards": [
+227150,
+"plate"
+],
+"Knight-Captain's Leather Chestpiece": [
+227058,
+"leather"
+],
+"Knight-Captain's Leather Legguards": [
+227061,
+"leather"
+],
+"Knight-Captain's Plate Hauberk": [
+227046,
+"plate"
+],
+"Knight-Captain's Plate Leggings": [
+227047,
+"plate"
+],
+"Knight-Captain's Satin Leggings": [
+227137,
+"cloth"
+],
+"Knight-Captain's Satin Legguards": [
+227125,
+"cloth"
+],
+"Knight-Captain's Satin Robe": [
+227141,
+"cloth"
+],
+"Knight-Captain's Satin Tunic": [
+227122,
+"cloth"
+],
+"Knight-Captain's Silk Legguards": [
+227109,
+"cloth"
+],
+"Knight-Captain's Silk Tunic": [
+227108,
+"cloth"
+],
+"Knight-Lieutenant's Chain Epaulets": [
+220825,
+"mail"
+],
+"Knight-Lieutenant's Chain Greaves": [
+227076,
+"mail"
+],
+"Knight-Lieutenant's Chain Grips": [
+227087,
+"mail"
+],
+"Knight-Lieutenant's Chain Helmet": [
+220822,
+"mail"
+],
+"Knight-Lieutenant's Chain Sabatons": [
+227088,
+"mail"
+],
+"Knight-Lieutenant's Chain Vices": [
+227077,
+"mail"
+],
+"Knight-Lieutenant's Crackling Leather Helmet": [
+220872,
+"leather"
+],
+"Knight-Lieutenant's Crackling Leather Spaulders": [
+220870,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Boots": [
+227194,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Gauntlets": [
+227198,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Gloves": [
+227193,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Greaves": [
+227197,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Grips": [
+227183,
+"leather"
+],
+"Knight-Lieutenant's Dragonhide Treads": [
+227182,
+"leather"
+],
+"Knight-Lieutenant's Dreadweave Handwraps": [
+227100,
+"cloth"
+],
+"Knight-Lieutenant's Dreadweave Hat": [
+220889,
+"cloth"
+],
+"Knight-Lieutenant's Dreadweave Mantle": [
+220887,
+"cloth"
+],
+"Knight-Lieutenant's Dreadweave Walkers": [
+227101,
+"cloth"
+],
+"Knight-Lieutenant's Imbued Helmet": [
+220810,
+"plate"
+],
+"Knight-Lieutenant's Imbued Pauldrons": [
+220808,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Gauntlets": [
+227147,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Gloves": [
+227152,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Greaves": [
+227153,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Helm": [
+220819,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Pauldrons": [
+220818,
+"plate"
+],
+"Knight-Lieutenant's Lamellar Sabatons": [
+227146,
+"plate"
+],
+"Knight-Lieutenant's Leather Grips": [
+227065,
+"leather"
+],
+"Knight-Lieutenant's Leather Headband": [
+220850,
+"leather"
+],
+"Knight-Lieutenant's Leather Shoulders": [
+220852,
+"leather"
+],
+"Knight-Lieutenant's Leather Walkers": [
+227064,
+"leather"
+],
+"Knight-Lieutenant's Mail Epaulets": [
+223073,
+"mail"
+],
+"Knight-Lieutenant's Mail Helmet": [
+223075,
+"mail"
+],
+"Knight-Lieutenant's Plate Gauntlets": [
+227053,
+"plate"
+],
+"Knight-Lieutenant's Plate Greaves": [
+227052,
+"plate"
+],
+"Knight-Lieutenant's Plate Helm": [
+220804,
+"plate"
+],
+"Knight-Lieutenant's Plate Pauldrons": [
+220795,
+"plate"
+],
+"Knight-Lieutenant's Restored Leather Helm": [
+220874,
+"leather"
+],
+"Knight-Lieutenant's Restored Leather Spaulders": [
+220876,
+"leather"
+],
+"Knight-Lieutenant's Satin Cover": [
+220896,
+"cloth"
+],
+"Knight-Lieutenant's Satin Grips": [
+227139,
+"cloth"
+],
+"Knight-Lieutenant's Satin Handwraps": [
+227128,
+"cloth"
+],
+"Knight-Lieutenant's Satin Pads": [
+220894,
+"cloth"
+],
+"Knight-Lieutenant's Satin Treads": [
+227140,
+"cloth"
+],
+"Knight-Lieutenant's Satin Walkers": [
+227129,
+"cloth"
+],
+"Knight-Lieutenant's Silk Gauntlets": [
+227114,
+"cloth"
+],
+"Knight-Lieutenant's Silk Handwraps": [
+227113,
+"cloth"
+],
+"Knight-Lieutenant's Silk Walkers": [
+227112,
+"cloth"
+],
+"Kris of Unspoken Names": [
+21416,
+""
+],
+"Lawbringer Belt": [
+16858,
+"plate"
+],
+"Lawbringer Boots": [
+16859,
+"plate"
+],
+"Lawbringer Bracers": [
+16857,
+"plate"
+],
+"Lawbringer Chestguard": [
+16853,
+"plate"
+],
+"Lawbringer Gauntlets": [
+16860,
+"plate"
+],
+"Lawbringer Helm": [
+16854,
+"plate"
+],
+"Lawbringer Legplates": [
+16855,
+"plate"
+],
+"Lawbringer Spaulders": [
+16856,
+"plate"
+],
+"Leggings of Faith": [
+22513,
+"cloth"
+],
+"Leggings of Revelation": [
+239587,
+"cloth"
+],
+"Leggings of Transcendence": [
+16922,
+"cloth"
+],
+"Legionnaire's Chain Armor": [
+227083,
+"mail"
+],
+"Legionnaire's Chain Hauberk": [
+227071,
+"mail"
+],
+"Legionnaire's Chain Legguards": [
+227073,
+"mail"
+],
+"Legionnaire's Chain Legplates": [
+227079,
+"mail"
+],
+"Legionnaire's Dragonhide Armor": [
+227189,
+"leather"
+],
+"Legionnaire's Dragonhide Chestpiece": [
+227179,
+"leather"
+],
+"Legionnaire's Dragonhide Leggings": [
+227177,
+"leather"
+],
+"Legionnaire's Dragonhide Legguards": [
+227206,
+"leather"
+],
+"Legionnaire's Dragonhide Pants": [
+227185,
+"leather"
+],
+"Legionnaire's Dragonhide Tunic": [
+227202,
+"leather"
+],
+"Legionnaire's Dreadweave Legguards": [
+227097,
+"cloth"
+],
+"Legionnaire's Dreadweave Tunic": [
+227094,
+"cloth"
+],
+"Legionnaire's Leather Chestpiece": [
+227060,
+"leather"
+],
+"Legionnaire's Leather Hauberk": [
+16505,
+"leather"
+],
+"Legionnaire's Leather Leggings": [
+16508,
+"leather"
+],
+"Legionnaire's Leather Legguards": [
+227059,
+"leather"
+],
+"Legionnaire's Mail Breastplate": [
+227165,
+"mail"
+],
+"Legionnaire's Mail Chestguard": [
+227171,
+"mail"
+],
+"Legionnaire's Mail Hauberk": [
+227157,
+"mail"
+],
+"Legionnaire's Mail Leggings": [
+227161,
+"mail"
+],
+"Legionnaire's Mail Legguards": [
+227156,
+"mail"
+],
+"Legionnaire's Mail Pants": [
+227167,
+"mail"
+],
+"Legionnaire's Plate Hauberk": [
+227049,
+"plate"
+],
+"Legionnaire's Plate Leggings": [
+227048,
+"plate"
+],
+"Legionnaire's Satin Leggings": [
+227131,
+"cloth"
+],
+"Legionnaire's Satin Legguards": [
+227123,
+"cloth"
+],
+"Legionnaire's Satin Robe": [
+227135,
+"cloth"
+],
+"Legionnaire's Satin Trousers": [
+17611,
+"cloth"
+],
+"Legionnaire's Satin Tunic": [
+227124,
+"cloth"
+],
+"Legionnaire's Satin Vestments": [
+17612,
+"cloth"
+],
+"Legionnaire's Silk Legguards": [
+227107,
+"cloth"
+],
+"Legionnaire's Silk Pants": [
+16490,
+"cloth"
+],
+"Legionnaire's Silk Robes": [
+16491,
+"cloth"
+],
+"Legionnaire's Silk Tunic": [
+227106,
+"cloth"
+],
+"Legplates of Might": [
+16867,
+"plate"
+],
+"Legplates of Ten Storms": [
+16946,
+"mail"
+],
+"Legplates of Wrath": [
+16962,
+"plate"
+],
+"Lieutenant Commander's Chain Greathelm": [
+227086,
+"mail"
+],
+"Lieutenant Commander's Chain Helm": [
+227066,
+"mail"
+],
+"Lieutenant Commander's Chain Pauldrons": [
+227084,
+"mail"
+],
+"Lieutenant Commander's Chain Shoulders": [
+227068,
+"mail"
+],
+"Lieutenant Commander's Dragonhide Headdress": [
+227199,
+"leather"
+],
+"Lieutenant Commander's Dragonhide Headguard": [
+227173,
+"leather"
+],
+"Lieutenant Commander's Dragonhide Helm": [
+227192,
+"leather"
+],
+"Lieutenant Commander's Dragonhide Pauldrons": [
+227201,
+"leather"
+],
+"Lieutenant Commander's Dragonhide Shoulders": [
+227172,
+"leather"
+],
+"Lieutenant Commander's Dragonhide Spaulders": [
+227190,
+"leather"
+],
+"Lieutenant Commander's Dreadweave Cowl": [
+227093,
+"cloth"
+],
+"Lieutenant Commander's Dreadweave Spaulders": [
+227091,
+"cloth"
+],
+"Lieutenant Commander's Lamellar Headguard": [
+227144,
+"plate"
+],
+"Lieutenant Commander's Lamellar Helmet": [
+227149,
+"plate"
+],
+"Lieutenant Commander's Lamellar Pauldrons": [
+227148,
+"plate"
+],
+"Lieutenant Commander's Lamellar Shoulders": [
+227145,
+"plate"
+],
+"Lieutenant Commander's Leather Helm": [
+227055,
+"leather"
+],
+"Lieutenant Commander's Leather Shoulders": [
+227054,
+"leather"
+],
+"Lieutenant Commander's Plate Helm": [
+227044,
+"plate"
+],
+"Lieutenant Commander's Plate Shoulders": [
+227045,
+"plate"
+],
+"Lieutenant Commander's Satin Crown": [
+227138,
+"cloth"
+],
+"Lieutenant Commander's Satin Epaulets": [
+227136,
+"cloth"
+],
+"Lieutenant Commander's Satin Hood": [
+227121,
+"cloth"
+],
+"Lieutenant Commander's Satin Mantle": [
+227119,
+"cloth"
+],
+"Lieutenant Commander's Silk Cowl": [
+227103,
+"cloth"
+],
+"Lieutenant Commander's Silk Mantle": [
+227102,
+"cloth"
+],
+"Lightbreaker Belt": [
+239513,
+"plate"
+],
+"Lightbreaker Bracers": [
+239520,
+"plate"
+],
+"Lightbreaker Breastplate": [
+239527,
+"plate"
+],
+"Lightbreaker Cuirass": [
+239519,
+"plate"
+],
+"Lightbreaker Gauntlets": [
+239522,
+"plate"
+],
+"Lightbreaker Greathelm": [
+239517,
+"plate"
+],
+"Lightbreaker Greaves": [
+239515,
+"plate"
+],
+"Lightbreaker Grips": [
+239514,
+"plate"
+],
+"Lightbreaker Helmet": [
+239525,
+"plate"
+],
+"Lightbreaker Legplates": [
+239526,
+"plate"
+],
+"Lightbreaker Pauldrons": [
+239524,
+"plate"
+],
+"Lightbreaker Sabatons": [
+239523,
+"plate"
+],
+"Lightbreaker Shoulders": [
+239516,
+"plate"
+],
+"Lightbreaker Tassets": [
+239518,
+"plate"
+],
+"Lightbreaker Waistguard": [
+239521,
+"plate"
+],
+"Lightbreaker Wrists": [
+239512,
 "plate"
 ],
 "Lightforge Bracers": [
@@ -183,9 +3083,185 @@
 16724,
 "plate"
 ],
+"Mace of Unending Life": [
+21407,
+""
+],
 "Maelstrom's Wrath": [
 19621,
 ""
+],
+"Mantle of Prophecy": [
+16816,
+"cloth"
+],
+"Mantle of Revelation": [
+239581,
+"cloth"
+],
+"Mantle of the Oracle": [
+21350,
+"cloth"
+],
+"Marshal's Chain Greaves": [
+231579,
+"mail"
+],
+"Marshal's Chain Grips": [
+231560,
+"mail"
+],
+"Marshal's Chain Legguards": [
+231577,
+"mail"
+],
+"Marshal's Chain Legplates": [
+231558,
+"mail"
+],
+"Marshal's Chain Sabatons": [
+231561,
+"mail"
+],
+"Marshal's Chain Vices": [
+231578,
+"mail"
+],
+"Marshal's Dragonhide Boots": [
+231698,
+"leather"
+],
+"Marshal's Dragonhide Gauntlets": [
+231706,
+"leather"
+],
+"Marshal's Dragonhide Gloves": [
+231700,
+"leather"
+],
+"Marshal's Dragonhide Greaves": [
+231704,
+"leather"
+],
+"Marshal's Dragonhide Grips": [
+231694,
+"leather"
+],
+"Marshal's Dragonhide Leggings": [
+231691,
+"leather"
+],
+"Marshal's Dragonhide Legguards": [
+231703,
+"leather"
+],
+"Marshal's Dragonhide Pants": [
+231697,
+"leather"
+],
+"Marshal's Dragonhide Treads": [
+231692,
+"leather"
+],
+"Marshal's Dreadweave Boots": [
+231585,
+"cloth"
+],
+"Marshal's Dreadweave Gloves": [
+231586,
+"cloth"
+],
+"Marshal's Dreadweave Leggings": [
+231587,
+"cloth"
+],
+"Marshal's Lamellar Gauntlets": [
+231650,
+"plate"
+],
+"Marshal's Lamellar Gloves": [
+231643,
+"plate"
+],
+"Marshal's Lamellar Greaves": [
+231646,
+"plate"
+],
+"Marshal's Lamellar Leggings": [
+231647,
+"plate"
+],
+"Marshal's Lamellar Legguards": [
+231639,
+"plate"
+],
+"Marshal's Lamellar Sabatons": [
+231652,
+"plate"
+],
+"Marshal's Leather Footguards": [
+231546,
+"leather"
+],
+"Marshal's Leather Handgrips": [
+231544,
+"leather"
+],
+"Marshal's Leather Leggings": [
+231548,
+"leather"
+],
+"Marshal's Plate Boots": [
+231539,
+"plate"
+],
+"Marshal's Plate Gauntlets": [
+231541,
+"plate"
+],
+"Marshal's Plate Legguards": [
+231540,
+"plate"
+],
+"Marshal's Satin Grips": [
+231617,
+"cloth"
+],
+"Marshal's Satin Handwraps": [
+231623,
+"cloth"
+],
+"Marshal's Satin Leggings": [
+231619,
+"cloth"
+],
+"Marshal's Satin Legguards": [
+231626,
+"cloth"
+],
+"Marshal's Satin Treads": [
+231620,
+"cloth"
+],
+"Marshal's Satin Walkers": [
+231627,
+"cloth"
+],
+"Marshal's Silk Footwraps": [
+231606,
+"cloth"
+],
+"Marshal's Silk Gauntlets": [
+231608,
+"cloth"
+],
+"Marshal's Silk Handwraps": [
+231609,
+"cloth"
+],
+"Marshal's Silk Leggings": [
+231605,
+"cloth"
 ],
 "Necropile Leggings": [
 14632,
@@ -199,9 +3275,213 @@
 14626,
 "cloth"
 ],
+"Nemesis Belt": [
+16933,
+"cloth"
+],
+"Nemesis Boots": [
+16927,
+"cloth"
+],
+"Nemesis Bracers": [
+16934,
+"cloth"
+],
+"Nemesis Gloves": [
+16928,
+"cloth"
+],
+"Nemesis Leggings": [
+16930,
+"cloth"
+],
+"Nemesis Robes": [
+16931,
+"cloth"
+],
+"Nemesis Skullcap": [
+16929,
+"cloth"
+],
+"Nemesis Spaulders": [
+16932,
+"cloth"
+],
+"Netherwind Belt": [
+16818,
+"cloth"
+],
+"Netherwind Bindings": [
+16918,
+"cloth"
+],
+"Netherwind Boots": [
+16912,
+"cloth"
+],
+"Netherwind Crown": [
+16914,
+"cloth"
+],
+"Netherwind Gloves": [
+16913,
+"cloth"
+],
+"Netherwind Mantle": [
+16917,
+"cloth"
+],
+"Netherwind Pants": [
+16915,
+"cloth"
+],
+"Netherwind Robes": [
+16916,
+"cloth"
+],
+"Nightslayer Belt": [
+16827,
+"leather"
+],
+"Nightslayer Boots": [
+16824,
+"leather"
+],
+"Nightslayer Bracelets": [
+16825,
+"leather"
+],
+"Nightslayer Chestpiece": [
+16820,
+"leather"
+],
+"Nightslayer Cover": [
+16821,
+"leather"
+],
+"Nightslayer Gloves": [
+16826,
+"leather"
+],
+"Nightslayer Pants": [
+16822,
+"leather"
+],
+"Nightslayer Shoulder Pads": [
+16823,
+"leather"
+],
+"Overlord's Crimson Band": [
+19873,
+""
+],
+"Overlord's Onyx Band": [
+19912,
+""
+],
+"Pants of Prophecy": [
+16814,
+"cloth"
+],
+"Pants of Revelation": [
+239577,
+"cloth"
+],
 "Pauldrons of Elements": [
 16669,
 "mail"
+],
+"Pauldrons of Might": [
+16868,
+"plate"
+],
+"Pauldrons of Transcendence": [
+16924,
+"cloth"
+],
+"Pauldrons of Wrath": [
+16961,
+"plate"
+],
+"Plagueheart Belt": [
+22510,
+"cloth"
+],
+"Plagueheart Bindings": [
+22511,
+"cloth"
+],
+"Plagueheart Circlet": [
+22506,
+"cloth"
+],
+"Plagueheart Gloves": [
+22509,
+"cloth"
+],
+"Plagueheart Leggings": [
+22505,
+"cloth"
+],
+"Plagueheart Ring": [
+23063,
+""
+],
+"Plagueheart Robe": [
+22504,
+"cloth"
+],
+"Plagueheart Sandals": [
+22508,
+"cloth"
+],
+"Plagueheart Shoulderpads": [
+22507,
+"cloth"
+],
+"Premier Beasthide Epaulets": [
+272732,
+"leather"
+],
+"Premier Beasthide Footwraps": [
+272705,
+"leather"
+],
+"Premier Beasthide Gloves": [
+272709,
+"leather"
+],
+"Premier Beasthide Leggings": [
+272731,
+"leather"
+],
+"Premier Beasthide Shroud": [
+272733,
+"leather"
+],
+"Premier Beasthide Tunic": [
+272730,
+"leather"
+],
+"Premier Centurion's Kodohide Boots": [
+273418,
+"leather"
+],
+"Premier Centurion's Lamellar Boots": [
+274251,
+"plate"
+],
+"Premier Centurion's Scaled Boots": [
+274237,
+"plate"
+],
+"Premier Centurion's Silken Boots": [
+273429,
+"cloth"
+],
+"Premier Centurion's Wyrmhide Boots": [
+273410,
+"leather"
 ],
 "Premier Chain Boots": [
 272496,
@@ -223,6 +3503,38 @@
 272492,
 "mail"
 ],
+"Premier Chainmail Boots": [
+272713,
+"mail"
+],
+"Premier Chainmail Gauntlets": [
+272715,
+"mail"
+],
+"Premier Chainmail Hauberk": [
+272734,
+"mail"
+],
+"Premier Chainmail Helmet": [
+272737,
+"mail"
+],
+"Premier Chainmail Leggings": [
+272735,
+"mail"
+],
+"Premier Chainmail Pauldrons": [
+272736,
+"mail"
+],
+"Premier Champion's Kodohide Gloves": [
+273419,
+"leather"
+],
+"Premier Champion's Lamellar Gloves": [
+274250,
+"plate"
+],
 "Premier Champion's Linked Gauntlets": [
 272539,
 "mail"
@@ -235,9 +3547,65 @@
 272572,
 "cloth"
 ],
-"Premier Chevalier Breastplate": [
-272742,
+"Premier Champion's Scaled Gloves": [
+274236,
 "plate"
+],
+"Premier Champion's Silken Gloves": [
+273431,
+"cloth"
+],
+"Premier Champion's Wyrmhide Gloves": [
+273411,
+"leather"
+],
+"Premier Dreadweave Boots": [
+272794,
+"cloth"
+],
+"Premier Dreadweave Cowl": [
+272671,
+"cloth"
+],
+"Premier Dreadweave Gloves": [
+272796,
+"cloth"
+],
+"Premier Dreadweave Legguards": [
+272657,
+"cloth"
+],
+"Premier Dreadweave Mantle": [
+272801,
+"cloth"
+],
+"Premier Dreadweave Robe": [
+272800,
+"cloth"
+],
+"Premier Dreamhide Footwraps": [
+273379,
+"leather"
+],
+"Premier Dreamhide Gloves": [
+273377,
+"leather"
+],
+"Premier Dreamhide Headguard": [
+273374,
+"leather"
+],
+"Premier Dreamhide Leggings": [
+273373,
+"leather"
+],
+"Premier Dreamhide Shoulders": [
+273375,
+"leather"
+],
+"Premier Dreamhide Tunic": [
+273380,
+"leather"
 ],
 "Premier Felweave Cowl": [
 272643,
@@ -255,13 +3623,141 @@
 272549,
 "cloth"
 ],
+"Premier Field Marshal's Beasthide Breastplate": [
+272761,
+"leather"
+],
+"Premier Field Marshal's Beasthide Helmet": [
+272760,
+"leather"
+],
+"Premier Field Marshal's Chainmail Breastplate": [
+272775,
+"mail"
+],
+"Premier Field Marshal's Chainmail Helm": [
+272774,
+"mail"
+],
+"Premier Field Marshal's Dreadweave Coronal": [
+272802,
+"cloth"
+],
+"Premier Field Marshal's Dreadweave Robe": [
+272805,
+"cloth"
+],
+"Premier Field Marshal's Dreamhide Breastplate": [
+273403,
+"leather"
+],
+"Premier Field Marshal's Dreamhide Helmet": [
+273402,
+"leather"
+],
+"Premier Field Marshal's Flatmail Armor": [
+274187,
+"mail"
+],
+"Premier Field Marshal's Flatmail Helm": [
+274188,
+"mail"
+],
+"Premier Field Marshal's Leather Chestpiece": [
+272762,
+"leather"
+],
+"Premier Field Marshal's Leather Mask": [
+272764,
+"leather"
+],
+"Premier Field Marshal's Linkmail Armor": [
+274210,
+"mail"
+],
+"Premier Field Marshal's Linkmail Helm": [
+274211,
+"mail"
+],
 "Premier Field Marshal's Lunarhide Helmet": [
 273394,
 "leather"
 ],
+"Premier Field Marshal's Plate Armor": [
+272786,
+"plate"
+],
+"Premier Field Marshal's Plate Helm": [
+272787,
+"plate"
+],
+"Premier Field Marshal's Scalemail Armor": [
+274202,
+"mail"
+],
+"Premier Field Marshal's Scalemail Helm": [
+274203,
+"mail"
+],
+"Premier Field Marshal's Silk Coronet": [
+272750,
+"cloth"
+],
+"Premier Field Marshal's Silk Vestments": [
+272752,
+"cloth"
+],
+"Premier Field Marshal's Voidcloth Headdress": [
+272818,
+"cloth"
+],
+"Premier Field Marshal's Voidcloth Vestments": [
+272821,
+"cloth"
+],
+"Premier Flatmail Greaves": [
+274192,
+"mail"
+],
+"Premier Flatmail Grips": [
+274177,
+"mail"
+],
+"Premier Flatmail Hauberk": [
+274194,
+"mail"
+],
+"Premier Flatmail Headguard": [
+274196,
+"mail"
+],
+"Premier Flatmail Leggings": [
+274180,
+"mail"
+],
+"Premier Flatmail Shoulders": [
+274181,
+"mail"
+],
 "Premier General's Chain Legguards": [
 272532,
 "mail"
+],
+"Premier General's Kodohide Epaulets": [
+273415,
+"leather"
+],
+"Premier General's Kodohide Leggings": [
+273416,
+"leather"
+],
+"Premier General's Lamellar Legplates": [
+274254,
+"plate"
+],
+"Premier General's Lamellar Pauldrons": [
+274255,
+"plate"
 ],
 "Premier General's Linked Leggings": [
 272544,
@@ -279,13 +3775,181 @@
 273343,
 "mail"
 ],
+"Premier General's Scaled Legplates": [
+274240,
+"plate"
+],
+"Premier General's Scaled Pauldrons": [
+274241,
+"plate"
+],
 "Premier General's Shadowhide Legguards": [
 272529,
 "leather"
 ],
+"Premier General's Silken Leggings": [
+273436,
+"cloth"
+],
+"Premier General's Silken Mantle": [
+273433,
+"cloth"
+],
+"Premier General's Wyrmhide Epaulets": [
+273407,
+"leather"
+],
+"Premier General's Wyrmhide Leggings": [
+273408,
+"leather"
+],
+"Premier Knight-Champion's Beasthide Boots": [
+272768,
+"leather"
+],
+"Premier Knight-Champion's Chainmail Boots": [
+272771,
+"mail"
+],
+"Premier Knight-Champion's Dreadweave Boots": [
+272807,
+"cloth"
+],
+"Premier Knight-Champion's Dreamhide Boots": [
+273404,
+"leather"
+],
+"Premier Knight-Champion's Flatmail Boots": [
+274183,
+"mail"
+],
+"Premier Knight-Champion's Leather Footguards": [
+272755,
+"leather"
+],
+"Premier Knight-Champion's Linkmail Boots": [
+274206,
+"mail"
+],
 "Premier Knight-Champion's Lunarhide Boots": [
 273396,
 "leather"
+],
+"Premier Knight-Champion's Plate Boots": [
+272792,
+"plate"
+],
+"Premier Knight-Champion's Scalemail Boots": [
+274198,
+"mail"
+],
+"Premier Knight-Champion's Silk Footwraps": [
+272746,
+"cloth"
+],
+"Premier Knight-Champion's Voidcloth Sandals": [
+272823,
+"cloth"
+],
+"Premier Kodohide Chestpiece": [
+272626,
+"leather"
+],
+"Premier Kodohide Gauntlets": [
+272464,
+"leather"
+],
+"Premier Kodohide Headguard": [
+272641,
+"leather"
+],
+"Premier Kodohide Leggings": [
+272627,
+"leather"
+],
+"Premier Kodohide Shoulders": [
+272642,
+"leather"
+],
+"Premier Kodohide Treads": [
+272606,
+"leather"
+],
+"Premier Lamellar Breastplate": [
+274244,
+"plate"
+],
+"Premier Lamellar Gauntlets": [
+274256,
+"plate"
+],
+"Premier Lamellar Headguard": [
+274246,
+"plate"
+],
+"Premier Lamellar Leggings": [
+274245,
+"plate"
+],
+"Premier Lamellar Sabatons": [
+274258,
+"plate"
+],
+"Premier Lamellar Shoulders": [
+274247,
+"plate"
+],
+"Premier Leather Armor": [
+272726,
+"leather"
+],
+"Premier Leather Boots": [
+272704,
+"leather"
+],
+"Premier Leather Gauntlets": [
+272708,
+"leather"
+],
+"Premier Leather Legguards": [
+272728,
+"leather"
+],
+"Premier Leather Spaulders": [
+272729,
+"leather"
+],
+"Premier Leather Veil": [
+272727,
+"leather"
+],
+"Premier Lieutenant Commander's Beasthide Gauntlets": [
+272757,
+"leather"
+],
+"Premier Lieutenant Commander's Chainmail Grips": [
+272772,
+"mail"
+],
+"Premier Lieutenant Commander's Dreadweave Gloves": [
+272808,
+"cloth"
+],
+"Premier Lieutenant Commander's Dreamhide Gauntlets": [
+273399,
+"leather"
+],
+"Premier Lieutenant Commander's Flatmail Gauntlets": [
+274184,
+"mail"
+],
+"Premier Lieutenant Commander's Leather Handgrips": [
+272763,
+"leather"
+],
+"Premier Lieutenant Commander's Linkmail Gauntlets": [
+274207,
+"mail"
 ],
 "Premier Lieutenant Commander's Lunarhide Gauntlets": [
 273391,
@@ -294,6 +3958,70 @@
 "Premier Lieutenant Commander's Mooncloth Gloves": [
 273427,
 "cloth"
+],
+"Premier Lieutenant Commander's Plate Gauntlets": [
+272793,
+"plate"
+],
+"Premier Lieutenant Commander's Scalemail Gauntlets": [
+274199,
+"mail"
+],
+"Premier Lieutenant Commander's Silk Gloves": [
+272749,
+"cloth"
+],
+"Premier Lieutenant Commander's Voidcloth Gloves": [
+272824,
+"cloth"
+],
+"Premier Linked Greaves": [
+272609,
+"mail"
+],
+"Premier Linked Grips": [
+272485,
+"mail"
+],
+"Premier Linked Hauberk": [
+272625,
+"mail"
+],
+"Premier Linked Headguard": [
+272647,
+"mail"
+],
+"Premier Linked Leggings": [
+272488,
+"mail"
+],
+"Premier Linked Shoulders": [
+272489,
+"mail"
+],
+"Premier Linkmail Chestpiece": [
+274219,
+"mail"
+],
+"Premier Linkmail Helm": [
+274218,
+"mail"
+],
+"Premier Linkmail Legguards": [
+274221,
+"mail"
+],
+"Premier Linkmail Pauldrons": [
+274222,
+"mail"
+],
+"Premier Linkmail Vices": [
+274220,
+"mail"
+],
+"Premier Linkmail Walkers": [
+274217,
+"mail"
 ],
 "Premier Luminous Breastplate": [
 272852,
@@ -315,8 +4043,36 @@
 272855,
 "plate"
 ],
+"Premier Lunarhide Footwraps": [
+273370,
+"leather"
+],
+"Premier Lunarhide Gloves": [
+273368,
+"leather"
+],
+"Premier Lunarhide Headguard": [
+272669,
+"leather"
+],
+"Premier Lunarhide Leggings": [
+272656,
+"leather"
+],
+"Premier Lunarhide Shoulders": [
+272670,
+"leather"
+],
+"Premier Lunarhide Tunic": [
+273371,
+"leather"
+],
 "Premier Magus Footwraps": [
 272453,
+"cloth"
+],
+"Premier Magus Gloves": [
+272455,
 "cloth"
 ],
 "Premier Magus Hood": [
@@ -351,9 +4107,169 @@
 272617,
 "mail"
 ],
+"Premier Marshal's Beasthide Legguards": [
+272759,
+"leather"
+],
+"Premier Marshal's Beasthide Spaulders": [
+272758,
+"leather"
+],
+"Premier Marshal's Chainmail Legguards": [
+272776,
+"mail"
+],
+"Premier Marshal's Chainmail Spaulders": [
+272777,
+"mail"
+],
+"Premier Marshal's Dreadweave Leggings": [
+272803,
+"cloth"
+],
+"Premier Marshal's Dreadweave Shoulders": [
+272804,
+"cloth"
+],
+"Premier Marshal's Dreamhide Legguards": [
+273401,
+"leather"
+],
+"Premier Marshal's Dreamhide Spaulders": [
+273400,
+"leather"
+],
+"Premier Marshal's Flatmail Leggings": [
+274189,
+"mail"
+],
+"Premier Marshal's Flatmail Spaulders": [
+274190,
+"mail"
+],
+"Premier Marshal's Leather Epaulets": [
+272766,
+"leather"
+],
+"Premier Marshal's Leather Leggings": [
+272765,
+"leather"
+],
+"Premier Marshal's Linkmail Leggings": [
+274212,
+"mail"
+],
+"Premier Marshal's Linkmail Spaulders": [
+274213,
+"mail"
+],
 "Premier Marshal's Lunarhide Spaulders": [
 273392,
 "leather"
+],
+"Premier Marshal's Plate Legguards": [
+272788,
+"plate"
+],
+"Premier Marshal's Plate Shoulderguards": [
+272789,
+"plate"
+],
+"Premier Marshal's Scalemail Leggings": [
+274204,
+"mail"
+],
+"Premier Marshal's Scalemail Spaulders": [
+274205,
+"mail"
+],
+"Premier Marshal's Silk Leggings": [
+272751,
+"cloth"
+],
+"Premier Marshal's Silk Spaulders": [
+272753,
+"cloth"
+],
+"Premier Marshal's Voidcloth Mantle": [
+272820,
+"cloth"
+],
+"Premier Marshal's Voidcloth Pants": [
+272819,
+"cloth"
+],
+"Premier Mooncloth Boots": [
+273443,
+"cloth"
+],
+"Premier Mooncloth Gloves": [
+273445,
+"cloth"
+],
+"Premier Mooncloth Hood": [
+272677,
+"cloth"
+],
+"Premier Mooncloth Leggings": [
+273447,
+"cloth"
+],
+"Premier Mooncloth Mantle": [
+272678,
+"cloth"
+],
+"Premier Mooncloth Robes": [
+273448,
+"cloth"
+],
+"Premier Plate Boots": [
+272716,
+"plate"
+],
+"Premier Plate Chestguard": [
+272739,
+"plate"
+],
+"Premier Plate Gauntlets": [
+272717,
+"plate"
+],
+"Premier Plate Helm": [
+272738,
+"plate"
+],
+"Premier Plate Leggings": [
+272740,
+"plate"
+],
+"Premier Plate Pauldrons": [
+272741,
+"plate"
+],
+"Premier Ringmail Chestpiece": [
+273357,
+"mail"
+],
+"Premier Ringmail Helm": [
+273356,
+"mail"
+],
+"Premier Ringmail Legguards": [
+273359,
+"mail"
+],
+"Premier Ringmail Pauldrons": [
+273360,
+"mail"
+],
+"Premier Ringmail Vices": [
+273358,
+"mail"
+],
+"Premier Ringmail Walkers": [
+273355,
+"mail"
 ],
 "Premier Satin Cowl": [
 272562,
@@ -375,6 +4291,54 @@
 272564,
 "cloth"
 ],
+"Premier Scaled Breastplate": [
+274230,
+"plate"
+],
+"Premier Scaled Gauntlets": [
+274227,
+"plate"
+],
+"Premier Scaled Headguard": [
+274231,
+"plate"
+],
+"Premier Scaled Leggings": [
+274232,
+"plate"
+],
+"Premier Scaled Sabatons": [
+274226,
+"plate"
+],
+"Premier Scaled Shoulders": [
+274233,
+"plate"
+],
+"Premier Scalemail Chestpiece": [
+274179,
+"mail"
+],
+"Premier Scalemail Helm": [
+274178,
+"mail"
+],
+"Premier Scalemail Legguards": [
+274195,
+"mail"
+],
+"Premier Scalemail Pauldrons": [
+274197,
+"mail"
+],
+"Premier Scalemail Vices": [
+274193,
+"mail"
+],
+"Premier Scalemail Walkers": [
+274176,
+"mail"
+],
 "Premier Shadowhide Hauberk": [
 272473,
 "leather"
@@ -395,21 +4359,293 @@
 272608,
 "leather"
 ],
+"Premier Silk Boots": [
+272701,
+"cloth"
+],
+"Premier Silk Crown": [
+272725,
+"cloth"
+],
+"Premier Silk Gloves": [
+272703,
+"cloth"
+],
+"Premier Silk Leggings": [
+272723,
+"cloth"
+],
+"Premier Silk Raiment": [
+272722,
+"cloth"
+],
+"Premier Silk Spaulders": [
+272724,
+"cloth"
+],
+"Premier Silken Handwraps": [
+272619,
+"cloth"
+],
+"Premier Silken Hood": [
+272649,
+"cloth"
+],
+"Premier Silken Legguards": [
+272663,
+"cloth"
+],
+"Premier Silken Mantle": [
+272650,
+"cloth"
+],
+"Premier Silken Tunic": [
+272634,
+"cloth"
+],
+"Premier Silken Walkers": [
+272611,
+"cloth"
+],
+"Premier Voidcloth Amice": [
+272817,
+"cloth"
+],
+"Premier Voidcloth Boots": [
+272810,
+"cloth"
+],
+"Premier Voidcloth Diadem": [
+272814,
+"cloth"
+],
+"Premier Voidcloth Gloves": [
+272812,
+"cloth"
+],
+"Premier Voidcloth Leggings": [
+272815,
+"cloth"
+],
+"Premier Voidcloth Robes": [
+272816,
+"cloth"
+],
 "Premier Warlord's Felweave Hood": [
 272559,
 "cloth"
+],
+"Premier Warlord's Kodohide Hauberk": [
+273413,
+"leather"
+],
+"Premier Warlord's Kodohide Helmet": [
+273414,
+"leather"
+],
+"Premier Warlord's Lamellar Chestplate": [
+274252,
+"plate"
+],
+"Premier Warlord's Lamellar Faceguard": [
+274253,
+"plate"
 ],
 "Premier Warlord's Ringmail Helm": [
 273349,
 "mail"
 ],
+"Premier Warlord's Scaled Chestplate": [
+274238,
+"plate"
+],
+"Premier Warlord's Scaled Faceguard": [
+274239,
+"plate"
+],
 "Premier Warlord's Shadowhide Helm": [
 272526,
 "leather"
 ],
+"Premier Warlord's Silken Cowl": [
+273434,
+"cloth"
+],
+"Premier Warlord's Silken Robes": [
+273435,
+"cloth"
+],
+"Premier Warlord's Wyrmhide Hauberk": [
+273405,
+"leather"
+],
+"Premier Warlord's Wyrmhide Helmet": [
+273406,
+"leather"
+],
+"Premier Wyrmhide Chestpiece": [
+273384,
+"leather"
+],
+"Premier Wyrmhide Gauntlets": [
+273382,
+"leather"
+],
+"Premier Wyrmhide Headguard": [
+273386,
+"leather"
+],
+"Premier Wyrmhide Leggings": [
+273385,
+"leather"
+],
+"Premier Wyrmhide Shoulders": [
+273387,
+"leather"
+],
+"Premier Wyrmhide Treads": [
+273383,
+"leather"
+],
+"Primal Batskin Bracers": [
+19687,
+"leather"
+],
+"Primal Batskin Gloves": [
+19686,
+"leather"
+],
+"Primal Batskin Jerkin": [
+19685,
+"leather"
+],
+"Primalist's Band": [
+19920,
+""
+],
+"Primalist's Seal": [
+19863,
+""
+],
+"Pristine Enchanted South Seas Kelp": [
+19613,
+""
+],
+"Rage of Mugamba": [
+19577,
+""
+],
+"Redemption Boots": [
+22430,
+"plate"
+],
+"Redemption Girdle": [
+22431,
+"plate"
+],
+"Redemption Handguards": [
+22426,
+"plate"
+],
+"Redemption Headpiece": [
+22428,
+"plate"
+],
+"Redemption Legguards": [
+22427,
+"plate"
+],
+"Redemption Spaulders": [
+22429,
+"plate"
+],
+"Redemption Tunic": [
+22425,
+"plate"
+],
+"Redemption Wristguards": [
+22424,
+"plate"
+],
+"Renataki's Charm of Trickery": [
+19954,
+""
+],
+"Ring of Eternal Justice": [
+21396,
+""
+],
+"Ring of Faith": [
+23061,
+""
+],
+"Ring of Infinite Wisdom": [
+21411,
+""
+],
+"Ring of Redemption": [
+23066,
+""
+],
+"Ring of Unspoken Names": [
+21417,
+""
+],
+"Ring of the Dreadnaught": [
+23059,
+""
+],
+"Ring of the Earthshatterer": [
+23065,
+""
+],
+"Ring of the Gathering Storm": [
+21399,
+""
+],
+"Robe of Faith": [
+22512,
+"cloth"
+],
+"Robe of Revelation": [
+239591,
+"cloth"
+],
+"Robe of Undead Cleansing": [
+23085,
+"cloth"
+],
+"Robes of Prophecy": [
+16815,
+"cloth"
+],
+"Robes of Transcendence": [
+16923,
+"cloth"
+],
 "Rotmender's Leggings": [
 271207,
 "cloth"
+],
+"Sabatons of Might": [
+16862,
+"plate"
+],
+"Sabatons of Wrath": [
+16965,
+"plate"
+],
+"Sandals of Faith": [
+22516,
+"cloth"
+],
+"Sandals of Revelation": [
+239589,
+"cloth"
+],
+"Savage Gladiator Greaves": [
+11731,
+"mail"
 ],
 "Savage Gladiator Grips": [
 11730,
@@ -417,6 +4653,10 @@
 ],
 "Savage Gladiator Helm": [
 11729,
+"mail"
+],
+"Savage Gladiator Leggings": [
+11728,
 "mail"
 ],
 "Scarlet Belt": [
@@ -431,6 +4671,130 @@
 10333,
 "mail"
 ],
+"Scythe of the Unseen Path": [
+21401,
+""
+],
+"Seal of Jin": [
+19898,
+""
+],
+"Sergeant Major's Chain Gauntlets": [
+220829,
+"mail"
+],
+"Sergeant Major's Chain Sabatons": [
+220837,
+"mail"
+],
+"Sergeant Major's Crackling Leather Boots": [
+220862,
+"leather"
+],
+"Sergeant Major's Crackling Leather Gauntlets": [
+220866,
+"leather"
+],
+"Sergeant Major's Dreadweave Boots": [
+220891,
+"cloth"
+],
+"Sergeant Major's Dreadweave Gloves": [
+220890,
+"cloth"
+],
+"Sergeant Major's Imbued Gauntlets": [
+220812,
+"plate"
+],
+"Sergeant Major's Imbued Greaves": [
+220811,
+"plate"
+],
+"Sergeant Major's Lamellar Boots": [
+220814,
+"plate"
+],
+"Sergeant Major's Lamellar Gauntlets": [
+220817,
+"plate"
+],
+"Sergeant Major's Leather Boots": [
+220860,
+"leather"
+],
+"Sergeant Major's Leather Gauntlets": [
+220856,
+"leather"
+],
+"Sergeant Major's Mail Gauntlets": [
+223076,
+"mail"
+],
+"Sergeant Major's Mail Sabatons": [
+223077,
+"mail"
+],
+"Sergeant Major's Plate Gauntlets": [
+220806,
+"plate"
+],
+"Sergeant Major's Plate Greaves": [
+220799,
+"plate"
+],
+"Sergeant Major's Restored Leather Boots": [
+220884,
+"leather"
+],
+"Sergeant Major's Restored Leather Gloves": [
+220880,
+"leather"
+],
+"Sergeant Major's Satin Boots": [
+220895,
+"cloth"
+],
+"Sergeant Major's Satin Gloves": [
+220897,
+"cloth"
+],
+"Shard of the Flame": [
+17082,
+""
+],
+"Shard of the Scale": [
+17064,
+""
+],
+"Shoulderpads of Faith": [
+22515,
+"cloth"
+],
+"Shoulderpads of Revelation": [
+239586,
+"cloth"
+],
+"Shroud of Infinite Wisdom": [
+21412,
+"cloth"
+],
+"Shroud of Unspoken Names": [
+21418,
+"cloth"
+],
+"Sickle of Unyielding Strength": [
+21392,
+""
+],
+"Signet of Unyielding Strength": [
+21393,
+""
+],
+"Signet of the Unseen Path": [
+21402,
+""
+],
 "Sorcerer's Boots": [
 226943,
 "cloth"
@@ -438,6 +4802,134 @@
 "Sorcerer's Gloves": [
 226942,
 "cloth"
+],
+"Soulcrusher Armor": [
+240128,
+"mail"
+],
+"Soulcrusher Belt": [
+240136,
+"mail"
+],
+"Soulcrusher Bindings": [
+240127,
+"mail"
+],
+"Soulcrusher Boots": [
+240093,
+"mail"
+],
+"Soulcrusher Bracers": [
+240108,
+"mail"
+],
+"Soulcrusher Chestguard": [
+240101,
+"mail"
+],
+"Soulcrusher Cord": [
+240126,
+"mail"
+],
+"Soulcrusher Crown": [
+240123,
+"mail"
+],
+"Soulcrusher Embrace": [
+240109,
+"mail"
+],
+"Soulcrusher Epaulets": [
+240135,
+"mail"
+],
+"Soulcrusher Faceguard": [
+240104,
+"mail"
+],
+"Soulcrusher Girdle": [
+240099,
+"mail"
+],
+"Soulcrusher Gloves": [
+240103,
+"mail"
+],
+"Soulcrusher Greaves": [
+240110,
+"mail"
+],
+"Soulcrusher Grips": [
+240130,
+"mail"
+],
+"Soulcrusher Handguards": [
+240095,
+"mail"
+],
+"Soulcrusher Headpiece": [
+240096,
+"mail"
+],
+"Soulcrusher Helmet": [
+240131,
+"mail"
+],
+"Soulcrusher Kilt": [
+240124,
+"mail"
+],
+"Soulcrusher Leggings": [
+240134,
+"mail"
+],
+"Soulcrusher Legguards": [
+240097,
+"mail"
+],
+"Soulcrusher Legplates": [
+240105,
+"mail"
+],
+"Soulcrusher Mantle": [
+240125,
+"mail"
+],
+"Soulcrusher Mitts": [
+240122,
+"mail"
+],
+"Soulcrusher Pauldrons": [
+240106,
+"mail"
+],
+"Soulcrusher Sabatons": [
+240102,
+"mail"
+],
+"Soulcrusher Spaulders": [
+240098,
+"mail"
+],
+"Soulcrusher Treads": [
+240129,
+"mail"
+],
+"Soulcrusher Tunic": [
+240092,
+"mail"
+],
+"Soulcrusher Vambraces": [
+240137,
+"mail"
+],
+"Soulcrusher Waistguard": [
+240107,
+"mail"
+],
+"Soulcrusher Wristguards": [
+240100,
+"mail"
 ],
 "Soulforge Boots": [
 226999,
@@ -447,12 +4939,568 @@
 226997,
 "plate"
 ],
+"Stone Guard's Chain Armor": [
+220827,
+"mail"
+],
+"Stone Guard's Chain Legplates": [
+220833,
+"mail"
+],
+"Stone Guard's Crackling Leather Leggings": [
+220865,
+"leather"
+],
+"Stone Guard's Crackling Leather Tunic": [
+220869,
+"leather"
+],
+"Stone Guard's Dreadweave Leggings": [
+220906,
+"cloth"
+],
+"Stone Guard's Dreadweave Vest": [
+220904,
+"cloth"
+],
+"Stone Guard's Inscribed Chestpiece": [
+220838,
+"mail"
+],
+"Stone Guard's Inscribed Legplates": [
+220839,
+"mail"
+],
+"Stone Guard's Leather Armor": [
+220855,
+"leather"
+],
+"Stone Guard's Leather Pants": [
+220859,
+"leather"
+],
+"Stone Guard's Mail Armor": [
+220826,
+"mail"
+],
+"Stone Guard's Mail Legplates": [
+220834,
+"mail"
+],
+"Stone Guard's Plate Armor": [
+220801,
+"plate"
+],
+"Stone Guard's Plate Leggings": [
+220798,
+"plate"
+],
+"Stone Guard's Pulsing Breastplate": [
+220844,
+"mail"
+],
+"Stone Guard's Pulsing Legplates": [
+220847,
+"mail"
+],
+"Stone Guard's Restored Leather Jerkin": [
+220879,
+"leather"
+],
+"Stone Guard's Restored Leather Leggings": [
+220883,
+"leather"
+],
+"Stone Guard's Satin Armor": [
+220903,
+"cloth"
+],
+"Stone Guard's Satin Leggings": [
+220902,
+"cloth"
+],
+"Stormcaller's Diadem": [
+21372,
+"mail"
+],
+"Stormcaller's Footguards": [
+21373,
+"mail"
+],
+"Stormcaller's Hauberk": [
+21374,
+"mail"
+],
+"Stormcaller's Leggings": [
+21375,
+"mail"
+],
+"Stormcaller's Pauldrons": [
+21376,
+"mail"
+],
+"Stormrage Belt": [
+16903,
+"leather"
+],
+"Stormrage Boots": [
+16898,
+"leather"
+],
+"Stormrage Bracers": [
+16904,
+"leather"
+],
+"Stormrage Chestguard": [
+16897,
+"leather"
+],
+"Stormrage Cover": [
+16900,
+"leather"
+],
+"Stormrage Handguards": [
+16899,
+"leather"
+],
+"Stormrage Legguards": [
+16901,
+"leather"
+],
+"Stormrage Pauldrons": [
+16902,
+"leather"
+],
+"Striker's Diadem": [
+21366,
+"mail"
+],
+"Striker's Footguards": [
+21365,
+"mail"
+],
+"Striker's Hauberk": [
+21370,
+"mail"
+],
+"Striker's Leggings": [
+21368,
+"mail"
+],
+"Striker's Pauldrons": [
+21367,
+"mail"
+],
+"The All-Seeing Eye of Zuldazar": [
+19594,
+""
+],
+"Thekal's Grasp": [
+19896,
+""
+],
+"Tiara of the Oracle": [
+21348,
+"cloth"
+],
+"Trousers of the Oracle": [
+21352,
+"cloth"
+],
+"Tunic of Undead Slaying": [
+23089,
+"leather"
+],
+"Twilight Cultist Cowl": [
+20408,
+"cloth"
+],
+"Twilight Cultist Mantle": [
+20406,
+"cloth"
+],
+"Twilight Cultist Robe": [
+20407,
+"cloth"
+],
+"Unmarred Vision of Voodress": [
+19609,
+""
+],
+"Vambraces of Prophecy": [
+16819,
+"cloth"
+],
 "Venomspitter": [
 13183,
 ""
 ],
+"Vestments of the Oracle": [
+21351,
+"cloth"
+],
 "Virtuous Gloves": [
 226966,
+"cloth"
+],
+"Volcanic Breastplate": [
+15053,
+"leather"
+],
+"Volcanic Leggings": [
+15054,
+"leather"
+],
+"Volcanic Shoulders": [
+15055,
+"leather"
+],
+"Waistband of Wrath": [
+16960,
+"plate"
+],
+"Warblade of the Hakkari": [
+19866,
+""
+],
+"Warlord's Chain Armor": [
+231566,
+"mail"
+],
+"Warlord's Chain Greathelm": [
+231568,
+"mail"
+],
+"Warlord's Chain Hauberk": [
+231573,
+"mail"
+],
+"Warlord's Chain Helm": [
+231571,
+"mail"
+],
+"Warlord's Chain Pauldrons": [
+231565,
+"mail"
+],
+"Warlord's Chain Shoulders": [
+231572,
+"mail"
+],
+"Warlord's Dragonhide Armor": [
+231679,
+"leather"
+],
+"Warlord's Dragonhide Chestpiece": [
+231686,
+"leather"
+],
+"Warlord's Dragonhide Headdress": [
+231675,
+"leather"
+],
+"Warlord's Dragonhide Headguard": [
+231687,
+"leather"
+],
+"Warlord's Dragonhide Helm": [
+231678,
+"leather"
+],
+"Warlord's Dragonhide Pauldrons": [
+231672,
+"leather"
+],
+"Warlord's Dragonhide Shoulders": [
+231684,
+"leather"
+],
+"Warlord's Dragonhide Spaulders": [
+231681,
+"leather"
+],
+"Warlord's Dragonhide Tunic": [
+231674,
+"leather"
+],
+"Warlord's Dreadweave Hood": [
+231590,
+"cloth"
+],
+"Warlord's Dreadweave Mantle": [
+231592,
+"cloth"
+],
+"Warlord's Dreadweave Robe": [
+231591,
+"cloth"
+],
+"Warlord's Leather Breastplate": [
+231549,
+"leather"
+],
+"Warlord's Leather Helm": [
+231553,
+"leather"
+],
+"Warlord's Leather Spaulders": [
+231551,
+"leather"
+],
+"Warlord's Mail Breastplate": [
+231662,
+"mail"
+],
+"Warlord's Mail Chestguard": [
+231668,
+"mail"
+],
+"Warlord's Mail Epaulets": [
+231665,
+"mail"
+],
+"Warlord's Mail Hauberk": [
+231653,
+"mail"
+],
+"Warlord's Mail Headguard": [
+231657,
+"mail"
+],
+"Warlord's Mail Helm": [
+231663,
+"mail"
+],
+"Warlord's Mail Pauldrons": [
+231654,
+"mail"
+],
+"Warlord's Mail Skullcap": [
+231669,
+"mail"
+],
+"Warlord's Mail Spaulders": [
+231659,
+"mail"
+],
+"Warlord's Plate Armor": [
+231530,
+"plate"
+],
+"Warlord's Plate Headpiece": [
+231535,
+"plate"
+],
+"Warlord's Plate Shoulders": [
+231534,
+"plate"
+],
+"Warlord's Satin Crown": [
+231615,
+"cloth"
+],
+"Warlord's Satin Epaulets": [
+231611,
+"cloth"
+],
+"Warlord's Satin Hood": [
+231635,
+"cloth"
+],
+"Warlord's Satin Mantle": [
+231631,
+"cloth"
+],
+"Warlord's Satin Robes": [
+231612,
+"cloth"
+],
+"Warlord's Satin Tunic": [
+231632,
+"cloth"
+],
+"Warlord's Silk Amice": [
+231594,
+"cloth"
+],
+"Warlord's Silk Cowl": [
+231601,
+"cloth"
+],
+"Warlord's Silk Raiment": [
+231596,
+"cloth"
+],
+"Waywatcher Armor": [
+240083,
+"leather"
+],
+"Waywatcher Bindings": [
+240068,
+"leather"
+],
+"Waywatcher Boots": [
+240090,
+"leather"
+],
+"Waywatcher Bracers": [
+240076,
+"leather"
+],
+"Waywatcher Cord": [
+240069,
+"leather"
+],
+"Waywatcher Cowl": [
+240064,
+"leather"
+],
+"Waywatcher Gauntlets": [
+240081,
+"leather"
+],
+"Waywatcher Girdle": [
+240085,
+"leather"
+],
+"Waywatcher Grips": [
+240065,
+"leather"
+],
+"Waywatcher Handguards": [
+240089,
+"leather"
+],
+"Waywatcher Headdress": [
+240080,
+"leather"
+],
+"Waywatcher Headpiece": [
+240088,
+"leather"
+],
+"Waywatcher Hood": [
+240072,
+"leather"
+],
+"Waywatcher Kilt": [
+240071,
+"leather"
+],
+"Waywatcher Leathers": [
+240075,
+"leather"
+],
+"Waywatcher Leggings": [
+240079,
+"leather"
+],
+"Waywatcher Legguards": [
+240087,
+"leather"
+],
+"Waywatcher Mantle": [
+240070,
+"leather"
+],
+"Waywatcher Mitts": [
+240073,
+"leather"
+],
+"Waywatcher Pauldrons": [
+240078,
+"leather"
+],
+"Waywatcher Sabatons": [
+240082,
+"leather"
+],
+"Waywatcher Sandals": [
+240074,
+"leather"
+],
+"Waywatcher Sash": [
+240061,
+"leather"
+],
+"Waywatcher Shoulderpads": [
+240062,
+"leather"
+],
+"Waywatcher Spaulders": [
+240086,
+"leather"
+],
+"Waywatcher Stompers": [
+240066,
+"leather"
+],
+"Waywatcher Trousers": [
+240063,
+"leather"
+],
+"Waywatcher Tunic": [
+240091,
+"leather"
+],
+"Waywatcher Vest": [
+240067,
+"leather"
+],
+"Waywatcher Waistguard": [
+240077,
+"leather"
+],
+"Waywatcher Wraps": [
+240060,
+"leather"
+],
+"Waywatcher Wristguards": [
+240084,
+"leather"
+],
+"Wristguards of Undead Slaying": [
+23092,
+"mail"
+],
+"Wrists of Revelation": [
+239583,
+"cloth"
+],
+"Wristwraps of Undead Slaying": [
+23093,
+"leather"
+],
+"Wushoolay's Charm of Nature": [
+19955,
+""
+],
+"Wushoolay's Charm of Spirits": [
+19956,
+""
+],
+"Zandalar Augur's Belt": [
+19829,
+"mail"
+],
+"Zandalar Augur's Bracers": [
+19830,
+"mail"
+],
+"Zandalar Augur's Hauberk": [
+19828,
+"mail"
+],
+"Zandalar Confessor's Bindings": [
+19842,
+"cloth"
+],
+"Zandalar Confessor's Mantle": [
+19841,
+"cloth"
+],
+"Zandalar Confessor's Wraps": [
+19843,
 "cloth"
 ],
 "Zandalar Demoniac's Mantle": [
@@ -467,6 +5515,30 @@
 19848,
 "cloth"
 ],
+"Zandalar Freethinker's Armguards": [
+19827,
+"plate"
+],
+"Zandalar Freethinker's Belt": [
+19826,
+"plate"
+],
+"Zandalar Freethinker's Breastplate": [
+19825,
+"plate"
+],
+"Zandalar Haruspex's Belt": [
+19839,
+"leather"
+],
+"Zandalar Haruspex's Bracers": [
+19840,
+"leather"
+],
+"Zandalar Haruspex's Tunic": [
+19838,
+"leather"
+],
 "Zandalar Illusionist's Mantle": [
 19845,
 "cloth"
@@ -479,6 +5551,18 @@
 19846,
 "cloth"
 ],
+"Zandalar Madcap's Bracers": [
+19836,
+"leather"
+],
+"Zandalar Madcap's Mantle": [
+19835,
+"leather"
+],
+"Zandalar Madcap's Tunic": [
+19834,
+"leather"
+],
 "Zandalar Predator's Belt": [
 19832,
 "mail"
@@ -490,5 +5574,29 @@
 "Zandalar Predator's Mantle": [
 19831,
 "mail"
+],
+"Zandalar Vindicator's Armguards": [
+19824,
+"plate"
+],
+"Zandalar Vindicator's Belt": [
+19823,
+"plate"
+],
+"Zandalar Vindicator's Breastplate": [
+19822,
+"plate"
+],
+"Zandalarian Shadow Mastery Talisman": [
+19617,
+""
+],
+"Zanzil's Band": [
+19905,
+""
+],
+"Zanzil's Seal": [
+19893,
+""
 ]
 }
