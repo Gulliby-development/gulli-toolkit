@@ -798,7 +798,9 @@ tips[3906]={d="Baja por la cadena colgante desde la cornisa y sigue el camino de
 tips[3982]={d="Solo un jugador inicia el evento; los demás aceptan la misión después."}
 tips[4023]={d="El draco es élite."}
 tips[4121]={d="Enemigos Dark Iron y Blackrock atacan la escolta."}
-tips[4122]={t="Si te saltas esto, sáltate también los siete pasos siguientes.",h="Grark es élite."}
+tips[4122]={t="Si te saltas esto, sáltate también los siete pasos siguientes.",d="En WoW Forever esta escolta puede fallar: hay jugadores que vieron a Grark desvanecerse en lo alto de la rampa izquierda de Blackrock Mountain. Un grupo lo logró caminando justo detrás de él, paso a paso y sin sigilo.",h="Grark es élite."}
+tips[4126]={d="En el Grim Guzzler, rompe los tres barriles de cerveza de la sala del fondo. Entonces llega Hurley Blackbreath con sus amigos élite, y cada uno suelta una receta para todos los del grupo. Si el grupo muere en esa pelea, Hurley y los barriles desaparecen hasta que se reinicie la mazmorra."}
+tips[4134]={d="En el Grim Guzzler, rompe los tres barriles de cerveza de la sala del fondo. Entonces llega Hurley Blackbreath con sus amigos élite, y cada uno suelta una receta para todos los del grupo. Si el grupo muere en esa pelea, Hurley y los barriles desaparecen hasta que se reinicie la mazmorra."}
 tips[4141]={d="Allí también rondan raptores y demosaurios (nivel 48-55)."}
 tips[4182]={d="Casi todos son élite; lleva un grupo.",h="Si te saltas esta cadena, sáltate también los ocho pasos siguientes."}
 tips[4224]={d="Guardias de la Horda en Flame Crest."}

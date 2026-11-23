@@ -798,7 +798,9 @@ tips[3906]={d="Rutsch an der hängenden Kette vom Vorsprung hinab und bleib auf 
 tips[3982]={d="Nur ein Spieler startet das Ereignis; die anderen nehmen die Quest danach an."}
 tips[4023]={d="Der Drache ist Elite."}
 tips[4121]={d="Dark Iron- und Blackrock-Gegner greifen die Eskorte an."}
-tips[4122]={t="Überspringst du dies, überspring auch die nächsten sieben Schritte.",h="Grark ist Elite."}
+tips[4122]={t="Überspringst du dies, überspring auch die nächsten sieben Schritte.",d="In WoW Forever kann diese Eskorte scheitern: Spieler sahen Grark oben an der linken Rampe im Blackrock Mountain verschwinden. Eine Gruppe brachte ihn durch, indem sie Schritt für Schritt direkt hinter ihm ging, ohne Verstohlenheit.",h="Grark ist Elite."}
+tips[4126]={d="Zerschlagt im Grim Guzzler die drei Bierfässer im Hinterzimmer. Dann kommt Hurley Blackbreath mit seinen Elite-Freunden, und jeder von ihnen lässt ein Rezept für alle in der Gruppe fallen. Stirbt die Gruppe in diesem Kampf, sind Hurley und die Fässer weg, bis der Dungeon zurückgesetzt wird."}
+tips[4134]={d="Zerschlagt im Grim Guzzler die drei Bierfässer im Hinterzimmer. Dann kommt Hurley Blackbreath mit seinen Elite-Freunden, und jeder von ihnen lässt ein Rezept für alle in der Gruppe fallen. Stirbt die Gruppe in diesem Kampf, sind Hurley und die Fässer weg, bis der Dungeon zurückgesetzt wird."}
 tips[4141]={d="Dort streifen auch Raptoren und Teufelssaurier (Stufe 48-55) umher."}
 tips[4182]={d="Die meisten sind Elite; nimm eine Gruppe mit.",h="Überspringst du diese Kette, überspring auch die nächsten acht Schritte."}
 tips[4224]={d="Horde-Wachen bei Flame Crest."}

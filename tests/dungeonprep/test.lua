@@ -1048,6 +1048,44 @@ test("Ever After: WoW Forever's hidden quest in Blackrock Depths, inside, with i
     assert(ns.Data.tips[82062] and ns.Data.tips[82062].t, "the way to the ledge")
 end)
 
+test("Lost Thunderbrew Recipe: its work is in the Grim Guzzler, with the way to Hurley", function()
+    Fake({ level = 55, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [4133] = true } })
+    local ns = Load()
+    -- Hurley and his cronies have no spawns in the data: NPCS places them in the dungeon.
+    for _, id in ipairs({ 4134, 4126 }) do
+        assert(ns.Inside("BRD", id).work, id .. ": the recipe drops inside Blackrock Depths")
+        assert(ns.Data.tips[id] and ns.Data.tips[id].d, id .. ": the kegs and Hurley")
+    end
+    -- INSIDE_WORK: work the data cannot place, marked by hand.
+    assert(ns.Inside("BRS", 4735).work, "Egg Collection in the Rookery")
+    assert(ns.Inside("ST", 3528).work, "The God Hakkar at the altar")
+    assert(ns.Inside("ZF", 2770).work, "Gahz'rilla, summoned at the pool")
+end)
+
+test("Grark Lorkrub waits for KILL ON SIGHT: High Ranking Dark Iron Officials", function()
+    local function find(q, id)
+        for _, list in ipairs({ q.log, q.take, q.later }) do
+            for _, x in ipairs(list) do
+                if x.id == id then return x end
+            end
+        end
+    end
+    Fake({ level = 56, raceID = 2, faction = "Horde", className = "WARRIOR", done = { [4081] = true } })
+    local ns = Load()
+    -- ATT's quest before (QuestieDB has none); a breadcrumb never is one.
+    eq(ns.Data.quest[4122][9][1], 4082)
+    eq(#ns.Data.quest[2930][9], 0, "Castpipe's Task only sends the player on")
+    local q = ns.Quests("BRD", 56)
+    assert(not find(q, 4122), "one entry for the whole chain")
+    local chain
+    for _, x in ipairs(q.take) do
+        for _, m in ipairs(x.members or {}) do if m == 4122 then chain = x end end
+    end
+    assert(chain, "the chain is to take")
+    eq(chain.id, 4082, "the step to take now is the high ranking officials, not Grark")
+    assert(ns.Data.tips[4122] and ns.Data.tips[4122].d, "the escort note")
+end)
+
 test("Lead me at the top level: the set quests in the log, the ones to take once the set began", function()
     local function has(list, id)
         for _, x in ipairs(list) do
@@ -1171,10 +1209,11 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     Fake({ level = 54, raceID = 2, faction = "Horde", className = "WARRIOR", areas = AREAS,
            map = { best = 1454, maps = MAPS, pos = { 0.5, 0.5 } }, active = { [4134] = true } })
     local ns = Load()
-    -- Disharmony of Flame opens two quests: the chain's next step and a side quest.
+    -- Disharmony of Flame opens three quests: the chain's next step and two side quests
+    -- (The Last Element waits for it too, from ATT).
     local nexts = {}
     for _, n in ipairs(ns.Nexts(3906)) do nexts[n] = true end
-    assert(nexts[3981] and nexts[3907], "both quests after Disharmony of Flame")
+    assert(nexts[3981] and nexts[3907] and nexts[7201], "the quests after Disharmony of Flame")
     local items, _, total, counts = ns.TrackerItems("BRD", 54)
     eq(counts.hand + counts.doing + counts.take + counts.later, total)
     local fork
@@ -1184,16 +1223,17 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
         if it.id == 3906 then fork = it end
     end
     assert(fork, "the row is named by the quest to do now")
-    eq(fork.fork, 2)
+    eq(fork.fork, 3)
     eq(fork.at, 1)
     assert(fork.goal and fork.goal ~= fork.name, "and names the chain's last quest as its goal")
     -- Its card: the step, the head of what it opens, the two quests (this chain's first), the rest.
     local rows = ns.TrackerCardRows(fork)
     eq(rows[1].step.id, 3906)
-    eq(rows[2].opens, 2)
+    eq(rows[2].opens, 3)
     eq(rows[3].open.id, 3981)
     assert(rows[3].open.main, "the chain's own next step is marked")
-    eq(rows[4].open.id, 3907)
+    local side = { [rows[4].open.id] = true, [rows[5].open.id] = true }
+    assert(side[3907] and side[7201], "then the side quests")
     eq(rows[#rows].step.goal, true)
     -- A step before one in the log counts as done; more than three done steps fold into one line.
     W.active[3906], W.active[4134] = nil, nil
@@ -1244,12 +1284,13 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
     local branch
     for i, l in ipairs(map.lanes) do
         if l.from and l.from.id == 3906 then
-            branch = l
-            eq(map.lanes[i - 1].steps[1].id, 3906, "it stands under its chain")
+            local above = map.lanes[i - 1]
+            assert(above.steps[1].id == 3906 or (above.from and above.from.id == 3906),
+                "it stands under its chain, or under another branch of it")
+            if l.steps[1].id == 3907 then branch = l end
         end
     end
     assert(branch, "Disharmony of Fire branches from Disharmony of Flame")
-    eq(branch.steps[1].id, 3907)
     local seen, quests = {}, 0
     for _, l in ipairs(map.lanes) do
         for _, st in ipairs(l.steps) do

@@ -798,7 +798,9 @@ tips[3906]={d="Zjedź po wiszącym łańcuchu z półki i trzymaj się dolnej ś
 tips[3982]={d="Wydarzenie zaczyna tylko jeden gracz; pozostali biorą zadanie po nim."}
 tips[4023]={d="Smok jest elitą."}
 tips[4121]={d="Wrogowie Dark Iron i Blackrock atakują eskortę."}
-tips[4122]={t="Jeśli to pominiesz, pomiń też następne siedem kroków.",h="Grark jest elitą."}
+tips[4122]={t="Jeśli to pominiesz, pomiń też następne siedem kroków.",d="W WoW Forever ta eskorta może się nie udać: gracze widzieli, jak Grark znika na szczycie lewej rampy w Blackrock Mountain. Jednej grupie udało się, gdy szła tuż za nim, krok po kroku, bez ukrywania się.",h="Grark jest elitą."}
+tips[4126]={d="W Grim Guzzler rozbij trzy beczki piwa na zapleczu. Wtedy przychodzi Hurley Blackbreath ze swoimi elitarnymi kompanami, a każdy z nich upuszcza przepis dla każdego w grupie. Jeśli grupa zginie w tej walce, Hurley i beczki znikają do resetu lochu."}
+tips[4134]={d="W Grim Guzzler rozbij trzy beczki piwa na zapleczu. Wtedy przychodzi Hurley Blackbreath ze swoimi elitarnymi kompanami, a każdy z nich upuszcza przepis dla każdego w grupie. Jeśli grupa zginie w tej walce, Hurley i beczki znikają do resetu lochu."}
 tips[4141]={d="Krążą tam też raptory i diabłozaury (poziom 48-55)."}
 tips[4182]={d="Większość to elita; weź grupę.",h="Jeśli pominiesz ten łańcuch, pomiń też następne osiem kroków."}
 tips[4224]={d="Straże Hordy w Flame Crest."}
