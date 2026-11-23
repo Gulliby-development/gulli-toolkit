@@ -177,11 +177,17 @@ function J.Never(it)
         or (it.classID == ITEM_WEAPON and it.subclassID == FISHING_POLE) or false
 end
 
+-- Gear whose look the player still collects (the hub's appearance tweak, with its keep switch).
+function J.KeepsLook(id)
+    local f = GulliToolkit and GulliToolkit.KeepsAppearance
+    return f ~= nil and id ~= nil and f(id) == true
+end
+
 -- How sure we are an item is junk, and why: 1 for gray items and the "always sell" list,
 -- 2 for white weapons and armour and (opts.unusable) bound gear the class cannot use,
 -- 3 for other white items. nil means never offer it.
 function J.Tier(it, opts)
-    if J.Never(it) then return nil end
+    if J.Never(it) or J.KeepsLook(it.id) then return nil end
     if J.IsAlways(it.id) then return 1, "always" end
     if it.quality == 0 then return 1, "gray" end
     if opts and opts.unusable and (it.quality or 1) <= 2 and it.price > 0 and J.Unusable(it) then

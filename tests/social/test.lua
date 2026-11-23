@@ -331,4 +331,23 @@ test("paused, the new rules do nothing", function()
     eq(GulliSocial.DeclinesShare("Bob"), false)
 end)
 
+test("the hub's Tweaks page gets rows on the window's own saved keys", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local GROUPS = { level = true, quests = true, combat = true, loot = true, people = true, ui = true, requests = true }
+    assert(#reg.tweaks >= 14)
+    local seen = {}
+    for _, o in ipairs(reg.tweaks) do
+        assert(GROUPS[o.group], "a group of the page for " .. o.key)
+        assert(type(o.label) == "string" and o.icon, "label and icon for " .. o.key)
+        assert(not seen[o.key], "one row per key"); seen[o.key] = true
+        o.set(true); eq(ns.db[o.key], true, o.key .. " on"); eq(o.get(), true)
+        o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
+    end
+    assert(seen.noBnet and seen.noJoin and seen.noShared and seen.bgRelease and seen.bgSpirit)
+end)
+
 W.finish()

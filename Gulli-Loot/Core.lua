@@ -394,6 +394,13 @@ local function option(key, label, tip)
              set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
 end
 
+-- A row the hub's Tweaks page shows: the same saved key as the window.
+local function tweak(key, label, desc)
+    local o = option(key, label, desc)
+    o.key, o.group, o.desc, o.tip = key, "loot", desc, nil
+    return o
+end
+
 -- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
@@ -419,6 +426,11 @@ do
             option("report", L.OPT_REPORT),
             option("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
             option("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
+        },
+        tweaks = {
+            tweak("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
+            tweak("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
+            tweak("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
         },
         summary = function()
             if not ns.db then return nil end
