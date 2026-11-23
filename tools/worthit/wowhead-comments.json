@@ -1,5 +1,5 @@
 {
- "collected": "2026-11-20",
+ "collected": "2026-11-23",
  "quests": {
   "1001": {
    "comments": [
@@ -119,6 +119,12 @@
      "user": "Thottbot"
     },
     {
+     "body": "Is it just me or is the drop rate terrible?",
+     "date": "2026-11-09T11:49:24-06:00",
+     "rating": 10,
+     "user": "Haxan"
+    },
+    {
      "body": "Buzzbox 323 is located at (51, 24).  It is on your left hand side if you are northbound on the path in Darkshore, just over the Cliffspring River bridge.",
      "date": "2006-09-16T09:40:36-05:00",
      "rating": 9,
@@ -135,12 +141,6 @@
      "date": "2020-06-14T08:54:26-05:00",
      "rating": 8,
      "user": "Depandafactor"
-    },
-    {
-     "body": "Is it just me or is the drop rate terrible?",
-     "date": "2026-11-09T11:49:24-06:00",
-     "rating": 8,
-     "user": "Haxan"
     },
     {
      "body": "Your first inclination is to kill the Moonstalkers near the buzzbox up north.&nbsp; The drop rate is a little bad, but the spawn rate is even worse.&nbsp; I frequently spent 3-5 minutes just looking for another Moonstalker to kill, with one in 5 dropping one.\n\nHunt south of Auberdine.&nbsp; There's a lot more Moonstalkers so even if the drop rate is still one in five, you get it done in half an hour instead of 2 hours.",
@@ -243,13 +243,13 @@
     {
      "body": "Drops from any Murloc at the Westfall coast/beach.\n\nThe Cordinates:\n1) 26,49.\n2) 40,47.\n3) 40,17.\n4) 25,16.\n\nFinal Reward:\n1xSilver Bar.\n8 Slot Bag called \"Captain Sander's Booty Bag\".\nCaptain Sander's shirt.\nCaptain Sander's sash (cloth waist - 16ac  2sta, 2spi).\n\n- Merowlin",
      "date": "2006-09-24T05:35:38-05:00",
-     "rating": 94,
+     "rating": 93,
      "user": "Sibachian"
     },
     {
      "body": "<done as mage, lvl 19)\nTO GET CAPTAIN SANDER'S MAP:\nKill Old Murk-eye (highest drop rate), or murlocs in general. the harder the murloc, the better chance of drop. \n\n4 PLACES:(in this order)\n1) FOOTLOCKER (26, 49) Go west of Gold Coast Mine. Find the Anchor near the sunken ship on beach.\n\n2) OLD BARREL: (40, 47) Go east of footlocker. Location is Northeast of Alexston Farm.\n\n3) OLD JUG: (40,17) Go directly north. Location Northwest of Jangolode Mine, look for solitary windmill by coast.\n\n4) LOCKED CHEST (25, 16). Directly west, past the sunken ship is an island with a small out-house thingy. it's there. enjoy.",
      "date": "2007-01-04T04:14:09-06:00",
-     "rating": 74,
+     "rating": 77,
      "user": "Thottbot"
     },
     {
@@ -273,7 +273,7 @@
     {
      "body": "Hi all\n\nWhen You will kill murlocs in Westfall You will have low chanse to get drop [item=1357], That will start quest chain with nic ereward at end.\n\nSee My Video with full route for all Quests - https://youtu.be/g5wrrcqcMXs\n\nStart Quest from Questitem:\n\n1 .[quest=136] - Find [object=35] - /way 25.96 47.85, You will get [item=1358] that will start next quest:\n2. [quest=138] - Find [object=36] - /way 40.48 47.86, You will get [item=1361] that will start next quest: \n3. [quest=139] - Find [object=34] - /way 40.65 17.06. You will get [item=1362] that will start next quest: \n4. [quest=140] - Find [object=33] - /way 25.99 17.06. On edge of map left top, When You open You will get nice thinks like [item=3344] and [item=270257].\n\nFrom [item=270257] You will get [item=3343] Nice :D , [item=270001], [item=270002] and [item=276694].\n\nAs well total  2 875 exp for this running quest ( is qround 15-20 min )  :D.\n\nHope That Help You :)",
      "date": "2026-11-06T05:24:27-06:00",
-     "rating": 19,
+     "rating": 21,
      "user": "Mypciscraze"
     },
     {
@@ -313,7 +313,7 @@
      "user": "fosley"
     }
    ],
-   "description": "If ye be readin' this, it means that Ol' Captain Sanders is in a watery grave. So my treasure is yours now, ye jest need to follow the clues. \nFirst ye need to find me footlocker. It's probably half-buried in sand by now, along the Western Coast of Westfall near the shipwreck. There be lots of shipwrecks but only one rusty anchor on the coast. Find that anchor and you'll find me locker! Look in there for the next clue.",
+   "description": "If ye be readin' this, it means that Ol' Captain Sanders is in a watery grave. So my treasure is yours now, ye jest need to follow the clues.\nFirst ye need to find me footlocker. It's probably half-buried in sand by now, along the Western Coast of Westfall near the shipwreck. There be lots of shipwrecks but only one rusty anchor on the coast. Find that anchor and you'll find me locker! Look in there for the next clue.",
    "name": "Captain Sander's Hidden Treasure",
    "objective": "Find Captain Sanders' footlocker and search it for the next clue."
   },
@@ -394,7 +394,7 @@
    ],
    "description": "The clue to the treasure reads: Good work, matey! Now ye need to head due east. East up the bluffs, east to the road. Look for the ol' chimney ruins near the side of the road. There you'll find an old barrel with your next clue.",
    "name": "Captain Sander's Hidden Treasure",
-   "objective": "Find the old barrel near the ruined chimney and search it for your next clue.\nProvided item:"
+   "objective": "Find the old barrel near the ruined chimney and search it for your next clue."
   },
   "139": {
    "comments": [
@@ -417,6 +417,12 @@
      "user": "Thottbot"
     },
     {
+     "body": "If using TomTom\r\n\r\n/way #1436 25.90 47.76 Quest 1 - Footlocker\r\n/way #1436 40.51 47.81 Quest 2 - Barrel\r\n---- Just those below if you're on the quest for this wowhead page.\r\n/way #1436 40.63 17.03 Quest 3 - Jug\r\n/way #1436 26.67 17.77 Quest 4 - Ramp to Final Chest\r\n/way #1436 25.99 16.95 Quest 4 - Final Chest",
+     "date": "2026-10-10T07:33:09-05:00",
+     "rating": 4,
+     "user": "fosley"
+    },
+    {
      "body": "its a blue bottle on the ground next to a big logg,",
      "date": "2005-10-12T06:41:12-05:00",
      "rating": 3,
@@ -427,12 +433,6 @@
      "date": "2019-09-07T18:06:28-05:00",
      "rating": 3,
      "user": "Taraezor"
-    },
-    {
-     "body": "If using TomTom\r\n\r\n/way #1436 25.90 47.76 Quest 1 - Footlocker\r\n/way #1436 40.51 47.81 Quest 2 - Barrel\r\n---- Just those below if you're on the quest for this wowhead page.\r\n/way #1436 40.63 17.03 Quest 3 - Jug\r\n/way #1436 26.67 17.77 Quest 4 - Ramp to Final Chest\r\n/way #1436 25.99 16.95 Quest 4 - Final Chest",
-     "date": "2026-10-10T07:33:09-05:00",
-     "rating": 3,
-     "user": "fosley"
     },
     {
      "body": "Hi all\r\n\r\nWhen You will kill murlocs in Westfall You will have low chanse to get drop [item=1357], That will start quest chain with nic ereward at end.\r\n\r\nSee My Video with full route for all Quests - https://youtu.be/g5wrrcqcMXs\r\n\r\nStart Quest from Questitem:\r\n\r\n1 .[quest=136] - Find [object=35] - /way 25.96 47.85, You will get [item=1358] that will start next quest:\r\n2. [quest=138] - Find [object=36] - /way 40.48 47.86, You will get [item=1361] that will start next quest: \r\n3. [quest=139] - Find [object=34] - /way 40.65 17.06. You will get [item=1362] that will start next quest: \r\n4. [quest=140] - Find [object=33] - /way 25.99 17.06. On edge of map left top, When You open You will get nice thinks like [item=3344] and [item=270257].\r\n\r\nFrom [item=270257] You will get [item=3343] Nice :D , [item=270001], [item=270002] and [item=276694].\r\n\r\nAs well total  2 875 exp for this running quest ( is qround 15-20 min )  :D.\r\n\r\nHope That Help You :)",
@@ -473,7 +473,7 @@
    ],
    "description": "Searching through the barrel you discover another piece of parchment. This one reads: Now from this here barrel, face ye North. Straight as the crow flies, keep ye walkin' till you see the empty jug next to the lone windmill on the sea bluffs. If ye poke around that jug, ye just might find what you're lookin' for.",
    "name": "Captain Sander's Hidden Treasure",
-   "objective": "Search the empty jug next to the windmill for the next clue.\nProvided item:"
+   "objective": "Search the empty jug next to the windmill for the next clue."
   },
   "140": {
    "comments": [
@@ -552,7 +552,7 @@
    ],
    "description": "Sure enough, deep within the Old Jug there is another clue to Sander's treasure. The ink has run in some places and the paper smells like whiskey but you can make out some of the text: Now that ye found me ol' whiskey jug, you're almost to the treasure! Just face West from the bottle and walk down to the shore. Once ye get to the water, keep going! Swim straight west till you find the island with me treasure chest!",
    "name": "Captain Sander's Hidden Treasure",
-   "objective": "Locate Captain Sanders' chest and open it for your reward.\nProvided item:"
+   "objective": "Locate Captain Sanders' chest and open it for your reward."
   },
   "1472": {
    "comments": [
@@ -708,7 +708,7 @@
      "user": "Allakhazam"
     }
    ],
-   "description": "Using these hearts, cast a spell at the summoning circle to open a doorway for the succubus to come through. Your powers are greater now, and you will need all of them to defeat the succubus. \nBeware its charms, <name>, many a strong mind has been bound to its will. When overcome, the succubus will be returned to the void, and I will teach you the spell to summon it forth at your command.",
+   "description": "Using these hearts, cast a spell at the summoning circle to open a doorway for the succubus to come through. Your powers are greater now, and you will need all of them to defeat the succubus.\nBeware its charms, <name>, many a strong mind has been bound to its will. When overcome, the succubus will be returned to the void, and I will teach you the spell to summon it forth at your command.",
    "name": "The Binding",
    "objective": "Using the Pure Hearts, summon and subdue a succubus, then return the Pure Hearts to Carendin Halgar in the Magic Quarter of the Undercity."
   },
@@ -830,16 +830,16 @@
      "user": "Allakhazam"
     },
     {
+     "body": "Reduce the amount required or make it lootable by all. This ONE quest was an absolute nightmare. No other dungeon quests have been like this one, have been this completely annoying. This has GOT to be changed.",
+     "date": "2026-11-10T19:19:08-06:00",
+     "rating": 12,
+     "user": "collide7"
+    },
+    {
      "body": "You can pick up this quest as alliance too.",
      "date": "2019-08-30T02:45:02-05:00",
      "rating": 10,
      "user": "Ssateneth"
-    },
-    {
-     "body": "Reduce the amount required or make it lootable by all. This ONE quest was an absolute nightmare. No other dungeon quests have been like this one, have been this completely annoying. This has GOT to be changed.",
-     "date": "2026-11-10T19:19:08-06:00",
-     "rating": 10,
-     "user": "collide7"
     },
     {
      "body": "We did this last night with a group of people. After running Wailing Caverns we had to spend another hour or so grinding mobs outside the instance to get enough hides.\r\n\r\nIf two or three people in the group are doing the quest, you could probably do it during the dungeon run. All five? There's just not enough hides dropped.",
@@ -1269,6 +1269,12 @@
      "user": "Thottbot"
     },
     {
+     "body": "Here is the full quest chain to obtain the Warlock Succubus minion starting from Orgrimmar:\r\n\r\n1. [quest=1507]\r\n2. [quest=1508]\r\n3. [quest=1509]\r\n4. [quest=1510]\r\n5. [quest=1511]\r\n6. [quest=1515]\r\n7. [quest=1512]\r\n8. [quest=1513]\r\n\r\nAlternatively both races (both Orc and Undead) can pick up the Undercity quest chain if you miss the one in Orgrimmar:\r\n\r\n1. [quest=1472]\r\n2. [quest=1476]\r\n3. [quest=1474]\r\n\r\nBoth of these chains will grant you the Succubus, though you can only pick up one version of the chain. I hope this info helps!",
+     "date": "2019-09-18T12:30:29-05:00",
+     "rating": 3,
+     "user": "Oceandust"
+    },
+    {
      "body": "The coordinates given say that he's in the Cleft of Shadow.",
      "date": "2005-10-21T10:30:12-05:00",
      "rating": 1,
@@ -1311,10 +1317,16 @@
      "user": "Allakhazam"
     },
     {
-     "body": "Here is the full quest chain to obtain the Warlock Succubus minion starting from Orgrimmar:\r\n\r\n1. [quest=1507]\r\n2. [quest=1508]\r\n3. [quest=1509]\r\n4. [quest=1510]\r\n5. [quest=1511]\r\n6. [quest=1515]\r\n7. [quest=1512]\r\n8. [quest=1513]\r\n\r\nAlternatively both races (both Orc and Undead) can pick up the Undercity quest chain if you miss the one in Orgrimmar:\r\n\r\n1. [quest=1472]\r\n2. [quest=1476]\r\n3. [quest=1474]\r\n\r\nBoth of these chains will grant you the Succubus, though you can only pick up one version of the chain. I hope this info helps!",
-     "date": "2019-09-18T12:30:29-05:00",
-     "rating": 1,
-     "user": "Oceandust"
+     "body": "there is no elite",
+     "date": "2006-01-17T13:47:18-06:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "y'all are silly; you dont have to actually kill anyone to do this part of the quest: you only need to live long enough to talk to the guy and complete it, which takes less than a second...i just killed all the hunters, or whatever the lower level ones are, and ran right in. i had soulstoned myself before i did this so i just died, spawned again and kept running. helps to have voidwalker aggro everything before you run in, too",
+     "date": "2006-02-02T20:15:34-06:00",
+     "rating": -1,
+     "user": "Allakhazam"
     }
    ],
    "description": "Zankaja is young and beautiful. To be chained to an invalid... I will not allow her to suffer that injustice.\nLeave me, <name>. And thank you. I may end my life in glorious battle, instead of a lifeless husk.\nAnd please, I would ask you not to tell my mate of this... I do not want guilt on her conscience.",
@@ -1346,6 +1358,12 @@
      "date": "2007-01-27T18:16:10-06:00",
      "rating": 8,
      "user": "13696"
+    },
+    {
+     "body": "Here is the full quest chain to obtain the Warlock Succubus minion starting from Orgrimmar:\r\n\r\n1. [quest=1507]\r\n2. [quest=1508]\r\n3. [quest=1509]\r\n4. [quest=1510]\r\n5. [quest=1511]\r\n6. [quest=1515]\r\n7. [quest=1512]\r\n8. [quest=1513]\r\n\r\nAlternatively both races (both Orc and Undead) can pick up the Undercity quest chain if you miss the one in Orgrimmar:\r\n\r\n1. [quest=1472]\r\n2. [quest=1476]\r\n3. [quest=1474]\r\n\r\nBoth of these chains will grant you the Succubus, though you can only pick up one version of the chain. I hope this info helps!",
+     "date": "2019-09-18T12:31:23-05:00",
+     "rating": 7,
+     "user": "Oceandust"
     },
     {
      "body": "i am a lvl 20 bloodelf war lock and trust me ORC warloick quest is really easy compared to BE one :D",
@@ -1382,12 +1400,6 @@
      "date": "2007-04-20T07:40:55-05:00",
      "rating": 5,
      "user": "Thottbot"
-    },
-    {
-     "body": "Here is the full quest chain to obtain the Warlock Succubus minion starting from Orgrimmar:\r\n\r\n1. [quest=1507]\r\n2. [quest=1508]\r\n3. [quest=1509]\r\n4. [quest=1510]\r\n5. [quest=1511]\r\n6. [quest=1515]\r\n7. [quest=1512]\r\n8. [quest=1513]\r\n\r\nAlternatively both races (both Orc and Undead) can pick up the Undercity quest chain if you miss the one in Orgrimmar:\r\n\r\n1. [quest=1472]\r\n2. [quest=1476]\r\n3. [quest=1474]\r\n\r\nBoth of these chains will grant you the Succubus, though you can only pick up one version of the chain. I hope this info helps!",
-     "date": "2019-09-18T12:31:23-05:00",
-     "rating": 5,
-     "user": "Oceandust"
     },
     {
      "body": "wha thappens if u skip the quest and come back to try and do it at lvl 30 and you only get the felhunter quest?",
@@ -1828,12 +1840,6 @@
      "user": "Thottbot"
     },
     {
-     "body": "I like how my class trainer in Undercity told me to go see this Ratchet warlock (Seeking Strahad quest), only for this follow up quest (Tome of the Cabal) to tell me to go to Undercity...",
-     "date": "2026-10-08T07:08:21-05:00",
-     "rating": 3,
-     "user": "Brik"
-    },
-    {
      "body": "75,37",
      "date": "2005-10-15T22:23:00-05:00",
      "rating": 2,
@@ -1856,6 +1862,12 @@
      "date": "2019-12-07T06:12:27-06:00",
      "rating": 1,
      "user": "saltser"
+    },
+    {
+     "body": "I like how my class trainer in Undercity told me to go see this Ratchet warlock (Seeking Strahad quest), only for this follow up quest (Tome of the Cabal) to tell me to go to Undercity...",
+     "date": "2026-10-08T07:08:21-05:00",
+     "rating": 1,
+     "user": "Brik"
     }
    ],
    "description": "It will take more than a simple summoning circle to bring forth a felhunter for you to challenge.\nMy three acolytes and I will assist in creating the magic circles. You require a copy of the Tome of the Cabal, which has been lost to us for some time. It was written by the first group of warlocks to summon a felhunter unaided.\nPerhaps Jorah Annison can help you with this. He's employed as a cartographer in the Undercity these days, but still knows more of ancient texts than any I know.",
@@ -1927,7 +1939,7 @@
     {
      "body": "Tattered Manuscript is at 43.4 32.7 in Thousand needles. Cave entrance is a 44.4 36.9. Just keep right at the forks as you go into the cave and it will be in a small chest",
      "date": "2020-02-29T10:20:20-06:00",
-     "rating": 12,
+     "rating": 14,
      "user": "Zeress"
     },
     {
@@ -2154,6 +2166,18 @@
      "date": "2005-10-08T13:07:32-05:00",
      "rating": 0,
      "user": "Allakhazam"
+    },
+    {
+     "body": "u do NOT have to be level 45 to get or turn in this quest i got and returned it at lvl 42 but the boss is incredibly hard for a group of 42-45s so u should bring along a higher lvl for this quest",
+     "date": "2007-03-25T20:45:24-05:00",
+     "rating": -2,
+     "user": "35839"
+    },
+    {
+     "body": "Does anybody know where these disks are? Haven't seen them yet o.O",
+     "date": "2005-10-23T06:48:56-05:00",
+     "rating": -6,
+     "user": "Thottbot"
     }
    ],
    "description": "Touching the Discs of Norgannon once again makes your hand tingle. This time, however, a strange grinding noise is heard from inside the discs.\nYour backpack suddenly becomes heavier than it was before. Inside, you discover a miniature version of the discs!\nNo doubt, an item of this sort would be invaluable for someone interested in the ancient history of Azeroth. The Explorers' League in Ironforge is such a group, known throughout the Alliance; perhaps they can make good use of it.",
@@ -2288,6 +2312,12 @@
      "date": "2026-11-17T06:32:42-06:00",
      "rating": 1,
      "user": "wowthatsjie"
+    },
+    {
+     "body": "So i didnt get it at first.\n\nThe Vault = The bank",
+     "date": "2007-01-13T21:22:23-06:00",
+     "rating": -1,
+     "user": "Thottbot"
     }
    ],
    "description": "This object is an incredible find. The ancient Titans, or the Creators as these discs refer to them as, are the link to our enchanted creation, if the lore stored in here is correct! We'll need to invest as much research time into this as possible.\nAs for you, heroic <class>, take this voucher to Dinita Stonemantle at the vault. It grants you what I think is a fitting for such a tremendous find!\nReturn to me directly when you are ready; there is much more to do for the Explorers' League!",
@@ -2458,6 +2488,42 @@
      "body": "I failed this one, for one reason and one reason only.  There happend to be three of us doing this quest at the same time.  With three of us competing for kills, there just wasnt enough to go around.  Of course, this is also the first weekend for the game, so its expected for there to be a lot of lvl 16-18's.",
      "date": "2004-11-29T19:18:57-06:00",
      "rating": 0,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Pretty easy.  Just run north.  Go through the buzzards (they'll leave you alone once you get to the boars) and avoid the grizzilies.  I found the boars north of the retreat at 75, 46.  Killed five, mined some tin and handed in the quest with time to spare.",
+     "date": "2007-05-08T13:46:51-05:00",
+     "rating": -1,
+     "user": "44284"
+    },
+    {
+     "body": "66 41 cosmos for a large number of them - in case you aren't a hunter",
+     "date": "2006-07-22T20:32:37-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Failed this quest because I got jumped by a wandering Horde guy...had just killed my last boar and poof, dead.  \n\nSo, if you fail this quest, you are done?  That would stink if that is the case.",
+     "date": "2004-12-16T11:34:01-06:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "I just did the first one where you killed the bazzards on my lvl 13 hunter. Nice upgrade from my rust covered blunderbus! :D\n\nThe next one looks a bit harder... I killed 2 then got chased by a bear while trying to kill the 3rd :(\n\n[i][small]Edited, Oct 16th  2006 at  3:02am PDT by picaroon[/small][/i]",
+     "date": "2006-10-16T06:53:52-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Man, I'm angry! I failed this quest right before turning it in, becouse my game crashed! Arghh..",
+     "date": "2007-04-07T11:07:01-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Failed the first time, simply because i couldnt find enough of them in the time limit. Large number at 64, 40 area, can easily be done in under 5 minutes.",
+     "date": "2007-01-11T04:05:59-06:00",
+     "rating": -1,
      "user": "Allakhazam"
     }
    ],
@@ -2727,6 +2793,12 @@
      "date": "2005-09-29T01:18:10-05:00",
      "rating": 1,
      "user": "Thottbot"
+    },
+    {
+     "body": "Please read my comments under The Disgraced One quest for complete quest line and rewards of the entire saga (total 5).",
+     "date": "2005-09-29T01:18:10-05:00",
+     "rating": -1,
+     "user": "Thottbot"
     }
    ],
    "description": "Let us not mince words, <race>; my time here is limited.\nYou must destroy the triad of power which protects the demon lord, Razelikh. Doing so will not be as simple a task as freeing a damned soul.\n<Kirith grins.>\nYou see, each of Razelikh's underlings wears a third of an amulet of Razelikh's creation around their neck. The very same amulet you will need in order to summon the arch demon.\nReturn to Trebor and tell him what is required to summon Razelikh. He will be able to instruct you further.",
@@ -2845,10 +2917,22 @@
      "user": "Thottbot"
     },
     {
+     "body": "/way #1447 61 66 Loramus",
+     "date": "2026-11-22T22:59:01-06:00",
+     "rating": 1,
+     "user": "Killaks"
+    },
+    {
      "body": "You have to go inside The Temple of Arkkoran \r\nThe cords for this Quest is 77,42 inside Temple",
      "date": "2006-12-18T13:23:02-06:00",
      "rating": 0,
      "user": "8825"
+    },
+    {
+     "body": "how do i gain rep so he will give me the quest?",
+     "date": "2006-08-14T19:36:12-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
     }
    ],
    "description": "So you wish to battle demons? You would do well to listen to my tale.",
@@ -2867,6 +2951,18 @@
      "body": "This q line is not long. It just looks long, but a lot of the qs are just listening bla bla bla.&nbsp; First 5 (the first you get from the fallen hero) done in 20 min (alone). Now heading over to ashara to see what�s up there with Loramus.",
      "date": "2006-05-08T01:03:37-05:00",
      "rating": 2,
+     "user": "Thottbot"
+    },
+    {
+     "body": "I can't get any quest from this NPC. Do I have to do other quests before I talk to him? Level 56 Dwarf Rouge.",
+     "date": "2005-10-01T01:03:37-05:00",
+     "rating": -3,
+     "user": "Thottbot"
+    },
+    {
+     "body": "Same here. I can't get this quest off of him either (57 Orc Hunter). :(",
+     "date": "2005-10-01T01:03:37-05:00",
+     "rating": -3,
      "user": "Thottbot"
     }
    ],
@@ -2923,6 +3019,30 @@
      "date": "2006-12-18T13:25:30-06:00",
      "rating": 0,
      "user": "8825"
+    },
+    {
+     "body": "went up to him today as a 54 lock.  couldn't talk or interact with him =(",
+     "date": "2006-08-02T00:45:57-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "im a 51 do u think i can stealth to the giant guy?",
+     "date": "2007-02-03T00:32:33-06:00",
+     "rating": -4,
+     "user": "Thottbot"
+    },
+    {
+     "body": "Lord Akk is non agro. but you have about 20 mobs to fight to get to speak to him.",
+     "date": "2005-05-24T16:32:32-05:00",
+     "rating": -9,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "If your in a hurry, or don't feel like killing all the mobs just die at the entrance to the temple.  The walk up to the second floor with your ghost and rez.",
+     "date": "2005-10-11T20:43:50-05:00",
+     "rating": -17,
+     "user": "Allakhazam"
     }
    ],
    "description": "There is only one way to harm the demon lord and his minions. A weapon of power must be forged bearing his true name.\nWhen such a weapon is forged, the demon and all under his command are vulnerable.\nA lesser deity resides in Azshara: Lord Arkkoroc. You must seek him out but be warned, his minions will stop at nothing to destroy you if you are discovered.\nUndoubtedly, you will have to pay a price for such information.",
@@ -3021,6 +3141,24 @@
      "date": "2005-10-22T09:21:46-05:00",
      "rating": 1,
      "user": "Thottbot"
+    },
+    {
+     "body": "I am at the Hetaera Clutch but i can't seem to find her. I am assumming she is in the dome building but cant find a was in. Any help?",
+     "date": "2005-02-21T20:46:37-06:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Found Hetaera on very small island to the north and slightly west of the dome.  Hope this helps!",
+     "date": "2005-02-24T06:52:31-06:00",
+     "rating": -1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "North of the Dome on the water. \nYou will know the island from the fact is has a small ruin on it.. and seems to alway be a lvl 53 Son of Arkkoroc on there.\n\nNot too hard. 56 priest/55 war killed her without to much stress.",
+     "date": "2005-05-23T14:27:45-05:00",
+     "rating": -8,
+     "user": "Allakhazam"
     }
    ],
    "description": "As promised, I will reveal the name of the demon lord, Razelikh the Defiler. First, however, I must prepare something of utmost importance for your journey.\nThe weapon you seek to create requires a temper. Give me a moment to drain the blood from these heads.\n<Lord Arkkoroc squeezes the heads in between his gigantic fists, draining them of their blood.>\nTake the temper back to Loramus along with the name of the beast: Rakh'likh.",
@@ -3104,7 +3242,7 @@
    ],
    "description": "The ancient cliff giants of the southern region of Azshara consume the rock and buildings of the land for sustenance. The excrement from their consumption is a highly malleable and extremely strong crystal known as Azsharite.\nThe formations litter the southern arc, but few are ever recovered due to the extremely violent nature of the giants.\nYou are to venture south and recover enough of the Azsharite for the creation of the weapon's body. My felhounds will aid in the recovery of the crystal.",
    "name": "Azsharite",
-   "objective": "Recover twenty Crystallized Azsharite from southern Azshara. You may use the Felhound to assist you in 'sniffing' out the location of cleverly hidden deposits.\nReturn to Loramus when the task is complete.\nProvided item:"
+   "objective": "Recover twenty Crystallized Azsharite from southern Azshara. You may use the Felhound to assist you in 'sniffing' out the location of cleverly hidden deposits.\nReturn to Loramus when the task is complete."
   },
   "3621": {
    "comments": [
@@ -3227,6 +3365,12 @@
      "body": "He forges a sword, dagger, or staff for use in killing the named mobs in the next part of the quest.\n\n[item=10696]",
      "date": "2005-04-10T22:18:21-05:00",
      "rating": 1,
+     "user": "Allakhazam"
+    },
+    {
+     "body": "Just completed this quest and chose the staff, but the item never showed up in my inventory.\nThe chat window says \"Recieved item: Enchanted Azsharite Felbane Staff.\"\nThis is rather annoying, considering the number of prequests I had to do just to get this far.",
+     "date": "2005-07-27T16:58:05-05:00",
+     "rating": -1,
      "user": "Allakhazam"
     }
    ],
@@ -3851,6 +3995,12 @@
      "user": "Thottbot"
     },
     {
+     "body": "To start this quest chain, you need to pick up a scroll in one of the pirate ships to the South of Booty Bay. If you don't, then you can't interact with the scroll under the bridge.\n\n/way Stranglethorn Vale 33.7 88.2\n\nEnjoy your free bag.",
+     "date": "2026-11-16T07:11:47-06:00",
+     "rating": 18,
+     "user": "rangersix"
+    },
+    {
      "body": "Varakahn's description is very good.&nbsp; The only change is that the location coordinates for me was 31,66 for the Raptor cave.&nbsp;",
      "date": "2006-07-31T10:04:12-05:00",
      "rating": 13,
@@ -3861,12 +4011,6 @@
      "date": "2005-11-17T22:04:12-06:00",
      "rating": 12,
      "user": "Thottbot"
-    },
-    {
-     "body": "To start this quest chain, you need to pick up a scroll in one of the pirate ships to the South of Booty Bay. If you don't, then you can't interact with the scroll under the bridge.\n\n/way Stranglethorn Vale 33.7 88.2\n\nEnjoy your free bag.",
-     "date": "2026-11-16T07:11:47-06:00",
-     "rating": 10,
-     "user": "rangersix"
     },
     {
      "body": "The one under the bridge is in the zone \"SWAMP OF SORROWS\" 22,48 . Not dushwallow marsh.&nbsp; Thats where the third part is at 33, 66",
@@ -3975,7 +4119,7 @@
     {
      "body": "Here Are teh coords :o)\n\n- [b]81,47[/b] -\n\nhf",
      "date": "2005-11-03T23:26:21-06:00",
-     "rating": 62,
+     "rating": 64,
      "user": "Thottbot"
     },
     {
@@ -4033,16 +4177,16 @@
      "user": "Allakhazam"
     },
     {
+     "body": "Hey so this how to start the quest chain:\r\n\r\n I went to the South of Stranglethorn around /way 30.88 . You will find there 3 ships and the Cortello's Riddle will be in the bottom level of one of the 3 ships. From then on it will give you detail steps to continue.",
+     "date": "2026-11-16T23:25:10-06:00",
+     "rating": 5,
+     "user": "Xeltes"
+    },
+    {
      "body": "While the description of the fun to be had jumping off the waterfall to get to the chest is quite evocative, be advised that the water below is not of a uniform depth, and if you land in water that isn't deep enough, you will get hit for quite a nice chunk of damage (I was hit for 2199, just a few points over what was needed to kill me )\n\nSo, be careful jumping.",
      "date": "2005-02-28T19:16:15-06:00",
      "rating": 4,
      "user": "Allakhazam"
-    },
-    {
-     "body": "81.47 - easy to spot, right beneath the waterfall.",
-     "date": "2006-09-28T11:26:21-05:00",
-     "rating": 3,
-     "user": "Thottbot"
     }
    ],
    "description": "To Lordaeron! The great land of turmoil\nWhere brave soldiers with death do toil\nFind your way through the great unrest\nThere you will find the end to this quest\nAlong the coast of the Hinterlands, at the base of the great falls\nUnderneath the water there does your treasure call!",
@@ -4104,6 +4248,12 @@
      "date": "2026-11-15T12:38:26-06:00",
      "rating": 1,
      "user": "tmoe1122"
+    },
+    {
+     "body": "Is this a tauren only quest?",
+     "date": "2005-05-04T09:44:07-05:00",
+     "rating": -1,
+     "user": "Allakhazam"
     }
    ],
    "description": "All members of the tribe share in the harmony of life. We live together and work together.\nOur commitment to one another carries with it a high degree of responsibility. I ask of you now a humble task.\nMy mother set out this morning to fetch water from the well to the southeast of Narache. It has been quite some time now. Perhaps you could check on her for me while I attend to tribal matters here?",
@@ -4134,6 +4284,12 @@
      "body": "how do u get the pitch of water?",
      "date": "2006-06-09T09:34:52-05:00",
      "rating": 0,
+     "user": "Thottbot"
+    },
+    {
+     "body": "44,76",
+     "date": "2007-03-28T09:34:52-05:00",
+     "rating": -5,
      "user": "Thottbot"
     }
    ],
@@ -4225,7 +4381,7 @@
     {
      "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\n\nHow to obtain [item=211527] & 5 [item=216619]:\n\n1. 1. Travel to 46, 73 in [zone=17]\nHere, interact with [object=415106] and accept the quest.\n\n2. Travel to 37, 50 in [zone=40]\nInteract with [object=424010]\n\n3. Travel to 51, 51 in [zone=406]\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\nAt the camp, interact with [object=424005]\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\n\n4. Travel to the Dam at 49, 12 in [zone=38]\nJump down to the ledge and interact with [object=424007]\n\n5. Travel to 81, 56 in [zone=267]\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\nFollow the little jumping puzzle toward the camp\nInteract with [object=406918] then interact with [object=424006]\n\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\n\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
      "date": "2026-09-22T16:34:01-05:00",
-     "rating": 87,
+     "rating": 92,
      "user": "Onsokomaru"
     },
     {
@@ -4237,7 +4393,7 @@
     {
      "body": "[b][u]DETAILED STEP BY STEP HORDE GUIDE[/u][/b]\r\n\r\nI have pieced this together using other people's comments and the wowhead guide because I a) prefer to read than watch a video, b) had to look through about 4 tabs for all of this info and c) didn't understand some of it until myself and three friends did the whole thing. I wrote this in my guild's discord and thought I'd share. I'm sorry for lack of links or fancy things but I've never bothered to comment a guide on here before!\r\n\r\nCredit to Serenal for the wowhead guide, falcon2099 for the hearthstones comment and Rihhiharti for their comment about avoiding STV and duskwood by swimming, and spirit healers - and thank you to the Alliance Skyelf whose name I wish I remembered, who jumped down and did the cart jumping puzzle in front of me a few times when I kept failing!\r\n\r\nHorde Sleeping Bag Summary  - you must be level 14 to pick up the first quest! This is not a normal questline so you will not see ! or ? on the main map, only on your mini map once you get close enough. NB. Alliance start at Westfall step 6 and then go to step 2 (thank you Slackluster).\r\n\r\n[ol][li]Go to the Barrens, and set your hearth to the Crossroads\r\n[li]Go to Camp Taurajo, then south to pick up the quest from Burned-Out Remains at /way Barrens 46, 74\r\n[li]Walk back to Camp Taurajo, fly to Orgimmar\r\n[li]Get the Zeppelin to Stranglethorn Vale\r\n[li]If you are level 20+ walk to Westfall, keeping to the roads. If you are lower than 20 swim following the co",
      "date": "2026-11-11T18:07:09-06:00",
-     "rating": 34,
+     "rating": 38,
      "user": "Bansheee"
     },
     {
@@ -4281,6 +4437,18 @@
      "date": "2026-11-18T06:04:23-06:00",
      "rating": 1,
      "user": "Mypciscraze"
+    },
+    {
+     "body": "Make sure you are doing this quest when you get it and not waiting until a higher level. I finally completed the Westfall portion of this quest at 35, as I was going to go duo Deadmines with a guildie, and was unable to pick up the next portion of the quest, \"Stepping Stones.\"",
+     "date": "2026-11-20T09:26:47-06:00",
+     "rating": 1,
+     "user": "Astinash"
+    },
+    {
+     "body": "It seems this quest has a level requirement of being at least level 14 atm",
+     "date": "2026-11-08T21:57:19-06:00",
+     "rating": -1,
+     "user": "felant"
     }
    ],
    "description": "<The faint radiance of the embers darkening, you stumble across the remnants of a recent fire.\nAmidst the scattered provisions, you discover a blistered note.>\n\"Not all that burns is lost. Find the twin land, find the place.\"",
@@ -4371,26 +4539,32 @@
     {
      "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\n\nHow to obtain [item=211527] & 5 [item=216619]:\n\n1. 1. Travel to 46, 73 in [zone=17]\nHere, interact with [object=415106] and accept the quest.\n\n2. Travel to 37, 50 in [zone=40]\nInteract with [object=424010]\n\n3. Travel to 51, 51 in [zone=406]\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\nAt the camp, interact with [object=424005]\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\n\n4. Travel to the Dam at 49, 12 in [zone=38]\nJump down to the ledge and interact with [object=424007]\n\n5. Travel to 81, 56 in [zone=267]\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\nFollow the little jumping puzzle toward the camp\nInteract with [object=406918] then interact with [object=424006]\n\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\n\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
      "date": "2026-09-22T16:30:57-05:00",
-     "rating": 50,
+     "rating": 52,
      "user": "Onsokomaru"
     },
     {
      "body": "The Sturdy Lunchbox is not rewarded from this quest, which is intended. The Old Toolbox is the only container reward.",
      "date": "2026-11-09T09:45:10-06:00",
-     "rating": 43,
+     "rating": 45,
      "user": "BlizzardCS"
     },
     {
      "body": "I did not get the follow automatically, heard an error sound and it printed that I was not eligible in the chat. Went around the tower and I could take the follow up from a plank sign on the side of the tower.",
      "date": "2026-10-17T09:52:47-05:00",
-     "rating": 27,
+     "rating": 31,
      "user": "degre"
     },
     {
      "body": "Hi all\r\n\r\nI present You Quest Chain that will finish with reward - [item=211527]\r\n\r\nSee My Video with full quest chain - https://youtu.be/I-2x-a68i6s\r\n\r\n[u][b]Starting from begining This is for Aliance route, horde swap 2-1[/b] [/u]:\r\n\r\n1. [quest=79008] - To start Go to [zone=40] /way #1436 37.42 50.67, and interact with [object=415107] Now You need to go twin land that is [zone=17] in Kalimdor /way #1413 46.36 73.77,  You have 3 ways to go ther: 1. [zone=1519] 2. [zone=11] and 3. [zone=33] all this location have harbor to Kalimdor. I go thru [zone=11]  because I wanted to discover new fly points. Then GO [zone=11] -> [zone=15] - from that place keep roud until [zone=17] /way #1413 46.36 73.77, care mobe in this area are stron keep your feet on road.\r\n2. [quest=79192] - When You get to /way #1413 46.36 73.77, press on [object=417072] to start Quest now You need to go to [zone=406], when You get to this map first go /way 51.63 52.37, and turn left - west ( go up the hill )  get to camp and press on [object=424005] /way #1442 40.76 52.61, Reward [item=221498] nice :D.\r\n3. [quest=79980] - Take quest and go to /way #1442 39.61 49.88, care At the edge of the mountain, be careful not to fall before finish/start quest. \r\n4. [quest=79974] - O_o go to [zone=38] in Eastern Kingdoms /way #1432 49.38 13.50, is located on the dam, \r\n5. [quest=79975] - Now You need to go to [zone=45] /way #1417 22.45 24.22, on the wall,  to get ther i jump down from dam then jump down in faterfall and die ",
      "date": "2026-11-09T10:21:45-06:00",
-     "rating": 16,
+     "rating": 18,
      "user": "Mypciscraze"
+    },
+    {
+     "body": "Are you wondering how to unlock your own Cozy Sleeping bag to keep your +3% experience gains active? Look no further!\r\n\r\nAlliance will start in Westfall in the Alexton Farmstead (you will see the quest appear on your mini map when you are close). /way 37.50, 50.50\r\n\r\nHorde will start in the Barrens near the field of Giants /way 46.34, 73.94\r\n\r\nStart by interacting with the burned out remains. Then when you travel to the second destination interact with the Nailed Plank (Alliance version shown in video). **THIS DOES NOT SHOW UP AS A ? FOR THE QUEST- YOU HAVE TO FIND/CLICK THE PLANK. (see video for alliance POV)\r\n\r\nIn Stonetalon mountains, the path entrance is /way 51.70, 51.91   run along the path you can see on your mini map until you find the pocket litter. Then continue running past the camp and jump down to the mound of dirt (you will see it on your mini map).\r\nCamp coordinates are /way 40.74, 52.53\r\n\r\nNext head over to Loch Modan, in the very north of the zone to the Stonewrought Dam. /way 49.41, 13.02  There is no way back up here- be prepared to Hearth, or jump to your death and take res sickness to continue (most will res to save time)\r\n\r\nNow head to the wall between Hillsbrad foothills and arathi basin. /way 81.39, 56.36 (Hillsbrad foothills). From this spot follow the wall North until you find a spot you can jump up, and play the jumping game!\r\n\r\nAlliance POV completion: https://youtu.be/psw2I5Yg-Vg",
+     "date": "2026-11-15T15:04:17-06:00",
+     "rating": 11,
+     "user": "Arleos1"
     },
     {
      "body": "Stonetalon Mountain : coord 40.8 52.6 On a first Aid crate left side of tent.",
@@ -4405,28 +4579,176 @@
      "user": "CharlotteMimic"
     },
     {
-     "body": "Are you wondering how to unlock your own Cozy Sleeping bag to keep your +3% experience gains active? Look no further!\r\n\r\nAlliance will start in Westfall in the Alexton Farmstead (you will see the quest appear on your mini map when you are close). /way 37.50, 50.50\r\n\r\nHorde will start in the Barrens near the field of Giants /way 46.34, 73.94\r\n\r\nStart by interacting with the burned out remains. Then when you travel to the second destination interact with the Nailed Plank (Alliance version shown in video). **THIS DOES NOT SHOW UP AS A ? FOR THE QUEST- YOU HAVE TO FIND/CLICK THE PLANK. (see video for alliance POV)\r\n\r\nIn Stonetalon mountains, the path entrance is /way 51.70, 51.91   run along the path you can see on your mini map until you find the pocket litter. Then continue running past the camp and jump down to the mound of dirt (you will see it on your mini map).\r\nCamp coordinates are /way 40.74, 52.53\r\n\r\nNext head over to Loch Modan, in the very north of the zone to the Stonewrought Dam. /way 49.41, 13.02  There is no way back up here- be prepared to Hearth, or jump to your death and take res sickness to continue (most will res to save time)\r\n\r\nNow head to the wall between Hillsbrad foothills and arathi basin. /way 81.39, 56.36 (Hillsbrad foothills). From this spot follow the wall North until you find a spot you can jump up, and play the jumping game!\r\n\r\nAlliance POV completion: https://youtu.be/psw2I5Yg-Vg",
-     "date": "2026-11-15T15:04:17-06:00",
-     "rating": 7,
-     "user": "Arleos1"
-    },
-    {
      "body": "Done this quest but didn't get the [url=https://www.wowhead.com/forever/item=1652/sturdy-lunchbox]Sturdy Lunchbox[/url]",
      "date": "2026-10-08T11:02:39-05:00",
-     "rating": 6,
+     "rating": 4,
      "user": "Marenzio"
+    },
+    {
+     "body": "Ok can someone explain the riddle, though? How is 'a normal player' supposed to figure this out without the quest-tracker system?\n[i]\"Not all that burns is lost. Find the twin land, find the place.\"[/i]\nShow of hand : who would be able to figure out where to find the solution without the quest-tracker or a guide?\nAm I allowed to say that the people at Blizzard who write riddles should stop smelling their own flatulences? Because I think they should.\n\nI hate this kind of stuff. Either you're part of the 0.01% in the Secret Finding Community which comb the world over and is involved in datamining to figure these things out, or you're part of the two other parts of the playerbase : those who read news online and know about these things and will follow some guide on Wowhead or elsewhere, or you're part of those who will never hear or this and will NEVER figure out these dumb riddles.\n\nThis thing shouldn't have been a riddle EVER. It should've been a feature given to every player the same way the campfire was. Same with the torch... which is apparently only found in Duskwood because why? Human-bias anyone?",
+     "date": "2026-11-22T05:26:10-06:00",
+     "rating": 3,
+     "user": "Vivianne"
+    },
+    {
+     "body": "I think I skipped the Alliance burnt cart quest, and when i was on my to Wailing Caverns I accidentally started the Horde quest and that's all it took to get started on my way.",
+     "date": "2026-11-19T23:20:36-06:00",
+     "rating": 1,
+     "user": "AmplifyMagic"
     }
    ],
    "description": "The note begins, \"Mission said they were both making deliveries for New Plague. Looks like simple apothecary accidents to me. Find my cozy spot in the mountains between The Barrens and Desolace if you want a safe place to talk.\"",
    "name": "Stepping Stones",
    "objective": "You tear the note from the plank and read the scrawled writing."
   },
+  "79974": {
+   "comments": [
+    {
+     "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\r\n\r\nHow to obtain [item=211527] & 5 [item=216619]:\r\n\r\n1. 1. Travel to 46, 73 in [zone=17]\r\nHere, interact with [object=415106] and accept the quest.\r\n\r\n2. Travel to 37, 50 in [zone=40]\r\nInteract with [object=424010]\r\n\r\n3. Travel to 51, 51 in [zone=406]\r\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\r\nAt the camp, interact with [object=424005]\r\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\r\n\r\n4. Travel to the Dam at 49, 12 in [zone=38]\r\nJump down to the ledge and interact with [object=424007]\r\n\r\n5. Travel to 81, 56 in [zone=267]\r\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\r\nFollow the little jumping puzzle toward the camp\r\nInteract with [object=406918] then interact with [object=424006]\r\n\r\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\r\n\r\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
+     "date": "2026-09-22T16:35:53-05:00",
+     "rating": 31,
+     "user": "Onsokomaru"
+    },
+    {
+     "body": "Hi all\r\n\r\nI present You Quest Chain that will finish with reward - [item=211527]\r\n\r\nSee My Video with full quest chain - https://youtu.be/I-2x-a68i6s\r\n\r\n[u][b]Starting from begining This is for Aliance route, horde swap 2-1[/b] [/u]:\r\n\r\n1. [quest=79008] - To start Go to [zone=40] /way #1436 37.42 50.67, and interact with [object=415107] Now You need to go twin land that is [zone=17] in Kalimdor /way #1413 46.36 73.77,  You have 3 ways to go ther: 1. [zone=1519] 2. [zone=11] and 3. [zone=33] all this location have harbor to Kalimdor. I go thru [zone=11]  because I wanted to discover new fly points. Then GO [zone=11] -> [zone=15] - from that place keep roud until [zone=17] /way #1413 46.36 73.77, care mobe in this area are stron keep your feet on road.\r\n2. [quest=79192] - When You get to /way #1413 46.36 73.77, press on [object=417072] to start Quest now You need to go to [zone=406], when You get to this map first go /way 51.63 52.37, and turn left - west ( go up the hill )  get to camp and press on [object=424005] /way #1442 40.76 52.61, Reward [item=221498] nice :D.\r\n3. [quest=79980] - Take quest and go to /way #1442 39.61 49.88, care At the edge of the mountain, be careful not to fall before finish/start quest. \r\n4. [quest=79974] - O_o go to [zone=38] in Eastern Kingdoms /way #1432 49.38 13.50, is located on the dam, \r\n5. [quest=79975] - Now You need to go to [zone=45] /way #1417 22.45 24.22, on the wall,  to get ther i jump down from dam then jump down in faterfall and die ",
+     "date": "2026-11-09T10:21:54-06:00",
+     "rating": 4,
+     "user": "Mypciscraze"
+    },
+    {
+     "body": "As Horde at level 25, I gave up on Wet Job. I spent over an hour trying to get down to the Dam and getting killed. I'll try again at a higher level.",
+     "date": "2026-11-14T12:53:28-06:00",
+     "rating": -2,
+     "user": "xXMericXx"
+    }
+   ],
+   "description": "\"Always like to keep a reserve stash nearby in the off chance I've got to flee in a hurry.\nThe face of this mountainside is so beautiful you might say it was carved from the waterfalls of time.\nThat's the eagles nest, that's what you're looking for.\"",
+   "name": "Wet Job",
+   "objective": "Dusting off a messenger bag emerging from the soil, you find a parchment nestled among the supplies."
+  },
+  "79975": {
+   "comments": [
+    {
+     "body": "As you reach the gate between Arathi and Hillsbrad, go North. The broken cart you need to use is on Hillsbrad side, if you are low level you can go up the Arathi side as there are no mobs, you can cross the crack in the wall.\r\n\r\nThere is a broken cart laying against the wall, takes a few jump.\r\n1. Jump first on whatever is the broken cylinder.\r\n2. Jump to the right on the plank coming out.\r\n3. Jump on top the wagon.\r\n4. Jump on the ladder.\r\n\r\nWhen you are on the wall, jump on the rocks to the right, from there you can climb.\r\n\r\nMind the jump on the ledge afterwards.",
+     "date": "2026-10-02T14:54:49-05:00",
+     "rating": 98,
+     "user": "degre"
+    },
+    {
+     "body": "If you're playing as a Skyborne, there's a climbable hill further ahead. You can then \"Walk on Air\" to the bottom portion of the wall to climb up. Finally jump down to where the wagon leads to the lower wall.",
+     "date": "2026-10-09T21:42:15-05:00",
+     "rating": 19,
+     "user": "MrCookieCrisps"
+    },
+    {
+     "body": "Hi all\r\n\r\nI present You Quest Chain that will finish with reward - [item=211527]\r\n\r\nSee My Video with full quest chain - https://youtu.be/I-2x-a68i6s\r\n\r\n[u][b]Starting from begining This is for Aliance route, horde swap 2-1[/b] [/u]:\r\n\r\n1. [quest=79008] - To start Go to [zone=40] /way #1436 37.42 50.67, and interact with [object=415107] Now You need to go twin land that is [zone=17] in Kalimdor /way #1413 46.36 73.77,  You have 3 ways to go ther: 1. [zone=1519] 2. [zone=11] and 3. [zone=33] all this location have harbor to Kalimdor. I go thru [zone=11]  because I wanted to discover new fly points. Then GO [zone=11] -> [zone=15] - from that place keep roud until [zone=17] /way #1413 46.36 73.77, care mobe in this area are stron keep your feet on road.\r\n2. [quest=79192] - When You get to /way #1413 46.36 73.77, press on [object=417072] to start Quest now You need to go to [zone=406], when You get to this map first go /way 51.63 52.37, and turn left - west ( go up the hill )  get to camp and press on [object=424005] /way #1442 40.76 52.61, Reward [item=221498] nice :D.\r\n3. [quest=79980] - Take quest and go to /way #1442 39.61 49.88, care At the edge of the mountain, be careful not to fall before finish/start quest. \r\n4. [quest=79974] - O_o go to [zone=38] in Eastern Kingdoms /way #1432 49.38 13.50, is located on the dam, \r\n5. [quest=79975] - Now You need to go to [zone=45] /way #1417 22.45 24.22, on the wall,  to get ther i jump down from dam then jump down in faterfall and die ",
+     "date": "2026-11-09T10:21:58-06:00",
+     "rating": 7,
+     "user": "Mypciscraze"
+    },
+    {
+     "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\r\n\r\nHow to obtain [item=211527] & 5 [item=216619]:\r\n\r\n1. 1. Travel to 46, 73 in [zone=17]\r\nHere, interact with [object=415106] and accept the quest.\r\n\r\n2. Travel to 37, 50 in [zone=40]\r\nInteract with [object=424010]\r\n\r\n3. Travel to 51, 51 in [zone=406]\r\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\r\nAt the camp, interact with [object=424005]\r\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\r\n\r\n4. Travel to the Dam at 49, 12 in [zone=38]\r\nJump down to the ledge and interact with [object=424007]\r\n\r\n5. Travel to 81, 56 in [zone=267]\r\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\r\nFollow the little jumping puzzle toward the camp\r\nInteract with [object=406918] then interact with [object=424006]\r\n\r\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\r\n\r\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
+     "date": "2026-09-22T16:36:31-05:00",
+     "rating": 6,
+     "user": "Onsokomaru"
+    },
+    {
+     "body": "To bring in quest : Wall between Hillsbrad and Arathi. 86 50 you will find a wagon. \nJump up the destroyed wagon and then climb up the wall.\nSeems easier than it was in SoD.",
+     "date": "2026-09-21T18:08:10-05:00",
+     "rating": 3,
+     "user": "Sifhyr"
+    },
+    {
+     "body": "If you are a lowbie: go to the broken cart at 87.5, 47.7 and parkour your way up. Shouldn't take more than 5 minutes. (Human mage)",
+     "date": "2026-11-17T13:51:26-06:00",
+     "rating": 3,
+     "user": "Oyvey"
+    },
+    {
+     "body": "Currently in the beta male Night Elves can't run through to the camp once at the top.\n\nTry jumping on the chair next to the passage, then on the boxes. On top of the boxes, turn around and backwards spam jump.\n\nEDIT: has been fixed",
+     "date": "2026-09-24T12:24:42-05:00",
+     "rating": 1,
+     "user": "PurpleDrip"
+    }
+   ],
+   "description": "<You find a carefully folded letter inside of the toolbox.>\n\"From here, with the right tools, you call the shots. Great place to launch a parachute glider.\nMy loyalty to the Eagle and Fist requires distance in order to serve them best. This barricade has had better days, like the Old Kingdoms it once defended, but I'll never abandon it.\"",
+   "name": "Eagle's Fist",
+   "objective": "Water spray dampens the air, the view is incredible."
+  },
+  "79976": {
+   "comments": [
+    {
+     "body": "[url=https://www.youtube.com/watch?v=0PEkoVCdMRc&list=PLimw25lHncBSXIUJwz_lMnU2jzoe0Hn_B]\"So, I've decided to take my work back underground. To stop it falling into the wrong hands.\" [/url]",
+     "date": "2026-11-09T14:25:02-06:00",
+     "rating": 5,
+     "user": "Ivresse28"
+    },
+    {
+     "body": "Hi all\r\n\r\nI present You Quest Chain that will finish with reward - [item=211527]\r\n\r\nSee My Video with full quest chain - https://youtu.be/I-2x-a68i6s\r\n\r\n[u][b]Starting from begining This is for Aliance route, horde swap 2-1[/b] [/u]:\r\n\r\n1. [quest=79008] - To start Go to [zone=40] /way #1436 37.42 50.67, and interact with [object=415107] Now You need to go twin land that is [zone=17] in Kalimdor /way #1413 46.36 73.77,  You have 3 ways to go ther: 1. [zone=1519] 2. [zone=11] and 3. [zone=33] all this location have harbor to Kalimdor. I go thru [zone=11]  because I wanted to discover new fly points. Then GO [zone=11] -> [zone=15] - from that place keep roud until [zone=17] /way #1413 46.36 73.77, care mobe in this area are stron keep your feet on road.\r\n2. [quest=79192] - When You get to /way #1413 46.36 73.77, press on [object=417072] to start Quest now You need to go to [zone=406], when You get to this map first go /way 51.63 52.37, and turn left - west ( go up the hill )  get to camp and press on [object=424005] /way #1442 40.76 52.61, Reward [item=221498] nice :D.\r\n3. [quest=79980] - Take quest and go to /way #1442 39.61 49.88, care At the edge of the mountain, be careful not to fall before finish/start quest. \r\n4. [quest=79974] - O_o go to [zone=38] in Eastern Kingdoms /way #1432 49.38 13.50, is located on the dam, \r\n5. [quest=79975] - Now You need to go to [zone=45] /way #1417 22.45 24.22, on the wall,  to get ther i jump down from dam then jump down in faterfall and die ",
+     "date": "2026-11-09T10:22:03-06:00",
+     "rating": 3,
+     "user": "Mypciscraze"
+    },
+    {
+     "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\r\n\r\nHow to obtain [item=211527] & 5 [item=216619]:\r\n\r\n1. 1. Travel to 46, 73 in [zone=17]\r\nHere, interact with [object=415106] and accept the quest.\r\n\r\n2. Travel to 37, 50 in [zone=40]\r\nInteract with [object=424010]\r\n\r\n3. Travel to 51, 51 in [zone=406]\r\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\r\nAt the camp, interact with [object=424005]\r\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\r\n\r\n4. Travel to the Dam at 49, 12 in [zone=38]\r\nJump down to the ledge and interact with [object=424007]\r\n\r\n5. Travel to 81, 56 in [zone=267]\r\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\r\nFollow the little jumping puzzle toward the camp\r\nInteract with [object=406918] then interact with [object=424006]\r\n\r\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\r\n\r\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
+     "date": "2026-09-22T16:37:42-05:00",
+     "rating": 2,
+     "user": "Onsokomaru"
+    },
+    {
+     "body": "Ran into an odd issue with this on Forever, today. Male Night Elves cannot pass beneath the Cargo Netting! Tried as a Wisp, as a Cat, as a Bear, no dice. Saw Tauren pass through no problem, Trolls, Orcs, you name it. Male Night Elves are just too big apparently. Going back to try as a Female skeleton. Weird stuff. Submitted a bug for it!\n\nEdit: Confirmed, FemNE worked just fine! Weird.",
+     "date": "2026-09-22T13:15:11-05:00",
+     "rating": 1,
+     "user": "AdmTea"
+    },
+    {
+     "body": "For anyone unaware, that quote is from the beginning of the Prodigy's seminal 1994 album \"Music for the Jilted Generation\".\n\nETA: I'm referring only to the \"I've decided to...\" quote, not the name of the quest.",
+     "date": "2026-11-09T05:35:37-06:00",
+     "rating": 1,
+     "user": "Grezza78"
+    },
+    {
+     "body": "Is there another quest or place to find the next meeting location? The next telescope seems to point toward Undercity, is it underground there? Or in the dungeon?",
+     "date": "2026-11-10T15:40:19-06:00",
+     "rating": 1,
+     "user": "CollateralDiddle"
+    }
+   ],
+   "description": "\"So, I've decided to take my work back underground. To stop it falling into the wrong hands.\"\n<The paper is torn just large enough to fit the message. You aren't sure if these are the last words you'll read from the author, or if they're a clue to the next hideout. An inadequately secured sleeping bag is unrolling itself onto your feet...>",
+   "name": "This Must Be The Place",
+   "objective": "Whoever was here, you just missed them."
+  },
+  "79980": {
+   "comments": [
+    {
+     "body": "[b][u]Horde: follow below; Alliance: swap the order of first 2 steps[/u][/b]\r\n\r\nHow to obtain [item=211527] & 5 [item=216619]:\r\n\r\n1. 1. Travel to 46, 73 in [zone=17]\r\nHere, interact with [object=415106] and accept the quest.\r\n\r\n2. Travel to 37, 50 in [zone=40]\r\nInteract with [object=424010]\r\n\r\n3. Travel to 51, 51 in [zone=406]\r\nFrom the road, follow the opening into the mountains, and follow the path until you reach the camp\r\nAt the camp, interact with [object=424005]\r\nRun through the camp and jump down the mountains to reach the ledge with [object=424012] that you have to interact with\r\n\r\n4. Travel to the Dam at 49, 12 in [zone=38]\r\nJump down to the ledge and interact with [object=424007]\r\n\r\n5. Travel to 81, 56 in [zone=267]\r\nWhile facing the gate toward [zone=45], turn left and follow the wall until you reach the fallen cart\r\nFollow the little jumping puzzle toward the camp\r\nInteract with [object=406918] then interact with [object=424006]\r\n\r\n[b][u]Orc Hunter Journey to unlock it:[/u][/b] https://www.youtube.com/watch?v=W_Yl_7lE_9Q\r\n\r\n[b][u]It was originally recorded for SoD, but the same quest carried over.[/u][/b]",
+     "date": "2026-09-22T16:35:19-05:00",
+     "rating": 5,
+     "user": "Onsokomaru"
+    },
+    {
+     "body": "Stonetalon Mountains : Coord 39.7 49.9 Loose earth dirth (same as in soD)",
+     "date": "2026-09-20T13:33:59-05:00",
+     "rating": 3,
+     "user": "Sifhyr"
+    },
+    {
+     "body": "Hi all\r\n\r\nI present You Quest Chain that will finish with reward - [item=211527]\r\n\r\nSee My Video with full quest chain - https://youtu.be/I-2x-a68i6s\r\n\r\n[u][b]Starting from begining This is for Aliance route, horde swap 2-1[/b] [/u]:\r\n\r\n1. [quest=79008] - To start Go to [zone=40] /way #1436 37.42 50.67, and interact with [object=415107] Now You need to go twin land that is [zone=17] in Kalimdor /way #1413 46.36 73.77,  You have 3 ways to go ther: 1. [zone=1519] 2. [zone=11] and 3. [zone=33] all this location have harbor to Kalimdor. I go thru [zone=11]  because I wanted to discover new fly points. Then GO [zone=11] -> [zone=15] - from that place keep roud until [zone=17] /way #1413 46.36 73.77, care mobe in this area are stron keep your feet on road.\r\n2. [quest=79192] - When You get to /way #1413 46.36 73.77, press on [object=417072] to start Quest now You need to go to [zone=406], when You get to this map first go /way 51.63 52.37, and turn left - west ( go up the hill )  get to camp and press on [object=424005] /way #1442 40.76 52.61, Reward [item=221498] nice :D.\r\n3. [quest=79980] - Take quest and go to /way #1442 39.61 49.88, care At the edge of the mountain, be careful not to fall before finish/start quest. \r\n4. [quest=79974] - O_o go to [zone=38] in Eastern Kingdoms /way #1432 49.38 13.50, is located on the dam, \r\n5. [quest=79975] - Now You need to go to [zone=45] /way #1417 22.45 24.22, on the wall,  to get ther i jump down from dam then jump down in faterfall and die ",
+     "date": "2026-11-09T10:21:49-06:00",
+     "rating": 3,
+     "user": "Mypciscraze"
+    }
+   ],
+   "description": "\"Not so bad, eh? Since you're reading this, it means my stash is still there. Take a hundred paces due north and don't break your ankles going down the steep cliffside. There should be enough to keep you going.\"",
+   "name": "Scramble",
+   "objective": "Find what awaits you."
+  },
   "84146": {
    "comments": [
     {
      "body": "Ok so to all of you who wonder how to obtain this bag:\n1. Go to south tanaris 59 / 91 coords and take a quest  [quest=84135] (path to get there starts at 63 / 64 coords, walk along the shore)\n\n2. You complete quest at the same spot and as rewarad you will recive potion that increase your swim speed (keep it for next step)\n\n3. Take next quest [quest=84137] THIS IS NOT WARRIOR CLASS SPECIFIC QEUST (as wowhead mentions)\n\n4. Look further south there is a lighthouse in a distance, swim toward it and use potion for faster swimming.\n\n5. During your swimming you will see an island in a distance so change direction into this island.\n\n6. You cannot stop swimming ignore fatigue you should make it but when it reaches 0 you will start to lose HP but keep swimming (you can use Health Potion in emergency) fatigue will reset several dozens yards before you reach island.\n\n7. Behind the 1st island is an Oil rig with NPC \"Sebastian Jurgens\" at first floor, he will give you another quest [quest=84138]\n\n8. Fly to Everlook and search NPC \"Nami\" in base. She will give you \"Red Bag Blues\" quest.\n\n9. Go to Burning Stepps, (48 / 53 coords) walk up the hill and deliver Q near tent. \n\nTIP: if you are not a healer with instant cast spells take best Healing Potion with you to avoid death by fatigue if you wont be carefull.\n\nTo all rogues and feral druids remeber you can always use this bag in your bank despite minus stealth level.\n\n\nI started doing this quest at level 60 so I cannot confirm whats the mini",
      "date": "2026-11-16T15:24:24-06:00",
-     "rating": 15,
+     "rating": 23,
      "user": "Gajzi"
     },
     {
@@ -4436,16 +4758,16 @@
      "user": "Jaequella"
     },
     {
+     "body": "Seems like the next quest requires level 58: [quest=84211]",
+     "date": "2026-11-16T03:32:28-06:00",
+     "rating": 3,
+     "user": "Rindera"
+    },
+    {
      "body": "You must do quest [quest=84135] first.",
      "date": "2026-11-15T08:09:15-06:00",
      "rating": 1,
      "user": "Cronium"
-    },
-    {
-     "body": "Seems like the next quest requires level 58: [quest=84211]",
-     "date": "2026-11-16T03:32:28-06:00",
-     "rating": 1,
-     "user": "Rindera"
     }
    ],
    "description": "What you want is safely hidden, and I can only hope the same can be said for what I'm looking for.\nI had a red bag containing some valuable tooling that I use for electro-optics. But, I lost it in a zeppelin accident over Burning Steppes! The bag could still be there, but with orcs, ogres, and poachers, I've had to put my work on hold.\nIf you can locate it and bring it back to me, I'll let you have Jurgens' old book.",
@@ -4487,7 +4809,7 @@
    ],
    "description": "My associate Eleanor Shackleton prides herself on traveling the wilds, surviving against weather and monsters. She is currently camped not far from here, in the hills to the west, and I remember a piece of advice that she once gave me: \"When you think you have enough firewood, gather five times more.\"\nIf you have some spare time, you could collect some wood in this basket and take it to her camp. I'm sure she could give you a few tips about the existence of a traveling adventurer.",
    "name": "Sticks and Bones",
-   "objective": "Collect 6 Dry Branches and bring them to Eleanor Shackleton.\nProvided item:"
+   "objective": "Collect 6 Dry Branches and bring them to Eleanor Shackleton."
   },
   "87288": {
    "comments": [
@@ -4651,7 +4973,7 @@
     {
      "body": "The elementals book drops off named kobold named Nimsy (not the other one named Goldtooth). Enter in the top entrance of the mine, and from the large room in the mine, go east and curve north up the stairs. He's up there with some henchmen. Probably can't solo at appropriate level.",
      "date": "2026-09-23T11:14:58-05:00",
-     "rating": 51,
+     "rating": 52,
      "user": "Arcanostic"
     },
     {
@@ -4659,11 +4981,17 @@
      "date": "2026-10-08T05:47:18-05:00",
      "rating": 13,
      "user": "gamedisciple"
+    },
+    {
+     "body": "this appears to leave the book bag quest item in your bags, but it does not seem to have any later use\r\n\r\nyou can most likely delete it",
+     "date": "2026-09-21T16:19:57-05:00",
+     "rating": -5,
+     "user": "protien"
     }
    ],
    "description": "While you're investigating the Fargodeep Mine, see if you can find any of Brother Paxton's books to return. In particular, Paxton is very concerned about a book titled, \"Fun with Elementals\". He thinks even a kobold could use it to summon an elemental servant. Be warned, the depths of the mine are fairly dangerous. You should bring friends.\nTake this book bag to protect the books when you find them!",
    "name": "Book Return",
-   "objective": "Find 6 Lost Books and \"Fun with Elementals\" and return them to Marshal Dughan.\nProvided item:"
+   "objective": "Find 6 Lost Books and \"Fun with Elementals\" and return them to Marshal Dughan."
   },
   "92124": {
    "comments": [],
@@ -4703,6 +5031,62 @@
    "name": "The Problem With Prideclaws",
    "objective": "Collect 10 Prideclaw Pelts from the Prideclaws in Shen'dar Highlands."
   },
+  "93161": {
+   "comments": [
+    {
+     "body": "It is related to [url=https://www.wowhead.com/forever/item=276188/eluviana]Eluvi'ana[/url] and the [url=https://www.wowhead.com/forever/item=282699/cleansed-water-globe]Cleansed Water Globe[/url] which Ealaane Nimbuswalker said might be found in Lathar'Lazal, to my knowledge this is the \"ancient name\" for the Blackfathom Depths.",
+     "date": "2026-11-06T17:11:01-06:00",
+     "rating": 5,
+     "user": "Fuzzyshark"
+    },
+    {
+     "body": "Wait for the dragon to go to sleep, then run in and snag the hilt.\r\nHe'll walk around a little bit before laying down to sleep for a short duration.\r\nYou should see Z's rising from him.\r\nThe [spell=1258510] will help get you in and out faster.",
+     "date": "2026-11-22T22:39:35-06:00",
+     "rating": 2,
+     "user": "S4rd0nyx"
+    },
+    {
+     "body": "For a non-spoilery hint on whom to bring this to: Consider what brought you to this area of the map in the first place.",
+     "date": "2026-11-06T16:03:46-06:00",
+     "rating": -16,
+     "user": "Clawmarks"
+    }
+   ],
+   "description": "In the faint illumination of your torchlight, you can make out a small glint of metal. Upon further inspection, it's clear that this is the broken hilt of an ancient sword.\nDespite missing a blade, you can clearly see that this hilt is a product of masterful workmanship. This is a precious heirloom, and there may be those who are interested to learn more about this.",
+   "name": "The Ancient Hilt",
+   "objective": "Find someone who would be interested in the Ancient Hilt you found in the ruins of Ban'aethal."
+  },
+  "93176": {
+   "comments": [
+    {
+     "body": "This quest is the exact same that druids and hunters had to do in SoD to get one of their runes. Requires a fair bit of traveling:\n[quote]/way #1434 45.5, 19.6 Arbor Tarantula Stranglethorn\n/way #1417 32.4, 28.5 Hay Weevil Arathi Highlands\n/way #1443 53.3, 58.3 Flesh Picker Desolace[/quote]",
+     "date": "2026-10-03T15:07:10-05:00",
+     "rating": 21,
+     "user": "Dusklight"
+    },
+    {
+     "body": "[url=https://www.wowhead.com/forever/npc=217588/arbor-tarantula]Arbor Tarantula[/url] = STV Logging Camp\r\n[url=https://www.wowhead.com/forever/npc=217589/hay-weevil]Hay Weevil[/url] = Arathi Highlands Farms\r\n[url=https://www.wowhead.com/forever/npc=217590/flesh-picker]Flesh Picker [/url]= Desolace Kodo Graveyard",
+     "date": "2026-11-08T12:27:42-06:00",
+     "rating": 7,
+     "user": "Moundsniffer"
+    },
+    {
+     "body": "This quest isn't hard just traveling around, but it takes up so much inventory space which is super annoying.",
+     "date": "2026-11-10T00:03:21-06:00",
+     "rating": 5,
+     "user": "Nobaz"
+    },
+    {
+     "body": "Definitely a for-fun quest and not intended to be one you do for monetary or experience gains. Well worth it for the beetle weevil k. neevil.",
+     "date": "2026-11-15T14:04:43-06:00",
+     "rating": 1,
+     "user": "Tahuma"
+    }
+   ],
+   "description": "Admiring my little menagerie, are you? They are my un-life's work. I've spent countless hours studying them: their anatomy, their diets, even their social rituals.\nDo you wish to join me in the hobby? Here, take this package. The notes and materials contained within should get you started. If you lose it, you'll have to purchase another one from me for a small fee.",
+   "name": "My Little Friends",
+   "objective": "Use the items contained in the Entomology Starter Kit to find and catch an Arbor Tarantula, Hay Weevil Specimen, and a Flesh Picker."
+  },
   "93197": {
    "comments": [],
    "description": "With all of the fighting and the retreat from the Nordrassil Lodge, we've been terribly shorthanded out here.\nIf you are traveling back and forth between here and Everlook, I have some mail that needs to go to the town for distribution, and we need any waiting mail brought back up. I have a stack of parcels ready for transport, if you would be so good as to help.",
@@ -4718,27 +5102,27 @@
   "93406": {
    "comments": [
     {
-     "body": "Even though the quest-text says north of Everlook, it does drop from the yeti's in the southeast",
-     "date": "2026-11-13T10:20:16-06:00",
-     "rating": 8,
-     "user": "beansauce"
-    },
-    {
      "body": "Drops from Ice Thistle Yeti leads to follow up : Top of the Post which rewards an 18 slot bag and a minor speed trinket.",
      "date": "2026-11-09T23:59:05-06:00",
-     "rating": 7,
+     "rating": 12,
      "user": "bananapally"
+    },
+    {
+     "body": "Even though the quest-text says north of Everlook, it does drop from the yeti's in the southeast",
+     "date": "2026-11-13T10:20:16-06:00",
+     "rating": 10,
+     "user": "beansauce"
     },
     {
      "body": "Drop only from Ice Thistle Yeti",
      "date": "2026-11-16T16:57:10-06:00",
-     "rating": 4,
+     "rating": 7,
      "user": "Zalka"
     },
     {
      "body": "Just a confirmation (as you can see on the page from the quest item itself) - these ONLY drop from [url=https://www.wowhead.com/forever/npc=7458/ice-thistle-yeti#map]\"Ice Thistle Yeti\"[/url] mobs. NOT Rogue ones, not Matriarchs and Patriarchs. You can find them north of Everlook on the hills and in the vale behind it, or to the southeast near and inside the cave. You can combine it with the [url=https://www.wowhead.com/forever/quest=3783/are-we-there-yeti]Yeti quest chain[/url].",
      "date": "2026-11-19T04:58:08-06:00",
-     "rating": 3,
+     "rating": 4,
      "user": "Mals"
     },
     {
@@ -4776,11 +5160,96 @@
      "date": "2026-11-20T06:09:06-06:00",
      "rating": 1,
      "user": "Noravus"
+    },
+    {
+     "body": "ONLY kill  the  \"Ice Thistle Yeti\"  around and inside the cave, killed ONLY 4 and got a drop each time.",
+     "date": "2026-11-20T16:47:37-06:00",
+     "rating": 1,
+     "user": "Reign425"
     }
    ],
    "description": "So you need to bring the return mail back to Mount Hyjal, eh? There's a little problem...\nY'see, someone came through here and ransacked the outgoing mail just a few days ago! Probably looking for money in the mail. Ran off into the hills somewhere north of here and never came back. Probably got torn apart by a yeti or something!\nAnyway, if you wanna bring back the mail, you're gonna have to go get it first!",
    "name": "Unfrozen Deliveries",
    "objective": "Find 4 pieces of Missing Mail in the hills north of Everlook and bring it back to Innkeeper Vizzie."
+  },
+  "95534": {
+   "comments": [
+    {
+     "body": "Are you wondering how to complete the quest \"Strahnbrad Mystery\"? You've killed some casters in Alterac Mountains and picked up the quest with very little information. \r\n\r\nYou need to make your way to the forge in Strahnbrad /way 60.96, 46.91 (Alterac Mountains- north of Southshore) and toss some kind of fire damage on the forge bellows.\r\nMAGES: Cast a flamestrike on each\r\nNON MAGES: Get some Easy Throw Dynamite (or anything that does fire damage to an area) and toss one on each of the 2 bellows.\r\n\r\nThis will spawn an Ancient Fire elemental for you to defeat and complete the quest! (Turn in location is SouthShore for alliance).\r\n\r\nHere is a quick video showing it done as a non-mage:  https://youtu.be/_6pVGg7Btos",
+     "date": "2026-11-11T15:02:18-06:00",
+     "rating": 48,
+     "user": "Arleos1"
+    },
+    {
+     "body": "I also triggered it using [item=280766]",
+     "date": "2026-11-08T07:57:29-06:00",
+     "rating": 46,
+     "user": "Lymine"
+    },
+    {
+     "body": "It is the same as the Hot Streak rune from SoD. \r\nYou have to get a mage to flamestrike ontop of the two bellows to summon a fire elemental. \r\nKill it to complete the quest. \r\nQuest starts from note dropped by the casters in the town.",
+     "date": "2026-10-03T17:45:43-05:00",
+     "rating": 26,
+     "user": "Martinmagi"
+    },
+    {
+     "body": "Here is EXACTLY how you do it as a hunter.\r\nJump up to the bellow, and back up just one step, until you're standing on the ledge leading up to the bellows.\r\n\r\nPlace a fire/explosive trap there, repeat on other side.\r\nOnce the mob spawns, do not run away, or he will despawn, stand right where he lands.\r\n\r\nSee photo in gallery.",
+     "date": "2026-11-08T08:01:03-06:00",
+     "rating": 19,
+     "user": "BioBooster"
+    },
+    {
+     "body": "To spawn the fire elemental you need to do one of the following TWICE near the blacksmith/bellows area:\n\n[ul]\n[li]Cast a fire spell[/li]\n[li]Use an item that deals fire damage[/li]\n[li]Deal fire damage[/li]\n[/ul]\n\nEach successful trigger will shoot a flare from you character to confirm it worked, if no flare appears the fire elemental is respawning.\n\nHe will spawn on top of the building (near the chimney) and land between the bellows, he also hits pretty hard, is immune to fire and currently has shared tag (everyone that hits him gets credit like on retail).\n\nSometimes it will pull most mobs around the area to who cast the spells, other times it will be stuck right after spawn and disappear.\n\nAs a shaman I used [spell=8024] (both casting it and dealing damage while attacking), [spell=3599] and [item=280766].",
+     "date": "2026-11-10T01:33:54-06:00",
+     "rating": 19,
+     "user": "Intorp"
+    },
+    {
+     "body": "If you are a class without fire damage spells, any engineering explosive that does fire damage can also work. My friend and I (priest and druid) has leftover Goblin Fishing Poles from STV that we used on each of the bellows (outside) which spawned the fire elemental. Doesn't have to be at the same time at all, since we waited for the cd on the dynamite to proc it. \r\nDone on WoW Forever",
+     "date": "2026-11-08T06:38:06-06:00",
+     "rating": 11,
+     "user": "Pwnboi"
+    },
+    {
+     "body": "As of writing this post standing by the furnace is causing all Syndicate in the area to agro to you",
+     "date": "2026-11-20T02:50:02-06:00",
+     "rating": 9,
+     "user": "Acobi"
+    },
+    {
+     "body": "As a Paladin, I had no fire equipment with me (such as dynamites) and no fire spells. However, I still had Verigan's Fist in my bag which deals Holyfire damage; I attacked rats or Syndicate members with the hammer next to each of the two bellows until the Holyfire damage triggered and I managed to complete the quest.",
+     "date": "2026-11-17T08:11:09-06:00",
+     "rating": 8,
+     "user": "Hakohn2511"
+    },
+    {
+     "body": "Used Rain of Fire on the two generator/engine looking things on the outside of the Blacksmith, should shoot a flare style animation from your character then on the 2nd one a fire ele comes out of the 'sky' - Kill and completed",
+     "date": "2026-11-08T04:41:33-06:00",
+     "rating": 5,
+     "user": "Fatto"
+    },
+    {
+     "body": "Warlocks! Hellfire also works for this! I got on top of one and casted it and it triggered the firework.",
+     "date": "2026-11-12T14:53:06-06:00",
+     "rating": 5,
+     "user": "BiskyBiscuits"
+    },
+    {
+     "body": "i threw 2 ez throw dynamites right on the 2 bellows on top of them on their square part, and nothing happened. no mob spawned, just -2 dynamite. im a hunter. couldnt figure out how to use explosive trap to get it to pop on the bellows either. what am i doing wrong?\n\nedit: a random came across and also had dynamite. we both threw dynamite at the same time, THEN the mob spawned. so i think the 2 bellows need to be \"on fire\" at the same time before the mob spawns.",
+     "date": "2026-11-18T23:57:16-06:00",
+     "rating": 5,
+     "user": "Ssateneth"
+    },
+    {
+     "body": "Dropping hunter fire trap and satchel of potions worked for me -  need 2 sources, near the bellows to spawn him",
+     "date": "2026-11-09T18:22:15-06:00",
+     "rating": 4,
+     "user": "EvilMerc"
+    }
+   ],
+   "description": "<The note is singed in places, but is still readable.>\nRumor has it those old bellows have a mind of their own, springing to life when no one is watching. I don't care if it's a ghost story, you'd better get to the bottom of it before I return.\nThere's great power in Strahnbrad, I know it.\n< The rest of the note is singed and torn, as if burnt by fire magic. >",
+   "name": "Strahnbrad Mystery",
+   "objective": "Solve the mystery of Strahnbrad and report your findings in town in Hillsbrad."
   },
   "95805": {
    "comments": [
@@ -4806,7 +5275,7 @@
     {
      "body": "How do they fly without feathers?",
      "date": "2026-11-13T00:29:25-06:00",
-     "rating": 3,
+     "rating": 5,
      "user": "gwenners"
     },
     {
@@ -4843,33 +5312,52 @@
     {
      "body": "This area can be accessed from Stonetalon Mountains via Malaka'jin (path starting about 73.2, 95.7), or from Mulgore (40.1, 17.3). And Desolace (77.2, 35.8).",
      "date": "2026-11-16T11:09:48-06:00",
-     "rating": 5,
+     "rating": 9,
      "user": "darniil"
     },
     {
      "body": "In the early going of Forever, green silk bags (12 slots) can be had for less than 1g while silk reagent bags are close to 2g.  Take the reagent bag as your reward (if you have a purpose for it, of course).",
      "date": "2026-11-16T20:56:24-06:00",
-     "rating": 1,
+     "rating": 2,
      "user": "KnightTime"
+    },
+    {
+     "body": "why would anyone ever take the reagent bag",
+     "date": "2026-11-08T04:12:35-06:00",
+     "rating": -32,
+     "user": "Raugmar"
     }
    ],
    "description": "Have you heard what befell the burial ground at Gloomrise? Giant spiders--rumored to have a venom so strong that it can wake the dead--have spread like wildfire. Nasty business, if you ask me.\nOne of the scouts dispatched to investigate returned half dead and covered in an incredibly resilient, crystalline spider silk. I harvested what I could, but I would highly value more samples of this silk for additional study.\nBring me more of this crystalline silk and I will reward you.",
    "name": "Stronger than Steel",
    "objective": "Gather 3 strands of Crystalline Silk from Gloomrise Spinners."
   },
+  "97029": {
+   "comments": [
+    {
+     "body": "Quest is not available until [i]after[/i] you have looted [object=618822]",
+     "date": "2026-11-18T22:32:07-06:00",
+     "rating": 2,
+     "user": "Yakiniku"
+    },
+    {
+     "body": "this is not working on the alliance side, Ealaane offers no quest. Level 15, PVE server.",
+     "date": "2026-11-15T15:23:32-06:00",
+     "rating": -3,
+     "user": "Kwendal"
+    }
+   ],
+   "description": "",
+   "name": "Eluvi'ana",
+   "objective": "Deliver the Ancient Skyborne Blade to Ealaane Nimbuswalker to learn more about it."
+  },
   "97253": {
    "comments": [
     {
      "body": "Looks like trash on the ground, near and inside tents",
      "date": "2026-09-26T02:17:45-05:00",
-     "rating": 3,
+     "rating": 5,
      "user": "Kittybangi"
-    },
-    {
-     "body": "[b]Usually found near tents, outside of them, not inside a tent.[/b]",
-     "date": "2026-09-29T08:30:02-05:00",
-     "rating": 1,
-     "user": "Odomiah"
     },
     {
      "body": "You will be looking for silver bolts and parts lying on the ground in the area. A full quest guide and walkthrough can be found here https://youtu.be/MVWHURorWuo",
@@ -4894,6 +5382,12 @@
      "date": "2026-11-16T19:30:42-06:00",
      "rating": 1,
      "user": "warcraftier"
+    },
+    {
+     "body": "[b]Usually found near tents, outside of them, not inside a tent.[/b]",
+     "date": "2026-09-29T08:30:02-05:00",
+     "rating": -1,
+     "user": "Odomiah"
     }
    ],
    "description": "Hey, got a sec?\nSo, apparently, nobody I've sent to deal with the recent pirate problem has come back alive. After five or six attempts I thought, \"what if I sent a machine instead?\" Turns out, scimitars double as screwdrivers in a pinch, and before I could redirect it home, it was already in pieces and scattered across their camp!\nI need those parts back, and since this is a quick little retrieval mission, I'd wager your odds for survival are MUCH higher than the others. Whaddya say?",
@@ -4905,7 +5399,7 @@
     {
      "body": "There is a faint trail going up the mountain on the right side of the road leading left from Anvilmar's front door (same road for mail delivery quest).  Follow the snowy trail past the first tree, and you'll see crates along the path. That path is steep, but climbable.  Go over the ridge, and the camp is in front of you. Kill the cat, find the book on the ground, and reverse your path out.",
      "date": "2026-09-20T20:05:34-05:00",
-     "rating": 73,
+     "rating": 78,
      "user": "CASquared"
     },
     {
@@ -4915,21 +5409,58 @@
      "user": "makorr"
     },
     {
+     "body": "Path starts at /way 26.0 68.7\r\n\r\nPosted as it's own comment so it doesn't get buried.",
+     "date": "2026-11-11T10:01:52-06:00",
+     "rating": 9,
+     "user": "Eccho850"
+    },
+    {
      "body": "Please, if you have any reverence for Final Fantasy VI open the book on the snowy ledge before turning it in. This is an amazing nod to the first scenes in Narshe.",
      "date": "2026-11-07T12:06:55-06:00",
      "rating": 3,
      "user": "Edag"
-    },
-    {
-     "body": "Path starts at /way 26.0 68.7\r\n\r\nPosted as it's own comment so it doesn't get buried.",
-     "date": "2026-11-11T10:01:52-06:00",
-     "rating": 3,
-     "user": "Eccho850"
     }
    ],
    "description": "Oi, had me back turned gettin' the boar roast ready when I heard me pal Gozwin screamin' fer his life!\nWicked fangs and a blur are all I saw when I turned. Such huge paws! A snow leopard was draggin' its gnomish catch away. I grabbed me shotgun and fired above the beast. It dropped him and sprinted off.\nLuckily, it hadn't done more than give ol' Goz some deep scratches.\nHead back to camp in the northwestern hills and retrieve Gozwin's Mechanic's Log. Kill that snow leopard too if you see it!",
    "name": "Grund and Gozwin",
    "objective": "Find Grund and Gozwin's camp in the hills to the northwest. Recover Gozwin's Mechanic's Log and kill the Snow Leopard Prowler."
+  },
+  "97583": {
+   "comments": [
+    {
+     "body": "Buy the Nutritious Slime Sludge from Boyle, target one of the excitable slimes in the canal, spam /dance at it until it emotes back, turn in the quest for your new buddy. If you /dance at the mini pet version, it dances back at you.",
+     "date": "2026-09-23T01:06:20-05:00",
+     "rating": 30,
+     "user": "Mottik"
+    },
+    {
+     "body": "[npc=4612] sells the [item=278265], which is part of the requirements to earn the [item=275682].\n\n[b][u]How to Acquire the [item=275682][/u][/b]\n[ol]\n[li]Locate [npc=4612] standing on the wooden pier at 55.4, 64.1 inside of Undercity.[/li]\n[li]Purchase [item=278265]. A stack of 5 will cost you 26 copper, less if you have a reputation discount.[/li]\n[li]Find an [npc=269452] inside the sludge of the canal.[/li]\n[li]Target the [npc=269452]. [b]MAKE SURE YOU ARE STANDING ON SOLID GROUND. If you're swimming, you won't be able to do the dance emote and complete the quest.[/b][/li]\n[li]Type /dance with the [npc=269452] targeted. You will need to do this many times. Users have reported anywhere from 4 times to 40 times.[/li]\n[li]Once you see the text \"Excitable Slime wriggles in place while facing you. Maybe you should inspect it?\" then you are able to go up to the slime and select it.[/li]\n[li]Give the [item=278265] to the slime by clicking on the slime. You do NOT need to click on the [item=278265] in your inventory. Simply have it available in your inventory.[/li]\n[li]Right click the [item=275682] in your inventory to learn the pet.[/li]\n[li]To summon, open your Pet Journal and click the Summon button.[/li]\n[/ol]",
+     "date": "2026-11-10T02:05:03-06:00",
+     "rating": 12,
+     "user": "McKizz"
+    },
+    {
+     "body": "took me about 100 emotes of /dance but got it eventually. not sure if the optimal way is just /danceing once and waiting or just spamming it, but i was emoting /dance, waiting like 5 seconds, stopped, then did the emote again right after.",
+     "date": "2026-11-17T20:04:08-06:00",
+     "rating": 5,
+     "user": "thecryptidcat"
+    },
+    {
+     "body": "Get the food first!  I /dance first, got the quest, came back (out of target range, and he was no longer friendly.  Abandoned quest and currently trying it again...no luck yet =/  Might just be RNG that I got the quest quick the first time, literally 2 quick tries.",
+     "date": "2026-11-13T16:49:41-06:00",
+     "rating": 1,
+     "user": "Divinevoid"
+    },
+    {
+     "body": "Bought the \"nutritious slime sludge\" from Boyle at 55.44 64.20 in the Undercity standing on a pier. You can only buy a stack of 5 for 25c and only need to feed one to the excitable sludge when it emotes - vendor the remaining 4. It is just a case of standing on solid ground, targeting an excitable sludge and spamming /dance - if your lucky RNG will be kind and it will emote after a few  dances - it took me around 60 goes. There was no obvious yellow quest mark over the excitable slime when it finally emoted but it did stop racing around. Right clicked on it, gave it 1 sludge, and completed the quest. Good luck!",
+     "date": "2026-11-21T19:41:01-06:00",
+     "rating": 1,
+     "user": "Serblime"
+    }
+   ],
+   "description": "<The little slime seems delighted and is attempting to mirror your motions as you dance. It begins to look weary though.\nThe little slime hovers over a bit of sludge and absorbs it, looking slightly rejuvenated.\nIt seems all of this dancing has tuckered it out. Perhaps someone in the Undercity canals sells more of this nutritious sludge?>",
+   "name": "WRIGGLE.",
+   "objective": "Purchase Nutritious Slime Sludge and return to your befriended excitable slime. If it seems tired, try dancing with it again to catch its attention."
   },
   "97914": {
    "comments": [
@@ -4938,6 +5469,12 @@
      "date": "2026-10-06T14:31:58-05:00",
      "rating": 3,
      "user": "123user"
+    },
+    {
+     "body": "I guess this one is new to Forever? Don't remember it from original Wow.",
+     "date": "2026-10-05T13:56:35-05:00",
+     "rating": -1,
+     "user": "Haxan"
     }
    ],
    "description": "Auberdine is a humble place, <class>. You won't hear its name spoken in the boughs of Darnassus. Most reference only what the Sundering took from us--the thriving cities of Ameth'Aran, Bashal'Aran, and... Lathar'Lazal.\nYet Auberdine remains in their shadow.\nI would see our work here recognized. A new vessel connects us to the kingdom of Stormwind, bringing life and supplies to our shores. I beseech you to join its next voyage, and bring this letter to a human called Baros Alexston.\nMake our home known.",
@@ -5041,7 +5578,7 @@
     {
      "body": "Hey, this Sentinel [s]actually walks pretty fast[/s] is [b]just as slow as any other escort NPC[/b]! She ran all the way through the cave in the beta, but in live, she never breaks into stride at all. [b]But[/b] she deals good damage!\n\nShe spawns in the bottom layer of the cave system, in an alcove right next to where [npc=7318] patrols. You'll be walking all the way out of the cave with her, and when she reaches the road, the quest will be completed.\n\nBefore doing this, you may want to finish [quest=2541] and the next part [quest=2561] as well as [quest=483], as she's going to be moving out at a pretty quick pace. If you let her go too far away from you, the quest will fail.\n\n[s]Also, I didn't pay any attention as to whether I received any XP/reputation doing this, but the database currently doesn't show it as giving any. That's quite odd. If there is no reward outside of the quiver/sword, camping for this escort might not actually be worth your time.[/s] [b]EDIT:[/b] As of launch, they've added a great XP reward.",
      "date": "2026-10-06T18:17:55-05:00",
-     "rating": 12,
+     "rating": 14,
      "user": "123user"
     },
     {
@@ -5091,6 +5628,12 @@
      "date": "2026-11-05T18:01:49-06:00",
      "rating": 1,
      "user": "Yakiniku"
+    },
+    {
+     "body": "Probably one of the worst quests in WoW.",
+     "date": "2026-11-09T15:11:20-06:00",
+     "rating": -1,
+     "user": "MonkeyShines"
     }
    ],
    "description": "My prayers have been answered! I am thankful that you have fought your way down here.\nI was sent here by the Oracle Tree to deliver a message to the slumbering druids here only to find it completely overrun by furbolg! They ambushed me before I could turn back and brought me down here--I fear for their next meal.\nI don't know about you, but I loathe this place. Under the earth is no place for the kaldorei.",
