@@ -651,6 +651,27 @@ test("entering a dungeon with quests not taken: one warning per entry, and the j
     GetInstanceInfo = nil
 end)
 
+test("the entering warning counts only quests taken outside the dungeon, and names them", function()
+    local W = Fake({ level = 56, raceID = 2, faction = "Horde", className = "PRIEST", areas = AREAS, instance = "party" })
+    GetInstanceInfo = function() return "Blackrock Depths" end
+    local ns = Load()
+    local q = ns.Quests("BRD", 56)
+    local out, inside = {}, 0
+    for _, x in ipairs(q.take) do
+        if ns.Inside("BRD", x.id).take then inside = inside + 1
+        elseif x.area and x.area > 0 then out[#out + 1] = x.name end
+    end
+    assert(inside > 0, "some quests are given inside the dungeon")
+    assert(#out > 0, "and some outside")
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local line
+    for _, l in ipairs(W.printed) do if l:find("did not take", 1, true) then line = l end end
+    assert(line, "warned")
+    assert(line:find("take " .. #out .. " ", 1, true), "only the outside ones are counted: " .. line)
+    assert(line:find(out[1], 1, true), "and named: " .. line)
+    GetInstanceInfo = nil
+end)
+
 test("the guide pins the first stop, then the next after a quest is taken, and ends at the entrance", function()
     local W = Fake({ level = 18, areas = { [1519] = "Stormwind City", [40] = "Westfall" },
         map = { best = 1453, maps = { [1415] = { "Eastern Kingdoms", 2 }, [1453] = { "Stormwind City", 3, 1415 },

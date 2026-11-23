@@ -333,7 +333,8 @@ function ns.CurrentDungeon()
     end
 end
 
--- Entering a dungeon whose quests wait to be taken: one line in chat and a notice, once per entry.
+-- Entering a dungeon whose quests wait to be taken outside it: one line in chat and a notice
+-- that name them, once per entry.
 local warnedFor
 function ns.CheckEnter()
     local d = ns.CurrentDungeon()
@@ -343,10 +344,17 @@ function ns.CheckEnter()
     ns.selected, ns.openQuest, ns.home = d.key, nil, false
     if not ns.Get("warnEnter") then return end
     local q = ns.Quests(d.key, UnitLevel("player") or 1)
-    local outside = 0
-    for _, x in ipairs(q.take) do if x.area and x.area > 0 then outside = outside + 1 end end
+    -- Only what is taken outside: a quest a giver inside the dungeon offers is not missed yet.
+    local outside, names = 0, {}
+    for _, x in ipairs(q.take) do
+        if x.area and x.area > 0 and not ns.Inside(d.key, x.id).take then
+            outside = outside + 1
+            if #names < 3 then names[#names + 1] = x.name end
+        end
+    end
     if outside == 0 then return end
-    local text = L.ENTER_WARN:format(outside, ns.DungeonName(d))
+    local text = L.ENTER_WARN:format(outside, ns.DungeonName(d)) .. " " .. table.concat(names, ", ")
+        .. (outside > #names and ", ..." or "")
     print("|cff9ad0ffGulli-DungeonPrep|r: " .. text)
     if ns.Skin and ns.Skin.Toast then
         ns.Skin.Toast({ key = "enter", icon = ns.Icon(d.key), title = ns.DungeonName(d), text = text, kind = "warn",
