@@ -787,7 +787,6 @@ function ns.AutoSubject()
     if items and text == ours and SendMailFrame_Update and not ns.updating then
         -- the game's own name of the letter after its first item
         ns.updating = true
-        if SendMailFrame then SendMailFrame.previousItem = "" end
         SendMailFrame_Update()
         ns.updating = nil
     end
