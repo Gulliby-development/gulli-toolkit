@@ -353,7 +353,7 @@ function ns.CheckEnter()
         end
     end
     if outside == 0 then return end
-    local text = L.ENTER_WARN:format(outside, ns.DungeonName(d)) .. " " .. table.concat(names, ", ")
+    local text = L.ENTER_WARN:format(ns.DungeonName(d), outside) .. " " .. table.concat(names, ", ")
         .. (outside > #names and ", ..." or "")
     print("|cff9ad0ffGulli-DungeonPrep|r: " .. text)
     if ns.Skin and ns.Skin.Toast then

@@ -647,7 +647,7 @@ test("entering a dungeon with quests not taken: one warning per entry, and the j
     W.printed = {}
     ns.Set("warnEnter", false)
     W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
-    for _, l in ipairs(W.printed) do assert(not l:find("did not take", 1, true), "the switch stops the warning") end
+    for _, l in ipairs(W.printed) do assert(not l:find("you did not take", 1, true), "the switch stops the warning") end
     GetInstanceInfo = nil
 end)
 
@@ -665,9 +665,9 @@ test("the entering warning counts only quests taken outside the dungeon, and nam
     assert(#out > 0, "and some outside")
     W.Fire("PLAYER_ENTERING_WORLD")
     local line
-    for _, l in ipairs(W.printed) do if l:find("did not take", 1, true) then line = l end end
+    for _, l in ipairs(W.printed) do if l:find("you did not take", 1, true) then line = l end end
     assert(line, "warned")
-    assert(line:find("take " .. #out .. " ", 1, true), "only the outside ones are counted: " .. line)
+    assert(line:find("take: " .. #out .. ".", 1, true), "only the outside ones are counted: " .. line)
     assert(line:find(out[1], 1, true), "and named: " .. line)
     -- Franclorn Forgewright is a ghost outside the dungeon: his quest is one to take before.
     local legacy
