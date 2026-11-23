@@ -78,6 +78,8 @@ T.en = {
     TELL = "%s in %s at %s, %s",
     TELL_NOPOS = "%s in %s",
     SHARED = "%s found %s",
+    TWK_RARES = "Rare mob alert",
+    TWK_RARES_D = "A card and a sound when a rare mob is near",
 }
 
 T.de = {
@@ -149,6 +151,8 @@ T.de = {
     TELL = "%s in %s bei %s, %s",
     TELL_NOPOS = "%s in %s",
     SHARED = "%s hat %s gefunden",
+    TWK_RARES = "Alarm für seltene Gegner",
+    TWK_RARES_D = "Karte und Ton, wenn ein seltener Gegner in der Nähe ist",
 }
 
 T.es = {
@@ -220,6 +224,8 @@ T.es = {
     TELL = "%s en %s en %s, %s",
     TELL_NOPOS = "%s en %s",
     SHARED = "%s encontró a %s",
+    TWK_RARES = "Aviso de enemigos raros",
+    TWK_RARES_D = "Una tarjeta y un sonido cuando hay un raro cerca",
 }
 
 T.fr = {
@@ -291,6 +297,8 @@ T.fr = {
     TELL = "%s à %s en %s, %s",
     TELL_NOPOS = "%s à %s",
     SHARED = "%s a trouvé %s",
+    TWK_RARES = "Alerte de monstres rares",
+    TWK_RARES_D = "Une carte et un son quand un rare est proche",
 }
 
 T.pl = {
@@ -362,6 +370,8 @@ T.pl = {
     TELL = "%s w %s na %s, %s",
     TELL_NOPOS = "%s w %s",
     SHARED = "%s znalazł(a) %s",
+    TWK_RARES = "Alarm o rzadkich potworach",
+    TWK_RARES_D = "Karta i dźwięk, gdy rzadki potwór jest blisko",
 }
 
 T.pt = {
@@ -433,6 +443,8 @@ T.pt = {
     TELL = "%s em %s em %s, %s",
     TELL_NOPOS = "%s em %s",
     SHARED = "%s encontrou %s",
+    TWK_RARES = "Alerta de monstros raros",
+    TWK_RARES_D = "Um cartão e um som quando há um raro perto",
 }
 
 T.ru = {
@@ -504,6 +516,8 @@ T.ru = {
     TELL = "%s: %s, %s %s",
     TELL_NOPOS = "%s: %s",
     SHARED = "%s нашёл %s",
+    TWK_RARES = "Оповещение о редких мобах",
+    TWK_RARES_D = "Карточка и звук, когда рядом редкий моб",
 }
 
 T.zh = {
@@ -575,6 +589,8 @@ T.zh = {
     TELL = "%s 在 %s（%s, %s）",
     TELL_NOPOS = "%s 在 %s",
     SHARED = "%s 发现了 %s",
+    TWK_RARES = "稀有怪提醒",
+    TWK_RARES_D = "稀有怪在附近时显示卡片并播放声音",
 }
 
 ns.T = T

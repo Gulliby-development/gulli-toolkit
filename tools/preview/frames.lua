@@ -604,6 +604,11 @@ local function texHtml(t, rect, prect)
         return string.format('<div class="tx" style="%sbackground:conic-gradient(from %.2fdeg,%s 0 5.6deg,transparent 5.6deg);-webkit-mask:%s;mask:%s"></div>',
             box(rect, prect), at - 2.8, css(c), m, m)
     end
+    -- The star of the Recommended tweaks.
+    if tostring(tex):find("\\Art\\Star$") then
+        local m = "polygon(50% 5%,61.8% 36.5%,95.6% 38.2%,69% 59.2%,78.2% 91.8%,50% 73.2%,21.8% 91.8%,31% 59.2%,4.4% 38.2%,38.2% 36.5%)"
+        return string.format('<div class="tx" style="%sbackground:%s;clip-path:%s"></div>', box(rect, prect), css(c), m)
+    end
     -- The hub's emblem: the tinted PNG copy of Art/Mark, with the texture's cut.
     if tostring(tex):find("\\Art\\Mark$") then
         local tc = t.__tc or { 0, 1, 0, 1 }

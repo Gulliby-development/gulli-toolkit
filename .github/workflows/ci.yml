@@ -23,10 +23,10 @@ jobs:
         run: sudo apt-get install -y lua5.1 lua-check > /dev/null
 
       - name: Lua syntax
-        run: for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
+        run: shopt -s nullglob; for f in Gulli-*/*.lua Gulli-*/Tweaks/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
 
       - name: Names and GUIDs of other units are checked for secret values
-        run: lua5.1 tools/ci/secret_units.lua Gulli-*/*.lua
+        run: lua5.1 tools/ci/secret_units.lua Gulli-*/*.lua Gulli-*/Tweaks/*.lua
 
       - name: Tests on a fake WoW client
         run: |
@@ -94,6 +94,10 @@ jobs:
             fi
             for f in "$dir"*.lua; do
               grep -qx "$(basename "$f")" "$toc" || { echo "::error::$f is not listed in $toc"; exit 1; }
+            done
+            for f in "$dir"Tweaks/*.lua; do
+              [ -f "$f" ] || continue
+              grep -qxF "Tweaks\\$(basename "$f")" "$toc" || { echo "::error::$f is not listed in $toc"; exit 1; }
             done
           done
 

@@ -80,9 +80,13 @@ def strip_comments(text):
 def addon_files():
     for d in sorted(os.listdir(ROOT)):
         if d.startswith("Gulli-") and os.path.isdir(os.path.join(ROOT, d)):
-            for f in sorted(os.listdir(os.path.join(ROOT, d))):
-                if f.endswith(".lua") and f not in ("Locales.lua", "Data.lua"):
-                    yield os.path.join(d, f)
+            for sub in ("", "Tweaks"):
+                folder = os.path.join(ROOT, d, sub)
+                if not os.path.isdir(folder):
+                    continue
+                for f in sorted(os.listdir(folder)):
+                    if f.endswith(".lua") and f not in ("Locales.lua", "Data.lua"):
+                        yield os.path.join(d, sub, f) if sub else os.path.join(d, f)
 
 
 def events_in(text):

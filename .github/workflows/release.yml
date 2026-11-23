@@ -42,7 +42,7 @@ jobs:
 
       - name: Tests
         run: |
-          for f in Gulli-*/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
+          shopt -s nullglob; for f in Gulli-*/*.lua Gulli-*/Tweaks/*.lua tests/*/*.lua; do luac5.1 -p "$f"; done
           for t in tests/*/test.lua; do lua5.1 "$t"; done
 
       - name: Module, folder and version

@@ -2146,5 +2146,187 @@ test("a window that opens at a place closes with it, walking away too, once per 
     for place in pairs(S.PLACES) do assert(S.PlaceKind(place), place) end
 end)
 
+-- Tweaks -----------------------------------------------------------------------------------------
+
+local function tweakNs()
+    Fake({ addons = { QC } })
+    local ns = Load()
+    return ns
+end
+
+test("own tweaks keep the page order whatever order their files load in", function()
+    local ns = tweakNs()
+    local keys = {}
+    for _, t in ipairs(ns.TWEAKS) do keys[#keys + 1] = t.key end
+    eq(keys[1], "levelShot")
+    ns.AddTweak({ key = "spellRanks", group = "level" })
+    eq(ns.TWEAKS[2].key, "spellRanks", "a tweak of the list goes to its place")
+    eq(ns.AddTweak({ key = "bad", group = "nowhere" }), false, "a tweak needs a known group")
+    eq(ns.AddTweak({ group = "ui" }), false, "and a key")
+end)
+
+test("every own tweak has its texts in every language, an icon and a known group", function()
+    local ns = tweakNs()
+    for _, t in ipairs(ns.TWEAKS) do
+        local K = t.key:upper()
+        for _, lang in ipairs(ns.TAGS) do
+            assert(ns.T[lang]["TW_" .. K], lang .. " TW_" .. K)
+            assert(ns.T[lang]["TW_" .. K .. "_D"], lang .. " TW_" .. K .. "_D")
+        end
+        assert(type(t.icon) == "string" and t.icon:match("^Interface\\"), t.key .. " icon")
+        for _, part in ipairs(t.panel or {}) do
+            assert(part.kind == "head" or part.key, t.key .. ": a setting without a key")
+            assert(type(part.label) == "string" and not part.label:match("^TWP_"), t.key .. ": a setting without its text")
+        end
+    end
+    for _, g in ipairs(ns.TWEAK_GROUPS) do
+        for _, lang in ipairs(ns.TAGS) do assert(ns.T[lang]["TWG_" .. g:upper()], lang .. " TWG_" .. g:upper()) end
+        assert(ns.TWEAK_GROUP_ICON[g], g .. " icon")
+    end
+end)
+
+test("a tweak starts at login when on, and the switch starts and stops it at once", function()
+    local ns = tweakNs()
+    local log = {}
+    ns.AddTweak({ key = "zzTest", group = "ui", icon = "Interface\\Icons\\X", defaults = { n = 3 },
+        enable = function(get) log[#log + 1] = "on" .. get("n") end,
+        disable = function() log[#log + 1] = "off" end })
+    GulliToolkitDB.tweaks = { zzTest = { on = true, n = 5 } }
+    ns.StartTweaks()
+    eq(log[1], "on5", "a saved setting wins over the default")
+    ns.SetTweak("zzTest", false)
+    eq(log[2], "off")
+    eq(ns.TweakOn("zzTest"), false)
+    ns.SetTweak("zzTest", true)
+    eq(log[3], "on5")
+    ns.SetTweakOpt("zzTest", "n", 7)
+    eq(log[4], "off", "a change without its own changed() starts the tweak again")
+    eq(log[5], "on7")
+    ns.SetTweak("zzTest", false)
+    ns.SetTweakOpt("zzTest", "n", 8)
+    eq(#log, 6, "a setting of a tweak that is off starts nothing")
+    eq(ns.TweakGet("zzTest", "n"), 8)
+end)
+
+test("a tweak that breaks never stops the others", function()
+    local ns = tweakNs()
+    local started = false
+    ns.AddTweak({ key = "aaBroken", group = "ui", icon = "Interface\\Icons\\X", enable = function() error("boom") end })
+    ns.AddTweak({ key = "aaFine", group = "ui", icon = "Interface\\Icons\\X", enable = function() started = true end })
+    GulliToolkitDB.tweaks = { aaBroken = { on = true }, aaFine = { on = true } }
+    ns.StartTweaks()
+    assert(started, "the next tweak still started")
+end)
+
+test("module rows come from Register, dim while the module is paused", function()
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    local db = { fast = true }
+    GulliToolkit.Register({ key = "Loot", open = function() end, pause = function() end,
+        tweaks = { { key = "fast", group = "loot", label = "Fast loot", desc = "Takes all",
+                     get = function() return db.fast end, set = function(on) db.fast = on end },
+                   { key = "broken", group = "nowhere", label = "x", get = function() end, set = function() end },
+                   { key = "noset", group = "loot", label = "y", get = function() end } } })
+    local rows = ns.TweakRows()
+    local mod
+    for _, r in ipairs(rows) do if r.kind == "module" then assert(not mod, "only the valid row"); mod = r end end
+    eq(mod.key, "Loot:fast")
+    eq(mod.on, true)
+    eq(mod.live, true)
+    eq(rows[#rows], mod, "module rows come after the own tweaks")
+    eq(#ns.TweakFilter(rows, "all", "loot"), 1, "the search finds a row by its module's name")
+    GulliToolkitDB.paused = { Loot = true }
+    mod = ns.TweakRows()[#ns.TweakRows()]
+    eq(mod.live, false, "a paused module lends a dim row")
+    eq(mod.on, false)
+end)
+
+test("Recommended and Turn all off change only own tweaks, and Undo puts them back", function()
+    local ns = tweakNs()
+    local db = { fast = false }
+    GulliToolkit.Register({ key = "Loot", open = function() end,
+        tweaks = { { key = "fast", group = "loot", label = "Fast loot",
+                     get = function() return db.fast end, set = function(on) db.fast = on end } } })
+    ns.SetTweak("guildMotd", true)
+    local was, n = ns.TweaksRecommended()
+    for _, t in ipairs(ns.TWEAKS) do
+        eq(ns.TweakOn(t.key), t.star == true or t.key == "guildMotd", t.key)
+    end
+    eq(n, ns.RecommendedCount())
+    eq(db.fast, false, "a module's setting stays")
+    ns.TweaksRestore(was)
+    eq(ns.TweakOn("levelShot"), false, "Undo")
+    eq(ns.TweakOn("guildMotd"), true, "Undo keeps what was on")
+    was, n = ns.TweaksAllOff()
+    eq(n, 1)
+    eq(ns.TweakOn("guildMotd"), false)
+    ns.TweaksRestore(was)
+    eq(ns.TweakOn("guildMotd"), true)
+end)
+
+test("the filter, the counts and the groups of the page", function()
+    local ns = tweakNs()
+    ns.SetTweak("levelShot", true)
+    local rows = ns.TweakRows()
+    local c = ns.TweakCounts(rows)
+    eq(c.all.on, 1)
+    eq(c.level.on, 1)
+    eq(c.people.total >= 1, true)
+    eq(#ns.TweakFilter(rows, "on", ""), 1)
+    eq(ns.TweakFilter(rows, "people", "")[1].key, "guildMotd")
+    eq(#ns.TweakFilter(rows, "all", "screenshot"), 1, "the search reads the name and the line")
+    local groups = ns.TweakGroups(rows)
+    eq(groups[1].key, "level", "groups in the track's order, empty ones left out")
+end)
+
+test("level-up screenshot: a level, and an achievement only with its switch", function()
+    local ns = tweakNs()
+    local shots = 0
+    Screenshot = function() shots = shots + 1 end
+    ns.SetTweak("levelShot", true)
+    ns.LevelShotEvent(nil, "PLAYER_LEVEL_UP")
+    eq(shots, 1)
+    ns.LevelShotEvent(nil, "ACHIEVEMENT_EARNED")
+    eq(shots, 1, "no achievement shot by default")
+    ns.SetTweakOpt("levelShot", "achievement", true)
+    ns.LevelShotEvent(nil, "ACHIEVEMENT_EARNED")
+    eq(shots, 2)
+    Screenshot = nil
+end)
+
+test("guild message of the day: a notice once per text, nothing for a secret one", function()
+    local ns = tweakNs()
+    local shown = {}
+    ns.Skin.Toast = function(o) shown[#shown + 1] = o.text end
+    IsInGuild = function() return true end
+    GetGuildRosterMOTD = function() return "Raid at 8" end
+    ns.SetTweak("guildMotd", true)
+    eq(shown[1], "Raid at 8", "at the switch")
+    ns.GuildMotdEvent(nil, "GUILD_MOTD", "Raid at 8")
+    eq(#shown, 1, "the same text once")
+    ns.GuildMotdEvent(nil, "GUILD_MOTD", "Raid at 9")
+    eq(shown[2], "Raid at 9")
+    issecretvalue = function(v) return v == "secret" end
+    ns.GuildMotdEvent(nil, "GUILD_MOTD", "secret")
+    eq(#shown, 2)
+    issecretvalue, IsInGuild, GetGuildRosterMOTD = nil, nil, nil
+end)
+
+test("the Tweaks page opens under Home, its gear opens the settings and the hub's search finds tweaks", function()
+    local ns = tweakNs()
+    ns.OpenTweaks()
+    local view = ns.View()
+    eq(view.page, "tweaks")
+    assert(ns.TweaksPage():IsShown())
+    ns.TweaksView().open.levelShot = true
+    ns.FillTweaks()
+    ns.Refresh()
+    ns.OpenTweaks("screenshot")
+    eq(ns.TweaksView().query, "screenshot")
+    ns.TweaksSearch("")
+    ns.Enter(nil)
+    eq(view.page, "home")
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)

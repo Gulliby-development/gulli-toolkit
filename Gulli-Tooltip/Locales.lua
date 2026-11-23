@@ -55,6 +55,8 @@ T.en = {
     EX_GEAR = "Blade of Eternal Darkness",
     EX_BOSS = "Princess Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "Item and NPC ids",
+    TWK_IDS_D = "Adds the id to item and NPC tooltips",
 }
 
 T.de = {
@@ -103,6 +105,8 @@ T.de = {
     EX_GEAR = "Klinge der ewigen Dunkelheit",
     EX_BOSS = "Prinzessin Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "IDs von Gegenständen und NPCs",
+    TWK_IDS_D = "Fügt die ID zu Tooltips von Gegenständen und NPCs hinzu",
 }
 
 T.es = {
@@ -151,6 +155,8 @@ T.es = {
     EX_GEAR = "Hoja de la oscuridad eterna",
     EX_BOSS = "Princesa Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "ID de objetos y PNJ",
+    TWK_IDS_D = "Añade el ID a la ayuda de objetos y PNJ",
 }
 
 T.fr = {
@@ -199,6 +205,8 @@ T.fr = {
     EX_GEAR = "Lame des ténèbres éternelles",
     EX_BOSS = "Princesse Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "ID des objets et PNJ",
+    TWK_IDS_D = "Ajoute l'ID aux infobulles des objets et PNJ",
 }
 
 T.pl = {
@@ -247,6 +255,8 @@ T.pl = {
     EX_GEAR = "Ostrze Wiecznej Ciemności",
     EX_BOSS = "Księżniczka Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "ID przedmiotów i NPC",
+    TWK_IDS_D = "Dodaje ID do podpowiedzi przedmiotów i NPC",
 }
 
 T.pt = {
@@ -295,6 +305,8 @@ T.pt = {
     EX_GEAR = "Lâmina da Escuridão Eterna",
     EX_BOSS = "Princesa Theradras",
     EX_DUNGEON = "Maraudon",
+    TWK_IDS = "IDs de itens e PNJs",
+    TWK_IDS_D = "Adiciona o ID às dicas de itens e PNJs",
 }
 
 T.ru = {
@@ -343,6 +355,8 @@ T.ru = {
     EX_GEAR = "Клинок вечной тьмы",
     EX_BOSS = "Принцесса Терадрас",
     EX_DUNGEON = "Мародон",
+    TWK_IDS = "Номера предметов и NPC",
+    TWK_IDS_D = "Добавляет номер в подсказки предметов и NPC",
 }
 
 T.zh = {
@@ -391,6 +405,8 @@ T.zh = {
     EX_GEAR = "永暗之刃",
     EX_BOSS = "瑟莱德丝公主",
     EX_DUNGEON = "玛拉顿",
+    TWK_IDS = "物品和 NPC 编号",
+    TWK_IDS_D = "在物品和 NPC 提示中显示编号",
 }
 
 ns.T = T

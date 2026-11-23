@@ -428,5 +428,11 @@ do
         summary = function() return ns.Summary() end,
         reset = function() ns.Reset() end,
         options = { option("protect"), option("quest"), option("alts"), option("price"), option("drops"), option("shift") },
+        -- A row on the hub's Tweaks page.
+        tweaks = {
+            { key = "id", group = "ui", label = L.TWK_IDS, desc = L.TWK_IDS_D, tip = L.TIP_ID, icon = "Interface\\Icons\\INV_Misc_Note_05",
+              get = function() return ns.db ~= nil and ns.db.id == true end,
+              set = function(on) if ns.db then ns.Set("id", on) end end },
+        },
     })
 end

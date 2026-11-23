@@ -293,6 +293,17 @@ do
             option("safe", ns.L.OPT_SAFE),
             option("unusable", ns.L.OPT_UNUSABLE),
         },
+        -- Rows on the hub's Tweaks page.
+        tweaks = {
+            { key = "repair", group = "loot", label = ns.L.TWK_REPAIR, desc = ns.L.TWK_REPAIR_D,
+              icon = ns.OPT_ICON.repair, shift = true,
+              get = function() return ns.db ~= nil and ns.db.repair == true end,
+              set = function(on) if ns.db then ns.db.repair = on and true or false end end },
+            { key = "sell", group = "loot", label = ns.L.TWK_SELL, desc = ns.L.TWK_SELL_D,
+              icon = ns.OPT_ICON.sell, shift = true,
+              get = function() return ns.db ~= nil and ns.db.sell == true end,
+              set = function(on) if ns.db then ns.db.sell = on and true or false end end },
+        },
         -- what this session sold, else the junk waiting in the bags
         summary = function()
             if not ns.db then return nil end

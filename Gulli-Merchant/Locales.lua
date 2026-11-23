@@ -51,6 +51,10 @@ T.en = {
     TIP_guild = "Repair with guild money when allowed.",
     TIP_safe = "Sell at most 12 items, so all can be bought back.",
     TIP_unusable = "Also sell bound gear your class cannot use.",
+    TWK_REPAIR = "Repair at a vendor",
+    TWK_REPAIR_D = "Repairs your gear when you open a vendor who can",
+    TWK_SELL = "Sell junk",
+    TWK_SELL_D = "Sells grey items when you open a vendor",
 }
 
 T.de = {
@@ -95,6 +99,10 @@ T.de = {
     TIP_guild = "Repariert mit Gildengold, wenn erlaubt.",
     TIP_safe = "Höchstens 12 verkaufen, alles rückkaufbar.",
     TIP_unusable = "Verkauft auch gebundene, unbrauchbare Ausrüstung.",
+    TWK_REPAIR = "Beim Händler reparieren",
+    TWK_REPAIR_D = "Repariert deine Ausrüstung, sobald ein Händler es kann",
+    TWK_SELL = "Plunder verkaufen",
+    TWK_SELL_D = "Verkauft graue Gegenstände beim Öffnen eines Händlers",
 }
 
 T.es = {
@@ -139,6 +147,10 @@ T.es = {
     TIP_guild = "Repara con dinero del gremio si se permite.",
     TIP_safe = "Vende como mucho 12, todo recomprable.",
     TIP_unusable = "Vende también equipo ligado que no puedes usar.",
+    TWK_REPAIR = "Reparar en el vendedor",
+    TWK_REPAIR_D = "Repara tu equipo al abrir un vendedor que pueda",
+    TWK_SELL = "Vender basura",
+    TWK_SELL_D = "Vende los objetos grises al abrir un vendedor",
 }
 
 T.fr = {
@@ -183,6 +195,10 @@ T.fr = {
     TIP_guild = "Répare avec l'or de guilde si permis.",
     TIP_safe = "Au plus 12, tout reste rachetable.",
     TIP_unusable = "Vend aussi l'équipement lié inutilisable.",
+    TWK_REPAIR = "Réparer chez un marchand",
+    TWK_REPAIR_D = "Répare ton équipement chez un marchand qui le peut",
+    TWK_SELL = "Vendre la camelote",
+    TWK_SELL_D = "Vend les objets gris chez un marchand",
 }
 
 T.pl = {
@@ -227,6 +243,10 @@ T.pl = {
     TIP_guild = "Naprawia za złoto gildii, jeśli wolno.",
     TIP_safe = "Najwyżej 12, wszystko do odkupienia.",
     TIP_unusable = "Sprzedaje też związany sprzęt, którego nie użyjesz.",
+    TWK_REPAIR = "Naprawiaj u kupca",
+    TWK_REPAIR_D = "Naprawia ekwipunek u kupca, który to potrafi",
+    TWK_SELL = "Sprzedawaj śmieci",
+    TWK_SELL_D = "Sprzedaje szare przedmioty u kupca",
 }
 
 T.pt = {
@@ -271,6 +291,10 @@ T.pt = {
     TIP_guild = "Repara com ouro da guilda se permitido.",
     TIP_safe = "No máximo 12, tudo recomprável.",
     TIP_unusable = "Vende também equipamento vinculado inútil.",
+    TWK_REPAIR = "Reparar no vendedor",
+    TWK_REPAIR_D = "Repara o equipamento ao abrir um vendedor que conserta",
+    TWK_SELL = "Vender lixo",
+    TWK_SELL_D = "Vende os itens cinza ao abrir um vendedor",
 }
 
 T.ru = {
@@ -315,6 +339,10 @@ T.ru = {
     TIP_guild = "Чинить за счёт гильдии, если можно.",
     TIP_safe = "Не больше 12, всё можно выкупить.",
     TIP_unusable = "Продавать и привязанные вещи, которые класс не носит.",
+    TWK_REPAIR = "Чинить у торговца",
+    TWK_REPAIR_D = "Чинит снаряжение, когда открываешь торговца с починкой",
+    TWK_SELL = "Продавать хлам",
+    TWK_SELL_D = "Продаёт серые вещи, когда открываешь торговца",
 }
 
 T.zh = {
@@ -359,6 +387,10 @@ T.zh = {
     TIP_guild = "允许时用公会资金修理。",
     TIP_safe = "最多卖 12 件,可全部回购。",
     TIP_unusable = "也出售本职业无法使用的绑定装备。",
+    TWK_REPAIR = "在商人处修理",
+    TWK_REPAIR_D = "打开可修理的商人时修理装备",
+    TWK_SELL = "出售垃圾",
+    TWK_SELL_D = "打开商人时出售灰色物品",
 }
 
 ns.T = T
