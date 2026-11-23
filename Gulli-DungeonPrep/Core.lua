@@ -755,7 +755,7 @@ function ns.TrackerItems(key, level)
         if Q.IsComplete and Q.IsComplete(e.id) then
             it.state, ready = "ready", ready + 1
             it.inside = ins.turnin or nil
-            it.lines[1] = { text = (t and t.who ~= "") and L.TR_READY_TO:format(t.who) or L.TR_READY, done = true }
+            it.lines[1] = { text = (t and t.who ~= "") and ns.WhereTag(t) or L.TR_READY, done = true }
             if t then it.pin = pinOf(t.who, t.area, t.x, t.y) end
         else
             for i, o in ipairs(ns.Objectives(e)) do
@@ -766,9 +766,9 @@ function ns.TrackerItems(key, level)
         all[#all + 1] = it
     end
     for _, e in ipairs(q.take) do
-        local where = ns.Where(e)
+        local where = ns.WhereTag(e)
         all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
-                          lines = { { text = where ~= "" and L.TR_TAKE:format(where) or L.Q_TAKE } },
+                          lines = { { text = where ~= "" and where or L.Q_TAKE } },
                           pin = pinOf(e.who, e.area, e.x, e.y), entry = e,
                           inside = ns.Inside(key, e.id).take or nil }
     end
@@ -1050,6 +1050,19 @@ function ns.Where(q)
     local zone = areaName(q.area)
     if q.who == "" then return zone or "" end
     return zone and L.WHERE:format(q.who, zone) or q.who
+end
+
+-- The same for a narrow row (the tracker): a small icon stands for "who" and one for
+-- "where", so the row needs no words such as "Take from".
+ns.WHO_ICON = "Interface\\Icons\\INV_Misc_Head_Human_01"
+ns.ZONE_ICON = "Interface\\Icons\\Ability_Hunter_SniperShot"
+local function iconTag(path) return "|T" .. path .. ":13:13:0:0:64:64:5:59:5:59|t " end
+function ns.WhereTag(q)
+    local zone = areaName(q.area)
+    zone = zone and (iconTag(ns.ZONE_ICON) .. zone)
+    if not q.who or q.who == "" then return zone or "" end
+    local who = iconTag(ns.WHO_ICON) .. q.who
+    return zone and L.WHERE:format(who, zone) or who
 end
 
 -- Where the player is: { zone (the zone map's name), x, y (map percent), kalimdor }, from

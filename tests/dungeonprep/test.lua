@@ -1223,6 +1223,21 @@ test("the tracker and the Chains tab: a fork, groups that add up, paging at a fi
         if it.id == 3906 then fork = it end
     end
     assert(fork, "the row is named by the quest to do now")
+    -- Who to go to is an icon and a name, where an icon and the zone: no words such as "Take from".
+    local tagged = ns.WhereTag({ who = "Thunderheart", area = 17 })
+    assert(tagged:find(ns.WHO_ICON, 1, true) and tagged:find(ns.ZONE_ICON, 1, true), "both icons: " .. tagged)
+    assert(tagged:find("Thunderheart", 1, true), "the name stays")
+    eq(ns.WhereTag({ who = "", area = 0 }), "")
+    assert(not ns.WhereTag({ who = "Thunderheart", area = 0 }):find(ns.ZONE_ICON, 1, true), "no zone, no zone icon")
+    local takes = 0
+    for _, it in ipairs(items) do
+        if it.state == "take" and it.pin then
+            takes = takes + 1
+            assert(it.lines[1].text:find(ns.WHO_ICON, 1, true), "a take row names its giver by the icon: " .. it.lines[1].text)
+        end
+    end
+    assert(takes > 0, "the list has quests to take")
+    assert(ns.L.TR_TAKE == nil or ns.L.TR_TAKE == "TR_TAKE", "the words are gone")
     eq(fork.fork, 3)
     eq(fork.at, 1)
     assert(fork.goal and fork.goal ~= fork.name, "and names the chain's last quest as its goal")
