@@ -481,11 +481,14 @@ ns.MENU_STRATA, ns.MENU_LEVEL = "TOOLTIP", 10
 local function newMenu(w, h)
     local p = CreateFrame("Frame", nil, UIParent)
     p:SetSize(w, h)
+    -- The game ignores SetFrameStrata and SetFrameLevel while they are fixed: unfix, set, fix again.
     local function raise(self)
-        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(false) end
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(false) end
         self:SetFrameStrata(ns.MENU_STRATA)
-        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
         self:SetFrameLevel(ns.MENU_LEVEL)
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
         local mine = frame and frame.GetEffectiveScale and tonumber(frame:GetEffectiveScale())
         local base = UIParent.GetEffectiveScale and tonumber(UIParent:GetEffectiveScale())
         if mine and base and mine > 0 and base > 0 then self:SetScale(mine / base) end

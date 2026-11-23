@@ -171,6 +171,16 @@ TIPS = {
                 "by step, and without stealth."},
 }
 
+def comment_tips():
+    """Tips from the players' Wowhead comments (tools/dungeonprep/comments.py), in our own words:
+    `comment-tips.json`, quest id -> stage -> English text. A guide's tip and TIPS win."""
+    path = os.path.join(HERE, "comment-tips.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as fh:
+        return {int(q): by for q, by in json.load(fh).items()}
+
+
 # A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
 # 2026-11-22: every class's quests that lead into or are done in a dungeon show there, also
 # where its levelling guide leaves them to a class guide). Not the tier 0.5 set exchanges, which
@@ -504,7 +514,7 @@ def main(root, att_root=None, gdq_root=None):
     add_set_masks(quests)
     guide_tips = {}
     guide_quests = load_guides(gdq_root, guide_tips)
-    for qid, by in TIPS.items():
+    for qid, by in list(TIPS.items()) + list(comment_tips().items()):
         for stage, text in by.items():
             guide_tips.setdefault(qid, {}).setdefault(stage, text)
     att_side = {}

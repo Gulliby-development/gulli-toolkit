@@ -756,117 +756,417 @@ text[98824]="把 Titan Relic 交给 Ironforge 探险者大厅 Hall of Explorers 
 text[99156]="把 Riptear's Heart 交给 Deathguard Linnea。"
 text[99187]="前往 Kalimdor 的 Blackmaw Hold，取回 Reliquary of Tyr。"
 tips[17]={d="地下城里还有更多。"}
+tips[142]={d="Defias Messenger 出现在 Moonbrook 铁匠铺旁，沿 Old Coast Road 走到 Gold Coast Quarry：在路上截住他。"}
 tips[155]={d="无法共享；每位玩家各自接护送。"}
+tips[167]={d="Foreman Thistlenettle（精英）在矿洞紫色亡灵环线的尽头，副本外。"}
+tips[168]={d="副本外矿洞紫色区域的亡灵矿工身上带着卡片。"}
+tips[203]={d="战士在 Kurzen's Compound 东侧，巫医在西侧（约 44,10）。同时做 Bad Medicine。"}
+tips[204]={d="药剂掉得慢；蕨类提取物在营地周围的箱子里（房子旁 44,9，火堆旁 44,10，马厩旁 45,9）。打断巫医的治疗。"}
+tips[205]={d="只有 Skullsplitter 巫医和秘法师掉神像；他们和战士、掷斧者共享刷新点。"}
 tips[207]={t="需要交掉 Yohwa 的两个任务。",d="有 Saltscale 鱼人（精英）把守，Grom'gol（部落）就在东边。"}
+tips[214]={t="Defias Traitor 护送任务后才会出现；Scout Riell 站在 Sentinel Hill 塔顶。"}
 tips[261]={d="它们常成群出现。附近有 Dread Rippers（39-40）、Magram Necromancers（42-43）和 Magram Necrokhan（精英，45 级）；南边有 Outcast Necromancers（39-40）。"}
+tips[275]={d="fen creepers 很难看见：沿河流和水坑走，用 /target Fen Creeper。46,34 到 55,46 一带有很多。"}
 tips[303]={d="它们是 27-31 级精英，其中有精英 Riflemen 和 Balgaras the Foul（精英，34 级）：请组队。"}
+tips[356]={d="两个怪都在 Bulwark 附近的农场转悠，约在 Tirisfal 77,62。"}
+tips[373]={t="Edwin VanCleef 会给每个还没做过这个任务的人掉信。"}
+tips[377]={d="Dextren Ward 在左翼的最深处。"}
+tips[378]={t="只有在 Motley Garmason 的第一个任务 The Dark Iron War 完成后才提供。"}
+tips[386]={d="Targorr 在中间区域的某个牢房里；每次进本他的牢房都不同。"}
+tips[387]={d="多名玩家都需要时，一次进本的囚犯可能不够；待到各区域的尽头。"}
+tips[388]={t="Nikova Raskol 在 Old Town 走动；如果看不到她，就绕广场走一圈。"}
 tips[389]={t="大教堂附近的 Krazore（44 级）可能会攻击你。"}
+tips[391]={d="Bazil Thredd 在长长的主走廊尽头：从入口直走，然后右转，沿着弯道走到圆形房间。"}
+tips[450]={d="日志在 Pyrewood 的旅店里：楼上右边第三个房间。南墙上的缺口（约 47,75）能让你绕过大半个村子。"}
+tips[451]={d="掉率很低；Decrepit Ferry 东边的岛上有鱼人和元素。"}
+tips[484]={d="小鳄鱼在 Menethil Harbor 周围的水里游；约 36,39 的那些掉皮最好。"}
+tips[544]={d="四个叛徒中有三个在 Lordamere Internment Camp（Alterac Mountains 约 20,85），第四个在隔壁房子里。他们是中立的，所以由你先攻击。"}
+tips[545]={d="只剩城墙外东北边缘的巡逻怪了。别爬南边的正门台阶：城市守卫会杀了你。"}
 tips[629]={t="团队任务：礁石边的 Saltscale 鱼人是精英。",d="有 Saltscale 鱼人（精英）把守；注意呼吸。"}
+tips[704]={d="瓮在副本前的隧道里：帐篷旁和传送门两侧。"}
+tips[709]={d="石板在副本外：在洞里，过了传送门上方的平台后走高处的路，不要跳下去；它在那条路的尽头。"}
+tips[720]={d="皱巴巴的地图在 Hammertoe's Digsite 西边山脊上矮人营地一张桌子旁的地上。"}
+tips[721]={d="Hammertoe Grez 坐在洞里的篝火旁，就在多数人跳向传送门的悬崖之前。如果没法和他对话，他卡在战斗中了：等他重置。"}
+tips[722]={d="Magregan Deepshadow 在副本外的洞里巡逻：在穴居人房间和矮人房间之间的岔路等。他会叫来附近的怪。"}
+tips[723]={h="Hammertoe 交任务后马上会死，其他人要等他：一个一个地交。"}
+tips[738]={d="Agmond 的尸体就在 Stonevault 营地右边，Theldurin the Lost 北面。"}
 tips[739]={d="Murdaloc 是 42 级。"}
+tips[762]={d="进入 Angor Fortress 后靠右下楼梯：Ambassador Infernus 带着两个守卫在底部等着。他会沉默。"}
+tips[838]={t="先完成 All Along the Watchtowers。"}
+tips[865]={d="掉率很低；Barrens 约 58, 53 的迅猛龙巢是最密集的地方。"}
+tips[870]={d="地点是水池底部一个冒泡的蛤蜊，约 45, 22：从它上面游过去。"}
+tips[877]={d="裂缝在湖底：把种子种在气泡正上方。"}
+tips[880]={d="每只 Oasis Snapjaw 都掉一个甲壳；它们生活在 Stagnant Oasis 和 Lushwater Oasis。"}
+tips[914]={d="每个首领会为队里每个有任务的人掉一颗宝石。四个都死后，副本开头的 Disciple of Naralex 会开启唤醒 Naralex 的事件。"}
+tips[959]={d="Mad Magglish 在传送门前的洞里几个点之间移动并潜行：查看洞口附近的短死路分支，以及最后一个大房间前平台下的凹地。"}
+tips[962]={d="副本里的植物不会再长，所以组队时分着拿；传送门外洞里的会重生。"}
 tips[964]={d="Skeletal Flayers 和 Sorcerers 也会掉落。",h="路上带好 15 金和 2 个 Thorium Bars。"}
+tips[971]={d="箱子在你进入 Ghamoo-ra 水池处右边壁龛的水下；有几个娜迦守着。"}
+tips[1013]={d="书在进入 Fenrus 房间时左边的书架上。有人拿走后几秒内就会刷新。"}
+tips[1014]={d="让坦克把 Arugal 拉回 Fenrus 的房间、其他人在他自己的房间等着，会更容易。"}
 tips[1048]={t="附近的 Anya Rince（52 级）可能会攻击你。",d="他死后会冲进来一波 Scarlet Trainees。"}
 tips[1049]={t="亡灵无法接取。飞行管理员旁的 Arrgrah Stonewall（38 级）可能会攻击你。"}
+tips[1050]={d="书在 Library 的窄走廊里，位置总是一样；每本书都要查看，椅子上和地上的也是。"}
+tips[1051]={d="Nancy Vishas 不在 Monastery：她和她祖父在 Alterac Mountains 湖边的房子里，两人都是精英。等她独自出来。"}
 tips[1053]={d="他死后会冲进来一波 Scarlet Trainees。"}
+tips[1098]={d="放出第一排牢房的囚犯来打开庭院；第二个 Deathstalker 是一开始就被 Arugal 折磨的那个，在城堡更深处。"}
 tips[1100]={t="如果没有战利品，试试沿路往南一点的第二具尸体。"}
+tips[1101]={d="进门后靠右，沿这一侧走到桥：这样去 Crone 的路上能避开其他首领。"}
 tips[1102]={t="飞行管理员旁的 Arrgrah Stonewall（38 级）可能会攻击你。"}
 tips[1109]={t="附近的 Anya Rince（52 级）可能会攻击你。",h="之后他会为 Scarlet Monastery 提供 Hearts of Zeal。"}
 tips[1113]={t="需先交掉 Razorfen Kraul 的 Going, Going, Guano!；需要 30 级。这里的 Anya Rince（52 级）可能会攻击你。"}
 tips[1139]={d="需在 Advisor Belgrum 给你 The Lost Tablets of Will 之后；见下文。"}
+tips[1142]={t="在 Charlga Razorflank 身后、护送旁边的帐篷里接。",d="吊坠是副本里野猪人的随机掉落。"}
 tips[1144]={t="他会立刻给任务；请留一个空的任务栏位，否则任务失败，需要重置副本。"}
+tips[1160]={d="书摊开在进入 Library 的 Gallery of Treasures 后左边第一个房间的桌上。"}
+tips[1198]={d="Thaelrid 躺在海龟池的西南方。不要先去副本尽头：尽头的祭坛会把你传送出去。"}
+tips[1199]={d="每个 Twilight 教徒都可能掉吊坠，但数量有限：满队可能要再刷一次。"}
+tips[1200]={t="在里面，Argent Guard Thaelrid 躺在 Ghamoo-ra 水池旁一个水下房间，过了西南方的隧道。"}
 tips[1221]={t="飞行管理员旁的 Bruuz（精英，20 级）和 Ratchet Enforcer（57 级）可能会攻击你。"}
+tips[1275]={d="副本外入口处的娜迦掉脑干；不用进去。"}
+tips[1360]={d="箱子在副本外的 North Common Hall（地图上是南边那个）：走右边的岔路，和 Solution to Doom 一样。South Common Hall 的箱子是部落的。"}
 tips[1424]={d="水池周围有 Sawtooth Crocolisks 和 Atal'ai 巨魔（36-38 级）；Mukomonji（精英，62 级）在西岸 62,53。"}
+tips[1429]={t="流放者站在 Hinterlands 的 Shadra'Alor 中间神庙上。小心精英蜘蛛 Shadra。"}
+tips[1442]={t="开始前先接任务：没有任务娜迦不掉宝石。",d="Corrupted Kor Gem 由副本里的娜迦和副本外紧邻的娜迦掉落。"}
+tips[1445]={d="几乎所有 Atal'ai 怪都会掉神像，副本内外都有。"}
+tips[1446]={d="先杀掉 Jammal'an 周围阳台上的六个巨魔灵魂。它们会恐惧，所以把它们拉回队伍。"}
 tips[1448]={d="水池周围有 Sawtooth Crocolisks 和 Atal'ai 巨魔（36-38 级）；Mukomonji（精英，62 级）在西岸 62,53。"}
 tips[1452]={d="44-46,21-25 一带有 Arash-ethis（稀有精英，49）以及 51 级的 Frayfeather 和 Lasher 群。"}
+tips[1475]={d="进副本前，被淹的房间里有三块石板：一块在中间水下，两块在两侧的桌子上。几分钟后会刷新。"}
+tips[1486]={t="Nalpak 站在洞口上方那张脸的左眼里：爬上入口上方的山，跳到鼻子上再走进去。",d="变异野兽会掉；副本里水中的鳄鱼刷起来很快。"}
+tips[1487]={t="Ebru 站在洞口上方那张脸的左眼里：爬上入口上方的山，跳到鼻子上再走进去。"}
+tips[1491]={d="每个 Ectoplasm 都掉一个精华；传送门外洞里的 Devouring Ectoplasms 不是精英。"}
+tips[1654]={d="四样物品：Deadmines 桅杆房的地精木匠掉的 Whitestone Oak Lumber，通过 Loch Modan 的 Bailor Stonehand 的矿石货运，Shadowfang Keep 的 Jordan's Smithing Hammer，以及 Ashenvale 黑暗深渊娜迦的 Kor Gem。"}
+tips[1701]={d="Roogug：进门后走第一条左边的路，过藤桥，打过大约十个精英；他在右边等着。"}
+tips[1740]={d="需要两个副本：Blackfathom Deeps 里的三块小碎片和 Shadowfang Keep 里的大碎片。"}
+tips[1838]={d="Smoky Iron Ingots 由 Stonetalon 矿洞的 Windshear 狗头人掉落，Powdered Azurite 由 Hillsbrad 矿工掉落，Iron Bars 找铁匠或拍卖行，Lead Bar 来自 Razorfen Kraul。"}
+tips[1951]={d="书在 Library 最后一个大厅、Arcanist Doan 之前一面矮墙的书架上。"}
+tips[1956]={d="Obsidian Sentinel 就在 Badlands 东部后门入口的门后。"}
+tips[2040]={d="地精工坊里的 Sneed's Shredder 掉落此物；先把那个房间的地精一个个拉出来。"}
 tips[2198]={t="掉落几率低。"}
 tips[2199]={d="在拍卖行购买，或熔炼银矿。"}
+tips[2200]={d="圣骑士躺在副本里靠近开头的地方，在双环大厅的第二个环里。"}
+tips[2201]={d="黄玉在 Dig Two 矮人附近的瓮里，红宝石在 Dig Three 的 Shadowforge 箱子里（会来两个伏击者），蓝宝石由 Grimlok 掉落。杀 Archaedas 前使用占卜碗。"}
 tips[2202]={d="地下城里还有更多。"}
+tips[2204]={d="能量源在最后由 Archaedas 掉落。"}
+tips[2240]={d="Gni'kiv Medallion 在 Baelog 旁的箱子里，Shaft of Tsol 由 Revelosh 掉落：把它们合成法杖用于地图室。"}
+tips[2258]={d="掉率很低：Badlands 南部的秃鹫、西边的郊狼、Kargath 附近山上的岩石元素。"}
+tips[2279]={d="在 Archaedas 后面点击圆盘，和出现的灵魂对话，再点一次圆盘拿到小复制品。每个玩家都要自己点两次。"}
+tips[2280]={d="在 Archaedas 后面点击圆盘，和出现的灵魂对话，再点一次圆盘拿到小复制品。每个玩家都要自己点两次。"}
 tips[2283]={d="掉落几率低。"}
+tips[2284]={d="从副本正门沿右侧墙走；圣骑士的尸体在最初几个大厅里，有几个穴居人守着。"}
+tips[2339]={d="红宝石在 Galgann Firehammer 房间的箱子里（会出现两个怪），蓝宝石由 Grimlok 掉落，黄玉在 Baelog 房间的花瓶里，能量源由 Archaedas 掉落。"}
+tips[2342]={d="箱子在副本外：面向传送门，走左边（西）的路进入一个房间，箱子在房间角落。"}
 tips[2398]={t="可选：通往里面的 Baelog 和 The Hidden Chamber。",h="仅与 The Lost Dwarves 一起。"}
 tips[2418]={d="矮人是精英（35-37 级）。"}
+tips[2500]={d="Kargath 西边山上的岩石元素、西南大尸体周围的秃鹫、到处都有的郊狼。同时做 Barbecued Buzzard Wings。"}
+tips[2768]={d="杀掉神殿顶上的 Sandfury Executioner，用他的钥匙放出 Sergeant Bly。然后在楼梯顶等着：会上来好几波巨魔。保住 Bly 的队伍，他们帮助很大。"}
 tips[2770]={t="召唤 Gahz'rilla 需要队伍里有 Mallet of Zul'Farrak。"}
 tips[2841]={t="在和 Sovik 对话前接取：一旦你拿到 Chief Engineer Scooty，就不再提供 Rig Wars。"}
+tips[2842]={t="如果任务不显示，在 Scooty 的对话中选择带气泡标记的那句：它会添加任务。必须先在任务日志里有 Rig Wars。"}
+tips[2843]={d="跳下后可以扔掉应答器；你要的话 Scooty 会再给一个。"}
+tips[2846]={d="Hydromancer Velratha 在 Gahz'rilla 房间的水池边巡逻。先清掉水池南端的巡逻怪。"}
 tips[2865]={t="如果任务日志里有 Tran'rek（引导任务），先在这里交掉。"}
+tips[2904]={d="Kernobee 在 Clean Zone 之后楼梯右边的某个房间。把他带到副本正门；他从不攻击，所以潜行可行。"}
+tips[2924]={d="必需品来自沿路的灰色机器人箱子；Viscous Fallout 和 Grubbis 周围的环线最多，所以满队可能要清的不只是首领。"}
 tips[2926]={d="Irradiated Invaders 是 24-26 级精英。"}
+tips[2928]={d="任何人形怪和 Mechanical Sentries 都掉齿轮；首领一次会掉很多。"}
 tips[2930]={d="除 Lepers 外都是 24-26 级精英。"}
 tips[2933]={t="Witherbark Scalpers 和 Zealots（40-42 级）站在瓶子旁；Zul'arek Hatefowler（精英 43）在 32,57 附近。"}
 tips[2934]={d="Witherheart the Stalker（稀有精英，45）在 33,70 附近游荡。"}
+tips[2936]={d="Theka the Martyr 在满是甲虫的西侧房间走动。甲虫是中立的：那里别用范围攻击。潜行的玩家可以不战斗就读石板。"}
+tips[2962]={d="对活着的怪使用小瓶，不是尸体。"}
 tips[2988]={d="Witherbark Scalpers 和 Zealots（40-42 级）站在笼子旁；Zul'arek Hatefowler（精英 43）在第三个笼子旁。"}
 tips[2989]={d="附近有 Qiaga the Keeper 和 Morta'gya the Keeper（精英，50 级）以及 Vilebranch Soothsayers（46-47）。"}
+tips[2991]={d="你放出 Sergeant Bly 后，Nekrum 会随最后一波巨魔从大楼梯上来。"}
+tips[3042]={d="淬火剂由副本里的 Sandfury 巨魔掉落；掉率很低，所以和其他任务一起做。"}
+tips[3369]={d="杀掉全部四个 Leaders of the Fang，然后和副本开头的 Disciple of Naralex 对话，护送他到沉睡的德鲁伊那里。最后 Mutanus the Devourer 出现并掉落碎片。"}
+tips[3370]={d="杀掉全部四个 Leaders of the Fang，然后和副本开头的 Disciple of Naralex 对话，护送他到沉睡的德鲁伊那里。最后 Mutanus the Devourer 出现并掉落碎片。"}
+tips[3373]={d="把精华放进 Eranikus 房间左后角的圣泉。每个人都应该拾取 Eranikus。"}
+tips[3444]={d="Stone Circle 在棘齿城码头旁小屋外的 Marvon's Chest 里。"}
+tips[3447]={d="按此顺序点击蛇像：南、北、西南、东南、西北、东北。然后杀掉出现的首领并打开箱子。"}
+tips[3520]={d="杀一只 Vale Screecher，点击它的尸体，然后使用乐器。Feathermoon 渡轮码头以北和 Dire Maul 前的路上有很多。"}
 tips[3523]={t="之后他会提供 Extinguishing the Idol。在有人开始护送前，让每位队员都交掉 Scourge of the Downs。"}
+tips[3525]={d="全队可以同时做。事件失败也不用重置：Belnistrasz 几分钟后会回来。",h="点击神像前升起的火盆。"}
+tips[3527]={d="第一块石板由甲虫房间的 Theka the Martyr 掉落，第二块由 Gahz'rilla 水池旁的 Hydromancer Velratha 掉落。"}
+tips[3528]={d="从入口往左，在蜿蜒的走廊里靠右，一直到有四团火、中间一个圆环的房间。清空它，使用蛋，别让 Avatar 靠近火堆。击杀后捡起 Essence of Hakkar 并用它装满蛋。团灭就得等重置。"}
+tips[3636]={t="无法共享：每个人都要从 Bishop DeLavey 那里接。",d="Amnennar the Coldbringer 站在螺旋山丘的顶上；从入口往右走。"}
 tips[3701]={d="废墟里游荡着 War Reavers 和火元素。"}
+tips[3801]={t="Franclorn Forgewright 只对灵魂显形：在 Blackrock Mountain 附近死亡，在岩浆中央的墓上找到他，就在通往副本的锁链下方。"}
+tips[3802]={t="Franclorn Forgewright 只对灵魂显形：在 Blackrock Mountain 附近死亡，在岩浆中央的墓上找到他，就在通往副本的锁链下方。",d="先在竞技场完成 Ring of Law，然后上看台，一路找到 Fineous Darkvire，他掉锤子。把锤子放进 Black Anvil 房间的祭坛。"}
 tips[3906]={d="从岩架顺着垂下的铁链滑下，走下面的小路。"}
+tips[3907]={d="石板从 Overmaster Pyron 身上拾取。"}
+tips[3981]={t="必须先完成 Disharmony of Fire（Overmaster Pyron），否则 Galamav 不会提供。",d="Gor'shak 在 Detention Block 的牢房里，主厅右侧。钥匙由 High Interrogator Gerstahn 掉落。"}
 tips[3982]={d="只需一位玩家开始事件；其他人之后再接任务。"}
+tips[4001]={d="用监狱牢房钥匙打开 Gor'shak 对面的牢房，听矮人讲故事。提醒队友：和 Gor'shak 对话时会冲进来一些精英。"}
+tips[4003]={d="杀掉 Emperor，但别杀公主：他一死她就变友好。拖住她但别杀她，因为她会治疗他。"}
 tips[4023]={d="这条龙是精英。"}
+tips[4024]={d="继续前进前，站在 Lord Incendius 的尸体上使用 Altered Black Dragonflight Molt。"}
+tips[4061]={d="掉零件的是 Burning Steppes 中 Ruins of Thaurissan 周围的 war reavers，不是 Searing Gorge 的魔像。"}
+tips[4063]={d="Golem Lord Argelmach 在 Manufactory：先杀光房间里所有构造体。"}
+tips[4082]={t="告示在 Kargath 旅店门的右侧；第一张在左侧。",d="通往 Bael'Gar 的大厅里的矮人群都算。"}
 tips[4121]={d="Dark Iron 和 Blackrock 的怪会攻击护送。"}
 tips[4122]={t="如果跳过这一步，也跳过后面七步。",d="在 WoW Forever 中这个护送可能失败：有玩家看到 Grark 在 Blackrock Mountain 左侧坡道顶端消失。有一支队伍紧跟在他身后一步一步走、不使用潜行，成功护送了他。",h="Grark 是精英。"}
+tips[4123]={d="Heart of the Mountain 在暗板后的金库里；常常不用开保险箱就能隔墙拾取。"}
 tips[4126]={d="在 Grim Guzzler 里打破后屋的三个麦酒桶。随后 Hurley Blackbreath 会带着他的精英伙伴出现，他们每人都会为队伍中的每个人掉落一份配方。如果队伍在这场战斗中团灭，Hurley 和酒桶会消失，直到副本重置。"}
 tips[4134]={d="在 Grim Guzzler 里打破后屋的三个麦酒桶。随后 Hurley Blackbreath 会带着他的精英伙伴出现，他们每人都会为队伍中的每个人掉落一份配方。如果队伍在这场战斗中团灭，Hurley 和酒桶会消失，直到副本重置。"}
+tips[4136]={d="Ribbly 在 Grim Guzzler。"}
 tips[4141]={d="那里也有迅猛龙和魔暴龙（48-55 级）游荡。"}
+tips[4143]={d="进门后马上走楼梯下到坑里：那里的软泥、泥沼蠕虫和潜伏者掉样本。"}
+tips[4145]={d="Larion（部落）和 Muigin（联盟）站在 Un'Goro 通往 Marshal's Refuge 的路两侧。"}
+tips[4146]={d="只有副本里的软泥、泥沼蠕虫和潜伏者掉燃料：从入口走右边的路，下楼梯到坑里。"}
 tips[4182]={d="大多是精英；请组队。",h="如果跳过这条任务链，也跳过后面八步。"}
+tips[4185]={t="如果她不和你对话，说明另一队正在和她进行后面的步骤。等几分钟她就回来了。"}
 tips[4224]={d="Flame Crest 有部落守卫。"}
+tips[4241]={d="Marshal Windsor 在 Detention Block 的牢房里，主厅右侧；侧廊会绕到他那里。"}
+tips[4242]={h="Maxwell 不给下一个任务：回到 Blackrock Depths，任何怪都可能掉 A Crumpled Up Note。"}
 tips[4262]={d="Pyron 是精英。从岩架顺着垂下的铁链滑下，走下面的小路。"}
+tips[4263]={d="穿过副本：左门、右门、左门，上楼梯，然后从左边的开口出窗户，到通往 Lord Incendius 的平台上。"}
+tips[4264]={d="完成 Abandoned Hope 后，Blackrock Depths 里任何怪都可能掉那张纸条。Marshal Windsor 在他的牢房里，Marshal Maxwell 在 Morgan's Vigil。"}
+tips[4282]={d="General Angerforge 在左边楼梯下面：杀掉他的小怪，他血少时会叫更多。全队准备好之前不要接 Jail Break!，它会开始护送。"}
+tips[4286]={d="入口附近的猎犬和 Grim Guzzler 里的矮人掉包裹。"}
+tips[4322]={t="所有人都必须先交 A Shred of Hope，然后才能有人开始 Jail Break!，否则拿不到完成。",d="开始护送前先清好通往出口的路。如果 Windsor 死了，重置副本再和他对话。",h="离开副本前先和 Windsor 对话，否则护送不算。"}
+tips[4341]={d="Kharan 在 Detention Block 的牢房里，主厅右侧；用监狱牢房钥匙打开。"}
+tips[4362]={d="杀掉 Emperor，但别杀公主。只有她看到他死时才会变友好，所以让她靠近，但远离你的治疗。"}
+tips[4363]={d="杀掉 Emperor，但别杀公主。"}
 tips[4701]={d="紧接着 Gizrul the Slavener 会来找你。"}
+tips[4724]={d="只有五人小队能完成，团队不行。"}
 tips[4726]={t="Firesworn（60-61）就在他旁边走动。",d="这里有 Broodlings 和 Black Dragonspawn（51-56，部分为精英）游荡。"}
+tips[4729]={d="座狼幼崽和一群兽人躺在蜘蛛附近；战斗中也能用笼子。别用范围攻击打死幼崽。"}
+tips[4734]={d="走近蛋之前先在 Rookery 冻住一个蛋，否则雏龙会孵出来。"}
 tips[4735]={d="有些蛋会孵出雏龙。"}
 tips[4742]={t="你需要一枚 Unadorned Seal of Ascension（Spire 怪物随机掉落）以及 Highlord Omokk、War Master Voone 和 Overlord Wyrmthalak 的宝石。"}
 tips[4743]={d="Emberstrife 是 61 级精英龙，周围有精英龙人：带上你的队伍。",h="你会获得 Seal of Ascension，它能打开 Upper Blackrock Spire 的大门。"}
+tips[4764]={d="箱子在 Upper Blackrock Spire 的 Father Flame 房间，沿小坡道下去；它马上刷新，全队都能拾取。"}
+tips[4766]={t="要在 Doomrigger's Clasp 之前做，否则就不再提供。"}
+tips[4768]={d="石板是 Upper Blackrock Spire 蛋室里的一个灰色方块：往上走再往左。"}
+tips[4771]={d="在 Vectus 在场时把棋局放在 Viewing Room：学生变成骷髅，Vectus 变为敌对。"}
 tips[4787]={t="Wastewander 强盗（40-46 级）在沙丘上游荡。",d="Hitah'ya the Keeper（精英，51 级）和 Vilebranch 精英（49-51 级）守着巢穴；请组队。"}
 tips[4808]={h="Hailspite（精英 60）站在 Everlook 旁 60.7,38.2 附近；别去惹它。"}
 tips[4809]={d="奇美拉是 55-57 级；Shardtooth Maulers、Spell Eaters 和 Cobalt Broodlings（54-56）在山坡上游荡。"}
+tips[4862]={d="蜘蛛卵在下面的蜘蛛洞里；往上走到集合石，走它后面的通道并靠右。"}
+tips[4866]={d="离开时你身上必须带着 Mother Smolderweb 的毒：让她给你上毒，然后离开副本，走到 Burning Steppes 的 Ragged John 那里。变形会清除它。"}
 tips[4867]={t="把 Omokk's Head 和 Roughshod Pike 放到 Urok's Tribute Pile 上；Urok 和一波波食人魔会出现，他会掉落 Mojo。"}
+tips[4903]={t="和 Warlord Goretooth 对话并读完他的所有话：他会给你他的 Command，由此开始任务。"}
+tips[4981]={t="Bijou 站在第二座木桥后面地板上一个洞的下方。"}
+tips[4982]={d="箱子每次刷在不同位置，在 Warmaster Voone 和蜘蛛隧道之间的下层；沿着有火焰兽人的大厅找。"}
+tips[5001]={d="箱子每次刷在不同位置，在 Warmaster Voone 和蜘蛛隧道之间的下层；沿着有火焰兽人的大厅找。"}
+tips[5047]={t="剥皮技能 300 的玩家用 Finkle's Skinner 剥那头野兽，Finkle 会钻出来给出任务。"}
 tips[5081]={d="只有任务在日志里时击杀才算数。"}
+tips[5089]={d="纸条由 Lower Blackrock Spire 最后首领 Overlord Wyrmthalak 掉落。"}
 tips[5096]={t="从他旁边的箱子里拿 Flame in a Bottle。"}
 tips[5097]={d="Andorhal 满是亡灵（50-56 级）；Araj the Summoner（61，精英）站在中央 45,69；精英 Skeletal Warlords 和 Flesh Golems（56-57）以及 48,67 的 Putridius（58，精英）也在游荡。"}
 tips[5098]={d="Andorhal 满是亡灵（50-56 级）；Araj the Summoner（61，精英）站在中央 45,69；精英 Skeletal Warlords 和 Flesh Golems（56-57）以及 48,67 的 Putridius（58，精英）也在游荡。"}
+tips[5102]={d="General Drakkisath 是 Upper Blackrock Spire 的最后首领：带团队来。"}
+tips[5125]={d="Medallion of Faith 在 Scarlet 半区约三分之一处左边侧室的小箱子里；交给 Aurius，他会帮你对付 Baron。"}
+tips[5127]={t="仅限技能至少 270 的铁匠。"}
+tips[5160]={d="在 Winterspring 57,50 的龙洞里，踩上后室的蓝色符文。"}
+tips[5212]={d="亡灵一侧的任何精英都可能掉样本。"}
 tips[5213]={d="它会出现在其中一处。"}
+tips[5214]={d="一直左转到有 Fras Siabi 商店的死胡同；打开箱子并杀掉他。附近游荡的亡灵会来帮他。"}
+tips[5243]={d="只有部分箱子里有圣水；矮人可以用 Find Treasure 看到它们。"}
+tips[5251]={d="点击 Archivist 桌上的书来烧掉档案。若 Of Love and Family 需要那幅画，先在同一房间拿走它。"}
+tips[5262]={t="交完 The Archivist 后，Balnazzar 会掉落他的头颅，由此开始这个任务。"}
+tips[5265]={h="奖励在 Lord Maxwell Tyrosus 正后方的箱子里。"}
 tips[5281]={h="无法共享；每位玩家各自从 Alen 和 Egan 处接取。"}
+tips[5282]={d="用冲击枪击中一个鬼魂，然后击中随后出现的不安灵魂。站在 Scarlet 半区大门内侧。"}
+tips[5341]={d="Southshore：过桥后的第一个大房间，角落书架旁的书桌上。Tarren Mill：雏龙房间之前那个房间的书桌上。Brill：在 Ras Frostwhisper 旁边。Caer Darrow：在 Lord Alexei Barov 身后。曾经组过团队的队伍无法拾取它们。"}
+tips[5343]={d="Southshore：过桥后的第一个大房间，角落书架旁的书桌上。Tarren Mill：雏龙房间之前那个房间的书桌上。Brill：在 Ras Frostwhisper 旁边。Caer Darrow：在 Lord Alexei Barov 身后。曾经组过团队的队伍无法拾取它们。"}
+tips[5382]={d="Butcher 死后，点击他房间两侧的两堆残骸。"}
+tips[5384]={d="过第一道门后左转下楼梯，穿过接下来的两道门，经过紫色地毯后右转：在那里用血点燃火盆。如果 Kirtonos 没掉你要的东西，放弃任务再接一次。"}
+tips[5466]={d="对 Ras Frostwhisper 使用 Soulbound Keepsake：30 码内引导 10 秒，所以避开他的恐惧和击退。"}
 tips[5505]={h="你会获得 Skeleton Key。"}
 tips[5511]={t="你会获得 Skeleton Key。"}
+tips[5514]={t="带上两块 Thorium Bars：下一步在 Un'Goro 的 Fire Plume Ridge 需要它们。"}
+tips[5515]={d="Jandice Barov 在通往 Viewing Room 楼梯附近的密室里。她的分身不受伤害：只有真身有姓名板。"}
+tips[5522]={t="任务链从为 Tinkee Steamboil 在 Upper Blackrock Spire 的 Rookery 冻住一个蛋开始。"}
+tips[5525]={d="钥匙由北区守卫掉落；用在 Knot Thimblejack 的镣铐上。"}
 tips[5528]={t="在 Tribute Run 之后接取，然后交掉：The Gordok Taste Test"}
 tips[5529]={d="它们可能掉落 Healthy Dragon Scale，可开始 Healthy Dragon Scale。"}
+tips[5533]={t="先完成 Clear the Way 和 All Along the Watchtowers。"}
 tips[5537]={d="由 Skeletal Flayers 和 Sorcerers 掉落。地点取自怪物刷新点，而非任务资料。",h="路上带好 15 金和 2 个 Thorium Bars。"}
+tips[5538]={t="带上两块 Thorium Bars：下一步在 Un'Goro 的 Fire Plume Ridge 需要它们。"}
+tips[5544]={d="北边的 Carrion Devourers 掉肉的几率比幼虫高得多。"}
 tips[5722]={h="无法共享，所以每位玩家各自拾取尸体。"}
+tips[5724]={d="在洞穴深处的岔路选最近的右边上坡路；Maura 的尸体在顶上左边的小房间里。"}
+tips[5725]={d="书由主坡道左侧营地里的 Searing Blade 教徒掉落。"}
 tips[5726]={d="精英 Felweaver Scornn 和 Gazz'uz（14 级）也在这里。"}
 tips[5727]={d="Cleft 周围站着魅魔；它们可能是敌对的。"}
+tips[5728]={d="Bazzalan 站在 Jergosh 正上方的平台上；上去的路从岩浆上的小桥旁开始。"}
+tips[5742]={t="先完成 Tirion 的三个击杀任务。",d="他说话时点击白色对话气泡。"}
+tips[5761]={d="先把 Taragaman 从石桥上拉开：他会把玩家扔进岩浆。"}
+tips[5781]={d="怪物来时站在 Western Plaguelands 28,87 的土堆上，一直站着直到拾取锤子。"}
+tips[5801]={d="走 Fire Plume Ridge 北侧的路，站在熔岩湖北边缘，不要站进去。"}
+tips[5802]={d="走 Fire Plume Ridge 北侧的路，站在熔岩湖北边缘，不要站进去。",h="交给 Apothecary Dithers，不是地精。"}
 tips[5803]={d="Araj 是 61 级精英，身边有骷髅守卫和 60 级的 Spectral Attendants：请组队。"}
 tips[5804]={d="Araj 是 61 级精英，身边有骷髅守卫和 60 级的 Spectral Attendants：请组队。"}
+tips[5845]={d="旗帜在 Northdale 前方湖里的水下箱子中。"}
+tips[5846]={d="画家在 Caer Darrow 内门外：从桥上走左边的路到第一座有屋顶的房子。"}
+tips[5848]={d="画挂在 Archivist 房间的右墙上，就是 Scarlet 半区最后首领之前的房间。烧档案前先拿走。"}
 tips[5961]={t="Nathanos 的任务链需要它。",h="Nathanos 是 62 级。Duggan Wildhammer（55，精英，对联盟友好）就在东南边。"}
 tips[6022]={d="精英 Stitched Horrors（58）在镇里巡逻。"}
+tips[6042]={d="Noxious plaguebats 在 46,65 到 56,61 之间的山谷里飞，monstrous plaguebats 在约 48,38。它们的毒会减速。"}
 tips[6133]={d="小屋的游侠是 58-60 级，Ranger Lord Hawkspear（60，精英）也在那里。"}
+tips[6135]={t="还需要完成 Un-Life's Little Annoyances。",d="Duskwing 在 Eastern Plaguelands 约 31,74 的田野上空盘旋。"}
 tips[6136]={d="Borelgore 是 61 级精英；带上队伍。"}
+tips[6163]={t="完成 Nathanos 的前三个任务；然后他会给出两个精英击杀任务和这个任务。"}
+tips[6521]={d="Ambassador Malcin 在副本外，荆棘迷宫的某个帐篷里，而且会换帐篷。追踪时他算亡灵。"}
 tips[6522]={t="没有卷轴的话，跳过这一步和下一步。",h="需先完成卷轴任务。附近的 Anya Rince（52 级）和 Darkspear Emissary（30 级）可能会攻击你。"}
+tips[6561]={t="部落可以在里面接：Argent Guard Thaelrid 躺在 Ghamoo-ra 水池旁一个房间的篝火边，经西南方的水下通道过去。"}
+tips[6563]={d="蓝色水晶长在传送门前的隧道里，不在副本内，而且刷新比怪快。"}
+tips[6564]={t="纸条由路上的 Blackfathom Tide Priestesses 掉落。"}
+tips[6626]={d="副本外荆棘迷宫里的任何精英都算；不用进去。"}
+tips[6921]={d="Fathom Stone 在 Kelris 之前大水池的水下，长走道下方。点击它会召来 Baron Aquanis，他掉下一个任务的宝珠。"}
+tips[6922]={t="Baron Aquanis 必定掉落开始此任务的 Strange Water Globe；21 级以下的角色拿不到宝珠。"}
 tips[6981]={h="山顶游荡着 Deviate Slayers 和 Ectoplasms（精英，16-17 级）。"}
+tips[7028]={d="Nameless Prophet 在副本前的洞里走动，掉很多雕刻；他死后马上就在几步外复活。紫色区里的恶魔也掉。"}
+tips[7029]={d="在橙色区外有橙色水晶的大水池装满小瓶（不是树妖的小水池）。进去后在小植物旁使用；杀掉出来的 Noxxious Scions。"}
+tips[7041]={d="在橙色区外有橙色水晶的大水池装满小瓶（不是树妖的小水池）。进去后在小植物旁使用；杀掉出来的 Noxxious Scions。"}
+tips[7044]={d="Celebrian Rod 由橙色区的 Noxxion 掉落，Celebrian Diamond 由紫色区的 Lord Vyletongue 掉落。Vyletongue 有两个隐藏的恶魔会加入战斗。"}
+tips[7046]={d="权杖能打开通往 Maraudon 内部的传送门，下次就能跳过橙色和紫色区。丢了？再杀一次 Celebras 向他要一根新的。"}
+tips[7065]={d="Princess 是会恐惧的强力精英：带上坦克和治疗。"}
 tips[7066]={t="可选：由 Moonglade 的 Keeper Remulos 接收；见最后一步。",h="这里没有路线：从 Thunder Bluff 或 Orgrimmar（部落）或 Rut'theran Village（联盟）乘飞行前往 Moonglade，德鲁伊也可用 Teleport: Moonglade。如果不去就跳过这一步。"}
 tips[7067]={t="他在这里和大约 43,85 之间走动。附近可能有 Kaskk（稀有精英，40 级）、Whirlwind Shredders 和 Nether Sorceresses（32-40 级）。"}
+tips[7068]={d="碎片由紫色入口前紫色水晶洞里的石元素掉落；不用进副本。"}
+tips[7070]={d="碎片由紫色入口前紫色水晶洞里的石元素掉落；不用进副本。"}
+tips[7201]={d="Burning Steppes 和 Searing Gorge 的任何元素生物都掉精华，不只是火元素。"}
+tips[7441]={d="在东区沿平台往左走到头。小鬼 Pusillin 在你和他对话时会逃跑；追到他开始战斗为止。"}
+tips[7461]={d="杀掉西区五座塔周围的所有元素；最后一只死时塔会熄灭。",h="在 Dire Maul 里面交，不是在达拉然大坑。"}
 tips[7463]={t="Lydros 站在 Athenaeum。60 级。Hydrospawn 在 Dire Maul East；下次进去时交。"}
+tips[7481]={d="骨头在图书馆中央 Lorekeeper Lydros 旁边。北区和图书馆门需要 Crescent Key（或开锁）。"}
+tips[7482]={d="骨头在图书馆中央 Lorekeeper Lydros 旁边。北区和图书馆门需要 Crescent Key（或开锁）。"}
+tips[7488]={d="Lethtendris 在东区：进门后贴着右墙走。"}
+tips[7489]={d="Lethtendris 在东区：进门后贴着右墙走。"}
 tips[7494]={t="他四处走动；Stormwind 的 Crier Goodman 和 Darnassus 的 Herald Moonstalker 也给同一个任务。"}
+tips[7498]={h="把书交给图书馆里的 Lorekeeper Lydros：北区，下到坑里，左边锁着的门。需要 Crescent Key 或开锁。"}
+tips[7500]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7501]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7502]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7503]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7504]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7505]={h="在 Dire Maul 里的图书馆交书，即使地图显示的是达拉然大坑：带 Crescent Key 进北区，走左边的大门。"}
+tips[7506]={h="在图书馆交书：带 Crescent Key 进北区，走下坡道，穿过左边的大门。"}
+tips[7581]={d="从西翼的后门进入；贴着右墙走，别惹元素。"}
+tips[7629]={d="在 Ras Frostwhisper 房间的炼金实验室放出小鬼，等他干完活；纸会留在罐子里。"}
+tips[7631]={d="先杀 Immol'thar，再放出小鬼。波次来袭时用 Black Lodestone 让钟、轮和蜡烛一直燃着：每次使用消耗一个灵魂碎片，带 10 到 15 个。"}
+tips[7642]={d="圣水在 Stratholme 的补给箱里，每箱几瓶；错误的箱子会放出虫子。Arthas' Tears 拍卖行有。"}
+tips[7643]={d="Ancient Equine Spirit 需要完成两条任务链，包括 Terrordale 驱魔。"}
 tips[7703]={h="在之后的 Tribute Run 中，拿到 Gauntlet 后。"}
+tips[7877]={d="大箱子在图书馆的楼梯旁。"}
+tips[8236]={d="WoW Forever 会给你全部三件奖励物品。"}
+tips[8253]={d="Morphaz 在神庙底部，和另一条龙相连。"}
+tips[8258]={d="在 Ossuary 地下室，放置占卜器前先站到右边角落。会来四波精英鬼魂，每波以一个 Aspect 结束，最后是 Darkreaver 本人。"}
+tips[8413]={d="杀掉守护 Jammal'an 的阳台上的六个亡灵巨魔。"}
+tips[8422]={d="杀掉守护 Jammal'an 的阳台上的六个亡灵巨魔。"}
+tips[8425]={d="杀掉守护 Jammal'an 的阳台上的六个亡灵巨魔：走楼梯或右边的路上去，不要走螺旋楼梯。"}
+tips[9053]={d="按顺序点亮东侧的六座蛇像：南、北、西南、东南、西北、东北。藤蔓由下方水池中出现的守护者掉落。"}
+tips[79360]={t="萨满专属：Thousand Needles 的 Prate Cloudseer 在 Call of Air 之后给出。"}
+tips[79946]={d="Aeonas 在大教堂里，Whitemane 房间的门后。"}
+tips[79963]={d="Aeonas 在大教堂里 Whitemane 的房间：把他治疗满血，然后交任务。"}
+tips[80411]={d="在喷泉周围有暗影施法者的庭院里右转；进入长走廊前，在右边的小屋里找 Clay Vessel。"}
+tips[81790]={d="Felwood 的地狱火是精英，它们的火焰光环会推迟你的施法；和朋友一起去。"}
 tips[82062]={t="从 Ring of Law 走东边那座向北跨过熔岩的桥。在桥左侧的小火盆旁，从栏杆跳到下方的平台，沿着墙走到拐角，再跳到岩石平台上：Rugged Traveler 就在那里。平台上的门通往 Lord Incendius 上方，无法原路返回。"}
+tips[82084]={d="纸莎草由 Zul'Farrak 的僵尸掉落，羽毛笔由 Hinterlands 的枭兽掉落。树脂由 Feralas（约 75,65）的 Zukk'ash 虫子缓慢掉落；工虫和掘地虫似乎掉得最好。"}
+tips[84330]={t="亡灵圣骑士也能接。"}
+tips[92065]={t="对 Timbermaw 中立就够了；任务链从 Ursalan 南边的 Legashi Threat 开始。"}
 tips[92066]={d="找到 Totem of Ursoc 和 Totem of Ursol。"}
+tips[92070]={d="纪念品由熊怪随机掉落，入口外的也算。"}
 tips[92343]={d="收集 10 个 Nordrassil Root Caps。"}
 tips[92344]={d="收集 10 个 Nordrassil Root Caps。"}
+tips[92401]={d="沉睡的幽灵猫躺在打 Rath'mael 的墓地旁；站到它附近。"}
+tips[92415]={t="Blood-Stained Letter 在深处的墓地里，靠近某个首领。"}
+tips[92422]={t="先做 Rear Guard Patrol（Tirisfal 的精英 Riptear）。",h="在幽暗城东边路上 65,60 交任务，世界地图上没有标记。"}
+tips[92432]={h="Archmage Modera 的影像在城外，北侧下水道入口旁，不在城里。"}
+tips[92434]={t="先完成 Magus Wordeen Voidglare 的其他任务；Keeper Bel'Varil 的不需要。"}
+tips[92456]={d="样本在 City of Dalaran 副本里，不在外面的城市。"}
+tips[92457]={d="一次进本的残骸可能不够所有人用。"}
+tips[92458]={t="联盟玩家必须先接 An Alarming Request。"}
+tips[92742]={d="在两口井使用物品：Molsen Farm 约 46, 38 和 Jansen Stead 约 57, 19。"}
+tips[92744]={d="掉率很低：玩家说要杀 30 到 100 只。15 级以上的鱼人似乎掉得多些。"}
 tips[92745]={d="途中可能遇到 Sergeant Brashclaw 和 Leprithus（稀有精英，18-19 级）。"}
 tips[92747]={d="镇北的房子里有 Forlorn Spirits（25-26 级）出没。精英 Defias Henchmen、Conjurers 和 Watchmen（15-18 级）守卫着小镇。"}
+tips[92749]={d="现在要求 Rough Dynamite，不是文字里说的 Coarse：拍卖行很便宜，或由新手工程师用亚麻布和粗糙的石头制作。"}
+tips[92752]={t="A Dynamite Plan 也完成后才会出现。"}
+tips[92753]={d="把炸药放在熔炉房间中央附近，Gilnid 站的地方。",h="从 Deadmines 后门离开：交任务的人在 Westfall 南出口外，不是任务开始的地方。"}
+tips[92819]={h="从 Deadmines 后门离开：交任务的人在 Westfall 南出口外。"}
+tips[93404]={d="在 Princess Theradras 下方、Rotgrip 游动的水池里，找到东侧石桥下的小喷泉，在那里装满小瓶。",h="把水用在 Woodwyrd 旁燃烧的树上，不是 NPC 身上。"}
+tips[93604]={d="不用进去：传送门外的帐篷里有那个物件。传送门前走上坡道；点击物件会召来掉任务物品的怪。"}
+tips[93680]={d="箱子在山上有围墙营地西边的两层房子里（Alterac Mountains 约 16,89）：楼下第二个房间，后面楼梯旁。"}
 tips[94968]={t="把 Da'grosh 的 It Is Time, Brother... 交给他后开启。"}
 tips[94972]={t="与 Eye of Mugg 的解锁方式相同。"}
-tips[94974]={h="钥匙能打开地下城的上层。"}
+tips[94973]={t="Tunk 为全队掉模具；他在 War Handler Ashka 狼营后面的熔炉旁。从前一个首领沿路往东北走，或输入 /tar Tunk。"}
+tips[94974]={t="开始前带好 4 张 Thick Leather 和 12 根 Iron Bars。",h="钥匙能打开地下城的上层。"}
 tips[94975]={t="向他交掉 Bring Me His Head 后开启。Shroud 周围有 Twilight Enforcers（精英 45）和 Fanatics（42-43）。",h="周围有 Twilight Enforcers（精英 45）。"}
+tips[94980]={t="Tunk 为全队掉模具；他在 War Handler Ashka 狼营后面的熔炉旁。"}
 tips[94981]={h="钥匙能打开地下城的上层。"}
+tips[94982]={t="Kilgar 死后开放。"}
 tips[94983]={t="向他交掉 Bring Me His Head 后开启。附近有 Executioner Morg、Twilight Forgemaster 和 Kargra the Blind（均为精英 46）。",h="附近有精英（46）。"}
 tips[94984]={t="完成她的 A Small Favor 后开启。"}
+tips[95036]={d="Whitestone Oak Lumber 由 Deadmines 里 Sneed 工坊的地精掉落，Enchanted Silver Ingot 在 Shadowfang Keep 里 Arugal 旁的桌上，Purified Kor Gem 在你和 Zoram Strand 的精灵对话后，由 Blackfathom Deeps 外的精英娜迦施法者掉落。纸条要放在包里：放在银行里木材就不掉。"}
+tips[95161]={t="Blood-Stained Letter 在深处的墓地里，靠近某个首领。"}
+tips[95189]={d="纹章刷在几个地点之一：蜘蛛庭院旁的塔顶、The Abandoned 旁的塔顶、蜘蛛庭院里女妖门后，或有楼梯和锁着的门的房间。"}
+tips[95194]={h="Sully McCleary 在塞拉摩旅店。"}
+tips[95195]={d="亡灵怪掉徽记；够全队用。",h="如果 General Marcus Jonathan 不在，说明有人在暴风城做 Onyxia 剧情：等它结束。"}
+tips[95196]={t="Sully 也站在塞拉摩外的墓地旁（约 63,42）。"}
 tips[95198]={d="远离 Jaina：她能看穿伪装。如果任务完成后被卡住，请使用离开载具按钮。"}
+tips[95204]={d="纹章刷在几个地点之一：蜘蛛庭院旁的塔顶、The Abandoned 旁的塔顶、蜘蛛庭院里女妖门后，或有楼梯和锁着的门的房间。"}
+tips[95216]={t="完成 A Recipe For Death 后从任务发布者处开始。"}
+tips[95250]={t="Captain Truman 就在一进门的左边。"}
+tips[95263]={d="最后一个首领之前不要杀 Questioner，否则接不到最后一个任务。"}
+tips[95454]={d="最后首领死后纸条掉在地上。"}
+tips[95646]={t="Greenwarden 只在他之前的三个任务（包括 Tramping Paws）完成后才给出。",d="在 Lost Dig Site，你要的沼泽元素在火元素的右边。"}
+tips[95647]={h="那个人站在最后首领前右边的平台上。"}
+tips[95663]={d="Deathstalker Agent 在 Thelgen Rock 附近 Dragonmaw 营地上方的山上等着（约 51,59）；上去的路从 53,66 开始。"}
+tips[95682]={t="先在 Hammerfall 楼梯底部的 Zaruk 那里接前置任务。"}
+tips[95697]={t="奥格瑞玛 Drag 区烹饪训练师旁的 Borstan 给出此任务。"}
 tips[95748]={d="不需要皮或木炭；直接点击石板即可。"}
+tips[95772]={h="交任务在副本里，Dragonmaw 区域的一个帐篷中。"}
 tips[95773]={t="需要交掉 The Gurubashi Legends of Old。",d="掉率低，且娜迦在水下；请组队或带上水下呼吸手段。",h="需要交掉 Enemies in the Water 和 Locating the Lost City。"}
+tips[95775]={d="石板位置：看到水池时左边楼梯下面、Var'Taka 左边、Captain Dreadrise 旁一个骷髅的嘴里，以及最后首领 Min'loth the Serpent 身后。"}
+tips[95786]={t="Rebel Camp 的 Brother Nimetz 在 Troll Witchery 之后给出此任务。"}
+tips[95787]={d="第一个在第一个首领后左边往下，第二半在海盗区的一个骷髅里，第三个在娜迦首领旁，第四个在最后首领旁。"}
+tips[95788]={t="先要完成荆棘谷任务链：The Second Rebellion、Bad Medicine、Troll Witchery，然后是 An Acquaintance in Southshore。"}
 tips[95789]={t="两者都需要 34 级。",d="玩家反映一次掉落不够全队用；把海盗区域清干净。"}
 tips[95790]={t="无法共享；每位玩家各自点击。"}
+tips[95791]={t="藏宝海湾旅店顶楼的 Krazek 给出此任务。"}
+tips[95810]={h="去另一个挖掘点交：Wetlands 西部的 Whelgar's Excavation Site（约 34,40），不是副本里。"}
+tips[95925]={d="在以下地点使用工具包：Pillar of Assimilation（最后首领区域，东边）、入口东边焦油坑里的 Achromatic Crystal、泰坦龙身后的 Western Gates、Regrowth Vestibule（Vitrix 北神庙），以及 Western Gates 东边的 Stone Watcher。"}
 tips[95926]={t="附近的 Anya Rince（52 级）可能会攻击你。"}
 tips[96334]={d="掉率低；玩家刷了好几次。"}
 tips[96335]={t="在此之前不要杀 The Questioner，否则任务不会出现。",d="掉率低。",h="有玩家反映在队友交完后自己交不了；请一起交。"}
 tips[96337]={h="Moonbrook 到处是 Defias。如果 Box 不提供任务，去问 Nazgrel。"}
+tips[96377]={t="任务只在小地图上显示；你的包里需要有 Document Box。"}
+tips[96381]={t="在你偷听 Jaina 之后，Sully 马上给出此任务。"}
+tips[96391]={t="Dark Iron Map 由 Dun Morogh 东南（约 77,60）的 Dark Iron 间谍掉落，并开始任务。"}
+tips[96393]={t="Dark Iron Map 由 Dun Morogh 东南（约 77,60）的 Dark Iron 间谍掉落，并开始任务。"}
+tips[96394]={d="从 High Seat 前往 Afadra Dunwall：一进去马上左转，进入新的副本入口区域。"}
+tips[96395]={t="Ghostly Attendant 在副本里给出并接收此任务，在入口后的第二个房间。"}
+tips[96403]={d="传家宝外观各不相同：把鼠标移过墙壁、椅子和桌子。最后一个房间也有一些。"}
 tips[96771]={t="然后前往 Riverglades。"}
 tips[96772]={d="仅当你在 Dalaran 接了这个任务。"}
 tips[96773]={d="在第一位队员拾取后尽快拾取；玩家反映约 30 秒后就无法拾取了。"}
+tips[96774]={d="拾取 Deathless Marrow，倒数第二个首领，在 Eternal Amphitheater 的最西边。",h="去任务发布者那里的上山路从 Mulgore 40.2,17.4 开始。"}
+tips[96776]={d="就在石像首领 Landslide 旁边找。"}
+tips[96800]={d="书（红色）在 Library 尽头 Arcanist Doan 房间右侧的桌子上。"}
+tips[96984]={d="他出现前全队都必须在副本里，否则他会离开且不再回来。"}
+tips[96987]={d="书在传送门房间过去的后墙边。"}
+tips[97049]={d="Loris' Tar Pits 周围的软泥掉精华。"}
+tips[97130]={d="神像由 Deathless Marrow 掉落。"}
 tips[97173]={d="找到 Blackmaw Ritual Totem（仅当你在 Dalaran 接了任务）。"}
+tips[97185]={d="一个队伍里的多名圣骑士，在一次事件后都能使用 Charger's Lost Soul。"}
 tips[97196]={d="在第一位队员拾取后尽快拾取；玩家反映约 30 秒后就无法拾取了。"}
+tips[97197]={d="Blackrock Depths 尽头的 Magmus 掉落此物。"}
 tips[97198]={d="找到 Blackmaw Ritual Totem。"}
+tips[97287]={h="交给下水道入口外的 Archmage Modera 的影像；不要进城。"}
+tips[97288]={d="走右边楼梯到有管道和走道的绿色软泥池，在 Ganoosh 旁使用物品。"}
+tips[97289]={d="进食管在楼上，憎恶的上方，靠西边绿色泥浆路旁（约 44,62）。"}
+tips[97291]={d="Toxic Skullcap 由在 Trade Quarter 上层环道走动的 Tawny Grisette 掉落；Blisterweed 长在 Katrina Alliestar 身后；Ezekiel 出售 Essence of Agony。"}
+tips[97292]={d="粉色大虫躺在上层房间外的路边，右侧。从任务日志使用血清，不要点击虫子。"}
 tips[97327]={d="收集 5 个 Blackmaw Pouches。"}
+tips[98325]={h="之后再和 Warlord Goretooth 对话并读完他的所有话：他的 Command 开始下一个任务。"}
+tips[98423]={t="从最后首领房间里金库门后的一个石头物件开始，是东北那几扇门中右边的那扇。"}
+tips[98815]={t="先为 James Halloran 完成 Young Crocolisk Skins。",d="满队时在高草里跑动，引来更多迅猛龙。"}
+tips[98823]={h="Muln Earthfury 在 Skywatcher Plateau 上 Camp Grev'rek 最大的帐篷里；上去的路从 39.7,16.9 开始。"}
+tips[98824]={d="你需要副本最后首领掉的 Titan Relic，不是挖掘点那个。如果你的没了，放弃任务再接一次。"}
+tips[99156]={d="Riptear 约 20% 血量时激怒；留一个昏迷技能到那时。"}
+tips[99187]={d="首领只掉一个 Reliquary of Tyr。"}
