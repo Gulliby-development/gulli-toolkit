@@ -380,7 +380,7 @@ function ns.StepGuide()
     local d
     for _, x in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do if x.key == g.key then d = x end end
     if not d then ns.guide = nil return false end
-    local q = ns.Quests(g.key, UnitLevel("player") or 1)
+    local q = ns.GuideQuests(g.key, UnitLevel("player") or 1)
     local route = ns.Route(q.take, ns.Here(), d)
     -- The stop the guide leads to stays while it is still on the route, so walking nearer to
     -- another one never moves the pin back and forth.

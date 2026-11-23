@@ -54,6 +54,17 @@ T.en = {
     DE_KEY_D = "Click, then press a key. Right-click clears it.",
     KEY_NONE = "Not set",
     KEY_PRESS = "Press a key...",
+    OPT_BANK = "Show what to put in the bank",
+    TIP_bank = "At the bank, a list beside it of bag items that belong there. Click puts one away, right-click never shows it again.",
+    BANK_TITLE = "To the bank: %d",
+    BANK_ALL = "Bank all",
+    BANK_TIP = "Click: put it in the bank. Right-click: never offer it.",
+    BANK_STACK = "The bank has more of it",
+    BANK_GOODS = "Trade goods",
+    BANK_RECIPE = "Recipe",
+    BANK_LATER = "For a higher level",
+    BANK_ALT = "Your class cannot use it",
+    MORE_ROWS = "+%d more",
 }
 
 T.de = {
@@ -101,6 +112,17 @@ T.de = {
     DE_KEY_D = "Klicken, dann eine Taste drücken. Rechtsklick löscht sie.",
     KEY_NONE = "Keine",
     KEY_PRESS = "Taste drücken...",
+    OPT_BANK = "Zeigen, was in die Bank gehört",
+    TIP_bank = "An der Bank eine Liste daneben mit Taschengegenständen, die dorthin gehören. Klick legt einen ein, Rechtsklick zeigt ihn nie wieder.",
+    BANK_TITLE = "In die Bank: %d",
+    BANK_ALL = "Alle einlagern",
+    BANK_TIP = "Klick: in die Bank legen. Rechtsklick: nie mehr anbieten.",
+    BANK_STACK = "Die Bank hat mehr davon",
+    BANK_GOODS = "Handwerkswaren",
+    BANK_RECIPE = "Rezept",
+    BANK_LATER = "Für eine höhere Stufe",
+    BANK_ALT = "Deine Klasse kann es nicht nutzen",
+    MORE_ROWS = "+%d weitere",
 }
 
 T.es = {
@@ -148,6 +170,17 @@ T.es = {
     DE_KEY_D = "Haz clic y pulsa una tecla. Clic derecho la borra.",
     KEY_NONE = "Sin asignar",
     KEY_PRESS = "Pulsa una tecla...",
+    OPT_BANK = "Mostrar qué guardar en el banco",
+    TIP_bank = "En el banco, una lista a su lado con los objetos de las bolsas que van allí. Clic guarda uno, clic derecho no lo vuelve a mostrar.",
+    BANK_TITLE = "Al banco: %d",
+    BANK_ALL = "Guardar todo",
+    BANK_TIP = "Clic: guardar en el banco. Clic derecho: no ofrecerlo más.",
+    BANK_STACK = "El banco tiene más",
+    BANK_GOODS = "Objeto comerciable",
+    BANK_RECIPE = "Receta",
+    BANK_LATER = "Para un nivel mayor",
+    BANK_ALT = "Tu clase no puede usarlo",
+    MORE_ROWS = "+%d más",
 }
 
 T.fr = {
@@ -195,6 +228,17 @@ T.fr = {
     DE_KEY_D = "Cliquez, puis appuyez sur une touche. Clic droit l'efface.",
     KEY_NONE = "Aucune",
     KEY_PRESS = "Appuyez sur une touche...",
+    OPT_BANK = "Montrer quoi mettre à la banque",
+    TIP_bank = "À la banque, une liste à côté des objets des sacs qui y ont leur place. Clic en range un, clic droit ne le montre plus.",
+    BANK_TITLE = "À la banque : %d",
+    BANK_ALL = "Tout ranger",
+    BANK_TIP = "Clic : ranger à la banque. Clic droit : ne plus le proposer.",
+    BANK_STACK = "La banque en a déjà",
+    BANK_GOODS = "Artisanat",
+    BANK_RECIPE = "Recette",
+    BANK_LATER = "Pour un niveau plus haut",
+    BANK_ALT = "Ta classe ne peut pas l'utiliser",
+    MORE_ROWS = "+%d de plus",
 }
 
 T.pl = {
@@ -242,6 +286,17 @@ T.pl = {
     DE_KEY_D = "Kliknij, potem naciśnij klawisz. Prawy klik go usuwa.",
     KEY_NONE = "Brak",
     KEY_PRESS = "Naciśnij klawisz...",
+    OPT_BANK = "Pokaż, co odłożyć do banku",
+    TIP_bank = "W banku obok niego lista przedmiotów z toreb, które tam pasują. Klik odkłada jeden, prawy klik już go nie pokazuje.",
+    BANK_TITLE = "Do banku: %d",
+    BANK_ALL = "Odłóż wszystko",
+    BANK_TIP = "Klik: odłóż do banku. Prawy klik: nigdy nie proponuj.",
+    BANK_STACK = "Bank ma tego więcej",
+    BANK_GOODS = "Surowce",
+    BANK_RECIPE = "Przepis",
+    BANK_LATER = "Na wyższy poziom",
+    BANK_ALT = "Twoja klasa tego nie użyje",
+    MORE_ROWS = "+%d więcej",
 }
 
 T.pt = {
@@ -289,6 +344,17 @@ T.pt = {
     DE_KEY_D = "Clique e pressione uma tecla. Clique direito apaga.",
     KEY_NONE = "Nenhuma",
     KEY_PRESS = "Pressione uma tecla...",
+    OPT_BANK = "Mostrar o que guardar no banco",
+    TIP_bank = "No banco, uma lista ao lado com os itens das bolsas que vão para lá. Clique guarda um, clique direito não mostra mais.",
+    BANK_TITLE = "Para o banco: %d",
+    BANK_ALL = "Guardar tudo",
+    BANK_TIP = "Clique: guardar no banco. Clique direito: nunca oferecer.",
+    BANK_STACK = "O banco tem mais",
+    BANK_GOODS = "Mercadorias",
+    BANK_RECIPE = "Receita",
+    BANK_LATER = "Para um nível maior",
+    BANK_ALT = "Sua classe não pode usar",
+    MORE_ROWS = "+%d a mais",
 }
 
 T.ru = {
@@ -336,6 +402,17 @@ T.ru = {
     DE_KEY_D = "Нажмите кнопку, затем клавишу. Правый клик сбрасывает.",
     KEY_NONE = "Не задана",
     KEY_PRESS = "Нажмите клавишу...",
+    OPT_BANK = "Показывать, что убрать в банк",
+    TIP_bank = "В банке рядом с ним список вещей из сумок, которым место там. Клик убирает одну, правый клик больше её не показывает.",
+    BANK_TITLE = "В банк: %d",
+    BANK_ALL = "Убрать всё",
+    BANK_TIP = "Клик: убрать в банк. Правый клик: больше не предлагать.",
+    BANK_STACK = "В банке уже есть",
+    BANK_GOODS = "Хозяйственные товары",
+    BANK_RECIPE = "Рецепт",
+    BANK_LATER = "На более высокий уровень",
+    BANK_ALT = "Вашему классу не подходит",
+    MORE_ROWS = "ещё %d",
 }
 
 T.zh = {
@@ -383,6 +460,17 @@ T.zh = {
     DE_KEY_D = "点击后按下一个键。右键清除。",
     KEY_NONE = "未设置",
     KEY_PRESS = "请按键...",
+    OPT_BANK = "显示该存入银行的物品",
+    TIP_bank = "在银行时，旁边列出背包里该放进银行的物品。点击存入一件，右键不再显示。",
+    BANK_TITLE = "存入银行：%d",
+    BANK_ALL = "全部存入",
+    BANK_TIP = "点击：存入银行。右键：不再列出。",
+    BANK_STACK = "银行里已有",
+    BANK_GOODS = "商品",
+    BANK_RECIPE = "配方",
+    BANK_LATER = "更高等级用",
+    BANK_ALT = "你的职业无法使用",
+    MORE_ROWS = "还有 %d 件",
 }
 
 ns.T = T

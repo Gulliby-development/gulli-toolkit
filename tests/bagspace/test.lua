@@ -490,4 +490,107 @@ test("disenchant: the switch in the hub turns it off at once", function()
     GulliToolkit = nil
 end)
 
+-- The bank helper ------------------------------------------------------------------------------
+
+local BANK_ITEMS = {
+    [1] = { name = "Broken Fang", quality = 0, price = 5, maxStack = 20 },
+    [4] = { name = "Linen Cloth", quality = 1, price = 10, maxStack = 20, classID = 7 },
+    [7] = { name = "Quest Thing", quality = 1, price = 0, classID = 12 },
+    [20] = { name = "Pattern: Shirt", quality = 1, price = 50, classID = 9 },
+    [21] = { name = "Big Sword", quality = 2, price = 900, classID = 2, subclassID = 8, minLevel = 40 },
+    [22] = { name = "Plate Boots", quality = 2, price = 400, classID = 4, subclassID = 4, minLevel = 10 },
+    [23] = { name = "Light Hide", quality = 1, price = 5, maxStack = 20, classID = 15 },
+    [24] = { name = "Bread", quality = 1, price = 1, maxStack = 20, classID = 0 },
+    [25] = { name = "Super Potion", quality = 1, price = 20, maxStack = 5, classID = 0, minLevel = 45 },
+    [26] = { name = "Copper Ore", quality = 1, price = 5, maxStack = 20, classID = 7 },
+    [6948] = { name = "Hearthstone", quality = 1, price = 0, classID = 15 },
+}
+local function bankBags()
+    return {
+        [0] = { size = 12, slots = {
+            [1] = { id = 1, count = 3 }, [2] = { id = 4, count = 10 }, [3] = { id = 7, count = 1 },
+            [4] = { id = 20, count = 1 }, [5] = { id = 21, count = 1 }, [6] = { id = 22, count = 1 },
+            [7] = { id = 23, count = 4 }, [8] = { id = 24, count = 5 }, [9] = { id = 25, count = 2 },
+            [10] = { id = 6948, count = 1 }, [11] = { id = 26, count = 3 } } },
+        [-1] = { size = 4, slots = { [1] = { id = 23, count = 10 } } },
+    }
+end
+local function bankFake(spec)
+    spec = spec or {}
+    Fake({ bags = bankBags(), items = BANK_ITEMS, level = 30, db = spec.db })
+    ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { b, s } end }
+    C_Item.IsBound = function() return false end
+    BANK_CONTAINER, NUM_BAG_SLOTS, NUM_TOTAL_EQUIPPED_BAG_SLOTS, NUM_BANKBAGSLOTS = -1, 4, 5, 0
+end
+local function whys(list)
+    local out = {}
+    for _, e in ipairs(list) do out[#out + 1] = e.id .. ":" .. e.why end
+    return table.concat(out, " ")
+end
+
+test("bank: the plan lists what belongs in the bank, by reason", function()
+    bankFake()
+    local ns = Load()
+    eq(whys(ns.BankPlan()), "23:stack 26:goods 4:goods 20:recipe 21:later 25:later 22:alt")
+end)
+
+test("bank: never quest items, junk, the hearthstone, protected or restocked items", function()
+    bankFake()
+    GulliToolkit = { Register = function() end, IsProtected = function(id) return id == 20 end }
+    GulliRestockCharDB = { list = { [26] = 20, ["best:food"] = 10 } }
+    local ns = Load()
+    local plan = whys(ns.BankPlan())
+    for _, id in ipairs({ 1, 7, 6948, 20, 26, 24 }) do
+        assert(not plan:find("%f[%d]" .. id .. ":"), id .. " must stay: " .. plan)
+    end
+    GulliToolkit, GulliRestockCharDB = nil, nil
+end)
+
+test("bank: off by default, shows at the bank with the switch", function()
+    bankFake()
+    local ns = Load()
+    eq(ns.db.bank, false)
+    W.Fire("BANKFRAME_OPENED")
+    assert(not ns.BankFrame():IsShown(), "off: no list")
+    ns.db.bank = true
+    W.Fire("BANKFRAME_OPENED")
+    assert(ns.BankFrame():IsShown(), "on: the list shows")
+    eq(ns.BankFrame().title:GetText(), ns.L.BANK_TITLE:format(7))
+    W.Fire("BANKFRAME_CLOSED")
+    assert(not ns.BankFrame():IsShown(), "closes with the bank")
+end)
+
+test("bank: a click banks one, right-click never offers it again, Bank all steps", function()
+    bankFake({ db = { bank = true } })
+    local ns = Load()
+    W.Fire("BANKFRAME_OPENED")
+    local row = ns.BankFrame().rows[1]
+    eq(row.entry.id, 23)
+    row:GetScript("OnClick")(row, "LeftButton")
+    eq(W.sold[1], 23, "moved into the bank")
+    ns.RefreshBank()
+    row = ns.BankFrame().rows[1]
+    row:GetScript("OnClick")(row, "RightButton")
+    assert(ns.db.bankNever[26], "kept out")
+    eq(ns.BankPlan()[1].id, 4)
+    ns.BankAll()
+    for _ = 1, 10 do W.RunTimers() end
+    eq(#ns.BankPlan(), 0, "everything banked")
+    eq(#W.sold, 6)
+    SlashCmdList.GULLIBAGSPACE("reset")
+    eq(next(ns.db.bankNever), nil, "reset brings it back")
+end)
+
+test("bank: nothing moves away from the bank or in a fight", function()
+    bankFake({ db = { bank = true } })
+    local ns = Load()
+    local e = ns.BankPlan()[1]
+    eq(ns.BankOne(e), false, "bank closed")
+    W.Fire("BANKFRAME_OPENED")
+    W.combat = true
+    eq(ns.BankOne(e), false, "in a fight")
+    W.combat = false
+    eq(ns.BankOne(e), true)
+end)
+
 W.finish()

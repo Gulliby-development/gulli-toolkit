@@ -242,4 +242,93 @@ test("busy auto-reply: once per player every few minutes, only when on and busy"
     ns.ShowPage(1)
 end)
 
+test("Battle.net friend requests are turned away only when switched on; game friend requests stay", function()
+    Fake({ bnetInvites = { { inviteID = 7, accountName = "Spammer", friendLevel = 1 },
+                           { inviteID = 8, accountName = "Ingame", friendLevel = 2 } } })
+    local ns = Load()
+    W.Fire("BN_FRIEND_INVITE_ADDED", 7)
+    eq(#W.did, 0)
+    ns.db.noBnet = true
+    W.Fire("BN_FRIEND_INVITE_ADDED", 7)
+    eq(table.concat(W.did, ","), "nobnet:7")
+    eq(select(2, ns.Today()).bnet, 1)
+end)
+
+test("join requests from strangers are turned away, friends get through, each answered once", function()
+    Fake({ friends = { "Ann" }, joins = { { guid = "G1", name = "Bob" }, { guid = "G2", name = "Ann" } } })
+    local ns = Load()
+    W.Fire("GROUP_INVITE_CONFIRMATION")
+    eq(#W.did, 0)
+    ns.db.noJoin = true
+    W.Fire("GROUP_INVITE_CONFIRMATION")
+    W.Fire("GROUP_INVITE_CONFIRMATION")
+    W.RunTimers()
+    eq(table.concat(W.did, ","), "nojoin:G1")
+    eq(W.joins[1].guid, "G2")
+end)
+
+test("quests strangers share are turned away; NPC quests and friends' shares stay", function()
+    Fake({ friends = { "Ann" } })
+    local ns = Load()
+    W.sharer = "Bob"
+    W.Fire("QUEST_DETAIL")
+    eq(#W.did, 0)
+    ns.db.noShared = true
+    W.Fire("QUEST_DETAIL")
+    W.sharer = "Ann"; W.Fire("QUEST_DETAIL")
+    W.sharer = nil; W.Fire("QUEST_DETAIL")
+    eq(table.concat(W.did, ","), "noquest")
+    eq(GulliSocial.DeclinesShare("Bob"), true)
+    eq(GulliSocial.DeclinesShare("Ann"), false)
+    eq(ns.OnQuestConfirm("Bob"), true)
+    issecretvalue = function() return true end
+    eq(GulliSocial.DeclinesShare("Bob"), false)
+    issecretvalue = nil
+end)
+
+test("in a battleground the spirit goes at once, not with Shift, a soulstone or outside", function()
+    Fake({})
+    local ns = Load()
+    W.dead = true
+    W.instance = "pvp"
+    W.Fire("PLAYER_DEAD"); W.RunTimers()
+    eq(#W.did, 0)
+    ns.db.bgRelease = true
+    W.instance = "party"
+    W.Fire("PLAYER_DEAD"); W.RunTimers()
+    W.instance = "pvp"
+    W.shift = true; W.Fire("PLAYER_DEAD"); W.RunTimers()
+    W.shift = false
+    W.selfRes = { { name = "Soulstone" } }; W.Fire("PLAYER_DEAD"); W.RunTimers()
+    W.selfRes = nil
+    eq(#W.did, 0)
+    W.Fire("PLAYER_DEAD"); W.RunTimers()
+    eq(table.concat(W.did, ","), "release")
+end)
+
+test("the spirit healer's wave is taken once per death in a battleground", function()
+    Fake({})
+    local ns = Load()
+    W.instance = "pvp"
+    W.Fire("AREA_SPIRIT_HEALER_IN_RANGE")
+    eq(#W.did, 0)
+    ns.db.bgSpirit = true
+    W.Fire("AREA_SPIRIT_HEALER_IN_RANGE"); W.Fire("AREA_SPIRIT_HEALER_IN_RANGE")
+    W.Fire("PLAYER_UNGHOST")
+    W.Fire("AREA_SPIRIT_HEALER_IN_RANGE")
+    eq(table.concat(W.did, ","), "spirit,spirit")
+end)
+
+test("paused, the new rules do nothing", function()
+    Fake({ joins = { { guid = "G1", name = "Bob" } }, bnetInvites = { { inviteID = 3, friendLevel = 1 } },
+           db = { noJoin = true, noBnet = true, noShared = true, bgRelease = true } })
+    local ns = Load()
+    ns.paused = true
+    W.sharer = "Bob"; W.dead = true; W.instance = "pvp"
+    for _, e in ipairs({ "GROUP_INVITE_CONFIRMATION", "BN_FRIEND_INVITE_ADDED", "QUEST_DETAIL", "PLAYER_DEAD" }) do W.Fire(e) end
+    W.RunTimers()
+    eq(#W.did, 0)
+    eq(GulliSocial.DeclinesShare("Bob"), false)
+end)
+
 W.finish()

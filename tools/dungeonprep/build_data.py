@@ -91,11 +91,14 @@ NPCS = {
     "ALCAZ": [255391, 255997, 257016, 256236, 255702, 255707, 264770],
     "BLACKMAW": [247195, 247206, 247209, 247198, 247234, 247207, 247231],
     "SHAPERS": [253201, 261812, 261813, 262127, 261974, 261993, 262297, 262081, 272561, 261809],
+    # Blackrock Depths: the Rugged Traveler, on a hidden ledge over the lava (the data files him
+    # under the Burning Steppes).
+    "BRD": [222530],
 }
 # Givers the data does not name, by npc id: Mason Connery, chained at the end of Alcaz Prison,
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
 # Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
-STARTERS = {96335: 264770}
+STARTERS = {96335: 264770, 82062: 222530}  # and the Rugged Traveler's Ever After
 # Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
 FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
@@ -130,12 +133,26 @@ MAIN_EXTRA = {
     "KROLDOK": [94969],  # Krol'dok No More!
     "BLACKMAW": [92065, 99187],  # Blackmaw Reclamation, The Reliquary of Tyr
     "DALARAN": [92459, 97287],  # Friend of the Kirin Tor, Shrewd Negotiations
+    "BRD": [82062],  # Ever After, WoW Forever's hidden quest on a ledge over the lava (owner's word of 2026-11-23)
+}
+
+# Tips for a quest no levelling guide has, by stage (t take, d work, h hand in), in English and
+# in our own words; translated through tools/i18n like the guides' tips.
+TIPS = {
+    82062: {"t": "From the Ring of Law, take the bridge east that runs north over the lava. By the small "
+                 "brazier on its left side, jump from the railing onto the platform below, follow the wall "
+                 "to the corner and drop down onto the rock ledge: the Rugged Traveler stands there. The door "
+                 "on the ledge leads on above Lord Incendius, with no way back."},
 }
 
 # A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
 # 2026-11-22: every class's quests that lead into or are done in a dungeon show there, also
 # where its levelling guide leaves them to a class guide). Not the tier 0.5 set exchanges, which
 # are gear turn-ins over many runs, not steps of a dungeon run (owner's decision of 2026-11-18).
+# They go into D.set instead: the whole tier 0.5 chain (these quests and every level 58+ quest
+# linked to them as a step before or after), which the journal shows only at the top level, folded
+# under the list (owner's decision of 2026-11-22).
+SET_LEVEL = 58
 SET_QUESTS = {"An Earnest Proposition", "Just Compensation", "Anthion's Parting Words",
               "Saving the Best for Last"}
 CLASS_SKIP = {97179}  # Collection of Goods, the Forever copy of the set exchange
@@ -154,6 +171,28 @@ def add_class_masks(quests):
             q = quests.get(w["id"])
             if q is not None and not q.get(Q_CLASSES) and w.get("classes"):
                 q[Q_CLASSES] = w["classes"]
+
+
+def add_set_masks(quests):
+    """WoW Forever's copies of the tier 0.5 quests have no class mask either: each asks for
+    pieces of one class's set, so it takes the mask of the original quests that ask for the
+    same piece (an item every class turns in, such as a key, tells nothing)."""
+    of_item = {}
+    for q in quests.values():
+        mask = q.get(Q_CLASSES) or 0
+        if mask and q.get(Q_NAME) in SET_QUESTS:
+            for o in seq((q.get(Q_OBJECTIVES) or {}).get(3) or {}):
+                of_item.setdefault(o.get(1), set()).add(mask)
+    for q in quests.values():
+        if q.get(Q_CLASSES) or q.get(Q_NAME) not in SET_QUESTS:
+            continue
+        masks = set()
+        for o in seq((q.get(Q_OBJECTIVES) or {}).get(3) or {}):
+            found = of_item.get(o.get(1)) or set()
+            if len(found) == 1:
+                masks |= found
+        if len(masks) == 1:
+            q[Q_CLASSES] = masks.pop()
 
 
 def class_quest(qid, q):
@@ -399,8 +438,12 @@ def main(root, att_root=None, gdq_root=None):
     add_att_links(quests, att_links)
     add_starters(quests)
     add_class_masks(quests)
+    add_set_masks(quests)
     guide_tips = {}
     guide_quests = load_guides(gdq_root, guide_tips)
+    for qid, by in TIPS.items():
+        for stage, text in by.items():
+            guide_tips.setdefault(qid, {}).setdefault(stage, text)
     att_side = {}
     for listed in att_quests.values():
         att_side.update(listed)
@@ -689,6 +732,16 @@ def main(root, att_root=None, gdq_root=None):
             return 0
         return max([1 + rest(n, seen + (qid,)) for n in after.get(qid, []) if n in quests] or [0])
 
+    # The tier 0.5 chain: the SET_QUESTS and every level 58+ step linked to them.
+    set_ids = {qid for qid, q in quests.items() if q.get(Q_NAME) in SET_QUESTS}
+    todo = list(set_ids)
+    while todo:
+        cur = todo.pop()
+        for n in pres(cur) + after.get(cur, []):
+            if n in quests and n not in set_ids and (quests[n].get(Q_LEVEL) or 0) >= SET_LEVEL:
+                set_ids.add(n)
+                todo.append(n)
+
     # The whole chain a quest is in, first step first: back along the longest way, then on
     # along the longest way of quests for the same faction.
     def chain(qid):
@@ -743,8 +796,15 @@ def main(root, att_root=None, gdq_root=None):
     lines.append("D.main = {")
     for key, *_ in DUNGEONS:
         ids = sorted(q for q in by_dungeon[key]
-                     if q in guide_quests.get(key, ()) or q in MAIN_EXTRA.get(key, ())
-                     or class_quest(q, quests[q]))
+                     if (q in guide_quests.get(key, ()) or q in MAIN_EXTRA.get(key, ())
+                     or class_quest(q, quests[q])) and q not in set_ids)
+        if ids:
+            lines.append("%s=%s," % (key, lua_list(ids)))
+    lines.append("}")
+    lines.append("-- Dungeon -> the quests of the tier 0.5 set chain, shown only at the top level.")
+    lines.append("D.set = {")
+    for key, *_ in DUNGEONS:
+        ids = sorted(q for q in by_dungeon[key] if q in set_ids)
         if ids:
             lines.append("%s=%s," % (key, lua_list(ids)))
     lines.append("}")

@@ -49,7 +49,8 @@ end
 local function fillRow(r, e)
     r.entry = e
     local who = e.who or "?"
-    local color = (e.what == "invited" or e.what == "joined" or e.what == "summon" or e.what == "res") and S.GOOD or S.WARN
+    local color = (e.what == "invited" or e.what == "joined" or e.what == "summon" or e.what == "res"
+        or e.what == "release" or e.what == "spirit") and S.GOOD or S.WARN
     r.what:SetText(S.Hex(color) .. L["LOG_" .. e.what:upper()] .. "|r  " .. who)
     local m = math.floor((time() - e.t) / 60)
     r.when:SetText(m < 1 and L.NOW or L.AGO_M:format(m))
@@ -73,7 +74,7 @@ function ns.Refresh()
         todayLine:SetText(L.TODAY_NONE)
     else
         local parts = {}
-        for _, k in ipairs({ "invite", "duel", "guild", "trade", "petition", "spam" }) do
+        for _, k in ipairs({ "invite", "duel", "guild", "trade", "petition", "join", "shared", "bnet", "spam" }) do
             if (s[k] or 0) > 0 then parts[#parts + 1] = L["N_" .. k:upper()]:format(s[k]) end
         end
         todayLine:SetText(L.TODAY:format(table.concat(parts, ", ")))
@@ -130,6 +131,9 @@ local function buildRules(body, width)
         switch("noGuildInvites", L.OPT_GUILD),
         switch("noTrade", L.OPT_TRADE),
         switch("noPetition", L.OPT_PETITION),
+        switch("noJoin", L.OPT_NO_JOIN, L.OPT_NO_JOIN_D),
+        switch("noShared", L.OPT_NO_SHARED),
+        switch("noBnet", L.OPT_NO_BNET),
         switch("spam", L.OPT_SPAM, L.TIP_SPAM),
     })
     st:Add(away, h3)
@@ -158,6 +162,12 @@ local function buildRules(body, width)
         switch("res", L.OPT_RES),
     }, L.HELP_HINT)
     st:Add(help, h4)
+
+    local bg, h5 = S.SettingsCard(c, L.SEC_BG, {
+        switch("bgRelease", L.OPT_BG_RELEASE, L.OPT_BG_RELEASE_D),
+        switch("bgSpirit", L.OPT_BG_SPIRIT),
+    })
+    st:Add(bg, h5)
     c:SetHeight(st:Height())
     rules:SetScript("OnShow", function() scroll:Update(st:Height()) end)
 end

@@ -162,12 +162,35 @@ function Fake(spec)
     GetCVarBool = function() return true end
     IsModifiedClick = function() return false end
     ConfirmLootSlot = function(slot) W.confirmedSlot = slot end
+    -- The loot window: W.slots[i] = { icon, name, count, quality, locked, coin }.
+    W.slots = spec.slots or {}
+    GetLootSlotInfo = function(i)
+        local x = W.slots[i]
+        if not x then return nil end
+        return x[1], x[2], x[3] or 1, nil, x[4] or 1, x[5] or false, false, nil, true, x[6] or false
+    end
+    GetLootSlotLink = function(i) return "|Hitem:" .. i .. "|h[Slot]|h" end
+    CloseLoot = function() W.closedLoot = (W.closedLoot or 0) + 1 end
+    UISpecialFrames = {}
+    LootFrame = { events = { LOOT_OPENED = true }, shown = false }
+    function LootFrame:RegisterEvent(e) self.events[e] = true end
+    function LootFrame:UnregisterEvent(e) self.events[e] = nil end
+    function LootFrame:IsShown() return self.shown end
+    function LootFrame:Hide() self.shown = false end
+    GroupLootContainer = { points = {}, scale = 1 }
+    function GroupLootContainer:ClearAllPoints() self.points = {} end
+    function GroupLootContainer:SetPoint(...) self.points[#self.points + 1] = { ... }; if self.hook then self.hook() end end
+    function GroupLootContainer:SetScale(k) self.scale = k end
+    function GroupLootContainer:IsProtected() return false end
+    hooksecurefunc = function(a, b, c)
+        if a == GroupLootContainer and b == "SetPoint" then GroupLootContainer.hook = c end
+    end
     GulliLootDB = spec.db
     return W
 end
 
 function Load()
-    return W.Load("Gulli-Loot", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-Loot", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua", "Window.lua" })
 end
 
 return W
