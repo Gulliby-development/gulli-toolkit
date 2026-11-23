@@ -33,6 +33,21 @@ local function itemClass(link)
     if not f or not link then return nil end
     return select(6, f(link))
 end
+-- The name of the player who shares the open quest, nil when an NPC offers it.
+function ns.Sharer()
+    if not UnitIsPlayer then return nil end
+    local ok, isPlayer = pcall(UnitIsPlayer, "questnpc")
+    if not ok or (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return nil end
+    local name = UnitName("questnpc")
+    if not name or (issecretvalue and issecretvalue(name)) then return nil end
+    return name
+end
+
+-- Gulli Social may turn away quests strangers share; Auto Quest then never takes them.
+function ns.SocialDeclines(name)
+    return GulliSocial and GulliSocial.DeclinesShare and name and GulliSocial.DeclinesShare(name) or false
+end
+
 local function npcID()
     local guid = UnitGUID and UnitGUID("npc")
     if issecretvalue and issecretvalue(guid) then return nil end
@@ -293,6 +308,9 @@ function ns.OnEvent(event, ...)
         if q then open(event, q)
         elseif event == "GOSSIP_SHOW" and #offered == 0 then gossipOnly() end
     elseif event == "QUEST_DETAIL" then
+        -- A quest a player shares: only with the switch, and never one Gulli Social turns away.
+        local from = ns.Sharer()
+        if from and (not db.shared or ns.SocialDeclines(from)) then return end
         local id = detailID()
         local why = ns.SkipNew(id, nil, GetSuggestedGroupNum and GetSuggestedGroupNum())
         if why then
@@ -308,7 +326,10 @@ function ns.OnEvent(event, ...)
         count("taken"); count("clicks")
         feed("taken", detailTitle())
     elseif event == "QUEST_ACCEPT_CONFIRM" then
-        if db.accept and db.shared and ConfirmAcceptQuest then ConfirmAcceptQuest(); count("clicks") end
+        local starter = ...
+        if db.accept and db.shared and ConfirmAcceptQuest and not ns.SocialDeclines(starter) then
+            ConfirmAcceptQuest(); count("clicks")
+        end
     elseif event == "QUEST_PROGRESS" then
         local id = detailID()
         if not db.turnIn or (id and db.ignoreQuest[id]) then return end
