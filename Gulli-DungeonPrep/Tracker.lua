@@ -1,7 +1,8 @@
 -- The dungeon tracker: a small Gulli HUD panel on the right of the screen for the dungeon of
 -- Lead me (ns.ShowTracker). It lists the dungeon's quests (ns.TrackerItems): ready to hand in,
 -- in the log with their objectives, to take, and chain quests that wait for an earlier step.
--- A chain is one row with the step it is at; a click opens it to show every step, a right-click
+-- A chain is one row with the step it is at; a click shows every step in a card beside the
+-- panel (the panel keeps its size, so it never grows over other frames), a right-click
 -- opens the quest in the journal; the map button pins who to go to (and targets and marks them
 -- when they are near, ns.TargetOver). The dungeon's icon under a row's mark says that what the
 -- row asks for now (taking it, its work, handing it in) happens inside the dungeon. The cross closes it. Unlocked (its switch or /gulli move) it shows with its mover to be placed.
@@ -19,28 +20,31 @@ local STATE_ICON = {
 }
 local PIN_ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
-local tracker
-local opened = {}
+local tracker, flyout
+local opened
 local STEP_ICON = { done = "Interface\\RaidFrame\\ReadyCheck-Ready", missing = "Interface\\RaidFrame\\ReadyCheck-NotReady",
                     active = "Interface\\RaidFrame\\ReadyCheck-Waiting" }
 
--- Whether a chain's row shows its steps, and a switch for it.
-function ns.TrackerOpen(key) return opened[key] == true end
+-- Whether a chain's steps show beside the panel, and a switch for it: one chain at a time.
+function ns.TrackerOpen(key) return opened == key end
 function ns.ToggleTracked(key)
-    opened[key] = not opened[key] or nil
+    if opened == key then opened = nil else opened = key end
     ns.RefreshTracker()
 end
 
--- The lines of a row: its own, then its chain's steps while it is open.
+-- The lines of a row; a chain's steps go into the card beside the panel (stepLines).
 local function rowLines(it)
     local lines = {}
     for _, l in ipairs(it.lines) do lines[#lines + 1] = l end
-    if it.steps and opened[it.key] then
-        for _, st in ipairs(it.steps) do
-            local k = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
-            local mark = k and ("|T" .. STEP_ICON[k] .. ":12|t ") or "|cff666666·|r  "
-            lines[#lines + 1] = { text = mark .. st.n .. ".  " .. st.name, stepOf = st }
-        end
+    return lines
+end
+
+local function stepLines(it)
+    local lines = {}
+    for _, st in ipairs(it.steps or {}) do
+        local k = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
+        local mark = k and ("|T" .. STEP_ICON[k] .. ":12|t ") or "|cff666666·|r  "
+        lines[#lines + 1] = { text = mark .. st.n .. ".  " .. st.name, stepOf = st }
     end
     return lines
 end
@@ -132,7 +136,7 @@ local function makeRow(parent)
                 c[1], c[2], c[3])
         end
         if self.item.steps then
-            GameTooltip:AddLine(opened[self.item.key] and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
+            GameTooltip:AddLine(opened == self.item.key and L.TR_FOLD or L.TR_UNFOLD, 1, 1, 1)
             GameTooltip:AddLine(L.TR_OPEN_RIGHT, 1, 1, 1)
         else
             GameTooltip:AddLine(L.TR_OPEN, 1, 1, 1)
@@ -171,6 +175,69 @@ local function fillRow(r, it)
     r.pin:SetShown(it.pin ~= nil)
     r:SetHeight(rowHeight(it))
 end
+
+-- The card beside the panel with the steps of the chain that is open.
+local function buildFlyout()
+    flyout = CreateFrame("Frame", "GulliDungeonPrepTrackerChain", UIParent)
+    flyout:SetSize(W, HEAD_H + 40)
+    flyout:SetFrameStrata("MEDIUM")
+    flyout:SetClampedToScreen(true)
+    flyout:EnableMouse(true)
+    S.HudPanel(flyout)
+    flyout.close = S.Close(flyout, function() opened = nil; ns.RefreshTracker() end)
+    flyout.close:SetSize(24, 24)
+    flyout.close:SetPoint("TOPRIGHT", -2, -2)
+    flyout.title = S.Text(flyout, 12, S.GOLD)
+    flyout.title:SetPoint("TOPLEFT", 10, -8)
+    flyout.title:SetPoint("RIGHT", flyout.close, "LEFT", -6, 0)
+    flyout.title:SetJustifyH("LEFT")
+    flyout.title:SetWordWrap(false)
+    local line = S.Divider(flyout)
+    line:SetPoint("TOPLEFT", 1, -HEAD_H)
+    line:SetPoint("TOPRIGHT", -1, -HEAD_H)
+    line:SetHeight(1)
+    flyout.lines = {}
+    flyout:Hide()
+end
+
+local function showFlyout(row, it)
+    if not flyout then buildFlyout() end
+    flyout.title:SetText(it.name)
+    local lines = stepLines(it)
+    for i = 1, #lines do
+        if not flyout.lines[i] then
+            local t = S.Text(flyout, 12, S.MUTED)
+            t:SetPoint("TOPLEFT", 10, -(HEAD_H + PAD + (i - 1) * LINE_H))
+            t:SetPoint("RIGHT", -10, 0)
+            t:SetJustifyH("LEFT")
+            t:SetWordWrap(false)
+            flyout.lines[i] = t
+        end
+    end
+    for i, t in ipairs(flyout.lines) do
+        local l = lines[i]
+        t:SetShown(l ~= nil)
+        if l then
+            local st = l.stepOf
+            t:SetText(l.text)
+            t:SetTextColor(unpack((st.this and S.Accent()) or (st.missing and S.BAD) or (st.done and S.FAINT) or S.MUTED))
+        end
+    end
+    flyout:SetHeight(HEAD_H + PAD + #lines * LINE_H + PAD + 2)
+    -- Beside the row, on the side of the screen with room: left of a panel on the right half.
+    flyout:ClearAllPoints()
+    local cx = tracker.GetCenter and tracker:GetCenter()
+    local sw = UIParent.GetWidth and UIParent:GetWidth()
+    if type(cx) == "number" and type(sw) == "number" and cx < sw / 2 then
+        flyout:SetPoint("TOPLEFT", row, "TOPRIGHT", 6, 0)
+    else
+        flyout:SetPoint("TOPRIGHT", row, "TOPLEFT", -6, 0)
+    end
+    flyout:SetScale(tracker.GetScale and tracker:GetScale() or 1)
+    flyout:Show()
+end
+
+local function hideFlyout() if flyout then flyout:Hide() end end
 
 local function build()
     tracker = CreateFrame("Frame", "GulliDungeonPrepTracker", UIParent)
@@ -246,12 +313,13 @@ function ns.RefreshTracker()
     end
     if not key then
         if tracker then tracker:SetMoving(false); tracker:Hide() end
+        hideFlyout()
         return
     end
     if not tracker then build() end
     local d
     for _, x in ipairs(ns.Dungeons(UnitLevel("player") or 1)) do if x.key == key then d = x end end
-    if not d then ns.db.tracker = nil; tracker:Hide() return end
+    if not d then ns.db.tracker = nil; tracker:Hide(); hideFlyout() return end
     tracker.key = key
     place()
     tracker.icon:SetIcon(ns.Icon(key))
@@ -259,6 +327,7 @@ function ns.RefreshTracker()
     local items, ready, total = ns.TrackerItems(key, UnitLevel("player") or 1)
     tracker.count:SetText(ready .. "/" .. total)
     local y = HEAD_H + 2
+    local openRow
     for i, r in ipairs(tracker.rows) do
         local it = items[i]
         r:SetShown(it ~= nil)
@@ -268,6 +337,7 @@ function ns.RefreshTracker()
             r:SetPoint("TOPLEFT", 1, -y)
             r:SetPoint("TOPRIGHT", -1, -y)
             y = y + rowHeight(it)
+            if it.steps and opened == it.key then openRow = { r, it } end
         end
     end
     tracker.empty:SetShown(#items == 0)
@@ -275,7 +345,12 @@ function ns.RefreshTracker()
     tracker:SetHeight(y + 4)
     tracker:SetMoving(moving and not (InCombatLockdown and InCombatLockdown()))
     tracker:Show()
+    -- A chain that left the panel (done, or past the rows shown) closes its card.
+    if openRow and not moving then showFlyout(openRow[1], openRow[2]) else hideFlyout() end
 end
+
+-- The card with the open chain's steps, for the tests and the preview.
+function ns.TrackerChainFrame() return flyout end
 
 -- The panel, for the hub's Unlock mode (built when it is asked for) and the tests.
 function ns.TrackerFrame()

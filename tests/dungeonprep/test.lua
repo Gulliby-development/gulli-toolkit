@@ -995,6 +995,98 @@ test("class quests: every class sees its own Sunken Temple quest with Chains onl
     eq(ns.Data.quest[97169][5], 64, "shaman only")
 end)
 
+test("the tier 0.5 set: hidden while levelling, its own folded list at the top level", function()
+    local function ids(q)
+        local t = {}
+        for _, l in ipairs({ q.log, q.take, q.later, q.hidden, q.finished }) do
+            for _, x in ipairs(l) do
+                t[x.id] = x
+                for _, m in ipairs(x.members or {}) do t[m] = x end
+            end
+        end
+        return t
+    end
+    for _, mainOnly in ipairs({ true, false }) do
+        Fake({ level = 59, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+        local ns = Load()
+        ns.Set("mainOnly", mainOnly)
+        local setOf = ns.SetSet("STRAT")
+        assert(setOf[8937], "Just Compensation is in the set chain")
+        local q = ns.Quests("STRAT", 59)
+        for id in pairs(ids(q)) do assert(not setOf[id], "no set quest while levelling: " .. id) end
+        eq(#q.set.take + #q.set.later + #q.set.log, 0, "no set list below the top level")
+        local before = ns.Quests("STRAT", 60)
+        for id in pairs(ids(before)) do assert(not setOf[id], "never in the normal lists: " .. id) end
+        local set = ids(before.set)
+        local n = 0
+        for id, x in pairs(set) do
+            n = n + 1
+            assert(setOf[id], "only set quests: " .. id)
+            eq(x.set, true)
+        end
+        assert(n > 0, "the set list at the top level")
+        -- Only the warrior's own pieces.
+        for id in pairs(set) do
+            local mask = ns.Data.quest[id][5]
+            assert(mask == 0 or mask % 2 == 1, "a warrior quest: " .. id)
+        end
+        eq(ns.Counts("STRAT", 60).take, #before.take, "the counts leave the set out")
+    end
+end)
+
+test("Ever After: WoW Forever's hidden quest in Blackrock Depths, inside, with its way there", function()
+    Fake({ level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" })
+    local ns = Load()
+    eq(ns.Get("mainOnly"), true)
+    assert(ns.MainSet("BRD")[82062], "among the chains of Blackrock Depths")
+    local found
+    for _, x in ipairs(ns.Quests("BRD", 50).take) do if x.id == 82062 then found = x end end
+    assert(found, "to take at level 50, for both factions")
+    eq(found.who, "Rugged Traveler")
+    local inside = ns.Inside("BRD", 82062)
+    assert(inside.take and inside.turnin, "taken and handed in inside the dungeon")
+    assert(ns.Data.tips[82062] and ns.Data.tips[82062].t, "the way to the ledge")
+end)
+
+test("Lead me at the top level: the set quests in the log, the ones to take once the set began", function()
+    local function has(list, id)
+        for _, x in ipairs(list) do
+            if x.id == id then return true end
+            for _, m in ipairs(x.members or {}) do if m == id then return true end end
+        end
+    end
+    Fake({ level = 59, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+    local ns = Load()
+    local g = ns.GuideQuests("STRAT", 59)
+    eq(#g.take, #ns.Quests("STRAT", 59).take, "nothing of the set while levelling")
+    -- At 60, never started: the guide leaves the set's quests to take alone.
+    Fake({ level = 60, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR" })
+    ns = Load()
+    local q = ns.Quests("STRAT", 60)
+    assert(#q.set.take > 0, "set quests to take at 60")
+    local first = q.set.take[1].id
+    g = ns.GuideQuests("STRAT", 60)
+    assert(not has(g.take, first), "not led to a set nobody began")
+    -- With its list open, Lead me and the tracker take them.
+    ns.showSet = true
+    g = ns.GuideQuests("STRAT", 60)
+    assert(has(g.take, first), "led to the set once its list is open")
+    local found
+    for _, it in ipairs(select(1, ns.TrackerItems("STRAT", 60))) do if it.id == first then found = true end end
+    local _, _, total = ns.TrackerItems("STRAT", 60)
+    assert(found or total > ns.TRACK_MAX, "the tracker has the set quest")
+    ns.showSet = nil
+    -- A set quest in the log: the guide follows the set, also with its list folded.
+    Fake({ level = 60, raceID = 1, faction = "Alliance", classID = 1, className = "WARRIOR",
+           active = { [first] = true } })
+    ns = Load()
+    q = ns.Quests("STRAT", 60)
+    assert(#q.set.log > 0, "the set quest is in the log")
+    g = ns.GuideQuests("STRAT", 60)
+    assert(has(g.log, first), "the set quest in the log is led to")
+    eq(ns.StartGuide("STRAT"), true, "Lead me starts on the set")
+end)
+
 test("levelling chains: only the guide's chains while mainOnly is on, every quest without it", function()
     Fake({ level = 58, raceID = 2, faction = "Horde", className = "WARRIOR" })
     local ns = Load()
@@ -1112,10 +1204,14 @@ test("chains: one card per chain, at the step to do now; the tracker opens one t
     eq(#row.steps, 7)
     ns.StartGuide("DM")
     eq(ns.TrackerOpen(166), false)
+    local h = ns.TrackerFrame():GetHeight()
     ns.ToggleTracked(166)
     eq(ns.TrackerOpen(166), true, "a click opens the row to show every step")
+    eq(ns.TrackerFrame():GetHeight(), h, "the panel keeps its size: the steps go into a card beside it")
+    assert(ns.TrackerChainFrame():IsShown(), "the card with the steps shows")
     ns.ToggleTracked(166)
     eq(ns.TrackerOpen(166), false)
+    assert(not ns.TrackerChainFrame():IsShown(), "a second click closes the card")
     -- The whole chain done: one done chain.
     W.done = { [65] = true, [132] = true, [135] = true, [141] = true, [142] = true, [155] = true, [166] = true }
     W.active = {}
