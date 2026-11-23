@@ -193,6 +193,7 @@ local function buildRules(page, width)
         switch("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
         switch("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
         switch("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
+        switch("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
         { L.OPT_ROLL_SCALE, L.OPT_ROLL_SCALE_D, icon = ns.OPT_ICON.rollScale,
           control = S.Stepper(page, function() return ns.db.rollScale or 100 end,
               function(v) ns.SetPref("rollScale", v) end, 10, 70, 150, function(v) return L.PCT:format(v) end, 110) },
