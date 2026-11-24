@@ -44,17 +44,50 @@ function ns.OwnWindow()
     return ns.db ~= nil and ns.db.window == true and not ns.paused
 end
 
--- The game's loot window opens only when ours does not. Its own LOOT_OPENED is what shows it.
+-- The game's loot window shows from its own LOOT_OPENED: on = it hears the event.
+local function gameWindow(on)
+    local f = LootFrame
+    if not f or not f.RegisterEvent then return end
+    if on then f:RegisterEvent("LOOT_OPENED") else f:UnregisterEvent("LOOT_OPENED") end
+end
+
+-- The game's loot window opens only when ours does not.
 function ns.ApplyWindow()
     local f = LootFrame
     if not f or not f.RegisterEvent then return end
     if ns.OwnWindow() then
-        f:UnregisterEvent("LOOT_OPENED")
+        gameWindow(false)
         if f.IsShown and f:IsShown() and f.Hide then f:Hide() end
     else
-        f:RegisterEvent("LOOT_OPENED")
+        gameWindow(true)
         if ns.HideLoot then ns.HideLoot() end
     end
+end
+
+-- LOOT_READY comes before LOOT_OPENED. While Fast loot takes this loot, the game's window does not
+-- hear LOOT_OPENED, so it never flashes; what is still there after ns.QUIET_WAIT (full bags, a
+-- locked slot, a bind question) gets a window after all.
+ns.QUIET_WAIT = 0.5
+
+function ns.QuietLoot()
+    if ns.OwnWindow() then return false end
+    local quiet = ns.FastLootNow and ns.FastLootNow() or false
+    gameWindow(not quiet)
+    ns.quiet = quiet
+    return quiet
+end
+
+-- What Fast loot could not take: the game's window, or ours when the game's cannot open.
+function ns.ShowLeftover()
+    if not ns.quiet or not ns.lootOpen or #ns.LootRows() == 0 then return false end
+    ns.quiet = false
+    local f = LootFrame
+    if f and f.Open and not (f.IsShown and f:IsShown()) then
+        f.isAutoLoot = false
+        if pcall(f.Open, f) then return true end
+    end
+    ns.ShowLoot(false)
+    return true
 end
 
 ---- The window -------------------------------------------------------------------------------
@@ -199,10 +232,18 @@ end
 
 function ns.OnLootEvent(event, a1)
     if event == "LOOT_OPENED" then
-        if ns.OwnWindow() then ns.ShowLoot(a1) end
+        if ns.OwnWindow() then ns.ShowLoot(a1)
+        elseif ns.quiet then
+            ns.lootOpen = true
+            local token = {}
+            ns.quietToken = token   -- a wait of an earlier loot shows nothing
+            if C_Timer then C_Timer.After(ns.QUIET_WAIT, function() if ns.quietToken == token then ns.ShowLeftover() end end)
+            else ns.ShowLeftover() end
+        end
     elseif event == "LOOT_SLOT_CLEARED" or event == "LOOT_SLOT_CHANGED" then
         ns.RefreshLoot()
     elseif event == "LOOT_CLOSED" then
+        if ns.quiet then ns.quiet = false; gameWindow(true) end
         ns.HideLoot()
     end
 end
