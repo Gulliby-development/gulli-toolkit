@@ -159,7 +159,8 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
             return p
         end
         feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedPrice", "Price"),
-            part("step", "feedRows", "Lines at most", { min = 1, max = 8 }), part("switch", "feedBare", "No background") }
+            part("step", "feedRows", "Lines at most", { min = 1, max = 8 }),
+            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }), part("switch", "feedBare", "No background") }
         GulliToolkit.modules.Merchant.tweaks[#GulliToolkit.modules.Merchant.tweaks + 1] = feed
         ns.SetTweak("levelShot", true)
         ns.SetTweak("skipGossip", true)

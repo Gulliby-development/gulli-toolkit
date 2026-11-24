@@ -376,6 +376,9 @@ test("the hub's Tweaks page gets rows on the window's own saved keys", function(
     eq(parts.feedRows.kind, "step")
     eq(parts.feedRows.max, ns.FEED_ROWS_MAX)
     parts.feedRows.set(3); eq(ns.db.feedRows, 3); eq(parts.feedRows.get(), 3)
+    eq(parts.feedWidth.kind, "step"); eq(parts.feedWidth.min, ns.FEED_WIDTH_MIN); eq(parts.feedWidth.max, ns.FEED_WIDTH_MAX)
+    parts.feedWidth.set(300); eq(ns.db.feedWidth, 300); eq(parts.feedWidth.get(), 300)
+    parts.feedWidth.set(240)
     eq(ns.FeedRows(), 3)
 end)
 
@@ -538,13 +541,19 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     eq(cloth.src, "auction"); assert(cloth.note:find("43"))
     eq(quest.src, nil); assert(quest.right:find("7/12")); assert(quest.note:find("Hope for Hatchlings", 1, true))
     eq(junk.src, "vendor"); assert(junk.note ~= nil)
-    -- a price alone is no reason for a second line, and the panel is only as wide as its text
+    -- a price alone is no reason for a second line
     ns.SetPref("feedNotes", false)
     junk = ns.FeedLine(ns.FeedEntries()[1])
     eq(junk.note, nil, "one line: the price's icon names the source"); eq(junk.src, nil)
     assert(junk.right:find("3s"))
+    -- the panel keeps the player's width whatever the lines say
     ns.FeedPaint()
-    eq(ns.feedWidth, 150, "the fake client's texts have no width: the least width")
+    eq(ns.feedWidth, 240, "the width at first")
+    ns.SetPref("feedWidth", 300)
+    eq(ns.feedWidth, 300, "a changed width shows at once")
+    ns.SetPref("feedWidth", 9999); eq(ns.FeedWidth(), ns.FEED_WIDTH_MAX)
+    ns.SetPref("feedWidth", 1); eq(ns.FeedWidth(), ns.FEED_WIDTH_MIN)
+    ns.SetPref("feedWidth", 240)
     ns.SetPref("feedNotes", true)
     e = ns.FeedEntries()
     local total, parts = ns.FeedTotal()

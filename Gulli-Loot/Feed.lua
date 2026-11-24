@@ -18,7 +18,10 @@ ns.FEED_FADE = 1.5      -- the last part of that it fades
 ns.FEED_MONEY_WAIT = 2  -- money that comes in this long after the loot closed still counts
 ns.FEED_STALE = 0.5     -- the facts of a line are read again this long after the bags or the log changed
 local ROW_H, ROW_H2, FOOT_H, PAD = 26, 40, 24, 6
-local WIDTH_MIN, WIDTH_MAX = 150, 320   -- the panel is as wide as its longest line, within these
+-- The panel keeps one width, the player's `feedWidth`: a longer line is cut with "...", and the
+-- row's tooltip has it whole.
+ns.FEED_WIDTH = 240
+ns.FEED_WIDTH_MIN, ns.FEED_WIDTH_MAX, ns.FEED_WIDTH_STEP = 160, 400, 10
 
 local entries = {}      -- newest first: { kind = "item"|"money", id, icon, name, quality, count, copper, at }
 local frame, rows, sample, foot
@@ -29,6 +32,11 @@ local function now() return GetTime and GetTime() or 0 end
 local function secret(v) return issecretvalue and issecretvalue(v) end
 
 function ns.FeedOn() return ns.db ~= nil and ns.db.feed == true and not ns.paused end
+
+function ns.FeedWidth()
+    local n = tonumber(ns.db and ns.db.feedWidth) or ns.FEED_WIDTH
+    return math.max(ns.FEED_WIDTH_MIN, math.min(ns.FEED_WIDTH_MAX, math.floor(n)))
+end
 
 -- How many lines show at most: the player's number, 1 to FEED_ROWS_MAX.
 function ns.FeedRows()
@@ -402,7 +410,7 @@ end
 local function build()
     frame = CreateFrame("Frame", "GulliLootFeed", UIParent)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetSize(WIDTH_MIN, PAD * 2 + ROW_H)
+    frame:SetSize(ns.FeedWidth(), PAD * 2 + ROW_H)
     -- the panel's look is a frame of its own behind the lines, so the bare look can take it away
     frame.back = CreateFrame("Frame", nil, frame)
     frame.back:SetAllPoints()
@@ -487,14 +495,10 @@ function ns.FeedPaint()
     if not frame then build() end
     local list = sample or ns.FeedEntries()
     local t = now()
-    local y, wide = PAD, 0
+    local y = PAD
     local limit = ns.FeedRows()
     -- the bare look: no background and no frame, only the lines (the Unlock mode shows the panel)
     frame.back:SetShown(not (ns.db and ns.db.feedBare == true) or sample ~= nil)
-    local function width(fs)
-        local w = (fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()) or (fs.GetStringWidth and fs:GetStringWidth()) or 0
-        return type(w) == "number" and w or 0
-    end
     for i, r in ipairs(rows) do
         local e = i <= limit and list[i] or nil
         r:SetShown(e ~= nil)
@@ -525,9 +529,6 @@ function ns.FeedPaint()
                 r.note:SetText(ln.note)
                 r.src:SetText(ln.src or "")
             end
-            local w1 = width(r.text) + ((ln.right and ln.right ~= "") and (width(r.price) + 10) or 0)
-            local w2 = two and (width(r.note) + ((ln.src and ln.src ~= "") and (width(r.src) + 10) or 0)) or 0
-            wide = math.max(wide, 28 + math.max(w1, w2) + 6)
             local left = sample and ns.FEED_SECONDS or (e.at + ns.FEED_SECONDS - t)
             r:SetAlpha(math.max(0, math.min(1, left / ns.FEED_FADE)))
         end
@@ -539,10 +540,9 @@ function ns.FeedPaint()
     if showFoot then
         foot.label:SetText(S.Upper and S.Upper(L.FEED_TOTAL) or L.FEED_TOTAL)
         foot.value:SetText(S.MoneyText(total))
-        wide = math.max(wide, width(foot.label) + width(foot.value) + 24)
         y = y + FOOT_H
     end
-    ns.feedWidth = math.max(WIDTH_MIN, math.min(WIDTH_MAX, math.ceil(wide + PAD * 2)))
+    ns.feedWidth = ns.FeedWidth()
     frame:SetSize(ns.feedWidth, y + PAD)
     if not frame:IsShown() then
         frame:Show()

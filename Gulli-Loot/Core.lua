@@ -31,6 +31,7 @@ ns.DEFAULTS = {
     feedNotes = true,    -- the quest that needs it, better gear, a farm goal, the count in the bags
     feedTotal = true,    -- the sum of what was just looted
     feedRows = 5,        -- lines shown at most
+    feedWidth = 240,     -- the panel's width; a longer line is cut
     feedBare = false,    -- no background and no frame, only the lines
     rollers = false,  -- the group's choices under the roll frames
     real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
@@ -425,6 +426,7 @@ ns.OPT_ICON = {
     feedNotes = "Interface\\Icons\\INV_Misc_Book_09",
     feedTotal = "Interface\\Icons\\INV_Misc_Coin_01",
     feedRows = "Interface\\Icons\\INV_Misc_Note_05",
+    feedWidth = "Interface\\Icons\\INV_Misc_Note_03",
     feedBare = "Interface\\Icons\\INV_Misc_Gem_Crystal_02",
     rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     real = "Interface\\Icons\\INV_Misc_Coin_19",
@@ -459,6 +461,8 @@ local function feedTweak()
         part("switch", "feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
         part("switch", "feedTotal", L.OPT_FEED_TOTAL),
         part("step", "feedRows", L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, { step = 1, min = 1, max = ns.FEED_ROWS_MAX or 8 }),
+        part("step", "feedWidth", L.OPT_FEED_WIDTH, L.OPT_FEED_WIDTH_D,
+            { step = ns.FEED_WIDTH_STEP or 10, min = ns.FEED_WIDTH_MIN or 160, max = ns.FEED_WIDTH_MAX or 400 }),
         part("switch", "feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
     }
     return o
