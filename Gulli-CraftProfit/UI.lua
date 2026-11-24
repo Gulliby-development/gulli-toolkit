@@ -1300,8 +1300,11 @@ local function valueTip(tip, st, P, r, x)
     local it = r.out and st.items[r.out]
     if x.how ~= "ah" or not (it and it.ah) then return end
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
-    tip[#tip + 1] = { L.TIP_VALUE:format(S.MoneyText(it.ah), math.floor(cut * 100 + 0.5), P.chance,
+    local sure = ns.IsReagent(r.out)
+    tip[#tip + 1] = { L.TIP_VALUE:format(S.MoneyText(it.ah), math.floor(cut * 100 + 0.5), sure and 100 or P.chance,
                                          S.MoneyText(math.floor(x.value / (r.count or 1) + 0.5))), nil, nil, nil, true }
+    -- a reagent always sells: the share set in the settings is for finished goods
+    if sure then tip[#tip + 1] = { L.TIP_SURE, nil, nil, nil, true } end
 end
 ns.ValueTip = valueTip
 

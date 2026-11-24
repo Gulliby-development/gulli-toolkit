@@ -133,6 +133,24 @@ test("own items count at what they would sell for; bolts are made when that is c
     eq(how, "craft"); near(v, 4 * own)
 end)
 
+test("crafting materials always sell; the share that sells is for finished goods", function()
+    Fake({})
+    local n = Load()
+    for _, id in ipairs({ 4339, 14342, 2840, 3575 }) do assert(n.IsReagent(id), "reagent " .. id) end
+    local robe = 14152 -- Robe of the Archmage: no recipe asks for it
+    assert(not n.IsReagent(robe))
+    local st = { items = { [4339] = { ah = 1000, vend = 100, age = 0 }, [robe] = { ah = 1000, vend = 100, age = 0 } } }
+    local P = n.Prefs({ chance = 50 })
+    near(n.SellValue(st, P, 4339, 0), 1000 * 0.95, "a bolt sells every time")
+    near(n.SellValue(st, P, robe, 0), 0.5 * 950 + 0.5 * (100 - n.Deposit(st.items[robe])), "a robe by the share")
+    eq(n.SellChance(P, 4339), 1); eq(n.SellChance(P, robe), 0.5)
+    -- the value tooltip says so
+    local tip = {}
+    n.ValueTip(tip, st, P, { out = 4339, count = 1 }, { how = "ah", value = 950 })
+    eq(tip[#tip][1], n.L.TIP_SURE)
+    assert(tip[1][1]:find("100%%"), "sold 100% of the time")
+end)
+
 test("skill-up chance and colours", function()
     local c = core()
     local r = { skill = { 145, 160, 175 } }
