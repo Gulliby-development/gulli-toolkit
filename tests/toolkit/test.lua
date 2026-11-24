@@ -2315,6 +2315,35 @@ test("module rows come from Register, dim while the module is paused", function(
     eq(mod.on, false)
 end)
 
+test("a module row may bring a panel of its own settings", function()
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    local db = { feed = true, rows = 5, bare = false }
+    GulliToolkit.Register({ key = "Loot", open = function() end, pause = function() end,
+        tweaks = { { key = "feed", group = "loot", label = "Loot feed",
+                     get = function() return db.feed end, set = function(on) db.feed = on end,
+                     panel = { { kind = "head", label = "Look" },
+                               { kind = "switch", key = "bare", label = "No background",
+                                 get = function() return db.bare end, set = function(v) db.bare = v end },
+                               { kind = "step", key = "rows", label = "Lines", min = 1, max = 8,
+                                 get = function() return db.rows end, set = function(v) db.rows = v end },
+                               { kind = "switch", key = "bad", label = "Broken",
+                                 get = function() error("x") end, set = function() error("y") end } } } } })
+    local rows = ns.TweakRows()
+    local mod = rows[#rows]
+    eq(mod.key, "Loot:feed")
+    eq(#mod.panel, 4)
+    local get, set = ns.TweakPanelAccess(mod)
+    eq(get("rows"), 5)
+    eq(set("rows", 3), true)
+    eq(db.rows, 3)
+    set("bare", true)
+    eq(get("bare"), true)
+    eq(get("bad"), nil, "a part that fails reads as unset")
+    eq(set("bad", true), false)
+    eq(get("nothing"), nil)
+end)
+
 test("Recommended and Turn all off change only own tweaks, and Undo puts them back", function()
     local ns = tweakNs()
     local db = { fast = false }

@@ -149,9 +149,22 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
         GulliToolkit.modules.Merchant.tweaks = { row("repair", "loot", "Repair at a vendor", "Repairs your gear when you open a vendor who can", "Trade_BlackSmithing"),
             row("sell", "loot", "Sell junk", "Sells grey items when you open a vendor", "INV_Misc_Coin_02") }
         GulliToolkit.modules.Restock.tweaks = { row("quests", "loot", "Buy reagents", "Restock is paused in this sample", "INV_Misc_Bag_08") }
+        -- a module's row with settings of its own under it
+        local feed = row("feed", "loot", "Loot feed", "A small panel of what you just looted", "INV_Misc_Bag_10")
+        db.feed, db.feedPrice, db.feedRows = true, true, 5
+        local function part(kind, key, label, more)
+            local p = { kind = kind, key = key, label = label,
+                        get = function() return db[key] end, set = function(v) db[key] = v end }
+            for k, v in pairs(more or {}) do p[k] = v end
+            return p
+        end
+        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedPrice", "Price"),
+            part("step", "feedRows", "Lines at most", { min = 1, max = 8 }), part("switch", "feedBare", "No background") }
+        GulliToolkit.modules.Merchant.tweaks[#GulliToolkit.modules.Merchant.tweaks + 1] = feed
         ns.SetTweak("levelShot", true)
         ns.SetTweak("skipGossip", true)
         ns.OpenTweaks()
+        ns.TweaksView().open["Merchant:feed"] = true
         ns.TweaksView().open.skipGossip = true
         ns.TweaksView().open.hideTracker = true
         ns.TweaksView().open.levelShot = true

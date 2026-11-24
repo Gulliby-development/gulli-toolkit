@@ -154,7 +154,8 @@ function ns.StartTweaks()
     end
 end
 
--- The settings a module lends the page: { key, group, label, desc, icon, tip, get, set }.
+-- The settings a module lends the page: { key, group, label, desc, icon, tip, get, set, panel }.
+-- panel: parts like an own tweak's, each (but a head) with its own get() and set(value).
 local function moduleTweaks(info)
     local out = {}
     if not info or type(info.tweaks) ~= "table" then return out end
@@ -191,10 +192,36 @@ function ns.TweakRows(list)
                 kind = "module", key = row.key .. ":" .. o.key, group = o.group, icon = o.icon or row.icon,
                 label = o.label, desc = o.desc or "", tip = o.tip, shift = o.shift == true,
                 on = live and ok and on == true, live = live, module = row, set = o.set,
+                panel = type(o.panel) == "table" and o.panel or nil,
             }
         end
     end
     return out
+end
+
+-- How a row's panel reads and sets its parts: get(opt), set(opt, value). An own tweak keeps them
+-- in its saved options; a module's part carries its own get() and set(value), on the same saved
+-- keys as the module's window.
+function ns.TweakPanelAccess(r)
+    if r.kind == "own" then
+        return ns.TweakGetter(r.key), function(opt, value) return ns.SetTweakOpt(r.key, opt, value) end
+    end
+    local parts = {}
+    for _, part in ipairs(r.panel or {}) do
+        if type(part) == "table" and part.key then parts[part.key] = part end
+    end
+    local function get(opt)
+        local part = parts[opt]
+        if not part or type(part.get) ~= "function" then return nil end
+        local ok, v = pcall(part.get)
+        if ok then return v end
+    end
+    local function set(opt, value)
+        local part = parts[opt]
+        if not part or type(part.set) ~= "function" then return false end
+        return (pcall(part.set, value))
+    end
+    return get, set
 end
 
 -- The rows one filter shows: "all", "on" or a group, and a search over the name, the line,
