@@ -96,6 +96,9 @@ LEVELS = {
     # The Shaper's Terrace
     253201: 61, 261813: 61, 261812: 61, 262127: 61, 261974: 61, 262081: 62, 262297: 62,
     272561: 62, 253214: 61, 261809: 62,
+    # Blackrock Depths: Princess Moira Bronzebeard, fought beside Thaurissan, whom Wowhead's
+    # zone page does not rank a boss (her NPC page is merged by merge_npcs.py)
+    8929: 58,
 }
 RARES = {247032, 262716, 269111}       # Lyn the Ignored, Kroog, Gortek the Apprentice
 NAMES = {253214: "Izha'Rel and Tor'Rel"}  # ATT: Ravasaur Hunters
