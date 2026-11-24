@@ -39,7 +39,7 @@ local function frame()
 end
 
 local function reset()
-    W.cvars = { SoftTargetInteract = "1", SoftTargetNameplateInteract = "0", SoftTargetInteractRange = "10",
+    W.cvars = { SoftTargetInteract = "1", SoftTargetNameplateInteract = "0", SoftTargetInteractRange = "10", SoftTargetInteractArc = "0",
         SoftTargetIconInteract = "0", SoftTargetIconGameObject = "0" }
     W.frames, W.textures, W.sounds = {}, {}, {}
     W.soft = nil     -- { guid, name, related, lines }
@@ -126,6 +126,7 @@ test("enable sets the interact settings and disable puts the player's values bac
     assert(W.cvars.SoftTargetInteract == "3", "keyboard soft interact")
     assert(W.cvars.SoftTargetNameplateInteract == "1", "nameplate on the object")
     assert(W.cvars.SoftTargetInteractRange == "15", "range")
+    assert(W.cvars.SoftTargetInteractArc == "2", "objects only straight ahead")
     assert(GulliToolkitDB.sparkleSaved.SoftTargetInteract == "1", "the old value is kept")
     -- a reload enables again: the player's value must stay the saved one
     Q.Enable(Q.Get)
@@ -133,7 +134,19 @@ test("enable sets the interact settings and disable puts the player's values bac
     Q.Disable()
     assert(W.cvars.SoftTargetInteract == "1" and W.cvars.SoftTargetInteractRange == "10", "not put back")
     assert(W.cvars.SoftTargetNameplateInteract == "0", "nameplate not put back")
+    assert(W.cvars.SoftTargetInteractArc == "0", "arc not put back")
     assert(GulliToolkitDB.sparkleSaved == nil, "saved values left")
+end)
+
+test("with all around off the game looks only ahead, as the player had it", function()
+    local Q = reset()
+    W.opts.around = false
+    Q.Enable(Q.Get)
+    assert(W.cvars.SoftTargetInteractArc == "0", "arc changed with the switch off")
+    W.opts.around = true
+    Q.Changed("around", true, Q.Get)
+    assert(W.cvars.SoftTargetInteractArc == "2", "the switch does not widen the arc")
+    Q.Disable()
 end)
 
 test("a setting that is unknown to the client is never set", function()
