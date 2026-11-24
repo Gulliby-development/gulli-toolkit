@@ -156,15 +156,26 @@ def separate_folders(separate):
     return {B.folder_of(g) for g in separate}
 
 
+def uploadable(wanted, config):
+    """The targets that go to CurseForge now: those with a project id that is not on hold."""
+    want = []
+    for t in wanted:
+        project = project_of(t, config)
+        if not project.get("id"):
+            print("::notice::%s has no CurseForge project id in projects.json yet; nothing uploaded." % t)
+        elif project.get("hold"):
+            print("::notice::%s is on hold in projects.json (owner's decision); nothing uploaded." % t)
+        else:
+            want.append(t)
+    return want
+
+
 def main(repo, tag):
     with open(CONFIG) as f:
         config = json.load(f)
     cf_token = os.environ.get("CF_API_TOKEN")
     gh_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    want = [t for t in targets(tag, config) if project_of(t, config).get("id")]
-    for t in targets(tag, config):
-        if t not in want:
-            print("::notice::%s has no CurseForge project id in projects.json yet; nothing uploaded." % t)
+    want = uploadable(targets(tag, config), config)
     if not want:
         return
     if not cf_token:
