@@ -100,6 +100,9 @@ function Fake(spec)
             if x.refuse and x.refuse[name] then error("Auras cannot be accessed when secret while tainted") end
             local a = { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
             if name == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
+            -- x.from[name]: who cast it ("player", "party1", ...); the client says it only then.
+            local src = x.from and x.from[name]
+            if src then a.sourceUnit, a.isFromPlayerOrPlayerPet = src, src == "player" end
             return a
         end,
         -- Only with spec.byName, so the tests without it cover a client that lacks it.

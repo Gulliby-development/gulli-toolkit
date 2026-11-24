@@ -261,6 +261,40 @@ test("a Greater Blessing covers a class when enough of it need the same blessing
     eq(keys.ST_REAGENT, "Greater Blessing of Might")
 end)
 
+test("another paladin gave your blessing: your next one goes on that member", function()
+    local units = party()
+    units.player.class = "PALADIN"
+    units.party2.class = "MAGE"
+    units.party3.auras = { ["Blessing of Might"] = 900 }
+    units.party3.from = { ["Blessing of Might"] = "party1" }
+    units.party2.auras = { ["Blessing of Wisdom"] = 900, ["Blessing of Kings"] = 900 }
+    units.party2.from = { ["Blessing of Wisdom"] = "party1", ["Blessing of Kings"] = "raid9" }
+    Fake { known = { [19740] = true, [19742] = true, [20217] = true, [20911] = true }, units = units }
+    local ns = Load()
+    -- The rogue gets Kings; the mage has Kings and Wisdom already and Might is no caster's.
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Kings@party1,Blessing of Kings@party3")
+    eq(ns.Plan()[3].instead, true)
+    -- Your own Might there: nothing more.
+    units.party3.from["Blessing of Might"] = "player"
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Kings@party1")
+    -- One of yours already on it (Kings from you), the other paladin's Might stays: nothing.
+    units.party3.from["Blessing of Might"] = "party1"
+    units.party3.auras["Blessing of Kings"] = 900
+    units.party3.from["Blessing of Kings"] = "player"
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Kings@party1")
+    -- The game does not say who cast it: as before, counted as buffed.
+    units.party3.auras = { ["Blessing of Might"] = 900 }
+    units.party3.from = nil
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Kings@party1")
+    -- A tank whose Kings came from another paladin: Might (warrior), never Wisdom.
+    units.party1.auras = { ["Blessing of Kings"] = 900 }
+    units.party1.from = { ["Blessing of Kings"] = "party2" }
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Might@party1")
+    units.party1.auras["Blessing of Might"] = 900
+    units.party1.from["Blessing of Might"] = "party2"
+    eq(show(ns.Plan()), "Blessing of Might@player,Blessing of Sanctuary@party1")
+end)
+
 test("a blessing you do not know is not asked for", function()
     local units = party()
     units.player.class = "PALADIN"

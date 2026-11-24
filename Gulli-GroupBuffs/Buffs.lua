@@ -110,6 +110,12 @@ B.CHOICE_DEFAULT = {
     aura = "devotion", aspect = "off",
 }
 
+-- Your next blessing when another paladin gave the one you would cast: Kings, then the
+-- class's own (Might or Wisdom), then Sanctuary for a tank. Never Wisdom without mana,
+-- never Might on a caster.
+B.BLESS_NEXT = { "kings", "own", "might", "wisdom", "sanctuary" }
+B.CASTERS = { MAGE = true, WARLOCK = true, PRIEST = true }
+
 -- Classes without mana get no Intellect or Spirit.
 B.NO_MANA = { WARRIOR = true, ROGUE = true, DEATHKNIGHT = true, DEMONHUNTER = true }
 
