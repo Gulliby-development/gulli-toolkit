@@ -716,6 +716,25 @@ test("every price addon is read: auxForever, Naowh Forever, TSM, Hammerprice; a 
     NaowhForever, Hammerprice = nil, nil
 end)
 
+test("Gulli's own scans are a price source, the first one, once they hold a price", function()
+    local n = game({ auctionator = false })
+    local ready = false
+    GulliAuction = { Ready = function() return ready end,
+                     Price = function(id) if id == 1 then return 140, 0 elseif id == 2 then return 90, 9 end end }
+    eq(n.HasPrices(), false, "an empty list is no price addon: the price settings stay grey")
+    eq(n.AuctionPrice(1), nil)
+    ready = true
+    eq(n.HasPrices(), true)
+    eq(n.PriceAddons()[1], "Gulli Auction")
+    eq(n.AuctionPrice(1), 140)
+    local now = W.now
+    NaowhForever = { AuctionPrice = function(id) return 100, now end }
+    eq(n.AuctionPrice(1), 140, "the own scan of this realm goes first")
+    eq(n.AuctionPrice(2), 100, "an old own price gives way to a fresh one")
+    eq(n.AuctionPrice(3), 100, "what the own scan never saw comes from the others")
+    GulliAuction, NaowhForever = nil, nil
+end)
+
 test("another player's profession (a trade link) is never saved; one the spellbook lacks is not listed", function()
     local n = game({ linked = true, spellbook = { { "Blacksmithing", 170, 225 } } })
     eq(n.char.profs.Tailoring, nil, "a linked window is not this character's")

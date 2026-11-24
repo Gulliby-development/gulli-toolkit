@@ -720,4 +720,191 @@ test("random markets: nothing is offered at a loss or past the limits", function
     assert(offered > 50, "the rounds offered too little: " .. offered)
 end)
 
+-- ---------- own prices ----------
+
+test("a price a day: a new day moves the old price into the history, at most 14 days", function()
+    Fake({})
+    local ns = Load()
+    local m = ns.NewMarket()
+    ns.NotePrice(m, 1, 500, 3, 100)
+    ns.NotePrice(m, 1, 450, 7, 100)
+    eq(ns.PriceOf(m, 1, 100), 450, "the same day: the market as it is now")
+    eq(ns.QuantityOf(m, 1), 7)
+    eq(#ns.PriceDays(m, 1), 1)
+    ns.NotePrice(m, 1, 600, 1, 101)
+    local price, age = ns.PriceOf(m, 1, 103)
+    eq(price, 600)
+    eq(age, 2, "last seen two days ago")
+    eq(table.concat(ns.PriceDays(m, 1), ","), "600,450")
+    for day = 102, 130 do ns.NotePrice(m, 1, day, 1, day) end
+    eq(#ns.PriceDays(m, 1), ns.PRICE_DAYS)
+    eq(ns.PriceDays(m, 1)[1], 130)
+    eq(m.n, 1)
+    eq(ns.PriceOf(m, 2, 100), nil, "never seen")
+    ns.NotePrice(m, 3, 0, 1, 100)
+    eq(ns.PriceOf(m, 3, 100), nil, "a lot without a buyout is no price")
+end)
+
+test("the usual price is the median of the days; old items leave the list", function()
+    Fake({})
+    local ns = Load()
+    local m = ns.NewMarket()
+    for i, p in ipairs({ 100, 110, 5, 120, 900 }) do ns.NotePrice(m, 1, p, 1, 200 + i) end
+    eq(ns.NormalOf(m, 1), 110, "one cheap and one dear day do not move it")
+    ns.NotePrice(m, 2, 50, 1, 100)
+    eq(ns.PrunePrices(m, 205 + ns.PRICE_DROP), 1, "item 2 was last seen long ago")
+    eq(ns.PriceOf(m, 2, 300), nil)
+    eq(m.n, 1)
+    assert(ns.PriceOf(m, 1, 300))
+end)
+
+test("a scan notes the price of everything it saw; the cheapest key of an item wins", function()
+    local w = Fake(market({ db = { minGain = 0 },
+        browse = { { ORE, 4, 140 }, { BELT, 4800 }, { BELT, 3900 }, { BELT, 9000 }, { ROCK, 8, 50 } } }))
+    local ns = Load()
+    eq(GulliAuction.Ready(), false, "no prices before the first scan")
+    w.ScanAll(ns)
+    local price, age = GulliAuction.Price(ORE)
+    eq(price, 4)
+    eq(age, 0)
+    eq(GulliAuction.Price(BELT), 3900, "three keys of the belt: its lowest")
+    eq(GulliAuction.Price(ROCK), 8, "no deal, but a price")
+    eq(GulliAuction.Price(FANG), nil, "not on sale")
+    eq(GulliAuction.Ready(), true)
+    eq(ns.QuantityOf(ns.Market(), ORE), 140)
+    eq(ns.MarketKey(), "Realm|Alliance")
+    assert(GulliVendorFlipDB.markets["Realm|Alliance"].items[ORE], "saved per realm and faction")
+    eq(GulliAuction.Normal(ORE), 4)
+end)
+
+test("the whole market is read once an hour, the cheapest pages in between; the switch stops it", function()
+    local w = Fake(market({ db = { minGain = 0 } }))
+    local ns = Load()
+    eq(ns.FullDue(), true, "never read yet")
+    w.ScanAll(ns)
+    eq(ns.Market().at, w.now)
+    eq(ns.FullDue(), false)
+    assert(ns.Scan(true))
+    eq(ns.scan.full, false)
+    eq(ns.scan.maxPages, ns.MAX_PAGES)
+    ns.StopScan()
+    w.now = w.now + ns.FULL_EVERY
+    assert(ns.Scan(true))
+    eq(ns.scan.full, true)
+    eq(ns.scan.maxPages, ns.FULL_PAGES)
+    ns.StopScan()
+    ns.SetPref("full", false)
+    eq(ns.FullDue(), false)
+    assert(ns.PricesLine():find("%d"), "the Settings footer tells how many prices there are")
+end)
+
+-- ---------- gear to disenchant ----------
+
+local SDUST, LMAGIC, GLIMMER = 10940, 10938, 10978
+local RING, AXE, SHIRT = 6001, 6002, 6003
+local DE_ITEMS = {
+    [SDUST] = { "Strange Dust", 1, 1, 20, 7 }, [LMAGIC] = { "Lesser Magic Essence", 2, 1, 10, 7 },
+    [GLIMMER] = { "Small Glimmering Shard", 3, 1, 10, 7 },
+    [RING] = { "Green Vest", 2, 50, 1, 4, 12 },   -- armour of item level 12
+    [AXE] = { "Blue Axe", 3, 80, 1, 2, 14 },      -- a weapon of item level 14
+    [SHIRT] = { "White Shirt", 1, 5, 1, 4, 12 },
+}
+
+local function deMarket(extra)
+    local spec = { items = DE_ITEMS, money = 1000000, free = 10, enchanter = true, db = { minGain = 0 },
+        browse = { { SDUST, 400 }, { LMAGIC, 900 }, { GLIMMER, 3000 }, { RING, 200 }, { AXE, 2500 }, { SHIRT, 100 } },
+        commodity = { [SDUST] = { { 400, 50 } }, [LMAGIC] = { { 900, 10 } }, [GLIMMER] = { { 3000, 4 } } },
+        lots = { [RING] = { { 801, 2, 200 }, { 802, 1, 390 } }, [AXE] = { { 811, 1, 2500 } }, [SHIRT] = { { 821, 1, 100 } } } }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    return spec
+end
+
+test("what a disenchant gives at the least: the cheaper of dust and essence, a blue's shard, after the cut", function()
+    Fake({})
+    local ns = Load()
+    local prices = { [SDUST] = 400, [LMAGIC] = 900, [GLIMMER] = 3000 }
+    local priceOf = function(id) return prices[id] end
+    eq(ns.DisenchantFloor(2, 12, priceOf), math.floor(400 * ns.DE_CUT), "one dust is the least")
+    eq(ns.DisenchantFloor(3, 14, priceOf), math.floor(3000 * ns.DE_CUT))
+    local astral = { [SDUST] = 400, [10998] = 1000 }
+    eq(ns.DisenchantFloor(2, 22, function(id) return astral[id] end),
+       math.floor(1000 * ns.DE_CUT), "four dust are worth more than the essence")
+    eq(ns.DisenchantFloor(1, 12, priceOf), nil, "white gear cannot be disenchanted")
+    eq(ns.DisenchantFloor(4, 60, priceOf), nil, "epics are left alone")
+    eq(ns.DisenchantFloor(2, 3, priceOf), nil, "too low")
+    eq(ns.DisenchantFloor(2, 12, function(id) return id == SDUST and 400 or nil end), nil, "no guess without both prices")
+    eq(ns.DisenchantFloor(2, 80, priceOf), nil, "a level the table does not know")
+    for i, t in ipairs(ns.DE_TIERS) do
+        eq(#t, 6)
+        assert(i == 1 or t[1] > ns.DE_TIERS[i - 1][1], "tiers go up")
+    end
+end)
+
+test("an enchanter gets gear that costs less than its disenchant, in a list of its own", function()
+    local w = Fake(deMarket())
+    local ns = Load()
+    w.ScanAll(ns)
+    local floor = math.floor(400 * ns.DE_CUT)
+    eq(#ns.Shown("v"), 0, "nothing sells to a vendor for more")
+    local shown = ns.Shown("d")
+    eq(#shown, 2, "the axe under its shard, the two vests at 2s; the vest at 3s90 and the shirt are not")
+    eq(shown[1].id, AXE)
+    eq(shown[1].mode, "d")
+    eq(shown[1].value, math.floor(3000 * ns.DE_CUT))
+    eq(shown[2].id, RING)
+    eq(shown[2].left, 2)
+    eq(shown[2].value, floor)
+    eq(shown[2].gain, floor - 200)
+    eq(ns.Open(), 2, "the number on the side tab counts both lists")
+    eq(ns.Open("v"), 0)
+    for _, line in ipairs(ns.Shown("all")) do assert(line.cost < line.value, "a line at a loss") end
+    ns.SetView("d")
+    eq(ns.Top(), shown[1], "the big button works on the list shown")
+    assert(ns.LineTip(shown[1])[1]:find("Disenchant"), "its tooltip speaks of disenchanting")
+    ns.Window():Show()
+    ns.Refresh()
+end)
+
+test("gear bought to disenchant is never owed to a vendor", function()
+    local w = Fake(deMarket())
+    local ns = Load()
+    w.ScanAll(ns)
+    ns.SetView("d")
+    local axe = ns.Shown("d")[1]
+    ns.Click(axe)
+    eq(w.calls[#w.calls], "bid 811 2500")
+    w.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 811)
+    eq(ns.db.history[1].de, true)
+    eq(next(ns.Owed()), nil, "nothing to sell at the next vendor")
+    eq(#ns.ToSell(), 0)
+    ns.Keep(ns.db.history[1])
+    eq(ns.db.history[1].keep, nil, "nothing to keep back either")
+end)
+
+test("no disenchant list without Enchanting, with the switch off or without material prices", function()
+    local w = Fake(deMarket({ enchanter = false }))
+    local ns = Load()
+    w.ScanAll(ns)
+    eq(#ns.Shown("d"), 0, "not an enchanter")
+    w = Fake(deMarket({ db = { minGain = 0, de = false } }))
+    ns = Load()
+    w.ScanAll(ns)
+    eq(#ns.Shown("d"), 0, "switched off")
+    w = Fake(deMarket({ browse = { { RING, 200 }, { AXE, 2500 } }, commodity = {} }))
+    ns = Load()
+    w.ScanAll(ns)
+    eq(#ns.Shown("d"), 0, "no price for dust, essence or shard: no guess")
+end)
+
+test("the disenchant list follows the gear and quality filters", function()
+    local w = Fake(deMarket({ db = { minGain = 0, q3 = false } }))
+    local ns = Load()
+    w.ScanAll(ns)
+    local shown = ns.Shown("d")
+    eq(#shown, 1)
+    eq(shown[1].id, RING)
+    ns.SetPref("gear", false)
+    eq(#ns.Shown("d"), 0)
+end)
+
 W.finish()

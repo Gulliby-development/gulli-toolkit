@@ -27,6 +27,8 @@ Players often put items on the auction house for less than a vendor pays for the
 - **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either. Set the least gain and the gold you keep in gold, silver and copper: press - or + on each, or type the number. The least gain goes down to 1 copper.
 - **Only what you want.** Choose what to buy: gear (weapons and armour), goods and the rest, and which qualities, from grey to purple. Set the most one line may cost and the least gain in percent of its price.
 - **It waits for you.** When you search the auction house yourself, the scan waits, so your own results stay on screen.
+- **Buy to disenchant.** If your character is an enchanter, the **Disenchant** list shows green and blue gear that costs less than the dust, essence or shard it gives at the least. These items are for you to disenchant: Vendor Flip never sells them to a vendor.
+- **Its own prices.** Every scan remembers the lowest price of each item, for 14 days. Once an hour a longer scan reads the whole market. The other Gulli addons (Craft Profit, Waylaid Crates, Tooltip and more) use these prices, so they work without another price addon.
 - **Sell at the vendor.** At any vendor a notice offers to sell what you bought here, with what the vendor pays. Turn on **Sell at once at a vendor** to sell without the notice. It sells only what Vendor Flip bought, never your own items and never items you protected in the toolkit.
 - **Keep one.** Right-click a line in the History tab to keep that item: it is not sold.
 - **History.** Everything you bought to sell, with what you paid and what the vendor pays, green once it is sold. Today, 7 days or all, with your gain on top.
@@ -66,4 +68,10 @@ Yes, down to every 5 seconds. But the auction house limits how many questions an
 <summary><b>Does it use Auctionator?</b></summary>
 
 No. It reads the auction house itself, and the vendor price comes from the game.
+</details>
+
+<details>
+<summary><b>How does it know what disenchanting gives?</b></summary>
+
+It uses the usual table by item level and counts only the least you can get: for green gear the cheaper of its dust and its essence, for blue gear its shard. Then it takes off the auction house cut. The prices of dust, essences and shards come from its own scans. A line shows only when all of them have a price.
 </details>

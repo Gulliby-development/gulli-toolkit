@@ -120,7 +120,7 @@ function W.finish()
     os.exit(failed == 0 and 0 or 1)
 end
 
--- spec.items = { [id] = { name, quality, sell, stack, class } }, spec.bags = { { id, count } } (one slot
+-- spec.items = { [id] = { name, quality, sell, stack, class, item level } }, spec.bags = { { id, count } } (one slot
 -- each in bag 0), spec.free (free slots), spec.quiver (free slots of a quiver in bag 1), spec.money (copper), spec.browse = { { id, minPrice } },
 -- spec.commodity = { [id] = { { unit, count, own } } }, spec.lots = { [id] = { { auction, n, buyout, own } } }.
 function Fake(spec)
@@ -138,6 +138,10 @@ function Fake(spec)
     W.calls, W.queries, W.searches, W.used = {}, {}, {}, {}
     W.throttled, W.loads = false, 0
     GetMoney = function() return W.money end
+    -- spec.enchanter: the character knows Enchanting
+    GulliAuction = nil
+    GetProfessions = function() return spec.enchanter and 1 or nil end
+    GetProfessionInfo = function() return "Enchanting", "icon", 300, 300, 0, 0, 333 end
     C_Container = {
         GetContainerNumSlots = function(b) return b == 0 and math.max(#W.bags, 1) or 0 end,
         -- free slots and the bag family: 0 for a normal bag, spec.quiver for a quiver (bag 1)
@@ -162,7 +166,7 @@ function Fake(spec)
             local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
             local i = W.items[id]
             if not i then return nil end
-            return i[1], "item:" .. id, i[2] or 1, 10, 1, "Misc", "Misc", i[4] or 20, "", "icon" .. id, i[3] or 0, i[5] or 15
+            return i[1], "item:" .. id, i[2] or 1, i[6] or 10, 1, "Misc", "Misc", i[4] or 20, "", "icon" .. id, i[3] or 0, i[5] or 15
         end,
         RequestLoadItemDataByID = function() W.loads = W.loads + 1 end,
     }
@@ -175,7 +179,7 @@ function Fake(spec)
             local out = {}
             for _, b in ipairs(W.browse) do
                 out[#out + 1] = { itemKey = { itemID = b[1], itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 },
-                                  minPrice = b[2], totalQuantity = 1, containsOwnerItem = false }
+                                  minPrice = b[2], totalQuantity = b[3] or 1, containsOwnerItem = false }
             end
             return out
         end
@@ -228,7 +232,7 @@ function W.ScanAll(ns)
 end
 
 function Load()
-    return W.Load("Gulli-VendorFlip", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-VendorFlip", { "Locales.lua", "Prices.lua", "Core.lua", "Skin.lua", "UI.lua" })
 end
 
 return W

@@ -1787,7 +1787,7 @@ local function vfIcons()
         local r = { get(item) }
         local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
         if r[1] then r[10] = "Interface\\Icons\\" .. (VF_ICONS[id] or "INV_Misc_QuestionMark") end
-        return unpack(r, 1, 11)
+        return unpack(r, 1, 12)
     end
 end
 local function vfOpen(tab, quote)
@@ -1809,6 +1809,37 @@ local function vfOpen(tab, quote)
         ns.Refresh()
     end
 end
+-- An enchanter at the auction house: gear that costs less than its dust, essence or shard.
+VF_ICONS[10940], VF_ICONS[10938], VF_ICONS[10978] = "INV_Enchant_DustStrange", "INV_Enchant_EssenceMagicSmall", "INV_Enchant_ShardGlimmeringSmall"
+VF_ICONS[11083], VF_ICONS[11082], VF_ICONS[11084] = "INV_Enchant_DustSoul", "INV_Enchant_EssenceAstralLarge", "INV_Enchant_ShardGlimmeringLarge"
+VF_ICONS[6001], VF_ICONS[6002], VF_ICONS[6003], VF_ICONS[6004], VF_ICONS[6005] =
+    "INV_Chest_Leather_04", "INV_Axe_09", "INV_Bracer_05", "INV_Staff_08", "INV_Boots_05"
+local function vfDeSpec(locale)
+    local items = { [10940] = { "Strange Dust", 1, 1, 20, 7 }, [10938] = { "Lesser Magic Essence", 2, 1, 10, 7 },
+        [10978] = { "Small Glimmering Shard", 3, 1, 10, 7 }, [11083] = { "Soul Dust", 1, 1, 20, 7 },
+        [11082] = { "Greater Astral Essence", 2, 1, 10, 7 }, [11084] = { "Large Glimmering Shard", 3, 1, 10, 7 },
+        [6001] = { "Bandit Jerkin of the Monkey", 2, 310, 1, 4, 14 }, [6002] = { "Skullsplitter Tomahawk of Power", 3, 2100, 1, 2, 28 },
+        [6003] = { "Wrangler's Wristbands of the Owl", 2, 520, 1, 4, 27 }, [6004] = { "Staff of the Shade", 3, 4400, 1, 2, 30 },
+        [6005] = { "Scouting Boots of the Eagle", 2, 180, 1, 4, 12 } }
+    return { locale = locale, items = items, money = 2340000, free = 11, enchanter = true,
+        browse = { { 10940, 610 }, { 10938, 1450 }, { 10978, 9800 }, { 11083, 2400 }, { 11082, 3300 }, { 11084, 21500 },
+                   { 6001, 320 }, { 6002, 12400 }, { 6003, 1500 }, { 6004, 16000 }, { 6005, 450 } },
+        commodity = { [10940] = { { 610, 80 } }, [10938] = { { 1450, 22 } }, [10978] = { { 9800, 6 } }, [11083] = { { 2400, 40 } },
+                      [11082] = { { 3300, 9 } }, [11084] = { { 21500, 3 } } },
+        lots = { [6001] = { { 931, 3, 320 } }, [6002] = { { 932, 1, 12400 } }, [6003] = { { 933, 1, 1500 } },
+                 [6004] = { { 934, 2, 16000 } }, [6005] = { { 935, 1, 450 } } },
+        db = { minGain = 100 } }
+end
+local function vfDeOpen(ns, W)
+    vfIcons()
+    AuctionHouseFrame = nil
+    W.ScanAll(ns)
+    W.now = W.now + 42
+    ns.Window():Show()
+    ns.ShowView("d")
+    ns.Refresh()
+end
+
 S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
     quote = { spec = vfSpec(), open = vfOpen(1, true) },
     ru = { spec = vfSpec("ruRU"), open = vfOpen(1, true) },
@@ -1829,6 +1860,10 @@ S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
         sf:SetVerticalScroll(560)
     end },
     empty = { spec = { items = {} }, open = function(ns) ns.Window():Show(); ns.Refresh() end },
+    disenchant = { spec = vfDeSpec(), open = vfDeOpen },
+    disenchant_ru = { spec = vfDeSpec("ruRU"), open = vfDeOpen },
+    disenchant_de = { spec = vfDeSpec("deDE"), open = vfDeOpen },
+    noenchanter = { spec = vfSpec("ruRU"), open = function(ns, W) vfOpen(1)(ns, W); ns.ShowView("d") end },
     sidetabs = { spec = vfSpec("ruRU"), open = function(ns, W)
         vfOpen(1)(ns, W)
         local S2 = ns.Skin
