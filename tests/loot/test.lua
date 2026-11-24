@@ -360,6 +360,23 @@ test("the hub's Tweaks page gets rows on the window's own saved keys", function(
         o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
     end
     assert(seen.fastLoot and seen.window and seen.soloConfirm and seen.feed and seen.rollMove)
+    -- the loot feed's row opens the settings of the Rules page, on the same saved keys
+    local feed
+    for _, o in ipairs(reg.tweaks) do if o.key == "feed" then feed = o end end
+    local parts = {}
+    for _, part in ipairs(feed.panel) do
+        assert(type(part.label) == "string" and part.label ~= "", "a label for " .. tostring(part.key))
+        parts[part.key] = part
+    end
+    for _, k in ipairs({ "feedCompact", "feedPrice", "feedNotes", "feedTotal", "feedBare" }) do
+        eq(parts[k].kind, "switch", k)
+        parts[k].set(true); eq(ns.db[k], true, k); eq(parts[k].get(), true)
+        parts[k].set(false); eq(ns.db[k], false, k)
+    end
+    eq(parts.feedRows.kind, "step")
+    eq(parts.feedRows.max, ns.FEED_ROWS_MAX)
+    parts.feedRows.set(3); eq(ns.db.feedRows, 3); eq(parts.feedRows.get(), 3)
+    eq(ns.FeedRows(), 3)
 end)
 
 test("a roll frame placed before the switch keeps its place", function()

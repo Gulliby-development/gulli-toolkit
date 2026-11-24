@@ -443,6 +443,27 @@ local function tweak(key, label, desc)
     return o
 end
 
+-- The loot feed's row on the Tweaks page opens the same settings as the Rules page.
+local function feedTweak()
+    local o = tweak("feed", L.OPT_FEED, L.OPT_FEED_D)
+    local function part(kind, key, label, tip, more)
+        local p = { kind = kind, key = key, label = label, tip = tip,
+            get = function() return ns.db ~= nil and ns.db[key] end,
+            set = function(v) if ns.db then ns.SetPref(key, v) end end }
+        for k, v in pairs(more or {}) do p[k] = v end
+        return p
+    end
+    o.panel = {
+        part("switch", "feedCompact", L.OPT_FEED_COMPACT, L.OPT_FEED_COMPACT_D),
+        part("switch", "feedPrice", L.OPT_FEED_PRICE, L.OPT_FEED_PRICE_D),
+        part("switch", "feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
+        part("switch", "feedTotal", L.OPT_FEED_TOTAL),
+        part("step", "feedRows", L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, { step = 1, min = 1, max = ns.FEED_ROWS_MAX or 8 }),
+        part("switch", "feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
+    }
+    return o
+end
+
 -- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
@@ -489,7 +510,7 @@ do
             tweak("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
             tweak("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
             tweak("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
-            tweak("feed", L.OPT_FEED, L.OPT_FEED_D),
+            feedTweak(),
             tweak("rollMove", L.OPT_ROLLMOVE, L.OPT_ROLLMOVE_D),
             tweak("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
             tweak("real", L.OPT_REAL, L.OPT_REAL_D),
