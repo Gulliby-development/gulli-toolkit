@@ -148,11 +148,33 @@ end
 
 -- Value of one unit put up for sale. `sold`: how many the plan already lists; past what the
 -- market takes the rest goes to a vendor. Returns the value and "ah" or "vendor".
+-- Items that are reagents of some recipe of the book (bolts, bars, Mooncloth): crafters buy
+-- them all the time, so they always sell at the auction (owner's request of 2026-11-24). The
+-- share that sells (`chance`) is for finished goods only.
+local reagents
+function ns.IsReagent(id)
+    if not reagents then
+        reagents = {}
+        for _, rows in pairs(ns.Data and ns.Data.book or {}) do
+            for _, row in ipairs(rows) do
+                for k = 9, #row, 2 do reagents[row[k]] = true end
+            end
+        end
+    end
+    return reagents[id] == true
+end
+
+-- The share of an item that sells at the auction: all of a reagent, else the setting.
+function ns.SellChance(P, id)
+    if ns.IsReagent(id) then return 1 end
+    return P.chance / 100
+end
+
 function ns.SellValue(state, P, id, sold)
     local it = state.items[id] or {}
     local vend = it.vend or 0
     if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.MarketTake(state, P, id) then return vend, "vendor" end
-    local p = P.chance / 100
+    local p = ns.SellChance(P, id)
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
     local ev = p * it.ah * (1 - cut) + (1 - p) * (vend - ns.Deposit(it))
     if ev > vend then return ev, "ah" end
