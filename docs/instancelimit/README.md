@@ -45,7 +45,7 @@ The game lets you enter only a few new dungeons per hour. Gulli Instance Limit c
 <details>
 <summary><b>Is the limit really 5 per hour?</b></summary>
 
-Blizzard has not published the number for WoW Forever. Players report about 5 new dungeons per hour, like in Classic, so the addon starts with 5 and corrects itself when the game shows another number. Nobody has confirmed a limit per day in WoW Forever, so the addon does not count one.
+Yes. Blizzard's hotfix of November 20, 2026 says it: you can reset and enter each dungeon at most 5 times per hour (it was 10 before). The addon starts with 5 and still corrects itself if the game shows another number. Nobody has confirmed a limit per day in WoW Forever, so the addon does not count one.
 </details>
 
 <details>
