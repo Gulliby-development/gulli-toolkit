@@ -760,6 +760,25 @@ local function recipeSource(state, rid, rec, skill)
 end
 
 -- The profession the window shows and its saved data; nil before any scan.
+-- { orange, yellow, grey } of one saved recipe and whether it is a guess.
+function ns.RecipeSkill(rid, rec)
+    local skill, guess
+    -- a recipe of the book has its levels with it
+    if rec.book then skill, guess = { rec.book[1], rec.book[2], rec.book[3] }, false
+    else skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned) end
+    -- a trainer that asks for another skill than the data says wins: the levels move with it
+    local req = not rec.learned and rec.name and ns.db.trainerReq[rec.name]
+    if req and skill and skill[1] and req ~= skill[1] then
+        local d = req - skill[1]
+        skill = { skill[1] + d, skill[2] and skill[2] + d, skill[3] and skill[3] + d, skill[4] and skill[4] + d }
+    end
+    local min = not rec.learned and ns.LEARN_MIN[rid]
+    if min and skill and skill[1] and skill[1] < min then
+        skill = { min, skill[2], skill[3], skill[4] }
+    end
+    return skill, guess
+end
+
 local function current()
     -- the simulation: a profession built from the recipe book, never saved
     if ns.sim then
@@ -808,20 +827,7 @@ function ns.State()
         ns.Tick()
         -- a recipe the client lists but WoW Forever does not give (Season of Discovery, closed raids)
         if (rec.learned or not gone[rid]) and (sim or belongs(rid, name)) then
-            local skill, guess
-            -- a recipe of the book has its levels with it
-            if rec.book then skill, guess = { rec.book[1], rec.book[2], rec.book[3] }, false
-            else skill, guess = ns.Thresholds(levels(rid, rec), rec.obs, rec.grey, rec.learned) end
-            -- a trainer that asks for another skill than the data says wins: the levels move with it
-            local req = not rec.learned and rec.name and ns.db.trainerReq[rec.name]
-            if req and skill and skill[1] and req ~= skill[1] then
-                local d = req - skill[1]
-                skill = { skill[1] + d, skill[2] and skill[2] + d, skill[3] and skill[3] + d, skill[4] and skill[4] + d }
-            end
-            local min = not rec.learned and ns.LEARN_MIN[rid]
-            if min and skill and skill[1] and skill[1] < min then
-                skill = { min, skill[2], skill[3], skill[4] }
-            end
+            local skill, guess = ns.RecipeSkill(rid, rec)
             local src = not rec.learned and recipeSource(state, rid, rec, skill) or nil
             -- a recipe that comes with the profession costs nothing
             if rec.free and src and src.t == "trainer" then src = { t = "trainer", cost = 0, est = false } end
@@ -1442,6 +1448,27 @@ function ns.ProfessionShown(prof)
     if not ns.profOpen and not windowShown() then return false end
     local name = windowLine()
     return name == nil or name == (prof or ns.char.current)
+end
+
+-- For the item tooltip while the game's profession window shows: the recipe of that
+-- profession that makes item `id` (a learned one first), its { orange, yellow, grey }, whether
+-- that is a guess, and the skill now. Never in the simulation.
+function ns.RecipeOfItem(id)
+    if ns.sim or not id or not ns.char or not windowShown() then return nil end
+    local name, skill = windowLine()
+    name = name or ns.char.current
+    local prof = name and ns.char.profs and ns.char.profs[name]
+    if not prof or not prof.recipes then return nil end
+    local rid, rec
+    for r, x in pairs(prof.recipes) do
+        if x.out == id and (not rec or (x.learned and not rec.learned) or (x.learned == rec.learned and r < rid)) then
+            rid, rec = r, x
+        end
+    end
+    if not rec then return nil end
+    local sk, guess = ns.RecipeSkill(rid, rec)
+    if not (sk and sk[2] and sk[3]) then return nil end
+    return rid, sk, guess, (skill and skill > 0) and skill or prof.skill or 0
 end
 
 -- The client can open the profession window from a click (else the stop keeps Make).

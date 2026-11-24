@@ -2392,6 +2392,26 @@ function ns.TipLines(id)
     return { { group = "craft", sub = true, icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
                left = S.Emph(L.TOOLTIP_NEED:format(n)), color = S.MUTED } }
 end
+-- The item tooltip in the game's profession window: the chance of a skill-up now and where the
+-- recipe that makes it turns yellow, green and grey (the game shows only the colour).
+function ns.RecipeTipLines(id)
+    local rid, sk, guess, skill = ns.RecipeOfItem(id)
+    if not rid then return {} end
+    local y, g, gy = ns.Levels(sk)
+    local pct = math.floor(ns.Chance({ skill = sk }, skill) * 100 + 0.5)
+    local levels = color(ns.COLORS.ye) .. y .. "|r  " .. color(ns.COLORS.gr) .. g .. "|r  " .. color(ns.COLORS.gy) .. gy .. "|r"
+    if guess then levels = levels .. "  (" .. L.TIP_GUESS .. ")" end
+    return {
+        { group = "craft", icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
+          left = S.Emph(L.TIP_SKILLUP:format(pct)), color = S.MUTED },
+        { group = "craft", sub = true, left = L.TIP_LEVELS:format(levels), color = S.MUTED },
+    }
+end
+
 S.TipProvider("item", "CraftProfit", function(id, tip)
-    if tip == GameTooltip or tip == ItemRefTooltip then return ns.TipLines(id) end
+    if tip == GameTooltip or tip == ItemRefTooltip then
+        local lines = ns.RecipeTipLines(id)
+        for _, l in ipairs(ns.TipLines(id)) do lines[#lines + 1] = l end
+        return lines
+    end
 end)
