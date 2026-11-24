@@ -354,6 +354,7 @@ test("an escort in a group: who it waits for, the ask and the answers", function
     } })
     local ns = Load()
     eq(ns.EVENT_QUESTS[155], true)
+    eq(ns.EVENT_QUESTS[94927], true, "Dunston Checks Out: help ... break out is an escort")
     W.party[1].quests[155] = nil
     W.party[2].quests = {}
     -- Ann runs the module, Bob and Cid do not (yet)

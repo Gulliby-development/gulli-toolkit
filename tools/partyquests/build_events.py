@@ -6,7 +6,7 @@ player starts them (escorts, fights, scenes), from QuestieDB.
 A Classic quest counts when it has the game's party-accept flag (questFlags 2: the others get
 a "join this quest" prompt). WoW Forever's own quests carry no flags in the data, so for
 them, and for any quest the flag misses, the objective text decides ("Escort ...", "Help ...
-escape", "Protect ..."). Class quests are left out (nobody waits for them), and so is NOT.
+escape" or "break out", "Protect ..."). Class quests are left out (nobody waits for them), and so is NOT.
 Both modules get the same file, since they share no code at run time.
 """
 import os
@@ -22,7 +22,7 @@ OUTS = [os.path.join(ROOT, "Gulli-PartyQuests", "Events.lua"), os.path.join(ROOT
 # questKeys of QuestieDB (src/meta/questMeta.lua).
 Q_NAME, Q_CLASSES, Q_OBJ_TEXT, Q_TRIGGER, Q_FLAGS = 1, 7, 8, 9, 23
 PARTY_ACCEPT = 2
-TEXT = re.compile(r"\bescort\b|^help [^.]{1,60} escape|^protect |^accompany |protect (him|her|them) from harm", re.I)
+TEXT = re.compile(r"\bescort\b|^help [^.]{1,60} (escape|break out)|^protect |^accompany |protect (him|her|them) from harm", re.I)
 # Flagged, but only an emote at an innkeeper (Hallow's End candy): nothing to wait for.
 NOT = {8353, 8354, 8355, 8356, 8357, 8358, 8359, 8360}
 
