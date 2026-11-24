@@ -348,6 +348,7 @@ ns.HOW = {
     auction = { "HOW_AUCTION", S.GOLD }, vendor = { "HOW_VENDOR", S.MUTED },
     disenchant = { "HOW_DISENCHANT", { 0.70, 0.55, 1.00, 1 } }, noprice = { "HOW_NOPRICE", S.WARN },
     quest = { "HOW_QUEST", S.FAINT }, unknown = { "HOW_UNKNOWN", S.FAINT },
+    made = { "HOW_MADE", S.GOOD }, used = { "HOW_USED", S.BAD },
 }
 
 local PARTS = {
@@ -355,6 +356,7 @@ local PARTS = {
     { "ROW_AUCTION", "Interface\\Minimap\\Tracking\\Auctioneer" },
     { "ROW_VENDOR", "Interface\\Icons\\INV_Misc_Coin_02" },
     { "ROW_DISENCHANT", "Interface\\Icons\\INV_Enchant_DustVision" },
+    { "ROW_CRAFT", "Interface\\Icons\\Trade_BlackSmithing" },
     { "ROW_ESTIMATE", "Interface\\Icons\\INV_Misc_Gem_Pearl_04" },
 }
 local PART_H = 24
@@ -381,19 +383,21 @@ end
 -- "+12g 30s" or a grey dash for nothing.
 local function money(c, sign)
     if not c or c == 0 then return S.Hex(S.FAINT) .. "-|r" end
-    return (sign and "+" or "") .. S.MoneyText(c)
+    return (sign and c > 0 and "+" or "") .. S.MoneyText(c)
 end
 
 -- The rows of the item list: name, "19 × 1s 80c · Auction", and what it adds.
 function ns.WorthItems()
     local out = {}
     for _, r in ipairs(ns.WorthRows()) do
-        -- an item that adds nothing (a quest item, one the client does not know yet) stays off
-        if not (r.total and r.total > 0) then break end
-        local how = ns.HOW[r.how] or ns.HOW.vendor
-        local sub = r.unit and L.UNIT:format(r.n, S.MoneyText(r.unit)) or L.UNIT_COUNT:format(r.n)
-        out[#out + 1] = { id = r.id, name = ns.ItemName(r.id), icon = ns.ItemIcon(r.id), how = r.how,
-                          sub = sub .. S.DOT .. S.Hex(how[2]) .. L[how[1]] .. "|r", total = r.total }
+        -- an item that adds nothing (a quest item, one the client does not know yet) stays off;
+        -- a reagent a craft used takes off (a total below 0)
+        if r.total and r.total ~= 0 then
+            local how = ns.HOW[r.how] or ns.HOW.vendor
+            local sub = r.unit and L.UNIT:format(r.n, S.MoneyText(r.unit)) or L.UNIT_COUNT:format(r.n)
+            out[#out + 1] = { id = r.id, name = ns.ItemName(r.id), icon = ns.ItemIcon(r.id), how = r.how,
+                              sub = sub .. S.DOT .. S.Hex(how[2]) .. L[how[1]] .. "|r", total = r.total }
+        end
     end
     return out
 end
@@ -408,11 +412,14 @@ function ns.WorthLines()
         money(p.by.auction, true) .. n("auction"),
         money(p.by.vendor + p.by.noprice, true) .. n("shop"),
         money(p.by.disenchant, true) .. n("disenchant"),
+        money(p.craft, true),
         S.MoneyText(p.total),
     }
     local notes = {}
     if ns.db.vendorOnly then notes[#notes + 1] = L.NOTE_VENDOR end
     if p.sold > 0 then notes[#notes + 1] = L.NOTE_SOLD:format(S.MoneyText(p.sold)) end
+    if p.count.made + p.count.used > 0 then notes[#notes + 1] = L.NOTE_CRAFT end
+    if p.spent > 0 then notes[#notes + 1] = L.NOTE_SPENT:format(S.MoneyText(p.spent)) end
     if p.count.noprice > 0 then notes[#notes + 1] = L.NOTE_NOPRICE end
     if p.unknown > 0 then notes[#notes + 1] = L.NOTE_UNKNOWN:format(p.unknown) end
     if #notes == 0 then notes[1] = L.NOTE_HOW end
@@ -452,7 +459,7 @@ local function sessionPage(body, width)
         r.icon:SetIcon(it.icon)
         r.name:SetText(it.name)
         r.sub:SetText(it.sub)
-        r.total:SetText(it.total and it.total > 0 and S.MoneyText(it.total) or (S.Hex(S.FAINT) .. "-|r"))
+        r.total:SetText(it.total and it.total ~= 0 and S.MoneyText(it.total) or (S.Hex(S.FAINT) .. "-|r"))
     end)
     worthList:SetAllPoints()
     worthEmpty = S.Empty(items.body)
