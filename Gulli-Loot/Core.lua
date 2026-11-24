@@ -238,7 +238,7 @@ end
 
 function ns.SetPref(key, value)
     ns.db[key] = value
-    if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
+    if (key == "window" or key == "fastLoot") and ns.ApplyWindow then ns.ApplyWindow() end
     if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
     if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
     if key:find("^feed%u") and ns.FeedRestyle then ns.FeedRestyle() end
@@ -282,12 +282,17 @@ end
 
 ---- Looting on your own ---------------------------------------------------------------
 
--- Fast loot: takes every slot at once when the game would loot automatically anyway.
-function ns.FastLoot()
-    if not ns.db.fastLoot or not GetNumLootItems then return 0 end
+-- Whether Fast loot takes this loot: the switch is on and the game would loot automatically anyway.
+function ns.FastLootNow()
+    if not ns.db or not ns.db.fastLoot or ns.paused or not GetNumLootItems then return false end
     local auto = GetCVarBool and GetCVarBool("autoLootDefault")
     if IsModifiedClick and IsModifiedClick("AUTOLOOTTOGGLE") then auto = not auto end
-    if not auto then return 0 end
+    return auto and true or false
+end
+
+-- Fast loot: takes every slot at once when the game would loot automatically anyway.
+function ns.FastLoot()
+    if not ns.FastLootNow() then return 0 end
     local n = GetNumLootItems()
     for i = n, 1, -1 do LootSlot(i) end
     return n
@@ -356,7 +361,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.OnRoll(a1)
     elseif event == "CONFIRM_LOOT_ROLL" then ns.OnConfirm(a1, a2)
     elseif event == "CHAT_MSG_LOOT" then ns.OnLootMessage(a1)
-    elseif event == "LOOT_READY" then ns.FastLoot()
+    elseif event == "LOOT_READY" then
+        -- before LOOT_OPENED, which is what shows the game's loot window
+        if ns.QuietLoot then ns.QuietLoot() end
+        ns.FastLoot()
     elseif event == "LOOT_BIND_CONFIRM" then ns.OnBindConfirm(a1) end
 end)
 

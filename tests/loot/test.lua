@@ -243,6 +243,55 @@ test("our window replaces the game's only while the switch is on and the module 
     eq(LootFrame.events.LOOT_OPENED, true)
 end)
 
+test("with fast loot the game's loot window stays shut, and opens for what could not be taken", function()
+    Fake({ slots = { { "i1", "Ruby", 1, 3 } }, db = { fastLoot = true } })
+    W.lootN = 1
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local opened = 0
+    function LootFrame:Open() opened = opened + 1; self.shown = true end
+    -- everything is taken: no window at all
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil, "the game's window does not hear the loot open")
+    eq(table.concat(W.looted, ","), "1")
+    W.Fire("LOOT_OPENED", true)
+    W.slots = {}
+    W.Fire("LOOT_CLOSED")
+    for _, fn in ipairs(W.timers) do fn() end
+    W.timers = {}
+    eq(opened, 0)
+    eq(LootFrame.events.LOOT_OPENED, true, "back after the loot")
+    -- a slot stays (full bags): the game's window opens after the wait
+    W.slots = { { "i1", "Ruby", 1, 3 } }
+    W.Fire("LOOT_READY")
+    W.Fire("LOOT_OPENED", true)
+    eq(opened, 0, "not at once")
+    for _, fn in ipairs(W.timers) do fn() end
+    W.timers = {}
+    eq(opened, 1)
+    eq(LootFrame.isAutoLoot, false)
+    W.Fire("LOOT_CLOSED")
+    -- the modifier turns auto loot off: the game's window as always
+    IsModifiedClick = function() return true end
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    IsModifiedClick = function() return false end
+    -- the switch off, or paused: the game's window as always
+    ns.SetPref("fastLoot", false)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    ns.SetPref("fastLoot", true)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil)
+    W.Fire("LOOT_CLOSED")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    -- our own window keeps its rule
+    ns.SetPref("window", true)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil)
+    eq(ns.quiet, false)
+end)
+
 test("the window opens with the loot, closes with it, and shows auto loot for a moment", function()
     Fake({ slots = { { "i1", "Ruby", 1, 3 } }, db = { window = true } })
     W.lootN = 1
