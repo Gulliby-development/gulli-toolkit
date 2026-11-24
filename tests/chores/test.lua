@@ -473,6 +473,37 @@ test("the profession window and a craft tell a cooldown the spell does not show"
     eq(ns.OnCast(17187), false, "a secret spell id is left alone")
 end)
 
+test("a craft that ends after the profession window closed keeps its cooldown", function()
+    Fake({ now = 50000 })
+    local ns = Load()
+    W.char.profs = { { "Tailoring", 250, 300, "tail", 197 } }
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local cd = 0
+    C_TradeSkillUI = {
+        GetRecipeInfo = function(id) if id == 18560 then return { learned = true } end end,
+        GetRecipeCooldown = function(id) if id == 18560 then return cd end end,
+    }
+    W.Fire("TRADE_SKILL_SHOW")
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50000, "ready")
+    -- The player closes the window; the craft ends a moment later, and the game still tells
+    -- the old "ready" of the closed window.
+    W.Fire("TRADE_SKILL_CLOSE")
+    W.now = 50010
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 18560)
+    W.Fire("TRADE_SKILL_LIST_UPDATE")
+    W.RunTimers()
+    eq(ns.db.chars[ns.CharKey()].cooldowns.CD_MOONCLOTH, 50010 + 4 * 86400)
+    eq(has(ns.Tasks(ns.db.chars[ns.CharKey()], 50020), "CD"), nil, "no ready task")
+    -- With the window open, its answer right after the craft lags too: the craft wins.
+    W.Fire("TRADE_SKILL_SHOW")
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50010 + 4 * 86400)
+    -- Once the window tells the cooldown, its number wins.
+    cd = 4 * 86400 - 20
+    W.now = 50030
+    W.Fire("TRADE_SKILL_LIST_UPDATE")
+    eq(ns.Snapshot().cooldowns.CD_MOONCLOTH, 50030 + 4 * 86400 - 20)
+end)
+
 test("any learned recipe the profession window shows with a cooldown is kept", function()
     Fake({ now = 50000 })
     local ns = Load()
