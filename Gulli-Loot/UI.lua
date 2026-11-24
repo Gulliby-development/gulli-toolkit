@@ -207,6 +207,9 @@ local function buildRules(page, width)
         { L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, icon = ns.OPT_ICON.feedRows,
           control = S.Stepper(page, function() return ns.FeedRows() end,
               function(v) ns.SetPref("feedRows", v) end, 1, 1, ns.FEED_ROWS_MAX, nil, 110) },
+        { L.OPT_FEED_WIDTH, L.OPT_FEED_WIDTH_D, icon = ns.OPT_ICON.feedWidth,
+          control = S.Stepper(page, function() return ns.FeedWidth() end,
+              function(v) ns.SetPref("feedWidth", v) end, ns.FEED_WIDTH_STEP, ns.FEED_WIDTH_MIN, ns.FEED_WIDTH_MAX, nil, 110) },
         switch("feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
     })
     st:Add(fc, fh)
