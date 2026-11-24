@@ -429,10 +429,28 @@ function ns.ReadTrade()
             if T.GetRecipeCooldown then
                 local ok2, left = pcall(T.GetRecipeCooldown, spell)
                 left = ok2 and tonumber(left)
-                c.cdTrade[spell] = (left and left > 0) and now + math.ceil(left) or nil
+                if left and left > 0 then
+                    c.cdTrade[spell] = now + math.ceil(left)
+                elseif not (ns.casts[spell] and (c.cdTrade[spell] or 0) > now) then
+                    -- Right after a craft the window still tells the old "ready": the craft wins.
+                    c.cdTrade[spell] = nil
+                end
             end
         end
     end
+end
+
+-- Cooldown crafts cast in this session: the profession window's answer may lag behind them.
+ns.casts = {}
+
+-- The profession window shows: the game's data of a closed window is old.
+function ns.TradeOpen()
+    if ns.tradeOpen then return true end
+    for _, name in ipairs({ "ProfessionsFrame", "TradeSkillFrame" }) do
+        local fr = _G[name]
+        if type(fr) == "table" and fr.IsShown and fr:IsShown() then return true end
+    end
+    return false
 end
 
 -- A craft of this character that has a cooldown: it is learned and waits from now on.
@@ -447,6 +465,7 @@ function ns.OnCast(spell)
     if not (sec and sec > 0 and c) then return false end
     c.cdSpells, c.cdTrade = c.cdSpells or {}, c.cdTrade or {}
     c.cdSpells[spell], c.cdTrade[spell] = true, time() + sec
+    ns.casts[spell] = true
     return true
 end
 
@@ -866,7 +885,9 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         local spell = select(2, ...)
         if a1 ~= "player" or not ns.OnCast(spell) then return end
     end
-    if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then ns.ReadTrade() end
+    if event == "TRADE_SKILL_SHOW" then ns.tradeOpen = true end
+    if event == "TRADE_SKILL_CLOSE" then ns.tradeOpen = false end
+    if event == "TRADE_SKILL_SHOW" or (event == "TRADE_SKILL_LIST_UPDATE" and ns.TradeOpen()) then ns.ReadTrade() end
     if event == "TIME_PLAYED_MSG" then ns.OnPlayed(a1); return end
     if event == "MAIL_INBOX_UPDATE" then ns.ReadMail(); if ns.Refresh then ns.Refresh() end; return end
     if event == "BANKFRAME_OPENED" or event == "PLAYERBANKSLOTS_CHANGED" then ns.ReadBank(); return end
