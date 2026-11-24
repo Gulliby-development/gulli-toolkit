@@ -1111,6 +1111,9 @@ S.dungeonprep = {
     alcaz = { spec = { level = 50, raceID = 2, faction = "Horde", className = "WARRIOR", active = { [96335] = true },
                        objectives = { [96335] = { { text = "Ornate Shackle Key: 0/1", finished = false } } } },
               open = function(ns) ns.home = false; ns.selected = "ALCAZ"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96335) end },
+    -- Blackrock Depths' Ever After: a long tip on its first stage, shown whole.
+    everafter = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR" },
+              open = function(ns) ns.home = false; ns.selected = "BRD"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(82062) end },
     alcaztake = { spec = { level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" },
               open = function(ns) ns.home = false; ns.selected = "ALCAZ"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96335) end },
     insidechain = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046) end },

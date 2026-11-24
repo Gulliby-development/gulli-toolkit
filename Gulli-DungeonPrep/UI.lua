@@ -1464,6 +1464,10 @@ local function buildDetail(parent)
     d.infoPage:SetAllPoints()
     local b = d.infoPage.inner
     d.infoBody = b
+    -- A hidden copy of the page's text, to measure how high a wrapped text is.
+    d.measure = S.Text(b, 12)
+    d.measure:SetJustifyH("LEFT")
+    d.measure:Hide()
     local TEXT_X = STAGE_ICON + 14
     local function stage(kind, title)
         local s = CreateFrame("Frame", nil, b)
@@ -1513,6 +1517,8 @@ local function buildDetail(parent)
             if not GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L.TIP_GUIDE, 1, 1, 1)
+            -- The whole tip again, in case the box was drawn before the client knew its width.
+            if self.full then GameTooltip:AddLine(self.full, 0.9, 0.9, 0.9, true) end
             GameTooltip:AddLine("Guidelime_DungeonQuests", 0.7, 0.7, 0.7)
             GameTooltip:Show()
         end)
@@ -1894,17 +1900,26 @@ function ns.FillDetail(level)
     -- in the way, and its tip.
     local work = d.work
     local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
-    local function linesOf(t, width)
-        return math.min(4, math.max(1, math.ceil((t:GetStringWidth() or 0) * 1.12 / width)))
+    -- The height a wrapped text takes at this width, whole: the page scrolls, so nothing is cut.
+    -- The game measures it on a hidden copy; where it cannot, a guess by its width.
+    local function heightOf(t, width, line)
+        local m = d.measure
+        m:SetWidth(width)
+        m:SetText(t:GetText() or "")
+        local h = tonumber((m:GetStringHeight())) or 0
+        local guess = math.max(1, math.ceil((tonumber((t:GetStringWidth())) or 0) * 1.12 / width))
+        local lines = h > 0 and math.max(1, math.ceil(h / (line - 1) - 0.2)) or guess
+        return lines
     end
     -- A stage's tip under what is above it, at y; returns the y under it.
     local function placeTip(st, text, y)
         local tip = st.tip
         tip:SetShown(text ~= nil and text ~= "")
+        tip.full = tip:IsShown() and text or nil
         if not tip:IsShown() then return y end
         tip.text:SetText(text)
-        local lines = linesOf(tip.text, wide - 32)
-        tip.text:SetMaxLines(lines)
+        local lines = heightOf(tip.text, wide - 32, TIP_LINE)
+        tip.text:SetMaxLines(0)
         tip.text:SetHeight(lines * TIP_LINE)
         tip:SetHeight(lines * TIP_LINE + 10)
         tip:ClearAllPoints()
@@ -1922,8 +1937,8 @@ function ns.FillDetail(level)
     d.objText:SetText(sentence)
     d.objText:SetShown(sentence ~= "")
     if sentence ~= "" then
-        local lines = linesOf(d.objText, wide)
-        d.objText:SetMaxLines(lines)
+        local lines = heightOf(d.objText, wide, 16)
+        d.objText:SetMaxLines(0)
         d.objText:SetHeight(lines * 16)
         d.objText:ClearAllPoints()
         d.objText:SetPoint("TOP", work, "TOP", 0, -y)
