@@ -1031,6 +1031,8 @@ end
 function ns.RunProgress()
     local v = ns.view
     if not v.route or not v.state then return {} end
+    -- the simulation's shopping list is ticked off by what its buttons bought
+    if v.state.sim and ns.SimShopOn(v) then return ns.SimShopProgress(v.route, v.state) end
     -- a simulated run is never walked: nothing of it is done
     if v.state.sim then
         local out = {}
@@ -1258,6 +1260,7 @@ function ns.OnBuy(event, a1, a2)
             local line = ns.BuyLine()
             b.spent = b.spent + (b.quote and b.quote.total or (line.unit or 0) * line.n)
             b.bought = b.bought + 1
+            if ns.SimShopOn() then ns.SimNoteBought(line.id, line.n) end
             line.done = true
             nextLine()
         end
@@ -1269,6 +1272,7 @@ function ns.OnBuy(event, a1, a2)
         local line = ns.BuyLine()
         if b.phase == "buying" and line and line.item and b.quote and a1 == b.quote.auction then
             b.spent = b.spent + b.quote.total
+            if ns.SimShopOn() then ns.SimNoteBought(line.id, math.min(line.n, b.quote.qty)) end
             line.n = line.n - b.quote.qty
             if line.n > 0 then
                 -- an auction held fewer than the line needs: the next click searches again
@@ -1310,7 +1314,9 @@ end
 function ns.BuyVendor(node, p)
     if not ns.atVendor or not BuyMerchantItem then return nil end
     local plan = ns.VendorNow(node, p)
+    local shop = ns.SimShopOn()
     for _, e in ipairs(plan.buys) do
+        if shop then ns.SimNoteBought(e.id, e.units) end
         if e.stack > 1 then
             -- sold in fixed stacks: one stack a call
             for _ = 1, e.stacks do BuyMerchantItem(e.index) end

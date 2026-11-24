@@ -733,7 +733,8 @@ function ns.SimRefresh()
         refreshSetup()
         return true
     end
-    w.strip.text:SetText(L.SIM_STRIP:format(sim.name, sim.from, sim.to))
+    -- the shopping list buys for real: the strip says for whom
+    w.strip.text:SetText((ns.SimShopOn() and L.SIM_STRIP_SHOP or L.SIM_STRIP):format(sim.name, sim.from, sim.to))
     local _, tab = ns.Selected()
     if tab == 3 then ui.tabs:Select(1); return true end
     return false

@@ -168,6 +168,8 @@ local function stepRow(parent, key, step, min, max, fmt)
     row.label:SetWordWrap(true)
     row.label:SetMaxLines(2)
     row.isRow = true
+    ui.rows = ui.rows or {}
+    ui.rows[key] = row
     ui.steppers[key] = st
     if key ~= "target" then ui[key] = st end
     return row
@@ -185,6 +187,8 @@ local function rowsCard(parent, title, rows)
             row.label:SetWordWrap(true)
             row.label:SetMaxLines(2)
             ui.checks[r.key] = row.switch
+            ui.rows = ui.rows or {}
+            ui.rows[r.key] = row
         end
         st:Add(row, row.height)
         row.line:SetShown(i < #rows)
@@ -374,6 +378,14 @@ local function refreshSettings()
         local st = ui.steppers[k]
         if st then st.minus:SetEnabled(priced); st.plus:SetEnabled(priced); st:SetAlpha(priced and 1 or 0.4) end
     end
+    -- the settings the simulation does not read: dim and locked while it runs
+    for k, row in pairs(ui.rows or {}) do
+        local off = ns.sim ~= nil and ns.SIM_IGNORED[k] or false
+        row:SetAlpha(off and 0.4 or 1)
+        if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not (AH_SWITCH[k] and not priced)) end
+        local st = ui.steppers[k]
+        if st and off then st.minus:SetEnabled(false); st.plus:SetEnabled(false) end
+    end
     ui.target:Refresh()
     refreshSkip()
     if ns.char then
@@ -396,7 +408,8 @@ local function refreshSettings()
         end
         ui.toast:SetText(text)
     else
-        ui.toast:SetText(ns.view.plan and L.TOAST_HINT or "")
+        -- the simulation says why some settings are dim
+        ui.toast:SetText(ns.sim and L.SIM_IGNORED or (ns.view.plan and L.TOAST_HINT or ""))
     end
     ns.SimSettings()
 end
@@ -718,8 +731,10 @@ function ns.StopAction(i, aside)
     local v = ns.view
     local n = v.route and v.route[i]
     if not n then return nil end
-    -- a simulated stop only shows what would be bought and made: nothing to press
-    if v.state and v.state.sim then
+    -- a simulated stop only shows what would be bought and made: nothing to press, but for the
+    -- shopping list, which buys for another character for real
+    local shop = ns.SimShopOn(v) and ns.Gets(n)
+    if v.state and v.state.sim and not shop then
         return { tools = {}, pill = { L.SIM_PILL, ns.SIM_COLOR }, hint = L.SIM_STOP_HINT, sim = true }
     end
     local prog = ns.RunProgress()
@@ -737,7 +752,8 @@ function ns.StopAction(i, aside)
                 ns.Print(text); ns.Toast(text)
             end }
         end
-        if ns.atAH then
+        -- the simulation reads no lots: they would be saved
+        if ns.atAH and not shop then
             a.tools[#a.tools + 1] = { L.LOTS_UPDATE, function() ns.Toast(L.LOTS_BUSY:format(ns.ScanLots(v.route))) end }
         end
         a.pill = done and { L.STOP_DONE, GOOD } or (ns.atAH and { L.OPEN_ah, GOOD } or { L.AWAY_ah })
@@ -1568,6 +1584,7 @@ local function buildRoute(route, height)
     head:SetPoint("RIGHT", ui.net, "LEFT", -8, 0)
     head:SetWordWrap(false)
     head:SetText(S.Upper(L.LEDGER))
+    ui.ledgerHead = head
     ui.money = S.Text(ledger, 12, S.MUTED)
     ui.money:SetPoint("TOPLEFT", S.INSET, -32)
     ui.money:SetPoint("RIGHT", -S.INSET, 0)
@@ -1798,17 +1815,25 @@ local function makeChip(parent)
 end
 local function refreshChips(v)
     local legs = v.legs or {}
-    -- the simulation shows the whole way first: its chip stands before the runs (leg 0)
-    local off = (v.state and v.state.sim) and 1 or 0
-    local n = #legs + off
+    -- the simulation shows the whole way first (leg 0) and its shopping list (ns.SIM_SHOP)
+    -- before the runs, the list only when the way buys something
+    local list = {}
+    if v.state and v.state.sim and #legs > 0 then
+        list[1] = { i = 0, leg = { whole = true } }
+        if #ns.SimShopping(v) > 0 then list[2] = { i = ns.SIM_SHOP, leg = { shop = true } } end
+    end
+    for i, l in ipairs(legs) do list[#list + 1] = { i = i, leg = l } end
+    local n = #list
     local room = ui.chipW
     local fit = math.min(n, math.floor((room + 6) / (CHIP_MIN + 6)))
     local cw = fit > 0 and math.floor((room - (fit - 1) * 6) / fit) or 0
     local sel = v.leg or 1
-    local first = math.max(1, math.min(sel + off - math.floor(fit / 2), n - fit + 1))
+    local at = 1
+    for j, e in ipairs(list) do if e.i == sel then at = j end end
+    local first = math.max(1, math.min(at - math.floor(fit / 2), n - fit + 1))
     for k = 1, math.max(#ui.chips, fit) do
-        local i = first + k - 1 - off
-        local leg = k <= fit and (legs[i] or (i == 0 and off == 1 and { whole = true }))
+        local e = k <= fit and list[first + k - 1]
+        local i, leg = e and e.i, e and e.leg
         local b = ui.chips[k]
         if leg then
             if not b then b = makeChip(ui.chipBox); ui.chips[k] = b end
@@ -1820,9 +1845,9 @@ local function refreshChips(v)
             -- it gains or loses, so the whole way reads at a glance
             local range = tostring(leg.to)
             local c = BAD
-            if leg.whole then
+            if leg.whole or leg.shop then
                 c = ns.SIM_COLOR
-                b.text:SetText(L.SIM_WHOLE)
+                b.text:SetText(leg.whole and L.SIM_WHOLE or L.SIM_SHOP_CHIP)
                 b.net:SetText("")
             elseif leg.unknown then
                 b.text:SetText(color(BAD) .. range .. " ?|r")
@@ -1864,6 +1889,8 @@ local function refreshRoute()
     local leg = v.legs and v.legs[v.leg or 1]
     -- a later run shows its own plan; an unknown stretch has none and keeps the current one's numbers
     local plan = (leg and leg.plan and ((v.leg or 1) > 1 or sim)) and leg.plan or v.plan
+    -- the shopping list is for the whole way
+    if sim and v.leg == ns.SIM_SHOP then plan = v.plan.full or v.plan end
     -- the simulation's whole way takes the place of the stops
     local whole = sim and (v.leg or 0) == 0
     ui.stopsBox:SetShown(not whole); ui.ledger:SetShown(not whole); ui.detailCard:SetShown(not whole)
@@ -1942,6 +1969,8 @@ local function refreshRoute()
     local unknown = leg and leg.unknown
     local start = (leg and ((v.leg or 1) > 1 or sim)) and leg.from or v.state.skill
     if whole then return end
+    -- the shopping list counts the whole way
+    ui.ledgerHead:SetText(S.Upper(ns.SimShopOn(v) and L.SIM_WHOLE or L.LEDGER))
     ui.skillNow:SetText(tostring(start))
     -- what is paid, what own stock is worth, what the sales bring, and the result with its sign
     local w = plan.warn or (plan.full and plan.full.warn)
@@ -1964,7 +1993,7 @@ local function refreshRoute()
     end
     if selected > #v.route then selected = 1 end
     local prog = ns.RunProgress()
-    drawStops(prog, (v.leg or 1) == 1 and ns.Here(v.route, prog, ns.Place()) or nil)
+    drawStops(prog, ((v.leg or 1) == 1 or ns.SimShopOn(v)) and ns.Here(v.route, prog, ns.Place()) or nil)
     if unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
     ui.panel:Set(selected)
     if not v.route[selected] and not unknown then ui.unknown:SetText(plan.earn and L.WARN_EARN or "") end
@@ -2084,7 +2113,11 @@ end
 local SIDE_STOPS = { ah = "STOP_AH_BUY", vendor = "STOP_VENDOR_BUY" }
 local function sideStop()
     local v = ns.view
-    if not v.route or not v.plan or (v.leg or 1) > 1 or (v.state and v.state.sim) then return nil end
+    if not v.route or not v.plan then return nil end
+    -- the current run, or in the simulation its shopping list
+    if v.state and v.state.sim then
+        if not ns.SimShopOn(v) then return nil end
+    elseif (v.leg or 1) > 1 then return nil end
     local place = ns.sidePlace or "ah"
     local prog = ns.RunProgress()
     for i, n in ipairs(v.route) do
@@ -2141,8 +2174,16 @@ local function refreshSideWindow()
     local plan, st = v.plan, v.state
     local from, to = st.skill, plan.target or st.skill
     for _, x in ipairs(v.route) do if x.segs then from, to = x.from, x.to end end
-    sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. S.DOT .. L.SIDE_STOP:format(i, #v.route)))
-    sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
+    if st.sim and ns.sim then
+        -- the simulation's shopping list: in its colour, with what the whole way buys
+        local cost = 0
+        for _, x in ipairs(v.route) do cost = cost + (x.cost or 0) end
+        sui.run:SetText(color(ns.SIM_COLOR) .. S.Upper(L.SIDE_SIM:format(ns.sim.name, ns.sim.from, ns.sim.to)) .. "|r")
+        sui.net:SetText(S.MoneyText(cost, true))
+    else
+        sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. S.DOT .. L.SIDE_STOP:format(i, #v.route)))
+        sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
+    end
     -- the icons around the stop shown, when the run has more than fit
     local prog = ns.RunProgress()
     local count = math.min(#v.route, STRIP_MAX)
@@ -2220,6 +2261,17 @@ end
 function ns.Arrive(place)
     local v = ns.view
     if place and v.route and (v.leg or 1) == 1 and not ns.sim then
+        local here = ns.Here(v.route, ns.RunProgress(), place)
+        if here then selected, flash = here, nil end
+    end
+    -- the simulation at the auction house or a vendor offers its shopping list: everything the
+    -- whole way buys, for the character who will level (owner's request of 2026-11-23)
+    if (place == "ah" or place == "vendor") and ns.sim and v.state and v.state.sim and v.plan
+        and v.leg ~= ns.SIM_SHOP and #ns.SimShopping(v) > 0 then
+        v.leg = ns.SIM_SHOP
+        v.route, v.changed = ns.LegRoute(v), {}
+    end
+    if place and ns.SimShopOn(v) and v.route then
         local here = ns.Here(v.route, ns.RunProgress(), place)
         if here then selected, flash = here, nil end
     end

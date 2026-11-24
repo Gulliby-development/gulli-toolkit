@@ -3318,13 +3318,94 @@ test("/gcp sim turns the simulation on with the window, and off again", function
     assert(not n.sim)
 end)
 
-test("the simulation's long way has no automatic crafts limit, a set one still counts", function()
+test("the simulation has no crafts limit, and the settings it does not read are fixed and dim", function()
     local n = simGame()
     local v = simRun(n, { line = 197, from = 1, to = 60 })
     eq(n.CraftCap(v.state, v.prefs), nil)
-    eq(n.CraftCap(v.state, n.Prefs({ maxCrafts = 40 })), 40)
+    eq(n.CraftCap(v.state, n.Prefs({ maxCrafts = 40 })), nil, "a set limit does not count either")
     for _, x in ipairs(v.variants) do assert(not x.many, "no route is refused for its crafts") end
+    -- fixed: it levels, learns from the trainer, has no limit, whatever is set
+    n.SetPref("trainer", false); n.SetPref("maxCrafts", 40); n.SetPref("level", false)
+    local P = n.Prefs(n.SavedPrefs())
+    eq(P.trainer, true); eq(P.maxCrafts, -1); eq(P.level, true)
+    n.sim.prefs.minGain, n.sim.prefs.ahead = 0, false
+    eq(#n.SimChanged(), 0, "a setting the simulation does not read is no change")
+    -- the Settings tab dims them and says why
+    n.Toggle(); n.Tab(5)
+    for k in pairs(n.SIM_IGNORED) do eq(n.ui.rows[k]:GetAlpha(), 0.4, k .. " is dim") end
+    eq(n.ui.checks.trainer:IsEnabled(), false); eq(n.ui.steppers.maxCrafts.plus:IsEnabled(), false)
+    eq(n.ui.rows.chance:GetAlpha(), 1, "the others stay")
+    eq(n.ui.toast:GetText(), n.L.SIM_IGNORED)
     n.SimStop()
+    eq(n.ui.rows.maxCrafts:GetAlpha(), 1, "back to normal after the simulation")
+    eq(n.Prefs(n.SavedPrefs()).trainer, true); eq(n.db.prefs.maxCrafts, nil, "the player's own settings untouched")
+end)
+
+test("the simulation's shopping list buys the whole way at the auction house, for another character", function()
+    local n = simGame({ money = 100000000 })
+    n.Toggle()
+    n.SimOpen()
+    n.SimSet({ line = 197, from = 1, to = 60, empty = true })
+    n.SimCalculate()
+    local v = n.view
+    assert(v.plan and v.legs and #v.legs > 0, "the simulation is calculated")
+    -- the list adds up what every run buys at the auction
+    local want = {}
+    for _, l in ipairs(v.legs) do
+        if l.plan and not l.unknown then
+            for _, m in ipairs(n.Route(l.state, l.plan)) do
+                if m.kind == "ah" and m.title == "STOP_AH_BUY" then
+                    for _, x in ipairs(m.lines) do if x.id then want[x.id] = (want[x.id] or 0) + x.n end end
+                end
+            end
+        end
+    end
+    local shop = n.SimShopping(v)
+    local ah
+    for i, x in ipairs(shop) do if x.kind == "ah" then ah = i end end
+    assert(ah, "an auction stop")
+    local got = {}
+    for _, x in ipairs(shop[ah].lines) do
+        assert(not x.ahead, "no run note on the list")
+        if x.id then got[x.id] = (got[x.id] or 0) + x.n end
+    end
+    for id, k in pairs(want) do eq(got[id], k, "units of " .. id) end
+    -- its chip stands after the whole way
+    eq(n.ui.chips[2]:GetText():match("^(.-)%s*$"), n.L.SIM_SHOP_CHIP)
+    eq(v.leg, 0)
+    -- at the auction house the list comes up, with a live button
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq(v.leg, n.SIM_SHOP)
+    assert(n.simUI.strip.text:GetText():find(n.L.SIM_STRIP_SHOP:format(n.sim.name, 1, 60), 1, true))
+    local i = (n.Selected())
+    local node = v.route[i]
+    eq(node.kind, "ah")
+    local line = node.lines[1]
+    local a = n.StopAction(i)
+    assert(a.primary and a.primary[2] and not a.sim, "the list buys for real")
+    for _, t in ipairs(a.tools) do assert(t[1] ~= n.L.LOTS_UPDATE, "no lots read in the simulation") end
+    W.calls = {}
+    W.Click(n.ui.act1)
+    eq(W.calls[1][1], "start"); eq(W.calls[1][2], line.id); eq(W.calls[1][3], line.n)
+    W.Fire("COMMODITY_PRICE_UPDATED", line.price, line.price * line.n)
+    W.Click(n.ui.act1)
+    eq(W.calls[2][1], "confirm")
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(n.sim.bought[line.id], line.n, "noted for the list")
+    assert(n.RunProgress()[i].lines[1].done, "the line is ticked off")
+    -- the run stops stay read-only
+    n.SelectLeg(1)
+    for k = 1, #v.route do eq(n.StopAction(k).sim, true) end
+    -- with the big window closed, the list opens beside the auction house
+    n.SelectLeg(0)
+    n.Toggle()
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq(v.leg, n.SIM_SHOP)
+    assert(n.SideWindow():IsShown(), "the window beside the auction house")
+    eq(#n.TipLines(line.id), 0, "still no tooltip line")
+    n.SimStop()
+    assert(not n.sim)
 end)
 
 W.finish()
