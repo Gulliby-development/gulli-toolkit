@@ -15,7 +15,7 @@ ns.Sparkle = Q
 Q.KEY = "questSparkle"
 Q.DEFAULTS = {
     world = true, style = "glow", bright = 4, size = 3, color = "gold", pulse = true,
-    crosshair = true, sound = true, range = 15, icons = true,
+    crosshair = true, sound = true, range = 15, around = true, icons = true,
     bags = true, bagsStart = true,
 }
 Q.STYLES = { "glow", "ring", "beam", "arrow", "stars" }
@@ -113,6 +113,8 @@ function Q.CVars(g)
         local r = tonumber(g("range")) or Q.DEFAULTS.range
         r = math.max(Q.RANGE_MIN, math.min(Q.RANGE_MAX, math.floor(r)))
         want.SoftTargetInteractRange = tostring(r)
+        -- 0 only straight ahead, 1 anywhere in front, 2 all around the player
+        if g("around") then want.SoftTargetInteractArc = "2" end
         if g("icons") then
             want.SoftTargetIconInteract = "1"
             want.SoftTargetIconGameObject = "1"
@@ -943,7 +945,7 @@ end
 
 function Q.Changed(opt, value, g)
     if not st.on then return end
-    if opt == "world" or opt == "crosshair" or opt == "sound" or opt == "range" or opt == "icons" then
+    if opt == "world" or opt == "crosshair" or opt == "sound" or opt == "range" or opt == "around" or opt == "icons" then
         Q.ApplyCVars(Q.CVars(g or Q.Get))
     end
     if st.marker then st.marker.v.dirty = true end
@@ -981,6 +983,7 @@ Q.PANEL = {
     { kind = "switch", key = "sound", label = L.TWP_SPARKLE_SOUND },
     { kind = "step", key = "range", label = L.TWP_SPARKLE_RANGE, step = 1, min = Q.RANGE_MIN, max = Q.RANGE_MAX,
       fmt = function(v) return string.format(L.TWP_SPARKLE_YD, v) end, tip = L.TWP_SPARKLE_RANGE_T },
+    { kind = "switch", key = "around", label = L.TWP_SPARKLE_AROUND, tip = L.TWP_SPARKLE_AROUND_T },
     { kind = "switch", key = "icons", label = L.TWP_SPARKLE_ICONS },
     { kind = "head", label = L.TWP_SPARKLE_BAGS },
     { kind = "switch", key = "bags", label = L.TWP_SPARKLE_BAGGLOW, tip = L.TWP_SPARKLE_BAGGLOW_T },
