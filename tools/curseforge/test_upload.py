@@ -75,6 +75,17 @@ class Version(unittest.TestCase):
 
 
 class Upload(unittest.TestCase):
+    def test_a_project_on_hold_or_without_an_id_is_not_uploaded(self):
+        config = {"toolkit": {"id": 1}, "separate": {"A": {"id": 2}, "B": {"id": 3, "hold": True}, "C": {"id": None}}}
+        self.assertEqual(U.uploadable(["toolkit", "A", "B", "C"], config), ["toolkit", "A"])
+
+    def test_vendor_flip_is_on_hold(self):
+        # Owner's decision of 2026-11-24: no CurseForge upload until the new media is ready.
+        with open(U.CONFIG) as f:
+            config = json.load(f)
+        self.assertEqual(U.uploadable(["VendorFlip"], config), [])
+        self.assertIn("VendorFlip", config["separate"])
+
     def test_metadata_links_a_separate_project_to_the_toolkit(self):
         m = U.metadata("Gulli-Legacy 1.3.0", "notes", 2, "gulli-toolkit")
         self.assertEqual(m["gameVersions"], [2])
