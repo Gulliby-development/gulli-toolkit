@@ -791,6 +791,27 @@ do
     S.craftprofit.simcrafts = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.Tab(2) end) }
     S.craftprofit.simsettings = { spec = spec, before = before, open = open(function(ns)
         ns.SimCalculate(); ns.Tab(5); ns.SetPref("chance", 60); ns.SetPref("useBank", false) end) }
+    -- the settings the simulation does not read, dim, and why
+    S.craftprofit.simfixed = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.Tab(5) end) }
+    -- the shopping list at the auction house: one line bought, the next asked for
+    local function shop(ns, W)
+        ns.SimCalculate()
+        W.Fire("AUCTION_HOUSE_SHOW")
+        ns.BuyClick()
+        local l = ns.BuyLine()
+        W.Fire("COMMODITY_PRICE_UPDATED", l.unit or 100, (l.unit or 100) * l.n)
+        ns.BuyClick()
+        W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+        ns.BuyClick()
+        l = ns.BuyLine()
+        if l then W.Fire("COMMODITY_PRICE_UPDATED", l.unit or 100, (l.unit or 100) * l.n) end
+    end
+    S.craftprofit.simshop = { spec = spec, before = before, open = open(shop) }
+    S.craftprofit.simside = { spec = spec, before = before, crop = "GulliCraftProfitSide", open = open(function(ns, W)
+        AuctionHouseFrame = nil
+        ns.Toggle()
+        shop(ns, W)
+    end) }
 end
 
 -- A vendor stop whose patterns name who sells them, with Show on map (`trainer`: the trainer stop).

@@ -112,6 +112,10 @@ function ns.Prefs(saved)
     local p = {}
     for k, v in pairs(ns.DEFAULTS) do p[k] = v end
     for k, v in pairs(saved or {}) do if ns.DEFAULTS[k] ~= nil then p[k] = v end end
+    -- the simulation's own copy: the settings that mean nothing for a new character are fixed
+    if ns.sim and saved == ns.sim.prefs and ns.SIM_FIXED then
+        for k, v in pairs(ns.SIM_FIXED) do p[k] = v end
+    end
     return p
 end
 
@@ -408,11 +412,12 @@ function ns.LevelCrafts(p)
 end
 
 function ns.CraftCap(state, P)
+    -- the simulation asks what a profession costs, not how many clicks: no limit at all
+    -- (owner's decision of 2026-11-23)
+    if state.sim then return nil end
     local m = P.maxCrafts or 0
     if m < 0 then return nil end
     if m > 0 then return m end
-    -- a simulated way is long (1 to 300): the automatic limit would refuse every route
-    if state.sim then return nil end
     return math.max(0, ns.Target(state, P) - state.skill) + ns.CRAFTS_SPARE
 end
 
@@ -1776,6 +1781,8 @@ end
 
 -- The stops of the chosen leg (the current run for the first one); none for an unknown leg.
 function ns.LegRoute(v)
+    -- the simulation's shopping list: everything the whole way buys
+    if v.leg == ns.SIM_SHOP and v.state and v.state.sim then return ns.SimShopping(v) end
     local l = v.legs and v.legs[v.leg or 1]
     if l and l.unknown then return {} end
     if l and v.leg > 1 then return ns.Route(l.state, l.plan) end
@@ -1788,7 +1795,8 @@ end
 function ns.SelectLeg(i)
     local v = ns.view
     -- 0: the whole way, which only the simulation shows
-    if not v.legs or not (v.legs[i] or (i == 0 and v.state and v.state.sim)) then return end
+    -- and the shopping list of the whole way (ns.SIM_SHOP)
+    if not v.legs or not (v.legs[i] or ((i == 0 or i == ns.SIM_SHOP) and v.state and v.state.sim)) then return end
     v.leg = i
     v.route = ns.LegRoute(v)
     v.changed = {}
@@ -1807,6 +1815,8 @@ end
 -- Changes one setting and rebuilds at once. nil value: back to the default.
 function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
+    -- a setting the simulation fixes stays as it is there
+    if ns.sim and ns.SIM_FIXED[key] ~= nil then return end
     ns.SavedPrefs()[key] = value
     if ns.sim and key == "target" and value then ns.sim.to = value end
     if ns.NO_PLAN[key] then

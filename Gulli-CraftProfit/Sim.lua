@@ -19,6 +19,16 @@ ns.SIM_PROF_ICON = {
 }
 -- The skill the conditions start with and may reach.
 ns.SIM_MAX = 300
+-- Settings that mean nothing for a new character's whole way, fixed while the simulation runs:
+-- it always levels, learns from the trainer (every recipe is still to learn) and has no crafts
+-- limit (owner's decision of 2026-11-23: the question is the cost, not the clicks).
+ns.SIM_FIXED = { level = true, trainer = true, maxCrafts = -1 }
+-- The settings the simulation does not read: the fixed ones, the buying of later runs (the
+-- shopping list is always the whole way) and the profit runs' (the simulation plans none).
+-- The Settings tab dims them.
+ns.SIM_IGNORED = { level = true, trainer = true, maxCrafts = true, ahead = true, minGain = true, maxBuy = true }
+-- The leg of the shopping list: everything the whole way buys, bought here for another character.
+ns.SIM_SHOP = -1
 
 local function copy(t)
     local c = {}
@@ -134,7 +144,7 @@ function ns.SimOpen()
         if own and ns.char and own.name == ns.char.current then line = l end
     end
     ns.sim = { line = line, name = ns.SimProfName(line), from = 1, to = ns.SIM_MAX, goal = nil, empty = false,
-               prefs = copy(ns.db.prefs), skip = copy(ns.db.skip), gather = copy(ns.db.gather) }
+               prefs = copy(ns.db.prefs), skip = copy(ns.db.skip), gather = copy(ns.db.gather), bought = {} }
     if ns.Refresh then ns.Refresh() end
     return ns.sim
 end
@@ -145,7 +155,7 @@ function ns.SimSet(opts)
     local sim = ns.sim
     if not sim then return end
     if opts.line and opts.line ~= sim.line then
-        sim.line, sim.name, sim.goal = opts.line, ns.SimProfName(opts.line), nil
+        sim.line, sim.name, sim.goal, sim.bought = opts.line, ns.SimProfName(opts.line), nil, {}
     end
     if opts.from then sim.from = math.max(1, math.min(ns.SIM_MAX - 1, opts.from)) end
     if opts.to then sim.to = math.max(2, math.min(ns.SIM_MAX, opts.to)) end
@@ -207,7 +217,7 @@ function ns.SimChanged()
     if not ns.sim or not ns.db then return out end
     local mine, sim = ns.Prefs(ns.db.prefs), ns.Prefs(ns.sim.prefs)
     for k in pairs(ns.DEFAULTS) do
-        if not OWN[k] and mine[k] ~= sim[k] then out[#out + 1] = k end
+        if not OWN[k] and not ns.SIM_IGNORED[k] and mine[k] ~= sim[k] then out[#out + 1] = k end
     end
     table.sort(out)
     return out
@@ -328,4 +338,46 @@ function ns.SimResult()
         out.pay = ns.SimPayback(after, v.prefs, rid, -out.totals.net, bought)
     end
     return out
+end
+
+-- ---------- buying for another character ----------
+
+-- The shopping list of the whole way: one auction stop and one vendor stop with every line the
+-- runs buy, added up (a pattern once). The player buys it here and mails it to the character
+-- who levels (owner's request of 2026-11-23). Empty without a calculated simulation.
+function ns.SimShopping(v)
+    v = v or ns.view
+    if not ns.sim or not v.state or not v.state.sim or not v.legs then return {} end
+    -- ns.BuyAhead adds the buy stops of every run after the first to a route: an empty first
+    local legs = { {} }
+    for _, l in ipairs(v.legs) do
+        if l.plan and l.state and not l.unknown then legs[#legs + 1] = l end
+    end
+    local route = ns.BuyAhead({}, legs)
+    -- every line is for this list: no "also for the run to" note
+    for _, n in ipairs(route) do for _, l in ipairs(n.lines or {}) do l.ahead = nil end end
+    return route
+end
+
+-- What was bought for the list in this simulation: the AH and vendor buttons note it here, so the
+-- list is ticked off whatever the bags say (the items may be in the mail already).
+function ns.SimNoteBought(id, n)
+    local sim = ns.sim
+    if not sim or not id or not n or n <= 0 then return end
+    sim.bought = sim.bought or {}
+    sim.bought[id] = (sim.bought[id] or 0) + n
+end
+
+-- How far the shopping list is: ns.Progress on what was bought for it.
+function ns.SimShopProgress(route, state)
+    local bought = ns.sim and ns.sim.bought or {}
+    return ns.Progress(route, state, function(id)
+        return (((state and state.items[id]) or {}).bags or 0) + (bought[id] or 0)
+    end)
+end
+
+-- The shopping list is the leg shown.
+function ns.SimShopOn(v)
+    v = v or ns.view
+    return ns.sim ~= nil and v.state ~= nil and v.state.sim ~= nil and v.leg == ns.SIM_SHOP
 end
