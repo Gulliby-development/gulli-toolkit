@@ -11,7 +11,7 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn, viewTabs, worthHead
+local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn, wholeBtn, viewTabs, worthHead
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
 -- column widths from the right: button, gain, vendor, auction, quantity
@@ -289,9 +289,14 @@ end
 function ns.Refresh()
     if S.SideRefresh then S.SideRefresh() end -- the number on its tab beside the auction house
     if not frame or not frame:IsShown() then return end
+    wholeBtn:Hide()
+    frame.footer.status:SetPoint("RIGHT", buyBtn, "LEFT", -12, 0)
     if tab == 1 then return refreshDeals() end
     if tab == 2 then return refreshHistory() end
     buyBtn:Hide()
+    wholeBtn:Show()
+    frame.footer.status:SetPoint("RIGHT", wholeBtn, "LEFT", -12, 0)
+    wholeBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
     for _, card in ipairs({ setCard, filterCard }) do
         for _, row in ipairs(card.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
     end
@@ -329,6 +334,21 @@ local function build()
     buyBtn = S.Primary(S.Button(ft, 200, 32))
     ft:Add(buyBtn)
     buyBtn:SetScript("OnClick", function() ns.Click(ns.Top()) end)
+    -- Settings tab: read the whole market now, also with both scan switches off. It takes the
+    -- place of the buy button, which the tab hides.
+    wholeBtn = S.Button(ft, 200, 32)
+    wholeBtn:SetPoint("RIGHT", -S.PAD, 0)
+    label(wholeBtn, L.SCAN_ALL, 160, 280)
+    wholeBtn:SetScript("OnClick", function() ns.Scan(true, true); ns.Refresh() end)
+    wholeBtn:HookScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+        GameTooltip:SetText(L.SCAN_ALL, 1, 1, 1)
+        GameTooltip:AddLine(L.SCAN_ALL_TIP, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    wholeBtn:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    wholeBtn:Hide()
 
 
     tabs = S.PageTabs(frame.body, { L.TAB_DEALS, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
