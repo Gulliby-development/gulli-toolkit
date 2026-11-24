@@ -78,6 +78,9 @@ T.en = {
     HOW_NOPRICE = "vendor: no auction price",
     HOW_QUEST = "quest item, 0",
     HOW_UNKNOWN = "loading...",
+    ROW_CRAFT = "Crafting",
+    HOW_MADE = "crafted",
+    HOW_USED = "used in a craft",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -86,6 +89,8 @@ T.en = {
     NOTE_UNKNOWN = "%d items are still loading and count as nothing.",
     NOTE_HOW = "Gold looted plus each item at what it would bring. An estimate.",
     NOTE_VENDOR = "Vendor only is on: every item counts at the vendor's price.",
+    NOTE_CRAFT = "Crafting counts only what it adds: what it made, less the reagents it used (auction buys at what you paid).",
+    NOTE_SPENT = "Auction buys (%s) are taken off.",
 }
 
 T.de = {
@@ -157,6 +162,9 @@ T.de = {
     HOW_NOPRICE = "Händler: kein Auktionspreis",
     HOW_QUEST = "Questgegenstand, 0",
     HOW_UNKNOWN = "lädt...",
+    ROW_CRAFT = "Herstellung",
+    HOW_MADE = "hergestellt",
+    HOW_USED = "verbraucht",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -165,6 +173,8 @@ T.de = {
     NOTE_UNKNOWN = "%d Gegenstände laden noch und zählen als nichts.",
     NOTE_HOW = "Erbeutetes Gold plus jeder Gegenstand zu dem, was er bringt. Eine Schätzung.",
     NOTE_VENDOR = "Nur Händler ist an: jeder Gegenstand zählt zum Händlerpreis.",
+    NOTE_CRAFT = "Herstellen zählt nur, was es bringt: das Ergebnis weniger der Reagenzien (Auktionskäufe zum bezahlten Preis).",
+    NOTE_SPENT = "Auktionskäufe (%s) werden abgezogen.",
 }
 
 T.es = {
@@ -236,6 +246,9 @@ T.es = {
     HOW_NOPRICE = "vendedor: sin precio de subasta",
     HOW_QUEST = "objeto de misión, 0",
     HOW_UNKNOWN = "cargando...",
+    ROW_CRAFT = "Fabricación",
+    HOW_MADE = "fabricado",
+    HOW_USED = "usado al fabricar",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -244,6 +257,8 @@ T.es = {
     NOTE_UNKNOWN = "%d objetos aún se cargan y cuentan como nada.",
     NOTE_HOW = "Oro saqueado más cada objeto a lo que valdría. Una estimación.",
     NOTE_VENDOR = "Solo vendedor activado: cada objeto cuenta al precio del vendedor.",
+    NOTE_CRAFT = "Fabricar cuenta solo lo que aporta: lo fabricado menos los componentes usados (compras en subasta a lo que pagaste).",
+    NOTE_SPENT = "Las compras en subasta (%s) se restan.",
 }
 
 T.fr = {
@@ -315,6 +330,9 @@ T.fr = {
     HOW_NOPRICE = "marchand : pas de prix aux enchères",
     HOW_QUEST = "objet de quête, 0",
     HOW_UNKNOWN = "chargement...",
+    ROW_CRAFT = "Artisanat",
+    HOW_MADE = "fabriqué",
+    HOW_USED = "utilisé",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -323,6 +341,8 @@ T.fr = {
     NOTE_UNKNOWN = "%d objets sont encore en chargement et ne comptent pas.",
     NOTE_HOW = "Or ramassé plus chaque objet à ce qu’il rapporterait. Une estimation.",
     NOTE_VENDOR = "Marchand seul activé : chaque objet compte au prix du marchand.",
+    NOTE_CRAFT = "L'artisanat ne compte que ce qu'il rapporte : le produit moins les composants utilisés (achats aux enchères au prix payé).",
+    NOTE_SPENT = "Les achats aux enchères (%s) sont déduits.",
 }
 
 T.pl = {
@@ -394,6 +414,9 @@ T.pl = {
     HOW_NOPRICE = "kupiec: brak ceny aukcji",
     HOW_QUEST = "przedmiot questowy, 0",
     HOW_UNKNOWN = "wczytywanie...",
+    ROW_CRAFT = "Rzemiosło",
+    HOW_MADE = "wytworzone",
+    HOW_USED = "zużyte",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -402,6 +425,8 @@ T.pl = {
     NOTE_UNKNOWN = "%d przedmiotów jeszcze się wczytuje i liczy się jako nic.",
     NOTE_HOW = "Zebrane złoto plus każdy przedmiot po tym, ile by dał. Szacunek.",
     NOTE_VENDOR = "Tylko kupiec włączony: każdy przedmiot liczy się po cenie kupca.",
+    NOTE_CRAFT = "Rzemiosło liczy tylko to, co dodaje: wytwór minus zużyte składniki (zakupy z aukcji po zapłaconej cenie).",
+    NOTE_SPENT = "Zakupy z aukcji (%s) są odjęte.",
 }
 
 T.pt = {
@@ -473,6 +498,9 @@ T.pt = {
     HOW_NOPRICE = "vendedor: sem preço de leilão",
     HOW_QUEST = "item de missão, 0",
     HOW_UNKNOWN = "carregando...",
+    ROW_CRAFT = "Criação",
+    HOW_MADE = "criado",
+    HOW_USED = "usado na criação",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -481,6 +509,8 @@ T.pt = {
     NOTE_UNKNOWN = "%d itens ainda carregam e contam como nada.",
     NOTE_HOW = "Ouro saqueado mais cada item pelo que renderia. Uma estimativa.",
     NOTE_VENDOR = "Só vendedor ligado: cada item conta pelo preço do vendedor.",
+    NOTE_CRAFT = "A criação conta só o que acrescenta: o produto menos os reagentes usados (compras no leilão pelo que você pagou).",
+    NOTE_SPENT = "Compras no leilão (%s) são descontadas.",
 }
 
 T.ru = {
@@ -552,6 +582,9 @@ T.ru = {
     HOW_NOPRICE = "торговец: нет цены аукциона",
     HOW_QUEST = "квестовая вещь, 0",
     HOW_UNKNOWN = "загрузка...",
+    ROW_CRAFT = "Ремесло",
+    HOW_MADE = "сделано",
+    HOW_USED = "потрачено",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -560,6 +593,8 @@ T.ru = {
     NOTE_UNKNOWN = "%d вещей ещё загружаются и пока считаются как ноль.",
     NOTE_HOW = "Добытое золото плюс каждая вещь по цене, которую она принесёт. Это оценка.",
     NOTE_VENDOR = "Включено «только торговец»: каждый предмет считается по цене торговца.",
+    NOTE_CRAFT = "Ремесло считает только выгоду: готовое изделие минус потраченные реагенты (купленное на аукционе по цене покупки).",
+    NOTE_SPENT = "Покупки на аукционе (%s) вычтены.",
 }
 
 T.zh = {
@@ -631,6 +666,9 @@ T.zh = {
     HOW_NOPRICE = "商人：无拍卖价",
     HOW_QUEST = "任务物品，0",
     HOW_UNKNOWN = "加载中...",
+    ROW_CRAFT = "制造",
+    HOW_MADE = "制造所得",
+    HOW_USED = "制造消耗",
     UNIT = "%d x %s",
     UNIT_COUNT = "%d x",
     TIMES = "%dx",
@@ -639,6 +677,8 @@ T.zh = {
     NOTE_UNKNOWN = "%d 件物品仍在加载，暂按 0 计算。",
     NOTE_HOW = "拾取的金币加上每件物品可卖出的价格。仅为估算。",
     NOTE_VENDOR = "已开启只卖商人：每件物品按商人收购价计算。",
+    NOTE_CRAFT = "制造只计算收益：成品减去消耗的材料（拍卖行购买的按实际支付价格）。",
+    NOTE_SPENT = "拍卖行购买（%s）已扣除。",
 }
 
 ns.T = T

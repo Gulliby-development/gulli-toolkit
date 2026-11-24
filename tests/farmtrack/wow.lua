@@ -19,6 +19,7 @@ local function stub()
         if k == "HookScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "GetScript" then return function(_, n) return rawget(t, "_" .. n) end end
         if k == "RegisterEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
+        if k == "RegisterUnitEvent" then return function(_, e) rawget(t, "_events")[e] = true end end
         if k == "UnregisterEvent" then return function(_, e) rawget(t, "_events")[e] = nil end end
         return function() return stub() end
     end })
@@ -155,6 +156,9 @@ function Fake(spec)
     GetProfessions = function() if spec.enchanter then return 1 end end
     GetProfessionInfo = function() return "Enchanting", "icon", 100, 300, 0, 0, 333 end
     GetMoney = function() return W.money end
+    -- spec.recipes: recipe spell id -> true (C_TradeSkillUI knows it)
+    W.recipes = spec.recipes or {}
+    C_TradeSkillUI = { GetRecipeInfo = function(id) if W.recipes[id] then return { recipeID = id } end end }
     C_PlayerInteractionManager, Enum, MerchantFrame = nil, nil, nil
     CursorHasItem = function() return W.cursor ~= nil end
     GetCursorInfo = function() if W.cursor then return "item", W.cursor end end
@@ -167,6 +171,16 @@ end
 -- Puts n of an item into the bags (or takes it out) and fires the bag event.
 function W.Loot(id, n)
     W.bags[id] = (W.bags[id] or 0) + n
+    W.Fire("BAG_UPDATE_DELAYED")
+end
+
+-- A craft of a recipe: the reagents go, the product comes, with the cast's events around it.
+function W.Craft(spell, used, made)
+    W.Fire("UNIT_SPELLCAST_START", "player", "cast", spell)
+    for id, n in pairs(used) do W.bags[id] = (W.bags[id] or 0) - n end
+    for id, n in pairs(made) do W.bags[id] = (W.bags[id] or 0) + n end
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", spell)
+    W.Fire("UNIT_SPELLCAST_STOP", "player", "cast", spell)
     W.Fire("BAG_UPDATE_DELAYED")
 end
 

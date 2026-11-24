@@ -626,8 +626,17 @@ test("the session card's gold is an estimate when a module tells what the loot i
     -- a worth that is no plain number is left out
     farm = { worth = "many" }
     eq(ns.SessionCard().empty, true)
-    farm = { worth = -5 }
-    eq(ns.SessionCard().empty, true)
+    -- crafting that cost more than it made: the estimate goes down, the vendor sales stay out
+    ns.SesEvent("MERCHANT_SHOW"); w.money = w.money + 30000; ns.SesEvent("PLAYER_MONEY"); ns.SesEvent("MERCHANT_CLOSED")
+    farm = { worth = -5000 }
+    card = ns.SessionCard()
+    g = gold(card)
+    assert(plain(g.value):find("^%-50s"), plain(g.value))
+    eq(g.rows[#g.rows][3], true, "a loss shows as bad")
+    -- a worth of 0 still keeps the sales out (what was sold was crafted and counted there)
+    farm = { worth = 0 }
+    g = gold(ns.SessionCard())
+    assert(not plain(g.value):find("30s"), plain(g.value))
 end)
 
 test("the home page always shows the session card, empty at first", function()

@@ -845,9 +845,11 @@ function ns.SessionOf(r)
     if type(d.tile) == "table" and d.tile.value ~= nil then
         tile = { icon = d.tile.icon or r.icon, value = tostring(d.tile.value), label = tostring(d.tile.label or r.title or "") }
     end
-    -- what the looted items would bring: the card adds it to the gold (never a secret value)
+    -- what the looted items would bring: the card adds it to the gold (never a secret value); below
+    -- zero when crafting cost more than it made
     local worth = d.worth
-    if type(worth) ~= "number" or (issecretvalue and issecretvalue(worth)) or worth <= 0 then worth = nil end
+    if type(worth) ~= "number" or (issecretvalue and issecretvalue(worth)) or worth ~= worth
+        or worth == math.huge or worth == -math.huge then worth = nil end
     if d.value == nil and not tile and not worth then return nil end
     local bars = {}
     if type(d.bars) == "table" then
