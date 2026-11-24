@@ -242,6 +242,8 @@ test("an escort or event quest waits for the player while others are in the grou
     Fake({ questID = 155, npc = { active = {}, available = { { 155, false }, { 7, false } } } })
     local ns = Load()
     eq(ns.EVENT_QUESTS[155], true, "The Defias Brotherhood is an escort")
+    eq(ns.EVENT_QUESTS[94927], true, "Dunston Checks Out is an escort")
+    eq(ns.EVENT_QUESTS[86796], true, "Later, Satyr is an escort")
     eq(ns.EVENT_QUESTS[7], nil)
     IsInGroup = function() return true end
     GetNumGroupMembers = function() return 3 end
