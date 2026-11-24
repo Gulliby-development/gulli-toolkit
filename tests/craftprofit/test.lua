@@ -2499,6 +2499,30 @@ test("the profession window counts as open while the game shows it, whatever ord
     ProfessionsFrame = nil
 end)
 
+test("the game's profession window: an item's tooltip tells the skill-up chance and the colour levels", function()
+    local n = game()
+    eq(#n.RecipeTipLines(4), 0, "no line while the game's window is closed")
+    ProfessionsFrame = W.stub(); ProfessionsFrame:Show()
+    local lines = n.RecipeTipLines(4)
+    eq(#lines, 2)
+    local rec
+    for rid, r in pairs(n.char.profs.Tailoring.recipes) do if r.out == 4 then rec = { rid, r } end end
+    local sk = n.RecipeSkill(rec[1], rec[2])
+    local y, g, gy = n.Levels(sk)
+    local pct = math.floor(n.Chance({ skill = sk }, SKILL) * 100 + 0.5)
+    assert(lines[1].left:find(tostring(pct), 1, true), "the chance: " .. lines[1].left)
+    for _, v in ipairs({ y, g, gy }) do assert(lines[2].left:find(tostring(v), 1, true), "level " .. v) end
+    assert(y <= g and g <= gy)
+    eq(#n.RecipeTipLines(1), 0, "Silk Cloth is no craft of this profession")
+    -- the colours follow ns.Color: green from the middle between yellow and grey
+    local a, b, c = n.Levels({ 0, 100, 120 })
+    eq(a, 100); eq(b, 110); eq(c, 120)
+    eq(n.Color({ skill = { 0, 100, 120 } }, 109), "ye"); eq(n.Color({ skill = { 0, 100, 120 } }, 110), "gr")
+    a, b, c = n.Levels({ 0, 100, 115 })
+    eq(b, 108); eq(n.Color({ skill = { 0, 100, 115 } }, 107), "ye"); eq(n.Color({ skill = { 0, 100, 115 } }, 108), "gr")
+    ProfessionsFrame = nil
+end)
+
 test("the first run's buy stops also buy what the later runs need, behind a switch that plans nothing", function()
     local c = core()
     local st = state()

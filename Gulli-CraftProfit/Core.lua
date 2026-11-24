@@ -296,6 +296,13 @@ function ns.Chance(r, s)
     return (g - s) / (g - y)
 end
 
+-- The skill where a recipe turns yellow, green and grey ({ orange, yellow, grey } as
+-- ns.Thresholds gives): green starts where ns.Color says so.
+function ns.Levels(sk)
+    local y, g = sk[2], sk[3]
+    return y, math.ceil((y + g) / 2 - 1e-9), g
+end
+
 -- Yellow to grey in the data: 20 points is the most common gap, so a recipe without data
 -- gets it too. A shorter gap would make the guess ask for far more crafts than the game does.
 ns.GAP = 20
