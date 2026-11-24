@@ -9,7 +9,7 @@ local L = ns.L
 
 ns.DEFAULTS = { scan = true, auto = true, sell = false, sound = false, minGain = 500, reserve = 0, keepFree = 2,
                 gear = true, goods = true, q0 = true, q1 = true, q2 = true, q3 = true, q4 = true,
-                maxPrice = 0, minPct = 0, interval = 60 }
+                maxPrice = 0, minPct = 0, interval = 60, full = true, de = true }
 -- What a scan looks at: gear (weapons and armour) and the rest, by quality (q0 grey .. q4 purple
 -- and better). maxPrice is the most one line may cost (0: no limit), minPct the least gain in
 -- percent of what a line costs.
@@ -63,23 +63,23 @@ ns.Say = say
 local function A() return C_AuctionHouse end
 local I = C_Item or {}
 
--- name, quality, icon, sell price of one, stack size, item class; nil while the client does not
+-- name, quality, icon, sell price of one, stack size, item class, item level; nil while the client does not
 -- know the item (then the client is asked to load it, unless noLoad).
 function ns.ItemInfo(item, noLoad)
-    local name, q, stack, icon, sell, class
+    local name, q, stack, icon, sell, class, level
     if I.GetItemInfo then
-        local n, _, q1, _, _, _, _, st, _, ic, sp, cl = I.GetItemInfo(item)
-        name, q, stack, icon, sell, class = n, q1, st, ic, sp, cl
+        local n, _, q1, lv, _, _, _, st, _, ic, sp, cl = I.GetItemInfo(item)
+        name, q, stack, icon, sell, class, level = n, q1, st, ic, sp, cl, lv
     elseif GetItemInfo then
-        local n, _, q1, _, _, _, _, st, _, ic, sp, cl = GetItemInfo(item)
-        name, q, stack, icon, sell, class = n, q1, st, ic, sp, cl
+        local n, _, q1, lv, _, _, _, st, _, ic, sp, cl = GetItemInfo(item)
+        name, q, stack, icon, sell, class, level = n, q1, st, ic, sp, cl, lv
     end
     if not name then
         local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
         if id and not noLoad and I.RequestLoadItemDataByID then pcall(I.RequestLoadItemDataByID, id) end
         return nil
     end
-    return name, q or 1, icon, sell or 0, math.max(1, stack or 1), class
+    return name, q or 1, icon, sell or 0, math.max(1, stack or 1), class, level or 0
 end
 
 -- Does the player want items of this quality and class scanned (prefs: gear, goods, q0..q4)?
@@ -163,12 +163,71 @@ local function charKey()
     return name .. "-" .. (r or "?")
 end
 
+-- ---------- own prices ----------
+
+-- The prices of this character's auction house: one list per realm and faction.
+function ns.MarketKey()
+    local realm = charKey():match("%-(.+)$") or "?"
+    local faction = UnitFactionGroup and UnitFactionGroup("player")
+    return realm .. "|" .. (type(faction) == "string" and faction or "?")
+end
+
+function ns.Market()
+    if not ns.db then return nil end
+    ns.db.markets = ns.db.markets or {}
+    local key = ns.MarketKey()
+    local m = ns.db.markets[key]
+    if not m then
+        -- prices noted while the realm name was still unknown join the real list
+        local realm = key:match("^(.-)|")
+        local stray = realm ~= "?" and ns.db.markets[key:gsub("^.-|", "?|")]
+        if stray then ns.db.markets[key:gsub("^.-|", "?|")] = nil end
+        m = stray or ns.NewMarket()
+        ns.db.markets[key] = m
+    end
+    return m
+end
+
+-- The price of one at this auction house and its age in days, from the module's own scans.
+function ns.OwnPrice(id)
+    return ns.PriceOf(ns.Market(), id)
+end
+
+-- For the other modules, through the skin's price reader (S.PRICE_SOURCES).
+GulliAuction = GulliAuction or {}
+GulliAuction.Price = function(id) return ns.OwnPrice(id) end
+GulliAuction.Normal = function(id) return ns.NormalOf(ns.Market(), id) end
+GulliAuction.Ready = function()
+    local m = ns.db and ns.Market()
+    return m ~= nil and (m.n or 0) > 0
+end
+
+-- What a material sells for: the own price first, else any loaded price addon's.
+function ns.MatPrice(id)
+    local price = ns.OwnPrice(id)
+    if price then return price end
+    return ns.Skin and ns.Skin.AuctionPrice and (ns.Skin.AuctionPrice(id)) or nil
+end
+
+-- The character knows Enchanting (skill line 333).
+function ns.Enchanter()
+    if not (GetProfessions and GetProfessionInfo) then return false end
+    for _, i in ipairs({ GetProfessions() }) do
+        if i then
+            local _, _, _, _, _, _, line = GetProfessionInfo(i)
+            if line == 333 then return true end
+        end
+    end
+    return false
+end
+
 -- ---------- the rules ----------
 
--- Browse results (one per item key, its lowest buyout) that sell to a vendor for more:
--- { key, id, unit, sell, gain }, the best gain of one first. sellOf(id) gives the vendor price
--- of one, nil while unknown.
-function ns.Candidates(results, sellOf)
+-- Browse results (one per item key, its lowest buyout) that are worth more than they cost:
+-- { key, id, unit, sell, gain, mode }, the best gain of one first. sellOf(id) gives what one is
+-- worth (the vendor price, or for mode "d" what disenchanting gives at the least), nil while
+-- unknown.
+function ns.Candidates(results, sellOf, mode)
     local out = {}
     for _, r in ipairs(results or {}) do
         local key = r.itemKey
@@ -176,7 +235,9 @@ function ns.Candidates(results, sellOf)
         local unit = tonumber(r.minPrice)
         if id and unit and unit > 0 and not (key.battlePetSpeciesID and key.battlePetSpeciesID > 0) then
             local sell = sellOf(id)
-            if sell and sell > unit then out[#out + 1] = { key = key, id = id, unit = unit, sell = sell, gain = sell - unit } end
+            if sell and sell > unit then
+                out[#out + 1] = { key = key, id = id, unit = unit, sell = sell, gain = sell - unit, mode = mode }
+            end
         end
     end
     table.sort(out, function(a, b) return a.gain > b.gain end)
@@ -247,7 +308,7 @@ end
 -- then a search for each item that sells to a vendor for more, for its lots. It waits while the
 -- player (or another addon) searches, since one query replaces the other's results.
 
-local scan = { phase = "idle", results = {}, queue = {}, pages = 0, next = 0, quietUntil = 0, done = 0, n = 0 }
+local scan = { phase = "idle", results = {}, queue = {}, pages = 0, maxPages = ns.MAX_PAGES, next = 0, quietUntil = 0, done = 0, n = 0 }
 ns.scan = scan
 ns.lines = {}
 
@@ -272,6 +333,16 @@ local function sellOf(id)
     if not name and load then scan.loads = (scan.loads or 0) + 1 end
     if not name or not ns.Wanted(q, class, ns.db) then return nil end
     return sell
+end
+
+-- What disenchanting one gives at the least, for the "buy to disenchant" list: only green and
+-- blue weapons and armour, only for an enchanter with the `de` switch on, and only while the
+-- materials have a price.
+local function deOf(id)
+    if not scan.de then return nil end
+    local name, q, _, _, _, class, level = ns.ItemInfo(id, true)
+    if not name or not ns.GEAR_CLASSES[class or -1] or not ns.Wanted(q, class, ns.db) then return nil end
+    return ns.DisenchantFloor(q, level, ns.MatPrice)
 end
 
 local function wantedLine(line)
@@ -304,7 +375,7 @@ end
 local function publish(c, deals)
     local old, keep = {}, {}
     for _, line in ipairs(ns.lines) do
-        local mine = line.key == c.key or line.id == c.id
+        local mine = (line.key == c.key or line.id == c.id) and line.mode == c.mode
         if mine and line.state ~= "bought" and not (line == ns.buy.line and ns.Busy()) then old[line.uid] = line
         else keep[#keep + 1] = line end
     end
@@ -362,13 +433,14 @@ local function readItems(c)
     for i = 1, (a.GetNumItemSearchResults and a.GetNumItemSearchResults(c.key)) or 0 do
         local r = a.GetItemSearchResultInfo(c.key, i)
         if r and r.buyoutAmount and r.buyoutAmount > 0 and r.auctionID then
-            local _, _, _, sell = ns.ItemInfo(r.itemLink or c.id)
+            -- a vendor's price is the lot's own (a suffix changes it); a disenchant is by level
+            local sell = not c.mode and select(4, ns.ItemInfo(r.itemLink or c.id)) or nil
             lots[#lots + 1] = { r.auctionID, math.max(1, r.quantity or 1), r.buyoutAmount, sell or c.sell, r.containsOwnerItem }
         end
     end
     local deals = ns.ItemDeals(lots)
     for _, d in ipairs(deals) do
-        d.kind, d.id, d.key, d.uid, d.slots = "i", c.id, c.key, "i" .. d.auction, 1
+        d.kind, d.id, d.key, d.uid, d.slots, d.mode = "i", c.id, c.key, (c.mode or "i") .. d.auction, 1, c.mode
     end
     publish(c, deals)
 end
@@ -435,15 +507,41 @@ local function sift()
     local last = math.min(#res, i + ns.SIFT_STEP)
     local part = {}
     for k = i + 1, last do part[#part + 1] = res[k] end
+    ns.NotePrices(part)
     for _, c in ipairs(ns.Candidates(part, sellOf)) do scan.cands[#scan.cands + 1] = c end
+    for _, c in ipairs(ns.Candidates(part, deOf, "d")) do scan.cands[#scan.cands + 1] = c end
     scan.sifted = last
-    if last >= #res then return startDetail() end
+    if last >= #res then
+        -- the whole market was read: the next such scan comes FULL_EVERY later
+        local m = ns.Market()
+        if scan.full and m then m.at = time() end
+        return startDetail()
+    end
     refreshSoon()
     C_Timer.After(0, sift)
 end
 
+-- Every browse result is the lowest buyout of its item key: the cheapest key of an item is the
+-- item's price. scan.low keeps what this scan saw, so a dearer key never replaces a cheaper one.
+function ns.NotePrices(results)
+    local m = ns.Market()
+    if not m then return end
+    local day, low = ns.Today(), scan.low or {}
+    scan.low = low
+    for _, r in ipairs(results) do
+        local key = r.itemKey
+        local id, unit = key and key.itemID, tonumber(r.minPrice)
+        if id and unit and unit > 0 and not (key.battlePetSpeciesID and key.battlePetSpeciesID > 0)
+           and (not low[id] or unit < low[id]) then
+            low[id] = unit
+            ns.NotePrice(m, id, unit, tonumber(r.totalQuantity) or 0, day)
+        end
+    end
+end
+
 local function startSift()
-    scan.phase, scan.sifted, scan.cands, scan.loads = "sift", 0, {}, 0
+    scan.phase, scan.sifted, scan.cands, scan.loads, scan.low = "sift", 0, {}, 0, {}
+    scan.de = ns.db.de ~= false and ns.Enchanter()
     sift()
 end
 
@@ -479,7 +577,7 @@ function ns.OnBrowse(added)
         scan.results = a.GetBrowseResults() or {}
     end
     refreshSoon()
-    if (a.HasFullBrowseResults and a.HasFullBrowseResults()) or scan.pages >= ns.MAX_PAGES or not a.RequestMoreBrowseResults then
+    if (a.HasFullBrowseResults and a.HasFullBrowseResults()) or scan.pages >= scan.maxPages or not a.RequestMoreBrowseResults then
         return startSift()
     end
     morePage()
@@ -489,12 +587,22 @@ function ns.OnThrottleReady()
     if scan.phase == "browse" and scan.waitReady then morePage() end
 end
 
+-- Is it time to read the whole market again (the `full` switch, FULL_EVERY since the last one)?
+function ns.FullDue(now)
+    if not ns.db or ns.db.full == false then return false end
+    local m = ns.Market()
+    return not m or (m.at or 0) + ns.FULL_EVERY <= (now or time())
+end
+
 -- Starts a scan now, when nothing stands in the way.
 function ns.Scan(force)
     if not ns.atAH or ns.paused or not canScan() or scan.phase ~= "idle" then return false end
     if not force and (not ns.db.scan or time() < scan.quietUntil or ns.Holding()) then return false end
     if ns.Busy() or not ready() then return false end
     scan.phase, scan.pages, scan.results, scan.done, scan.n = "browse", 1, {}, 0, 0
+    -- once in a while the whole market, for the prices; else its cheapest pages, for the deals
+    scan.full = ns.FullDue()
+    scan.maxPages = scan.full and ns.FULL_PAGES or ns.MAX_PAGES
     ours = true
     local ok = pcall(A().SendBrowseQuery, { searchString = "", sorts = { { sortOrder = 0, reverseSort = false } },
                                            filters = {}, itemClassFilters = {} })
@@ -536,11 +644,18 @@ function ns.Tick()
     refresh()
 end
 
--- The lines on screen.
-function ns.Shown()
+-- The two lists of the Deals page: "v" sells to a vendor for more, "d" disenchants for more.
+ns.VIEWS = { "v", "d" }
+ns.view = "v"
+
+-- The lines on screen: those of the list shown, or of every list with view "all".
+function ns.Shown(view)
     if not ns.db then return {} end
+    view = view or ns.view
     local lines = {}
-    for _, line in ipairs(ns.lines) do if line.state or wantedLine(line) then lines[#lines + 1] = line end end
+    for _, line in ipairs(ns.lines) do
+        if (view == "all" or (line.mode or "v") == view) and (line.state or wantedLine(line)) then lines[#lines + 1] = line end
+    end
     return ns.Deals(lines, ns.db.minGain, ns.Money(), ns.db.reserve, ns.FreeSlots(), ns.db.keepFree)
 end
 
@@ -578,10 +693,16 @@ function ns.Top()
     for _, line in ipairs(ns.Shown()) do if not line.state then return line end end
 end
 
-function ns.Open()
+-- Lines still to buy: of one list, or of both for the number on the side tab.
+function ns.Open(view)
     local n = 0
-    for _, line in ipairs(ns.Shown()) do if not line.state then n = n + 1 end end
+    for _, line in ipairs(ns.Shown(view or "all")) do if not line.state then n = n + 1 end end
     return n
+end
+
+function ns.SetView(view)
+    ns.view = view == "d" and "d" or "v"
+    refresh()
 end
 
 -- ---------- buying ----------
@@ -621,7 +742,7 @@ local function bought(line, paid)
     local b = ns.buy
     if b.line == line then b.phase, b.line, b.quote, b.err = "idle", nil, nil, nil end
     if line.state == "bought" then return refresh() end
-    ns.Log(line.id, line.n, paid, line.value)
+    ns.Log(line.id, line.n, paid, line.value, line.mode)
     ns.session = (ns.session or 0) + (line.value - paid)
     if (line.left or 1) > 1 then
         -- one of an item's lot is bought: the rest stays, under a new auction id the next search gives
@@ -637,7 +758,7 @@ end
 -- Search one item again after a purchase, so the rest of its lot can be bought: the auction id
 -- just bought is gone. It waits while a purchase or a scan search runs.
 function ns.Refetch(line)
-    ns.refetchWant = { id = line.id, key = line.key, sell = line.sellEach }
+    ns.refetchWant = { id = line.id, key = line.key, sell = line.sellEach, mode = line.mode }
     local function try()
         local c = ns.refetchWant
         if not c or not ns.atAH or ns.refetch then return end
@@ -749,10 +870,14 @@ end
 -- db.history: { at, id, n, paid, value, sold, keep }, newest first. db.owed[char][id]: units
 -- bought here to sell to a vendor.
 
-function ns.Log(id, n, paid, value)
+-- A purchase goes into the history. One bought to sell to a vendor is owed to the next vendor;
+-- one bought to disenchant (mode "d") is the player's to disenchant, never sold by the module.
+function ns.Log(id, n, paid, value, mode)
     local h = ns.db.history
-    table.insert(h, 1, { at = time(), id = id, n = n, paid = paid, value = value, sold = 0, who = charKey() })
+    table.insert(h, 1, { at = time(), id = id, n = n, paid = paid, value = value, sold = 0, who = charKey(),
+                         de = mode == "d" or nil })
     while #h > ns.HISTORY_MAX do table.remove(h) end
+    if mode == "d" then return end
     local o = ns.Owed()
     o[id] = (o[id] or 0) + n
 end
@@ -769,7 +894,7 @@ local function markSold(id, n)
     for i = #h, 1, -1 do
         local e = h[i]
         if n <= 0 then break end
-        if e.id == id and e.who == key and not e.keep and e.sold < e.n then
+        if e.id == id and e.who == key and not e.keep and not e.de and e.sold < e.n then
             local take = math.min(n, e.n - e.sold)
             e.sold, n = e.sold + take, n - take
         end
@@ -778,7 +903,7 @@ end
 
 -- A history line the player keeps for themselves: no longer sold.
 function ns.Keep(e)
-    if not e or e.keep or e.who ~= charKey() then return end
+    if not e or e.keep or e.de or e.who ~= charKey() then return end
     e.keep = true
     local o, left = ns.Owed(), e.n - e.sold
     o[e.id] = math.max(0, (o[e.id] or 0) - left)
@@ -932,6 +1057,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.history = ns.db.history or {}
         ns.db.owed = ns.db.owed or {}
+        ns.db.markets = ns.db.markets or {}
+        for _, m in pairs(ns.db.markets) do ns.PrunePrices(m, ns.Today()) end
         -- what was saved under an empty realm name joins this character's
         local key = charKey()
         local name = key:match("^(.-)%-")
@@ -1002,6 +1129,8 @@ ns.OPT_ICON = {
     auto = "Interface\\Minimap\\Tracking\\Auctioneer",
     sell = "Interface\\Icons\\INV_Misc_Coin_02",
     sound = "Interface\\Icons\\INV_Misc_Bell_01",
+    full = "Interface\\Icons\\INV_Misc_Book_09",
+    de = "Interface\\Icons\\INV_Enchant_Disenchant",
     minGain = "Interface\\Icons\\INV_Misc_Coin_01",
     reserve = "Interface\\Icons\\INV_Misc_Bag_11",
     keepFree = "Interface\\Icons\\INV_Misc_Bag_08",

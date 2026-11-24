@@ -11,7 +11,7 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn
+local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn, viewTabs, worthHead
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
 -- column widths from the right: button, gain, vendor, auction, quantity
@@ -90,7 +90,8 @@ end
 function ns.LineTip(line)
     local each = line.each or line.cost / math.max(1, line.n)
     local sellEach = line.sellEach or line.value / math.max(1, line.n)
-    local out = { L.TIP_LOT:format(line.left or line.n, S.MoneyText(math.floor(each + 0.5)), S.MoneyText(sellEach)) }
+    local lot = line.mode == "d" and L.TIP_LOT_DE or L.TIP_LOT
+    local out = { lot:format(line.left or line.n, S.MoneyText(math.floor(each + 0.5)), S.MoneyText(sellEach)) }
     if line.left then out[2] = L.TIP_ONE:format(S.MoneyText(line.gain))
     else out[2] = L.TIP_ALL:format(line.n, S.MoneyText(line.gain)) end
     return out
@@ -210,8 +211,10 @@ function ns.ScanLine()
     local s = ns.scan
     if not ns.CanScan() then return L.NO_API, 0 end
     if s.held and s.phase ~= "idle" then return L.SCAN_HELD, 0 end
-    if s.phase == "browse" then return L.SCAN_BROWSE:format(#s.results), math.min(1, s.pages / ns.MAX_PAGES) end
-    if s.phase == "sift" then return L.SCAN_BROWSE:format(#s.results), #s.results > 0 and s.sifted / #s.results or 1 end
+    local browse = s.full and L.SCAN_FULL or L.SCAN_BROWSE
+    -- nobody knows how many pages the whole market has: its bar fills with the lots looked at
+    if s.phase == "browse" then return browse:format(#s.results), s.full and 0 or math.min(1, s.pages / s.maxPages) end
+    if s.phase == "sift" then return browse:format(#s.results), #s.results > 0 and s.sifted / #s.results or 1 end
     if s.phase == "detail" then return L.SCAN_DETAIL:format(math.min(s.done + 1, s.n), s.n), s.n > 0 and s.done / s.n or 0 end
     if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
     local left = ns.NextIn()
@@ -249,8 +252,13 @@ local function refreshDeals()
     sumText:SetText((open > 0 and not ns.Scanning()) and L.SUM:format(open, money(worth)) or "")
     dealList:SetData(shown)
     dealEmpty:SetShown(#shown == 0)
-    if not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
+    local de = ns.view == "d"
+    worthHead:SetText(S.Upper(de and L.COL_DE or L.COL_VENDOR))
+    if de and not ns.Enchanter() then dealEmpty:Set(L.DE_NEED, L.DE_NEED_SUB)
+    elseif de and ns.db.de == false then dealEmpty:Set(L.DE_OFF, L.DE_OFF_SUB)
+    elseif not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
     elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text, L.SCANNING_SUB)
+    elseif de then dealEmpty:Set(L.EMPTY_DE, L.EMPTY_DE_SUB)
     else dealEmpty:Set(L.EMPTY, L.EMPTY_SUB) end
     heads:SetShown(#shown > 0)
     scanBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
@@ -287,7 +295,18 @@ function ns.Refresh()
     for _, card in ipairs({ setCard, filterCard }) do
         for _, row in ipairs(card.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
     end
-    frame.footer:SetStatus("")
+    frame.footer:SetStatus(ns.PricesLine())
+end
+
+-- The footer of the Settings tab: how many prices the module holds and how old the last look at
+-- the whole market is.
+function ns.PricesLine()
+    local m = ns.Market()
+    if not m or (m.n or 0) == 0 then return L.PRICES_NONE end
+    if not m.at then return L.PRICES_PART:format(m.n) end
+    local mins = math.max(0, math.floor((time() - m.at) / 60))
+    local span = mins < 60 and L.MINS:format(mins) or L.HOURS:format(math.floor(mins / 60))
+    return L.PRICES_LINE:format(m.n, span)
 end
 
 -- ---------- build ----------
@@ -354,8 +373,14 @@ local function build()
     bar:SetPoint("TOPLEFT", 0, -34)
     bar:SetPoint("TOPRIGHT", 0, -34)
 
+    -- which list: what sells to a vendor for more, or what disenchants for more
+    viewTabs = S.Tabs(dp, { L.VIEW_V, L.VIEW_D }, nil, function(i) ns.SetView(ns.VIEWS[i]) end, 28,
+                      { "Interface\\Icons\\INV_Misc_Coin_02", ns.OPT_ICON.de })
+    viewTabs.frame:ClearAllPoints()
+    viewTabs.frame:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
+
     dealCard = S.Card(dp)
-    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
+    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP - 28 - S.GAP)
     dealCard:SetPoint("BOTTOMRIGHT")
     heads = CreateFrame("Frame", nil, dealCard.body)
     heads:SetPoint("TOPLEFT")
@@ -363,7 +388,7 @@ local function build()
     heads:SetHeight(18)
     local x = -2 - W_BTN - COL_GAP
     head(heads, L.COL_GAIN, W_GAIN, x); x = x - W_GAIN - COL_GAP
-    head(heads, L.COL_VENDOR, W_VEND, x); x = x - W_VEND - COL_GAP
+    worthHead = head(heads, L.COL_VENDOR, W_VEND, x); x = x - W_VEND - COL_GAP
     head(heads, L.COL_AH, W_AH, x); x = x - W_AH - COL_GAP
     head(heads, L.COL_N, W_N, x); x = x - W_N - COL_GAP
     local item = head(heads, L.COL_ITEM)
@@ -411,7 +436,7 @@ local function build()
 
     -- Settings
     local rows = {}
-    for _, key in ipairs({ "scan", "auto", "sell", "sound" }) do
+    for _, key in ipairs({ "scan", "full", "auto", "sell", "sound", "de" }) do
         rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
                             function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
     end
@@ -483,6 +508,12 @@ end
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)
+end
+
+-- Shows one list of the Deals page: "v" vendor, "d" disenchant.
+function ns.ShowView(view)
+    ns.ShowTab(1)
+    for i, v in ipairs(ns.VIEWS) do if v == view then viewTabs:Select(i) end end
 end
 
 -- The window, for the hub (/gulli) to show inside it.

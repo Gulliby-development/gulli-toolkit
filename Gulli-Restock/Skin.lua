@@ -3976,6 +3976,9 @@ end
 local function priceNum(v) return type(v) == "number" and v > 0 and v or nil end
 local function auctionatorApi() return Auctionator and Auctionator.API and Auctionator.API.v1 end
 S.PRICE_SOURCES = {
+    -- Gulli's own scans of this realm's auction house (Vendor Flip keeps them), once it has any
+    { name = "Gulli Auction", on = function() return GulliAuction and GulliAuction.Price and GulliAuction.Ready and GulliAuction.Ready() end,
+      price = function(id) return GulliAuction.Price(id) end },
     { name = "Auctionator", on = auctionatorApi, price = function(id, caller)
         local api = auctionatorApi()
         if not api.GetAuctionPriceByItemID then return nil end
