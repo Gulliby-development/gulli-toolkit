@@ -8,14 +8,16 @@ local ADDON, ns = ...
 local L = ns.L
 
 ns.DEFAULTS = { scan = true, auto = true, sell = false, sound = false, minGain = 500, reserve = 0, keepFree = 2,
-                gear = true, goods = true, q0 = true, q1 = true, q2 = true, q3 = true, q4 = true,
-                maxPrice = 0, minPct = 0, interval = 60, full = true, de = true }
--- What a scan looks at: gear (weapons and armour) and the rest, by quality (q0 grey .. q4 purple
--- and better). maxPrice is the most one line may cost (0: no limit), minPct the least gain in
--- percent of what a line costs.
+                gear = true, goods = true, interval = 60, de = true, soundAt = 10000,
+                gq0 = true, gq1 = true, gq2 = true, gq3 = true, gq4 = true,
+                oq0 = true, oq1 = true, oq2 = true, oq3 = true, oq4 = true }
+-- What the vendor list looks at: gear (weapons and armour) with its own qualities (gq0 grey ..
+-- gq4 purple and better) and the rest with its own (oq0 .. oq4). soundAt is the gain of a new
+-- line that rings, with `sound` on.
+-- Settings of older versions: dropped on load. The one quality row (q0..q4) goes to both kinds.
+ns.GONE = { "full", "maxPrice", "minPct" }
 ns.GEAR_CLASSES = { [2] = true, [4] = true }
 ns.QUALITIES = { 0, 1, 2, 3, 4 }
-ns.MAX_PCT = 500
 -- The money settings: the least gain per line goes down to one copper.
 ns.MIN_GAIN, ns.MAX_MONEY = 1, 99999 * 10000 + 9999
 
@@ -38,7 +40,6 @@ ns.HOLD_STEP = 0.5    -- how often a held scan looks again
 ns.SIFT_STEP = 300    -- browse results looked at in one frame (a full market is tens of thousands)
 ns.LOAD_MAX = 200     -- unknown items a scan asks the client to load (cheapest first; the rest next time)
 ns.REDRAW = 0.25      -- the window redraws at most this often for the scan and item events
-ns.SOUND_AT = 10000   -- a new line worth at least this rings, with `sound` on
 ns.SELL_STEP = 12     -- items sold at a vendor in one step
 ns.HISTORY_MAX = 400
 
@@ -82,19 +83,26 @@ function ns.ItemInfo(item, noLoad)
     return name, q or 1, icon, sell or 0, math.max(1, stack or 1), class, level or 0
 end
 
--- Does the player want items of this quality and class scanned (prefs: gear, goods, q0..q4)?
+-- Does the player want items of this quality and class on the vendor list (prefs: gear with
+-- gq0..gq4, goods with oq0..oq4)?
 function ns.Wanted(quality, class, prefs)
     local gear = ns.GEAR_CLASSES[class or -1] or false
     if gear and prefs.gear == false then return false end
     if not gear and prefs.goods == false then return false end
-    return prefs["q" .. math.max(0, math.min(4, quality or 1))] ~= false
+    return prefs[(gear and "gq" or "oq") .. math.max(0, math.min(4, quality or 1))] ~= false
 end
 
--- Within the price limits: one purchase of the line costs at most maxPrice (0: any) and the line
--- gains at least minPct percent of its cost.
-function ns.PriceOK(line, maxPrice, minPct)
-    if (maxPrice or 0) > 0 and (line.pay or line.cost) > maxPrice then return false end
-    return line.gain * 100 >= line.cost * (minPct or 0)
+-- Moves the settings of an older version: the one quality row to both kinds, the rest dropped.
+function ns.Migrate(db)
+    for q = 0, 4 do
+        local old = db["q" .. q]
+        if old ~= nil then
+            if db["gq" .. q] == nil then db["gq" .. q] = old end
+            if db["oq" .. q] == nil then db["oq" .. q] = old end
+            db["q" .. q] = nil
+        end
+    end
+    for _, key in ipairs(ns.GONE) do db[key] = nil end
 end
 
 function ns.Money()
@@ -245,14 +253,14 @@ function ns.Candidates(results, sellOf, mode)
 end
 
 -- A commodity's lots ({ unitPrice, quantity, own }) cheapest first: how many to buy so that each
--- unit sells for more than it cost (by at least minPct percent), within money copper and room bag
+-- unit sells for more than it cost, within money copper and room bag
 -- slots of stack each. Returns { n, cost, value, gain } or nil.
-function ns.CommodityDeal(lots, sell, money, room, stack, minPct)
+function ns.CommodityDeal(lots, sell, money, room, stack)
     local n, cost = 0, 0
     local maxN = math.max(0, room or 0) * math.max(1, stack or 1)
     for _, l in ipairs(lots or {}) do
         local price, q = l[1], l[2] - (l[3] or 0)
-        if price >= sell or sell * 100 < price * (100 + (minPct or 0)) then break end
+        if price >= sell then break end
         if q > 0 then
             local take = math.min(q, maxN - n)
             if price > 0 then take = math.min(take, math.floor((money - cost) / price)) end
@@ -337,17 +345,18 @@ end
 
 -- What disenchanting one gives at the least, for the "buy to disenchant" list: only green and
 -- blue weapons and armour, only for an enchanter with the `de` switch on, and only while the
--- materials have a price.
+-- materials have a price. The vendor list's kinds and qualities do not apply to it.
 local function deOf(id)
     if not scan.de then return nil end
     local name, q, _, _, _, class, level = ns.ItemInfo(id, true)
-    if not name or not ns.GEAR_CLASSES[class or -1] or not ns.Wanted(q, class, ns.db) then return nil end
+    if not name or not ns.GEAR_CLASSES[class or -1] then return nil end
     return ns.DisenchantFloor(q, level, ns.MatPrice)
 end
 
 local function wantedLine(line)
+    if line.mode == "d" then return true end
     local name, q, _, _, _, class = ns.ItemInfo(line.id)
-    return (not name or ns.Wanted(q, class, ns.db)) and ns.PriceOK(line, ns.db.maxPrice, ns.db.minPct)
+    return not name or ns.Wanted(q, class, ns.db)
 end
 
 local function refresh() if ns.Refresh then ns.Refresh() end end
@@ -382,7 +391,7 @@ local function publish(c, deals)
     for _, d in ipairs(deals) do
         local was = old[d.uid]
         local line = was and merge(was, d) or d
-        if not was and d.gain >= ns.SOUND_AT then scan.ring = true end
+        if not was and d.gain >= (ns.db.soundAt or 0) then scan.ring = true end
         keep[#keep + 1] = line
         if scan.found then scan.found[line.uid] = true end
     end
@@ -419,8 +428,7 @@ local function readCommodity(c)
     local _, _, _, _, stack = ns.ItemInfo(c.id)
     local room = math.max(0, ns.FreeSlots() - ns.db.keepFree)
     local money = math.max(0, ns.Money() - ns.db.reserve)
-    if (ns.db.maxPrice or 0) > 0 then money = math.min(money, ns.db.maxPrice) end
-    local d = ns.CommodityDeal(lots, c.sell, money, room, stack, ns.db.minPct)
+    local d = ns.CommodityDeal(lots, c.sell, money, room, stack)
     if d then
         d.kind, d.id, d.key, d.uid = "c", c.id, c.key, "c" .. c.id
         d.slots = math.ceil(d.n / (stack or 1))
@@ -512,7 +520,7 @@ local function sift()
     for _, c in ipairs(ns.Candidates(part, deOf, "d")) do scan.cands[#scan.cands + 1] = c end
     scan.sifted = last
     if last >= #res then
-        -- the whole market was read: the next such scan comes FULL_EVERY later
+        -- the whole market was read: the Prices card tells when
         local m = ns.Market()
         if scan.full and m then m.at = time() end
         return startDetail()
@@ -587,22 +595,14 @@ function ns.OnThrottleReady()
     if scan.phase == "browse" and scan.waitReady then morePage() end
 end
 
--- Is it time to read the whole market again (the `full` switch, FULL_EVERY since the last one)?
-function ns.FullDue(now)
-    if not ns.db or ns.db.full == false then return false end
-    local m = ns.Market()
-    return not m or (m.at or 0) + ns.FULL_EVERY <= (now or time())
-end
-
--- Starts a scan now, when nothing stands in the way. `whole` (the Read the whole market button)
--- reads every page whatever the hourly switch and its hour say.
+-- Starts a scan now, when nothing stands in the way. A scan reads the cheapest pages, for the
+-- deals; only `whole` (the Read the whole market button) reads every page, for the prices.
 function ns.Scan(force, whole)
     if not ns.atAH or ns.paused or not canScan() or scan.phase ~= "idle" then return false end
     if not force and (not ns.db.scan or time() < scan.quietUntil or ns.Holding()) then return false end
     if ns.Busy() or not ready() then return false end
     scan.phase, scan.pages, scan.results, scan.done, scan.n = "browse", 1, {}, 0, 0
-    -- once in a while the whole market, for the prices; else its cheapest pages, for the deals
-    scan.full = whole == true or ns.FullDue()
+    scan.full = whole == true
     scan.maxPages = scan.full and ns.FULL_PAGES or ns.MAX_PAGES
     ours = true
     local ok = pcall(A().SendBrowseQuery, { searchString = "", sorts = { { sortOrder = 0, reverseSort = false } },
@@ -1055,6 +1055,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if a1 ~= ADDON then return end
         GulliVendorFlipDB = GulliVendorFlipDB or {}
         ns.db = GulliVendorFlipDB
+        ns.Migrate(ns.db)
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.db.history = ns.db.history or {}
         ns.db.owed = ns.db.owed or {}
@@ -1130,15 +1131,14 @@ ns.OPT_ICON = {
     auto = "Interface\\Minimap\\Tracking\\Auctioneer",
     sell = "Interface\\Icons\\INV_Misc_Coin_02",
     sound = "Interface\\Icons\\INV_Misc_Bell_01",
-    full = "Interface\\Icons\\INV_Misc_Book_09",
+    prices = "Interface\\Icons\\INV_Misc_Book_09",
     de = "Interface\\Icons\\INV_Enchant_Disenchant",
     minGain = "Interface\\Icons\\INV_Misc_Coin_01",
     reserve = "Interface\\Icons\\INV_Misc_Bag_11",
     keepFree = "Interface\\Icons\\INV_Misc_Bag_08",
     gear = "Interface\\Icons\\INV_Chest_Chain_05",
     goods = "Interface\\Icons\\INV_Misc_Herb_07",
-    maxPrice = "Interface\\Icons\\INV_Misc_Coin_04",
-    minPct = "Interface\\Icons\\INV_Misc_Note_01",
+    soundAt = "Interface\\Icons\\INV_Misc_Coin_04",
     interval = "Interface\\Icons\\INV_Misc_PocketWatch_01",
 }
 

@@ -7,8 +7,7 @@ local _, ns = ...
 
 ns.PRICE_DAYS = 14    -- daily prices kept for an item
 ns.PRICE_DROP = 30    -- days after which an item nobody listed leaves the list
-ns.FULL_EVERY = 3600  -- seconds between two scans of the whole market
-ns.FULL_PAGES = 2000  -- browse pages such a scan reads at most
+ns.FULL_PAGES = 2000  -- browse pages the Read the whole market button reads at most
 ns.DE_CUT = 0.95      -- what is left of a material's auction price after the auction's cut
 
 function ns.Today(now) return math.floor((now or time()) / 86400) end
