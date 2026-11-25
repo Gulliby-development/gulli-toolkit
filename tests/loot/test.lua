@@ -834,4 +834,50 @@ test("the Real reminder stays quiet below 60, at the cap, for low bosses and out
     eq(ns.RealFrame():IsShown(), false)
 end)
 
+test("the Real reminder goes however the Real came: no event, before the end, the chat, the loot window, a click", function()
+    realWorld({ db = { real = true }, level = 60 })
+    UnitGUID = function(u) return u == "player" and "Player-1" or "Player-2" end
+    local ns = Load()
+    local f = ns.RealFrame()
+    kill(201)
+    eq(f:IsShown(), true)
+    W.real.qty = W.real.qty + 1
+    eq(f:IsShown(), true, "no event yet")
+    f:GetScript("OnUpdate")(f, 1.1)
+    eq(f:IsShown(), false, "the count is read every second: the Real is seen without its event")
+    eq(ns.RealLootedToday(201), true)
+    kill(201)
+    eq(#ns.RealPending(), 0, "a boss reminded on this visit never comes back")
+    -- the Real came in before the boss's end
+    W.Fire("ENCOUNTER_START", 202, "Boss", 1, 5)
+    W.RunTimers()
+    W.real.qty = W.real.qty + 1
+    W.Fire("ENCOUNTER_END", 202, "Boss", 1, 5, 1)
+    eq(f:IsShown(), false, "a Real given before the end counts")
+    -- the loot chat, when the count does not move
+    kill(203)
+    W.Fire("CHAT_MSG_LOOT", "Bob receives loot: [Tarnished Undermine Real].", "Bob", "", "", "", "", 0, 0, "", 0, 0, "Player-2")
+    eq(f:IsShown(), true, "another player's Real is not ours")
+    W.Fire("CHAT_MSG_CURRENCY", "You receive currency: |cff|Hcurrency:3469:1|h[Tarnished Undermine Real]|h|r x1.")
+    eq(f:IsShown(), false, "our currency line names it")
+    kill(204)
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: [Tarnished Undermine Real].", "Me", "", "", "", "", 0, 0, "", 0, 0, "Player-1")
+    eq(f:IsShown(), false, "our loot line names it")
+    -- a loot window that held it
+    kill(205)
+    W.slots = { { 7, "Tarnished Undermine Real" } }
+    W.lootN = 1
+    W.Fire("LOOT_OPENED")
+    eq(f:IsShown(), true, "still open")
+    W.Fire("LOOT_CLOSED")
+    eq(f:IsShown(), false, "the window with the Real closed")
+    W.slots, W.lootN = {}, 0
+    -- a click hides it
+    kill(206)
+    eq(f:IsShown(), true)
+    f:GetScript("OnMouseUp")(f)
+    eq(f:IsShown(), false, "a click hides it")
+    UnitGUID = nil
+end)
+
 W.finish()
