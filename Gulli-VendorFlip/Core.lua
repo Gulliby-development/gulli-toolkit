@@ -94,7 +94,7 @@ end
 
 -- Moves the settings of an older version: the one quality row to both kinds, the rest dropped.
 function ns.Migrate(db)
-    for q = 0, 4 do
+    for _, q in ipairs(ns.QUALITIES) do
         local old = db["q" .. q]
         if old ~= nil then
             if db["gq" .. q] == nil then db["gq" .. q] = old end
