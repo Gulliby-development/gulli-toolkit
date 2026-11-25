@@ -373,6 +373,13 @@ local function buildSettings(box)
     local de = sw("disenchant")
     de[2] = L.D_disenchant
     add(2, rowsCard(cols[2], L.SIDE_DE, { de }))
+    -- the craft bar on the screen while a batch of crafts runs
+    local function barSw(key)
+        local r = sw(key)
+        r[2] = L["D_" .. key]
+        return r
+    end
+    add(2, rowsCard(cols[2], L.SIDE_BAR, { barSw("bar"), barSw("barHide"), barSw("barOne") }))
 
     -- the run log: what the plan promised against what the run really did
     local log = S.Card(cols[1], L.SIDE_LOG)
@@ -411,7 +418,9 @@ local function refreshSettings()
     for k, c in pairs(ui.checks) do
         -- without a price addon the auction switches can do nothing: off and grey
         local ah = idle(k)
-        c:SetChecked(not ah and P[k] and true or false)
+        local on = P[k]
+        if ns.BAR_KEYS[k] then on = ns.BarPref(k) end
+        c:SetChecked(not ah and on and true or false)
         c:SetEnabled(not ah)
     end
     -- a stepper is grey when its setting can do nothing now: the levelling ones without levelling,
@@ -429,6 +438,8 @@ local function refreshSettings()
     -- the settings the simulation does not read: dim and locked while it runs
     for k, row in pairs(ui.rows or {}) do
         local off = ns.sim ~= nil and ns.SIM_IGNORED[k] or false
+        -- the bar's own settings wait for the bar
+        if (k == "barHide" or k == "barOne") and not ns.BarPref("bar") then off = true end
         row:SetAlpha(off and 0.4 or 1)
         if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not idle(k)) end
     end

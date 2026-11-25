@@ -335,7 +335,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-CraftProfit", { "Locales.lua", "Data.lua", "Book.lua", "Core.lua", "Scan.lua", "Sim.lua", "Pin.lua", "Skin.lua", "UI.lua", "SimUI.lua", "PinUI.lua" })
+    return W.Load("Gulli-CraftProfit", { "Locales.lua", "Data.lua", "Book.lua", "Core.lua", "Scan.lua", "Sim.lua", "Pin.lua", "Bar.lua", "Skin.lua", "UI.lua", "SimUI.lua", "PinUI.lua", "BarUI.lua" })
 end
 
 -- Calls a frame's script as a click or a press would.

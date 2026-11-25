@@ -1755,7 +1755,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
                           "MAIL_SHOW", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE",
                           "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
                           "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
-                          "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
+                          "UPDATE_FACTION", "PLAYER_ENTERING_WORLD", "UPDATE_TRADESKILL_CAST_STOPPED" })
         if self.RegisterUnitEvent then
             pcall(self.RegisterUnitEvent, self, "UNIT_SPELLCAST_SUCCEEDED", "player")
             for _, e in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do
@@ -1774,11 +1774,14 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     end
     if next(ns.nameWaiting) then ns.CheckNames() end
     if event == "GET_ITEM_INFO_RECEIVED" then return end
+    if event == "UPDATE_TRADESKILL_CAST_STOPPED" then ns.OnBarEvent(event); return end
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if a1 == "player" then ns.OnBarEvent(event, a2, a3) end
         if a1 == "player" and ns.OnCast(a3) and ns.Refresh then ns.Refresh() end
         return
     end
     if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
+        if a1 == "player" then ns.OnBarEvent(event, a2, a3) end
         if a1 == "player" and ns.OnBatchCast(event, a3) and ns.Refresh then ns.Refresh() end
         return
     end

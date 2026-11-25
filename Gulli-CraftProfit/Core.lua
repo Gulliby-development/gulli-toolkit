@@ -37,9 +37,12 @@ ns.DEFAULTS = {
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
     autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
     disenchant = false, -- an enchanter may disenchant crafted gear and sell the materials at the auction
+    bar = true, -- the craft bar shows a batch of crafts on the screen (Bar.lua)
+    barHide = true, -- the game's own cast bar hides while it does
+    barOne = false, -- one craft alone gets the bar too
 }
 -- Settings that change no plan: the window only redraws.
-ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true }
+ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true, bar = true, barHide = true, barOne = true }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
 ns.FRESH_DAYS = 3
@@ -1988,6 +1991,8 @@ function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
     -- a setting the simulation fixes stays as it is there
     if ns.sim and ns.SIM_FIXED[key] ~= nil then return end
+    -- the craft bar's switches are the player's own, in the simulation too
+    if ns.BAR_KEYS[key] then return ns.SetBarPref(key, value) end
     -- a pinned route keeps its target
     if key == "target" and ns.view.pin and not ns.sim then return end
     ns.SavedPrefs()[key] = value
@@ -2016,6 +2021,7 @@ function ns.ResetPrefs()
     -- in the simulation only its own copy goes back to the defaults; the target is its condition
     if ns.sim then ns.sim.prefs = { target = ns.sim.to, level = true }
     else ns.db.prefs = {} end
+    if ns.RefreshBar then ns.RefreshBar() end
     ns.Rebuild(true)
 end
 
@@ -2061,6 +2067,8 @@ ns.OPT_ICON = {
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",
     autoPin = "Interface\\Icons\\INV_Misc_Map_01", disenchant = "Interface\\Icons\\INV_Enchant_Disenchant",
+    bar = "Interface\\Icons\\INV_Hammer_20", barHide = "Interface\\Icons\\Spell_Nature_TimeStop",
+    barOne = "Interface\\Icons\\INV_Misc_Note_01",
 }
 
 local function option(key)
@@ -2100,5 +2108,15 @@ do
             return text, c.icon
         end,
         reset = function() if ns.db then ns.ResetPrefs() end end,
+        -- the craft bar: placed in the Unlock mode, on the screen only while a batch of crafts runs
+        move = function(on) ns.Move(on) end,
+        frames = { { key = "bar", label = ns.L.P_bar, icon = ns.OPT_ICON.bar,
+                     get = function() return ns.BarPref("bar") end,
+                     set = function(v) ns.SetBarPref("bar", v) end,
+                     frame = function() return ns.BarFrame and ns.BarFrame() end } },
+        tweaks = {
+            { key = "bar", group = "ui", label = ns.L.P_bar, desc = ns.L.TWK_bar_D, icon = ns.OPT_ICON.bar,
+              get = function() return ns.BarPref("bar") end, set = function(v) ns.SetBarPref("bar", v) end },
+        },
     })
 end
