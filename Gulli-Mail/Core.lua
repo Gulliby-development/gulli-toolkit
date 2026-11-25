@@ -13,6 +13,7 @@ local LOG_MAX = 50
 local SOON_DAYS = 3    -- a letter with items or money this close to its end gets a warning
 local ATTACH = ATTACHMENTS_MAX_RECEIVE or 12
 local SEND_MAX = ATTACHMENTS_MAX_SEND or 12
+ns.POSTAGE = 30   -- copper, a letter without items
 local TRIES = 3 -- a take that changes nothing this often is one the game refuses
 local WAIT_MAX = 70 -- the server sends the next letters at most once a minute
 local WAIT_STEP_SERVER = 5
@@ -742,9 +743,11 @@ function ns.AttachKind(key)
     return n
 end
 
--- Fills the money of the letter with all the gold but `keepGold` (gold, not copper).
+-- Fills the money of the letter with all the gold but `keepGold` (gold, not copper), less the
+-- postage: a letter that takes every copper cannot pay for itself, and the game refuses it.
 function ns.FillGold()
-    local amount = math.max(0, money() - (ns.db.keepGold or 0) * 10000)
+    local postage = GetSendMailPrice and GetSendMailPrice() or ns.POSTAGE
+    local amount = math.max(0, money() - (ns.db.keepGold or 0) * 10000 - (postage or 0))
     if SendMailMoney and MoneyInputFrame_SetCopper then MoneyInputFrame_SetCopper(SendMailMoney, amount) end
     return amount
 end
@@ -765,9 +768,22 @@ function ns.SubjectFor(copper)
     return table.concat(parts, " ")
 end
 
--- Fills an empty subject from the money of the letter (switch `subject`). A subject it filled
--- follows the amount; one the player typed stays. With items in the letter it steps back for
--- the item's name, as the game would have given it.
+-- The game's own name of a letter with items: its first item, with the count of a stack.
+function ns.ItemSubject()
+    if not GetSendMailItem then return "" end
+    for j = 1, SEND_MAX do
+        local name, _, _, count = GetSendMailItem(j)
+        if type(name) == "string" and name ~= "" then
+            if type(count) == "number" and count > 1 then name = name .. " (" .. count .. ")" end
+            return name:sub(1, 64)
+        end
+    end
+    return ""
+end
+
+-- Fills an empty subject (switch `subject`), since Send stays grey without one: the amount for
+-- a letter of money alone, the first item's name for a letter with items when the game left it
+-- empty. A subject it filled follows the letter; one the player typed stays.
 function ns.AutoSubject()
     if ns.paused or not ns.db or not ns.db.subject or not sendOpen() then return nil end
     local box = SendMailSubjectEditBox
@@ -775,21 +791,19 @@ function ns.AutoSubject()
     local text = box:GetText() or ""
     local ours = ns.autoSubject
     if text ~= "" and text ~= ours then ns.autoSubject = nil; return nil end
-    local items = ns.Room() < SEND_MAX
-    local cod = SendMailCODButton and SendMailCODButton.GetChecked and SendMailCODButton:GetChecked()
-    local copper = not items and not cod and MoneyInputFrame_GetCopper(SendMailMoney) or 0
-    local want = copper > 0 and ns.SubjectFor(copper) or ""
-    if want == text then return want end
+    local want
+    if ns.Room() < SEND_MAX then
+        want = ns.ItemSubject()
+    else
+        local cod = SendMailCODButton and SendMailCODButton.GetChecked and SendMailCODButton:GetChecked()
+        local copper = not cod and MoneyInputFrame_GetCopper(SendMailMoney) or 0
+        want = copper > 0 and ns.SubjectFor(copper) or ""
+    end
     ns.autoSubject = want ~= "" and want or nil
+    if want == text then return want end
     ns.filling = true
     box:SetText(want)
     ns.filling = nil
-    if items and text == ours and SendMailFrame_Update and not ns.updating then
-        -- the game's own name of the letter after its first item
-        ns.updating = true
-        SendMailFrame_Update()
-        ns.updating = nil
-    end
     return want
 end
 
@@ -804,7 +818,7 @@ function ns.HookSubject()
     end
     if SendMailFrame.HookScript then SendMailFrame:HookScript("OnShow", changed) end
     if hooksecurefunc and SendMailFrame_Update then
-        hooksecurefunc("SendMailFrame_Update", function() if not ns.updating then changed() end end)
+        hooksecurefunc("SendMailFrame_Update", changed)
     end
     if hooksecurefunc and SendMailRadioButton_OnClick then hooksecurefunc("SendMailRadioButton_OnClick", changed) end
 end
