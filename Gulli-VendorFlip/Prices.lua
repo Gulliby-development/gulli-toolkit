@@ -83,40 +83,13 @@ function ns.PrunePrices(market, day)
 end
 
 -- ---------- disenchanting ----------
--- What a green or blue weapon or armour piece gives at the least (Vanilla's tiers by item level):
--- { highest item level, dust id, dust count, essence id, essence count, shard id }. A green gives
--- dust or an essence (rarely a shard, not counted), a blue its shard.
-ns.DE_TIERS = {
-    { 15, 10940, 1, 10938, 1, 10978 }, { 20, 10940, 2, 10939, 1, 10978 }, { 25, 10940, 4, 10998, 1, 10978 },
-    { 30, 11083, 1, 11082, 1, 11084 }, { 35, 11083, 2, 11134, 1, 11138 }, { 40, 11137, 1, 11135, 1, 11139 },
-    { 45, 11137, 2, 11174, 1, 11177 }, { 50, 11176, 1, 11175, 1, 11178 }, { 55, 11176, 2, 16202, 1, 14343 },
-    { 60, 16204, 1, 16203, 1, 14344 }, { 65, 16204, 2, 16203, 2, 14344 },
-}
-ns.DE_MIN_LEVEL = 5
-
--- What one disenchant brings on the safe side, in copper after the auction's cut: for a green
--- ns.DE_SAFE of its dust, essence and shard (owner's decision of 2026-11-25: armour 85/13/2, a
--- weapon 50/48/2, below the Classic 75/20/5; dust and essence must have a price, a shard without
--- one counts nothing), for a blue its shard. nil when the item cannot be disenchanted, its tier is
--- not known or a material has no price. priceOf(id) is the auction price of one; `class` the
--- item class (2 a weapon, else armour).
-ns.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
+-- What one disenchant brings, in copper after the auction's cut: the skin's table shared by every
+-- module (S.DisenchantWorth: a green on the safe side, 85/13/2 for armour and 50/48/2 for a
+-- weapon; a blue its shard; a purple three shards or a Nexus Crystal). nil when the item cannot be
+-- disenchanted or a material it needs has no price. priceOf(id) is the auction price of one;
+-- `class` the item class (2 a weapon, else armour).
 function ns.DisenchantFloor(quality, ilvl, priceOf, class)
-    if not ilvl or ilvl < ns.DE_MIN_LEVEL or (quality ~= 2 and quality ~= 3) then return nil end
-    for _, t in ipairs(ns.DE_TIERS) do
-        if ilvl <= t[1] then
-            local worth
-            if quality == 3 then
-                worth = priceOf(t[6])
-            else
-                local dust, essence = priceOf(t[2]), priceOf(t[4])
-                if not dust or not essence then return nil end
-                local sh = ns.DE_SAFE[class == 2 and "weapon" or "armour"]
-                worth = sh[1] * dust * t[3] + sh[2] * essence * t[5] + sh[3] * (priceOf(t[6]) or 0)
-            end
-            if not worth or worth <= 0 then return nil end
-            return math.floor(worth * ns.DE_CUT)
-        end
-    end
-    return nil
+    local S = ns.Skin
+    local worth = S and S.DisenchantWorth and S.DisenchantWorth(quality, ilvl, class or 4, priceOf, ns.DE_CUT)
+    return worth and math.floor(worth) or nil
 end

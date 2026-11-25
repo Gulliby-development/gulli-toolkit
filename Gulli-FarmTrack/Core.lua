@@ -443,20 +443,13 @@ end
 -- What the session's loot is worth ------------------------------------------------------------
 -- An estimate of what everything looted would bring: grey and plain white things at a vendor,
 -- trade goods, reagents and recipes at the auction, bind-on-equip blue and purple gear at the
--- auction, green gear disenchanted (with Enchanting, its cheapest result) or sold to a vendor,
--- whichever brings more. Without an auction price an item counts at the vendor's price. With
+-- auction, gear of an enchanter disenchanted (green, blue or purple, the skin's table) when that
+-- brings more. Without an auction price an item counts at the vendor's price. With
 -- `vendorOnly` every item counts at the vendor's price.
 
 local GEAR = { [2] = true, [4] = true }
 local AUCTION = { [5] = true, [7] = true, [9] = true }
 ns.QUEST_CLASS = 12
-
--- Disenchanting green gear: the dust and the lesser essence for its item level (Vanilla tiers).
-ns.DE = {
-    { 15, 10940, 10938 }, { 20, 10940, 10939 }, { 25, 11083, 10998 }, { 30, 11083, 11082 },
-    { 35, 11137, 11134 }, { 40, 11137, 11135 }, { 45, 11176, 11174 }, { 50, 11176, 11175 },
-    { 55, 16204, 16202 }, { 999, 16204, 16203 },
-}
 
 -- id -> name, quality, item level, sell price, class, bind type; nil until the client knows it.
 function ns.ItemFacts(id)
@@ -484,15 +477,12 @@ function ns.CanDisenchant()
     return false
 end
 
--- The cheapest thing disenchanting a green item of this level gives, at the auction.
-function ns.DisenchantValue(ilvl)
-    for _, t in ipairs(ns.DE) do
-        if ilvl <= t[1] then
-            local a, b = ns.AuctionPrice(t[2]), ns.AuctionPrice(t[3])
-            if a and b then return math.min(a, b) end
-            return a or b
-        end
-    end
+-- What disenchanting one gives at the auction: the skin's table shared by every module
+-- (S.DisenchantWorth: a green on the safe side, a blue its shard, a purple shards or a Nexus
+-- Crystal); nil when it cannot be disenchanted or a material has no price.
+function ns.DisenchantValue(f)
+    local S = ns.Skin
+    return S and S.DisenchantWorth and S.DisenchantWorth(f.quality, f.ilvl, f.class, ns.AuctionPrice) or nil
 end
 
 -- The worth of one item and how it was judged: "vendor", "auction", "disenchant", "quest" (a
@@ -506,15 +496,15 @@ function ns.ItemValue(id, enchanter)
     if f.quality == 0 then return vendor, "vendor" end
     -- The player sells everything to a vendor: no auction and no disenchanting.
     if ns.db and ns.db.vendorOnly then return vendor, "vendor" end
+    -- an enchanter may get more from gear as dust, shards or a Nexus Crystal
+    local de = GEAR[f.class] and f.quality >= 2 and enchanter and ns.DisenchantValue(f) or nil
     if AUCTION[f.class] or (GEAR[f.class] and f.quality >= 3 and f.bind == 2) then
         local ah = ns.AuctionPrice(id)
+        if de and de > (ah or vendor) then return de, "disenchant" end
         if ah then return ah, "auction" end
         return vendor, "noprice"
     end
-    if GEAR[f.class] and f.quality == 2 and enchanter then
-        local de = ns.DisenchantValue(f.ilvl)
-        if de and de > vendor then return de, "disenchant" end
-    end
+    if de and de > vendor then return de, "disenchant" end
     -- An item a vendor pays nothing for that can be traded (a Craftsman's Writ) counts at the
     -- auction; a plain white item a vendor buys stays at the vendor's price.
     if vendor <= 1 and not GEAR[f.class] and f.bind ~= 1 and f.bind ~= 4 then
