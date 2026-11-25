@@ -344,6 +344,8 @@ end
 
 -- ---------- build ----------
 
+local showFooter
+
 local function build()
     frame = S.Window("GulliCratesFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local ft = S.Footer(frame)
@@ -381,6 +383,9 @@ local function build()
     ft:HookScript("OnShow", fit)
     ft:HookScript("OnHide", fit)
     fit(ft)
+    -- History and Settings have nothing for the footer: it hides and their lists take the room
+    -- (set here too, since the footer's hooks do not run while the window is hidden)
+    showFooter = function(i) ft:SetShown(i <= 2); fit(ft) end
     frame.inner[2] = frame.inner[2] - extra
 
     refreshBtn = frame:AddHeaderButton(S.Ghost(S.Button(frame, 28, 28)))
@@ -403,6 +408,7 @@ local function build()
     tabs = S.PageTabs(frame.body, { L.TAB_FILL, L.TAB_FAVOR, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
+        showFooter(i)
         ns.Refresh()
     end, nil, { "Interface\\Icons\\INV_Crate_01", FAVOR_ICON, S.TAB.recent, S.TAB.settings })
     for i = 1, 4 do

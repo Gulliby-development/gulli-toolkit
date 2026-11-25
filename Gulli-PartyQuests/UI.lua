@@ -258,6 +258,9 @@ function ns.Refresh()
     head:SetShown(current == 1)
     listTheirs:SetShown(current == 2)
     shareAll:SetShown(current == 1)
+    -- Settings has nothing for the footer: it hides, so the page reaches the bottom
+    footer:SetShown(current ~= 3)
+    frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, (current ~= 3 and S.FOOTER_H or 0) + S.PAD)
     card:SetPoint("BOTTOMRIGHT", 0, current == 1 and (DETAIL_H + S.GAP) or 0)
     if current == 1 then
         for _, r in ipairs(rows) do r.party = party end

@@ -42,6 +42,9 @@ end
 for _, t in ipairs(R.Outside(crop or R.UIParent)) do
     io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
 end
+for _, t in ipairs(R.Empty(crop or R.UIParent)) do
+    io.stderr:write(name .. ": empty: " .. t .. "\n")
+end
 -- CUT=1: also the texts the game would cut with "..." (an item name may, with a tooltip)
 if os.getenv("CUT") then
     for _, t in ipairs(R.Cut(crop or R.UIParent)) do

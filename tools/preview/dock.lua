@@ -73,3 +73,6 @@ end
 for _, t in ipairs(R.Outside(_G.GulliToolkitFrame)) do
     io.stderr:write(name .. ": outside: " .. t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") .. "\n")
 end
+for _, t in ipairs(R.Empty(_G.GulliToolkitFrame)) do
+    io.stderr:write(name .. ": empty: " .. t .. "\n")
+end
