@@ -19,10 +19,10 @@ ns.KNOWN = { "QuestCleaner", "MobFinder", "Attune", "GroupBuffs", "Bulletin", "P
 ns.CATEGORIES = { "Quests", "Group", "Items", "Social", "Info" }
 ns.CATEGORY_OF = {
     QuestCleaner = "Quests", AutoQuest = "Quests", PartyQuests = "Quests", WorthIt = "Quests",
-    GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group",
+    GroupBuffs = "Group", DungeonPrep = "Group", InstanceLimit = "Group", Attune = "Group", Loot = "Group", MyBisList = "Group",
     BagSpace = "Items", Restock = "Items", Merchant = "Items", Mail = "Items", CraftProfit = "Items", Crates = "Items", FarmTrack = "Items", Fishing = "Items", VendorFlip = "Items", CraftsmansWrit = "Items",
     Bulletin = "Social", QuickChat = "Social", Social = "Social",
-    XP = "Info", Legacy = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info", MyBisList = "Info",
+    XP = "Info", Legacy = "Info", Tooltip = "Info", MobFinder = "Info", Reminders = "Info", Chores = "Info",
 }
 
 -- Game API wrappers: the C_AddOns namespace with a fallback to the old globals.
