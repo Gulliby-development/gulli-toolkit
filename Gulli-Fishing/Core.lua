@@ -9,6 +9,11 @@ local L = ns.L
 ns.DOUBLE = 0.4      -- seconds between the two presses of a double-click
 ns.RECENT = 300      -- without a pole equipped, a cast this recent keeps the double-click on
 ns.RESTORE = 20      -- seconds after the last cast before the sound settings go back
+ns.CAST_GAP = 90     -- a longer gap between casts or catches is a break, not fishing time
+ns.CHANNEL = 21      -- seconds a cast lasts when the game does not say
+ns.BAR_GOT = 2       -- seconds the bar shows what was just caught
+ns.BAR_IDLE = 10     -- seconds the bar asks for the next cast
+ns.BAR_LOW = 5       -- seconds left when the bar turns to its warning colour
 ns.SPELLS = { 131474, 7620, 7731, 7732, 18248 } -- Fishing: the retail spell, then the ranks
 ns.POLE_CLASS, ns.POLE_SUBCLASS = 2, 20
 ns.MAIN_HAND = 16
@@ -75,6 +80,50 @@ end
 local function usable(id)
     if CI.IsUsableItem then return CI.IsUsableItem(id) and true or false end
     return true
+end
+
+-- Bags and equipping: only the retail calls, a client without them has no Equip button.
+local CC = C_Container or {}
+
+-- A fishing pole in the bags: its item id, or nil.
+function ns.PoleInBags()
+    if not (CC.GetContainerNumSlots and CC.GetContainerItemID and CI.GetItemInfoInstant) then return nil end
+    for bag = 0, NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5 do
+        for slot = 1, CC.GetContainerNumSlots(bag) or 0 do
+            local id = CC.GetContainerItemID(bag, slot)
+            if id then
+                local _, _, _, _, _, class, sub = CI.GetItemInfoInstant(id)
+                if class == ns.POLE_CLASS and sub == ns.POLE_SUBCLASS then return id end
+            end
+        end
+    end
+end
+
+-- The Equip button of the window: puts the pole from the bags into the hand. Never in a fight.
+function ns.EquipPole()
+    if combat() or ns.HasPole() or not CI.EquipItemByName then return false end
+    local id = ns.PoleInBags()
+    if not id then return false end
+    CI.EquipItemByName(id)
+    return true
+end
+
+-- The game's own Interact key as the player reads it ("F"), or nil when none is bound.
+function ns.InteractKey()
+    if not GetBindingKey then return nil end
+    local key = GetBindingKey("INTERACTTARGET") or GetBindingKey("INTERACTMOUSEOVER")
+    if not key or key == "" then return nil end
+    return GetBindingText and GetBindingText(key) or key
+end
+
+-- The fishing skill: rank, the rank's cap and what the lure and pole add; nil when unknown.
+function ns.Skill()
+    if not (GetProfessions and GetProfessionInfo) then return nil end
+    local _, _, _, fishing = GetProfessions()
+    if not fishing then return nil end
+    local _, _, rank, cap, _, _, _, bonus = GetProfessionInfo(fishing)
+    if type(rank) ~= "number" then return nil end
+    return rank, cap, bonus
 end
 
 -- The Fishing spell's name in the client's language, or nil when the character cannot fish.
@@ -153,6 +202,24 @@ function ns.NextAction()
     return "spell", (ns.FishingSpell())
 end
 
+-- Sets a secure cast button to the next action (out of combat only); returns its kind.
+function ns.SetAction(b)
+    if not b or combat() then return nil end
+    local kind, what = ns.NextAction()
+    if not what then return nil end
+    b:SetAttribute("type", kind)
+    if kind == "item" then
+        b:SetAttribute("item", "item:" .. what)
+        b:SetAttribute("target-slot", ns.MAIN_HAND)
+        b:SetAttribute("spell", nil)
+    else
+        b:SetAttribute("spell", what)
+        b:SetAttribute("item", nil)
+        b:SetAttribute("target-slot", nil)
+    end
+    return kind
+end
+
 function ns.OnMouseDown(button)
     if button ~= "RightButton" then return end
     local t = now()
@@ -165,19 +232,8 @@ end
 -- button, which is taken away again right after (or when no click came).
 function ns.Arm()
     local b = ns.CastButton and ns.CastButton()
-    if not b or combat() then return end
-    local kind, what = ns.NextAction()
-    if not what then return end
-    b:SetAttribute("type", kind)
-    if kind == "item" then
-        b:SetAttribute("item", "item:" .. what)
-        b:SetAttribute("target-slot", ns.MAIN_HAND)
-        b:SetAttribute("spell", nil)
-    else
-        b:SetAttribute("spell", what)
-        b:SetAttribute("item", nil)
-        b:SetAttribute("target-slot", nil)
-    end
+    local kind = ns.SetAction(b)
+    if not kind then return end
     if SetOverrideBindingClick then SetOverrideBindingClick(b, true, "BUTTON2", b:GetName()) end
     ns.armed = kind
     if C_Timer then C_Timer.After(1, ns.Disarm) end
@@ -189,6 +245,39 @@ function ns.Disarm()
     local b = ns.CastButton and ns.CastButton()
     if b and ClearOverrideBindings then ClearOverrideBindings(b) end
     ns.armed, ns.disarmLater = nil, nil
+end
+
+-- The cast key ---------------------------------------------------------------------------------
+
+-- The key the player set casts like the double-click: bound to its own secure button while the
+-- player is fishing (a pole in the hand, or a cast not long ago), and free the rest of the time.
+local keyOwner
+function ns.ApplyKey()
+    if combat() then ns.keyLater = true return end
+    ns.keyLater = nil
+    if keyOwner and ClearOverrideBindings then ClearOverrideBindings(keyOwner) end
+    ns.keyBound = nil
+    local key = ns.db and ns.db.castKey
+    if not key or ns.paused or not ns.Active() or not ns.FishingSpell() then return end
+    local b = ns.KeyCastButton and ns.KeyCastButton()
+    if not b then return end
+    keyOwner = keyOwner or CreateFrame("Frame")
+    ns.SetAction(b)
+    ns.Skin.BindKey(keyOwner, true, key, b:GetName(), "LeftButton")
+    ns.keyBound = key
+end
+
+function ns.SetCastKey(key)
+    ns.db.castKey = key and ns.Skin.KeyBase(key) or nil
+    ns.ApplyKey()
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- The cast key as the player reads it, or nil.
+function ns.CastKeyText()
+    local key = ns.db and ns.db.castKey
+    if not key then return nil end
+    return GetBindingText and GetBindingText(key) or key
 end
 
 -- Sound while fishing ---------------------------------------------------------------------------
@@ -225,14 +314,66 @@ end
 function ns.OnCast(t)
     t = t or now()
     ns.lastCast = t
+    ns.Fished()
+    local start, finish = ns.ChannelTimes()
+    ns.cast = { start = start or t, finish = finish or t + ns.CHANNEL }
+    ns.got, ns.idleUntil = nil, nil
     ns.Boost()
     ns.CheckLure()
     if C_Timer then
         C_Timer.After(ns.RESTORE + 1, function()
             if ns.lastCast and now() - ns.lastCast >= ns.RESTORE then ns.Restore() end
         end)
+        -- the cast key lets go once the player stopped fishing
+        C_Timer.After(ns.RECENT + 1, function() ns.ApplyKey() end)
     end
+    if not ns.keyBound then ns.ApplyKey() end
     if ns.Refresh then ns.Refresh() end
+end
+
+-- When the cast under way began and ends, in GetTime seconds; nil when the game does not say.
+function ns.ChannelTimes()
+    if not UnitChannelInfo then return nil end
+    local ok, _, _, _, startMS, endMS = pcall(UnitChannelInfo, "player")
+    if not ok or type(startMS) ~= "number" or type(endMS) ~= "number" then return nil end
+    if issecretvalue and (issecretvalue(startMS) or issecretvalue(endMS)) then return nil end
+    if endMS <= startMS then return nil end
+    return startMS / 1000, endMS / 1000
+end
+
+-- The bobber is out of the water: caught, time up or cast again.
+function ns.OnStop(t)
+    if not ns.cast then return end
+    ns.cast = nil
+    ns.idleUntil = (t or now()) + ns.BAR_IDLE
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- Fishing time: the seconds between casts and catches, without the breaks.
+function ns.Fished(t)
+    local s = ns.s
+    if not s then return end
+    t = t or time()
+    if s.lastAt and t >= s.lastAt and t - s.lastAt <= ns.CAST_GAP then s.secs = (s.secs or 0) + (t - s.lastAt) end
+    s.lastAt = t
+end
+
+-- Catches per hour of fishing, once there is enough to tell.
+function ns.PerHour()
+    local s = ns.s
+    if not s or (s.secs or 0) < 120 or s.catches < 2 then return nil end
+    return math.floor(s.catches * 3600 / s.secs + 0.5)
+end
+
+-- What the bar on the screen shows at time t: "got" (the catch), "cast" (the bobber is out),
+-- "idle" (cast again) or nil (hidden). A new state gets its case here and in the test.
+function ns.BarState(t)
+    if ns.paused or not ns.db or not ns.db.bar then return nil end
+    t = t or now()
+    if ns.got and t < ns.got.till then return "got" end
+    if ns.cast and t < ns.cast.finish then return "cast" end
+    if ns.idleUntil and t < ns.idleUntil then return "idle" end
+    return nil
 end
 
 -- Lure reminder ---------------------------------------------------------------------------------
@@ -244,7 +385,7 @@ function ns.CheckLure()
     local lure = ns.BestLure()
     if not lure or ns.told then return end
     ns.told = true
-    local text = (ns.db.lure and ns.db.cast and L.LURE_DOUBLE or L.LURE_PUT):format(ns.ItemName(lure))
+    local text = (ns.db.lure and (ns.db.cast or ns.db.castKey) and L.LURE_DOUBLE or L.LURE_PUT):format(ns.ItemName(lure))
     if ns.OnLureMissing then ns.OnLureMissing(lure, text) else print(L.TITLE .. ": " .. text) end
 end
 
@@ -261,13 +402,21 @@ function ns.OnLoot(autoLoot)
     local n = GetNumLootItems and GetNumLootItems() or 0
     local s = ns.s
     s.catches = s.catches + 1
+    ns.Fished()
+    local first
     for i = 1, n do
         local link = GetLootSlotLink and GetLootSlotLink(i)
         local id = link and tonumber(link:match("item:(%d+)"))
         if id then
             local _, _, count = GetLootSlotInfo(i)
             s.items[id] = (s.items[id] or 0) + (count or 1)
+            first = first or { id = id, n = count or 1 }
         end
+    end
+    if first then
+        first.till = now() + ns.BAR_GOT
+        ns.got = first
+        ns.idleUntil = now() + ns.BAR_IDLE
     end
     if ns.db.loot and not autoLoot and LootSlot then
         for i = n, 1, -1 do LootSlot(i) end
@@ -278,14 +427,14 @@ end
 -- The session -----------------------------------------------------------------------------------
 
 function ns.Start(t)
-    ns.s = { t = t or time(), catches = 0, items = {} }
+    ns.s = { t = t or time(), catches = 0, items = {}, secs = 0 }
     if ns.cdb then ns.cdb.s = ns.s end
 end
 
 function ns.Resume(t)
     local s = ns.cdb and ns.cdb.s
     if type(s) == "table" and s.t then
-        s.catches, s.items = s.catches or 0, s.items or {}
+        s.catches, s.items, s.secs = s.catches or 0, s.items or {}, s.secs or 0
         ns.s = s
     else
         ns.Start(t)
@@ -314,7 +463,10 @@ end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { cast = true, lure = true, loud = true, mute = false, interact = true, loot = true, remind = true }
+-- castKey (the player's cast key) has no default. The bar starts shown (owner's decision of
+-- 2026-11-25: it is on the screen only while fishing); its switch is the hub's.
+ns.DEFAULTS = { cast = true, lure = true, loud = true, mute = false, interact = true, loot = true, remind = true,
+                bar = true, hideCast = true }
 ns.OPT_ICON = {
     cast = "Interface\\Icons\\Trade_Fishing",
     lure = "Interface\\Icons\\INV_Misc_Orb_03",
@@ -323,25 +475,81 @@ ns.OPT_ICON = {
     interact = "Interface\\Icons\\INV_Misc_Spyglass_02",
     loot = "Interface\\Icons\\INV_Misc_Bag_10",
     remind = "Interface\\Icons\\INV_Misc_Note_01",
+    castKey = "Interface\\Icons\\INV_Misc_Key_03",
+    hideCast = "Interface\\Icons\\Spell_Nature_TimeStop",
+    bar = "Interface\\Icons\\Trade_Fishing",
+    catches = "Interface\\Icons\\INV_Misc_Fish_02",
+    skill = "Interface\\Icons\\INV_Fishingpole_02",
 }
+
+-- The steps of the "How to fish" card: { key, done, state, tone } with state a text key and
+-- its argument. A new step goes here, with its texts in every language and a case in the test.
+function ns.Steps()
+    local pole, bag = ns.HasPole(), nil
+    if not pole then bag = ns.PoleInBags() end
+    local key, interact = ns.CastKeyText(), ns.InteractKey()
+    local out = {}
+    out[1] = { key = "POLE", done = pole, equip = bag,
+               state = pole and "STEP_POLE_OK" or bag and "STEP_POLE_BAG" or "STEP_POLE_NONE",
+               arg = bag and ns.ItemName(bag) or nil, tone = pole and "good" or "warn" }
+    out[2] = { key = "CAST", desc = ns.db.cast and "STEP_CAST_D" or "STEP_CAST_KEY_D",
+               state = key and "STEP_CAST_KEY" or "STEP_CAST_NOKEY", arg = key,
+               tone = (ns.db.cast or key) and "muted" or "warn" }
+    out[3] = { key = "CATCH", desc = interact and ns.db.interact and "STEP_CATCH_D" or "STEP_CATCH_CLICK_D",
+               arg = interact, state = (not interact) and "STEP_CATCH_UNSET" or nil, tone = "warn" }
+    return out
+end
+
+-- The strip on top of the window: a title key, a sub text and a tone ("good", "warn", "muted").
+function ns.Status()
+    local L = ns.L
+    if ns.paused then return L.STATE_PAUSED, L.STATUS_PAUSED, "muted" end
+    if not ns.FishingSpell() then return L.STATE_NO_SKILL, L.STATUS_NO_SKILL, "warn" end
+    local key = ns.CastKeyText()
+    if not ns.db.cast and not key then return L.STATUS_NO_WAY, L.STATUS_NO_WAY_D, "warn" end
+    if not ns.Active() then return L.STATUS_POLE, L.STATUS_POLE_D, "warn" end
+    local how = ns.db.cast and (key and L.HOW_BOTH:format(key) or L.HOW_CLICK) or L.HOW_KEY:format(key)
+    local interact = ns.db.interact and ns.InteractKey()
+    return L.STATUS_READY, how .. " " .. (interact and L.HOW_CATCH:format(interact) or L.HOW_CATCH_CLICK), "good"
+end
+
+-- "14 caught in 38 min" for the footer.
+function ns.SessionLine()
+    local s = ns.s
+    if not s or s.catches == 0 then return ns.L.FOOT_NONE end
+    if (s.secs or 0) < 60 then return ns.L.SUM:format(s.catches) end
+    return ns.L.FOOT_SUM:format(s.catches, ns.Span(s.secs))
+end
 
 function ns.SetPref(key, value)
     ns.db[key] = value
     -- a sound switch turned while fishing takes effect now
     if ns.BOOST[key] and ns.boosted then ns.Restore(); ns.Boost() end
+    if key == "hideCast" and not value and ns.ShowGameBar then ns.ShowGameBar() end
     if ns.Refresh then ns.Refresh() end
 end
 
 function ns.Reset()
     ns.Restore()
     for k in pairs(ns.DEFAULTS) do ns.db[k] = ns.DEFAULTS[k] end
+    ns.db.castKey, ns.db.barPoint = nil, nil
+    ns.ApplyKey()
+    if ns.PlaceBar then ns.PlaceBar() end
     if ns.Refresh then ns.Refresh() end
 end
 
 -- The hub's switch: a paused module casts, loots and changes nothing, and puts the sound back.
 function ns.Pause(on)
     ns.paused = on and true or false
-    if on then ns.Restore(); ns.Disarm() end
+    if on then ns.Restore(); ns.Disarm(); ns.cast, ns.got, ns.idleUntil = nil, nil, nil end
+    ns.ApplyKey()
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- The hub's Unlock mode shows the bar to place it.
+ns.moving = false
+function ns.Move(on)
+    ns.moving = on and true or false
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -375,7 +583,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         end
         -- the game closed while fishing: the player's own sound comes back
         ns.Restore()
-        for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "UNIT_SPELLCAST_CHANNEL_START", "LOOT_READY", "LOOT_CLOSED",
+        for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "LOOT_READY", "LOOT_CLOSED",
                              "PLAYER_REGEN_ENABLED", "PLAYER_LOGOUT", "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED" }) do
             self:RegisterEvent(e)
         end
@@ -388,6 +596,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     if event == "PLAYER_ENTERING_WORLD" then
         -- Only leaving the game ends the session.
         if ns.Skin.NewSession(a1, a2, ns.s.seen) then ns.Start() end
+        ns.ApplyKey()
+    elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
+        if a1 == "player" then ns.OnStop() end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
         if a1 == "player" and ns.IsFishing(a3) and not ns.paused then ns.OnCast() end
     elseif event == "LOOT_READY" then
@@ -397,11 +608,13 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     elseif event == "PLAYER_REGEN_ENABLED" then
         if ns.restoreLater then ns.Restore() end
         if ns.disarmLater then ns.Disarm() end
+        if ns.keyLater then ns.ApplyKey() end
     elseif event == "PLAYER_LOGOUT" then
         ns.s.seen = time()
         ns.Restore()
     elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then
         if (event ~= "UNIT_INVENTORY_CHANGED" or a1 == "player") and ns.HasPole() and ns.LureLeft() > 0 then ns.told = nil end
+        if event ~= "UNIT_INVENTORY_CHANGED" or a1 == "player" then ns.ApplyKey() end
         if ns.Refresh then ns.Refresh() end
     end
 end)
@@ -424,6 +637,11 @@ do
         summary = function() return ns.Summary() end,
         pause = function(on) ns.Pause(on) end,
         reset = function() ns.Reset() end,
+        move = function(on) ns.Move(on) end,
+        frames = { { key = "bar", icon = ns.OPT_ICON.bar,
+                     get = function() return ns.db ~= nil and ns.db.bar == true end,
+                     set = function(v) ns.SetPref("bar", v and true or false) end,
+                     frame = function() return ns.BarFrame and ns.BarFrame() end } },
         options = {
             { label = L.OPT_CAST, icon = ns.OPT_ICON.cast, tip = L.OPT_CAST_TIP,
               get = function() return ns.db ~= nil and ns.db.cast == true end, set = function(v) ns.SetPref("cast", v) end },

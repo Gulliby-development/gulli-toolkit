@@ -130,7 +130,9 @@ function W.finish()
 end
 
 -- spec: spells (ids known), pole (true: a fishing pole in the main hand), lure (seconds left),
--- bags (item id -> count), cvars, db, cdb, mounted, mouseover.
+-- bags (item id -> count), cvars, db, cdb, mounted, mouseover, slots (bag -> { item ids }, bag 5
+-- is the reagent bag), interact (the game's Interact key), skill ({ rank, cap }), channel
+-- (seconds a cast lasts as the game tells it).
 function Fake(spec)
     W.Base(spec)
     W.spells = spec.spells or { [7620] = true }
@@ -160,6 +162,30 @@ function Fake(spec)
             return { { hasEnchant = W.lureLeft > 0, timeLeft = W.lureLeft * 1000, charges = 0, enchantID = 0 } }
         end,
     }
+    W.slots, W.equipped, W.interact, W.skill, W.channel = spec.slots or {}, {}, spec.interact, spec.skill, spec.channel
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = 5
+    C_Container = {
+        GetContainerNumSlots = function(bag) return W.slots[bag] and #W.slots[bag] or 0 end,
+        GetContainerItemID = function(bag, slot) return W.slots[bag] and W.slots[bag][slot] or nil end,
+    }
+    C_Item.EquipItemByName = function(id)
+        assert(not W.combat, "equipping in a fight")
+        W.equipped[#W.equipped + 1] = id
+        W.pole = id == 6256
+    end
+    GetBindingKey = function(name) if name == "INTERACTTARGET" then return W.interact end end
+    GetBindingText = function(key) return key end
+    GetProfessions = function() return nil, nil, nil, W.skill and 4 or nil end
+    GetProfessionInfo = function(i)
+        assert(i == 4)
+        return "Fishing", "icon", W.skill[1], W.skill[2], 0, 0, 356, W.skill[3] or 0
+    end
+    UnitChannelInfo = function(unit)
+        assert(unit == "player")
+        if not W.channel then return nil end
+        return "Fishing", "Fishing", "icon", W.now * 1000, (W.now + W.channel) * 1000
+    end
+    IsAltKeyDown, IsControlKeyDown, IsShiftKeyDown = function() return false end, function() return false end, function() return false end
     GetInventoryItemID = function(_, slot) if slot == 16 then return W.pole and 6256 or 2131 end end
     IsMounted = function() return W.mounted end
     IsFlying = function() return false end
@@ -167,7 +193,9 @@ function Fake(spec)
     CursorHasItem = function() return false end
     WorldFrame = W.stub()
     SetOverrideBindingClick = function(owner, _, key, name) W.bindings[key] = { owner = owner, name = name } end
-    ClearOverrideBindings = function() W.bindings = {} end
+    ClearOverrideBindings = function(owner)
+        for k, b in pairs(W.bindings) do if b.owner == owner then W.bindings[k] = nil end end
+    end
     IsFishingLoot = function() return W.fishing end
     GetNumLootItems = function() return #W.loot end
     GetLootSlotLink = function(i) return W.loot[i] and ("|Hitem:" .. W.loot[i][1] .. ":0|h") end
@@ -196,8 +224,13 @@ function W.Catch(items, autoLoot)
     W.Fire("LOOT_CLOSED")
 end
 
+-- The bobber is out of the water.
+function W.Stop()
+    W.Fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "Cast-1", 7620)
+end
+
 function Load()
-    return W.Load("Gulli-Fishing", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-Fishing", { "Locales.lua", "Core.lua", "Skin.lua", "UI.lua", "Bar.lua" })
 end
 
 return W
