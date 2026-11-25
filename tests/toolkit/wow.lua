@@ -17,6 +17,7 @@ local function stub()
         if k == "GetText" then return function() return rawget(t, "_text") end end
         if k == "SetText" then return function(_, v) rawset(t, "_text", v) end end
         if k == "SetEnabled" then return function(_, v) rawset(t, "_enabled", v) end end
+        if k == "IsEnabled" then return function() return rawget(t, "_enabled") ~= false end end
         if k == "SetScript" then return function(_, n, f) rawset(t, "_" .. n, f) end end
         if k == "GetScript" then return function(_, n) return rawget(t, "_" .. n) end end
         return function() return stub() end
