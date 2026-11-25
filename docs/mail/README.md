@@ -22,13 +22,13 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 - **Take one kind.** Under **Take all**, the same tiles as for sending: cloth, herbs, ore, leather, elemental, dust, gems, consumables (potions, elixirs, flasks, scrolls, oils and stones, handy for what you bought at the auction) or all goods. Tap one and only those items come out of every letter, and no money. Each tile shows how many wait in the mail; hover it to see the list.
 - **Safe.** Letters with cash on delivery are left alone. It stops when your bags are full. An item the game will not give you (a unique item you already have) stays in its letter, and you are told how many.
 - **More than 50 letters.** The game shows 50 letters at a time. When more wait on the server, Take all asks for them and goes on (the server sends them about once a minute).
-- **Choose what to take.** Switches for money, auction sales, auction purchases, expired auctions and letters from players, and how many bag slots to keep free.
 - **Every letter in a list.** Who sent it, what is in it, how many days are left. **Take** one letter, **Return** a player's letter, or tick several and **Take selected**.
 - **A total.** What this visit brought, with the auction sales apart. It also goes to the toolkit's Recent feed.
 - **No lost mail.** A warning when letters with items or money run out within three days, also for your other characters when you log in.
 - **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to or took a letter from, your friends and your guild. Type to search.
-- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust, gems or consumables (or all trade goods) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; the **Auction** tile puts in everything a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice) says sells for more at the auction than at a vendor, after the auction's cut, for the character who sells there; fill in all your gold but what you keep (the postage stays, so the letter can be sent); mailing rules ("herbs to Alchy") fill a letter for you. You always press **Send** yourself.
-- **A subject is never missing.** A letter with only gold gets its subject filled in with the amount, and a letter with items the first item's name when the game left it empty, so **Send** works right away. Change it if you like; a subject you typed stays. Switch it off in the settings.
+- **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust, gems or consumables (or all trade goods) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; the **Auction** tile puts in everything a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice) says sells for more at the auction than at a vendor, after the auction's cut, for the character who sells there; **All gold** puts in all your gold (the postage stays, so the letter can be sent) and shows the amount before you tap. A tap on a tile or on **All gold** opens the game's send tab by itself.
+- **Send in the panel.** A line says who gets the letter and what is in it, and **Send** beside it sends it. The name stays after the letter went, so the next one to the same character needs no new tap. Nothing is sent without your tap on **Send**.
+- **A subject is never missing.** A letter with only gold gets its subject filled in with the amount, and a letter with items the first item's name when the game left it empty, so **Send** works right away. Change it if you like; a subject you typed stays.
 - **A log** of the last 50 letters you took from.
 
 ## Install
@@ -41,8 +41,8 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 
 1. Open a mailbox. The panel opens next to it, and closes by itself when you close the mailbox or walk away.
 2. Tap **Take all**, a tile under it (such as **Herbs**) for only that kind, or **Take** on one letter.
-3. To write, open **Write** and tap a name. Use the buttons under the names to fill the letter, then press **Send**.
-4. Type `/gml` away from a mailbox for the switches, the mailing rules and the log.
+3. To write, open **Write** and tap a name. Use the tiles under the names to fill the letter, then press **Send**.
+4. Type `/gml` away from a mailbox for the panel's switch and the log.
 
 ## FAQ
 
@@ -55,7 +55,13 @@ It fills by itself. Your other characters on the realm show up after you log in 
 <details>
 <summary><b>The panel is in my way</b></summary>
 
-Type `/gml` away from a mailbox and untick **Show the panel at the mailbox**.
+Type `/gml` away from a mailbox and switch off **Show the panel at the mailbox**.
+</details>
+
+<details>
+<summary><b>Where are the Take all switches and the mailing rules?</b></summary>
+
+They are gone since 1.16.0. **Take all** takes everything but cash on delivery and GM letters. To take only some things, use the tiles under it or **Take** on one letter.
 </details>
 
 <details>

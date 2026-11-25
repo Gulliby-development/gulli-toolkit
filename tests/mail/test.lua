@@ -85,6 +85,7 @@ test("names: own characters of this faction first, then recent recipients", func
     eq(names[1].name, "Bank"); eq(names[1].alt, true)
     eq(names[2].name, "friend")
     eq(names[3].name, "Other")
+    W.Fire("MAIL_SHOW")
     ns.Pick("Bank")
     eq(W.to, "Bank"); eq(W.tab, 2)
 end)
@@ -152,40 +153,29 @@ test("the panel opens at the mailbox unless it is turned off", function()
     eq(#W.frames, before)
 end)
 
-test("switches: auction sales on, player letters off; money switch off", function()
-    Fake({ inbox = { { sender = "AH", invoice = "seller", money = 100 }, { sender = "Bob", money = 50, items = { 1 } } } })
+test("Take all takes everything but cash on delivery and GM letters; old switches are dropped", function()
+    Fake({ db = { money = false, player = false, sold = false, keepFree = 5, keepGold = 10, subject = false,
+                  rules = { { kind = "cloth", to = "Bob" } } },
+           free = 3,
+           inbox = { { sender = "AH", invoice = "seller", money = 100 }, { sender = "Bob", money = 50, items = { 1 } },
+                     { sender = "Cod", cod = 10, items = { 2 } } } })
     local ns = Load()
-    ns.db.player = false
+    for _, k in ipairs({ "money", "player", "sold", "keepFree", "keepGold", "subject", "rules" }) do
+        eq(ns.db[k], nil, k .. " is gone from the save")
+    end
+    eq(ns.db.panel, true)
     W.Fire("MAIL_SHOW")
     local s = ns.Summary()
-    eq(s.money, 100); eq(s.items, 0); eq(s.off, 1)
+    eq(s.money, 150); eq(s.items, 1); eq(s.cod, 1)
     ns.TakeAll()
     W.Drain()
-    eq(W.money, 100); eq(#W.taken, 0)
+    eq(W.money, 150); eq(#W.taken, 1, "down to the last free slot, and never the cash on delivery")
     eq(ns.visit.sold, 100)
-    Fake({ inbox = { { sender = "Bob", money = 50, items = { 1 } } } })
-    ns = Load()
-    ns.db.money = false
-    W.Fire("MAIL_SHOW")
-    ns.TakeAll()
-    W.Drain()
-    eq(W.money, 0); eq(#W.taken, 1)
 end)
 
-test("keeps the free bag slots it is told to", function()
-    Fake({ free = 3, inbox = { { sender = "A", items = { 1, 2, 3 } } } })
-    local ns = Load()
-    ns.db.keepFree = 2
-    W.Fire("MAIL_SHOW")
-    ns.TakeAll()
-    W.Drain()
-    eq(#W.taken, 1)
-end)
-
-test("one letter: Take takes only it, even with its kind switched off; Take selected takes the ticked ones", function()
+test("one letter: Take takes only it; Take selected takes the ticked ones", function()
     Fake({ inbox = { { sender = "A", money = 1, items = { 1 } }, { sender = "B", money = 2 }, { sender = "C", money = 4 } } })
     local ns = Load()
-    ns.db.player = false
     W.Fire("MAIL_SHOW")
     ns.TakeAll({ 1 })
     W.Drain()
@@ -313,33 +303,80 @@ test("the auction tile takes what sells better at the auction than at a vendor, 
     Auctionator = nil
 end)
 
-test("gold for another character keeps what the player asked for", function()
+test("all gold goes less the postage, and the button opens the send tab itself", function()
     Fake({})
     local ns = Load()
     W.money = 250000
-    ns.db.keepGold = 10
-    eq(ns.FillGold(), 150000 - 30, "less the postage")
-    eq(W.sendMoney, 150000 - 30)
-    -- all of it: the postage still stays, or the game refuses the letter
-    ns.db.keepGold = 0
+    eq(ns.FillGold(), 0, "away from a mailbox nothing happens")
+    W.Fire("MAIL_SHOW")
+    eq(ns.GoldToSend(), 250000 - 30, "the amount is known before the click")
+    eq(SendMailFrame:IsShown(), false)
+    eq(ns.FillGold(), 250000 - 30, "less the postage, or the game refuses the letter")
+    eq(SendMailFrame:IsShown(), true, "the click opened the send tab")
+    eq(W.sendMoney, 250000 - 30)
     W.postage = 60
     eq(ns.FillGold(), 250000 - 60)
     W.money = 20
     eq(ns.FillGold(), 0, "never below nothing")
 end)
 
-test("a mailing rule fills the name and the items; the player sends", function()
+test("a tile opens the send tab itself; paused it does nothing", function()
     Fake({ bags = { [0] = { [1] = { id = 10 }, [2] = { id = 12 } } }, classes = { [10] = { 7, 5 }, [12] = { 7, 9 } } })
     local ns = Load()
-    ns.AddRule("herb", "Alchy")
-    ns.AddRule("cloth", "Tailor")
-    SendMailFrame:Show()
-    local r, n = ns.ApplyRule()
-    eq(r.to, "Alchy"); eq(n, 1); eq(W.to, "Alchy"); eq(W.used[1], 12)
-    r = ns.ApplyRule()
-    eq(r.to, "Tailor")
-    ns.RemoveRule(1)
-    eq(#ns.db.rules, 1)
+    eq(ns.AttachKind("cloth"), 0, "no mailbox, no letter")
+    W.Fire("MAIL_SHOW")
+    ns.paused = true
+    eq(ns.AttachKind("cloth"), 0)
+    eq(SendMailFrame:IsShown(), false)
+    ns.paused = false
+    eq(ns.AttachKind("cloth"), 1)
+    eq(SendMailFrame:IsShown(), true)
+    eq(W.used[1], 10)
+end)
+
+test("our Send clicks the game's button only while the game would send; the name stays after", function()
+    Fake({})
+    local ns = Load()
+    W.Fire("MAIL_SHOW")
+    local line, can = ns.SendLine()
+    eq(line, ns.L.ST_PICK); eq(can, false)
+    eq(ns.Send(), false); eq(W.sends, 0, "no name: nothing is sent")
+    ns.Pick("Bob")
+    eq(SendMailFrame:IsShown(), true); eq(W.to, "Bob")
+    local st = ns.SendState()
+    eq(st.to, "Bob"); eq(st.items, 0); eq(st.money, 0); eq(st.can, true)
+    line = ns.SendLine()
+    assert(line:find("Bob", 1, true) and line:find(ns.L.ST_EMPTY, 1, true), line)
+    W.sendItems, W.sendMoney = 3, 120000
+    line = ns.SendLine()
+    assert(line:find("3", 1, true) and not line:find(ns.L.ST_EMPTY, 1, true), line)
+    eq(ns.SendState().money, 120000)
+    -- the game says no (no subject yet, a send running): our button follows it
+    W.canSend = false
+    eq(ns.Send(), false); eq(W.sends, 0)
+    W.canSend = nil
+    ns.paused = true
+    eq(ns.Send(), false); eq(W.sends, 0, "a paused module sends nothing")
+    ns.paused = false
+    eq(ns.Send(), true); eq(W.sends, 1)
+    -- the game empties the letter; the name comes back
+    W.to, W.sendItems, W.sendMoney = "", 0, 0
+    W.Fire("MAIL_SEND_SUCCESS")
+    W.Drain()
+    eq(W.to, "Bob", "the next letter goes to the same character")
+    -- a name the player typed stays too
+    W.to = "Ann"
+    eq(ns.Send(), true)
+    W.to = ""
+    W.Fire("MAIL_SEND_SUCCESS")
+    W.Drain()
+    eq(W.to, "Ann")
+    -- a new visit starts clean
+    W.Fire("MAIL_CLOSED")
+    SendMailFrame:Hide()
+    W.to = ""
+    W.Fire("MAIL_SHOW")
+    eq(ns.SendState().to, "")
 end)
 
 test("the next take waits for the inbox to change", function()
@@ -370,10 +407,11 @@ test("the hub gets a summary, a reset and a tip on each switch", function()
     GulliToolkit = { Register = function(t) reg = t end }
     local ns = Load()
     GulliToolkit = nil
+    eq(#reg.options, 1, "one switch: the panel")
     for _, o in ipairs(reg.options) do assert(o.tip, "a tip for " .. o.label) end
-    ns.db.money = false
+    ns.db.panel = false
     reg.reset()
-    eq(ns.db.money, true)
+    eq(ns.db.panel, true)
     eq(reg.summary(), nil, "no letters run out")
     ns.db.chars[GetRealmName()] = { Alt = { ends = { time() + 2 * 86400 } } }
     assert(reg.summary():find("1", 1, true))
@@ -432,7 +470,6 @@ test("take by kind takes only the items of that kind, from every letter, and no 
            inbox = { { sender = "A", money = 50, items = { 10, 20 } }, { sender = "AH", invoice = "buyer", items = { 11 } },
                      { sender = "C", cod = 100, items = { 40 } }, { sender = "D", items = { 30 } } } })
     local ns = Load()
-    ns.db.bought = false -- the kind tiles take whatever the switches say
     W.Fire("MAIL_SHOW")
     local info = ns.InboxKindInfo("herb")
     eq(info.stacks, 2, "cash on delivery left out")
@@ -573,11 +610,8 @@ test("a letter of gold alone gets a subject, which the player can change", funct
     W.sendItems = 0
     ns.AutoSubject()
     eq(box.text, "10c")
-    -- off, or paused: nothing
+    -- paused: nothing
     box.text = ""
-    ns.db.subject = false
-    eq(ns.AutoSubject(), nil); eq(box.text, "")
-    ns.db.subject = true
     ns.paused = true
     eq(ns.AutoSubject(), nil); eq(box.text, "")
     ns.paused = false

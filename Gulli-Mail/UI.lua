@@ -1,8 +1,7 @@
 -- The panel next to the mailbox, in two tabs: Letters (Take all, the summary, each letter
 -- with Take and Return, ticks for Take selected) and Write (names to tap with a search,
--- quick attach by kind, gold to another character, mailing rules). /gml away from a mailbox
--- opens the settings window: what Take all takes, the free slots to keep, the rules and
--- the log.
+-- quick attach by kind, all gold, and a Send button with a line that says what the letter
+-- holds). /gml away from a mailbox opens the settings window: the panel's switch and the log.
 
 local _, ns = ...
 local L = ns.L
@@ -10,13 +9,14 @@ local S = ns.Skin
 
 local panel, tabs, pages = nil, nil, {}
 local summary, stats, takeBtn, takeRow, letters, noLetters, takeSel
-local names, noNames, search, attachRow, goldBtn, ruleBtn
-local settings, rulesList, logList
+local names, noNames, search, attachRow, goldBtn, sendBtn, sendLine
+local settings, logList, logEmpty
 local selected = {}
 
 local PANEL_W, PANEL_H = 380, 728
 local TILE_H = 52
 local GOLD_ICON = "Interface\\Icons\\INV_Misc_Coin_01"
+local SEND_W, SEND_H = 116, 36
 
 -- The tooltip of a quick-attach tile: what goes, most first, and how many fit.
 local function kindTip(self)
@@ -147,24 +147,61 @@ end
 
 -- Write tab -----------------------------------------------------------------------------------
 
+local SELECTED = { S.FILL[1], S.FILL[2], S.FILL[3], 0.34 }
 local GROUP = { alt = "ALT", friend = "FRIEND", guild = "GUILD" }
 
 local function makeName(r)
+    r.dot = S.Circle(r, 8, S.FILL)
+    r.dot:SetPoint("LEFT", 8, 0)
     r.text = S.Text(r, 12)
-    r.text:SetPoint("LEFT", 10, 0)
+    r.text:SetPoint("LEFT", 24, 0)
     r.text:SetPoint("RIGHT", -8, 0)
     r.text:SetWordWrap(false)
     r.click = CreateFrame("Button", nil, r)
     r.click:SetAllPoints()
-    r.click:SetScript("OnClick", function(self) ns.Pick(self:GetParent().entry.name) end)
+    r.click:SetScript("OnClick", function(self) ns.Pick(self:GetParent().entry.name); ns.Refresh() end)
     r.click:SetScript("OnEnter", function(self) S.Fill(self:GetParent(), S.HOVER) end)
-    r.click:SetScript("OnLeave", function(self) S.Fill(self:GetParent(), S.CLEAR) end)
+    r.click:SetScript("OnLeave", function(self)
+        local row = self:GetParent()
+        S.Fill(row, row.picked and SELECTED or S.CLEAR)
+    end)
 end
 
+local picked = ""
 local function fillName(r, e)
     r.entry = e
     local g = GROUP[e.group]
-    r.text:SetText(e.name .. (g and ("  " .. S.Hex(S.FAINT) .. L[g] .. "|r") or ""))
+    -- the picked name: a dot and the chosen fill, never colour alone
+    r.picked = e.name:lower() == picked
+    r.dot:SetShown(r.picked)
+    S.Fill(r, r.picked and SELECTED or S.CLEAR)
+    r.text:SetText((r.picked and S.Hex(S.Accent()) .. e.name .. "|r" or e.name)
+        .. (g and ("  " .. S.Hex(S.FAINT) .. L[g] .. "|r") or ""))
+end
+
+-- The line beside Send: who gets the letter and what is in it. The second value says whether
+-- Send works now.
+function ns.SendLine()
+    local st = ns.SendState()
+    if st.to == "" then return L.ST_PICK, false, st end
+    local parts = {}
+    if st.items > 0 then parts[#parts + 1] = L.N_ITEMS:format(st.items) end
+    if st.money > 0 then parts[#parts + 1] = S.MoneyText(st.money) end
+    if #parts == 0 then return L.ST_TO:format(st.to) .. "\n" .. S.Hex(S.FAINT) .. L.ST_EMPTY .. "|r", st.can, st end
+    return L.ST_TO:format(st.to) .. "\n" .. S.Emph(table.concat(parts, ", ")), st.can, st
+end
+
+-- Only the send footer and the picked name: runs on every change of the letter.
+function ns.RefreshSend()
+    if not panel or not panel:IsShown() or not sendLine then return end
+    local text, can, st = ns.SendLine()
+    sendLine:SetText(text)
+    sendBtn:SetEnabled(can and not ns.paused)
+    local now = st.to:lower()
+    if now ~= picked then
+        picked = now
+        names:SetData(ns.Names(search and search:GetText()))
+    end
 end
 
 -- Refresh -------------------------------------------------------------------------------------
@@ -177,7 +214,6 @@ function ns.Refresh()
     stats.tiles[2]:Set(S.MoneyText(ns.visit.money), nil, L.ST_VISIT:format(ns.visit.items))
     local lines = {}
     if s.cod > 0 then lines[#lines + 1] = L.COD:format(s.cod) end
-    if s.off > 0 then lines[#lines + 1] = L.OFF:format(s.off) end
     if s.more > 0 then lines[#lines + 1] = L.MORE:format(s.more) end
     if ns.taking and ns.taking.waiting then lines[#lines + 1] = L.WAITING end
     if ns.visit.money > 0 or ns.visit.items > 0 then
@@ -203,21 +239,21 @@ function ns.Refresh()
     takeSel:SetText(L.TAKE_SELECTED:format(n))
     takeSel:SetEnabled(n > 0 and not ns.taking)
 
+    picked = ns.SendState().to:lower()
     local nm = ns.Names(search and search:GetText())
     names:SetData(nm)
     noNames:SetShown(#nm == 0)
-    local sending = SendMailFrame and SendMailFrame.IsShown and SendMailFrame:IsShown()
+    -- the tiles and the gold work from any tab: a click opens the send tab itself
     for _, b in ipairs(attachRow.buttons) do
         local info = ns.KindInfo(b.kind)
         b.info = info
         b:Set({ icon = info.icon, title = L["KIND_" .. b.kind:upper()], count = info.going })
-        b:SetEnabled(sending and info.stacks > 0)
+        b:SetEnabled(info.stacks > 0 and info.going > 0)
     end
-    goldBtn:SetEnabled(sending)
-    goldBtn:SetText(L.FILL_GOLD:format(ns.db.keepGold))
-    local rule = ns.NextRule()
-    ruleBtn:SetEnabled(sending and rule ~= nil)
-    ruleBtn:SetText(rule and L.APPLY_RULE:format(L["KIND_" .. rule.kind:upper()], rule.to) or L.NO_RULE)
+    local gold = ns.GoldToSend()
+    goldBtn:SetEnabled(gold > 0)
+    goldBtn:SetText(L.ALL_GOLD:format(S.MoneyText(gold)))
+    ns.RefreshSend()
 end
 
 local function showPage(i)
@@ -286,23 +322,25 @@ local function buildPanel()
     tools:SetPoint("BOTTOMLEFT")
     tools:SetPoint("BOTTOMRIGHT")
     attachRow = kindTiles(tools, ns.AttachKind, kindTip, true)
-    tools:SetHeight(attachRow:GetHeight() + 2 * (30 + 6) + 18)
+    tools:SetHeight(attachRow:GetHeight() + (30 + 6) + (SEND_H + 8))
     attachRow:SetPoint("TOPLEFT")
     attachRow:SetPoint("TOPRIGHT")
     goldBtn = S.Button(tools, 1, 30)
     S.SetButtonIcon(goldBtn, GOLD_ICON)
     goldBtn:SetPoint("TOPLEFT", attachRow, "BOTTOMLEFT", 0, -6)
     goldBtn:SetPoint("TOPRIGHT", attachRow, "BOTTOMRIGHT", 0, -6)
-    goldBtn:SetScript("OnClick", function() ns.FillGold() end)
-    ruleBtn = S.Button(tools, 1, 30)
-    ruleBtn:SetPoint("TOPLEFT", goldBtn, "BOTTOMLEFT", 0, -6)
-    ruleBtn:SetPoint("TOPRIGHT", goldBtn, "BOTTOMRIGHT", 0, -6)
-    ruleBtn:SetScript("OnClick", function() ns.ApplyRule(); ns.Refresh() end)
-    S.SetButtonIcon(ruleBtn, S.TAB.rules)
-    local hint = S.Note(tools, 12)
-    hint:SetPoint("TOPLEFT", ruleBtn, "BOTTOMLEFT", 0, -4)
-    hint:SetPoint("RIGHT")
-    hint:SetText(L.SEND_HINT)
+    goldBtn:SetScript("OnClick", function() ns.FillGold(); ns.Refresh() end)
+    -- our own Send: a click on the game's button, with what the letter holds beside it
+    sendBtn = S.Primary(S.Button(tools, SEND_W, SEND_H))
+    sendBtn:SetPoint("BOTTOMRIGHT")
+    sendBtn:SetText(L.SEND)
+    sendBtn:SetScript("OnClick", function() ns.Send() end)
+    sendLine = S.Text(tools, 12, S.MUTED)
+    sendLine:SetPoint("LEFT", tools, "BOTTOMLEFT", 2, SEND_H / 2)
+    sendLine:SetPoint("RIGHT", sendBtn, "LEFT", -8, 0)
+    sendLine:SetJustifyH("LEFT")
+    sendLine:SetWordWrap(true)
+    sendLine:SetMaxLines(2)
     local nameCard = S.Card(p, L.SEND_TO)
     nameCard:SetPoint("TOPLEFT", search, "BOTTOMLEFT", 0, -8)
     nameCard:SetPoint("BOTTOMRIGHT", tools, "TOPRIGHT", 0, 8)
@@ -353,37 +391,6 @@ function ns.ShowTab(i) if tabs then tabs:Select(i) end end
 
 -- Settings window -----------------------------------------------------------------------------
 
-local function makeRule(r)
-    r.kind = S.Button(r, 120, 28)
-    r.kind:SetPoint("LEFT", 0, 0)
-    r.kind:SetScript("OnClick", function(self)
-        local rule = self:GetParent().rule
-        local idx = 1
-        for k, kind in ipairs(ns.ATTACH_KINDS) do if kind.key == rule.kind then idx = k end end
-        rule.kind = ns.ATTACH_KINDS[idx % #ns.ATTACH_KINDS + 1].key
-        ns.Refresh()
-    end)
-    r.arrow = S.Text(r, 12, S.MUTED)
-    r.arrow:SetPoint("LEFT", r.kind, "RIGHT", 8, 0)
-    r.arrow:SetText(">")
-    r.del = S.Button(r, 28, 28)
-    r.del:SetPoint("RIGHT", -2, 0)
-    r.del:SetText("x")
-    r.del:SetScript("OnClick", function(self) ns.RemoveRule(self:GetParent().index); ns.Refresh() end)
-    r.to = S.Edit(r, 1, 28)
-    r.to:SetPoint("LEFT", r.arrow, "RIGHT", 8, 0)
-    r.to:SetPoint("RIGHT", r.del, "LEFT", -6, 0)
-    r.to:SetJustifyH("LEFT")
-    r.to:SetScript("OnTextChanged", function(self) local rr = self:GetParent().rule if rr then rr.to = strtrim(self:GetText() or "") end end)
-end
-
-local function fillRule(r, rule, i)
-    r.rule, r.index = rule, i
-    r.kind:SetText(L["KIND_" .. rule.kind:upper()])
-    S.SetButtonIcon(r.kind, ns.KindIcon(rule.kind))
-    if r.to:GetText() ~= rule.to then r.to:SetText(rule.to or "") end
-end
-
 local function makeLog(r)
     r.text = S.Text(r, 12)
     r.text:SetPoint("LEFT", 4, 0)
@@ -401,64 +408,34 @@ end
 
 function ns.RefreshSettings()
     if not settings then return end
-    rulesList:SetData(ns.db.rules)
     logList:SetData(ns.db.log)
+    logEmpty:SetShown(#ns.db.log == 0)
 end
 
+-- One switch, the log, and one line about Take all: there is nothing else to set.
 local function buildSettings()
     settings = S.Window("GulliMailFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local body, width = settings.body, settings.inner[1]
-    local spages = {}
-    local stabs = S.PageTabs(body, { L.TAB_SETTINGS, L.TAB_RULES, L.TAB_LOG }, math.floor((width - 4) / 3), function(i)
-        for j, sp in ipairs(spages) do sp:SetShown(i == j) end
-        ns.RefreshSettings()
-    end, nil, { S.TAB.settings, S.TAB.rules, S.TAB.recent })
-    for i = 1, 3 do
-        local sp = CreateFrame("Frame", nil, body)
-        sp:SetPoint("TOPLEFT", 0, -30 - S.GAP)
-        sp:SetPoint("BOTTOMRIGHT")
-        spages[i] = sp
-    end
-
-    local st = S.Stack(spages[1])
-    local rows = {}
-    for _, k in ipairs({ "panel", "money", "sold", "bought", "expired", "player", "subject" }) do
-        rows[#rows + 1] = { L["OPT_" .. k:upper()], nil, function() return ns.db[k] end,
-                            function(v) ns.db[k] = v; ns.Refresh() end, icon = ns.OPT_ICON[k] }
-    end
-    local free = S.Stepper(spages[1], function() return ns.db.keepFree end, function(v) ns.db.keepFree = v end, 1, 0, 20)
-    rows[#rows + 1] = { L.OPT_KEEPFREE, nil, control = free, icon = ns.OPT_ICON.keepFree }
-    local gold = S.Stepper(spages[1], function() return ns.db.keepGold end, function(v) ns.db.keepGold = v; ns.Refresh() end,
-        10, 0, 100000, function(v) return v .. "g" end)
-    rows[#rows + 1] = { L.OPT_KEEPGOLD, nil, control = gold, icon = ns.OPT_ICON.keepGold }
-    local card, h = S.SettingsCard(spages[1], nil, rows)
-    st:Add(card, h)
-    local tip, th = S.Paragraph(spages[1], L.HELP, width)
-    st:Add(tip, th)
-
-    local add = S.Button(spages[2], 1, 30)
-    add:SetPoint("BOTTOMLEFT")
-    add:SetPoint("BOTTOMRIGHT")
-    add:SetText(L.ADD_RULE)
-    add:SetScript("OnClick", function() ns.AddRule(); ns.Refresh() end)
-    local rcard = S.Card(spages[2], L.TAB_RULES, nil, "Interface\\Icons\\INV_Letter_15")
-    rcard:SetPoint("TOPLEFT")
-    rcard:SetPoint("BOTTOMRIGHT", add, "TOPRIGHT", 0, 8)
-    local rhelp = S.Note(rcard.body, 12)
-    rhelp:SetPoint("TOPLEFT")
-    rhelp:SetPoint("TOPRIGHT")
-    rhelp:SetText(L.RULES_HELP)
-    rulesList = S.List(rcard.body, 36, makeRule, fillRule)
-    rulesList:SetPoint("TOPLEFT", 0, -36)
-    rulesList:SetPoint("BOTTOMRIGHT", -10, 0)
-
-    local lcard = S.Card(spages[3], L.TAB_LOG, nil, "Interface\\Icons\\INV_Misc_PocketWatch_01")
-    lcard:SetAllPoints()
+    local card, h = S.SettingsCard(body, nil, {
+        { L.OPT_PANEL, nil, function() return ns.db.panel end, function(v) ns.db.panel = v; ns.Refresh() end,
+          icon = ns.OPT_ICON.panel },
+    })
+    card:SetPoint("TOPLEFT")
+    card:SetPoint("TOPRIGHT")
+    card:SetHeight(h)
+    local hint = S.Note(body, 12)
+    hint:SetPoint("BOTTOMLEFT", 2, 0)
+    hint:SetPoint("BOTTOMRIGHT", -2, 0)
+    hint:SetWidth(width - 4)
+    hint:SetText(L.TAKE_HINT)
+    local lcard = S.Card(body, L.LOG_TITLE, nil, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+    lcard:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -S.GAP)
+    lcard:SetPoint("BOTTOMRIGHT", 0, 40)
     logList = S.List(lcard.body, 26, makeLog, fillLog)
     logList:SetPoint("TOPLEFT")
     logList:SetPoint("BOTTOMRIGHT", -10, 0)
-
-    stabs:Select(1)
+    logEmpty = S.Empty(lcard.body)
+    logEmpty:Set(L.LOG_EMPTY, "")
     settings:SetScript("OnShow", function() ns.RefreshSettings() end)
 end
 
