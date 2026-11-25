@@ -484,6 +484,63 @@ test("durability, bag space; group buffs others can give, with their name", func
     UnitPowerType = nil
 end)
 
+test("gear for the moment: carrot while mounted, the commission in the Plaguelands, and the trinket back after", function()
+    Fake({ class = "WARRIOR", items = { [11122] = 1, [12846] = 1, [500] = 0 } })
+    W.trinkets = { [13] = 400, [14] = 500 }
+    local mounted, map, inst = false, 1429, 0
+    IsMounted = function() return mounted end
+    C_Map = { GetBestMapForUnit = function() return map end,
+              GetMapInfo = function(m) if m == 1429 or m == 1423 then return { parentMapID = 1415 } end end }
+    GetInstanceInfo = function() return "x", "none", 0, "", 5, 0, false, inst end
+    -- Equipping moves the item from the bags to the slot.
+    local function equip(slot, id)
+        local old = W.trinkets[slot]
+        W.items[id] = W.items[id] - 1
+        if old then W.items[old] = (W.items[old] or 0) + 1 end
+        W.trinkets[slot] = id
+    end
+    C_Item.IsEquippedItem = function(id) return W.trinkets[13] == id or W.trinkets[14] == id end
+    local ns = Load()
+    eq(W.Keys(ns.Missing()), "", "on foot in Elwynn: nothing")
+    mounted = true
+    local list = ns.Missing()
+    eq(W.Keys(list), "SWAP_CARROT")
+    eq(list[1].text, "Put on Item11122")
+    eq(list[1].act.macrotext, "/equipslot 14 item:11122")
+    W.combat = true
+    eq(W.Keys(ns.Missing()), "", "no swap in a fight")
+    W.combat = false
+    ns.Missing()
+    equip(14, 11122)
+    eq(W.Keys(ns.Missing()), "", "worn while mounted")
+    mounted = false
+    list = ns.Missing()
+    eq(W.Keys(list), "BACK_CARROT", "dismounted: the old trinket back")
+    eq(list[1].act.macrotext, "/equipslot 14 item:500")
+    equip(14, 500)
+    eq(W.Keys(ns.Missing()), "", "back on: done")
+    eq(ns.db.swapBack.CARROT, nil)
+    -- The commission in a Plaguelands zone, and in Stratholme by its instance id.
+    map = 1423
+    eq(W.Keys(ns.Missing()), "SWAP_COMMISSION")
+    map, inst = 1429, 329
+    eq(W.Keys(ns.Missing()), "SWAP_COMMISSION", "inside Stratholme")
+    ns.SetPref("gear", false)
+    eq(W.Keys(ns.Missing()), "", "switched off")
+    ns.SetPref("gear", true)
+    W.items[12846] = 0
+    eq(W.Keys(ns.Missing()), "", "not in the bags: nothing")
+    -- Taken off by hand: nothing to give back.
+    W.items[12846] = 1
+    inst = 0; map = 1423
+    ns.Missing(); equip(14, 12846); ns.Missing()
+    assert(ns.db.swapBack.COMMISSION, "noted")
+    equip(14, 500); map = 1429
+    eq(W.Keys(ns.Missing()), "")
+    eq(ns.db.swapBack.COMMISSION, nil)
+    IsMounted, C_Map, GetInstanceInfo, W.trinkets = nil, nil, nil, nil
+end)
+
 test("weapon skill far under its cap shows the weapon, once per skill, with a switch", function()
     Fake({ class = "WARRIOR", mainHand = 5, sub = { [5] = 7, [6] = 7, [7] = 20 } })
     W.offHand = 6

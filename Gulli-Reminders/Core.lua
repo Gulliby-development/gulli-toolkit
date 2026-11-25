@@ -122,6 +122,14 @@ ns.OTHERS = {
     { key = "SPIRIT", class = "PRIEST", ids = { 14752, 27681 }, mana = true },
     { key = "BLESSING", class = "PALADIN", ids = { 19740, 19742, 20217, 20911, 25782, 25894, 25898, 25899 } },
 }
+-- Gear for the moment: an item the bags hold that helps only somewhere or in some state.
+-- A click puts it on (in a trinket slot), and once the moment is over a second icon puts back what
+-- was there (the carrot and the commission take different slots, so both can be on). when: "mounted", or "place" with maps (uiMapIDs) and instances (instance ids).
+ns.SWAPS = {
+    { key = "CARROT", item = 11122, slot = 14, when = "mounted" },                    -- Carrot on a Stick
+    { key = "COMMISSION", item = 12846, slot = 13, when = "place",                    -- Argent Dawn Commission
+      maps = { [1422] = true, [1423] = true }, instances = { [329] = true, [289] = true } },
+}
 ns.PLACES = { "always", "group", "instance" }
 ns.ALERTS = { "off", "always", "instance" }
 local MAIN_HAND = 16
@@ -135,6 +143,7 @@ ns.DEFAULTS = {
     size = 40, alpha = 100, labels = true, vertical = false, classes = {},
     food = true, where = "always", whereItems = "instance", alert = "instance",
     durability = true, durMin = 20, bags = true, bagsMin = 2, weaponSkill = true, skillGap = 25, others = false, custom = {},
+    gear = true, swapBack = {},
 }
 ns.PANEL_POINT = { "TOP", 0, -190 }
 
@@ -609,6 +618,69 @@ function ns.CastInFight(ids)
 end
 function ns.FightEnded() fightCasts = {} end
 
+-- Is the moment of this swap now?
+function ns.SwapMoment(w)
+    if w.when == "mounted" then return (IsMounted and IsMounted()) and true or false end
+    if w.instances and GetInstanceInfo then
+        local id = select(8, GetInstanceInfo())
+        if id and w.instances[id] then return true end
+    end
+    if w.maps and C_Map and C_Map.GetBestMapForUnit then
+        local map = C_Map.GetBestMapForUnit("player")
+        local seen = {}
+        while map and not seen[map] do
+            if w.maps[map] then return true end
+            seen[map] = true
+            local info = C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+            map = info and info.parentMapID
+        end
+    end
+    return false
+end
+
+local function worn(id)
+    local f = (C_Item and C_Item.IsEquippedItem) or IsEquippedItem
+    if f then return f(id) and true or false end
+    for slot = 1, 19 do
+        if GetInventoryItemID("player", slot) == id then return true end
+    end
+    return false
+end
+ns.Worn = worn
+
+-- The swap entries: put the item on while its moment lasts, and what it took the place of back
+-- after. The slot's item is noted when the icon shows, and kept once the swap item is worn.
+function ns.Swaps()
+    local out = {}
+    local back = ns.db.swapBack
+    for _, w in ipairs(ns.SWAPS) do
+        local on, wearing = ns.SwapMoment(w), worn(w.item)
+        local b = back[w.key]
+        if on and not wearing and itemCount(w.item) > 0 then
+            local was = GetInventoryItemID("player", w.slot)
+            ns.swapFrom = ns.swapFrom or {}
+            ns.swapFrom[w.key] = was ~= w.item and was or nil
+            out[#out + 1] = { key = "SWAP_" .. w.key, text = L.SWAP_ON:format(itemName(w.item) or ("#" .. w.item)),
+                              cap = L.CAP_SWAP, icon = itemIcon(w.item),
+                              act = { type = "macro", macrotext = "/equipslot " .. w.slot .. " item:" .. w.item } }
+        elseif wearing and not b and ns.swapFrom and ns.swapFrom[w.key] then
+            back[w.key] = { slot = w.slot, item = ns.swapFrom[w.key] }
+            ns.swapFrom[w.key] = nil
+            b = back[w.key]
+        end
+        if b and not wearing then
+            back[w.key] = nil -- taken off by hand: nothing to give back
+        elseif b and not on and worn(b.item) then
+            back[w.key] = nil
+        elseif b and not on and itemCount(b.item) > 0 then
+            out[#out + 1] = { key = "BACK_" .. w.key, text = L.SWAP_BACK:format(itemName(b.item) or ("#" .. b.item)),
+                              cap = L.CAP_BACK, icon = itemIcon(b.item),
+                              act = { type = "macro", macrotext = "/equipslot " .. b.slot .. " item:" .. b.item } }
+        end
+    end
+    return out
+end
+
 -- What is missing now: { { key, text, icon, left } }, and as the second value why nothing is
 -- checked ("off", "combat", "dead", "rest") when that is so.
 function ns.Missing()
@@ -766,6 +838,10 @@ function ns.Missing()
             out[#out + 1] = { key = "SKILL" .. w.skill, text = L.WEAPON_SKILL:format(w.name or "?", w.rank, w.max),
                               cap = L.CAP_SKILL, icon = itemIcon(w.item) }
         end
+    end
+    -- Equipping waits for the end of a fight, so a swap shows only out of one.
+    if db.gear and not fight then
+        for _, m in ipairs(ns.Swaps()) do out[#out + 1] = m end
     end
     if here and db.bags then
         local free = ns.FreeSlots()
@@ -1035,6 +1111,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
                              "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SPELLS_CHANGED",
                              "GROUP_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "UPDATE_INVENTORY_DURABILITY",
                              "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_ROLES_ASSIGNED", "UI_ERROR_MESSAGE",
+                             "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "ZONE_CHANGED",
                              "UNIT_SPELLCAST_SUCCEEDED" }) do
             self:RegisterEvent(e)
         end
@@ -1094,6 +1171,7 @@ ns.OPT_ICON = {
     durability = "Interface\\Icons\\Trade_BlackSmithing",
     bags = "Interface\\Icons\\INV_Misc_Bag_08",
     weaponSkill = "Interface\\Icons\\Ability_MeleeDamage",
+    gear = "Interface\\Icons\\Ability_Mount_RidingHorse",
     others = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
     where = "Interface\\Icons\\INV_Misc_Map_01",
     whereItems = "Interface\\Icons\\INV_Drink_05",

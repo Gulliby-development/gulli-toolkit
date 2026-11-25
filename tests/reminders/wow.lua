@@ -182,6 +182,7 @@ function Fake(spec)
         if slot == 17 then return W.offHand end
         if slot == 18 then return W.ranged end
         if slot == 16 then return W.mainHand or nil end
+        if slot == 13 or slot == 14 then return W.trinkets and W.trinkets[slot] end
     end
     -- W.items[id] = count in the bags; soul shards as before.
     W.items = spec.items or {}

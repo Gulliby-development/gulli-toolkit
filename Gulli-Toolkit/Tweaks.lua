@@ -30,7 +30,7 @@ ns.TWEAK_ORDER = {
     "macros", "swingStyle", "errorFilter",
     "appearances", "autoBags",
     "guildInvite", "guildMotd",
-    "gameSettings", "cdNumbers", "muteSounds",
+    "gameSettings", "cdNumbers", "muteSounds", "iconSearch",
 }
 
 ns.TWEAKS = {}

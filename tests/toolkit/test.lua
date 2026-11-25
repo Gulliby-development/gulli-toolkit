@@ -2951,5 +2951,59 @@ test("right-click guild invite: only for another readable player, only when the 
     Menu, ChatFrameUtil, IsInGuild, CanGuildInvite, UnitIsPlayer = nil, nil, nil, nil, nil
 end)
 
+test("icon search: the picker keeps only the icons whose names match, and all again when off", function()
+    local hooks = {}
+    hooksecurefunc = function(t, m, fn)
+        if type(t) == "table" and t == IconSelectorPopupFrameTemplateMixin then hooks[#hooks + 1] = fn; return end
+        local old = t[m]; t[m] = function(...) old(...); fn(...) end
+    end
+    IconSelectorPopupFrameTemplateMixin = { OnShow = function() end }
+    GenerateClosure = function(f, a) return function(...) return f(a, ...) end end
+    C_SpellBook = { GetNumSpellBookSkillLines = function() return 1 end,
+        GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = 2 } end,
+        GetSpellBookItemInfo = function(slot) return ({ { name = "Fireball", iconID = 101 }, { name = "Frost Nova", iconID = 102 } })[slot] end }
+    C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = 103, itemID = 7 } end }
+    local icons = { 101, 102, 103, 104 }
+    local selections
+    local ns = tweakNs()
+    C_Item = C_Item or {}
+    local oldName = C_Item.GetItemNameByID
+    C_Item.GetItemNameByID = function(id) if id == 7 then return "Fire Ruby" end end
+    local picker = { BorderBox = CreateFrame("Frame"), IconSelector = CreateFrame("Frame"),
+        GetIconByIndex = function(_, i) return icons[i] end, GetNumIcons = function() return #icons end,
+        GetIndexOfIcon = function(_, icon) for i, x in ipairs(icons) do if x == icon then return i end end end,
+        HookScript = function() end, IsShown = function() return true end }
+    rawset(picker.IconSelector, "SetSelectionsDataProvider", function(_, get, num)
+        selections = {}
+        for i = 1, num() do selections[i] = get(i) end
+    end)
+    local q = ns.IconQuery("fire -ruby")
+    eq(table.concat(q.need, ","), "fire"); eq(table.concat(q.without, ","), "ruby")
+    eq(ns.IconQuery("   "), nil, "an empty search shows everything")
+    ns.SetTweak("iconSearch", true)
+    assert(#hooks == 1, "hooked the template's OnShow")
+    hooks[1](picker)
+    local box = ns.IconSearchHook(picker).box
+    local function search(text)
+        box:SetText(text)
+        ns.IconSearchApply(picker)
+        return table.concat(selections, ",")
+    end
+    eq(search("fire"), "101,103", "Fireball and the Fire Ruby in the bags")
+    eq(search("fire -ruby"), "101")
+    eq(search("frost nova"), "102", "every word must match")
+    eq(search("104"), "104", "a file id")
+    eq(search("zzz"), "")
+    eq(picker:GetIndexOfIcon(102), nil, "an icon left out has no place")
+    search("nova")
+    eq(picker:GetIndexOfIcon(102), 1, "the place in the filtered list, so OK takes the right icon")
+    ns.SetTweak("iconSearch", false)
+    eq(table.concat(selections, ","), "101,102,103,104", "off: the whole list again")
+    eq(picker:GetNumIcons(), 4)
+    C_Item.GetItemNameByID = oldName
+    hooksecurefunc, IconSelectorPopupFrameTemplateMixin, GenerateClosure, C_SpellBook, C_Container = nil, nil, nil, nil, nil
+end)
+
 io.write(string.format("%d/%d passed\n", count - failed, count))
 os.exit(failed == 0 and 0 or 1)
