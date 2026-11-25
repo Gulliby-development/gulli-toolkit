@@ -193,6 +193,50 @@ test("an unticked row is kept this session", function()
     eq(#rows, 2)
 end)
 
+test("each tab of the window has its own rows", function()
+    Fake({ slots = { { 0, 1, 10, 1, 0 }, { 0, 2, 30, 1, 1 }, { 0, 3, 31, 1, 1 } },
+           prices = { [10] = 5, [30] = 5, [31] = 5, [32] = 5 } })
+    local ns = Load()
+    ns.J.SetAlways(30, true)
+    ns.J.SetAlways(32, true)
+    ns.db.manual[31] = 2
+    ns.Toggle()
+    local bags = ns.Rows(1)
+    eq(#bags, 2, "the gray item and the always-sell item in the bags")
+    for _, r in ipairs(bags) do eq(r.kind, "sell") end
+    local always = ns.Rows(2)
+    eq(#always, 2)
+    for _, r in ipairs(always) do
+        eq(r.kind, "always")
+        eq(r.inBags == true, r.id == 30, "only the one in the bags is marked")
+    end
+    local sug = ns.Rows(3)
+    eq(#sug, 1); eq(sug[1].kind, "suggest"); eq(sug[1].id, 31)
+    ns.tab = 3
+    ns.Refresh()
+    eq(#ns.Rows(), 1, "the shown tab when none is given")
+end)
+
+test("the footer says what a sale sells and what to do", function()
+    local slots, prices = {}, {}
+    for i = 1, 14 do slots[i] = { 0, i, 100 + i, 1, 0 }; prices[100 + i] = 5 end
+    Fake({ slots = slots, prices = prices })
+    local ns = Load()
+    local text, _, n = ns.StatusLine()
+    eq(n, 14)
+    assert(text:find("Open a vendor", 1, true), text)
+    assert(text:find("last 12", 1, true), "more than the vendor buys back: " .. text)
+    ns.db.safe = true
+    ns.atVendor = true
+    text, _, n = ns.StatusLine()
+    eq(n, 12)
+    assert(text:find("12 of 14", 1, true), text)
+    assert(not text:find("Open a vendor", 1, true), text)
+    for i = 1, 14 do ns.skip[100 + i] = true end
+    text, _, n = ns.StatusLine()
+    eq(n, 0); eq(text, ns.L.NO_JUNK)
+end)
+
 test("one chat line per visit", function()
     Fake({ slots = { { 0, 1, 10, 1, 0 } }, prices = { [10] = 5 }, repair = { 100 } })
     Load()
