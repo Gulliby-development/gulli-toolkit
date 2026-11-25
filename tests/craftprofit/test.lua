@@ -4355,8 +4355,15 @@ local function barMade(spell, len)
     W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", spell)
 end
 
-test("craft bar: a batch counts its crafts, tells the time left and ends as done", function()
+-- The bar starts off, like every frame on the screen: these tests switch it on.
+local function barGame()
     local n = game()
+    n.SetBarPref("bar", true)
+    return n
+end
+
+test("craft bar: a batch counts its crafts, tells the time left and ends as done", function()
+    local n = barGame()
     date = function(_, t) return "t" .. t end
     barCast(101, 3, 5)
     eq(n.BarState(), "run")
@@ -4388,7 +4395,7 @@ test("craft bar: a batch counts its crafts, tells the time left and ends as done
 end)
 
 test("craft bar: a batch of hours shows hours and minutes, no seconds, and one smooth bar", function()
-    local n = game()
+    local n = barGame()
     eq(n.BarSpan(24), n.L.BAR_S:format(24))
     eq(n.BarSpan(760), n.L.BAR_MS:format(12, 40))
     eq(n.BarSpan(3600), n.L.BAR_HM:format(1, 0))
@@ -4404,7 +4411,7 @@ test("craft bar: a batch of hours shows hours and minutes, no seconds, and one s
 end)
 
 test("craft bar: a cut cast, a cast that never comes and the game's stop end the batch as stopped", function()
-    local n = game()
+    local n = barGame()
     local id = barCast(101, 3, 4)
     barMade(101, 3)
     id = barCast(101, 3, 3)
@@ -4440,7 +4447,11 @@ end)
 
 test("craft bar: the switches keep it away; one craft alone only when asked; other spells never", function()
     local n = game()
-    eq(n.BarPref("bar"), true, "the bar starts on (owner's decision): it shows only while crafting")
+    eq(n.BarPref("bar"), false, "the bar starts off, like every frame on the screen (owner's decision)")
+    barCast(101, 3, 3)
+    eq(n.BarState(), nil, "off until the player switches it on")
+    n.run = nil
+    n.SetBarPref("bar", true)
     eq(n.BarPref("barHide"), true); eq(n.BarPref("barOne"), false)
     barCast(101, 3, 1)
     eq(n.BarState(), nil, "one craft alone")
@@ -4471,7 +4482,7 @@ test("craft bar: the switches keep it away; one craft alone only when asked; oth
 end)
 
 test("craft bar: without the game's count the Make button's batch gives it, else only what is made shows", function()
-    local n = game()
+    local n = barGame()
     n.BatchStart(101, 6)
     n.CastRecipe = function(spell) return spell end
     barCast(101, 3, nil)
@@ -4483,7 +4494,7 @@ test("craft bar: without the game's count the Make button's batch gives it, else
 end)
 
 test("craft bar: the game's cast bar hides only while a batch runs and the switch is on", function()
-    local n = game()
+    local n = barGame()
     local alpha = 1
     PlayerCastingBarFrame = { GetAlpha = function() return alpha end, SetAlpha = function(_, a) alpha = a end }
     n.SetBarPref("barHide", false)
@@ -4500,7 +4511,7 @@ test("craft bar: the game's cast bar hides only while a batch runs and the switc
 end)
 
 test("craft bar: another addon's cast bar of the player hides too and gets its own alpha back", function()
-    local n = game()
+    local n = barGame()
     local function fake(alpha, extra)
         local f = { a = alpha, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end,
             IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end }
@@ -4530,8 +4541,52 @@ test("craft bar: another addon's cast bar of the player hides too and gets its o
     ElvUF_Player_CastBar, EnumerateFrames = nil, nil
 end)
 
+test("craft bar: a cast bar its addon fades (EllesmereUI) is hidden only while the batch runs and comes back as its addon left it", function()
+    local n = barGame()
+    local oldHook = hooksecurefunc
+    hooksecurefunc = function(t, name, fn)
+        local was = t[name]
+        t[name] = function(...) was(...); fn(...) end
+    end
+    local erb = { a = 1, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end }
+    ERB_CastBarFrame = erb
+    -- the unit frame's cast bar: no name, kept as the frame's Castbar on a backing of its own
+    local unitFrame = { _euiUnit = "player" }
+    local backing = { a = 1, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha, GetParent = function() return unitFrame end }
+    local castbar = { a = 1, __owner = unitFrame, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha,
+        IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end,
+        GetParent = function() return backing end }
+    unitFrame.Castbar = castbar
+    EnumerateFrames = function(f) if not f then return castbar end end
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0, "hidden while the craft runs")
+    eq(backing.a, 0, "the unit frame's cast bar goes with its backing")
+    eq(castbar.a, 1)
+    erb:SetAlpha(1) -- its addon lights it for the next cast
+    eq(erb.a, 0, "and it stays hidden")
+    -- the craft is cut: the bar is back at once after the game's own fade
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 1, "back when the craft is cut")
+    eq(backing.a, 1)
+    erb:SetAlpha(0.4)
+    eq(erb.a, 0.4, "and its addon owns it again")
+    -- a batch during which its addon put the bar to rest: it does not come back lit
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0)
+    erb:SetAlpha(1); erb:SetAlpha(0)
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 0, "an idle bar stays as its addon left it")
+    ERB_CastBarFrame, EnumerateFrames, hooksecurefunc = nil, nil, oldHook
+end)
+
 test("craft bar: a craft the game never reported counts when the next one starts; the picture is the made item's", function()
-    local n = game()
+    local n = barGame()
     barCast(101, 3, 3)
     W.now = W.now + 3
     barCast(101, 3, 2) -- no UNIT_SPELLCAST_SUCCEEDED came
@@ -4557,7 +4612,7 @@ test("craft bar: a craft the game never reported counts when the next one starts
 end)
 
 test("craft bar: materials for the rest, the skill gained, and the sample in the Unlock mode", function()
-    local n = game()
+    local n = barGame()
     local skill = 150
     C_TradeSkillUI.GetProfessionInfoByRecipeID = function() return { professionName = "Tailoring", skillLevel = skill } end
     n.char.profs = { Tailoring = { recipes = { [101] = { r = { [1] = 4 } } } } }

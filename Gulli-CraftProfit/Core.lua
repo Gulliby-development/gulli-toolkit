@@ -37,7 +37,7 @@ ns.DEFAULTS = {
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
     autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
     disenchant = false, -- an enchanter may disenchant crafted gear and sell the materials at the auction
-    bar = true, -- the craft bar shows a batch of crafts on the screen (Bar.lua)
+    bar = false, -- the craft bar shows a batch of crafts on the screen (Bar.lua)
     barHide = true, -- the game's own cast bar hides while it does
     barOne = false, -- one craft alone gets the bar too
 }

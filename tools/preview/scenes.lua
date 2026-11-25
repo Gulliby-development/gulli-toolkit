@@ -746,6 +746,7 @@ local function cpBar(made, of, len, how)
     return { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, crop = "GulliCraftProfitBar",
         open = function(ns, W)
             W.Fire("TRADE_SKILL_SHOW"); W.RunTimers()
+            ns.SetBarPref("bar", true)
             local skill = 150
             C_TradeSkillUI.GetProfessionInfoByRecipeID = function() return { professionName = ns.L.PROF_197 or "Tailoring", skillLevel = skill } end
             date = function(f, t) return os.date("!" .. f, 20 * 3600 + 25 * 60 + (t - W.now)) end
