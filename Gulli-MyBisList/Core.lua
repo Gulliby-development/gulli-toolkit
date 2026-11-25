@@ -1255,17 +1255,40 @@ ns.STAT_ORDER = {
     melee = { "hit", "crit", "ap" }, ranged = { "hit", "crit", "ap" },
     spell = { "hit", "crit", "sd" }, heal = { "crit", "heal", "sd" },
 }
--- The school of a caster spec's main spells: its spell damage is that school's (GetSpellBonusDamage),
--- and an item's "+X Shadow damage" counts only for it. A spec not listed counts generic damage.
+-- The schools of a caster spec's main spells, the main one first: its spell damage is the best of
+-- them (GetSpellBonusDamage), and an item's "+X Frost damage" counts as spell damage for a Frost
+-- mage. From the WoW Forever class guides: Destruction is a Fire caster there, Demonology casts
+-- Shadow or Fire, Balance Arcane (Starfire) and Nature (Wrath). A spec not listed counts generic damage.
 ns.SPEC_SCHOOL = {
-    MAGE_ARCANE = 7, MAGE_FIRE = 3, MAGE_FROST = 5,
-    WARLOCK_AFFLICTION = 6, WARLOCK_DEMONOLOGY = 6, WARLOCK_DESTRUCTION = 6,
-    PRIEST_SHADOW = 6, SHAMAN_ELEMENTAL = 4, DRUID_BALANCE = 7, PALADIN_SHOCKADIN = 2,
+    MAGE_ARCANE = { 7 }, MAGE_FIRE = { 3 }, MAGE_FROST = { 5 },
+    WARLOCK_AFFLICTION = { 6 }, WARLOCK_DEMONOLOGY = { 6, 3 }, WARLOCK_DESTRUCTION = { 3, 6 },
+    PRIEST_SHADOW = { 6 }, SHAMAN_ELEMENTAL = { 4, 3 }, DRUID_BALANCE = { 7, 4 }, PALADIN_SHOCKADIN = { 2 },
 }
 -- Hit a raid boss three levels up asks for in WoW Forever: 8% for attacks, 17% for spells (its
 -- client tables, as the Forever guides of Method, ConquestCapped and MmonsteR give them; not the
 -- classic 9% and 16%). One Hit Chance on gear counts for both.
 ns.HIT_CAP = { melee = 8, ranged = 8, spell = 17 }
+-- The hit talent each spec takes in the Forever guides: { percent, school }. A talent for every
+-- spell or attack is in the game's own hit number (GetHitModifier, GetSpellHitModifier); one for a
+-- single school is not, so for those the cap shown is what gear must give (17 - the talent),
+-- counted as learned. Healers are left out: a heal never misses.
+ns.SPEC_HIT = {
+    MAGE_ARCANE = { 6 }, MAGE_FIRE = { 6 }, MAGE_FROST = { 6 },           -- Precision, 3 points in Frost
+    WARLOCK_AFFLICTION = { 5 }, WARLOCK_DESTRUCTION = { 5 },             -- Suppression
+    DRUID_BALANCE = { 4 },                                               -- Nature's Reach
+    PRIEST_SHADOW = { 5, 6 },                                            -- Shadow Focus, Shadow only
+    PALADIN_SHOCKADIN = { 8, 2 },                                        -- Divine Precision, Holy only
+    PALADIN_PROTECTION = { 3 }, PALADIN_RETRIBUTION = { 3 },             -- Precision
+    ROGUE_COMBAT = { 3 }, HUNTER_SURVIVAL = { 3 }, HUNTER_SURVIVALMELEE = { 3 },
+}
+-- Specs that fight with two weapons: their specials need the 8%, the white hits far more.
+ns.DUAL_WIELD = {
+    WARRIOR_FURY = true, ROGUE_ASSASSINATION = true, ROGUE_COMBAT = true, ROGUE_SUBTLETY = true,
+    SHAMAN_ENHANCEMENT = true,
+}
+ns.DUAL_CAP = 27
+-- Feral attack power on a weapon counts only in cat and bear form.
+ns.FERAL = { DRUID_FERALDPS = true, DRUID_FERALTANK = true }
 
 function ns.StatKind(spec)
     local info = spec and SPEC[spec]
@@ -1294,7 +1317,8 @@ function ns.StatOfKey(k)
     if STAT_KEYS[k] then return STAT_KEYS[k] end
     if type(k) ~= "string" then return nil end
     local u = k:upper()
-    if u:find("RESIST") or u:find("HEALTH") or u:find("FERAL") then return nil end
+    if u:find("FERAL") then return "fap" end
+    if u:find("RESIST") or u:find("HEALTH") then return nil end
     for word, school in pairs(SCHOOLS) do
         if u:find(word) and (u:find("DAMAGE") or u:find("POWER")) then return "school" .. school end
     end
@@ -1364,7 +1388,7 @@ end
 -- What a set of item stats is worth in the shown stats of a kind. In WoW Forever one Hit Chance
 -- and one Critical Strike Chance on gear count for spells and attacks alike, so every hit and
 -- crit key adds to every kind; school damage counts only for the spec's school.
-function ns.StatValue(kind, s, school)
+function ns.StatValue(kind, s, schools, feral)
     local out = {}
     local hit = (s.hit or 0) + (s.hitm or 0) + (s.hitr or 0) + (s.hits or 0)
     local crit = (s.crit or 0) + (s.critm or 0) + (s.critr or 0) + (s.crits or 0)
@@ -1378,19 +1402,22 @@ function ns.StatValue(kind, s, school)
                 + (s.ap or 0) + (s.rap or 0)
         else
             out.ap = conv(GetAttackPowerForStat, 1, s.str) + conv(GetAttackPowerForStat, 2, s.agi)
-                + (s.ap or 0) + (s.map or 0)
+                + (s.ap or 0) + (s.map or 0) + (feral and s.fap or 0)
         end
     else
         out.hit = ratingPct("CR_HIT_SPELL", hit)
         out.crit = conv(GetSpellCritChanceFromStat, 4, s.int) * 100 + ratingPct("CR_CRIT_SPELL", crit)
-        out.sd = (s.sp or 0) + (s.sd or 0) + (school and s["school" .. school] or 0)
+        -- school damage: the best of the spec's schools
+        local best = 0
+        for _, sc in ipairs(schools or {}) do best = math.max(best, s["school" .. sc] or 0) end
+        out.sd = (s.sp or 0) + (s.sd or 0) + best
     end
     out.heal = (s.sp or 0) + (s.heal or 0)
     return out
 end
 
 -- What the character has now, as the game's character window says it.
-function ns.StatNow(kind, school)
+function ns.StatNow(kind, schools)
     local now = {}
     local function rating(cr) return _G[cr] and num(GetCombatRatingBonus, _G[cr]) or 0 end
     if kind == "melee" then
@@ -1412,17 +1439,13 @@ function ns.StatNow(kind, school)
             now.ap = base + (pos or 0) + (neg or 0)
         end
     end
-    -- spell damage: the spec's school, else the best one
-    if school then
-        now.sd = num(GetSpellBonusDamage, school)
-    else
-        local best
-        for i = 2, 7 do
-            local v = num(GetSpellBonusDamage, i)
-            if v and (not best or v > best) then best = v end
-        end
-        now.sd = best
+    -- spell damage: the best of the spec's schools, else of all
+    local best
+    for _, i in ipairs(schools or { 2, 3, 4, 5, 6, 7 }) do
+        local v = num(GetSpellBonusDamage, i)
+        if v and (not best or v > best) then best = v end
     end
+    now.sd = best
     now.heal = num(GetSpellBonusHealing)
     return now
 end
@@ -1432,12 +1455,13 @@ end
 function ns.StatSummary(list)
     if not list then return nil end
     local kind = ns.StatKind(list.spec)
-    local school = ns.SPEC_SCHOOL[list.spec]
+    local schools = ns.SPEC_SCHOOL[list.spec]
+    local feral = ns.FERAL[list.spec]
     local gains, items, wait = {}, {}, false
     local function add(id, sign)
         local s = ns.ItemStats(id)
         if not s then wait = true; return end
-        for key, v in pairs(ns.StatValue(kind, s, school)) do
+        for key, v in pairs(ns.StatValue(kind, s, schools, feral)) do
             if v ~= 0 then
                 gains[key] = (gains[key] or 0) + sign * v
                 items[key] = items[key] or {}
@@ -1454,7 +1478,7 @@ function ns.StatSummary(list)
             if r.worn then add(r.worn, -1) end
         end
     end
-    local now = ns.StatNow(kind, school)
+    local now = ns.StatNow(kind, schools)
     local keys = {}
     for _, k in ipairs(ns.STAT_ORDER[kind]) do keys[#keys + 1] = k end
     local heal = now.heal or 0
@@ -1466,8 +1490,18 @@ function ns.StatSummary(list)
     end
     local stats = {}
     for _, k in ipairs(keys) do
-        local cap = k == "hit" and ns.HIT_CAP[kind] or nil
-        stats[#stats + 1] = { key = k, now = now[k], gain = gains[k] or 0, cap = cap }
+        local st = { key = k, now = now[k], gain = gains[k] or 0 }
+        if k == "hit" and ns.HIT_CAP[kind] then
+            st.cap = ns.HIT_CAP[kind]
+            local t = ns.SPEC_HIT[list.spec]
+            if t then
+                st.talent, st.talentSchool = t[1], t[2]
+                -- a talent for one school is not in the game's number: gear must give the rest
+                if t[2] then st.cap = st.cap - t[1] end
+            end
+            if ns.DUAL_WIELD[list.spec] then st.dual = ns.DUAL_CAP end
+        end
+        stats[#stats + 1] = st
     end
     -- the biggest changes first in the tooltip
     for _, t in pairs(items) do table.sort(t, function(a, b) return math.abs(a.gain) > math.abs(b.gain) end) end

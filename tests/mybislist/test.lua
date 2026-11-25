@@ -888,11 +888,54 @@ test("stats: WoW Forever's own keys, one hit and crit for all, school damage for
     eq(statOf(sum, "sd").gain, 88 - 68, "the new blade's shadow damage counts, the old one's spell power goes")
     eq(statOf(sum, "crit").gain, -1, "the old blade's crit counts for spells too")
     eq(statOf(sum, "hit").gain, 1, "one hit for all")
-    eq(statOf(sum, "hit").cap, 17, "17% against a raid boss for spells")
+    eq(statOf(sum, "hit").cap, 17 - 5, "17% for spells, less Shadow Focus, which the game's number leaves out")
+    eq(statOf(sum, "hit").talentSchool, 6, "the talent is for Shadow only")
     eq(ns.HIT_CAP.melee, 8, "8% for attacks")
     -- a fire mage gets nothing from shadow damage
     ns.Data.lists.MAGE_FIRE.PRE = { main = { 301 } }
     eq(statOf(ns.StatSummary(ns.Resolve("site:MAGE_FIRE:PRE")), "sd").gain, -68, "another school's damage is not counted")
+end)
+
+test("stats: each spec's hit cap, talents and schools from the WoW Forever guides", function()
+    Fake({ class = "MAGE", char = { shit = 3, scrit = 6, schools = { [5] = 300, [3] = 120, [7] = 100 } } })
+    local ns = Load()
+    local function hit(spec) return statOf(ns.StatSummary(ns.Resolve("site:" .. spec .. ":PRE")), "hit") end
+    -- every caster spec needs 17% in all, every attack spec 8%
+    for _, sp in ipairs(ns.Data.specs) do
+        local kind = ns.StatKind(sp[1])
+        local h = hit(sp[1])
+        if kind == "heal" then
+            eq(h, nil, sp[1] .. ": a heal never misses, no hit shown")
+        else
+            local t = ns.SPEC_HIT[sp[1]]
+            local want = ns.HIT_CAP[kind] - ((t and t[2]) and t[1] or 0)
+            eq(h.cap, want, sp[1] .. ": the cap")
+            eq(ns.HIT_CAP[kind], kind == "spell" and 17 or 8, sp[1] .. ": 17 or 8")
+        end
+        local sc = ns.SPEC_SCHOOL[sp[1]]
+        if kind == "spell" and sp[1] ~= "PALADIN_SHOCKADIN" then assert(sc and #sc > 0, sp[1] .. " has a school") end
+    end
+    -- a frost mage: Frost damage is its spell damage, Precision is in the game's number
+    local sum = ns.StatSummary(ns.Resolve("site:MAGE_FROST:PRE"))
+    eq(statOf(sum, "sd").now, 300, "frost spell damage")
+    eq(statOf(sum, "hit").cap, 17, "Precision counts for every spell: the full 17")
+    eq(statOf(sum, "hit").talent, 6, "Precision 6%")
+    eq(statOf(ns.StatSummary(ns.Resolve("site:MAGE_FIRE:PRE")), "sd").now, 120, "fire for a fire mage")
+    -- destruction is a Fire caster in WoW Forever, Balance the best of Arcane and Nature
+    eq(ns.SPEC_SCHOOL.WARLOCK_DESTRUCTION[1], 3, "destruction: fire first")
+    eq(statOf(ns.StatSummary(ns.Resolve("site:WARLOCK_DESTRUCTION:PRE")), "sd").now, 120, "fire, not frost")
+    W.char.schools[4] = 140
+    eq(statOf(ns.StatSummary(ns.Resolve("site:DRUID_BALANCE:PRE")), "sd").now, 140, "balance: nature over arcane")
+    -- an item's damage of one school counts when it is any of the spec's schools
+    eq(ns.StatValue("spell", { school4 = 30 }, ns.SPEC_SCHOOL.DRUID_BALANCE).sd, 30, "+nature damage for balance")
+    eq(ns.StatValue("spell", { school5 = 30 }, ns.SPEC_SCHOOL.DRUID_BALANCE).sd, 0, "+frost damage is not")
+    -- two weapons: a note for the white hits
+    eq(hit("ROGUE_COMBAT").dual, ns.DUAL_CAP, "dual wield")
+    eq(hit("WARRIOR_ARMS").dual, nil, "a two-hander")
+    -- feral attack power counts only for a feral druid
+    eq(ns.StatOfKey("ITEM_MOD_FERAL_ATTACK_POWER_SHORT"), "fap", "feral attack power")
+    eq(ns.StatValue("melee", { fap = 100 }, nil, true).ap, 100, "for a feral druid")
+    eq(ns.StatValue("melee", { fap = 100 }).ap, 0, "not for anyone else")
 end)
 
 test("stats: an item not loaded yet waits, a value the game hides shows as unknown", function()
