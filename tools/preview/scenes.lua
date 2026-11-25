@@ -740,6 +740,43 @@ S.craftprofit = { default = {
     end,
 } }
 
+-- The craft bar: a batch of bolts on the screen. `made` crafts of `of` are done, each takes `len`
+-- seconds; `how` ends it ("stop" cut, "done" all made).
+local function cpBar(made, of, len, how)
+    return { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before, crop = "GulliCraftProfitBar",
+        open = function(ns, W)
+            W.Fire("TRADE_SKILL_SHOW"); W.RunTimers()
+            local skill = 150
+            C_TradeSkillUI.GetProfessionInfoByRecipeID = function() return { professionName = ns.L.PROF_197 or "Tailoring", skillLevel = skill } end
+            date = function(f, t) return os.date("!" .. f, 20 * 3600 + 25 * 60 + (t - W.now)) end
+            local function cast(left)
+                local from = W.now
+                UnitCastingInfo = function()
+                    return "Bolt of Silk Cloth", "", "Interface\\Icons\\INV_Fabric_Silk_02", from * 1000, (from + len) * 1000, true, "g", false, 101
+                end
+                C_TradeSkillUI.GetRemainingRecasts = function() return left end
+                W.Fire("UNIT_SPELLCAST_START", "player", "g", 101)
+            end
+            for i = 1, made do
+                cast(of - i + 1)
+                W.now = W.now + len
+                W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "g", 101)
+                W.now = W.now + 0.4
+            end
+            skill = 153
+            if how ~= "done" then
+                cast(of - made)
+                W.now = W.now + len * 0.6
+                if how == "stop" then W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", "g", 101) end
+            end
+            ns.RefreshBar()
+        end }
+end
+S.craftprofit.bar = cpBar(12, 40, 3)
+S.craftprofit.barlong = cpBar(63, 200, 36)
+S.craftprofit.barstop = cpBar(12, 40, 3, "stop")
+S.craftprofit.bardone = cpBar(40, 40, 3, "done")
+
 S.craftprofit.prompt = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) W.Fire("MERCHANT_SHOW"); W.Fire("TRADE_SKILL_SHOW"); W.RunTimers(); ns.Toggle() end }
 S.craftprofit.busy = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
