@@ -14,7 +14,7 @@ ns.DEFAULTS = {
     pickBest = false,     -- take the reward with the best vendor price
     targetKey = nil,      -- the key that targets a mob the quest log needs (none: off)
     mobRows = 3,          -- rows of the mob list under the quest mob button (0: none)
-    gossip = false,       -- pick the only gossip line of an NPC
+    gossip = true,        -- pick the only talk line of an NPC (a quest talk step)
     chat = false,         -- a chat line for each quest taken or handed in
     paused = false, pauseUntil = 0, pauseKey = "SHIFT",
 }
@@ -269,18 +269,47 @@ end
 local function detailID() return GetQuestID and GetQuestID() or nil end
 local function detailTitle() return GetTitleText and GetTitleText() or nil end
 
+-- The game's chat bubble (Interface\\GossipFrame\\GossipGossipIcon) and the newer chat bubble.
+-- A vendor, flight master, trainer, bank, inn or battlemaster line has its own icon.
+ns.TALK_ICONS = { [132053] = true, [1019848] = true }
+ns.TALK_MAX = 12 -- talk lines picked at one NPC before the player clicks again
+local QUEST_LABEL = 1 -- Enum.GossipOptionRecFlags.QuestLabelPrepend
+
+-- Whether a gossip line is only talk: the chat bubble or a quest line, open, and no spell.
+function ns.TalkLine(o)
+    if type(o) ~= "table" then return false end
+    if o.status and o.status ~= 0 then return false end
+    if o.spellID then return false end
+    if type(o.flags) == "number" and o.flags % 2 == QUEST_LABEL then return true end
+    local icon = o.icon
+    if type(icon) == "number" then return ns.TALK_ICONS[icon] == true end
+    if type(icon) == "string" then
+        icon = icon:lower()
+        return icon:find("gossipgossipicon", 1, true) ~= nil or icon:find("chatbubble", 1, true) ~= nil
+    end
+    return false
+end
+
+ns.talk = { picks = 0 }
 local function gossipOnly()
     if not ns.db.gossip or not C_GossipInfo or not C_GossipInfo.GetOptions then return end
     local opts = C_GossipInfo.GetOptions() or {}
     if #opts ~= 1 then return end
     local o = opts[1]
-    if C_GossipInfo.SelectOption then C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID or 1) end
+    if not ns.TalkLine(o) then return end
+    local id = o.gossipOptionID or o.optionID
+    local t = ns.talk
+    -- A line that brings back the same line, or a talk that never ends, waits for the player.
+    if t.picks >= ns.TALK_MAX or (id and id == t.last) then return end
+    t.picks, t.last = t.picks + 1, id
+    if C_GossipInfo.SelectOption then C_GossipInfo.SelectOption(id or 1) end
     count("clicks")
     return true
 end
 
 function ns.OnEvent(event, ...)
     local db = ns.db
+    if event == "GOSSIP_CLOSED" then ns.talk = { picks = 0 }; return end
     if event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
         local npcName = UnitName and UnitName("npc")
         if issecretvalue and issecretvalue(npcName) then npcName = nil end
@@ -703,7 +732,9 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
         ns.db.ignoreQuest = ns.db.ignoreQuest or {}
         ns.db.session = ns.db.session or {}
         ns.db.mobIds = ns.db.mobIds or {}
-        for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM",
+        -- 1.23.0 picks talk lines by default; older saves had the switch off by default.
+        if not ns.db.talkOn then ns.db.gossip, ns.db.talkOn = true, true end
+        for _, e in ipairs({ "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM",
                              "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_ACCEPTED", "PLAYER_ENTERING_WORLD",
                              "PLAYER_LOGOUT" }) do
             self:RegisterEvent(e)

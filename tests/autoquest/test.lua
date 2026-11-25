@@ -179,15 +179,47 @@ test("the best vendor price: marked, or taken when asked", function()
     W.Fire("QUEST_COMPLETE"); eq(W.did[1], "reward:2")
 end)
 
-test("the only gossip line waits for its switch", function()
+test("a talk line alone goes on by itself; a service line, two lines or Shift never", function()
     Fake({ npc = { active = {}, available = {} } })
     local ns = Load()
-    W.options = { { gossipOptionID = 42 } }
-    W.Fire("GOSSIP_SHOW"); eq(#W.did, 0)
+    local talk = function(id) return { gossipOptionID = id, icon = 132053, status = 0, flags = 0 } end
+    W.options = { talk(42) }
+    W.Fire("GOSSIP_SHOW"); eq(W.did[1], "option:42", "on by default")
+    W.options = { talk(43) }
+    W.Fire("GOSSIP_SHOW"); eq(W.did[2], "option:43", "the next step of the talk")
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 2, "the same line again waits for the player")
+    W.Fire("GOSSIP_CLOSED")
+    for _, icon in ipairs({ 132060, 132057, 132058, 132050, 132052, 0 }) do
+        W.options = { { gossipOptionID = 7, icon = icon, status = 0, flags = 0 } }
+        W.Fire("GOSSIP_SHOW"); eq(#W.did, 2, "a vendor, flight, trainer, bank or inn line: " .. icon)
+    end
+    W.options = { { gossipOptionID = 8, icon = 132060, status = 0, flags = 1 } }
+    W.Fire("GOSSIP_SHOW"); eq(W.did[3], "option:8", "a line the game marks as a quest line")
+    W.options = { { gossipOptionID = 9, icon = 132053, status = 0, flags = 0, spellID = 1234 } }
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 3, "a line that casts a spell")
+    W.options = { { gossipOptionID = 10, icon = 132053, status = 2, flags = 0 } }
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 3, "a locked line")
+    W.options = { talk(1), talk(2) }
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 3, "two lines: the player picks")
+    W.options = { talk(11) }
+    W.shift = true
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 3, "Shift skips it")
+    W.shift = false
+    ns.db.gossip = false
+    W.Fire("GOSSIP_SHOW"); eq(#W.did, 3, "the switch stops it")
     ns.db.gossip = true
-    W.Fire("GOSSIP_SHOW"); eq(W.did[1], "option:42")
-    W.options = { { gossipOptionID = 1 }, { gossipOptionID = 2 } }
-    W.Fire("GOSSIP_SHOW"); eq(#W.did, 1, "two lines: the player picks")
+    W.Fire("GOSSIP_CLOSED")
+    for i = 1, ns.TALK_MAX + 3 do W.options = { talk(100 + i) }; W.Fire("GOSSIP_SHOW") end
+    eq(#W.did, 3 + ns.TALK_MAX, "a talk that never ends stops")
+end)
+
+test("older saves get talk lines on once", function()
+    Fake({ db = { gossip = false } })
+    local ns = Load()
+    eq(ns.db.gossip, true)
+    ns.db.gossip = false
+    W.Fire("ADDON_LOADED", "Gulli-AutoQuest")
+    eq(ns.db.gossip, false, "the player's own choice stays")
 end)
 
 test("counters survive a reload, a login resets them; undo abandons the last quest; feed and summary", function()
