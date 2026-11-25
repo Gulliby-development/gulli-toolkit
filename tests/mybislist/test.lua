@@ -800,4 +800,115 @@ test("the sets page: a class's list, the chosen set and its pieces on the list",
     eq(footer:IsShown(), false, "the settings have no footer")
 end)
 
+-- Stats: hit, crit, attack power or spell damage, healing -------------------------------------------
+
+-- Worn: head 103, ring 203, main 302, off 401 (inventory slots 1, 11, 16, 17).
+local STATS = {
+    [101] = { ITEM_MOD_STRENGTH_SHORT = 20, ITEM_MOD_HIT_RATING_SHORT = 1 },
+    [103] = { ITEM_MOD_STRENGTH_SHORT = 10 },
+    [201] = { ITEM_MOD_AGILITY_SHORT = 20 },
+    [202] = { ITEM_MOD_CRIT_RATING_SHORT = 1 },
+    [301] = { ITEM_MOD_STRENGTH_SHORT = 30 },
+    [302] = { ITEM_MOD_STRENGTH_SHORT = 10 },
+    [401] = { ITEM_MOD_STRENGTH_SHORT = 5 },
+}
+local function statOf(sum, key) for _, st in ipairs(sum.stats) do if st.key == key then return st end end end
+local function keys(sum)
+    local t = {}
+    for i, st in ipairs(sum.stats) do t[i] = st.key end
+    return table.concat(t, ",")
+end
+
+test("stats: a warrior's hit, crit and attack power now and with the list, through the game's conversions", function()
+    Fake({ worn = { [1] = 103, [11] = 203, [16] = 302, [17] = 401 }, stats = STATS,
+           char = { hit = 2, crit = 10.5, ap = 900, heal = 0 } })
+    local ns = Load()
+    fakeData(ns)
+    local sum = ns.StatSummary(ns.Resolve(REF))
+    eq(sum.kind, "melee", "kind")
+    eq(keys(sum), "hit,crit,ap", "no healing without healing")
+    eq(statOf(sum, "hit").now, 2, "hit now")
+    eq(statOf(sum, "hit").gain, 1, "the head's +1% hit")
+    eq(statOf(sum, "hit").cap, ns.HIT_CAP.melee, "a cap for hit")
+    eq(statOf(sum, "crit").gain, 2, "20 agility is 1%, and a ring's 1%")
+    eq(statOf(sum, "ap").now, 900, "attack power now")
+    eq(statOf(sum, "ap").gain, 60, "10 and 20 strength more, two AP each; the off hand stays")
+    eq(sum.items.ap[1].id, 301, "the biggest change first")
+    eq(sum.items.ap[1].gain, 60, "the main hand against the worn one")
+    local total = 0
+    for _, it in ipairs(sum.items.ap) do total = total + it.gain end
+    eq(total, 60, "the items add up to the change")
+    -- the list takes a two-hander: the off hand comes off
+    Fake({ worn = { [1] = 103, [11] = 203, [16] = 302, [17] = 401 }, stats = STATS, char = { ap = 900 } })
+    ns = Load()
+    fakeData(ns, true)
+    eq(statOf(ns.StatSummary(ns.Resolve(REF)), "ap").gain, 50, "the worn off hand's 5 strength go")
+end)
+
+test("stats: which stats a spec shows, healing only where it says more", function()
+    Fake({ class = "PRIEST", char = { shit = 3, scrit = 6, sd = 200, heal = 200 } })
+    local ns = Load()
+    eq(ns.StatKind("PRIEST_SHADOW"), "spell", "shadow")
+    eq(ns.StatKind("PRIEST_HOLY"), "heal", "holy")
+    eq(ns.StatKind("HUNTER_MARKSMANSHIP"), "ranged", "hunter")
+    eq(ns.StatKind("HUNTER_SURVIVALMELEE"), "melee", "melee hunter")
+    eq(ns.StatKind("PALADIN_SHOCKADIN"), "spell", "shockadin")
+    for _, s in ipairs(ns.Data.specs) do assert(ns.STAT_ORDER[ns.StatKind(s[1])], s[1]) end
+    eq(keys(ns.StatSummary(ns.Resolve("site:PRIEST_SHADOW:PRE"))), "hit,crit,sd", "healing equal to damage: not shown")
+    W.char.heal = 260
+    eq(keys(ns.StatSummary(ns.Resolve("site:PRIEST_SHADOW:PRE"))), "hit,crit,sd,heal", "more healing: shown")
+    eq(keys(ns.StatSummary(ns.Resolve("site:PRIEST_HOLY:PRE"))), "crit,heal,sd", "a healer")
+    W.char.sd = 0
+    W.stats = {}
+    ns.itemStats = {}
+    eq(keys(ns.StatSummary(ns.Resolve("site:PRIEST_HOLY:PRE"))), "crit,heal", "a healer without spell damage")
+    -- the best school: +shadow damage counts for a shadow priest
+    W.char.schools = { [6] = 150 }
+    eq(ns.StatNow("spell").sd, 150, "the best school")
+    -- a melee list with healing on it shows healing too
+    W.char.heal = 30
+    eq(keys(ns.StatSummary(ns.Resolve("site:WARRIOR_FURY:PRE"))), "hit,crit,ap,heal", "healing as the fifth")
+end)
+
+test("stats: an item not loaded yet waits, a value the game hides shows as unknown", function()
+    Fake({ worn = { [1] = 103 }, stats = STATS, notLoaded = { [101] = true }, char = {} })
+    local ns = Load()
+    fakeData(ns)
+    W.char.hit = W.SECRET
+    local sum = ns.StatSummary(ns.Resolve(REF))
+    eq(sum.wait, true, "waits for the head")
+    eq(statOf(sum, "hit").now, nil, "a hidden value is no number")
+    assert(ns.StatCell(statOf(sum, "hit")):find("?", 1, true), "the cell says it does not know")
+    W.notLoaded[101] = nil
+    sum = ns.StatSummary(ns.Resolve(REF))
+    eq(sum.wait, false, "loaded")
+    eq(statOf(sum, "ap").gain, 20 + 60 + 10, "now counted: head, main and off hand against nothing")
+end)
+
+test("stats: the bar beside the page tabs, only on the Gear page, with the cap in the tooltip", function()
+    Fake({ worn = { [1] = 103, [11] = 203, [16] = 302, [17] = 401 }, stats = STATS,
+           char = { hit = 2, crit = 10.5, ap = 900 } })
+    local ns = Load()
+    fakeData(ns)
+    ns.Window():Show()
+    ns.ShowTab(1)
+    ns.StatRoom = function() return 500 end   -- the fake frames have no real widths
+    ns.ViewList("WARRIOR_ARMS", "L40")
+    local bar = ns.StatBar()
+    eq(bar:IsShown(), true, "on the Gear page")
+    eq(bar.shown, 3, "three stats")
+    assert(bar.cells[1].text:GetText():find("+1.0", 1, true), "the change of hit")
+    local lines = ns.StatTipLines(bar.cells[1].sum, bar.cells[1].st)
+    local capped
+    for _, l in ipairs(lines) do if l[1] == ns.L.STATS_CAP:format("9%") then capped = l[2] end end
+    assert(capped and capped:find(ns.L.STATS_CAP_LEFT:format("6.0%"), 1, true), "the cap line: 3% of 9%")
+    ns.ShowTab(2)
+    eq(bar:IsShown(), false, "not on the Sets page")
+    ns.ShowTab(1)
+    eq(bar:IsShown(), true, "back on Gear")
+    -- too narrow a row: the last stats give way
+    ns.PaintStats(bar, ns.Shown(), -1)
+    eq(bar.shown, 0, "nothing fits")
+end)
+
 W.finish()
