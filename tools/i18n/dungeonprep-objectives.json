@@ -2130,10 +2130,13 @@
   "zh": "把你的 Helm of Valor 和 Breastplate of Valor 交给 Deliana。"
  },
  "Give Deliana your Lightforge Helm and Lightforge Breastplate.": {
-  "_need": [
-   "pl"
-  ],
-  "pl": "Oddaj Delianie swoje Lightforge Helm i Lightforge Breastplate."
+  "de": "Gebt Deliana Euren Lightforge Helm und Eure Lightforge Breastplate.",
+  "es": "Entrega a Deliana tu Lightforge Helm y tu Lightforge Breastplate.",
+  "fr": "Donnez à Deliana votre Lightforge Helm et votre Lightforge Breastplate.",
+  "pl": "Oddaj Delianie swoje Lightforge Helm i Lightforge Breastplate.",
+  "pt": "Entregue a Deliana seu Lightforge Helm e sua Lightforge Breastplate.",
+  "ru": "Отдайте Deliana ваши Lightforge Helm и Lightforge Breastplate.",
+  "zh": "把你的 Lightforge Helm 和 Lightforge Breastplate 交给 Deliana。"
  },
  "Give Deliana your Magister's Crown and Magister's Robes.": {
   "_need": [
@@ -3089,6 +3092,15 @@
   ],
   "pl": "Wróć do Magistrate Marduke w Caer Darrow. Pokaż mu Soulbound Keepsake."
  },
+ "Return to Mokvar in Orgimmar with a set of  Shadowcraft Boots, Shadowcraft Pants and Shadowcraft Spaulders.": {
+  "de": "Kehrt mit Shadowcraft Boots, Shadowcraft Pants und Shadowcraft Spaulders zu Mokvar in Orgrimmar zurück.",
+  "es": "Vuelve con Mokvar en Orgrimmar con unas Shadowcraft Boots, unos Shadowcraft Pants y unas Shadowcraft Spaulders.",
+  "fr": "Retournez voir Mokvar à Orgrimmar avec des Shadowcraft Boots, un Shadowcraft Pants et des Shadowcraft Spaulders.",
+  "pl": "Wróć do Mokvara w Orgrimmarze z kompletem Shadowcraft Boots, Shadowcraft Pants i Shadowcraft Spaulders.",
+  "pt": "Volte a Mokvar em Orgrimmar com Shadowcraft Boots, Shadowcraft Pants e Shadowcraft Spaulders.",
+  "ru": "Вернитесь к Mokvar в Orgrimmar с Shadowcraft Boots, Shadowcraft Pants и Shadowcraft Spaulders.",
+  "zh": "带着 Shadowcraft Boots、Shadowcraft Pants 和 Shadowcraft Spaulders 回到 Orgrimmar 的 Mokvar 处。"
+ },
  "Return to Mokvar in Orgimmar with a set of Beaststalker's Boots, Beaststalker's Pants and Beaststalker's Mantle.": {
   "de": "Kehrt mit Beaststalker's Boots, Beaststalker's Pants und Beaststalker's Mantle zu Mokvar in Orgrimmar zurück.",
   "es": "Vuelve con Mokvar en Orgrimmar con unas Beaststalker's Boots, unos Beaststalker's Pants y un Beaststalker's Mantle.",
@@ -3144,6 +3156,9 @@
   "zh": "带着 Magister's Boots、Magister's Leggings 和 Magister's Mantle 回到 Orgrimmar 的 Mokvar 处。"
  },
  "Return to Mokvar in Orgimmar with a set of Shadowcraft Boots, Shadowcraft Pants and Shadowcraft Spaulders.": {
+  "_need": [
+   "pl"
+  ],
   "de": "Kehrt mit Shadowcraft Boots, Shadowcraft Pants und Shadowcraft Spaulders zu Mokvar in Orgrimmar zurück.",
   "es": "Vuelve con Mokvar en Orgrimmar con unas Shadowcraft Boots, unos Shadowcraft Pants y unas Shadowcraft Spaulders.",
   "fr": "Retournez voir Mokvar à Orgrimmar avec des Shadowcraft Boots, un Shadowcraft Pants et des Shadowcraft Spaulders.",

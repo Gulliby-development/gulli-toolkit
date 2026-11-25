@@ -599,6 +599,7 @@ text[84193]="Wróć do Mokvara w Orgrimmarze z kompletem Dreadmist Sandals, Drea
 text[84194]="Wróć do Mokvara w Orgrimmarze z kompletem Boots of Valor, Legplates of Valor i Spaulders of Valor."
 text[84195]="Oddaj Delianie swoje Wildheart Cowl i Wildheart Vest."
 text[84196]="Oddaj Delianie swoje Beaststalker's Cap i Beaststalker's Tunic."
+text[84198]="Oddaj Delianie swoje Lightforge Helm i Lightforge Breastplate."
 text[84200]="Oddaj Delianie swoje Shadowcraft Cap i Shadowcraft Tunic."
 text[84202]="Oddaj Delianie swoje Helm of Valor i Breastplate of Valor."
 text[84203]="Oddaj Mokvarowi swoje Wildheart Cowl i Wildheart Vest."

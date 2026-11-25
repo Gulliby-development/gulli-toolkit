@@ -599,6 +599,7 @@ text[84193]="Вернитесь к Mokvar в Orgrimmar с Dreadmist Sandals, Dre
 text[84194]="Вернитесь к Mokvar в Orgrimmar с Boots of Valor, Legplates of Valor и Spaulders of Valor."
 text[84195]="Отдайте Deliana ваши Wildheart Cowl и Wildheart Vest."
 text[84196]="Отдайте Deliana ваши Beaststalker's Cap и Beaststalker's Tunic."
+text[84198]="Отдайте Deliana ваши Lightforge Helm и Lightforge Breastplate."
 text[84200]="Отдайте Deliana ваши Shadowcraft Cap и Shadowcraft Tunic."
 text[84202]="Отдайте Deliana ваши Helm of Valor и Breastplate of Valor."
 text[84203]="Отдайте Mokvar ваши Wildheart Cowl и Wildheart Vest."

@@ -599,6 +599,7 @@ text[84193]="带着 Dreadmist Sandals、Dreadmist Leggings 和 Dreadmist Mantle 
 text[84194]="带着 Boots of Valor、Legplates of Valor 和 Spaulders of Valor 回到 Orgrimmar 的 Mokvar 处。"
 text[84195]="把你的 Wildheart Cowl 和 Wildheart Vest 交给 Deliana。"
 text[84196]="把你的 Beaststalker's Cap 和 Beaststalker's Tunic 交给 Deliana。"
+text[84198]="把你的 Lightforge Helm 和 Lightforge Breastplate 交给 Deliana。"
 text[84200]="把你的 Shadowcraft Cap 和 Shadowcraft Tunic 交给 Deliana。"
 text[84202]="把你的 Helm of Valor 和 Breastplate of Valor 交给 Deliana。"
 text[84203]="把你的 Wildheart Cowl 和 Wildheart Vest 交给 Mokvar。"

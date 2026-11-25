@@ -599,6 +599,7 @@ text[84193]="Volte a Mokvar em Orgrimmar com Dreadmist Sandals, Dreadmist Leggin
 text[84194]="Volte a Mokvar em Orgrimmar com Boots of Valor, Legplates of Valor e Spaulders of Valor."
 text[84195]="Entregue a Deliana seu Wildheart Cowl e seu Wildheart Vest."
 text[84196]="Entregue a Deliana seu Beaststalker's Cap e sua Beaststalker's Tunic."
+text[84198]="Entregue a Deliana seu Lightforge Helm e sua Lightforge Breastplate."
 text[84200]="Entregue a Deliana seu Shadowcraft Cap e sua Shadowcraft Tunic."
 text[84202]="Entregue a Deliana seu Helm of Valor e sua Breastplate of Valor."
 text[84203]="Entregue a Mokvar seu Wildheart Cowl e seu Wildheart Vest."
