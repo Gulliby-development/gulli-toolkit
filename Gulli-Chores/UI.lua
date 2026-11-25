@@ -105,7 +105,7 @@ local TILE_ICON = {
 
 local function realmMoney(c)
     for _, g in ipairs(ns.RealmGold()) do
-        if g.realm == c.realm then return g.money end
+        if g.realm == ns.Region(c.realm) then return g.money end
     end
 end
 
@@ -263,7 +263,7 @@ local function refreshChars()
         local lc = S.LevelColor(c.level, UnitLevel and UnitLevel("player"))
         local fac = c.faction == "Horde" and "|cffe0503c" or c.faction == "Alliance" and "|cff4a8ef0" or nil
         head:SetText(classColor(c.class) .. c.name .. "|r  " .. S.Hex(lc) .. (c.level or "") .. "|r" ..
-            (c.realm and ("   " .. S.Hex(S.MUTED) .. c.realm .. "|r") or "") ..
+            (ns.Region(c.realm) and ("   " .. S.Hex(S.MUTED) .. ns.Region(c.realm) .. "|r") or "") ..
             (fac and c.faction and ("   " .. fac .. (L["FACTION_" .. c.faction] or c.faction) .. "|r") or ""))
         if not note:HasFocus() then note:SetText(c.note or "") end
         fillCard(c)
