@@ -20,6 +20,28 @@ ns.PRESETS = {
     ROGUE = { { 5140, 10, 22 } },
 }
 
+-- Legacy's Reagent Economy (a node each character takes on its own): class spells need no reagent
+-- a vendor sells. The game gives no way to read it yet, so the player says so (`reagentEconomy`
+-- in the character's save, shared with the hub's Ready card). Flash Powder stays: Vanish still
+-- uses it with the node (a WoW Forever bug of 2026-11).
+ns.ECONOMY_KEEPS = { [5140] = true }
+ns.VENDOR_REAGENTS = {}
+for _, list in pairs(ns.PRESETS) do
+    for _, p in ipairs(list) do
+        if not ns.ECONOMY_KEEPS[p[1]] then ns.VENDOR_REAGENTS[p[1]] = true end
+    end
+end
+function ns.ReagentEconomy() return ns.char ~= nil and ns.char.reagentEconomy == true end
+function ns.SetReagentEconomy(on, quiet)
+    ns.char.reagentEconomy = on and true or nil
+    if not quiet and GulliToolkit and GulliToolkit.SetReagentEconomy then GulliToolkit.SetReagentEconomy(on, true) end
+    if ns.Refresh then ns.Refresh() end
+end
+-- An entry the character does not need while Reagent Economy is taken.
+function ns.NotNeeded(key)
+    return ns.ReagentEconomy() and ns.VENDOR_REAGENTS[key] == true
+end
+
 -- "Best for my level" entries: vendor items by the level they need. The entry counts and buys
 -- only the newest tier for the character's level (with `lower`, also the tier before it), so a
 -- vendor that sells only old water sells nothing to a level 40. Keys in a list are "best:<kind>".
@@ -173,7 +195,7 @@ function ns.List()
     for id, want in pairs(ns.char.list) do
         local have = ns.Have(id)
         out[#out + 1] = { id = id, want = want, have = have, bank = ns.Have(id, true) - have, best = isBest(id) and true or false,
-                          hours = ns.Lasts(id) }
+                          hours = ns.Lasts(id), free = ns.NotNeeded(id) or nil }
     end
     table.sort(out, function(a, b) return ns.EntryName(a.id) < ns.EntryName(b.id) end)
     return out
@@ -209,7 +231,7 @@ function ns.AddPreset()
     local best = {}
     local added = 0
     for _, p in ipairs(ns.PRESETS[class] or {}) do
-        if level >= p[3] then
+        if level >= p[3] and not ns.NotNeeded(p[1]) then
             if p[4] then best[p[4]] = p else
                 if not ns.char.list[p[1]] then ns.char.list[p[1]] = p[2]; added = added + 1 end
             end
@@ -318,7 +340,7 @@ function ns.Plan()
         local kind = isBest(key)
         local id = kind and ns.BestItem(kind, offer) or key
         local v = id and index[id] and list[index[id]]
-        if v then
+        if v and not ns.NotNeeded(key) then
             local need = want - ns.Have(key)
             if need > 0 then
                 local purchases = math.ceil(need / v.stack)
@@ -437,7 +459,7 @@ function ns.BankPlan()
         local ids = {}
         local kind = isBest(key)
         if kind then ids = ns.BestIds(kind) else ids[key] = true end
-        local take = math.max(0, math.min(want - have, bank))
+        local take = ns.NotNeeded(key) and 0 or math.max(0, math.min(want - have, bank))
         local put = ns.db.deposit and math.max(0, have - want) or 0
         if take > 0 or put > 0 then sum[#sum + 1] = { key = key, take = take, put = put } end
         local function collect(bags, left, dir)
@@ -557,7 +579,9 @@ function ns.CheckLow()
     for id, want in pairs(ns.char.list) do
         local have = ns.Have(id)
         local hours = ns.db.forecast and ns.Lasts(id)
-        if have <= math.floor(want * LOW_SHARE) or (hours and hours < EARLY_HOURS) then
+        if ns.NotNeeded(id) then
+            ns.char.warned[id] = nil
+        elseif have <= math.floor(want * LOW_SHARE) or (hours and hours < EARLY_HOURS) then
             if not ns.char.warned[id] then
                 ns.char.warned[id] = true
                 low[#low + 1] = ns.EntryName(id) .. " (" .. have .. ")"
@@ -578,12 +602,14 @@ end
 function ns.Missing()
     local out = {}
     for _, e in ipairs(ns.List()) do
-        if e.have < e.want then out[#out + 1] = { name = ns.EntryName(e.id), have = e.have, want = e.want } end
+        if e.have < e.want and not e.free then out[#out + 1] = { name = ns.EntryName(e.id), have = e.have, want = e.want } end
     end
     return out
 end
 GulliRestock = GulliRestock or {}
 GulliRestock.Missing = function() return ns.char and ns.Missing() or {} end
+GulliRestock.ReagentEconomy = function() return ns.ReagentEconomy() end
+GulliRestock.SetReagentEconomy = function(on, quiet) if ns.char then ns.SetReagentEconomy(on, quiet) end end
 
 -- Events -------------------------------------------------------------------------------------
 
@@ -706,6 +732,7 @@ ns.OPT_ICON = {
     forecast = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     reserve = "Interface\\Icons\\INV_Misc_Coin_02",
     lower = "Interface\\Icons\\INV_Drink_07",
+    economy = "Interface\\Icons\\INV_Misc_Dust_02",
 }
 
 local function option(key, label)

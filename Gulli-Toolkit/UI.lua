@@ -1267,6 +1267,8 @@ function ns.BuildReady()
           icon = I .. "INV_Misc_Note_01" },
         { L.RD_CLASS, L.RD_CLASS_D, function() return ns.ReadyGet("classCheck") end,
           function(v) ns.ReadySet("classCheck", v) end, icon = I .. "INV_Misc_Bag_10" },
+        { L.RD_ECONOMY, L.RD_ECONOMY_D, function() return ns.ReagentEconomy() end,
+          function(v) ns.SetReagentEconomy(v) end, icon = ns.READY_ICON.REAGENT },
     }
     local right, rh = S.SettingsCard(readyFrame, L.RD_SWITCHES, sw)
     right:SetPoint("TOPLEFT", left, "TOPRIGHT", GAP, 0)
@@ -2455,6 +2457,7 @@ function ns.UnlockLink() return unlockLink end
 function ns.Card() return card end
 function ns.ShowPanel(name)
     if name == "protect" and not protectFrame then buildProtected() end
+    if name == "ready" and not readyFrame then ns.BuildReady() end
     if name == "transfer" and not transfer then buildTransfer() end
     showPanel(name)
     return name == "protect" and protectFrame or transfer

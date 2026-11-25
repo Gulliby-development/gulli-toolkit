@@ -2789,6 +2789,46 @@ test("a trade supply has its vendor price before the player saw it at a vendor",
     eq(st.items[3].buy, 50); eq(st.items[3].buyEst, nil)
 end)
 
+test("Legacy's Bartering lowers every vendor price, per character", function()
+    local n = game({ vendor = {} })
+    n.VENDOR_ITEMS[5] = true
+    local function later() W.now = (W.now or 0) + 10 end
+    eq(n.BarterRank(), 0)
+    eq(n.State().items[5].buy, 100, "no node: four times what a vendor pays")
+    -- the spell known: one rank, 5% off
+    W.spells[n.BARTER_SPELL] = true; later()
+    eq(n.BarterRank(), 1)
+    near(n.VendorDiscount(), 0.05)
+    eq(n.State().items[5].buy, 95)
+    -- with the standing: the two shares one after the other (Honored 10%, then 5%)
+    W.standing = { [72] = 6 }; later()
+    near(n.VendorDiscount(), 0.145)
+    eq(n.State().items[5].buy, 86)
+    W.standing = nil
+    -- the Legacy tree says how many ranks
+    C_Traits = { GetConfigIDByTreeID = function(tree) return tree == 1187 and 7 or nil end,
+                 GetTreeNodes = function(tree) return tree == 1187 and { 40, 41 } or {} end,
+                 GetNodeInfo = function(cfg, node) return { entryIDs = { node * 10 }, currentRank = node == 41 and 2 or 1 } end,
+                 GetEntryInfo = function(cfg, e) return { definitionID = e } end,
+                 GetDefinitionInfo = function(d) return { spellID = d == 410 and n.BARTER_SPELL or 99 } end }
+    later()
+    eq(n.BarterRank(), 2)
+    eq(n.State().items[5].buy, 90)
+    -- a price seen at a vendor is this character's own; the account keeps it without Bartering
+    C_Traits = nil; later()
+    W.vendor = { { 5, 95 } }
+    W.Fire("MERCHANT_SHOW")
+    eq(n.char.vendor[5], 95)
+    eq(n.db.vendor[5], 100, "without the 5% of this character")
+    local st = n.State()
+    eq(st.items[5].buy, 95); eq(st.items[5].buyEst, nil)
+    -- another character without the node pays the full price the first saw
+    n.char.vendor = {}
+    W.spells[n.BARTER_SPELL] = nil; later()
+    eq(n.State().items[5].buy, 100)
+    W.spells = {}
+end)
+
 test("the skill a trainer asks for wins over the data's learning level", function()
     local n = game({ trainer = { { "Pattern Thing", 300, 150 } } })
     n.Data.spell[104] = { 120, 130, 140 }

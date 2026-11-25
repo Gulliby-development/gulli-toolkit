@@ -82,6 +82,27 @@ test("class reagents follow the level and keep only the best seed", function()
     eq(Load().AddPreset(), 0)
 end)
 
+test("Legacy's Reagent Economy: class reagents are not bought, checked or added; Flash Powder stays", function()
+    Fake({ class = "MAGE", level = 60, bags = { [17020] = 0 } })
+    local ns = Load()
+    local hub
+    GulliToolkit = { SetReagentEconomy = function(on, quiet) hub = on; assert(quiet) end }
+    ns.SetReagentEconomy(true)
+    eq(ns.char.reagentEconomy, true, "saved for this character")
+    eq(hub, true, "the hub's Ready card follows")
+    eq(GulliRestock.ReagentEconomy(), true)
+    eq(ns.AddPreset(), 0, "no mage reagent is added")
+    ns.Set(17020, 20)
+    eq(#GulliRestock.Missing(), 0, "Arcane Powder is not missing")
+    eq(ns.CheckLow(), nil, "and not low")
+    eq(ns.List()[1].free, true, "the list says it is not needed")
+    assert(ns.VENDOR_REAGENTS[17031] and not ns.VENDOR_REAGENTS[5140], "Vanish still takes Flash Powder")
+    ns.SetReagentEconomy(false)
+    eq(ns.char.reagentEconomy, nil)
+    eq(#GulliRestock.Missing(), 1)
+    GulliToolkit = nil
+end)
+
 test("one low-stock warning until the item is restocked", function()
     Fake({ bags = { [7] = 20 } })
     local ns = Load()
