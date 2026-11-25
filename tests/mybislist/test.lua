@@ -870,6 +870,31 @@ test("stats: which stats a spec shows, healing only where it says more", functio
     eq(keys(ns.StatSummary(ns.Resolve("site:WARRIOR_FURY:PRE"))), "hit,crit,ap,heal", "healing as the fifth")
 end)
 
+test("stats: WoW Forever's own keys, one hit and crit for all, school damage for the spec's school", function()
+    -- a shadow priest swaps a +1% crit, 68 spell power blade for one with +88 Shadow damage
+    Fake({ class = "PRIEST", worn = { [16] = 302 }, char = { shit = 1, scrit = 6, schools = { [6] = 268, [3] = 200 } },
+           stats = { [302] = { ITEM_MOD_SPELL_POWER_SHORT = 68, ITEM_MOD_CRIT_CHANCE_SHORT = 1 },
+                     [301] = { ITEM_MOD_SHADOW_DAMAGE_SHORT = 88, ITEM_MOD_HIT_CHANCE_SHORT = 1 } } })
+    local ns = Load()
+    eq(ns.StatOfKey("ITEM_MOD_SHADOW_DAMAGE_SHORT"), "school6", "shadow damage by its words")
+    eq(ns.StatOfKey("ITEM_MOD_FIRE_RESISTANCE_SHORT"), nil, "a resistance is no damage")
+    eq(ns.StatOfKey("ITEM_MOD_CRIT_CHANCE_SHORT"), "crit", "crit chance")
+    eq(ns.StatOfKey("ITEM_MOD_HEALING_DONE_SHORT"), "heal", "healing")
+    eq(ns.StatOfKey("ITEM_MOD_STAMINA_SHORT"), nil, "not shown")
+    ns.Data.item[301], ns.Data.item[302] = { "mh", 3, 30, 30, 1, nil, "New" }, { "mh", 3, 30, 30, 1, nil, "Old" }
+    ns.Data.lists.PRIEST_SHADOW.PRE = { main = { 301 } }
+    local sum = ns.StatSummary(ns.Resolve("site:PRIEST_SHADOW:PRE"))
+    eq(statOf(sum, "sd").now, 268, "shadow, not the best school by chance")
+    eq(statOf(sum, "sd").gain, 88 - 68, "the new blade's shadow damage counts, the old one's spell power goes")
+    eq(statOf(sum, "crit").gain, -1, "the old blade's crit counts for spells too")
+    eq(statOf(sum, "hit").gain, 1, "one hit for all")
+    eq(statOf(sum, "hit").cap, 17, "17% against a raid boss for spells")
+    eq(ns.HIT_CAP.melee, 8, "8% for attacks")
+    -- a fire mage gets nothing from shadow damage
+    ns.Data.lists.MAGE_FIRE.PRE = { main = { 301 } }
+    eq(statOf(ns.StatSummary(ns.Resolve("site:MAGE_FIRE:PRE")), "sd").gain, -68, "another school's damage is not counted")
+end)
+
 test("stats: an item not loaded yet waits, a value the game hides shows as unknown", function()
     Fake({ worn = { [1] = 103 }, stats = STATS, notLoaded = { [101] = true }, char = {} })
     local ns = Load()
@@ -900,8 +925,8 @@ test("stats: the bar beside the page tabs, only on the Gear page, with the cap i
     assert(bar.cells[1].text:GetText():find("+1.0", 1, true), "the change of hit")
     local lines = ns.StatTipLines(bar.cells[1].sum, bar.cells[1].st)
     local capped
-    for _, l in ipairs(lines) do if l[1] == ns.L.STATS_CAP:format("9%") then capped = l[2] end end
-    assert(capped and capped:find(ns.L.STATS_CAP_LEFT:format("6.0%"), 1, true), "the cap line: 3% of 9%")
+    for _, l in ipairs(lines) do if l[1] == ns.L.STATS_CAP:format("8%") then capped = l[2] end end
+    assert(capped and capped:find(ns.L.STATS_CAP_LEFT:format("5.0%"), 1, true), "the cap line: 3% of 8%")
     ns.ShowTab(2)
     eq(bar:IsShown(), false, "not on the Sets page")
     ns.ShowTab(1)

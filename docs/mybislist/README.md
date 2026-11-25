@@ -51,7 +51,7 @@ My BiS List works alone. With [Gulli Toolkit](../../README.md) installed, it als
 4. Press the target button on an item to make it your first choice for that slot.
 5. To change a list, press **Copy to mine**, then **Add item**, the target button or the cross on a row.
 
-Commands: `/gbis` opens the window, `/gbis reset` puts the settings back.
+Commands: `/gbis` opens the window, `/gbis reset` puts the settings back, `/gbis stats <item link>` prints how the game names the stats of an item.
 
 ## FAQ
 

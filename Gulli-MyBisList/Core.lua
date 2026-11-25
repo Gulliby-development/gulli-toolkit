@@ -1223,6 +1223,13 @@ function ns.Slash(msg)
     if cmd == "reset" then
         ns.Reset()
         print(L.TITLE .. ": " .. L.RESET_DONE)
+    elseif cmd:find("^stats") then
+        -- the raw stat keys of an item, to check how the client names them
+        local id = tonumber(msg:match("item:(%d+)") or msg:match("(%d+)"))
+        local ok, t = pcall(C_Item.GetItemStats, id and ("item:" .. id) or "")
+        if ok and type(t) == "table" then
+            for k, v in pairs(t) do print(L.TITLE .. ": " .. tostring(k) .. " = " .. tostring(v) .. " -> " .. tostring(ns.StatOfKey(k))) end
+        end
     elseif cmd == "help" then
         print(L.TITLE .. ": " .. L.HELP)
     else
@@ -1248,8 +1255,17 @@ ns.STAT_ORDER = {
     melee = { "hit", "crit", "ap" }, ranged = { "hit", "crit", "ap" },
     spell = { "hit", "crit", "sd" }, heal = { "crit", "heal", "sd" },
 }
--- Hit a raid boss three levels up asks for, from the classic rules (not checked in WoW Forever).
-ns.HIT_CAP = { melee = 9, ranged = 9, spell = 16 }
+-- The school of a caster spec's main spells: its spell damage is that school's (GetSpellBonusDamage),
+-- and an item's "+X Shadow damage" counts only for it. A spec not listed counts generic damage.
+ns.SPEC_SCHOOL = {
+    MAGE_ARCANE = 7, MAGE_FIRE = 3, MAGE_FROST = 5,
+    WARLOCK_AFFLICTION = 6, WARLOCK_DEMONOLOGY = 6, WARLOCK_DESTRUCTION = 6,
+    PRIEST_SHADOW = 6, SHAMAN_ELEMENTAL = 4, DRUID_BALANCE = 7, PALADIN_SHOCKADIN = 2,
+}
+-- Hit a raid boss three levels up asks for in WoW Forever: 8% for attacks, 17% for spells (its
+-- client tables, as the Forever guides of Method, ConquestCapped and MmonsteR give them; not the
+-- classic 9% and 16%). One Hit Chance on gear counts for both.
+ns.HIT_CAP = { melee = 8, ranged = 8, spell = 17 }
 
 function ns.StatKind(spec)
     local info = spec and SPEC[spec]
@@ -1258,7 +1274,7 @@ function ns.StatKind(spec)
 end
 
 -- C_Item.GetItemStats keys -> our stat names. Hit and crit "ratings" are percent on a client
--- without ratings (see ratingPct).
+-- without ratings (see ratingPct). A key not listed is read by its words (statOfKey).
 local STAT_KEYS = {
     ITEM_MOD_STRENGTH_SHORT = "str", ITEM_MOD_AGILITY_SHORT = "agi", ITEM_MOD_INTELLECT_SHORT = "int",
     ITEM_MOD_ATTACK_POWER_SHORT = "ap", ITEM_MOD_MELEE_ATTACK_POWER_SHORT = "map",
@@ -1270,6 +1286,27 @@ local STAT_KEYS = {
     ITEM_MOD_CRIT_RATING_SHORT = "crit", ITEM_MOD_CRIT_MELEE_RATING_SHORT = "critm",
     ITEM_MOD_CRIT_RANGED_RATING_SHORT = "critr", ITEM_MOD_CRIT_SPELL_RATING_SHORT = "crits",
 }
+
+local SCHOOLS = { HOLY = 2, FIRE = 3, NATURE = 4, FROST = 5, SHADOW = 6, ARCANE = 7 }
+-- A stat key by its words, for the keys the client names its own way (WoW Forever's "Shadow
+-- Damage", "Critical Strike Chance"): nil for what the line does not show.
+function ns.StatOfKey(k)
+    if STAT_KEYS[k] then return STAT_KEYS[k] end
+    if type(k) ~= "string" then return nil end
+    local u = k:upper()
+    if u:find("RESIST") or u:find("HEALTH") or u:find("FERAL") then return nil end
+    for word, school in pairs(SCHOOLS) do
+        if u:find(word) and (u:find("DAMAGE") or u:find("POWER")) then return "school" .. school end
+    end
+    if u:find("HEAL") then return "heal" end
+    if u:find("SPELL_POWER") then return "sp" end
+    if u:find("SPELL_DAMAGE") or u:find("BONUS_DAMAGE") then return "sd" end
+    if u:find("CRIT") then return "crit" end
+    if u:find("HIT") then return "hit" end
+    if u:find("RANGED_ATTACK_POWER") then return "rap" end
+    if u:find("ATTACK_POWER") then return "ap" end
+    return nil
+end
 
 local function secret(v) return v ~= nil and issecretvalue ~= nil and issecretvalue(v) end
 -- A number from the game, or nil when it gives none or hides it.
@@ -1298,7 +1335,7 @@ function ns.ItemStats(id)
     end
     local s = {}
     for k, v in pairs(t) do
-        local key = STAT_KEYS[k]
+        local key = ns.StatOfKey(k)
         if key and type(v) == "number" then s[key] = (s[key] or 0) + v end
     end
     ns.itemStats[id] = s
@@ -1324,14 +1361,18 @@ local function conv(f, stat, v)
     return v > 0 and r or -r
 end
 
--- What a set of item stats is worth in the shown stats of a kind.
-function ns.StatValue(kind, s)
+-- What a set of item stats is worth in the shown stats of a kind. In WoW Forever one Hit Chance
+-- and one Critical Strike Chance on gear count for spells and attacks alike, so every hit and
+-- crit key adds to every kind; school damage counts only for the spec's school.
+function ns.StatValue(kind, s, school)
     local out = {}
+    local hit = (s.hit or 0) + (s.hitm or 0) + (s.hitr or 0) + (s.hits or 0)
+    local crit = (s.crit or 0) + (s.critm or 0) + (s.critr or 0) + (s.crits or 0)
     if kind == "melee" or kind == "ranged" then
         local ranged = kind == "ranged"
-        out.hit = (s[ranged and "hitr" or "hitm"] or 0) + ratingPct(ranged and "CR_HIT_RANGED" or "CR_HIT_MELEE", s.hit)
-        out.crit = conv(GetCritChanceFromStat, 2, s.agi) * 100 + (s[ranged and "critr" or "critm"] or 0)
-            + ratingPct(ranged and "CR_CRIT_RANGED" or "CR_CRIT_MELEE", s.crit)
+        out.hit = ratingPct(ranged and "CR_HIT_RANGED" or "CR_HIT_MELEE", hit)
+        out.crit = conv(GetCritChanceFromStat, 2, s.agi) * 100
+            + ratingPct(ranged and "CR_CRIT_RANGED" or "CR_CRIT_MELEE", crit)
         if ranged then
             out.ap = conv(GetRangedAttackPowerForStat, 1, s.str) + conv(GetRangedAttackPowerForStat, 2, s.agi)
                 + (s.ap or 0) + (s.rap or 0)
@@ -1340,17 +1381,16 @@ function ns.StatValue(kind, s)
                 + (s.ap or 0) + (s.map or 0)
         end
     else
-        out.hit = (s.hits or 0) + ratingPct("CR_HIT_SPELL", s.hit)
-        out.crit = conv(GetSpellCritChanceFromStat, 4, s.int) * 100 + (s.crits or 0)
-            + ratingPct("CR_CRIT_SPELL", s.crit)
-        out.sd = (s.sp or 0) + (s.sd or 0)
+        out.hit = ratingPct("CR_HIT_SPELL", hit)
+        out.crit = conv(GetSpellCritChanceFromStat, 4, s.int) * 100 + ratingPct("CR_CRIT_SPELL", crit)
+        out.sd = (s.sp or 0) + (s.sd or 0) + (school and s["school" .. school] or 0)
     end
     out.heal = (s.sp or 0) + (s.heal or 0)
     return out
 end
 
 -- What the character has now, as the game's character window says it.
-function ns.StatNow(kind)
+function ns.StatNow(kind, school)
     local now = {}
     local function rating(cr) return _G[cr] and num(GetCombatRatingBonus, _G[cr]) or 0 end
     if kind == "melee" then
@@ -1372,13 +1412,17 @@ function ns.StatNow(kind)
             now.ap = base + (pos or 0) + (neg or 0)
         end
     end
-    -- spell damage: the best school, so +shadow damage counts for a shadow priest
-    local best
-    for school = 2, 7 do
-        local v = num(GetSpellBonusDamage, school)
-        if v and (not best or v > best) then best = v end
+    -- spell damage: the spec's school, else the best one
+    if school then
+        now.sd = num(GetSpellBonusDamage, school)
+    else
+        local best
+        for i = 2, 7 do
+            local v = num(GetSpellBonusDamage, i)
+            if v and (not best or v > best) then best = v end
+        end
+        now.sd = best
     end
-    now.sd = best
     now.heal = num(GetSpellBonusHealing)
     return now
 end
@@ -1388,11 +1432,12 @@ end
 function ns.StatSummary(list)
     if not list then return nil end
     local kind = ns.StatKind(list.spec)
+    local school = ns.SPEC_SCHOOL[list.spec]
     local gains, items, wait = {}, {}, false
     local function add(id, sign)
         local s = ns.ItemStats(id)
         if not s then wait = true; return end
-        for key, v in pairs(ns.StatValue(kind, s)) do
+        for key, v in pairs(ns.StatValue(kind, s, school)) do
             if v ~= 0 then
                 gains[key] = (gains[key] or 0) + sign * v
                 items[key] = items[key] or {}
@@ -1409,7 +1454,7 @@ function ns.StatSummary(list)
             if r.worn then add(r.worn, -1) end
         end
     end
-    local now = ns.StatNow(kind)
+    local now = ns.StatNow(kind, school)
     local keys = {}
     for _, k in ipairs(ns.STAT_ORDER[kind]) do keys[#keys + 1] = k end
     local heal = now.heal or 0
