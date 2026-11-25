@@ -133,6 +133,22 @@ test("own items count at what they would sell for; bolts are made when that is c
     eq(how, "craft"); near(v, 4 * own)
 end)
 
+test("own reagents count at the auction even while nothing is sold there", function()
+    Fake({})
+    local n = Load()
+    local robe = 14152
+    -- Strange Dust: a copper at a vendor, a silver at the auction
+    local st = { items = { [10940] = { ah = 100, vend = 1, age = 0, bags = 5 }, [robe] = { ah = 1000, vend = 100, age = 0 } } }
+    local off = n.Prefs({ sellAH = false })
+    assert(n.IsReagent(10940))
+    eq(n.SellValue(st, off, 10940, 0), 1, "what a route sells still goes to a vendor")
+    near(n.OwnValue(st, off, 10940), 100 * 0.95, "own dust costs what it brings at the auction")
+    eq(n.OwnValue(st, off, robe), 100, "a finished good: the vendor")
+    near(n.OwnValue(st, n.Prefs({}), 10940), n.SellValue(st, n.Prefs({}), 10940, 0), "selling there on: the same")
+    st.items[10940].age = 99
+    eq(n.OwnValue(st, off, 10940), 1, "no fresh price: the vendor")
+end)
+
 test("crafting materials always sell; the share that sells is for finished goods", function()
     Fake({})
     local n = Load()

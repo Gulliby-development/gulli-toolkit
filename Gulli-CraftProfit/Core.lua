@@ -194,6 +194,19 @@ function ns.SellValue(state, P, id, sold)
     return v, how
 end
 
+-- What an own item (bags, bank, mail, alts, gathered) costs the plan: what it would bring. A
+-- reagent of the book (dust, essences, cloth, bars) sells at the auction even while the player
+-- sells nothing there (`sellAH` off, owner's request of 2026-11-25): its vendor price, often a
+-- copper, would make it free to use.
+function ns.OwnValue(state, P, id)
+    local v = ns.SellValue(state, P, id, 0)
+    if P.sellAH or not ns.IsReagent(id) then return v end
+    local it = state.items[id] or {}
+    if it.bop or not ns.Fresh(it, P) then return v end
+    local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
+    return math.max(v, it.ah * (1 - cut))
+end
+
 -- ---------- disenchanting ----------
 
 -- What disenchanting gives, by the item's level (the Vanilla tables). Green: { up to item level,
@@ -325,7 +338,7 @@ function ns.ForgetMakers(recipes) makers[recipes] = nil end
 local reagentCost
 local function unitCost(state, P, st, known, id, depth)
     local best, how = math.huge, nil
-    if left(st, id) > 0 then best, how = ns.SellValue(state, P, id, 0), "own" end
+    if left(st, id) > 0 then best, how = ns.OwnValue(state, P, id), "own" end
     local b, bh = ns.BuyOption(state, P, id)
     if b and b < best then best, how = b, bh end
     if (depth or 0) < 2 then
@@ -474,7 +487,7 @@ local function take(state, P, st, known, acc, id, n, depth)
                 add(acc[pool], id, c)
             end
         end
-        if used > 0 then acc.own = acc.own + used * ns.SellValue(state, P, id, 0) end
+        if used > 0 then acc.own = acc.own + used * ns.OwnValue(state, P, id) end
     end
     if n <= 1e-9 then return end
     local b, how = ns.BuyOption(state, P, id)
