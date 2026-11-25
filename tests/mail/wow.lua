@@ -178,7 +178,9 @@ function Fake(spec)
     ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
     SendMailFrame = W.stub()
     W.sendItems = 0
-    GetSendMailItem = function(j) return j <= W.sendItems and "x" or nil end
+    GetSendMailItem = function(j) if j <= W.sendItems then return "Item10", 10, "icon10", W.sendCount or 1 end end
+    W.postage = 30
+    GetSendMailPrice = function() return W.postage end
     W.sendMoney = nil
     SendMailMoney = {}
     MoneyInputFrame_SetCopper = function(_, c) W.sendMoney = c end
