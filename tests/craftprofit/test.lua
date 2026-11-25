@@ -237,6 +237,10 @@ test("Data.lua takes the WoW Forever skill levels, recipes and trainer prices fr
     eq(c.Data.gone[16960], true, "Thorium Greatsword")
     -- the engineering trainers teach these despite the pattern
     eq(c.Data.gone[11454], nil)
+    -- Wowhead gives only green and grey for some recipes: they still win over Classic's levels
+    local hat = c.Data.spell[12081]
+    eq(hat[3], 245, "Admiral's Hat grey"); eq(hat[2], 240); eq(hat[1], 235)
+    eq(c.Data.spell[3304][3], 75, "Smelt Tin grey"); eq(c.Data.spell[3304][2], 65)
     for sid in pairs(c.Data.train) do
         assert(not c.Data.src[sid] and not c.Data.gone[sid] and c.Data.spell[sid], "trainer price of " .. sid)
     end
