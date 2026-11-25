@@ -594,14 +594,15 @@ function ns.FullDue(now)
     return not m or (m.at or 0) + ns.FULL_EVERY <= (now or time())
 end
 
--- Starts a scan now, when nothing stands in the way.
-function ns.Scan(force)
+-- Starts a scan now, when nothing stands in the way. `whole` (the Read the whole market button)
+-- reads every page whatever the hourly switch and its hour say.
+function ns.Scan(force, whole)
     if not ns.atAH or ns.paused or not canScan() or scan.phase ~= "idle" then return false end
     if not force and (not ns.db.scan or time() < scan.quietUntil or ns.Holding()) then return false end
     if ns.Busy() or not ready() then return false end
     scan.phase, scan.pages, scan.results, scan.done, scan.n = "browse", 1, {}, 0, 0
     -- once in a while the whole market, for the prices; else its cheapest pages, for the deals
-    scan.full = ns.FullDue()
+    scan.full = whole == true or ns.FullDue()
     scan.maxPages = scan.full and ns.FULL_PAGES or ns.MAX_PAGES
     ours = true
     local ok = pcall(A().SendBrowseQuery, { searchString = "", sorts = { { sortOrder = 0, reverseSort = false } },

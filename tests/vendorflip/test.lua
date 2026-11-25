@@ -796,6 +796,12 @@ test("the whole market is read once an hour, the cheapest pages in between; the 
     ns.SetPref("full", false)
     eq(ns.FullDue(), false)
     assert(ns.PricesLine():find("%d"), "the Settings footer tells how many prices there are")
+    -- the button reads it all whatever the switches say
+    ns.SetPref("scan", false)
+    assert(ns.Scan(true, true))
+    eq(ns.scan.full, true)
+    eq(ns.scan.maxPages, ns.FULL_PAGES)
+    ns.StopScan()
 end)
 
 -- ---------- gear to disenchant ----------
