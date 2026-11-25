@@ -880,4 +880,33 @@ test("the Real reminder goes however the Real came: no event, before the end, th
     UnitGUID = nil
 end)
 
+test("a boss whose loot had no Real ends its reminder; another corpse's loot does not", function()
+    realWorld({ db = { real = true }, level = 60 })
+    W.guid = { boss1 = "Creature-0-1-1-1-10436-A" }
+    UnitGUID = function(u) return W.guid[u] end
+    W.source = "Creature-0-1-1-1-10391-B"
+    GetLootSourceInfo = function() return W.source end
+    local ns = Load()
+    local f = ns.RealFrame()
+    kill(301)
+    W.slots, W.lootN = { { 7, "Runecloth" } }, 1
+    W.Fire("LOOT_OPENED")
+    W.Fire("LOOT_CLOSED")
+    eq(f:IsShown(), true, "a trash corpse's loot leaves it")
+    W.source = "Creature-0-1-1-1-10436-A"
+    W.Fire("LOOT_OPENED")
+    W.Fire("LOOT_CLOSED")
+    eq(f:IsShown(), false, "the boss's own loot without a Real ends it")
+    eq(ns.RealLootedToday(301), false, "no Real came: nothing is marked")
+    -- a boss the game names no GUID for: the next loot window counts
+    W.guid = {}
+    kill(302)
+    W.source = "Creature-0-1-1-1-999-C"
+    W.Fire("LOOT_OPENED")
+    W.Fire("LOOT_CLOSED")
+    eq(f:IsShown(), false, "without a boss GUID the next loot is taken as the boss's")
+    W.slots, W.lootN = {}, 0
+    UnitGUID, GetLootSourceInfo = nil, nil
+end)
+
 W.finish()
