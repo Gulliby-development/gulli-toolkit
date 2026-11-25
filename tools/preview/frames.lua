@@ -616,6 +616,11 @@ local function texHtml(t, rect, prect)
         return string.format('<div class="tx" style="%sbackground:url(\'file://%s/tools/preview/mark.png\') 0 0/%.2f%% %.2f%% no-repeat;opacity:%.3f"></div>',
             box(rect, prect), os.getenv("PWD") or ".", 100 / math.max(0.01, tc[2] - tc[1]), 100 / math.max(0.01, tc[4] - tc[3]), c[4] or 1)
     end
+    -- Fishing's mouse picture of the "How to fish" card (tools/fishing/art.py).
+    if tostring(tex):find("\\Art\\Mouse$") then
+        return string.format('<div class="tx" style="%sbackground:url(\'file://%s/tools/preview/fishing-mouse.png\') 0 0/100%% 100%% no-repeat"></div>',
+            box(rect, prect), os.getenv("PWD") or ".")
+    end
     if tostring(tex):find("WHITE8X8") or tostring(tex):find("WHITE8x8") then
         return string.format('<div class="tx" style="%s%sbackground:%s"></div>', box(rect, prect), round, css(c))
     end

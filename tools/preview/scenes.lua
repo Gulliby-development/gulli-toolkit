@@ -1691,11 +1691,25 @@ local function fiPlay(ns, W)
     end
     W.Catch({ { 6299, 1 } })
     W.lureLeft = 420
+    ns.s.secs = 38 * 60
+    ns.got, ns.idleUntil = nil, nil
     ns.Refresh()
 end
-S.fishing = { default = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end },
-    settings = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
-    empty = { spec = { pole = false }, open = function(ns) ns.Toggle() end } }
+S.fishing = { default = { spec = { interact = "F", skill = { 187, 225 } },
+                          open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end },
+    settings = { spec = { interact = "F" }, open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
+    -- the first time: no pole in the hand, one in the bags, the steps open
+    empty = { spec = { pole = false, interact = "F", slots = { [0] = { 6256 } } },
+              open = function(ns, W)
+                  C_Item.GetItemNameByID = function() return "Strong Fishing Pole" end
+                  ns.Toggle()
+              end },
+    -- the bar on the screen while the bobber is out
+    bar = { spec = { interact = "F", skill = { 187, 225 }, channel = 20 },
+            open = function(ns, W) fiPlay(ns, W); W.Cast(); W.now = W.now + 8; ns.TickBar() end },
+    -- the steps opened again while fishing
+    steps = { spec = { interact = "F", skill = { 187, 225 } },
+              open = function(ns, W) ns.Toggle(); fiPlay(ns, W); ns.howto = true; ns.Refresh() end } }
 
 -- Worth It: a level 20 hunter in Westfall with small bags, one chain in the log.
 local wiNames = { [1537] = "Old Blanchy's Feed Pouch", [3343] = "Captain Sander's Booty Bag", [1729] = "Gunnysack of the Night Watch",

@@ -219,7 +219,7 @@ test("a missing lure is told once, and again after the next one ran out", functi
     W.Cast()
     eq(#told, 1)
     eq(told[1][1], BAUBLE)
-    assert(told[1][2]:find("Double%-click"), "names the double-click")
+    assert(told[1][2]:find("next cast"), "the next cast puts it on")
     W.Cast()
     eq(#told, 1, "once")
     W.lureLeft = 600
@@ -259,20 +259,226 @@ test("a real login starts a new session, a reload keeps it", function()
     eq(ns.Summary(), nil)
 end)
 
-test("the window builds and shows the state", function()
-    Fake({ bags = { [BAUBLE] = 1 } })
+test("the window builds and its strip says what to do now", function()
+    Fake({ bags = { [BAUBLE] = 1 }, interact = "F" })
     local ns = Load()
+    local L = ns.L
     ns.Toggle()
     assert(ns.Window(), "a window")
-    eq(ns.StateText(), ns.L.STATE_READY)
-    eq(ns.LureText(), ns.L.NO_LURE)
+    local title, sub, tone = ns.Status()
+    eq(title, L.STATUS_READY); eq(tone, "good")
+    assert(sub:find("Double right%-click casts") and sub:find("F reels in"), sub)
+    eq(ns.LureText(), L.NO_LURE)
     W.lureLeft = 600
     eq(ns.LureText(), "10 min")
     ns.SetPref("cast", false)
-    eq(ns.StateText(), ns.L.STATE_OFF)
-    W.pole = false
+    eq((ns.Status()), L.STATUS_NO_WAY, "no double-click and no key")
+    ns.SetCastKey("F9")
+    title, sub = ns.Status()
+    eq(title, L.STATUS_READY)
+    assert(sub:find("F9 casts"), sub)
     ns.SetPref("cast", true)
-    eq(ns.StateText(), ns.L.STATE_NO_POLE)
+    assert(select(2, ns.Status()):find("Double right%-click or F9 casts"))
+    W.pole = false
+    eq((ns.Status()), L.STATUS_POLE)
+    W.spells = {}
+    eq((ns.Status()), L.STATE_NO_SKILL)
+    ns.Pause(true)
+    eq((ns.Status()), L.STATE_PAUSED)
+end)
+
+test("the steps show the pole, the keys and what is missing", function()
+    Fake({ pole = false, slots = { [0] = { 2131 }, [5] = { 6256 } }, interact = "F" })
+    local ns = Load()
+    local st = ns.Steps()
+    eq(#st, 3)
+    eq(st[1].done, false); eq(st[1].state, "STEP_POLE_BAG"); eq(st[1].equip, 6256, "a pole in the reagent bag counts")
+    eq(st[2].desc, "STEP_CAST_D"); eq(st[2].state, "STEP_CAST_NOKEY")
+    eq(st[3].desc, "STEP_CATCH_D"); eq(st[3].arg, "F"); eq(st[3].state, nil)
+    -- every text a step names exists
+    for _, s in ipairs(st) do
+        assert(ns.L["STEP_" .. s.key], s.key)
+        assert(ns.L[s.desc or ("STEP_" .. s.key .. "_D")], "desc of " .. s.key)
+        if s.state then assert(ns.L[s.state], s.state) end
+    end
+    -- Equip puts it in the hand, never in a fight
+    W.combat = true
+    eq(ns.EquipPole(), false)
+    eq(#W.equipped, 0)
+    W.combat = false
+    eq(ns.EquipPole(), true)
+    eq(W.equipped[1], 6256)
+    st = ns.Steps()
+    eq(st[1].done, true); eq(st[1].state, "STEP_POLE_OK"); eq(st[1].equip, nil)
+    eq(ns.EquipPole(), false, "nothing to equip with the pole in hand")
+    -- no pole anywhere, a key set, no Interact key
+    Fake({ pole = false, db = { cast = false, castKey = "F9" } })
+    ns = Load()
+    st = ns.Steps()
+    eq(st[1].state, "STEP_POLE_NONE")
+    eq(st[2].desc, "STEP_CAST_KEY_D"); eq(st[2].state, "STEP_CAST_KEY"); eq(st[2].arg, "F9")
+    eq(st[3].desc, "STEP_CATCH_CLICK_D"); eq(st[3].state, "STEP_CATCH_UNSET")
+end)
+
+test("the steps fold once something was caught, and open again on request", function()
+    Fake({})
+    local ns = Load()
+    ns.Toggle()
+    eq(ns.HowtoOpen(), true, "before the first catch")
+    W.Catch({ { FISH, 1 } })
+    eq(ns.HowtoOpen(), false)
+    ns.howto = true
+    eq(ns.HowtoOpen(), true)
+end)
+
+test("the cast key is bound only while fishing and casts like the double-click", function()
+    Fake({ pole = false, bags = { [BAUBLE] = 1 } })
+    local ns = Load()
+    ns.SetCastKey("F9")
+    eq(ns.db.castKey, "F9")
+    eq(W.bindings.F9, nil, "no pole, no cast yet: the key stays the player's")
+    W.pole = true
+    W.Fire("PLAYER_EQUIPMENT_CHANGED", 16)
+    local b = W.bindings.F9
+    assert(b, "bound with the pole in hand")
+    eq(b.name, "GulliFishingKey")
+    -- before each press the button takes the next action: the lure first, then the cast
+    local key = ns.KeyCastButton()
+    key._PreClick(key)
+    eq(key:GetAttribute("type"), "item")
+    eq(key:GetAttribute("item"), "item:" .. BAUBLE)
+    W.lureLeft = 600
+    key._PreClick(key)
+    eq(key:GetAttribute("type"), "spell")
+    eq(key:GetAttribute("spell"), "Fishing7620")
+    -- the double-click's own binding comes and goes without touching the key
+    W.Press(10); W.Press(10.1)
+    assert(W.bindings.BUTTON2 and W.bindings.F9)
+    ns.Disarm()
+    eq(W.bindings.BUTTON2, nil)
+    assert(W.bindings.F9, "the key stays")
+    -- the pole goes away: the key is free again
+    W.pole = false
+    W.Fire("PLAYER_EQUIPMENT_CHANGED", 16)
+    eq(W.bindings.F9, nil)
+    -- in a fight nothing is bound; it comes after the fight
+    W.pole, W.combat = true, true
+    W.Fire("PLAYER_EQUIPMENT_CHANGED", 16)
+    eq(W.bindings.F9, nil)
+    W.combat = false
+    W.Fire("PLAYER_REGEN_ENABLED")
+    assert(W.bindings.F9)
+    -- paused: free; a cleared key: free
+    ns.Pause(true)
+    eq(W.bindings.F9, nil)
+    ns.Pause(false)
+    assert(W.bindings.F9)
+    ns.SetCastKey(nil)
+    eq(W.bindings.F9, nil)
+    eq(ns.db.castKey, nil)
+end)
+
+test("the bar shows the cast, the catch, then asks for the next cast, and hides", function()
+    Fake({ channel = 20, skill = { 187, 225 } })
+    local ns = Load()
+    W.now = 1000
+    eq(ns.BarState(), nil, "nothing before the first cast")
+    W.Cast()
+    eq(ns.BarState(), "cast")
+    local v = ns.BarView("cast", 1005)
+    eq(v.right, "15 s"); eq(v.frac, 0.75); eq(v.low, false)
+    v = ns.BarView("cast", 1017)
+    eq(v.right, "3 s"); eq(v.low, true, "the last seconds warn")
+    assert(ns.BarFrame():IsShown(), "the bar is on the screen")
+    W.now = 1012
+    W.Catch({ { FISH, 2 } })
+    W.Stop()
+    eq(ns.BarState(), "got")
+    v = ns.BarView("got")
+    eq(v.name, "Item" .. FISH); eq(v.right, "+2")
+    W.now = 1012 + ns.BAR_GOT + 0.1
+    eq(ns.BarState(), "idle")
+    eq(ns.BarView("idle").name, ns.L.BAR_AGAIN)
+    W.now = 1012 + ns.BAR_IDLE + 0.1
+    eq(ns.BarState(), nil)
+    ns.TickBar()
+    eq(ns.BarFrame():IsShown(), false, "the bar went away")
+    -- a cast that ran out without a catch
+    W.Cast(); W.now = W.now + 20; W.Stop()
+    eq(ns.BarState(), "idle")
+    -- the game gave no times: the bar still runs
+    W.channel = nil
+    W.Cast()
+    eq(ns.BarState(), "cast")
+    eq(ns.cast.finish - ns.cast.start, ns.CHANNEL)
+    eq((ns.SkillText()), "187/225")
+end)
+
+test("the bar's switch and the pause keep it off the screen; Unlock shows it to place", function()
+    Fake({ channel = 20 })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    eq(ns.db.bar, true, "the bar starts shown (owner's decision)")
+    eq(#reg.frames, 1)
+    local fr = reg.frames[1]
+    eq(fr.get(), true)
+    fr.set(false)
+    eq(ns.db.bar, false)
+    W.Cast()
+    eq(ns.BarState(), nil, "the switch is off")
+    reg.move(true)
+    assert(fr.frame():IsShown(), "shown in the Unlock mode")
+    reg.move(false)
+    eq(fr.frame():IsShown(), false)
+    fr.set(true)
+    W.Cast()
+    eq(ns.BarState(), "cast")
+    reg.pause(true)
+    eq(ns.BarState(), nil, "paused")
+    eq(fr.frame():IsShown(), false)
+end)
+
+test("the game's cast bar hides only while a cast runs and the switch is on", function()
+    Fake({ channel = 20 })
+    local ns = Load()
+    local alpha = 1
+    PlayerCastingBarFrame = { GetAlpha = function() return alpha end, SetAlpha = function(_, a) alpha = a end }
+    W.Cast()
+    ns.TickBar()
+    eq(alpha, 0)
+    W.Stop()
+    W.now = W.now + 2
+    W.RunTimers()
+    eq(alpha, 1, "back after the cast")
+    ns.SetPref("hideCast", false)
+    W.Cast()
+    ns.TickBar()
+    eq(alpha, 1, "the switch is off")
+    PlayerCastingBarFrame = nil
+end)
+
+test("fishing time counts casts and catches without the breaks", function()
+    Fake({})
+    local ns = Load()
+    W.now = 1000; W.Cast()
+    W.now = 1020; W.Catch({ { FISH, 1 } })
+    W.now = 1030; W.Cast()
+    W.now = 1050; W.Catch({ { FISH, 1 } })
+    eq(ns.s.secs, 50)
+    eq(ns.PerHour(), nil, "too little to tell")
+    W.now = 2000; W.Cast()
+    eq(ns.s.secs, 50, "a break is not fishing time")
+    for i = 1, 5 do
+        W.now = W.now + 20; W.Catch({ { FISH, 1 } })
+        W.now = W.now + 5; W.Cast()
+    end
+    eq(ns.s.secs, 175)
+    eq(ns.PerHour(), 144)
+    eq(ns.SessionLine(), ns.L.FOOT_SUM:format(7, "3 min"))
+    ns.Start()
+    eq(ns.SessionLine(), ns.L.FOOT_NONE)
 end)
 
 test("the hub gets the module's window, pause, reset and switches", function()
@@ -285,8 +491,13 @@ test("the hub gets the module's window, pause, reset and switches", function()
     assert(#reg.options <= 6)
     for _, o in ipairs(reg.options) do assert(o.icon and o.label and o.get() == true, o.label) end
     ns.db.mute = true
+    ns.SetCastKey("F9")
+    ns.db.barPoint = { "CENTER", "CENTER", 0, 0 }
     reg.reset()
     eq(ns.db.mute, false)
+    eq(ns.db.castKey, nil, "the cast key goes back to none")
+    eq(ns.db.barPoint, nil, "the bar goes back to its place")
+    eq(ns.db.bar, true)
     reg.pause(true)
     eq(ns.paused, true)
 end)
