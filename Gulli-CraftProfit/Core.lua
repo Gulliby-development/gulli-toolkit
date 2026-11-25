@@ -235,13 +235,8 @@ function ns.DisenchantMats(it, id)
     if not (it and GEAR[it.class] and it.ilvl and it.ilvl > 0) then return nil end
     if it.quality == 2 then
         for _, t in ipairs(ns.DE_GREEN) do
-            if it.ilvl <= t[1] then
-                local weapon = it.class == 2
-                local dust, ess = weapon and 0.2 or 0.75, weapon and 0.75 or 0.2
-                local out = { { t[2], dust * t[3] }, { t[4], ess * t[5] } }
-                if t[6] then out[3] = { t[6], 0.05 } end
-                return out
-            end
+            -- no count for this item: its dust and its essence, shares left to DisenchantValue
+            if it.ilvl <= t[1] then return { { t[2], t[3] }, { t[4], t[5] }, guess = true } end
         end
     elseif it.quality == 3 then
         for _, t in ipairs(ns.DE_BLUE) do
@@ -250,16 +245,27 @@ function ns.DisenchantMats(it, id)
     end
 end
 
+-- A green nobody counted is valued on the safe side (owner's request of 2026-11-25): ns.DE_SAFE of
+-- the disenchants give the cheaper of its dust and its essence, the rest the dearer one, and no
+-- shard. A material without a fresh price counts nothing, so it is the cheaper one.
+ns.DE_SAFE = 0.8
+
 -- What one disenchant brings at the auction after its cut; nil while a material has no price.
 -- A material without a fresh price counts nothing, so the guess stays low.
 function ns.DisenchantValue(state, P, id)
     local mats = ns.DisenchantMats(state.items[id], id)
     if not mats then return nil end
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
-    local sum, any = 0, false
-    for _, m in ipairs(mats) do
+    local sum, any, each = 0, false, {}
+    for k, m in ipairs(mats) do
         local it = state.items[m[1]]
-        if it and ns.Fresh(it, P) then sum, any = sum + m[2] * it.ah * (1 - cut), true end
+        each[k] = 0
+        if it and ns.Fresh(it, P) then each[k], any = m[2] * it.ah * (1 - cut), true end
+        sum = sum + each[k]
+    end
+    if mats.guess and any then
+        local lo, hi = math.min(each[1], each[2]), math.max(each[1], each[2])
+        sum = ns.DE_SAFE * lo + (1 - ns.DE_SAFE) * hi
     end
     return any and sum or nil
 end
