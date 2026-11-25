@@ -745,6 +745,6 @@ function ns.SimEnded()
     cache = {}
     if w.find then w.find:SetText("") end
     if S.Toast then
-        S.Toast({ key = "sim", icon = ns.SIM_ICON, title = L.SIM, text = L.SIM_ENDED, seconds = 6 })
+        S.Toast({ key = "sim", icon = ns.SIM_ICON, title = L.SIM, text = ns.simKept and L.SIM_ENDED_KEPT or L.SIM_ENDED, seconds = 6 })
     end
 end

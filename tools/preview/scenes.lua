@@ -779,6 +779,40 @@ S.craftprofit.crafts = { spec = S.craftprofit.default.spec, before = S.craftprof
 S.craftprofit.recipes = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(4) end }
 
+-- a pinned route: part of the cloth bought since, the price climbed; then its comparison and the list
+do
+    local function pinned(ns, W)
+        W.items[1].bags, W.items[1].bank = 0, 0
+        S.craftprofit.default.open(ns, W)
+        ns.PinNow(false)
+        W.items[1].bags = 600
+        W.items[1].ah = 240
+        ns.Calculate()
+        for i, n in ipairs(ns.view.route) do if n.title == "STOP_AH_BUY" then ns.Select(i) end end
+    end
+    local base = S.craftprofit.default
+    S.craftprofit.pinned = { spec = base.spec, before = base.before, open = pinned }
+    S.craftprofit.pinsettings = { spec = base.spec, before = base.before, open = function(ns, W) pinned(ns, W); ns.Tab(5) end }
+    S.craftprofit.pincompare = { spec = base.spec, before = base.before, open = function(ns, W)
+        pinned(ns, W)
+        W.items[2].ah = 60
+        ns.Calculate()
+        ns.CompareStart()
+    end }
+    S.craftprofit.pinlist = { spec = base.spec, before = base.before, open = function(ns, W)
+        pinned(ns, W)
+        local pins = ns.Pins()
+        pins[#pins + 1] = { key = "sim|171", prof = "Alchemy", icon = "Interface\\Icons\\Trade_Alchemy", from = 1, to = 300, skill = 1,
+                            left = 4215000, ofN = 31, haveN = 0, segs = {}, buys = {}, sim = { line = 171, from = 1, to = 300 } }
+        pins[#pins + 1] = { key = "Other|Blacksmithing", guid = "Other", who = "Borgrim", class = "WARRIOR", prof = "Blacksmithing",
+                            icon = "Interface\\Icons\\Trade_BlackSmithing", from = 120, to = 225, skill = 164, left = 187300, ofN = 9,
+                            haveN = 5, segs = {}, buys = {} }
+        pins[#pins + 1] = { key = "Other|Leatherworking", guid = "Other", who = "Borgrim", class = "WARRIOR", prof = "Leatherworking",
+                            icon = "Interface\\Icons\\INV_Misc_ArmorKit_17", from = 1, to = 150, skill = 150, done = 1, segs = {}, buys = {} }
+        ns.PinShowPage("list")
+    end }
+end
+
 S.craftprofit.earn = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.SetPref("mode", "earn") end }
 

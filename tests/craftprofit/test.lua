@@ -2196,6 +2196,7 @@ end)
 test("a pattern on the auction is bought by clicks: search, then the cheapest buyout", function()
     local n = game({ itemAH = true, handOnly = { [6] = true } })
     n.Toggle(); n.Calculate()
+    n.db.prefs.autoPin = false   -- the stop below is made by hand; a pin would build the route's own
     -- the route's pattern line carries the pattern's item and its name
     n.Data.src[104] = { "v", 6, "Ally Gal|A" }
     n.Data.spell[104] = { 150, 160, 170 }
@@ -3467,6 +3468,435 @@ test("the simulation's shopping list buys the whole way at the auction house, fo
     eq(#n.TipLines(line.id), 0, "still no tooltip line")
     n.SimStop()
     assert(not n.sim)
+end)
+
+-- ---------- pinned routes ----------
+
+-- The tailoring of game() bought at the auction, calculated, with the window closed.
+local function pinGame(extra)
+    local n = game(extra)
+    W.items[1].bags, W.items[1].bank = 0, 0
+    n.Recalc(false)
+    return n
+end
+local function segsOf(n)
+    local out = {}
+    for _, sg in ipairs((n.view.plan.full or n.view.plan).segs) do out[#out + 1] = sg.rid .. ":" .. sg.from .. "-" .. sg.to end
+    return table.concat(out, " ")
+end
+local function lineOf(n, title, id)
+    local i = stopOf(n, title)
+    for _, l in ipairs(i and n.view.route[i].lines or {}) do if l.id == id then return l, i end end
+end
+
+test("a pinned route keeps its recipes and where each item comes from, whatever the prices do", function()
+    local n = pinGame()
+    local segs = segsOf(n)
+    assert(lineOf(n, "STOP_AH_BUY", 1) and not lineOf(n, "STOP_AH_BUY", 2), "the route weaves its bolts from bought cloth")
+    local pin = n.PinNow()
+    assert(pin and n.view.pin == pin and n.db.pins[1] == pin)
+    eq(pin.how[1], "buy"); eq(pin.how[2], "craft"); eq(pin.from, SKILL); eq(pin.to, 185, "as far as the route goes")
+    -- bolts turn cheap at the auction and the hood dear: a free calculation takes both
+    W.items[2].ah, W.items[4].ah = 100, 90000
+    local out = n.FreshOut()
+    local function has(route, id)
+        for _, node in ipairs(route) do
+            if node.title == "STOP_AH_BUY" then for _, l in ipairs(node.lines) do if l.id == id then return true end end end
+        end
+    end
+    assert(has(out.route, 2), "free: it buys the bolts")
+    local other = {}
+    for _, sg in ipairs((out.plan.full or out.plan).segs) do other[#other + 1] = sg.rid .. ":" .. sg.from .. "-" .. sg.to end
+    assert(table.concat(other, " ") ~= segs, "free: another recipe")
+    eq(out.pin, nil, "a free calculation is not the pinned route")
+    -- the pinned one does not move
+    n.Recalc(false)
+    eq(n.view.pin, pin)
+    eq(segsOf(n), segs)
+    assert(lineOf(n, "STOP_AH_BUY", 1) and not lineOf(n, "STOP_AH_BUY", 2), "still cloth, no bolts")
+    assert(n.view.plan.prep[101], "the bolts are still woven")
+    eq(n.view.prefs.target, 185)
+    -- one variant only: the route itself
+    eq(#n.view.variants, 1)
+    -- the target cannot be changed while it is pinned
+    n.SetPref("target", 170)
+    eq(n.Prefs(n.SavedPrefs()).target ~= 170, true)
+end)
+
+test("the bug that started it: reagents bought along the route, Recalculate, the same route", function()
+    local n = pinGame()
+    local segs = segsOf(n)
+    local cloth = lineOf(n, "STOP_AH_BUY", 1)
+    local need, price = cloth.n, cloth.price
+    local pin = n.PinNow()
+    eq(pin.ofN, 2); eq(pin.haveN, 0); eq(pin.spent, 0)
+    eq(cloth.pinOf, nil, "the line of the old route table is not the shown one")
+    cloth = lineOf(n, "STOP_AH_BUY", 1)
+    eq(cloth.pinOf, need); eq(cloth.pinHave, 0); eq(cloth.pinPrice, price)
+    local left = pin.left
+    -- the player buys 1000 of the cloth and the price climbs behind them
+    W.items[1].bags = 1000
+    W.items[1].ah = 400
+    -- before any calculation the tiles count what came into the bags
+    local st = n.PinStatus()
+    eq(st.spent, 1000 * price); eq(st.planLeft, left - 1000 * price); eq(st.haveN, 0)
+    n.Recalc(false)
+    eq(n.view.pin, pin)
+    eq(segsOf(n), segs, "the recipes stay")
+    cloth = lineOf(n, "STOP_AH_BUY", 1)
+    eq(cloth.n, need - 1000, "only the rest is bought")
+    eq(cloth.pinOf, need); eq(cloth.pinHave, 1000)
+    eq(cloth.pinPrice, price); eq(cloth.price, 400, "the price now, beside the price of the plan")
+    eq(pin.spent, 1000 * price)
+    eq(pin.planLeft, left - 1000 * price)
+    assert(pin.left > pin.planLeft, "what is left costs more now")
+    -- all of it bought: the line leaves the stop and stands among the bought ones
+    W.items[1].bags = need + 5
+    n.Recalc(false)
+    eq(lineOf(n, "STOP_AH_BUY", 1), nil)
+    local b = pin.buys.i1
+    eq(b.left, 0); eq(b.n, need)
+    eq(pin.haveN, 1)
+    local v = stopOf(n, "STOP_VENDOR_BUY")
+    eq(#n.view.route[v].bought, 0, "the vendor stop has its own")
+end)
+
+test("the first purchase or craft pins the route, with Undo; the switch turns that off", function()
+    local n = pinGame()
+    n.Toggle()
+    local ah = stopOf(n, "STOP_AH_BUY")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    n.Select(ah)
+    local line = n.view.route[ah].lines[1]
+    W.Click(n.ui.act1)
+    W.Fire("COMMODITY_PRICE_UPDATED", line.price, line.price * line.n)
+    eq(n.view.pin, nil, "a price asked pins nothing")
+    W.Click(n.ui.act1)
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    local pin = n.view.pin
+    assert(pin and pin.auto, "the purchase pinned it")
+    eq(#n.db.pins, 1)
+    -- Undo: free again, and no second try in this session
+    n.PinUndo(pin)
+    eq(n.view.pin, nil); eq(#n.db.pins, 0)
+    eq(n.AutoPin(), nil)
+    -- a craft of the route pins too, one that is not of the route does not
+    local m = pinGame()
+    m.OnCast(102)
+    eq(m.view.pin, nil, "the hood is not on the route")
+    m.OnCast(101)
+    assert(m.view.pin and m.view.pin.auto, "weaving a bolt is")
+    -- the vendor's one click
+    local k = pinGame()
+    local vs = stopOf(k, "STOP_VENDOR_BUY")
+    k.BuyVendor(k.view.route[vs], k.RunProgress()[vs])
+    assert(k.view.pin)
+    -- the switch
+    local o = pinGame()
+    o.SetPref("autoPin", false)
+    assert(o.view.plan and not o.view.stale, "the switch plans nothing")
+    o.OnCast(101)
+    eq(o.view.pin, nil)
+    assert(o.PinNow(), "the button still pins")
+    -- a profit route is never pinned
+    local e = pinGame()
+    e.view.mode = "own"; e.view.plan = { earn = true, segs = {} }
+    eq(select(2, e.PinNow()), "none")
+end)
+
+test("a pinned route survives a reload, ends at its target, and ten go on at most", function()
+    local n = pinGame()
+    local segs = segsOf(n)
+    local pin = n.PinNow()
+    -- a reload: the view is gone, the saved pin is found again by character and profession
+    for k in pairs(n.view) do n.view[k] = nil end
+    n.view.route, n.view.changed = {}, {}
+    eq(n.PinHere(), pin)
+    n.Recalc(false)
+    eq(n.view.pin, pin); eq(segsOf(n), segs)
+    -- one per character and profession: pinning again replaces it
+    n.Unpin(pin)
+    eq(#n.db.pins, 0); assert(n.view.stale, "unpinned: the result is marked outdated")
+    local second = n.PinNow()
+    assert(second ~= pin and #n.db.pins == 1)
+    n.PinNow()
+    eq(#n.db.pins, 1)
+    -- ten that still go on: the eleventh is refused, a finished one does not count
+    for i = 1, n.PIN_MAX - 1 do n.db.pins[#n.db.pins + 1] = { key = "other|" .. i, prof = "Tailoring", from = 1, to = 50, segs = {}, buys = {} } end
+    eq(n.PinCount(), n.PIN_MAX)
+    n.Unpin(second)
+    n.db.pins[#n.db.pins + 1] = { key = "other|x", prof = "Tailoring", from = 1, to = 50, segs = {}, buys = {} }
+    local none, why = n.PinNow()
+    eq(none, nil); eq(why, "full")
+    n.db.pins[#n.db.pins].done = 5
+    assert(n.PinNow(), "a finished route frees its place")
+    -- the target reached: finished, and the next calculation is free
+    pin = n.view.pin
+    W.skill = pin.to
+    n.char.profs.Tailoring.skill = pin.to
+    eq(n.PinFor({ name = "Tailoring", skill = pin.to }), nil)
+    assert(pin.done, "kept in the list as finished")
+    local rows = n.PinRows()
+    eq(rows[1].head, "active"); eq(rows[#rows].pin.done ~= nil, true)
+    local heads = 0
+    for _, r in ipairs(rows) do if r.head then heads = heads + 1 end end
+    eq(heads, 2)
+    -- only the newest finished ones stay
+    for i = 1, n.PIN_DONE + 3 do
+        local p = { key = "done|" .. i, prof = "Tailoring", from = 1, to = 50, segs = {}, buys = {} }
+        table.insert(n.db.pins, 1, p)
+        n.PinFinish(p)
+    end
+    local done = 0
+    for _, p in ipairs(n.db.pins) do if p.done then done = done + 1 end end
+    eq(done, n.PIN_DONE)
+end)
+
+test("is there a better route: both counted from the stock as it is, the verdict, the switch", function()
+    local n = pinGame()
+    local pin = n.PinNow()
+    local segs = segsOf(n)
+    -- nothing changed: the new calculation is the same route
+    local c = n.PinCompare(n.view, n.FreshOut())
+    eq(c.verdict, "same"); eq(c.diff, 0); eq(#c.rows, 0)
+    eq(c.mine.cost, c.fresh.cost)
+    -- bolts turn very cheap: the new one buys them and saves
+    W.items[2].ah = 50
+    n.Recalc(false)
+    eq(segsOf(n), segs)
+    c = n.PinCompare(n.view, n.FreshOut())
+    eq(c.verdict, "better")
+    assert(c.diff > 0 and c.diff == c.mine.cost - c.fresh.cost)
+    local drop, add
+    for _, r in ipairs(c.rows) do
+        if r.kind == "drop" and r.id == 1 then drop = r end
+        if r.kind == "add" and r.id == 2 then add = r end
+    end
+    assert(drop and add, "it names what the new one buys instead")
+    -- cloth already bought for the pinned route is of no use to the new one
+    W.items[1].bags = 400
+    n.Recalc(false)
+    c = n.PinCompare(n.view, n.FreshOut())
+    eq(c.mine.full.bags[1] ~= nil, true, "mine uses the cloth")
+    -- a new one that is dearer: stay
+    W.items[2].ah = 900
+    n.Recalc(false)
+    c = n.PinCompare(n.view, n.FreshOut())
+    eq(c.verdict, "same")
+    -- going over: the new route is shown and pinned in place of the old one
+    W.items[2].ah = 50
+    n.Recalc(false)
+    n.view.compare = n.PinCompare(n.view, n.FreshOut())
+    assert(n.PinSwitch())
+    assert(n.view.pin and n.view.pin ~= pin and pin.gone)
+    eq(#n.db.pins, 1)
+    eq(n.view.pin.how[2], "buy", "the new route buys its bolts")
+    eq(n.view.compare, nil)
+end)
+
+test("the window of a pinned route: button, strip, tiles, have N of M, no Outdated tag", function()
+    local n = pinGame()
+    n.Toggle()
+    local w = n.pinUI
+    assert(w.button:IsShown() and not w.strip:IsShown() and not w.tiles:IsShown())
+    eq(w.button:GetText(), n.L.PIN)
+    eq(w.chip:GetText(), n.L.PINS_CHIP:format(0))
+    assert(n.ui.varTiles[1]:IsShown(), "the routes to choose from")
+    local need = lineOf(n, "STOP_AH_BUY", 1).n
+    -- the pin button
+    W.Click(w.button)
+    local pin = n.view.pin
+    assert(pin, "pinned by the button")
+    assert(w.strip:IsShown() and w.tiles:IsShown())
+    assert(not n.ui.varTiles[1]:IsShown(), "the tiles of the pinned route stand in their place")
+    eq(w.button:GetText(), n.L.PIN_OFF)
+    eq(w.chip:GetText(), n.L.PINS_CHIP:format(1))
+    eq(n.ui.calc:GetText(), n.L.PIN_REFRESH)
+    assert(w.strip.text:GetText():find(n.L.PIN_STRIP_TEXT:format(""):sub(1, 5), 1, true))
+    assert(w.tiles.spent.sub:GetText():find("0", 1, true))
+    -- the bags change: no Outdated tag, the tiles count at once
+    W.items[1].bags = 500
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.RunTimers()
+    assert(not n.ui.stale:IsShown(), "a pinned route is never outdated")
+    local _, i = lineOf(n, "STOP_AH_BUY", 1)
+    n.Select(i)
+    local rows = n.DetailRows(n.view.route[i], i, n.StopAction(i))
+    local row
+    for _, r in ipairs(rows) do if r.id == 1 then row = r end end
+    eq(row.pinHave, 500); eq(row.pinOf, need)
+    eq(row.note, n.L.PIN_HAVE:format(500, need))
+    -- Refresh stock: the same route, the rest to buy
+    W.Click(n.ui.calc)
+    eq(n.view.pin, pin)
+    eq(lineOf(n, "STOP_AH_BUY", 1).n, need - 500)
+    rows = n.DetailRows(n.view.route[i], i, n.StopAction(i))
+    for _, r in ipairs(rows) do if r.id == 1 then row = r end end
+    eq(row.note, n.L.PIN_HAVE:format(500, need))
+    -- a price that climbed past the guard is told on the line
+    W.items[1].ah = 900
+    W.Click(n.ui.calc)
+    rows = n.DetailRows(n.view.route[i], i, n.StopAction(i))
+    for _, r in ipairs(rows) do if r.id == 1 then row = r end end
+    assert(row.dear and row.note:find("500", 1, true), row.note)
+    -- all there: the line stays in sight, ticked off
+    W.items[1].bags = need + 1
+    W.Click(n.ui.calc)
+    _, i = nil, stopOf(n, "STOP_AH_BUY")
+    if i then
+        rows = n.DetailRows(n.view.route[i], i, n.StopAction(i))
+        local last = rows[#rows]
+        assert(last.bought and last.done and last.id == 1)
+    end
+    assert(w.tiles.spent.sub:GetText():find("1", 1, true))
+    -- a setting changed: the route keeps its recipes and its own settings
+    local segs = segsOf(n)
+    n.SetPref("chance", 55)
+    eq(n.view.pin, pin); eq(segsOf(n), segs)
+    assert(n.view.prefs.chance ~= 55, "the settings it was pinned with")
+    -- the target stepper is no way out
+    n.SetPref("target", 160)
+    assert(n.Prefs(n.SavedPrefs()).target ~= 160)
+    -- Unpin: free again, and the result is marked outdated
+    W.Click(w.strip.off)
+    eq(n.view.pin, nil)
+    assert(not w.strip:IsShown() and not w.tiles:IsShown() and n.ui.varTiles[1]:IsShown())
+    assert(n.ui.stale:IsShown())
+    eq(n.ui.calc:GetText(), n.L.RECALC)
+    eq(w.chip:GetText(), n.L.PINS_CHIP:format(0))
+end)
+
+test("the comparison page and the list of routes in the window", function()
+    local n = pinGame()
+    n.Toggle()
+    local w = n.pinUI
+    W.Click(w.button)
+    local pin = n.view.pin
+    W.items[2].ah = 50
+    W.Click(n.ui.calc)
+    -- Is there a better route?
+    W.Click(w.strip.better)
+    eq(n.PinPageShown(), "compare")
+    assert(w.cmp:IsShown() and not n.ui.main:IsShown())
+    local c = n.view.compare
+    assert(c and c.verdict == "better", "the new calculation is ready")
+    eq(n.view.pin, pin, "looking changes nothing")
+    local text = n.PinVerdict(c)
+    assert(w.cmp.verdict:GetText():find(text, 1, true))
+    assert(#w.cmp.list.rows >= #c.rows and #c.rows > 0)
+    for _, r in ipairs(c.rows) do assert(n.PinChangeText(r) ~= "", r.kind) end
+    -- Keep my route
+    W.Click(w.cmp.keep)
+    eq(n.PinPageShown(), nil); eq(n.view.pin, pin)
+    assert(n.ui.main:IsShown() and not w.cmp:IsShown())
+    -- Go over to the new one
+    W.Click(w.strip.better)
+    W.Click(w.cmp.go)
+    eq(n.PinPageShown(), nil)
+    assert(n.view.pin and n.view.pin ~= pin and n.view.pin.how[2] == "buy")
+    assert(w.strip:IsShown())
+    -- the list behind the header chip
+    W.Click(w.chip)
+    eq(n.PinPageShown(), "list")
+    assert(w.list:IsShown() and not n.ui.main:IsShown())
+    local rows = w.list.rows
+    eq(rows[1].head, "active"); eq(rows[2].pin, n.view.pin); eq(rows[2].opens, "here")
+    local title, sub, tag = n.PinRowText(rows[2])
+    assert(title:find("Tailoring", 1, true) and title:find("185", 1, true)); eq(tag, n.L.PINS_OPEN_TAG)
+    assert(sub ~= "")
+    -- another character's route: only to look at; delete takes it away
+    n.db.pins[#n.db.pins + 1] = { key = "Other|Alchemy", guid = "Other", who = "Twink", class = "MAGE", prof = "Alchemy", from = 1, to = 75,
+                                  skill = 20, left = 12345, ofN = 3, segs = {}, buys = {} }
+    n.Refresh()
+    rows = w.list.rows
+    eq(#rows, 3); eq(rows[3].opens, nil)
+    assert(select(2, n.PinRowText(rows[3])):find("Twink", 1, true))
+    n.Unpin(rows[3].pin); n.Refresh()
+    eq(#w.list.rows, 2)
+    W.Click(w.list.head.back)
+    eq(n.PinPageShown(), nil)
+    assert(n.ui.main:IsShown())
+end)
+
+test("the simulation saves a route by its button, the only thing it keeps; it opens again and can be walked", function()
+    local n = simGame({ money = 100000000 })
+    n.Toggle()
+    n.SimOpen()
+    n.SimSet({ line = 197, from = 1, to = 60, empty = true })
+    n.SimCalculate()
+    local before = dump(GulliCraftProfitCharDB)
+    local w = n.pinUI
+    assert(w.button:IsShown() and not w.strip:IsShown(), "the pin button saves here")
+    eq(w.button:GetText(), n.L.SIM_SAVE)
+    eq(#n.db.pins, 0)
+    local segs = segsOf(n)
+    W.Click(w.button)
+    local pin = n.db.pins[1]
+    assert(pin and pin.sim and n.sim.pin == pin and pin.key == "sim|197")
+    eq(pin.from, 1); eq(pin.to, 60)
+    eq(w.button:GetText(), n.L.SIM_SAVED)
+    assert((pin.ofN or 0) > 0 and (pin.left or 0) > 0, "its shopping list is counted")
+    -- nothing else of the simulation is saved
+    local keep = n.db.pins
+    n.db.pins = nil
+    local rest = dump(GulliCraftProfitDB)
+    n.db.pins = keep
+    n.SimStop()
+    eq(n.sim, nil)
+    n.db.pins = nil
+    eq(dump(GulliCraftProfitDB), rest, "the exit leaves the saved variables as they were, but for the route")
+    n.db.pins = keep
+    eq(dump(GulliCraftProfitCharDB), before)
+    eq(#n.db.pins, 1)
+    -- the prices move; the saved route opens again as it was
+    for id, it in pairs(W.items) do if it.ah then it.ah = it.ah * (id % 3 + 1) end end
+    local rows = n.PinRows()
+    eq(rows[2].pin, pin); eq(rows[2].opens, "sim")
+    n.PinRowOpen(rows[2])
+    assert(n.sim and n.sim.pin == pin and n.sim.line == 197 and n.sim.empty)
+    assert(n.view.plan and n.view.pin == pin, "calculated along the saved route")
+    eq(segsOf(n), segs)
+    eq(w.button:GetText(), n.L.SIM_SAVED)
+    -- a second press takes the saved route away, a third saves it again
+    W.Click(w.button)
+    eq(#n.db.pins, 0); eq(n.sim.pin, nil)
+    W.Click(w.button)
+    pin = n.db.pins[1]
+    assert(pin and n.sim.pin == pin)
+    -- other conditions are another route: the saved one stays, this one is free
+    n.SimSet({ to = 40 })
+    eq(n.sim.pin, nil); eq(#n.db.pins, 1)
+    n.SimStop()
+    -- no profession of that line: nothing to walk
+    eq(n.PinAdoptable(pin), nil)
+end)
+
+test("a character with the profession walks a saved simulation as its own pinned route", function()
+    local n = game()
+    W.items[1].bags, W.items[1].bank = 0, 0
+    n.Recalc(false)
+    local segs = segsOf(n)
+    -- a saved simulation of Tailoring, as the planner made it
+    local own = n.SimOwn(197)
+    assert(own, "the character's Tailoring is the simulation's line 197")
+    local real = n.PinNow()
+    local saved = { key = "sim|197", prof = "Tailoring", from = 100, to = real.to, skill = 100, mode = real.mode, w = real.w,
+                    segs = real.segs, how = real.how, rids = real.rids, buys = {}, prefs = {},
+                    sim = { line = 197, from = 100, to = real.to } }
+    n.Unpin(real)
+    n.db.pins[1] = saved
+    assert(n.PinAdoptable(saved))
+    local rows = n.PinRows()
+    eq(rows[2].adopt, true)
+    local mine = n.PinAdopt(saved)
+    assert(mine and mine.key ~= saved.key and mine.from == SKILL and mine.to == saved.to)
+    eq(#n.db.pins, 2, "the simulation's route stays")
+    n.Recalc(false)
+    eq(n.view.pin, mine)
+    eq(segsOf(n), segs)
+    -- below its start or past its end there is nothing to walk
+    saved.from = SKILL + 10
+    eq(n.PinAdoptable(saved), nil)
 end)
 
 W.finish()

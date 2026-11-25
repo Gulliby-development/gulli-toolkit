@@ -35,9 +35,10 @@ ns.DEFAULTS = {
     guard = 10, -- percent an auction price may be above the plan before the Buy button asks first
     side = true, -- at the auction house the run's buy stop opens in the window beside it
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
+    autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
 }
 -- Settings that change no plan: the window only redraws.
-ns.NO_PLAN = { guard = true, side = true, ahead = true }
+ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
 ns.FRESH_DAYS = 3
@@ -401,7 +402,12 @@ local function take(state, P, st, known, acc, id, n, depth)
     local b, how = ns.BuyOption(state, P, id)
     local rid = (depth or 0) < 2 and maker(state, known, id)
     local craft = rid and reagentCost(state, P, st, known, rid, (depth or 0) + 1) or math.huge
-    if craft < (b or math.huge) then
+    local make = craft < (b or math.huge)
+    -- a pinned route keeps where each item came from when it was pinned, while that still works
+    local forced = P.pin and P.pin.how and P.pin.how[id]
+    if forced == "craft" and rid and craft < math.huge then make = true
+    elseif forced == "buy" and b then make = false end
+    if make then
         add(acc.prep, rid, n)
         for rid2, k in pairs(state.recipes[rid].r) do take(state, P, st, known, acc, rid2, k * n, (depth or 0) + 1) end
         return
@@ -546,6 +552,8 @@ local function planWith(state, P, allowed)
             local last = acc.segs[#acc.segs]
             -- every recipe that could take this point, for the reasons a stretch shows (ns.Why)
             local cands = {}
+            -- a pinned route: the recipe it had at this skill, while that recipe can still take the point
+            local want, pinned = P.pin and ns.PinRecipeAt(P.pin, s), nil
             for _, rid in ipairs(ids) do
                 local r = state.recipes[rid]
                 local ch = ns.Chance(r, s)
@@ -572,10 +580,12 @@ local function planWith(state, P, allowed)
                         cands[#cands + 1] = c
                         -- `only`: a run of one recipe; the others still make its intermediates
                         if (not P.only or P.only == rid) and (not best or c.score < best.score - 1e-9) then best = c end
+                        if want == rid and (not P.only or P.only == rid) then pinned = c end
                     end
                 end
             end
             if not best then acc.warn = { "WARN_NONE", s }; break end
+            best = pinned or best
             local r = state.recipes[best.rid]
             local why
             if not (last and last.rid == best.rid and last.to == s) then why = ns.Why(state, P, st, allowed, best, cands, w, s) end
@@ -623,9 +633,14 @@ end
 -- penalty, and a drop must never trade skill points for fewer crafts.
 function ns.Plan(state, P)
     local allowed = {}
-    for rid, r in pairs(state.recipes) do if (r.skill or r.other) and ns.CanGet(r, P) then allowed[rid] = true end end
+    local pin = P.pin
+    for rid, r in pairs(state.recipes) do
+        -- a pinned route: only the recipes it had, and what the character knows
+        if (r.skill or r.other) and ns.CanGet(r, P) and (not pin or r.learned or pin.rids[rid]) then allowed[rid] = true end
+    end
     local best = planWith(state, P, allowed)
-    for _ = 1, state.sim and 3 or 8 do
+    -- its recipes are chosen already: nothing is dropped
+    for _ = 1, pin and 0 or (state.sim and 3 or 8) do
         local better, drop
         local ids = {}
         for rid in pairs(best.buyRecipes) do
@@ -992,6 +1007,12 @@ end
 -- the fastest one within the budget (the cheapest when none fits).
 function ns.Variants(state, P)
     local out = {}
+    -- a pinned route is the only one: its recipes, planned again from the stock as it is now
+    if P.pin then
+        local full = ns.Plan(state, P)
+        full.w = P.w
+        return { { mode = P.pin.mode, plan = ns.NextRun(state, P, full), best = true, over = false, many = false } }
+    end
     local front = {}
     if P.level and state.skill < ns.Target(state, P) then
         local lo, hi = ns.PhaseRange()
@@ -1633,12 +1654,16 @@ end
 
 -- Builds the whole view from the current state and settings without touching ns.view, so the
 -- window keeps showing the last result while a job runs. `flash`: light up what changed.
-local function build(flash)
+-- `nopin`: as if the route were not pinned (the comparison with a new calculation).
+local function build(flash, nopin)
     local v = ns.view
     local state = ns.State and ns.State()
     if not state then return { state = nil, plan = nil, route = {} } end
-    local P = ns.Prefs(ns.SavedPrefs())
-    local out = { state = state, prefs = P }
+    local pin = not nopin and ns.PinFor(state) or nil
+    local P = pin and ns.PinPrefs(pin) or ns.Prefs(ns.SavedPrefs())
+    -- a new calculation beside a pinned route goes to the same target
+    if nopin and v.pin then P.target, P.level = v.pin.to, true end
+    local out = { state = state, prefs = P, pin = pin }
     ns.progress.done = 0
     ns.Phase(0, 0.45)
     out.variants = ns.Variants(state, P)
@@ -1682,7 +1707,7 @@ local function build(flash)
 end
 
 local FIELDS = { "state", "prefs", "variants", "mode", "auto", "plan", "legs", "leg", "route", "changed", "delta", "legsBy",
-                 "made", "marks" }
+                 "made", "marks", "pin" }
 local function apply(out)
     local v = ns.view
     -- a result of another profession than the one chosen now never shows (a switch while it ran)
@@ -1696,10 +1721,13 @@ local function apply(out)
     v.changed = v.changed or {}
     -- a new plan starts from the bags as they are: what was crafted or marked before is in them
     v.made, v.marks = v.made or {}, v.marks or {}
-    v.stale = nil
+    v.stale, v.compare = nil, nil
     if ns.nameLate then ns.nameLate = nil; ns.FixNames(v) end
+    if v.pin then ns.PinNote(v) end
     return v
 end
+-- Shows a result that was built aside (the new calculation of a comparison).
+function ns.ApplyResult(out) return apply(out) end
 
 -- One result per profession for the session: a switch shows that profession's last result,
 -- outdated, or nothing until Calculate. A switch never calculates (owner's decision of 2026-11-20).
@@ -1752,6 +1780,13 @@ end
 function ns.RecalcJob(flash)
     return newJob("all", function() return build(flash) end, apply)
 end
+
+-- A new calculation beside a pinned route: built without the pin and not shown; `done(out)` gets it.
+function ns.FreshJob(done)
+    return newJob("fresh", function() return build(false, true) end, done)
+end
+-- The same at once, for the tests.
+function ns.FreshOut() return build(false, true) end
 
 -- The runs of the route `mode` of the current result, kept per route so switching back is instant.
 function ns.LegsJob(mode)
@@ -1814,10 +1849,24 @@ function ns.LegRoute(v)
     if v.leg == ns.SIM_SHOP and v.state and v.state.sim then return ns.SimShopping(v) end
     local l = v.legs and v.legs[v.leg or 1]
     if l and l.unknown then return {} end
-    if l and v.leg > 1 then return ns.Route(l.state, l.plan) end
-    local route = ns.Route(v.state, v.plan)
-    -- the first run buys for the whole way at once (`ahead`); a simulated run shows only its own
-    if not v.state.sim and ns.Prefs(ns.SavedPrefs()).ahead and v.legs then route = ns.BuyAhead(route, v.legs) end
+    local pin = v.state and not v.state.sim and v.pin or nil
+    local ahead = v.state and not v.state.sim and v.legs and ns.Prefs(ns.SavedPrefs()).ahead
+    local route
+    if l and v.leg > 1 then route = ns.Route(l.state, l.plan)
+    else
+        route = ns.Route(v.state, v.plan)
+        -- the first run buys for the whole way at once (`ahead`); a simulated run shows only its own
+        if ahead then route = ns.BuyAhead(route, v.legs) end
+    end
+    -- a pinned route counts its purchases over the whole way, whatever the stops show
+    if pin then
+        local whole = route
+        if not (ahead and (v.leg or 1) == 1) then
+            whole = ns.Route(v.state, v.plan)
+            if v.legs then whole = ns.BuyAhead(whole, v.legs) end
+        end
+        ns.PinSync(pin, whole, v.state, route)
+    end
     return route
 end
 
@@ -1846,6 +1895,8 @@ function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
     -- a setting the simulation fixes stays as it is there
     if ns.sim and ns.SIM_FIXED[key] ~= nil then return end
+    -- a pinned route keeps its target
+    if key == "target" and ns.view.pin and not ns.sim then return end
     ns.SavedPrefs()[key] = value
     if ns.sim and key == "target" and value then ns.sim.to = value end
     if ns.NO_PLAN[key] then
@@ -1916,6 +1967,7 @@ ns.OPT_ICON = {
     maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop", maxCrafts = "Interface\\Icons\\Spell_Nature_TimeStop",
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",
+    autoPin = "Interface\\Icons\\INV_Misc_Map_01",
 }
 
 local function option(key)
