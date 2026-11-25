@@ -2,7 +2,9 @@
 -- Undermine Real leaves a Real to loot. After such a boss dies an icon shows until a Real comes
 -- in, so it never stays on the corpse. A boss that gave this character a Real today is skipped,
 -- and nothing shows at the cap. It only reads the game: kills from ENCOUNTER_END, the Real from
--- the currency it is.
+-- the currency it is. The currency's count is set against the count before the pull every
+-- second (its event alone missed the loot), the loot chat names it, a loot window that held it
+-- counts once it closes, a click hides it, and it never outlives REAL_WAIT.
 
 local _, ns = ...
 local L = ns.L
@@ -21,9 +23,11 @@ ns.REAL_DUNGEONS = { [230] = true, [229] = true, [429] = true, [289] = true, [32
 ns.REAL_NAMES = { ["Blackmaw Hold"] = true, ["Shaper's Terrace"] = true }
 
 local frame, icon, caption
+local moving
 local fight            -- { id, level } of the encounter that runs
 local pending = {}     -- kills waiting for their Real, oldest first: { id, at, instance }
-local lastQty
+local baseQty          -- the Real count before the first pending kill's pull
+local hidden = {}      -- encounter ids already reminded on this visit
 
 local function now() return time and time() or 0 end
 local function secret(v) return issecretvalue and issecretvalue(v) end
@@ -111,9 +115,67 @@ end
 
 function ns.RealPending() dropOld(); return pending end
 
-function ns.OnRealEvent(event, a1, _, a3, _, a5)
+-- n Reals came in: the oldest kills got theirs.
+local function got(n)
+    for _ = 1, math.max(1, n or 1) do
+        local p = table.remove(pending, 1)
+        if not p then break end
+        ns.cdb.realGot = ns.cdb.realGot or {}
+        ns.cdb.realGot[p.id] = resetAt()
+        if p.instance and not ns.REAL_DUNGEONS[p.instance] then
+            ns.db.realLearned = ns.db.realLearned or {}
+            ns.db.realLearned[p.instance] = true
+        end
+    end
+    if #pending == 0 then baseQty = nil end
+end
+
+-- The count against the one before the pull: true when it went up.
+function ns.RealCheck()
+    if #pending == 0 then return false end
+    local n = ns.RealCount()
+    if not n then return false end
+    if not baseQty then baseQty = n return false end
+    if n <= baseQty then
+        if n < baseQty then baseQty = n end
+        if ns.RealAtCap() then wipe(pending); baseQty = nil; ns.RealPaint() end
+        return false
+    end
+    got(n - baseQty)
+    baseQty = #pending > 0 and n or nil
+    if ns.RealAtCap() then wipe(pending); baseQty = nil end
+    ns.RealPaint()
+    return true
+end
+
+-- A loot line or a loot slot that is the Real: its currency link, or its name.
+function ns.IsRealText(text)
+    if type(text) ~= "string" or secret(text) then return false end
+    if text:find("currency:" .. ns.REAL_CURRENCY .. "[:|]") then return true end
+    local _, _, info = ns.RealCount()
+    local name = info and info.name
+    if type(name) == "string" and not secret(name) and name ~= "" and text:find(name, 1, true) then return true end
+    return text:find(L.REAL_NAME, 1, true) ~= nil
+end
+
+local function selfLoot(text, guid)
+    if guid ~= nil and not secret(guid) and UnitGUID then return guid == UnitGUID("player") end
+    local head = type(LOOT_ITEM_SELF) == "string" and LOOT_ITEM_SELF:match("^(.-)%%s") or nil
+    return head ~= nil and head ~= "" and text:sub(1, #head) == head
+end
+
+-- Take the oldest kill as looted, when the count did not tell already.
+local function takeOne()
+    if ns.RealCheck() or #pending == 0 then return end
+    got(1)
+    ns.RealPaint()
+end
+
+local lootHadReal
+
+function ns.OnRealEvent(event, a1, _, _, _, a5, ...)
     if event == "ENCOUNTER_START" then
-        fight = { id = a1, level = ns.RealBossLevel() }
+        fight = { id = a1, level = ns.RealBossLevel(), qty = ns.RealCount() }
         -- the boss frames come a moment after the pull
         if C_Timer and C_Timer.After then
             C_Timer.After(1, function()
@@ -125,38 +187,36 @@ function ns.OnRealEvent(event, a1, _, a3, _, a5)
         end
     elseif event == "ENCOUNTER_END" then
         local level = fight and fight.id == a1 and fight.level or nil
+        local before = fight and fight.id == a1 and fight.qty or nil
         fight = nil
-        if a5 ~= 1 or not ns.RealWanted(a1, level) then return end
+        if a5 ~= 1 or hidden[a1] or not ns.RealWanted(a1, level) then return end
+        hidden[a1] = true
         local _, _, _, _, _, _, _, inst = GetInstanceInfo()
+        if #pending == 0 then baseQty = before or ns.RealCount() end
         pending[#pending + 1] = { id = a1, at = now(), instance = inst }
-        lastQty = ns.RealCount()
-        ns.RealPaint()
-    elseif event == "CURRENCY_DISPLAY_UPDATE" then
-        if a1 ~= nil and a1 ~= ns.REAL_CURRENCY then return end
-        local n = ns.RealCount()
-        local gained = (n and lastQty and n > lastQty)
-            or (a1 == ns.REAL_CURRENCY and type(a3) == "number" and not secret(a3) and a3 > 0)
-        if n then lastQty = n end
-        if not gained then
-            if #pending > 0 and ns.RealAtCap() then wipe(pending); ns.RealPaint() end
-            return
+        -- the Real may have come in before the boss's end
+        if not ns.RealCheck() then ns.RealPaint() end
+        if C_Timer and C_Timer.After then C_Timer.After(ns.REAL_WAIT + 1, function() ns.RealPaint() end) end
+    elseif event == "CURRENCY_DISPLAY_UPDATE" or event == "BAG_UPDATE_DELAYED" then
+        ns.RealCheck()
+    elseif event == "CHAT_MSG_CURRENCY" then
+        if #pending > 0 and ns.IsRealText(a1) then takeOne() end
+    elseif event == "CHAT_MSG_LOOT" then
+        local guid = select(7, ...) -- the 12th argument
+        if #pending > 0 and ns.IsRealText(a1) and selfLoot(a1, guid) then takeOne() end
+    elseif event == "LOOT_OPENED" or event == "LOOT_READY" then
+        if #pending == 0 or not GetNumLootItems then return end
+        for i = 1, GetNumLootItems() or 0 do
+            local link = GetLootSlotLink and GetLootSlotLink(i)
+            local name = GetLootSlotInfo and select(2, GetLootSlotInfo(i))
+            if ns.IsRealText(link) or ns.IsRealText(name) then lootHadReal = true end
         end
-        dropOld()
-        local p = table.remove(pending, 1)
-        if p then
-            ns.cdb.realGot = ns.cdb.realGot or {}
-            ns.cdb.realGot[p.id] = resetAt()
-            if p.instance and not ns.REAL_DUNGEONS[p.instance] then
-                ns.db.realLearned = ns.db.realLearned or {}
-                ns.db.realLearned[p.instance] = true
-            end
-        end
-        if ns.RealAtCap() then wipe(pending) end
-        ns.RealPaint()
+    elseif event == "LOOT_CLOSED" then
+        -- the window showed the Real: it is taken, or the player chose to leave it
+        if lootHadReal then lootHadReal = nil; takeOne() else ns.RealCheck() end
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- out of the dungeon, nothing is left to loot
-        if not ns.RealDungeon() then wipe(pending) end
-        lastQty = ns.RealCount()
+        if not ns.RealDungeon() then wipe(pending); wipe(hidden); baseQty = nil end
         ns.RealPaint()
     end
 end
@@ -187,8 +247,26 @@ local function build()
         acc = acc + (dt or 0)
         if acc < 1 then return end
         acc = 0
-        if #pending > 0 then dropOld(); if #pending == 0 then ns.RealPaint() end end
+        if #pending > 0 then
+            dropOld()
+            if #pending == 0 then ns.RealPaint() else ns.RealCheck() end
+        end
     end)
+    -- a click hides it: the player knows best whether the Real was looted
+    frame:EnableMouse(true)
+    frame:SetScript("OnMouseUp", function()
+        if moving then return end
+        if GameTooltip then GameTooltip:Hide() end
+        ns.RealClear()
+    end)
+    frame:SetScript("OnEnter", function(self)
+        if moving or not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L.REAL_NAME)
+        GameTooltip:AddLine(L.REAL_HIDE, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    frame:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     place()
     frame:Hide()
 end
@@ -198,7 +276,6 @@ function ns.RealFrame()
     return frame
 end
 
-local moving
 function ns.RealPaint()
     if not frame then build() end
     dropOld()
@@ -226,13 +303,14 @@ end
 function ns.SetReal(on)
     if not ns.db then return end
     ns.db.real = on and true or false
-    if not on then wipe(pending) end
+    if not on then wipe(pending); baseQty = nil end
     if frame then ns.RealPaint() end
 end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "ENCOUNTER_START", "ENCOUNTER_END", "CURRENCY_DISPLAY_UPDATE", "PLAYER_ENTERING_WORLD",
-                     "PLAYER_LOGIN" }) do
+                     "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "CHAT_MSG_CURRENCY", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_OPENED",
+                     "LOOT_CLOSED" }) do
     ev:RegisterEvent(e)
 end
 ev:SetScript("OnEvent", function(_, event, ...)
@@ -242,4 +320,4 @@ ev:SetScript("OnEvent", function(_, event, ...)
     ns.OnRealEvent(event, ...)
 end)
 
-function ns.RealClear() wipe(pending); if frame then ns.RealPaint() end end
+function ns.RealClear() wipe(pending); baseQty = nil; lootHadReal = nil; if frame then ns.RealPaint() end end

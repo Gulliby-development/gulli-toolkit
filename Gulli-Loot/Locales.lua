@@ -135,6 +135,7 @@ T.en = {
     OPT_REAL_D = "At level 60, after a dungeon boss that drops Tarnished Undermine Real: an icon until you loot it. Skips bosses looted today and stays quiet at the cap.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Loot it from the boss",
+    REAL_HIDE = "Click: hide",
 }
 
 T.de = {
@@ -263,6 +264,7 @@ T.de = {
     OPT_REAL_D = "Auf Stufe 60, nach einem Dungeonboss, der Tarnished Undermine Real fallen lässt: ein Symbol, bis du ihn plünderst. Heute geplünderte Bosse und die Obergrenze bleiben still.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Plündere ihn beim Boss",
+    REAL_HIDE = "Klick: ausblenden",
 }
 
 T.es = {
@@ -391,6 +393,7 @@ T.es = {
     OPT_REAL_D = "A nivel 60, tras un jefe de mazmorra que suelta el Tarnished Undermine Real: un icono hasta que lo despojes. Omite los jefes ya despojados hoy y calla en el tope.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Despójalo del jefe",
+    REAL_HIDE = "Clic: ocultar",
 }
 
 T.fr = {
@@ -519,6 +522,7 @@ T.fr = {
     OPT_REAL_D = "Au niveau 60, après un boss de donjon qui donne le Tarnished Undermine Real : une icône jusqu’à ce que tu le ramasses. Ignore les boss déjà pillés aujourd’hui et se tait au plafond.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Ramasse-le sur le boss",
+    REAL_HIDE = "Clic : masquer",
 }
 
 T.pl = {
@@ -647,6 +651,7 @@ T.pl = {
     OPT_REAL_D = "Na 60. poziomie, po bossie lochu, z którego wypada Tarnished Undermine Real: ikona, dopóki go nie zbierzesz. Pomija bossów zebranych dziś i milczy przy limicie.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Zbierz go z bossa",
+    REAL_HIDE = "Kliknij: ukryj",
 }
 
 T.pt = {
@@ -775,6 +780,7 @@ T.pt = {
     OPT_REAL_D = "No nível 60, após um chefe de masmorra que solta o Tarnished Undermine Real: um ícone até você saqueá-lo. Pula chefes saqueados hoje e fica quieto no limite.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Saqueie-o do chefe",
+    REAL_HIDE = "Clique: ocultar",
 }
 
 T.ru = {
@@ -903,6 +909,7 @@ T.ru = {
     OPT_REAL_D = "На 60 уровне, после босса подземелья, с которого падает Tarnished Undermine Real: значок, пока вы его не подберёте. Боссы, с которых реал уже взят сегодня, пропускаются; на лимите молчит.",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "Подберите его с босса",
+    REAL_HIDE = "Щелчок: скрыть",
 }
 
 T.zh = {
@@ -1031,6 +1038,7 @@ T.zh = {
     OPT_REAL_D = "60级时，击败会掉落 Tarnished Undermine Real 的地下城首领后显示图标，直到你拾取它。今天已拾取过的首领会跳过，达到上限时不提示。",
     REAL_NAME = "Tarnished Undermine Real",
     REAL_LOOT = "从首领身上拾取",
+    REAL_HIDE = "点击：隐藏",
 }
 
 ns.T = T
