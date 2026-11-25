@@ -97,8 +97,8 @@ end
 local function itemInfo(id)
     local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
     if not f then return 0, 0, 1 end
-    local _, _, quality, _, _, _, _, _, _, _, sell, _, _, bind = f(id)
-    return sell or 0, bind or 0, quality or 1
+    local _, _, quality, ilvl, _, _, _, _, _, _, sell, class, _, bind = f(id)
+    return sell or 0, bind or 0, quality or 1, ilvl, class
 end
 local function count(id, bank)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
@@ -362,7 +362,7 @@ end
 
 local function itemFor(state, id)
     if state.items[id] then return end
-    local sell, bind, quality = itemInfo(id)
+    local sell, bind, quality, ilvl, class = itemInfo(id)
     local ah, age = ns.AuctionPrice(id)
     local bags = count(id)
     local bank = math.max(0, count(id, true) - bags)
@@ -374,7 +374,22 @@ local function itemFor(state, id)
     state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
                         ah = ah, age = age, buy = buy, buyEst = not ns.db.vendor[id] and buy ~= nil or nil, bags = bags, bank = bank,
                         mail = mail, alts = alts, altWho = who,
-                        gather = gather, lots = ns.db.lots[id] }
+                        gather = gather, lots = ns.db.lots[id], ilvl = ilvl, class = class }
+    -- crafted gear an enchanter may disenchant: its materials need their prices too
+    if state.enchanter then
+        for _, m in ipairs(ns.DisenchantMats(state.items[id]) or {}) do itemFor(state, m[1]) end
+    end
+end
+
+-- The character knows Enchanting (skill line 333), so it can disenchant what it makes.
+function ns.Enchanter()
+    if not GetProfessions or not GetProfessionInfo then return false end
+    local list = { GetProfessions() } -- may hold gaps (no second profession, no fishing)
+    for k = 1, 6 do
+        local i = list[k]
+        if i and select(7, GetProfessionInfo(i)) == 333 then return true end
+    end
+    return false
 end
 
 -- ---------- the mailbox, the other characters, gathering ----------
@@ -820,6 +835,8 @@ function ns.State()
     state.now = time and time() or nil -- how old the lots read at the auction are (ns.MarketTake)
     local gone = ns.Data and ns.Data.gone or {}
     local sim = prof.sim
+    -- a simulated character has no other profession to disenchant with
+    state.enchanter = not sim and ns.Enchanter() or nil
     local skips = ns.SkipSet()
     ns.ReadRep()
     ns.repUnknown = {}

@@ -145,7 +145,7 @@ function Fake(spec)
         GetItemIconByID = function(id) return W.items[id] and W.items[id].icon or ("icon" .. id) end,
         GetItemInfo = function(id)
             local it = W.items[id] or {}
-            return it.name or ("Item" .. id), nil, it.quality or 1, nil, nil, nil, nil, nil, nil, nil, it.sell or 0, nil, nil, it.bind or 0
+            return it.name or ("Item" .. id), nil, it.quality or 1, it.ilvl, nil, nil, nil, nil, nil, nil, it.sell or 0, it.class, nil, it.bind or 0
         end,
         GetItemCount = function(id, bank)
             local it = W.items[id] or {}

@@ -36,6 +36,7 @@ ns.DEFAULTS = {
     side = true, -- at the auction house the run's buy stop opens in the window beside it
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
     autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
+    disenchant = false, -- an enchanter may disenchant crafted gear and sell the materials at the auction
 }
 -- Settings that change no plan: the window only redraws.
 ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true }
@@ -171,7 +172,7 @@ function ns.SellChance(P, id)
     return P.chance / 100
 end
 
-function ns.SellValue(state, P, id, sold)
+local function sellValue(state, P, id, sold)
     local it = state.items[id] or {}
     local vend = it.vend or 0
     if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.MarketTake(state, P, id) then return vend, "vendor" end
@@ -180,6 +181,74 @@ function ns.SellValue(state, P, id, sold)
     local ev = p * it.ah * (1 - cut) + (1 - p) * (vend - ns.Deposit(it))
     if ev > vend then return ev, "ah" end
     return vend, "vendor"
+end
+
+-- Selling, or with `disenchant` (an enchanter only) disenchanting when the materials bring more:
+-- "vendor", "ah" or "de".
+function ns.SellValue(state, P, id, sold)
+    local v, how = sellValue(state, P, id, sold)
+    if P.disenchant and state.enchanter then
+        local de = ns.DisenchantValue(state, P, id)
+        if de and de > v then return de, "de" end
+    end
+    return v, how
+end
+
+-- ---------- disenchanting ----------
+
+-- What disenchanting gives, by the item's level (the Vanilla tables). Green: { up to item level,
+-- dust, dust per item, essence, essence per item, shard or nil }; armour gives dust 75%, essence
+-- 20%, a shard 5%; a weapon the dust and the essence the other way round. Blue: one shard.
+ns.DE_GREEN = {
+    { 15, 10940, 1.5, 10938, 1.5 },
+    { 20, 10940, 2.5, 10939, 1.5, 10978 },
+    { 25, 10940, 5, 10998, 1.5, 10978 },
+    { 30, 11083, 1.5, 11082, 1.5, 11084 },
+    { 35, 11083, 3.5, 11134, 1.5, 11138 },
+    { 40, 11137, 1.5, 11135, 1.5, 11139 },
+    { 45, 11137, 3.5, 11174, 1.5, 11177 },
+    { 50, 11176, 1.5, 11175, 1.5, 11178 },
+    { 55, 11176, 3.5, 16202, 1.5, 14343 },
+    { 60, 16204, 1.5, 16203, 1.5, 14344 },
+    { 999, 16204, 3.5, 16203, 2.5, 14344 },
+}
+ns.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45, 11177 }, { 50, 11178 },
+               { 55, 14343 }, { 999, 14344 } }
+local GEAR = { [2] = true, [4] = true }
+
+-- The materials one disenchant of an item gives on average: { { id, n } }; nil for anything but
+-- green or blue weapons and armour (the item's `class`, `quality` and `ilvl` from the scan).
+function ns.DisenchantMats(it)
+    if not (it and GEAR[it.class] and it.ilvl and it.ilvl > 0) then return nil end
+    if it.quality == 2 then
+        for _, t in ipairs(ns.DE_GREEN) do
+            if it.ilvl <= t[1] then
+                local weapon = it.class == 2
+                local dust, ess = weapon and 0.2 or 0.75, weapon and 0.75 or 0.2
+                local out = { { t[2], dust * t[3] }, { t[4], ess * t[5] } }
+                if t[6] then out[3] = { t[6], 0.05 } end
+                return out
+            end
+        end
+    elseif it.quality == 3 then
+        for _, t in ipairs(ns.DE_BLUE) do
+            if it.ilvl <= t[1] then return { { t[2], 1 } } end
+        end
+    end
+end
+
+-- What one disenchant brings at the auction after its cut; nil while a material has no price.
+-- A material without a fresh price counts nothing, so the guess stays low.
+function ns.DisenchantValue(state, P, id)
+    local mats = ns.DisenchantMats(state.items[id])
+    if not mats then return nil end
+    local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
+    local sum, any = 0, false
+    for _, m in ipairs(mats) do
+        local it = state.items[m[1]]
+        if it and ns.Fresh(it, P) then sum, any = sum + m[2] * it.ah * (1 - cut), true end
+    end
+    return any and sum or nil
 end
 
 -- The cheapest way to buy one unit: "vendor" or "ah", or nil when it cannot be bought.
@@ -490,7 +559,7 @@ function ns.Why(state, P, st, known, best, cands, w, s0)
     for _, how in ipairs({ "bags", "bank", "mail", "alts", "gather", "own", "craft", "vendor", "ah" }) do
         if from[how] then why("FROM_" .. how, from[how]) end
     end
-    if best.value > 0 then why(best.how == "ah" and "SELL_AH" or "SELL_VENDOR", best.value) end
+    if best.value > 0 then why(best.how == "ah" and "SELL_AH" or best.how == "de" and "SELL_DE" or "SELL_VENDOR", best.value) end
     if best.earn then why("GAIN", -best.cost)
     elseif best.cost < 0 then why("EARN", -best.cost) else why("COST", best.cost) end
     if not r.learned and r.src and (r.src.cost or 0) > 0 then why("RECIPE_" .. (r.src.t or "trainer"), r.src.cost) end
@@ -612,10 +681,18 @@ local function planWith(state, P, allowed)
     end
     acc.level, acc.prepCrafts = acc.level or 0, 0
     for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n; acc.prepCrafts = acc.prepCrafts + n end
-    acc.income, acc.sellAH, acc.sellVendor = 0, {}, {}
+    acc.income, acc.sellAH, acc.sellVendor, acc.sellDE = 0, {}, {}, {}
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
+        if how == "de" then
+            -- disenchanted: every unit goes, the materials to the auction
+            acc.income = acc.income + n * v
+            add(acc.sellDE, id, n)
+            acc.deEach = acc.deEach or {}
+            acc.deEach[id] = v
+            n = 0
+        end
         local toAH = how == "ah" and math.min(n, ns.MarketTake(state, P, id)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
@@ -710,10 +787,18 @@ local function earnWith(state, P, known, rid)
     for rid in pairs(acc.buyRecipes) do acc.spend = acc.spend + (state.recipes[rid].src.cost or 0) end
     acc.level, acc.prepCrafts = acc.crafts, 0 -- the crafts of the product itself
     for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n; acc.prepCrafts = acc.prepCrafts + n end
-    acc.income, acc.sellAH, acc.sellVendor = 0, {}, {}
+    acc.income, acc.sellAH, acc.sellVendor, acc.sellDE = 0, {}, {}, {}
     for id, n in pairs(acc.made) do
         n = ceil(n)
         local v, how = ns.SellValue(state, P, id, 0)
+        if how == "de" then
+            -- disenchanted: every unit goes, the materials to the auction
+            acc.income = acc.income + n * v
+            add(acc.sellDE, id, n)
+            acc.deEach = acc.deEach or {}
+            acc.deEach[id] = v
+            n = 0
+        end
         local toAH = how == "ah" and math.min(n, ns.MarketTake(state, P, id)) or 0
         acc.income = acc.income + toAH * v + (n - toAH) * ((state.items[id] or {}).vend or 0)
         add(acc.sellAH, id, toAH)
@@ -1156,6 +1241,10 @@ function ns.Route(state, plan)
     -- the units the auction would sell too, past what it takes of one item (maxSell)
     for _, l in ipairs(sv) do l.over = (plan.sellAH[l.id] or 0) > 0 end
     if #sv > 0 then push({ kind = "vendor", title = "STOP_VENDOR_SELL", lines = sv, cost = total(sv) }) end
+    -- disenchanting: the crafted gear, worth what its materials bring at the auction
+    local de = lines(state, plan.sellDE or {}, "de")
+    for _, l in ipairs(de) do l.price = plan.deEach and plan.deEach[l.id] end
+    if #de > 0 then push({ kind = "sell", title = "STOP_DE", lines = de, cost = total(de) }) end
     return seal(nodes)
 end
 
@@ -1575,11 +1664,17 @@ function ns.Recipes(state, P, mine)
     return rows
 end
 
--- The crafts taken out of the routes, by name: { recipe, name, out }.
-function ns.Skipped(state)
+-- The crafts taken out of the routes, by name: { recipe, name, out }. `set`: the saved marks
+-- (recipe -> true), which win over the marks of `state`: a state is read only by a calculation,
+-- so after a click its marks are old until the next one ends.
+local function skipped(r, rid, set)
+    if set then return set[rid] == true end
+    return r.skip == true
+end
+function ns.Skipped(state, set)
     local rows = {}
     for rid, r in pairs(state and state.recipes or {}) do
-        if r.skip then rows[#rows + 1] = { recipe = rid, name = r.name, out = r.out, skip = true } end
+        if skipped(r, rid, set) then rows[#rows + 1] = { recipe = rid, name = r.name, out = r.out, skip = true } end
     end
     table.sort(rows, function(a, b) if a.name ~= b.name then return a.name < b.name end return tostring(a.recipe) < tostring(b.recipe) end)
     return rows
@@ -1603,7 +1698,7 @@ end
 
 -- The recipes whose name has `text` in it (any case), names that start with it first; a number
 -- or a link finds the recipe by its id. At most `max`. Second value: how many there are in all.
-function ns.FindRecipes(state, text, max)
+function ns.FindRecipes(state, text, max, set)
     local rows = {}
     text = tostring(text or "")
     if text == "" then return rows, 0 end
@@ -1615,7 +1710,7 @@ function ns.FindRecipes(state, text, max)
         local at
         if id then at = (rid == id or r.out == id) and 1 or nil
         else at = ns.Fold(name):find(low, 1, true) or name:find(text, 1, true) end
-        if at then rows[#rows + 1] = { recipe = rid, name = name, out = r.out, skip = r.skip and true or false, at = at } end
+        if at then rows[#rows + 1] = { recipe = rid, name = name, out = r.out, skip = skipped(r, rid, set), at = at } end
     end
     table.sort(rows, function(a, b)
         if (a.at == 1) ~= (b.at == 1) then return a.at == 1 end
@@ -1968,7 +2063,7 @@ ns.OPT_ICON = {
     maxBuy = "Interface\\Icons\\Spell_Nature_TimeStop", maxCrafts = "Interface\\Icons\\Spell_Nature_TimeStop",
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",
-    autoPin = "Interface\\Icons\\INV_Misc_Map_01",
+    autoPin = "Interface\\Icons\\INV_Misc_Map_01", disenchant = "Interface\\Icons\\INV_Enchant_Disenchant",
 }
 
 local function option(key)

@@ -3955,4 +3955,126 @@ test("a character with the profession walks a saved simulation as its own pinned
     eq(n.PinAdoptable(saved), nil)
 end)
 
+test("every skill point counts its chance: Wizardweave Robe from 256 to 295 takes about 65 crafts", function()
+    local c = core()
+    -- the Forever data: orange 255, yellow 270, green 285, grey 300
+    eq(c.Thresholds({ 255, 270, 285, 300 })[1], 255)
+    local st = { skill = 256, cap = 300, level = 60, items = {
+        bolt = { name = "Bolt of Runecloth", ah = 3000, age = 0.1, vend = 400 },
+        dust = { name = "Dream Dust", ah = 1000, age = 0.1, vend = 100 },
+        thread = { name = "Rune Thread", buy = 2500, vend = 625 },
+        robe = { name = "Wizardweave Robe", vend = 1500 } },
+        recipes = { robe = { name = "Wizardweave Robe", skill = { 255, 270, 300 }, r = { bolt = 8, dust = 2, thread = 1 },
+                             out = "robe", learned = true } } }
+    local plan = c.Plan(st, prefs({ target = 295, sellAH = false }))
+    eq(plan.reached, 295)
+    -- 14 orange points at one craft each, then 30 / (300 - skill) crafts a point from 270 to 294
+    local want = 14
+    for s = 270, 294 do want = want + 30 / (300 - s) end
+    near(plan.crafts, want)
+    assert(plan.crafts > 65 and plan.crafts < 66, plan.crafts)
+    -- yellow at 280 is two thirds, green at 290 one third
+    near(c.Chance(st.recipes.robe, 280), 20 / 30); near(c.Chance(st.recipes.robe, 290), 10 / 30)
+end)
+
+-- ---------- disenchanting ----------
+
+test("disenchanting: the materials by item level, worth them at the auction, only for an enchanter", function()
+    local c = core()
+    -- green armour of level 57: illusion dust 75% of 1.5, greater eternal essence 20% of 1.5, a shard 5%
+    local m = c.DisenchantMats({ class = 4, quality = 2, ilvl = 57 })
+    eq(m[1][1], 16204); near(m[1][2], 1.125); eq(m[2][1], 16203); near(m[2][2], 0.3); eq(m[3][1], 14344); near(m[3][2], 0.05)
+    -- a weapon the other way round; blue gear one shard; no gear, white gear or a bag nothing
+    near(c.DisenchantMats({ class = 2, quality = 2, ilvl = 57 })[2][2], 1.125)
+    eq(c.DisenchantMats({ class = 4, quality = 3, ilvl = 45 })[1][1], 11177)
+    eq(c.DisenchantMats({ class = 4, quality = 1, ilvl = 57 }), nil)
+    eq(c.DisenchantMats({ class = 1, quality = 2, ilvl = 57 }), nil)
+    eq(c.DisenchantMats({ class = 7, quality = 2, ilvl = 57 }), nil)
+    local st = state()
+    st.items.robe = { name = "Wizardweave Robe", vend = 1500, ah = 2000, age = 0.1, class = 4, quality = 2, ilvl = 57 }
+    st.items[16204] = { name = "Illusion Dust", ah = 4000, age = 0.1 }
+    st.items[16203] = { name = "Greater Eternal Essence", ah = 20000, age = 0.1 }
+    local P = prefs({ chance = 100, disenchant = true })
+    local de = c.DisenchantValue(st, P, "robe")
+    near(de, (1.125 * 4000 + 0.3 * 20000) * 0.95, "the shard has no price and counts nothing")
+    -- an enchanter disenchants when it brings more; without Enchanting or the switch it sells
+    eq(select(2, c.SellValue(st, P, "robe", 0)), "ah")
+    st.enchanter = true
+    local v, how = c.SellValue(st, P, "robe", 0)
+    eq(how, "de"); near(v, de)
+    eq(select(2, c.SellValue(st, prefs({ chance = 100 }), "robe", 0)), "ah", "the switch is off by default")
+    st.items[16204].ah, st.items[16203].ah = 100, 100
+    eq(select(2, c.SellValue(st, P, "robe", 0)), "ah", "cheap dust: the robe sells")
+end)
+
+test("a plan that disenchants lists a Disenchant stop with what the materials bring", function()
+    local c = core()
+    local st = state()
+    st.enchanter = true
+    for _, id in ipairs({ "hood", "band", "shirt", "pants" }) do
+        local it = st.items[id]
+        it.class, it.quality, it.ilvl = 4, 2, 30
+    end
+    st.items[11083] = { name = "Soul Dust", ah = 5000, age = 0.1 }
+    st.items[11082] = { name = "Greater Astral Essence", ah = 9000, age = 0.1 }
+    local P = prefs({ disenchant = true })
+    local plan = c.Plan(st, P)
+    assert(next(plan.sellDE), "something is disenchanted")
+    local route = c.Route(st, plan)
+    local stop
+    for _, n in ipairs(route) do if n.title == "STOP_DE" then stop = n end end
+    assert(stop and stop.kind == "sell", kinds(route))
+    for _, l in ipairs(stop.lines) do
+        eq(l.src, "de"); assert(l.price and l.price > 0)
+        eq(plan.sellAH[l.id], nil, "a disenchanted item is not sold too")
+        eq(plan.sellVendor[l.id], nil)
+    end
+    -- without the switch the same plan sells everything
+    local off = c.Plan(st, prefs())
+    eq(next(off.sellDE), nil)
+    assert(off.net < plan.net, "disenchanting pays here")
+end)
+
+test("the Disenchant switch: grey without Enchanting, works with it", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    n.Tab(5)
+    eq(n.ui.checks.disenchant:IsEnabled(), false, "no Enchanting on this character")
+    eq(n.view.state.enchanter or false, false)
+    n.Tab(1)
+    n = game({ spellbook = { { "Tailoring", SKILL, 225, "picon", 197 }, { "Enchanting", 150, 225, "eicon", 333 } } })
+    n.Toggle(); n.Calculate()
+    eq(n.view.state.enchanter, true)
+    n.Tab(5)
+    eq(n.ui.checks.disenchant:IsEnabled(), true)
+    W.Click(n.ui.checks.disenchant)
+    eq(n.db.prefs.disenchant, true)
+    eq(n.view.prefs.disenchant, true, "the plan is made again with it")
+    n.Tab(1)
+end)
+
+test("Use again shows at once, also while the calculation it starts still runs or the shown result is old", function()
+    local n = game()
+    n.Toggle(); n.Calculate()
+    local rid = 103
+    n.SetSkip(rid, true)
+    n.Tab(5)
+    eq(#n.SkipRows(), 1)
+    -- a result kept from before (another profession, the simulation) still has the old mark
+    W.Click(n.ui.skipRows[1].btn)
+    eq(n.db.skip[rid], nil)
+    n.view.state.recipes[rid].skip = true
+    local rows, note = n.SkipRows()
+    eq(#rows, 0, "the saved marks decide what the card shows"); eq(note, n.L.SKIP_EMPTY)
+    assert(not n.ui.skipRows[1]:IsShown(), "the row went at the click")
+    -- a second click on an old row never puts it back by mistake
+    n.ui.skipEdit:SetText(n.view.state.recipes[rid].name)
+    rows = n.SkipRows()
+    eq(rows[1].skip, false)
+    W.Click(n.ui.skipRows[1].btn)
+    eq(n.db.skip[rid], true, "the button adds it, as its text said")
+    n.ui.skipEdit:SetText("")
+    n.Tab(1)
+end)
+
 W.finish()

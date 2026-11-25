@@ -26,7 +26,7 @@ ns.SIM_FIXED = { level = true, trainer = true, maxCrafts = -1 }
 -- The settings the simulation does not read: the fixed ones, the buying of later runs (the
 -- shopping list is always the whole way) and the profit runs' (the simulation plans none).
 -- The Settings tab dims them.
-ns.SIM_IGNORED = { level = true, trainer = true, maxCrafts = true, ahead = true, minGain = true, maxBuy = true }
+ns.SIM_IGNORED = { disenchant = true, level = true, trainer = true, maxCrafts = true, ahead = true, minGain = true, maxBuy = true }
 -- The leg of the shopping list: everything the whole way buys, bought here for another character.
 ns.SIM_SHOP = -1
 
