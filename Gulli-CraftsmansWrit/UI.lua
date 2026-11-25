@@ -15,6 +15,7 @@ local repCard, repBar, repText, repSub, todayStats, todayCard, todayList, todayE
 local goalTabs, planCard, planStats, planList, planEmpty
 local writTabs, sortTabs, writCard, writList, writFind, writEmpty
 local stepStrip
+local V = {} -- the free plan's view and the Today tab's plan card
 local SORT_W = 170
 local periodTabs, histStats, histList, histEmpty
 local setCard, pouchStats, pouchNote, histCard
@@ -35,8 +36,9 @@ local STATUS = {
     item = { "ST_ITEM", "WARN" },
     bank = { "ST_BANK", "WARN" },
     done = { "ST_DONE", "FAINT" },
+    none = { "PS_BUY", "MUTED" },
 }
-local STATUS_ORDER = { ready = 1, item = 2, bank = 3, done = 4 }
+local STATUS_ORDER = { ready = 1, item = 2, bank = 3, none = 4, done = 5 }
 
 local fmtDate = date or (os and os.date)
 
@@ -105,10 +107,23 @@ end
 
 -- ---------- Today ----------
 
+-- While a plan is pinned the groups are the plan's writs of today, the ones not from the plan
+-- and the ones handed in today (a plan writ still to buy shows too).
+local GROUP_ORDER = { plan = 1, offplan = 2, done = 3 }
 function ns.TodayRows(states)
     local list = {}
-    for _, s in ipairs(states or ns.States()) do if s.status ~= "none" then list[#list + 1] = s end end
+    local ids = ns.PinTodayIds and ns.PinTodayIds()
+    for _, s in ipairs(states or ns.States()) do
+        if s.status ~= "none" or (ids and ids[s.w.id]) then list[#list + 1] = s end
+    end
+    local function group(s)
+        if not ids then return s.status end
+        if s.status == "done" then return "done" end
+        return ids[s.w.id] and "plan" or "offplan"
+    end
     table.sort(list, function(a, b)
+        local ga, gb = group(a), group(b)
+        if ga ~= gb then return (GROUP_ORDER[ga] or STATUS_ORDER[ga]) < (GROUP_ORDER[gb] or STATUS_ORDER[gb]) end
         if a.status ~= b.status then return STATUS_ORDER[a.status] < STATUS_ORDER[b.status] end
         return a.w.id < b.w.id
     end)
@@ -116,12 +131,13 @@ function ns.TodayRows(states)
     -- adds them up while every one of them has a price.
     local rows, last, head = {}, nil, nil
     for _, s in ipairs(list) do
-        if s.status ~= last then
-            head = { head = L["GROUP_" .. s.status], cost = s.status ~= "done" and 0 or nil }
+        local g = group(s)
+        if g ~= last then
+            head = { head = L["GROUP_" .. g], cost = g ~= "done" and 0 or nil }
             rows[#rows + 1] = head
-            last = s.status
+            last = g
         end
-        local c = ns.CloseCost(s)
+        local c = s.status == "none" and ns.CostOf(s.w, true) or ns.CloseCost(s)
         if head.cost then
             if c and c.total then head.cost = head.cost + c.total; head.estimate = head.estimate or c.estimate
             else head.cost = nil end
@@ -462,7 +478,10 @@ end
 -- What the strip shows now: the current line's step, or the last one when all is bought.
 function ns.StepView()
     local b = ns.buy
-    if not ns.plan or ns.stale or not b.steps or #b.steps == 0 or #b.queue == 0 then return nil end
+    if ns.compare or ns.pinPage == "list" then return nil end
+    local pinned = ns.PinShown and ns.PinShown()
+    if not pinned and (not ns.plan or ns.stale) then return nil end
+    if not b.steps or #b.steps == 0 or #b.queue == 0 then return nil end
     local line = ns.Current() or b.queue[#b.queue]
     local i, of = ns.StepOf(line)
     if not i then return nil end
@@ -519,6 +538,41 @@ local function refreshFooter()
     end
     if not onPlan then frame.footer:SetStatus(""); return end
     local calculating, share = ns.Calculating()
+    if ns.RefreshPinButton then ns.RefreshPinButton(onPlan) end
+    if ns.pinPage == "list" then
+        calcBtn:Hide(); buyBtn:Hide(); skipBtn:Hide()
+        frame.footer:SetStatus(L.LIST_STATUS)
+        return
+    end
+    local pin = ns.PinShown()
+    if pin then
+        local mine = pin.key == ns.CharKey()
+        if ns.compare then
+            skipBtn:Hide()
+            label(calcBtn, L.CMP_KEEP, 110)
+            calcBtn:SetEnabled(true)
+            label(buyBtn, L.CMP_SWITCH, 140)
+            buyBtn:SetEnabled(ns.fresh ~= nil and not calculating)
+            frame.footer:SetStatus(ns.PinStatus())
+            return
+        end
+        calcBtn:SetShown(mine)
+        local scanning = ns.Scanning()
+        label(calcBtn, L.RECALC_PRICES, 110)
+        calcBtn:SetEnabled(not scanning and not ns.Busy() and not calculating)
+        local idle = b.phase == "idle" and not b.err
+        label(buyBtn, idle and (ns.db.pinScope == "all" and L.BUY_ALL_PLAN or L.BUY_TODAY) or buyText(), 160)
+        local busy = b.phase == "quote" or b.phase == "buying" or scanning or calculating
+        buyBtn:SetEnabled(#b.queue > 0 and b.phase ~= "done" and not busy and ns.atAH and ns.CanBuy())
+        if scanning then frame.footer:SetStatus(L.SCANNING:format(math.min(ns.scan.done + 1, ns.scan.n), ns.scan.n), S.Accent())
+        elseif b.err and ns.Current() then frame.footer:SetStatus(lineText(ns.Current()) .. ": " .. L[b.err], S.BAD)
+        elseif b.phase == "ready" and ns.Dear() then frame.footer:SetStatus(lineText(ns.Current()) .. ": " .. L.DEAR, S.WARN)
+        elseif b.phase == "done" and b.bought > 0 then frame.footer:SetStatus(L.BUY_DONE .. ": " .. S.MoneyText(b.spent), S.GOOD)
+        elseif ns.atAH and (b.phase == "quote" or b.phase == "ready" or b.phase == "buying") then
+            frame.footer:SetStatus(lineText(ns.Current()))
+        else frame.footer:SetStatus(ns.PinStatus()) end
+        return
+    end
     local busy = b.phase == "quote" or b.phase == "buying" or ns.Scanning() or calculating
     label(calcBtn, calculating and L.CALC_BUSY:format(math.floor(share * 100)) or (plan and L.RECALC or L.CALCULATE), 110)
     calcBtn:SetEnabled(not ns.Scanning() and not ns.Busy() and not calculating)
@@ -550,6 +604,9 @@ local function refreshToday()
     repSub:SetText(L.RESET_IN:format(timeText(ns.ResetIn())))
     local states = ns.States()
     local t = ns.Today(states)
+    local info = ns.PinCardInfo and ns.PinCardInfo()
+    V.pinCard:SetInfo(info)
+    todayStats:SetShown(info == nil)
     todayStats.tiles[1]:Set(tostring(t.ready), t.ready > 0 and S.GOOD or nil)
     todayStats.tiles[2]:Set(tostring(t.item), t.item > 0 and S.WARN or nil)
     todayStats.tiles[3]:Set(S.MoneyText(t.pouchGold, true))
@@ -559,6 +616,9 @@ local function refreshToday()
 end
 
 local function refreshPlan()
+    local pinned = ns.RefreshPin and ns.RefreshPin()
+    V.free:SetShown(not pinned)
+    if pinned then return end
     goalTabs.sync()
     planCard.days:Refresh()
     local plan = ns.plan
@@ -643,16 +703,83 @@ local function goalLabels()
     return out
 end
 
+local function buildPinParts(W, ft)
+    ns.BuildPin({ frame = frame, page = pages[2], W = W, footer = ft, makeRow = makeRow, asHead = asHead,
+                  asItem = asItem, listCard = listCard, ROW = ROW, HEAD = HEAD })
+end
+
+local function buildWritsAndHistory(W)
+    -- Writs
+    local wp = pages[3]
+    writTabs = S.Tabs(wp, { L.ALL, L.RANK_J, L.RANK_E, L.RANK_A }, nil, function(i)
+        rankFilter = i > 1 and ns.RANKS[i - 1] or nil
+        ns.Refresh()
+    end, 28)
+    writTabs.frame:ClearAllPoints()
+    writTabs.frame:SetPoint("TOPLEFT")
+    writTabs.frame:SetPoint("TOPRIGHT", -(SORT_W + S.GAP), 0)
+    local sorts = { "gain", "prof" }
+    sortTabs = S.Tabs(wp, { L.SORT_GAIN, L.SORT_PROF }, nil, function(i)
+        ns.db.writSort = sorts[i]
+        ns.Refresh()
+    end, 28)
+    sortTabs.frame:ClearAllPoints()
+    sortTabs.frame:SetPoint("TOPRIGHT")
+    sortTabs.frame:SetWidth(SORT_W)
+    sortTabs:Select(ns.db.writSort == "prof" and 2 or 1, true)
+    writFind = S.Edit(wp, 100, 28)
+    writFind:SetPoint("TOPLEFT", 0, -(28 + S.GAP))
+    writFind:SetPoint("TOPRIGHT", 0, -(28 + S.GAP))
+    writFind:SetJustifyH("LEFT")
+    S.Placeholder(writFind, L.WRIT_FIND)
+    writFind:SetScript("OnTextChanged", function() ns.Refresh() end)
+    writFind:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    writCard, writList = listCard(wp, L.WRITS, WRIT_ICON, makeRow, fillWrit)
+    writCard:SetPoint("TOPLEFT", 0, -2 * (28 + S.GAP))
+    writCard:SetPoint("BOTTOMRIGHT")
+    writEmpty = S.Empty(writList)
+    writEmpty:Set(L.FIND_NONE, "")
+
+    -- History
+    local hp = pages[4]
+    local hs = S.Stack(hp)
+    periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
+        period = ns.PERIODS[i]
+        ns.Refresh()
+    end, 28)
+    periodTabs:Select(3, true)
+    periodTabs.frame:ClearAllPoints()
+    periodTabs.frame:SetPoint("TOPLEFT")
+    hs:Space(28 + S.GAP)
+    histStats = S.StatRow(hp, { L.ST_COUNT, L.ST_POUCHES, L.ST_PER100 }, 62,
+        { WRIT_ICON, POUCH_ICON, AH_ICON })
+    hs:Add(histStats, 62)
+    histStats:Layout(W)
+    histCard, histList = listCard(hp, L.HISTORY, S.TAB.recent, makeRow, fillHist)
+    histList.step = HIST_ROW
+    histCard:SetPoint("TOPLEFT", 0, -hs.y)
+    histCard:SetPoint("BOTTOMRIGHT")
+    histEmpty = S.Empty(histList)
+    histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
+end
+
 local function build()
     frame = S.Window("GulliCraftsmansWritFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local ft = S.Footer(frame)
     buyBtn = S.Primary(S.Button(ft, 200, 32))
     ft:Add(buyBtn)
-    buyBtn:SetScript("OnClick", function() ns.BuyClick() end)
+    buyBtn:SetScript("OnClick", function()
+        if ns.compare then if ns.fresh and not ns.Calculating() then ns.PinSwitch() end
+        else ns.BuyClick() end
+    end)
     calcBtn = S.Button(ft, 120, 32)
     ft:Add(calcBtn)
     label(calcBtn, L.CALCULATE, 110)
-    calcBtn:SetScript("OnClick", function() ns.Calculate() end)
+    calcBtn:SetScript("OnClick", function()
+        if ns.compare then ns.PinCompareStop()
+        elseif ns.PinShown() then ns.PinRecalc()
+        else ns.Calculate() end
+    end)
     skipBtn = S.Ghost(S.Button(ft, 80, 32))
     ft:Add(skipBtn)
     label(skipBtn, L.SKIP, 72)
@@ -706,6 +833,7 @@ local function build()
     -- Today
     local tp = pages[1]
     local st = S.Stack(tp)
+    V.pinCard = ns.BuildPinCard(tp)
     repCard = S.Card(tp, L.CAMP, "", REP_ICON)
     repBar = S.Progress(repCard.body, 8)
     repBar:SetPoint("TOPLEFT", 0, -2)
@@ -723,6 +851,8 @@ local function build()
         { WRIT_ICON, "Interface\\Icons\\Trade_BlackSmithing", POUCH_ICON })
     st:Add(todayStats, 62)
     todayStats:Layout(W)
+    V.pinCard:SetPoint("TOPLEFT", todayStats, "TOPLEFT")
+    V.pinCard:SetPoint("BOTTOMRIGHT", todayStats, "BOTTOMRIGHT")
     todayCard, todayList = listCard(tp, L.TODAY, WRIT_ICON, makeRow, fillToday,
         function(row) return row.head and HEAD or ROW end)
     todayCard:SetPoint("TOPLEFT", 0, -st.y)
@@ -730,8 +860,10 @@ local function build()
     todayEmpty = S.Empty(todayList)
     todayEmpty:Set(L.TODAY_EMPTY, L.TODAY_EMPTY_SUB)
 
-    -- Plan
-    local pp = pages[2]
+    -- Plan: the free plan; a pinned plan (PinUI.lua) takes the page instead
+    V.free = CreateFrame("Frame", nil, pages[2])
+    V.free:SetAllPoints()
+    local pp = V.free
     local ps = S.Stack(pp)
     goalTabs = S.Tabs(pp, goalLabels(), nil, function(i) ns.SetPref("goal", i == 1 and 0 or ns.GOALS[i - 1]) end, 28)
     goalTabs.frame:ClearAllPoints()
@@ -774,65 +906,16 @@ local function build()
         frame.footer:SetStatus(L.CALC_LINE:format(math.floor(share * 100)), S.Accent())
     end)
 
-    -- Writs
-    local wp = pages[3]
-    writTabs = S.Tabs(wp, { L.ALL, L.RANK_J, L.RANK_E, L.RANK_A }, nil, function(i)
-        rankFilter = i > 1 and ns.RANKS[i - 1] or nil
-        ns.Refresh()
-    end, 28)
-    writTabs.frame:ClearAllPoints()
-    writTabs.frame:SetPoint("TOPLEFT")
-    writTabs.frame:SetPoint("TOPRIGHT", -(SORT_W + S.GAP), 0)
-    local sorts = { "gain", "prof" }
-    sortTabs = S.Tabs(wp, { L.SORT_GAIN, L.SORT_PROF }, nil, function(i)
-        ns.db.writSort = sorts[i]
-        ns.Refresh()
-    end, 28)
-    sortTabs.frame:ClearAllPoints()
-    sortTabs.frame:SetPoint("TOPRIGHT")
-    sortTabs.frame:SetWidth(SORT_W)
-    sortTabs:Select(ns.db.writSort == "prof" and 2 or 1, true)
-    writFind = S.Edit(wp, 100, 28)
-    writFind:SetPoint("TOPLEFT", 0, -(28 + S.GAP))
-    writFind:SetPoint("TOPRIGHT", 0, -(28 + S.GAP))
-    writFind:SetJustifyH("LEFT")
-    S.Placeholder(writFind, L.WRIT_FIND)
-    writFind:SetScript("OnTextChanged", function() ns.Refresh() end)
-    writFind:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-    writCard, writList = listCard(wp, L.WRITS, WRIT_ICON, makeRow, fillWrit)
-    writCard:SetPoint("TOPLEFT", 0, -2 * (28 + S.GAP))
-    writCard:SetPoint("BOTTOMRIGHT")
-    writEmpty = S.Empty(writList)
-    writEmpty:Set(L.FIND_NONE, "")
+    buildPinParts(W, ft)
 
-    -- History
-    local hp = pages[4]
-    local hs = S.Stack(hp)
-    periodTabs = S.Tabs(hp, { L.PERIOD_day, L.PERIOD_week, L.PERIOD_all }, nil, function(i)
-        period = ns.PERIODS[i]
-        ns.Refresh()
-    end, 28)
-    periodTabs:Select(3, true)
-    periodTabs.frame:ClearAllPoints()
-    periodTabs.frame:SetPoint("TOPLEFT")
-    hs:Space(28 + S.GAP)
-    histStats = S.StatRow(hp, { L.ST_COUNT, L.ST_POUCHES, L.ST_PER100 }, 62,
-        { WRIT_ICON, POUCH_ICON, AH_ICON })
-    hs:Add(histStats, 62)
-    histStats:Layout(W)
-    histCard, histList = listCard(hp, L.HISTORY, S.TAB.recent, makeRow, fillHist)
-    histList.step = HIST_ROW
-    histCard:SetPoint("TOPLEFT", 0, -hs.y)
-    histCard:SetPoint("BOTTOMRIGHT")
-    histEmpty = S.Empty(histList)
-    histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
+    buildWritsAndHistory(W)
 
     -- Settings
     local sp = S.ScrollPage(pages[5], W)
     sp:SetAllPoints()
     local ss = S.Stack(sp.inner)
     local rows = {}
-    for _, key in ipairs({ "auto", "bank", "sealed", "pouch", "live", "tooltip" }) do
+    for _, key in ipairs({ "auto", "bank", "sealed", "pouch", "live", "tooltip", "autoPin", "planNote" }) do
         rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
                             function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
     end
@@ -1012,6 +1095,8 @@ function ns.RefreshTracker()
     if not tracker then buildTracker() end
     ns.PlaceTracker()
     local items = ns.Guiding() and ns.TrackerItems() or {}
+    local info = ns.PinCardInfo and ns.PinCardInfo()
+    tracker.title:SetText(info and L.TR_PIN:format(info.title, info.done, info.of) or L.TR_TITLE)
     local y = T_HEAD + 2
     for i, r in ipairs(tracker.rows) do
         local it = items[i]

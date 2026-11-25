@@ -12,7 +12,7 @@ local CALLER = "Gulli-CraftsmansWrit"
 local QUOTE_WAIT = 8 -- seconds the auction house has to answer a price request
 
 ns.DEFAULTS = { bank = true, sealed = true, pouch = true, live = true, auto = true, tooltip = true,
-                goal = 0, days = 3, writSort = "gain" }
+                goal = 0, days = 3, writSort = "gain", autoPin = true, planNote = true, pinScope = "today" }
 
 local function say(msg) print("|cff9ad0ffCraftsman's Writ|r: " .. msg) end
 local function notify(msg) if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("CraftsmansWrit", msg) end end
@@ -94,6 +94,7 @@ local function inLog(quest)
     return false
 end
 ns.InLog = inLog
+ns.DoneToday = doneToday
 
 -- Seconds to the daily reset, or nil.
 function ns.ResetIn()
@@ -816,8 +817,9 @@ function ns.Ways(plan)
     return out
 end
 
--- The planner's input from the game now.
-function ns.PlanInput()
+-- The planner's input from the game now. over = { goal, days } plans to another goal and days
+-- than the settings (the comparison beside a pinned plan).
+function ns.PlanInput(over)
     local useBank = ns.db.bank
     local writs = {}
     for _, w in ipairs(ns.Writs()) do
@@ -834,8 +836,8 @@ function ns.PlanInput()
             sealed[#sealed + 1] = { id = ns.SealedOf(r), rank = r, own = held[r] or 0 }
         end
     end
-    local need, goal = ns.Need(ns.Rep(), ns.db.goal)
-    return { need = need, goal = goal, days = ns.db.days, mult = ns.Mult(), writs = writs, sealed = sealed,
+    local need, goal = ns.Need(ns.Rep(), over and over.goal or ns.db.goal)
+    return { need = need, goal = goal, days = over and over.days or ns.db.days, mult = ns.Mult(), writs = writs, sealed = sealed,
              price = ns.Price, pouch = ns.PouchOf,
              stock = function(id) local b, k = ns.Stock(id); return b + (useBank and k or 0) end }
 end
@@ -865,8 +867,12 @@ function ns.Calculating()
     if not (S and S.JobRunning) then return false, 0 end
     return S.JobRunning(JOB)
 end
-function ns.Calculate(round)
+-- mode "compare" plans aside for the comparison with the pinned plan (ns.compare): the result
+-- goes to ns.fresh and the plan of the Plan tab and its purchases stay.
+function ns.Calculate(round, mode)
     if not ns.db or ns.paused then return end
+    local over = mode == "compare" and ns.compare or nil
+    if mode == "compare" and not over then return end
     if not round then
         if busy() then cancelQuote() end
         if ns.atAH and ns.db.live and canSearch() then ns.lots = {}; ns.StopScan() end
@@ -877,7 +883,7 @@ function ns.Calculate(round)
     local S = ns.Skin
     local t0 = debugprofilestop and debugprofilestop()
     local function work()
-        local input = ns.PlanInput()
+        local input = ns.PlanInput(over)
         -- each price once: the knapsack asks for the same copies again and again
         local memo, price = {}, input.price
         input.price = function(id, n, skip)
@@ -898,11 +904,15 @@ function ns.Calculate(round)
             if not lots or time() - lots.t > ns.LOTS_FRESH then plan.estimate = true; break end
         end
         plan.goal, plan.need, plan.days = input.goal, input.need, input.days
-        ns.plan, ns.stale = plan, nil
         if t0 and debugprofilestop then ns.perf.calc = debugprofilestop() - t0 end
-        ns.ResetBuy()
         result = plan
-        if live then live(round) end
+        if over then
+            if ns.compare == over then ns.fresh = plan end
+        else
+            ns.plan, ns.stale = plan, nil
+            ns.ResetBuy()
+        end
+        if live then live(round, mode, plan) end
         if ns.Refresh then ns.Refresh() end
     end
     if S and S.Job then
@@ -915,11 +925,14 @@ function ns.Calculate(round)
 end
 
 -- A change of the goal or the days marks the plan outdated; Calculate plans anew.
+-- Settings that never change what a plan buys.
+ns.NO_PLAN = { autoPin = true, planNote = true, pinScope = true, tooltip = true, auto = true }
+
 function ns.SetPref(key, value)
     if not ns.db then return end
     ns.db[key] = value
     ns.Invalidate()
-    if ns.plan then ns.stale = true end
+    if ns.plan and not ns.NO_PLAN[key] then ns.stale = true end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -1003,10 +1016,10 @@ end
 function ns.StopScan() scan.queue, scan.busy, scan.after, scan.n, scan.done = {}, nil, nil, 0, 0 end
 function ns.Scanning() return scan.busy ~= nil end
 
-live = function(round)
+live = function(round, mode, plan)
     if not ns.db.live or not ns.atAH or not canSearch() or round > LIVE_ROUNDS then return end
     local ids = {}
-    for _, line in ipairs(ns.ShoppingList(ns.plan)) do
+    for _, line in ipairs(ns.ShoppingList(plan or ns.plan)) do
         if ns.flat[line.id] and not ns.tried[line.id] then
             ns.tried[line.id] = true
             ids[#ids + 1] = line.id
@@ -1014,7 +1027,7 @@ live = function(round)
     end
     ns.ScanLots(ids, function()
         if ns.Busy() then return end
-        ns.Calculate(round + 1)
+        ns.Calculate(round + 1, mode)
     end)
 end
 
@@ -1104,7 +1117,7 @@ ns.Left = left
 function ns.ResetBuy()
     local b = ns.buy
     cancelQuote()
-    b.steps = ns.BuySteps(ns.plan)
+    b.steps = ns.BuySteps(ns.BuyPlan and ns.BuyPlan() or ns.plan)
     b.queue = {}
     for _, s in ipairs(b.steps) do
         if s.writ.n > 0 then b.queue[#b.queue + 1] = s.writ end
@@ -1277,6 +1290,7 @@ local function gotUnits(line, n, paid)
     b.spent, b.bought = b.spent + paid, b.bought + n
     line.got = math.min(line.n, line.got + n)
     ns.AddLot(line.id, n, paid)
+    if ns.AutoPin then ns.AutoPin("buy") end
 end
 
 function ns.OnAuction(event, a1, a2)
@@ -1388,6 +1402,7 @@ function ns.TurnedIn(quest)
     while #h > ns.HISTORY_MAX do table.remove(h) end
     ns.pendingRep = { base = w.rep, entry = e }
     ns.LearnFromTurnIn(quest)
+    if ns.PinTurnIn then ns.PinTurnIn(w) end
     if ns.StepGuide then ns.StepGuide() end
     return e
 end
@@ -1430,8 +1445,16 @@ end
 
 function ns.Stops(states)
     local stops, at = {}, {}
-    for _, s in ipairs(states or ns.States()) do
-        if s.status == "ready" then
+    states = states or ns.States()
+    -- while a plan is pinned it leads to today's writs of the plan (all ready ones when none is)
+    local ids = ns.PinTodayIds and ns.PinTodayIds()
+    if ids then
+        local any
+        for _, s in ipairs(states) do if s.status == "ready" and ids[s.w.id] then any = true end end
+        if not any then ids = nil end
+    end
+    for _, s in ipairs(states) do
+        if s.status == "ready" and (not ids or ids[s.w.id]) then
             local spot = ns.Spot(s.w)
             local key = spot and (spot.npc or (spot.map .. ":" .. spot.x .. ":" .. spot.y)) or ("?" .. s.w.id)
             local stop = at[key]
@@ -1653,7 +1676,7 @@ end
 -- Something to do at the auction house: the plan buys something, or writs in the bags lack
 -- their item.
 function ns.WorkAtAH()
-    if ns.plan and #ns.buy.queue > 0 and ns.buy.phase ~= "done" then return true end
+    if #ns.buy.queue > 0 and ns.buy.phase ~= "done" then return true end
     for _, s in ipairs(ns.States()) do if s.status == "item" then return true end end
     return false
 end
@@ -1705,7 +1728,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "UPDATE_FACTION" or event == "PLAYER_ENTERING_WORLD" then
         local r = ns.Rep()
         ns.NoteRep(r and r.value)
-        if event == "PLAYER_ENTERING_WORLD" then ns.PouchReset(); ns.Snapshot(); ns.Prefetch() end
+        if event == "PLAYER_ENTERING_WORLD" then
+            ns.PouchReset(); ns.Snapshot(); ns.Prefetch()
+            -- the plan's day, once a game day, after the loading screen
+            if C_Timer and C_Timer.After then C_Timer.After(6, ns.PinLoginNote) else ns.PinLoginNote() end
+            ns.ResetBuy()
+        end
         ns.Invalidate()
         ns.RefreshSoon()
         return
@@ -1727,7 +1755,9 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     if event == "AUCTION_HOUSE_SHOW" then
         ns.atAH = true
         ns.Invalidate()
-        if ns.plan and not busy() then ns.Calculate() end
+        if not busy() then
+            if ns.PinFor() then ns.PinRecalc() elseif ns.plan then ns.Calculate() end
+        end
         if ns.db.auto and ns.WorkAtAH() and ns.ShowAtAH then ns.ShowAtAH() end
         if ns.Refresh then ns.Refresh() end
     elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_UPDATED" then
@@ -1787,6 +1817,8 @@ ns.OPT_ICON = {
     live = "Interface\\Icons\\INV_Misc_Spyglass_03",
     auto = "Interface\\Minimap\\Tracking\\Auctioneer",
     tooltip = "Interface\\Icons\\INV_Misc_Note_01",
+    autoPin = "Interface\\Icons\\INV_Misc_Map_01",
+    planNote = "Interface\\Icons\\INV_Misc_PocketWatch_01",
 }
 
 local function option(key)
@@ -1817,6 +1849,8 @@ do
         end,
         summary = function()
             if not ns.db then return nil end
+            local line, tile = ns.PinSummary()
+            if line then return line, ns.OPT_ICON.sealed, tile end
             local t = ns.Today()
             if t.ready == 0 then return nil end
             return L.SUMMARY:format(t.ready), ns.OPT_ICON.sealed
@@ -1824,7 +1858,7 @@ do
         reset = function()
             if not ns.db then return end
             for k, v in pairs(ns.DEFAULTS) do ns.db[k] = v end
-            ns.plan = nil
+            ns.plan, ns.compare, ns.fresh = nil, nil, nil
             ns.ResetBuy()
             if ns.Refresh then ns.Refresh() end
         end,

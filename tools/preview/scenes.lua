@@ -2113,7 +2113,38 @@ local function wrFind(text)
         if ns.SetWritFind then ns.SetWritFind(text) end
     end
 end
+-- A pinned plan on its second day, with yesterday's writ missed; mode "days", "buys", "list", "today".
+local function wrPinned(mode)
+    return function(ns, W)
+        ns.db.days, ns.db.goal = 5, 6
+        wrOpen(2, true)(ns)
+        ns.Skin.Toast = function() end
+        ns.PinNow()
+        W.now = (W.now or 0) + 86400
+        W.done = {}
+        ns.Invalidate()
+        if mode == "buys" then ns.pinMode = "buys" end
+        if mode == "list" then ns.PinShowList(true) end
+        if mode == "compare" then ns.PinCompareStart() end
+        ns.ShowTab(mode == "today" and 1 or 2)
+        ns.Refresh()
+    end
+end
 S.craftsmanswrit = { default = { spec = wrSpec(), open = wrOpen(1) },
+    pin_days = { spec = wrSpec(), open = wrPinned("days") },
+    pin_days_ru = { spec = wrSpec("ruRU"), open = wrPinned("days") },
+    pin_days_de = { spec = wrSpec("deDE"), open = wrPinned("days") },
+    pin_buys = { spec = wrSpec(), open = wrPinned("buys") },
+    pin_buys_ru = { spec = wrSpec("ruRU"), open = wrPinned("buys") },
+    pin_buys_de = { spec = wrSpec("deDE"), open = wrPinned("buys") },
+    pin_list = { spec = wrSpec(), open = wrPinned("list") },
+    pin_compare = { spec = wrSpec(), open = wrPinned("compare") },
+    pin_compare_ru = { spec = wrSpec("ruRU"), open = wrPinned("compare") },
+    pin_compare_de = { spec = wrSpec("deDE"), open = wrPinned("compare") },
+    pin_list_de = { spec = wrSpec("deDE"), open = wrPinned("list") },
+    pin_today = { spec = wrSpec(), open = wrPinned("today") },
+    pin_today_ru = { spec = wrSpec("ruRU"), open = wrPinned("today") },
+    pin_today_de = { spec = wrSpec("deDE"), open = wrPinned("today") },
     buying = { spec = wrSpec(), open = wrBuying },
     buying_ru = { spec = wrSpec("ruRU"), open = wrBuying },
     buying_de = { spec = wrSpec("deDE"), open = wrBuying },

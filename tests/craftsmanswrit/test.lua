@@ -661,4 +661,226 @@ test("the module registers for the hub with its window and its tracker", functio
     for _, o in ipairs(a.options) do assert(o.label and o.icon, "option") end
 end)
 
+-- ---------- the pinned plan ----------
+
+local DAY = 86400
+local function nextDay() W.now = W.now + DAY; W.done = {} end
+local function handIn(q) W.done[q] = true; W.Fire("QUEST_TURNED_IN", q) end
+local function buyOne(ns)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PRICE_UPDATED", 120, 360)
+    ns.BuyClick()
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+end
+
+test("a plan pins itself at the first purchase, and Undo keeps it off for the session", function()
+    local ns = threeDays()
+    eq(ns.PinFor(), nil)
+    local toasts = {}
+    ns.Skin.Toast = function(o) toasts[#toasts + 1] = o end
+    buyOne(ns)
+    local pin = ns.PinFor()
+    assert(pin, "pinned by the purchase")
+    eq(#pin.copies, 3)
+    eq(pin.copies[1].p, 1); eq(pin.copies[3].p, 3)
+    eq(toasts[1].buttons[1].text, ns.L.UNDO)
+    toasts[1].buttons[1].onClick()
+    eq(ns.PinFor(), nil, "Undo takes it away")
+    buyOne(ns)
+    eq(ns.PinFor(), nil, "and it does not pin again this session")
+    eq(ns.PinNow() ~= nil, true, "the pin button still pins")
+end)
+
+test("the switch stops the plan from pinning itself, and keeps the plan up to date", function()
+    local ns = threeDays()
+    ns.Skin.Toast = function() end
+    ns.SetPref("autoPin", false)
+    eq(ns.stale, nil, "the switch does not make the plan outdated")
+    buyOne(ns)
+    eq(ns.PinFor(), nil, "no pin by a purchase")
+    handIn(WISDOM_Q)
+    eq(ns.PinFor(), nil, "no pin by a hand-in")
+    ns.SetPref("autoPin", true)
+end)
+
+test("a plan pins itself at the first hand-in of one of its writs", function()
+    local ns = threeDays()
+    ns.Skin.Toast = function() end
+    handIn(OGRE_Q)
+    eq(ns.PinFor(), nil, "a writ the plan does not have pins nothing")
+    handIn(WISDOM_Q)
+    local pin = ns.PinFor()
+    assert(pin, "pinned by the hand-in")
+    eq(pin.copies[1].done.day, 1, "and the copy of today is done")
+end)
+
+test("days count from the pin, a miss shifts its queue, Do not catch up drops it", function()
+    local ns = threeDays()
+    local pin = ns.PinNow()
+    eq(ns.PinDay(pin), 1)
+    handIn(WISDOM_Q)
+    local v = ns.PinView(pin)
+    eq(v.doneToday, 1); eq(v.ofToday, 1)
+    nextDay()
+    eq(ns.PinDay(pin), 2)
+    nextDay() -- day 2 went by without a hand-in
+    ns.PinFor()
+    v = ns.PinView(pin)
+    eq(v.today, 3)
+    eq(pin.days[2].n, 1); eq(pin.days[2].done, 0)
+    eq(#v.miss, 1, "yesterday's writ is missed")
+    eq(v.missYesterday.n, 1)
+    eq(pin.copies[2].day, 3, "the missed copy moves to today")
+    eq(pin.copies[3].day, 4, "and the one after it a day on")
+    eq(v.endDay, 4); eq(v.planEnd, 3)
+    eq(v.behindN, 1)
+    eq(ns.PinNoCatchUp(pin), 1)
+    v = ns.PinView(pin)
+    eq(pin.copies[2].dropped, true)
+    eq(pin.copies[3].day, 3, "the next copy goes back to its own day")
+    eq(v.endDay, 3)
+    eq(#v.miss, 0)
+    -- the frozen day 2 still says what happened
+    eq(pin.days[2].done, 0)
+    local days = ns.PinDays(pin)
+    eq(days[2].miss, 1)
+end)
+
+test("a hand-in the plan does not have counts its reputation; the goal reached ends the plan", function()
+    local ns = threeDays()
+    local pin = ns.PinNow()
+    eq(ns.PinHandIn(ns.Writ(OGRE)), nil)
+    eq(pin.off, 1)
+    W.rep = { 6, 9000 }
+    eq(ns.PinFor(), nil, "the goal is reached")
+    assert(pin.finished and pin.result, "kept as finished, with its result")
+    local run, done = ns.PinRows()
+    eq(#run, 0); eq(#done, 1)
+    eq(ns.PinNow() ~= nil, true, "a new plan can be pinned")
+end)
+
+test("one running plan per character; Recalculate prices keeps the steps", function()
+    local ns = threeDays()
+    local pin = ns.PinNow()
+    eq(ns.PinNow(), nil, "a second plan of the same character")
+    local ids = {}
+    for i, c in ipairs(pin.copies) do ids[i] = c.id .. ":" .. c.p end
+    W.prices[WISDOM_ITEM] = 400
+    W.auctions[WISDOM_ITEM] = { { 31, 400 }, { 32, 400 }, { 33, 400 } }
+    ns.PinRecalc()
+    assert(pin.priced, "prices were read")
+    for i, c in ipairs(pin.copies) do eq(c.id .. ":" .. c.p, ids[i], "the steps stay") end
+    local buys = ns.PinBuys(pin, "all")
+    local item
+    for _, l in ipairs(buys.lines) do if l.id == WISDOM_ITEM then item = l end end
+    eq(item.left, 3)
+    eq(item.dear ~= nil, true, "dearer than the plan")
+    eq(buys.left > buys.planLeft, true)
+end)
+
+test("the purchases give the bags to the earliest copies, today or the whole plan", function()
+    local ns = threeDays({ bags = { [WISDOM_ITEM] = 1 } })
+    local pin = ns.PinNow()
+    local today = ns.PinBuys(pin, "today")
+    local writ, item
+    for _, l in ipairs(today.lines) do if l.id == WISDOM then writ = l elseif l.id == WISDOM_ITEM then item = l end end
+    eq(writ.need, 1); eq(writ.left, 1)
+    eq(item.have, 1); eq(item.left, 0, "today's elixir is in the bags")
+    local all = ns.PinBuys(pin, "all")
+    for _, l in ipairs(all.lines) do if l.id == WISDOM_ITEM then item = l end end
+    eq(item.need, 3); eq(item.left, 2)
+    -- the Buy button works through the pinned plan's purchases
+    ns.db.pinScope = "all"
+    ns.ResetBuy()
+    eq(ns.buy.steps[1].copies, 3)
+    eq(ns.buy.steps[1].item.n, 2)
+end)
+
+test("Is there a cheaper plan: the same plan again is about the same, Go over keeps what was done", function()
+    local ns = threeDays()
+    local pin = ns.PinNow()
+    handIn(WISDOM_Q)
+    W.rep = { 5, 8850 }
+    ns.PinCompareStart()
+    assert(ns.fresh, "the calculation aside")
+    eq(ns.plan ~= ns.fresh, true, "the plan of the Plan tab stays")
+    local c = ns.PinCompare(pin, ns.fresh)
+    eq(c.mine.n, 2)
+    eq(c.verdict, "same")
+    ns.PinSwitch()
+    eq(ns.compare, nil)
+    local done, open = 0, 0
+    for _, x in ipairs(pin.copies) do if x.done then done = done + 1 else open = open + 1 end end
+    eq(done, 1, "the hand-in stays")
+    eq(open, #c.changes == 0 and 2 or open)
+    for _, x in ipairs(pin.copies) do if not x.done then assert(x.day >= 2, "never today again") end end
+end)
+
+test("another character's plan is kept, shown from the list and never pinned over", function()
+    local ns = threeDays()
+    local pin = ns.PinNow()
+    pin.key, pin.who = "Other-Realm", "Other"
+    eq(ns.PinFor(), nil)
+    ns.viewPin = pin
+    eq(ns.PinShown(), pin)
+    ns.Skin.Toast = function() error("no auto-pin while another plan shows") end
+    buyOne(ns)
+    eq(ns.PinFor(), nil)
+    local run = ns.PinRows()
+    eq(run[1], pin)
+end)
+
+test("the login note tells the plan's day once a game day", function()
+    local ns = threeDays({ cdb = {} })
+    ns.PinNow()
+    local n = 0
+    ns.Skin.Toast = function(o) n = n + 1; assert(o.title and o.text) end
+    ns.PinLoginNote(); ns.PinLoginNote()
+    eq(n, 1)
+    nextDay()
+    ns.PinLoginNote()
+    eq(n, 2)
+    ns.db.planNote = false
+    nextDay()
+    ns.PinLoginNote()
+    eq(n, 2, "the switch stops it")
+end)
+
+test("the hub's tile, the Today card and the window while a plan is pinned", function()
+    local ns = threeDays({ bags = { [WISDOM] = 1, [WISDOM_ITEM] = 1 } })
+    local pin = ns.PinNow()
+    local line, icon, tile = ns.alone.summary()
+    assert(line and icon and tile, "a line and a tile")
+    eq(tile.pips[1], 0); eq(tile.pips[2], 1)
+    local info = ns.PinCardInfo()
+    eq(info.of, 1)
+    local rows = ns.TodayRows()
+    eq(rows[1].head, ns.L.GROUP_plan)
+    eq(#ns.Stops(), 1)
+    local w = ns.Window()
+    w:Show()
+    ns.ShowTab(1)
+    ns.ShowTab(2)
+    eq(ns.RefreshPin(), true)
+    ns.pinMode = "buys"; ns.Refresh()
+    ns.PinShowList(true)
+    eq(#ns.PinListRows(), 2)
+    ns.PinShowList(false)
+    ns.PinCompareStart(); ns.Refresh(); ns.PinCompareStop()
+    handIn(WISDOM_Q)
+    eq(ns.PinView(pin).doneToday, 1)
+    eq(ns.PinStatus() ~= nil, true)
+    ns.PinClick()
+    eq(ns.PinFor(), nil, "the pin button takes it away")
+end)
+
+test("a pinned plan works with an empty realm name", function()
+    Fake({ rep = { 5, 8775 }, prices = { [WISDOM] = 100, [WISDOM_ITEM] = 200 }, db = { days = 3, sealed = false, live = false } })
+    GetRealmName = function() return "" end
+    local ns = Load()
+    ns.Calculate()
+    local pin = ns.PinNow()
+    assert(pin and ns.PinFor() == pin)
+end)
+
 W.finish()

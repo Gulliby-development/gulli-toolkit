@@ -20,6 +20,7 @@ In WoW Forever a Craftsman's Writ is a daily quest: bring one crafted item to a 
 
 - **Today.** Your standing with the camp and how much is left to the next one, when the day resets, and every writ you carry: ready to hand in, still missing its item, in the bank or already handed in today, with the time until you can hand it in again. Each one shows what handing it in costs from here: the item you still need at the auction, less its Coin Pouch. Sealed Writs in your bags are listed too.
 - **A plan for up to 31 days.** Pick the standing you want (the next one, Friendly, Honored, Revered or Exalted) and the days you have. Craftsman's Writ picks the writs that get you there for the least gold. Each writ can be used once a day, so more days let it use the cheap writs again. The plan is shown day by day.
+- **A plan that stays.** The plan pins itself when you buy the first thing for it or hand in its first writ (one click on **Undo** takes that back), or press the pin button. A pinned plan is kept by game days: day 1 is the day you pinned it, and a new day starts at the daily reset. The **Plan** tab shows the days as a ribbon, what each day asks for, and what you still have to buy. The **Today** tab shows today's writs of the plan first. If you miss a day, the plan says so and moves those writs to the next day by itself; **Do not catch up** drops them instead. **Recalculate prices** reads the prices again and keeps the steps. **Is there a cheaper plan?** shows the plan you have and a new one side by side. Each character has one running plan; the plans of your other characters are under **Plans** at the top.
 - **Coin Pouches in plain sight.** Every turn-in gives a Coin Pouch with gold in it. The plan shows it on every line and on top: **Purchases**, minus **Coin Pouches**, equals **Total**. A writ that costs less than its pouch is marked **profit** in green, and the plan always takes it; one that costs more shows its **loss** in red. Craftsman's Writ learns what your pouches really hold when you open them.
 - **Bags and bank first.** Writs and items you already have cost nothing. The bank counts too (switch it off if you like).
 - **Sealed Writs.** A Sealed Writ holds a random writ of its rank. The plan can count it at the mean price of that rank's items.
@@ -43,6 +44,7 @@ Craftsman's Writ works on its own. With the Gulli Toolkit hub it also shows in `
 1. Type `/gcw` and open **Plan**. Pick the standing you want and the days.
 2. Go to the auction house and press **Calculate**, then **Buy** until everything is bought.
 3. Open the Sealed Writs, take the writs, and press **Lead me** on the **Today** tab.
+4. Come back each day: the **Today** tab says which writs of the plan are for today.
 
 Type `/gcw` (or the old `/gwr`) to open the window, `/gcw lead` to start the guide, `/gcw stop` to end it, `/gcw pouches` to see what the pouches hold, `/gcw perf` to see how long the window and the last plan took.
 
@@ -58,6 +60,12 @@ Because of the Coin Pouches. A cheap writ can cost less than the gold its pouch 
 <summary><b>Can I hand in the same writ twice a day?</b></summary>
 
 No. Each of the 150 writs can be handed in once a day. That is why the plan spreads copies of one writ over several days.
+</details>
+
+<details>
+<summary><b>What if I skip a day?</b></summary>
+
+The writs of that day move to the next day, and the plan ends a day later if they were the last ones. You can also press **Do not catch up**: then the plan forgets them and ends on time with less reputation.
 </details>
 
 <details>
