@@ -318,8 +318,14 @@ test("gold for another character keeps what the player asked for", function()
     local ns = Load()
     W.money = 250000
     ns.db.keepGold = 10
-    eq(ns.FillGold(), 150000)
-    eq(W.sendMoney, 150000)
+    eq(ns.FillGold(), 150000 - 30, "less the postage")
+    eq(W.sendMoney, 150000 - 30)
+    -- all of it: the postage still stays, or the game refuses the letter
+    ns.db.keepGold = 0
+    W.postage = 60
+    eq(ns.FillGold(), 250000 - 60)
+    W.money = 20
+    eq(ns.FillGold(), 0, "never below nothing")
 end)
 
 test("a mailing rule fills the name and the items; the player sends", function()
@@ -531,7 +537,7 @@ test("a letter of gold alone gets a subject, which the player can change", funct
     SendMailSubjectEditBox = box
     local copper = 0
     MoneyInputFrame_GetCopper = function() return copper end
-    SendMailFrame_Update = function() if W.sendItems > 0 and box.text == "" then box.text = "Item10" end end
+    SendMailFrame_Update = function() end
     W.Fire("MAIL_SHOW")
     assert(W.hooks.SendMailFrame_Update, "hooked once the mail frame exists")
     SendMailFrame:Show()
@@ -549,11 +555,24 @@ test("a letter of gold alone gets a subject, which the player can change", funct
     box.text = ""
     ns.AutoSubject()
     eq(box.text, "10c")
-    -- an item in the letter: the game names it
+    -- an item in the letter: its name takes the place of the amount
     W.sendItems = 1
     ns.AutoSubject()
     eq(box.text, "Item10")
+    -- the game left the subject of a letter with items empty: never empty
+    box.text = ""
+    W.sendCount = 3
+    ns.AutoSubject()
+    eq(box.text, "Item10 (3)")
+    box.text = "For you"
+    ns.AutoSubject()
+    eq(box.text, "For you", "a typed subject stays with items too")
+    -- the item leaves: a subject we filled goes back to the amount
+    box.text = ""
+    ns.AutoSubject()
     W.sendItems = 0
+    ns.AutoSubject()
+    eq(box.text, "10c")
     -- off, or paused: nothing
     box.text = ""
     ns.db.subject = false

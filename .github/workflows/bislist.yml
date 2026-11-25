@@ -1,0 +1,38 @@
+name: BiS lists
+
+# Reads the wowtbc.gg BiS lists and rebuilds My BiS List's Data.lua. The site refuses the cloud
+# sessions, not GitHub's runners, so the daily data task starts this run. When the lists changed
+# (anything but the date of the snapshot), the new snapshot and Data.lua go to the branch
+# feature/bis-data-<date>; the task then bumps the version, opens the pull request and releases.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch and rebuild
+        run: |
+          git clone -q --depth 1 https://github.com/Questie/QuestieDB /tmp/questiedb
+          python3 tools/bislist/fetch.py
+          python3 tools/bislist/build_data.py tools/bislist/wowtbc.json Gulli-MyBisList/Data.lua /tmp/questiedb
+
+      - name: Branch when the lists changed
+        run: |
+          if git diff --quiet -I '^D\.ver = ' -- Gulli-MyBisList/Data.lua; then
+            echo "The BiS lists did not change." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="feature/bis-data-$(date -u +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "$branch"
+          git commit -qam "My BiS List: lists from wowtbc.gg $(date -u +%F)"
+          git push -qf origin "$branch"
+          git diff --stat HEAD~1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Changed: pushed $branch" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -8,7 +8,7 @@
     "DungeonPrep": { "id": 1813371 },
     "GroupBuffs": { "id": 1813373 },
     "WorthIt": { "id": 1821802 },
-    "VendorFlip": { "id": 1821814, "hold": true },
+    "VendorFlip": { "id": 1821814 },
     "MyBisList": { "id": 1821807 },
     "CraftsmansWrit": { "id": null, "optional": ["auctionator"] }
   }
