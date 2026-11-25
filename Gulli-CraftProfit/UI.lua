@@ -2490,6 +2490,13 @@ function ns.Rebuild(flash, why)
         -- nothing new: the last result stays
     elseif why == "event" then
         if v.plan then v.stale = v.stale or true end
+        -- a pinned route never goes stale on its own: calculate it again once a recipe it still
+        -- crafts turned grey in the game, so it never levels on a grey recipe
+        local pin = v.plan and not runner and not ns.sim and v.pin
+        if pin and ns.PinGreyed(pin, ns.char and ns.char.profs and ns.char.profs[pin.prof]) then
+            ns.Calculate(false)
+            return
+        end
     elseif why == "pick" or why == "target" then
         -- another profession or target: nothing is calculated until the player asks
         if runner then runner:Cancel(); runner = nil; driver:Hide() end

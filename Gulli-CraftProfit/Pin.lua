@@ -101,6 +101,23 @@ function ns.PinRecipeAt(pin, s)
     end
 end
 
+-- A recipe of the pinned route that the game now shows grey where the route still crafts it:
+-- the colours the profession window saved since the plan (`obs`, `grey`) against each stretch
+-- that is not done yet. Its recipe id, else nil. The route is then calculated again, and
+-- planWith passes over a pinned recipe that can no longer take the point.
+function ns.PinGreyed(pin, prof)
+    if not (pin and prof and prof.recipes and ns.RecipeSkill) then return nil end
+    local skill = prof.skill or 0
+    for _, sg in ipairs(pin.segs or {}) do
+        local s = math.max(sg.from, skill)
+        local rec = prof.recipes[sg.rid]
+        if s < sg.to and rec then
+            local sk = ns.RecipeSkill(sg.rid, rec)
+            if sk and sk[3] and ns.Chance({ skill = sk }, s) <= 0 then return sg.rid end
+        end
+    end
+end
+
 local function buyKey(l) return l.recipe and ("r" .. tostring(l.recipe)) or ("i" .. tostring(l.id)) end
 local function buyStop(n)
     return (n.kind == "ah" and n.title == "STOP_AH_BUY") or (n.kind == "vendor" and n.title == "STOP_VENDOR_BUY")
