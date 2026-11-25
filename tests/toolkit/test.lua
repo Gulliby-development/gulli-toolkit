@@ -1720,6 +1720,27 @@ test("Ready: repairs, bags, food and drink apart, the hearthstone and class supp
     assert(by.HEARTH.frac > 0.16 and by.HEARTH.frac < 0.17, "the hearthstone's bar fills as the cooldown runs out")
     eq(by.HEARTH.mark, nil)
     eq(by.REAGENT.ok, false, "a priest of 50 has no candles")
+    -- Legacy's Reagent Economy: the priest needs no candles, and the switch is per character
+    ns.SetReagentEconomy(true)
+    eq(GulliToolkitCharDB.reagentEconomy, true)
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    eq(by.REAGENT, nil, "no candle check with Reagent Economy")
+    UnitClass = function() return "Rogue", "ROGUE" end
+    by = {}
+    for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
+    assert(by.REAGENT, "Vanish still takes Flash Powder")
+    UnitClass = function() return "Priest", "PRIEST" end
+    -- Gulli Restock keeps the same switch: its answer counts, and a change goes to it too
+    local restockOn
+    GulliRestock = { ReagentEconomy = function() return restockOn == true end,
+                     SetReagentEconomy = function(on, quiet) restockOn = on; assert(quiet, "no echo back") end }
+    eq(ns.ReagentEconomy(), false, "Restock's answer")
+    ns.SetReagentEconomy(true)
+    eq(restockOn, true)
+    GulliRestock = nil
+    ns.SetReagentEconomy(false)
+    eq(GulliToolkitCharDB.reagentEconomy, nil)
     ns.ReadySet("durMin", 30)
     ns.ReadySet("bagsMin", 5)
     by = {}

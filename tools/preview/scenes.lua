@@ -135,6 +135,14 @@ S.toolkit.setuppage = { spec = S.toolkit.default.spec,
     end,
 }
 
+-- The Ready page: the limits and the switches (Reagent Economy among them).
+S.toolkit.ready = { spec = S.toolkit.default.spec,
+    open = function(ns, W, R)
+        S.toolkit.default.open(ns, W, R)
+        ns.ShowPanel("ready")
+    end,
+}
+
 -- The Tweaks page: own tweaks, rows that
 -- modules lend, a paused module's row, and the settings of two tweaks open.
 S.toolkit.tweaks = { spec = S.toolkit.default.spec,

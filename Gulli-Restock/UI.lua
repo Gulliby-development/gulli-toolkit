@@ -46,6 +46,8 @@ local function fillRow(r, e)
     -- None left red, too few orange, enough green.
     local c = e.have == 0 and S.BAD or (e.have < e.want and S.WARN or S.GOOD)
     local parts = { S.Hex(c) .. L.HAVE:format(e.have) .. "|r" }
+    -- Reagent Economy: the spell takes none, so the amount is no goal
+    if e.free then parts[1] = S.Hex(S.MUTED) .. L.HAVE:format(e.have) .. "|r  " .. L.NOT_NEEDED end
     if e.bank > 0 then parts[#parts + 1] = L.IN_BANK:format(e.bank) end
     if e.hours then
         local h = e.hours
@@ -215,6 +217,8 @@ local function build()
           icon = ns.OPT_ICON.forecast },
         { L.OPT_LOWER, nil, function() return ns.db.lower end, function(v) ns.db.lower = v; ns.Refresh() end,
           icon = ns.OPT_ICON.lower },
+        { L.OPT_ECONOMY, L.OPT_ECONOMY_D, function() return ns.ReagentEconomy() end,
+          function(v) ns.SetReagentEconomy(v) end, icon = ns.OPT_ICON.economy },
         { L.OPT_RESERVE, nil, control = reserve, icon = ns.OPT_ICON.reserve },
     })
     st:Add(scard, h)

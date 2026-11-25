@@ -24,6 +24,7 @@ Out of candles before a raid? Gulli Restock remembers how many reagents, arrows 
 - **Class reagents in one tap.** Candles, powders, runes, symbols, seeds and more, for your class and level.
 - **A list before it buys.** At a vendor you see what it would buy and the cost. Untick a line or change the number. Only **Buy** buys. Or tick the box to buy at once. Hold **Shift** to skip one visit. The list closes by itself when you close the vendor or walk away.
 - **It knows your limits.** It buys only what fits in your bags, and it keeps the gold you set aside.
+- **Legacy: Reagent Economy.** Took this Legacy node on a character? Switch on **Legacy: Reagent Economy taken** in Settings. Then the reagents your class spells no longer need are not bought, not warned about and not added (Flash Powder stays: Vanish still takes it). The switch is per character, and the hub's **Ready** card follows it.
 - **This vendor tab.** Food, drink, reagents and ammo the open vendor sells, one tap to add them to the list.
 - **Quick buy.** Alt+click an item at the vendor: buy up to what fits in your bags and your purse.
 - **The bank, too.** At the bank it takes what the bags miss out of the bank. With a switch, it also puts the surplus into the bank.

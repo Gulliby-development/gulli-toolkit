@@ -24,13 +24,78 @@ local function standingById(id)
     end
 end
 -- The share a vendor of the player's best capital takes off: 5% per standing above Neutral.
-function ns.VendorDiscount()
+local function repDiscount()
     local best = 4
     for _, id in ipairs(CITY[UnitFactionGroup and UnitFactionGroup("player") or ""] or {}) do
         local s = standingById(id)
         if type(s) == "number" and not (issecretvalue and issecretvalue(s)) and s > best then best = s end
     end
     return math.min(best - 4, 4) * 0.05
+end
+
+-- Legacy's Bartering (Professions tree, two ranks): every vendor asks 5% less per rank, on every
+-- character that took it. Read from the Legacy trees' node that teaches the spell, else 1 rank
+-- when the spell is known; kept a few seconds, since a plan asks for every item.
+ns.BARTER_SPELL = 1225459
+ns.BARTER_STEP = 0.05
+ns.LEGACY_TREES = { 1187, 1188, 1189 }
+local barter = { at = -100 }
+local function pc(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, a, b = pcall(fn, ...)
+    if ok then return a, b end
+end
+local function barterFromTrees()
+    local T = C_Traits
+    if not T then return nil end
+    for _, tree in ipairs(ns.LEGACY_TREES) do
+        local cfg = pc(T.GetConfigIDByTreeID, tree)
+        local nodes = cfg and pc(T.GetTreeNodes, tree)
+        for _, node in ipairs(type(nodes) == "table" and nodes or {}) do
+            local info = pc(T.GetNodeInfo, cfg, node)
+            for _, entry in ipairs(type(info) == "table" and info.entryIDs or {}) do
+                local e = pc(T.GetEntryInfo, cfg, entry)
+                local d = type(e) == "table" and e.definitionID and pc(T.GetDefinitionInfo, e.definitionID)
+                if type(d) == "table" and d.spellID == ns.BARTER_SPELL then
+                    return tonumber(info.currentRank or info.activeRank or info.ranksPurchased) or 0
+                end
+            end
+        end
+    end
+end
+function ns.BarterRank()
+    local now = GetTime and GetTime() or 0
+    if now - barter.at < 5 and barter.rank then return barter.rank end
+    local rank = barterFromTrees()
+    if not rank then
+        local known = pc(C_SpellBook and C_SpellBook.IsSpellKnown, ns.BARTER_SPELL)
+            or pc(IsPlayerSpell, ns.BARTER_SPELL)
+        rank = known and 1 or 0
+    end
+    barter.at, barter.rank = now, math.max(0, math.min(rank, 2))
+    return barter.rank
+end
+local function barterShare() return ns.BarterRank() * ns.BARTER_STEP end
+
+-- The share a vendor takes off for this character: the capital's standing and Bartering, one
+-- after the other.
+function ns.VendorDiscount()
+    return 1 - (1 - repDiscount()) * (1 - barterShare())
+end
+
+-- The price of one unit at a vendor: what this character saw there (its own discounts in it),
+-- else what another character saw, less this one's Bartering (`db.vendor` keeps prices without
+-- Bartering), else nil.
+function ns.VendorPrice(id)
+    local own = ns.char and ns.char.vendor and ns.char.vendor[id]
+    if own then return own end
+    local base = ns.db.vendor[id]
+    if base then return math.floor(base * (1 - barterShare()) + 0.5) end
+end
+-- The estimate for a vendor that was never seen: four times what it pays, less the discounts.
+function ns.VendorGuess(sell)
+    if not sell or sell <= 0 then return nil end
+    return math.floor(sell * 4 * (1 - ns.VendorDiscount()) + 0.5)
 end
 
 -- ---------- wrappers ----------
@@ -370,9 +435,10 @@ local function itemFor(state, id)
     local mail, gather = ns.char.mail and ns.char.mail[id] or 0, ns.Gathered()[id] == true
     -- the simulation with empty bags: a new character owns nothing and gathers nothing
     if ns.sim and ns.sim.empty then bags, bank, alts, who, mail, gather = 0, 0, 0, nil, 0, false end
-    local buy = ns.db.vendor[id] or (ns.VENDOR_ITEMS[id] and sell > 0 and math.floor(sell * 4 * (1 - ns.VendorDiscount()) + 0.5)) or nil
+    local seen = ns.VendorPrice(id)
+    local buy = seen or (ns.VENDOR_ITEMS[id] and ns.VendorGuess(sell)) or nil
     state.items[id] = { name = nameFor(id), vend = sell, bop = bind == 1, quality = quality,
-                        ah = ah, age = age, buy = buy, buyEst = not ns.db.vendor[id] and buy ~= nil or nil, bags = bags, bank = bank,
+                        ah = ah, age = age, buy = buy, buyEst = not seen and buy ~= nil or nil, bags = bags, bank = bank,
                         mail = mail, alts = alts, altWho = who,
                         gather = gather, lots = ns.db.lots[id], ilvl = ilvl, class = class }
     -- crafted gear an enchanter may disenchant: its materials need their prices too
@@ -756,8 +822,8 @@ local function recipeSource(state, rid, rec, skill)
         local src
         -- a vendor Wowhead names without a faction ("|AH") or with no name at all sells to both
         if d[1] == "v" and (#who > 0 or #d == 2) then
-            local seen = ns.db.vendor[item]
-            src = { t = "vendor", cost = seen or ((it.vend or 0) > 0 and it.vend * 4 or nil), est = not seen, who = #who > 0 and who or nil,
+            local seen = ns.VendorPrice(item)
+            src = { t = "vendor", cost = seen or ns.VendorGuess(it.vend), est = not seen, who = #who > 0 and who or nil,
                     npc = #who > 0 and who or nil }
         end
         if it.ah and (not src or not src.cost or it.ah < src.cost) then src = { t = "ah", cost = it.ah } end
@@ -910,7 +976,9 @@ local function learnVendor()
         local id = GetMerchantItemID and GetMerchantItemID(i)
         local price, stack, extended = merchantInfo(i)
         if id and price and price > 0 and not extended then
-            ns.db.vendor[id] = math.floor(price / math.max(1, stack or 1) + 0.5)
+            local unit = price / math.max(1, stack or 1)
+            ns.char.vendor[id] = math.floor(unit + 0.5)
+            ns.db.vendor[id] = math.floor(unit / (1 - barterShare()) + 0.5)
         end
     end
 end
@@ -1599,6 +1667,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         ns.char = GulliCraftProfitCharDB
         ns.char.profs = ns.char.profs or {}
         ns.char.log = ns.char.log or {}
+        ns.char.vendor = ns.char.vendor or {}
         for name, p in pairs(ns.char.profs) do if empty(p) then ns.char.profs[name] = nil end end
         ns.Listen(self, { "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_UPDATE",
                           "MERCHANT_SHOW", "TRAINER_SHOW", "BAG_UPDATE_DELAYED", "MAIL_INBOX_UPDATE",

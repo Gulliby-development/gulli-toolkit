@@ -24,6 +24,22 @@ function ns.ReadySet(key, value)
     if ns.Refresh then ns.Refresh() end
 end
 
+-- Legacy's Reagent Economy, a node each character takes on its own: class spells need no reagent a
+-- vendor sells (`vendor` above). The game gives no way to read it yet, so the player says so; Gulli
+-- Restock keeps the same switch, and the two follow each other.
+function ns.ReagentEconomy()
+    if GulliRestock and GulliRestock.ReagentEconomy then return GulliRestock.ReagentEconomy() end
+    return GulliToolkitCharDB ~= nil and GulliToolkitCharDB.reagentEconomy == true
+end
+function ns.SetReagentEconomy(on, quiet)
+    GulliToolkitCharDB = GulliToolkitCharDB or {}
+    GulliToolkitCharDB.reagentEconomy = on and true or nil
+    if not quiet and GulliRestock and GulliRestock.SetReagentEconomy then GulliRestock.SetReagentEconomy(on, true) end
+    if ns.Refresh then ns.Refresh() end
+end
+GulliToolkit.ReagentEconomy = function() return ns.ReagentEconomy() end
+GulliToolkit.SetReagentEconomy = function(on, quiet) ns.SetReagentEconomy(on, quiet) end
+
 function ns.ReadyReset()
     if GulliToolkitDB then GulliToolkitDB.ready = nil end
     if ns.Refresh then ns.Refresh() end
@@ -91,12 +107,12 @@ local NO_MANA = { WARRIOR = true, ROGUE = true, DEATHKNIGHT = true }
 
 -- What each class brings along: a reagent from the level its spell comes, or shards.
 ns.READY_CLASS_ITEMS = {
-    PRIEST = { id = 17028, level = 48 },  -- Holy Candle
-    MAGE = { id = 17020, level = 56 },    -- Arcane Powder
-    SHAMAN = { id = 17030, level = 30 },  -- Ankh
-    DRUID = { id = 17034, level = 20 },   -- Maple Seed
-    ROGUE = { id = 5140, level = 22 },    -- Flash Powder
-    PALADIN = { id = 21177, level = 52 }, -- Symbol of Kings
+    PRIEST = { id = 17028, level = 48, vendor = true },  -- Holy Candle
+    MAGE = { id = 17020, level = 56, vendor = true },    -- Arcane Powder
+    SHAMAN = { id = 17030, level = 30, vendor = true },  -- Ankh
+    DRUID = { id = 17034, level = 20, vendor = true },   -- Maple Seed
+    ROGUE = { id = 5140, level = 22 },    -- Flash Powder: Vanish takes it even with Reagent Economy
+    PALADIN = { id = 21177, level = 52, vendor = true }, -- Symbol of Kings
     WARLOCK = { id = 6265, level = 1, key = "SHARDS" }, -- Soul Shard
 }
 
@@ -190,7 +206,7 @@ function ns.Readiness()
                 against(ammo, ns.ReadyGet("ammoMin")))
         end
         local c = ns.READY_CLASS_ITEMS[class or ""]
-        if c and level >= c.level then
+        if c and level >= c.level and not (c.vendor and ns.ReagentEconomy()) then
             local n = itemCount(c.id)
             local min = ns.ReadyGet(c.key == "SHARDS" and "shardsMin" or "reagentMin")
             local frac, mark = against(n, min)
