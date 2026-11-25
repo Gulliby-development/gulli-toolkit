@@ -2773,6 +2773,120 @@ test("a later stage's buy stop buys for that stage now; what came in goes to the
     eq(n.RunProgress()[stop].lines[at].done, true)
 end)
 
+-- Two stages: past 185 only the vest raises the skill.
+local function twoStages()
+    return game({
+        items = {
+            [1] = { name = "Silk Cloth", ah = 160, sell = 38 },
+            [2] = { name = "Bolt of Silk Cloth", ah = 900, sell = 150 },
+            [3] = { name = "Blue Dye", sell = 12 },
+            [4] = { name = "Azure Silk Hood", ah = 1500, sell = 420, quality = 2 },
+            [5] = { name = "Fine Thread", sell = 25 },
+            [6] = { name = "Silk Headband", ah = 2600, sell = 520, quality = 2 },
+            [8] = { name = "Bolt of Mageweave", ah = 4000, sell = 250 },
+            [9] = { name = "Black Mageweave Vest", ah = 2400, sell = 900, quality = 2 },
+        },
+        prof = { name = "Tailoring", skill = SKILL, cap = 225, recipes = {
+            { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+            { id = 102, name = "Azure Silk Hood", learned = true, diff = 0, grey = 175, out = 4, r = { [2] = 2, [3] = 2 } },
+            { id = 103, name = "Silk Headband", learned = true, diff = 0, grey = 185, out = 6, r = { [2] = 3, [5] = 2 } },
+            { id = 105, name = "Black Mageweave Vest", learned = true, diff = 0, grey = 230, out = 9, r = { [2] = 2, [8] = 1 } },
+        } },
+    })
+end
+
+test("the bug of 2026-11-25: a later stage the skill has reached is walked like the first, crafts and Mark done too", function()
+    local n = twoStages()
+    n.db.prefs.target = 225
+    n.Toggle(); n.Calculate()
+    local legs = n.view.legs or {}
+    local leg, cs
+    for i = 2, #legs do
+        if legs[i].plan then
+            n.SelectLeg(i)
+            for k, s in ipairs(n.view.route) do
+                for _, sg in ipairs(s.segs or {}) do if sg.rid == 105 then leg, cs = i, cs or k end end
+            end
+            if cs then break end
+        end
+    end
+    assert(cs, "a later stage crafts the vest")
+    local function markTool(a) for _, t in ipairs(a.tools) do if t.mark ~= nil then return t end end end
+    -- not reached yet: only a plan, but Mark done is there
+    eq(n.LegNow(n.view, leg), false)
+    assert(markTool(n.StopAction(cs)), "Mark done on a craft stop of a later stage")
+    -- the skill went on since the plan: this stage is the one to walk now
+    n.char.profs.Tailoring.skill = legs[leg].from
+    eq(n.LegNow(n.view, leg), true)
+    local a = n.StopAction(cs)
+    eq(a.pill[1], n.L.CRAFT_WAITS:format(1), "it waits for its own purchases, as the first stage does")
+    assert(markTool(a) and markTool(a).mark, "Mark done on the craft of the stage now")
+    -- the crafts the game makes count for it
+    local sg = n.view.route[cs].segs[1]
+    eq(sg.rid, 105)
+    for _ = 1, n.Ceil(sg.n) do W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 105) end
+    assert(n.RunProgress()[cs].segs[1].done, "the vests made tick the stretch off")
+    -- and the skill reached does too, without casts
+    n.view.made = {}
+    eq(n.RunProgress()[cs].segs[1].done, false)
+    n.char.profs.Tailoring.skill = sg.to
+    assert(n.RunProgress()[cs].segs[1].done, "the skill is past the stretch")
+    -- Mark done ticks it off and back
+    n.char.profs.Tailoring.skill = legs[leg].from
+    markTool(n.StopAction(cs))[2]()
+    assert(n.RunProgress()[cs].done and n.RunProgress()[cs].marked)
+    markTool(n.StopAction(cs))[2]()
+    eq(n.RunProgress()[cs].marked, nil)
+end)
+
+test("a pattern bought ahead and learned since counts as bought, although it left the bags", function()
+    local c = core()
+    local node = { kind = "ah", title = "STOP_AH_BUY", sig = "ah", lines = {
+        { recipe = 300, name = "Runecloth Headband", n = 1, src = "ah", price = 14900, pattern = 14630 } } }
+    local st = { items = { [14630] = { bags = 0 } } }
+    local none = function() return 0 end
+    eq(c.Progress({ node }, st, none)[1].done, false)
+    eq(c.Progress({ node }, st, none, nil, nil, nil, function() return false end)[1].done, false)
+    local p = c.Progress({ node }, st, none, nil, nil, nil, function(rid) return rid == 300 end)
+    eq(p[1].done, true); eq(p[1].lines[1].got, 1)
+end)
+
+test("Make N shows a bar of the batch: the crafts made, then it ends; the game stopping it ends it too", function()
+    local n = twoStages()
+    local crafted
+    C_TradeSkillUI.CraftRecipe = function(rid, k) crafted = { rid, k } end
+    n.db.prefs.useBags, n.db.prefs.useBank = false, false
+    n.Toggle(); n.Calculate()
+    local cs
+    for i, s in ipairs(n.view.route) do if s.segs then cs = cs or i end end
+    n.Select(cs)
+    local rid = n.NextCraft(n.view.route[cs], n.RunProgress()[cs])
+    eq(n.StopAction(cs).counter, nil, "no bar before Make")
+    assert(n.Craft(rid, 3)); eq(crafted[2], 3)
+    local a = n.StopAction(cs)
+    assert(a.counter and a.counter.bar, "the bar")
+    eq(a.counter.text, n.L.CRAFTED_OF:format(0, 3)); eq(a.primary[1], n.L.CRAFT_BUSY); eq(a.primary[2], nil)
+    eq(a.hint, n.L.HINT_CRAFTING)
+    n.Select(cs)
+    assert(n.ui.panel.bar:IsShown(), "the panel shows it")
+    W.Fire("UNIT_SPELLCAST_START", "player", "guid", rid)
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", rid)
+    eq(n.StopAction(cs).counter.text, n.L.CRAFTED_OF:format(1, 3))
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", rid)
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", rid)
+    eq(n.batch, nil, "all made: the bar goes")
+    -- another batch the game stops
+    n.Craft(rid, 2)
+    W.Fire("UNIT_SPELLCAST_START", "player", "guid", 999)
+    assert(n.batch, "another spell leaves it alone")
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", "guid", rid)
+    eq(n.batch, nil)
+    -- nothing came of it for a while
+    n.Craft(rid, 2)
+    W.now = W.now + 60
+    eq(n.Batch(), nil)
+end)
+
 test("an item the client had not loaded gets its name once the game sends it", function()
     local n = game()
     W.items[3].pending = true

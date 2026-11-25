@@ -1117,8 +1117,34 @@ function ns.Place()
     return nil
 end
 
--- How far the current run is (ns.Progress on the bags as they are now). A later run of the
--- way has no progress: its plan starts from bags that are not there yet.
+-- The profession's skill now (the plan may be older), and whether the character knows a recipe now.
+local function skillNow(v)
+    local prof = ns.char and ns.char.profs and ns.char.profs[v.state and v.state.name or ""]
+    return prof and prof.skill, prof
+end
+local function learnedNow(v)
+    local _, prof = skillNow(v)
+    return function(rid)
+        local r = prof and prof.recipes and prof.recipes[rid]
+        return (r and r.learned) or false
+    end
+end
+
+-- A run the player can walk now: the first one, or a later one whose start the skill has
+-- reached (the plan was made lower down and the skill went on since).
+function ns.LegNow(v, k)
+    v = v or ns.view
+    k = k or v.leg or 1
+    if k == 1 then return true end
+    local l = v.legs and v.legs[k]
+    if not l or l.unknown or not v.state or v.state.sim then return false end
+    local skill = skillNow(v)
+    return (skill and l.from and skill >= l.from) or false
+end
+
+-- How far the chosen run is (ns.Progress on the bags as they are now). For a later run the
+-- stops of the runs before it come first: what came into the bags since the plan, the crafts
+-- the game made and the skill go to them in their order, then to this run.
 function ns.RunProgress()
     local v = ns.view
     if not v.route or not v.state then return {} end
@@ -1130,26 +1156,25 @@ function ns.RunProgress()
         for i in ipairs(v.route) do out[i] = { lines = {}, segs = {}, left = 0, done = false } end
         return out
     end
-    local prof = ns.char and ns.char.profs and ns.char.profs[v.state.name or ""]
+    local skill = skillNow(v)
+    local learned = learnedNow(v)
     local leg = v.leg or 1
-    if leg == 1 then return ns.Progress(v.route, v.state, count, v.made, v.marks, prof and prof.skill) end
-    -- a later run: only its buy stops can be walked now (bought ahead, stage by stage). What came
-    -- into the bags since the plan goes to the runs before it first, in their order.
+    if leg == 1 then return ns.Progress(v.route, v.state, count, v.made, v.marks, skill, learned) end
     if not v.legs or not v.legs[leg] then return {} end
-    local all, at = {}, 0
+    local all = {}
     for k = 1, leg - 1 do
         local l = v.legs[k]
         local plan = k == 1 and v.plan or (l and l.plan)
         local st = k == 1 and v.state or (l and l.state)
         if plan and st then
-            for _, n in ipairs(ns.Route(st, plan)) do if ns.Gets(n) then all[#all + 1] = n end end
+            for _, n in ipairs(ns.Route(st, plan)) do all[#all + 1] = n end
         end
     end
-    at = #all
+    local at = #all
     for _, n in ipairs(v.route) do all[#all + 1] = n end
-    local prog = ns.Progress(all, v.state, count)
+    local prog = ns.Progress(all, v.state, count, v.made, v.marks, skill, learned)
     local out = {}
-    for i, n in ipairs(v.route) do out[i] = ns.Gets(n) and prog[at + i] or { lines = {}, left = 0, done = false } end
+    for i in ipairs(v.route) do out[i] = prog[at + i] end
     return out
 end
 
@@ -1164,23 +1189,75 @@ function ns.MarkDone(i, on)
     if ns.Refresh then ns.Refresh() end
 end
 
--- A craft the game finished: it counts for the craft stops of the run. The recipe is the spell
--- (the modern API's recipe id), else the recipe of that name (a classic recipe keyed by its item).
-function ns.OnCast(spell)
+-- The recipe of a spell the player cast: the spell itself (the modern API's recipe id), else the
+-- recipe of that name (a classic recipe keyed by its item). By name: any learned recipe while a
+-- profession window is open, else only a recipe of the route shown (every spell of a fight comes
+-- here too, and the window may be closed while a batch goes on).
+local function routeRecipes(v)
+    local out = {}
+    for _, n in ipairs(v.route or {}) do
+        for _, sg in ipairs(n.segs or {}) do out[sg.rid] = true end
+        for _, l in ipairs(n.lines or {}) do if l.recipe and n.kind == "craft" then out[l.recipe] = true end end
+    end
+    if ns.batch then out[ns.batch.rid] = true end
+    return out
+end
+function ns.CastRecipe(spell)
     local v = ns.view
     local st = v and v.state
-    if not st or not spell or st.sim then return false end
-    local rid = st.recipes[spell] and spell
-    -- by name only while a profession window is open: every spell of a fight comes here too
-    if not rid and ns.profOpen then
-        local name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spell)) or (GetSpellInfo and GetSpellInfo(spell))
-        if not name then return false end
-        for id, r in pairs(st.recipes) do if r.name == name and r.learned then rid = id; break end end
+    if not st or not spell or st.sim then return nil end
+    if st.recipes[spell] then return spell end
+    local name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spell)) or (GetSpellInfo and GetSpellInfo(spell))
+    if not name then return nil end
+    local only = not ns.profOpen and routeRecipes(v) or nil
+    for id, r in pairs(st.recipes) do
+        if r.name == name and r.learned and (not only or only[id]) then return id end
     end
+    return nil
+end
+
+-- A craft the game finished: it counts for the craft stops of the run, and for the batch the
+-- Make button started.
+function ns.OnCast(spell)
+    local v = ns.view
+    local rid = ns.CastRecipe(spell)
     if not rid then return false end
     v.made = v.made or {}
     v.made[rid] = (v.made[rid] or 0) + 1
+    local b = ns.batch
+    if b and b.rid == rid then
+        b.made, b.cast = b.made + 1, nil
+        if b.made >= b.of then ns.batch = nil end
+    end
     if ns.PinPartOf(v, rid) then ns.AutoPin() end
+    return true
+end
+
+-- The batch of the Make button: { rid, of, made, cast = { from, to } (ms of the cast that
+-- runs) }, for the bar on the craft stop. It ends when it is made, the game stops it, or
+-- nothing came of it for a while.
+ns.batch = nil
+local BATCH_QUIET = 15
+function ns.BatchStart(rid, n)
+    ns.batch = { rid = rid, of = n, made = 0, at = GetTime and GetTime() or 0 }
+end
+function ns.Batch()
+    local b = ns.batch
+    if b and not b.cast and GetTime and GetTime() - b.at > BATCH_QUIET then ns.batch, b = nil, nil end
+    return b
+end
+-- A cast started or stopped: `event` UNIT_SPELLCAST_START, _INTERRUPTED or _FAILED.
+function ns.OnBatchCast(event, spell)
+    local b = ns.batch
+    if not b or ns.CastRecipe(spell) ~= b.rid then return false end
+    b.at = GetTime and GetTime() or 0
+    if event == "UNIT_SPELLCAST_START" then
+        local from, to
+        if UnitCastingInfo then from, to = select(4, UnitCastingInfo("player")) end
+        b.cast = (from and to and to > from) and { from = from, to = to } or nil
+    else
+        ns.batch = nil
+    end
     return true
 end
 
@@ -1494,11 +1571,13 @@ function ns.Craft(rid, n)
     if not rec then return false end
     if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe and type(rid) == "number" and rid ~= rec.out then
         C_TradeSkillUI.CraftRecipe(rid, n)
+        ns.BatchStart(rid, n)
         return true
     end
     local i = classicIndex(rec.name)
     if not i or not DoTradeSkill then return false end
     DoTradeSkill(i, n)
+    ns.BatchStart(rid, n)
     return true
 end
 
@@ -1677,7 +1756,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
                           "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED", "GET_ITEM_INFO_RECEIVED",
                           "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
                           "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" })
-        if self.RegisterUnitEvent then pcall(self.RegisterUnitEvent, self, "UNIT_SPELLCAST_SUCCEEDED", "player") end
+        if self.RegisterUnitEvent then
+            pcall(self.RegisterUnitEvent, self, "UNIT_SPELLCAST_SUCCEEDED", "player")
+            for _, e in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do
+                pcall(self.RegisterUnitEvent, self, e, "player")
+            end
+        end
         -- every way a place closes, walking away too: the stop and the window beside it follow
         if ns.Skin and ns.Skin.ClosesWith then
             for place, fn in pairs(ns.PLACE_CLOSED) do ns.Skin.ClosesWith(place, fn) end
@@ -1694,6 +1778,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         if a1 == "player" and ns.OnCast(a3) and ns.Refresh then ns.Refresh() end
         return
     end
+    if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
+        if a1 == "player" and ns.OnBatchCast(event, a3) and ns.Refresh then ns.Refresh() end
+        return
+    end
     if event == "UPDATE_FACTION" or event == "PLAYER_ENTERING_WORLD" then
         if event == "PLAYER_ENTERING_WORLD" then ns.HookRepWindow() end
         ns.RepChanged()
@@ -1705,6 +1793,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
     if event == "TRAINER_SHOW" then learnTrainer(); return end
     if event == "TRADE_SKILL_CLOSE" then
         ns.profOpen, ns.pendingRecipe, ns.helperOpen = false, nil, nil
+        -- a batch with no cast running stops with the window; a cast that runs goes on and tells
+        if ns.batch and not ns.batch.cast then ns.batch = nil end
         if ns.Refresh then ns.Refresh() end
         return
     end
