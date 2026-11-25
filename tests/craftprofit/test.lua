@@ -863,6 +863,123 @@ test("Enchanting: enchants make no item, so they only level; a wand can also ear
     end
 end)
 
+-- An enchant that needs a rod in the bags: dust from the bags, the rod bought once or made.
+local function rodState(rod, extra)
+    local st = { skill = 150, cap = 175, level = 40, items = {
+        dust = { name = "Soul Dust", ah = 100, age = 0.1, vend = 10, bags = 400 },
+        rod = { name = "Runed Golden Rod", ah = 5000, age = 0.1, vend = 500 },
+        rodBase = { name = "Golden Rod", ah = 300, age = 0.1, vend = 50, bags = 1 },
+        wand = { name = "Lesser Mystic Wand", ah = 200, age = 0.1, vend = 20 },
+    }, recipes = {
+        boots = { name = "Enchant Boots - Lesser Agility", skill = { 150, 170, 190 }, r = { dust = 1 }, learned = true, tools = { "rod" } },
+    } }
+    for k, v in pairs(rod or {}) do st.items.rod[k] = v end
+    for k, v in pairs(extra or {}) do st.recipes[k] = v end
+    return st
+end
+
+test("tools: a recipe that needs a rod gets it once, before its crafts", function()
+    local c = core()
+    -- no rod: bought once at the auction, then the enchant levels
+    local st = rodState()
+    local plan = c.Plan(st, prefs())
+    eq(plan.reached, 175)
+    eq(plan.segs[1].rid, "boots")
+    eq(plan.ahBuy.rod, 1, "one rod, not one a craft")
+    local route = c.Route(st, plan)
+    local buy = has(route, "STOP_AH_BUY")
+    local found
+    for _, l in ipairs(buy.lines) do if l.id == "rod" then found = l end end
+    assert(found, "the auction stop buys the rod")
+    -- the reasons say so
+    local saw
+    for _, x in ipairs(plan.segs[1].why.reasons) do if x[1] == "TOOL_get" then saw = x end end
+    assert(saw and saw[2][1] == "rod", "the stretch says it gets the rod")
+    c.view.state = st
+    assert(not c.WhyText(saw):find("%%s"))
+    -- a rod in the bags: nothing to buy, and the reason says it is there
+    st = rodState({ bags = 1 })
+    plan = c.Plan(st, prefs())
+    eq(plan.ahBuy.rod, nil)
+    eq(plan.reached, 175)
+    saw = nil
+    for _, x in ipairs(plan.segs[1].why.reasons) do if x[1] == "TOOL_have" then saw = true end end
+    assert(saw, "the tool you have")
+    -- a rod in the bank: taken from there, not bought
+    local inBags = plan.own
+    st = rodState({ bank = 1 })
+    plan = c.Plan(st, prefs())
+    eq(plan.ahBuy.rod, nil)
+    eq(plan.bank.rod, 1)
+    near(plan.own, inBags, "taking your own tool costs nothing")
+end)
+
+test("tools: no way to get the tool leaves the recipe out; another recipe levels", function()
+    local c = core()
+    local wand = { name = "Lesser Mystic Wand", skill = { 150, 165, 185 }, r = { dust = 3 }, out = "wand", learned = true }
+    -- the rod cannot be bought (bound, no auction) and no known recipe makes it
+    local st = rodState({ ah = nil, bop = true }, { wand = wand })
+    local plan = c.Plan(st, prefs())
+    for _, sg in ipairs(plan.segs) do assert(sg.rid ~= "boots", "no rod, no enchant") end
+    eq(plan.segs[1].rid, "wand")
+    -- a tool the game names that no row knows, and not in the bags: left out the same way
+    st = rodState(nil, { wand = wand })
+    st.recipes.boots.tools, st.recipes.boots.toolBlocked = nil, true
+    plan = c.Plan(st, prefs())
+    for _, sg in ipairs(plan.segs) do assert(sg.rid ~= "boots") end
+    -- the rod made by a learned recipe is an intermediate when that is cheaper
+    st = rodState({ ah = 99999 }, { makeRod = { name = "Runed Golden Rod", skill = { 150, 155, 160 }, r = { rodBase = 1, dust = 2 },
+                                                 out = "rod", learned = true } })
+    plan = c.Plan(st, prefs())
+    eq(plan.prep.makeRod, 1, "the rod is made once")
+    eq(plan.ahBuy.rod, nil)
+    -- Crafts now: a recipe whose tool is not in the bags makes none
+    st = rodState()
+    local rows = c.Crafts(st, prefs())
+    for _, r in ipairs(rows) do if r.recipe == "boots" then eq(r.can, 0); eq(r.tool[1], "rod") end end
+    st = rodState({ bags = 1 })
+    rows = c.Crafts(st, prefs())
+    for _, r in ipairs(rows) do if r.recipe == "boots" then assert(r.can > 0); eq(r.tool, nil) end end
+end)
+
+test("tools: a later run has the rod the first run got", function()
+    local c = core()
+    local st = rodState(nil, { boots2 = { name = "Enchant Boots - Stamina", skill = { 165, 175, 195 }, r = { dust = 2 }, learned = true, tools = { "rod" } } })
+    st.cap = 190
+    local legs = c.Legs(st, prefs())
+    local bought = 0
+    for _, leg in ipairs(legs) do bought = bought + ((leg.plan or leg).ahBuy and (leg.plan or leg).ahBuy.rod or 0) end
+    eq(bought, 1, "the rod is bought in one run only")
+end)
+
+test("tools: the game's requirement lines name the rod; an unknown tool blocks, the ids are kept for every character", function()
+    local n = game({
+        items = { [8] = { name = "Soul Dust", sell = 10, bags = 50 }, [11130] = { name = "Runed Golden Rod", sell = 500 },
+                  [9] = { name = "Lesser Magic Wand", sell = 100 } },
+        prof = { name = "Enchanting", skill = 160, cap = 225, recipes = {
+            { id = 13637, name = "Enchant Boots - Lesser Agility", learned = true, diff = 1, grey = 190, r = { [8] = 1 },
+              tools = { { "Runed Golden Rod", false } } },
+            { id = 202, name = "Lesser Magic Wand", learned = true, diff = 1, grey = 190, out = 9, r = { [8] = 1 },
+              tools = { { "Magic Thing Nobody Has", false } } },
+            { id = 203, name = "Enchant Bracer - Minor Health", learned = true, diff = 1, grey = 190, r = { [8] = 1 },
+              tools = { { "Magic Thing Nobody Has", true } } },
+        } },
+        spellbook = { { "Enchanting", 160, 225 } } })
+    n.Toggle()
+    local st = n.State()
+    eq(st.recipes[13637].tools[1], 11130)
+    eq(st.recipes[13637].toolBlocked, nil)
+    assert(st.items[11130], "the rod's price and count are read")
+    eq(st.recipes[202].toolBlocked, true, "a tool we cannot get and do not have")
+    eq(st.recipes[203].toolBlocked, nil, "an unknown tool in the bags is fine")
+    eq(n.db.tools[13637][1], 11130)
+    eq(n.db.tools[202], nil, "a blocked recipe is not saved for others")
+    -- the simulation and other characters read the saved ids
+    n.char.profs.Enchanting.recipes[13637].tools = nil
+    eq(n.State().recipes[13637].tools[1], 11130)
+    eq(n.ToolId("RUNED GOLDEN ROD"), 11130)
+end)
+
 test("a result of the profession chosen before never shows after a switch", function()
     local n = game({ spellbook = { { "Tailoring", SKILL, 225 }, { "Cooking", 50, 75 } } })
     n.char.profs.Cooking = { skill = 50, cap = 75, recipes = {} }
