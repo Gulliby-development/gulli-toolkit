@@ -258,6 +258,17 @@ function Fake(spec)
                     end
                 end
             end,
+            -- `tools`: { { name, met } }: the tools the recipe needs in the bags
+            GetRecipeRequirements = function(id)
+                for _, r in ipairs(prof.recipes) do
+                    if r.id == id then
+                        local out = {}
+                        for _, t in ipairs(r.tools or {}) do out[#out + 1] = { name = t[1], met = t[2] and true or false, type = 1 } end
+                        return out
+                    end
+                end
+                return {}
+            end,
             GetRecipeCooldown = function(id)
                 for _, r in ipairs(prof.recipes) do if r.id == id then return r.cooldown or 0, false end end
                 return 0, false

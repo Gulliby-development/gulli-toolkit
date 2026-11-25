@@ -482,6 +482,55 @@ local function take(state, P, st, known, acc, id, n, depth)
     acc.spend = acc.spend + n * b
 end
 
+-- ---------- tools ----------
+
+-- A recipe that needs a tool in the bags (an enchanting rod, a blacksmith hammer, an arclight
+-- spanner): the tool is not used up, so it costs the plan once, the first time a stretch needs
+-- it. `r.tools`: the item ids; `r.toolBlocked`: the game names a tool no one can get here.
+-- The ids the plan must still get for the recipe, with what they cost; nil when one cannot be had.
+local function toolsToGet(state, P, st, known, acc, r)
+    if r.toolBlocked then return nil end
+    local list, sum
+    for _, id in ipairs(r.tools or {}) do
+        if not acc.tools[id] and left(st, id) <= 0 then
+            local c = unitCost(state, P, st, known, id)
+            if c == math.huge then return nil end
+            list = list or {}
+            list[#list + 1] = id
+            sum = (sum or 0) + c
+        end
+    end
+    return list or {}, sum or 0
+end
+ns.ToolsToGet = toolsToGet
+
+-- Gets the tools of a recipe once: one bought or made, or the own one taken from the bank, the
+-- mailbox or another character (it stays the player's, so it costs nothing then).
+local function getTools(state, P, st, known, acc, r)
+    for _, id in ipairs(r.tools or {}) do
+        if not acc.tools[id] then
+            acc.tools[id] = true
+            local s = st[id]
+            if s and s.bags > 0 then
+                -- in the bags already
+            elseif s and left(st, id) > 0 then
+                for _, pool in ipairs({ "bank", "mail", "alts" }) do
+                    if (s[pool] or 0) > 0 then
+                        s[pool] = s[pool] - 1
+                        acc[pool] = acc[pool] or {}
+                        add(acc[pool], id, 1)
+                        break
+                    end
+                end
+            else
+                take(state, P, st, known, acc, id, 1)
+                acc.toolsGot = acc.toolsGot or {}
+                acc.toolsGot[id] = true
+            end
+        end
+    end
+end
+
 local function rankAbove(cap)
     for _, r in ipairs(ns.RANKS) do if r[1] > cap then return r end end
 end
@@ -530,6 +579,14 @@ function ns.Why(state, P, st, known, best, cands, w, s0)
         if best.ch >= 1 then why("ORANGE") else why("CHANCE", math.floor(best.ch * 100 + 0.5), best.n) end
     end
     if r.cd then why("CD") end
+    -- the tools it needs: those the route gets for it, and those the player has
+    if r.tools and #r.tools > 0 then
+        local new, get, have = {}, {}, {}
+        for _, id in ipairs(best.toolsNew or {}) do new[id] = true end
+        for _, id in ipairs(r.tools) do table.insert(new[id] and get or have, id) end
+        if #get > 0 then why("TOOL_get", get) end
+        if #have > 0 then why("TOOL_have", have) end
+    end
     -- where the reagents come from: the cheapest way of each, as the plan takes them
     local from = {}
     local ids = {}
@@ -587,7 +644,7 @@ end
 local function planWith(state, P, allowed)
     local st = ns.Stock(state, P)
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
-                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, cdUsed = {} }
+                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, cdUsed = {}, tools = {} }
     local s, cap, target = state.skill, ns.Cap(state), ns.Target(state, P)
     local w = P.w or ns.TIME[P.mode] or 0
     -- a sorted list keeps the plan the same from run to run
@@ -620,6 +677,12 @@ local function planWith(state, P, allowed)
                 local ch = ns.Chance(r, s)
                 -- a cooldown craft: once, and only a skill point it makes for sure
                 if ch > 0 and r.cd and 1 / ch > ns.CdLeft(state, r) - (acc.cdUsed[rid] or 0) + 1e-9 then ch = 0 end
+                -- a tool no one can get here leaves the recipe out
+                local toolsNew, toolCost
+                if ch > 0 then
+                    toolsNew, toolCost = toolsToGet(state, P, st, allowed, acc, r)
+                    if not toolsNew then ch = 0 end
+                end
                 if ch > 0 then
                     local n = 1 / ch
                     local value, how = 0, nil
@@ -632,11 +695,15 @@ local function planWith(state, P, allowed)
                         -- choice, spread over the points it is good for (ns.Plan would otherwise try
                         -- the plan again without each of them, which takes minutes there)
                         local once = 0
+                        local sk = r.skill
+                        local span = math.max(1, math.min(target, math.floor((sk[2] + sk[3]) / 2)) - s)
                         if state.sim and not r.learned and not acc.buyRecipes[rid] then
-                            local sk = r.skill
-                            once = (r.src.cost or 0) / math.max(1, math.min(target, math.floor((sk[2] + sk[3]) / 2)) - s)
+                            once = (r.src.cost or 0) / span
                         end
+                        -- a tool to get counts once, spread over the points the recipe is good for
+                        once = once + toolCost / span
                         local c = { rid = rid, n = n, ch = ch, rc = rc, value = value, how = how, cost = cost, raw = raw,
+                                    toolsNew = toolsNew,
                                     score = raw + once + ((last and last.rid ~= rid) and ns.SWITCH or 0) }
                         cands[#cands + 1] = c
                         -- `only`: a run of one recipe; the others still make its intermediates
@@ -650,6 +717,7 @@ local function planWith(state, P, allowed)
             local r = state.recipes[best.rid]
             local why
             if not (last and last.rid == best.rid and last.to == s) then why = ns.Why(state, P, st, allowed, best, cands, w, s) end
+            getTools(state, P, st, allowed, acc, r)
             for id, k in pairs(r.r) do take(state, P, st, allowed, acc, id, k * best.n) end
             if r.out then add(acc.made, r.out, best.n * (r.count or 1)) end
             acc.crafts = acc.crafts + best.n
@@ -739,7 +807,7 @@ local function earnWith(state, P, known, rid)
     local st = ns.Stock(state, P)
     local ids = { rid }
     local acc = { bags = {}, bank = {}, ahBuy = {}, vendorBuy = {}, prep = {}, missing = {}, made = {},
-                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true, cdUsed = {},
+                  segs = {}, buyRecipes = {}, spend = 0, own = 0, crafts = 0, earn = true, cdUsed = {}, tools = {},
                   reached = state.skill, target = state.skill }
     local Q = {}
     for k, v in pairs(P) do Q[k] = v end
@@ -753,6 +821,8 @@ local function earnWith(state, P, known, rid)
             local r = state.recipes[rid]
             local cost = reagentCost(state, P, st, known, rid)
             if (acc.cdUsed[rid] or 0) >= ns.CdLeft(state, r) then cost = math.huge end
+            -- the tool it needs is got once, with the first craft (the run's spend); none to get, no run
+            if not toolsToGet(state, P, st, known, acc, r) then cost = math.huge end
             if cost < math.huge then
                 local value = ns.SellValue(state, P, r.out, acc.made[r.out] or 0) * (r.count or 1)
                 local gain = value - cost
@@ -763,6 +833,7 @@ local function earnWith(state, P, known, rid)
         local r = state.recipes[best.rid]
         -- the reasons of the run, from the stock before its first craft takes from it
         local why = not bySeg[best.rid] and ns.Why(state, P, st, known, { rid = best.rid, earn = true, cost = -best.gain, value = best.value, how = best.how }, {}, 0)
+        getTools(state, P, st, known, acc, r)
         for id, k in pairs(r.r) do take(state, P, st, known, acc, id, k) end
         add(acc.made, r.out, r.count or 1)
         acc.crafts = acc.crafts + 1
@@ -977,6 +1048,8 @@ local function after(st, run)
         for k, v in pairs(it) do c[k] = v end
         c.bags = math.max(0, (c.bags or 0) - ((run.bags or {})[id] or 0))
         c.bank = math.max(0, (c.bank or 0) - ((run.bank or {})[id] or 0))
+        -- a tool the run got is in the bags for the runs after it
+        if (run.tools or {})[id] then c.bags = math.max(c.bags, 1) end
         nst.items[id] = c
     end
     nst.recipes = {}
@@ -1597,10 +1670,19 @@ function ns.Crafts(state, P)
         local can = math.huge
         for id, n in pairs(r.r) do can = math.min(can, math.floor(left(st, id) / n)) end
         can = math.min(can, ns.CdLeft(state, r))
+        -- a tool the bags do not hold: the game crafts none
+        local tool
+        for _, id in ipairs(r.tools or {}) do
+            local s = st[id]
+            if not (s and s.bags > 0) then tool = tool or {}; tool[#tool + 1] = id end
+        end
+        if r.toolBlocked then tool = tool or {} end
+        if tool then can = 0 end
         -- another profession's recipe only makes reagents here; it is no row of this list
         if cost < math.huge and not r.other then
             rows[#rows + 1] = { recipe = rid, name = r.name, cost = cost, value = value, how = how,
                                 profit = value - cost, can = can == math.huge and 0 or can, cd = r.cd, cdReady = r.cdReady,
+                                tool = tool,
                                 color = ns.Color(r, state.skill), stale = ((state.items[r.out] or {}).age or 0) > ns.FRESH_DAYS }
         end
     end
