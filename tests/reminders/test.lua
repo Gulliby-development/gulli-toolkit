@@ -235,6 +235,38 @@ test("Shadowform off the stance bar: never guessed gone in a fight, a cast in th
     eq(W.Keys(ns.Missing()), "", "on the bar and active")
 end)
 
+test("Shadowform on a boss: hidden auras and a hidden form answer never show it missing", function()
+    Fake({ class = "PRIEST", known = { 15473 }, auras = { "Spell15473" } })
+    local ns = Load()
+    ns.SetPref("show", true)
+    ns.SetTracked("SHADOWFORM", true)
+    W.form = 1
+    eq(W.Keys(ns.Refresh()), "")
+    -- The pull: the game hides auras before the fight starts, and the form's state is secret.
+    C_Secrets = { ShouldAurasBeSecret = function() return true end }
+    W.byName = false
+    W.secret = { Spell15473 = true }
+    local real = GetShapeshiftFormInfo
+    GetShapeshiftFormInfo = function(i) local a, _, c, d = real(i); return a, W.hidden, c, d end
+    W.hidden = setmetatable({}, {})
+    local was = issecretvalue
+    issecretvalue = function(v) return v == W.hidden end
+    eq(W.Keys(ns.Refresh()), "", "before the lockdown: nothing guessed")
+    W.combat = true
+    eq(#ns.CombatView(ns.Missing()), 0, "in the fight: never on the strip")
+    -- The form answers plainly as off, but the game says it hides auras: still not sure.
+    GetShapeshiftFormInfo = real
+    W.form = 0
+    eq(#ns.CombatView(ns.Missing()), 0, "a hiding game is no proof the form is off")
+    -- The active form index alone tells it.
+    W.form = 1
+    GetShapeshiftFormInfo = function(i) local a, _, c, d = real(i); return a, false, c, d end
+    eq(W.Keys(ns.Missing()), "", "GetShapeshiftForm names it: on")
+    GetShapeshiftFormInfo = real
+    issecretvalue = was
+    C_Secrets = nil
+end)
+
 test("a shaman with Water Shield is not asked for Lightning Shield", function()
     Fake({ class = "SHAMAN", known = { 324, 24398 }, auras = { "Spell24398" } })
     local ns = Load()

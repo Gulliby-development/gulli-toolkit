@@ -576,14 +576,22 @@ function ns.FormOn(ids)
             local s = spellName(id)
             if s then names[s] = true end
         end
-        local onBar
+        -- The form the game names as active, when it says so plainly.
+        local cur = GetShapeshiftForm()
+        if secret(cur) then cur = nil end
+        local onBar, blind
         for i = 1, n do
             local ok, _, active, _, sid = pcall(GetShapeshiftFormInfo, i)
-            if ok and sid and not secret(sid) and names[spellName(sid) or ""] then
+            if not ok or secret(sid) then
+                blind = true -- the game hides this slot: it may be the form
+            elseif sid and names[spellName(sid) or ""] then
                 onBar = true
-                if active and not secret(active) then return true end
+                if cur == i then return true end
+                if secret(active) then blind = true elseif active then return true end
             end
         end
+        -- A hidden answer (a boss fight) is no proof that the form is off.
+        if blind then return nil end
         if onBar then return false end
         return nil
     end
@@ -627,11 +635,14 @@ function ns.Missing()
     local have, hidden = buffs()
     -- The game says when it hides auras (C_Secrets, a boss fight); a client without the call is
     -- taken as hiding them in every fight.
+    -- It turns true at a boss pull before the fight starts, so it is asked out of a fight too.
     local hiding = fight and true
-    if fight and C_Secrets and C_Secrets.ShouldAurasBeSecret then
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret then
         local ok, v = pcall(C_Secrets.ShouldAurasBeSecret)
-        if ok and v == false then hiding = false end
+        if ok and v == true then hiding = true
+        elseif ok and v == false and fight then hiding = false end
     end
+    local told = hiding and C_Secrets and C_Secrets.ShouldAurasBeSecret and true
     local function look(name) return lookup(have, hidden, name, hiding) end
     local here, items = ns.PlaceOK(db.where), ns.PlaceOK(db.whereItems)
     local function cast(id) return { type = "spell", spell = spellName(id) } end
@@ -649,7 +660,9 @@ function ns.Missing()
                 -- stance bar, so there no form is sure even in a fight. A buff that is not on the bar
                 -- (Shadowform on some clients) is left to its aura.
                 local on = ns.FormOn(b.ids)
-                if on then best = false elseif on == false then unsure = nil end
+                -- While the game says it hides auras, a form that reads as off is not sure either:
+                -- Shadowform showed as gone on bosses although it was on.
+                if on then best = false elseif on == false and not told then unsure = nil end
             end
             if best == nil and unsure and ns.CastInFight(b.ids) then
                 best = false -- cast in this fight and the game hides the aura: it is on
