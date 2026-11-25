@@ -16,6 +16,7 @@ local CUR = { 0.851, 0.690, 0.424, 1 }
 local GOOD_FILL = { 0.31, 0.56, 0.36, 1 }
 local STOP_FILL = { 0.36, 0.30, 0.22, 1 }
 local TICK = { 0.055, 0.043, 0.031, 0.9 }
+local TICK_EMPTY = { 0.36, 0.29, 0.20, 0.7 } -- the same cut where the bar is still empty
 local CLOCK = "Interface\\Icons\\INV_Misc_PocketWatch_01"
 
 local bar
@@ -26,21 +27,34 @@ local function now() return GetTime and GetTime() or time() end
 -- their frame names. A new addon's bar is a name here.
 ns.CAST_BARS = { "PlayerCastingBarFrame", "CastingBarFrame", "ElvUF_Player_CastBar", "Quartz3CastBarPlayer",
     "oUF_Player_Castbar", "oUF_PlayerCastbar", "SUFUnitplayerCastBar", "LUFUnitplayerCastBar", "TukuiPlayerCastBar",
-    "GwCastingBarPlayer", "EllesmereUIPlayerCastBar", "EUI_PlayerCastBar", "CastbarsPlayerCastBar",
+    "GwCastingBarPlayer", "ERB_CastBarFrame", "CastbarsPlayerCastBar",
     "ClassicCastbarsPlayer", "DragonflightUIPlayerCastbar", "NDui_PlayerCastbar", "PitBull4_Frames_player_CastBar" }
 
 local found -- the other cast bars of the player the screen had, looked for once
-local hidden = {} -- frame -> the alpha it had
+local hidden = {} -- frame -> the alpha its owner asked for last
+local watched = {} -- frames whose SetAlpha we follow
+local ours -- our own SetAlpha runs
 
-local function isPlayerBar(f)
-    if f == bar or (f.IsForbidden and f:IsForbidden()) then return false end
-    if not (f.IsObjectType and f:IsObjectType("StatusBar") and f.IsVisible and f:IsVisible()) then return false end
-    if f.GetParent and bar and f:GetParent() == bar then return false end
+-- The frame to hide for a status bar when it is the player's cast bar, else nil.
+local function playerBar(f)
+    if f == bar or (f.IsForbidden and f:IsForbidden()) then return nil end
+    if not (f.IsObjectType and f:IsObjectType("StatusBar") and f.IsVisible and f:IsVisible()) then return nil end
+    local parent = f.GetParent and f:GetParent()
+    if bar and parent == bar then return nil end
     local owner = rawget(f, "__owner")
-    local unit = rawget(f, "unit") or (type(owner) == "table" and rawget(owner, "unit"))
-    if unit ~= "player" then return false end
+    if type(owner) ~= "table" then owner = nil end
+    local unit = rawget(f, "unit") or (owner and (rawget(owner, "unit") or rawget(owner, "_euiUnit")))
+    if unit ~= "player" then return nil end
+    -- the cast bar of a unit frame (oUF and EllesmereUI keep it as the frame's Castbar); its
+    -- backing, a frame of its own between the two, goes with it
+    if owner and rawget(owner, "Castbar") == f then
+        if parent and parent ~= owner and parent.GetParent and parent:GetParent() == owner
+            and parent.SetAlpha and parent.GetAlpha then return parent end
+        return f
+    end
     -- a bar that says it is casting now: the game's mixin and oUF both keep these fields
-    return rawget(f, "casting") == true or rawget(f, "castID") ~= nil or rawget(f, "isTradeSkill") ~= nil
+    if rawget(f, "casting") == true or rawget(f, "castID") ~= nil or rawget(f, "isTradeSkill") ~= nil then return f end
+    return nil
 end
 
 -- Any other addon's cast bar of the player that shows while a craft runs; one walk over the
@@ -50,8 +64,8 @@ function ns.FindCastBars()
     found = {}
     local f = EnumerateFrames()
     while f do
-        local ok, yes = pcall(isPlayerBar, f)
-        if ok and yes then found[#found + 1] = f end
+        local ok, g = pcall(playerBar, f)
+        if ok and g then found[#found + 1] = g end
         f = EnumerateFrames(f)
     end
     return found
@@ -65,13 +79,34 @@ local function each(fn)
     for _, g in ipairs(found or {}) do fn(g) end
 end
 
--- The cast bars come back (the switch went off, the batch ended).
+local function setAlpha(g, a)
+    ours = true
+    pcall(g.SetAlpha, g, a)
+    ours = nil
+end
+
+-- A bar's owner goes on setting its alpha while we hide it (EllesmereUI fades an idle cast bar
+-- to 0 and a cast back to 1): the last alpha it asked for is the one the bar gets back, so a
+-- bar that went idle meanwhile does not come back lit.
+local function watch(g)
+    if watched[g] or not hooksecurefunc then return end
+    watched[g] = true
+    pcall(hooksecurefunc, g, "SetAlpha", function(self, a)
+        if ours or hidden[self] == nil then return end
+        a = tonumber(a)
+        if not a then return end
+        hidden[self] = a
+        if a > 0 then setAlpha(self, 0) end
+    end)
+end
+
+-- The cast bars come back (the switch went off, the batch ended or was cut).
 function ns.ShowGameBar()
     if not ns.hidGame then return end
     ns.hidGame = nil
     for g, a in pairs(hidden) do
-        pcall(g.SetAlpha, g, a)
         hidden[g] = nil
+        setAlpha(g, a)
     end
 end
 
@@ -79,8 +114,9 @@ local function hideOne(g)
     local ok, a = pcall(g.GetAlpha, g)
     a = ok and tonumber(a) or 0
     if a > 0 then
-        if hidden[g] == nil then hidden[g] = a end
-        pcall(g.SetAlpha, g, 0)
+        hidden[g] = a
+        watch(g)
+        setAlpha(g, 0)
     end
 end
 
@@ -190,10 +226,23 @@ local function inner()
     return math.max(2, (tonumber(bar.track:GetWidth()) or (BAR_W - 2 * PAD)) - 2)
 end
 
--- The cuts between the crafts; none for a long batch, which is one smooth bar.
+-- One screen pixel in the bar's own units. The game snaps every texture to the pixel grid, so
+-- at the bar's scale a 1 unit cut is less than a pixel and some of them round to nothing.
+local function pixel()
+    local k = bar.track.GetEffectiveScale and tonumber((bar.track:GetEffectiveScale()))
+    if k and k > 0 and PixelUtil and PixelUtil.GetNearestPixelSize then
+        local ok, v = pcall(PixelUtil.GetNearestPixelSize, 1, k, 1)
+        if ok and tonumber(v) and v > 0 then return v end
+    end
+    return 1
+end
+
+-- The cuts between the crafts, each one screen pixel wide on a whole pixel; none for a long
+-- batch, which is one smooth bar.
 local function setTicks(n)
-    if rawget(bar, "tickCount") == (n or 0) then return end
-    bar.tickCount = n or 0
+    local px = pixel()
+    if rawget(bar, "tickCount") == (n or 0) and rawget(bar, "tickPx") == px then return end
+    bar.tickCount, bar.tickPx = n or 0, px
     local w = inner()
     for i = 1, math.max(#bar.ticks, n and n - 1 or 0) do
         local t = bar.ticks[i]
@@ -201,16 +250,22 @@ local function setTicks(n)
             if not t then
                 t = bar.track:CreateTexture(nil, "OVERLAY")
                 t:SetColorTexture(TICK[1], TICK[2], TICK[3], TICK[4])
-                t:SetWidth(1)
+                -- under the fill: seen only where nothing is made yet
+                t.under = bar.track:CreateTexture(nil, "BORDER")
+                t.under:SetColorTexture(TICK_EMPTY[1], TICK_EMPTY[2], TICK_EMPTY[3], TICK_EMPTY[4])
+                t.under:SetAllPoints(t)
                 bar.ticks[i] = t
             end
+            t:SetWidth(px)
             t:ClearAllPoints()
-            local x = 1 + math.floor(w * i / n + 0.5)
+            local x = math.floor((1 + w * i / n) / px + 0.5) * px
             t:SetPoint("TOPLEFT", bar.track, "TOPLEFT", x, -1)
             t:SetPoint("BOTTOMLEFT", bar.track, "BOTTOMLEFT", x, 1)
             t:Show()
+            t.under:Show()
         elseif t then
             t:Hide()
+            t.under:Hide()
         end
     end
 end

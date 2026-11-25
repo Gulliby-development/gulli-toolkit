@@ -4541,6 +4541,50 @@ test("craft bar: another addon's cast bar of the player hides too and gets its o
     ElvUF_Player_CastBar, EnumerateFrames = nil, nil
 end)
 
+test("craft bar: a cast bar its addon fades (EllesmereUI) is hidden only while the batch runs and comes back as its addon left it", function()
+    local n = barGame()
+    local oldHook = hooksecurefunc
+    hooksecurefunc = function(t, name, fn)
+        local was = t[name]
+        t[name] = function(...) was(...); fn(...) end
+    end
+    local erb = { a = 1, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end }
+    ERB_CastBarFrame = erb
+    -- the unit frame's cast bar: no name, kept as the frame's Castbar on a backing of its own
+    local unitFrame = { _euiUnit = "player" }
+    local backing = { a = 1, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha, GetParent = function() return unitFrame end }
+    local castbar = { a = 1, __owner = unitFrame, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha,
+        IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end,
+        GetParent = function() return backing end }
+    unitFrame.Castbar = castbar
+    EnumerateFrames = function(f) if not f then return castbar end end
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0, "hidden while the craft runs")
+    eq(backing.a, 0, "the unit frame's cast bar goes with its backing")
+    eq(castbar.a, 1)
+    erb:SetAlpha(1) -- its addon lights it for the next cast
+    eq(erb.a, 0, "and it stays hidden")
+    -- the craft is cut: the bar is back at once after the game's own fade
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 1, "back when the craft is cut")
+    eq(backing.a, 1)
+    erb:SetAlpha(0.4)
+    eq(erb.a, 0.4, "and its addon owns it again")
+    -- a batch during which its addon put the bar to rest: it does not come back lit
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0)
+    erb:SetAlpha(1); erb:SetAlpha(0)
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 0, "an idle bar stays as its addon left it")
+    ERB_CastBarFrame, EnumerateFrames, hooksecurefunc = nil, nil, oldHook
+end)
+
 test("craft bar: a craft the game never reported counts when the next one starts; the picture is the made item's", function()
     local n = barGame()
     barCast(101, 3, 3)
