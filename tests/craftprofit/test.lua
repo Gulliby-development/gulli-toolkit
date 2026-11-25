@@ -193,6 +193,15 @@ test("thresholds come from the data and follow the colours the game shows", func
     t, guess = c.Thresholds(nil, { [173] = 1 }, nil, true)
     eq(guess, true); eq(t[1], 0); eq(t[2], 173); eq(t[3], 193)
     eq(c.Thresholds(nil, {}, nil, true), nil)
+    -- the game's grey moves the whole recipe: Stormcloth Headband is 255/270/285 in the data
+    -- and grey at 245 in WoW Forever, so it never counts as orange past its grey
+    t = c.Thresholds({ 255, 270, 285 }, nil, 245, false)
+    eq(t[3], 245); eq(t[2], 215); eq(t[1], 205)
+    eq(c.Chance({ skill = t }, 245), 0, "grey gives no point")
+    near(c.Chance({ skill = t }, 243), 2 / 30)
+    assert(c.Chance({ skill = t }, 230) < 1, "past yellow a craft is no sure point")
+    t = c.Thresholds({ 180, 200, 215, 230 }, nil, 250, false)
+    eq(t[1], 200); eq(t[2], 220); eq(t[3], 250)
 end)
 
 test("Data.lua knows the recipes by spell and by item", function()

@@ -416,7 +416,13 @@ function ns.Thresholds(d, obs, grey, learned)
     end
     local o, y, gr, g
     if #d >= 4 then o, y, gr, g = d[1], d[2], d[3], d[4] else y, gr, g = d[1], d[2], d[3] end
-    if grey and grey > 0 then g = grey end
+    -- the game's grey wins; WoW Forever moved whole recipes, so the other levels move with it
+    -- (Stormcloth Headband: 255/270/285 in the data, grey at 245 in the game)
+    if grey and grey > 0 and grey ~= g then
+        local dlt = grey - g
+        y, g = y + dlt, grey
+        if o and o > 1 then o = o + dlt end
+    end
     local ks = {}
     for s in pairs(obs or {}) do ks[#ks + 1] = s end
     table.sort(ks)
