@@ -239,7 +239,15 @@ def wowhead(path, spell, item, src, out_gone, by_item, by_name):
         if r["unavailable"] and not (sid in src or by_item.get(p)):
             out_gone.add(sid)
             continue
-        c = r.get("colors") or []
+        c = list(r.get("colors") or [])
+        if len(c) == 4 and c[3] and not (0 < c[1] <= c[2] <= c[3]):
+            # Wowhead often gives only green and grey (Admiral's Hat 0/0/240/245): fill in the
+            # rest as book() does, never keep Classic levels for a recipe WoW Forever moved
+            grey = c[3]
+            yellow = c[1] or max(1, 2 * (c[2] or grey) - grey)
+            yellow = min(yellow, grey - 1)
+            green = c[2] or (yellow + grey) // 2
+            c = [c[0], yellow, min(max(green, yellow), grey), grey]
         if len(c) == 4 and 0 < c[1] <= c[2] <= c[3]:
             spell[sid] = (c[1], c[2], c[3])
             if r.get("item") and made[r["item"]] == 1:
