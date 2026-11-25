@@ -171,6 +171,8 @@ function ns.SimSet(opts)
         if opts.from and not opts.to then sim.to = math.min(ns.SIM_MAX, sim.from + 1) else sim.from = math.max(1, sim.to - 1) end
     end
     sim.prof = nil
+    -- other conditions are another route: the saved one stays in the list, this one is free
+    if next(opts) then sim.pin = nil end
     for k in pairs(ns.view) do ns.view[k] = nil end
     ns.view.route, ns.view.changed = {}, {}
     if ns.Refresh then ns.Refresh() end
@@ -197,11 +199,15 @@ end
 function ns.SimStop()
     if not ns.sim then return false end
     if ns.StopCalc then ns.StopCalc() end
+    -- the one thing a simulation may leave: a route saved by its button (Pin.lua)
+    ns.simKept = ns.sim.pin ~= nil and not ns.sim.pin.gone
     ns.sim = nil
     for k in pairs(ns.view) do ns.view[k] = nil end
     for k, v in pairs(stash or {}) do ns.view[k] = v end
     stash = nil
     ns.view.route, ns.view.changed = ns.view.route or {}, ns.view.changed or {}
+    -- a route unpinned from the list meanwhile
+    if ns.view.pin and ns.view.pin.gone then ns.view.pin = nil; ns.view.stale = ns.view.stale or true end
     -- the profession chosen meanwhile (a profession window was opened) shows its own result
     local st = ns.view.state
     if st and ns.char and ns.char.current and st.name ~= ns.char.current then ns.SwitchView(st.name, ns.char.current) end
@@ -366,6 +372,7 @@ function ns.SimNoteBought(id, n)
     if not sim or not id or not n or n <= 0 then return end
     sim.bought = sim.bought or {}
     sim.bought[id] = (sim.bought[id] or 0) + n
+    if sim.pin then ns.PinNote(ns.view) end
 end
 
 -- How far the shopping list is: ns.Progress on what was bought for it.

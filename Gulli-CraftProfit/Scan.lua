@@ -1095,6 +1095,7 @@ function ns.OnCast(spell)
     if not rid then return false end
     v.made = v.made or {}
     v.made[rid] = (v.made[rid] or 0) + 1
+    if ns.PinPartOf(v, rid) then ns.AutoPin() end
     return true
 end
 
@@ -1269,6 +1270,7 @@ function ns.OnBuy(event, a1, a2)
             if ns.SimShopOn() then ns.SimNoteBought(line.id, line.n) end
             line.done = true
             nextLine()
+            ns.AutoPin()
         end
     elseif event == "COMMODITY_PURCHASE_FAILED" then
         if b.phase == "buying" then b.phase, b.err = "idle", "BUY_ERR_BUY" end
@@ -1288,6 +1290,7 @@ function ns.OnBuy(event, a1, a2)
                 line.done = true
                 nextLine()
             end
+            ns.AutoPin()
         end
     elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
         -- the auction is gone or the game refused the bid
@@ -1336,6 +1339,7 @@ function ns.BuyVendor(node, p)
             end
         end
     end
+    if #plan.buys > 0 then ns.AutoPin() end
     return plan
 end
 
@@ -1573,6 +1577,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         ns.db.gather = ns.db.gather or {}
         ns.db.skip = ns.db.skip or {}
         ns.db.lots = ns.db.lots or {}
+        ns.db.pins = ns.db.pins or {}
         GulliCraftProfitCharDB = GulliCraftProfitCharDB or {}
         ns.char = GulliCraftProfitCharDB
         ns.char.profs = ns.char.profs or {}

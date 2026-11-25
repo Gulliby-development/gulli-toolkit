@@ -321,7 +321,7 @@ local function buildSettings(box)
         stepRow(cols[1], "maxCrafts", 5, 5, 500),
         stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end) }))
     add(1, skipCard(cols[1]))
-    add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side"), sw("ahead") }))
+    add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side"), sw("ahead"), sw("autoPin") }))
     add(1, rowsCard(cols[1], L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") }))
 
     add(2, rowsCard(cols[2], L.SIDE_FROM, { sw("useBags"), sw("useBank"), sw("useMail"), sw("useAlts"), sw("buyAH"),
@@ -978,11 +978,29 @@ local function detailRows(n, i, a)
         if vb and vb.extra > 0 then note = L.NOTE_STACK:format(vb.need, vb.stack, vb.units) end
         if vb then right = S.MoneyText(vb.cost) end -- what the click pays, whole stacks
         if a and a.vendor and not vb and not e.done and not spot then note = L.NOTE_NOT_HERE end -- else: who has it
+        -- a pinned route: how much of the line's whole purchase is there, and a price that climbed
+        if l.pinOf and not e.done and (l.src == "ah" or l.src == "vendor") then
+            local have = math.min(l.pinOf, (l.pinHave or 0) + ((p and p.lines[k] and p.lines[k].got) or 0))
+            local dear = l.price and l.pinPrice and l.src == "ah" and ns.Dear(l.price, l.pinPrice, ns.view.prefs.guard)
+            if not (cur and cur == q1 and buying.phase == "ready") then
+                if dear then note = color(GOLD) .. L.PIN_HAVE_DEAR:format(have, l.pinOf, S.MoneyText(l.price)) .. "|r"
+                elseif have > 0 or not spot then note = L.PIN_HAVE:format(have, l.pinOf) end
+            end
+            e.pinHave, e.pinOf, e.dear = have, l.pinOf, dear or nil
+        end
         e.note, e.right = note, e.right or right
         rows[#rows + 1] = e
     end
+    -- a pinned route: what its stop bought already stays in sight, ticked off
+    for _, b in ipairs(n.bought or {}) do
+        rows[#rows + 1] = { id = b.id, icon = b.id and ns.ItemIcon(b.id), q = b.id and (st.items[b.id] or {}).quality,
+                            text = (b.name or tostring(b.id)) .. color(S.MUTED) .. " x" .. b.n .. "|r",
+                            note = L.PIN_HAVE:format(b.n, b.n), right = S.MoneyText((b.price or 0) * b.n),
+                            done = true, mark = L.MARK_BOUGHT, markColor = GOOD, bought = true }
+    end
     return rows
 end
+ns.DetailRows = detailRows
 
 local function makeLine(r)
     -- a click on a recipe opens it in the profession window; a right-click on a reagent marks it
@@ -1448,6 +1466,8 @@ local function routeName(mode, n, long)
     return L[(long and "VAR_" or "TILE_") .. key]:format(i)
 end
 
+ns.RouteName = routeName
+
 -- A round button with a game picture, for the row of the tabs.
 local function roundButton(parent, picture)
     local b = CreateFrame("Button", nil, parent)
@@ -1479,6 +1499,8 @@ local function roundButton(parent, picture)
     b:SetScript("OnEnable", function(self) self.pic:SetAlpha(1) end)
     return b
 end
+
+ns.RoundButton = roundButton
 
 local function buildRoute(route, height)
     -- the routes side by side: pick one, compare the result and the crafts
@@ -1768,6 +1790,7 @@ local function build()
     frame:SetScript("OnShow", function() ns.Rebuild(false, "open") end)
     ui.tabs:Select(1, true)
     ns.SimBuild(ui, frame)
+    ns.PinBuild(ui, frame)
 end
 
 -- ---------- refreshing ----------
@@ -2000,6 +2023,7 @@ local function refreshRoute()
     if unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
     ui.panel:Set(selected)
     if not v.route[selected] and not unknown then ui.unknown:SetText(plan.earn and L.WARN_EARN or "") end
+    ns.PinRoute(v)
 end
 
 function ns.Toast(text)
@@ -2036,8 +2060,12 @@ function ns.Visible() return frame ~= nil and frame:IsShown() end
 function ns.Refresh()
     if ns.SideRefresh then ns.SideRefresh() end
     if not ns.Visible() then return end
+    -- a page of the pinned routes (the comparison, the list) takes the whole body
+    if ns.PinPage() then return end
     -- the simulation: its strip and switch, and its conditions page instead of everything else
-    if ns.SimRefresh() then return end
+    local simPage = ns.SimRefresh()
+    ns.PinChrome()
+    if simPage then return end
     refreshProfession()
     refreshSettings()
     local v = ns.view
@@ -2049,7 +2077,9 @@ function ns.Refresh()
     local busy = ns.BusyKind() == "all"
     local has = v.state ~= nil and v.plan ~= nil and not busy
     local known = ns.sim or (ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current])
-    local label = (ns.Busy() and busy) and L.CALC_STOP or (v.plan and L.RECALC or L.CALC)
+    -- a pinned route: the button only counts the stock again, and nothing is ever outdated
+    local pinned = not ns.sim and v.pin ~= nil and v.plan ~= nil
+    local label = (ns.Busy() and busy) and L.CALC_STOP or (v.plan and (pinned and L.PIN_REFRESH or L.RECALC) or L.CALC)
     ui.calc:SetText(label)
     ui.calc:SetEnabled(known and true or false)
     ui.calcBig:SetText(label)
@@ -2060,18 +2090,24 @@ function ns.Refresh()
         ui.empty:Set(L.CALC_BUSY:format(math.floor(f * 100)), L.CALC_SUB)
         ui.progress:Set(f)
     elseif not known then ui.empty:Set(L.NO_PROF, L.SIM_OFFER)
-    elseif not v.plan then ui.empty:Set(L.CALC_TITLE, L.CALC_SUB)
+    elseif not v.plan then
+        if not ns.sim and ns.PinHere() then ui.empty:Set(L.PIN_WAIT, L.PIN_WAIT_SUB) else ui.empty:Set(L.CALC_TITLE, L.CALC_SUB) end
     else ui.empty:Set("") end
     -- bags or prices changed since the plan: the button says so, in a word and on its edge
-    local stale = v.stale and not busy and v.plan ~= nil
+    local stale = v.stale and not busy and v.plan ~= nil and not pinned
     ui.stale:Set(stale and L.STALE_TAG or nil, GOLD)
     ui.calc.edge = stale and GOLD or nil
     local staleText = (v.stale == "target" or v.stale == "pick") and L.CALC_STALE_SET or L.CALC_STALE
-    ui.calc.tip = stale and staleText or nil
+    ui.calc.tip = stale and staleText or (pinned and L.PIN_REFRESH_TIP or nil)
     S.SetBorder(ui.calc, stale and GOLD or S.EDGE)
+    -- right to left on the row of the tabs: Recalculate, the pin, the Outdated tag, the profession
+    local edge = (ui.pinBtn and ui.pinBtn:IsShown()) and ui.pinBtn or ui.calc
+    ui.stale:ClearAllPoints()
+    ui.stale:SetPoint("RIGHT", edge, "LEFT", -8, 0)
     ui.prof:ClearAllPoints()
-    ui.prof:SetPoint("RIGHT", stale and ui.stale or ui.calc, "LEFT", -8, 0)
-    if stale then ui.toast:SetText(color(GOLD) .. staleText .. "|r") end
+    ui.prof:SetPoint("RIGHT", stale and ui.stale or edge, "LEFT", -8, 0)
+    if stale then ui.toast:SetText(color(GOLD) .. staleText .. "|r")
+    elseif pinned and tab == 5 then ui.toast:SetText(L.PIN_SETTINGS) end
     ui.settings:SetShown(tab == 5)
     -- patterns left out because the reputation was not read yet: ask for the reputation window
     local unknown = ns.RepUnknown()
@@ -2344,6 +2380,16 @@ function ns.StopCalc()
     finish("cancelled")
 end
 
+-- Is there a better route: a new calculation beside the pinned one, in steps, on its own page.
+function ns.CompareStart()
+    local v = ns.view
+    if ns.sim or not v.pin or not v.plan then return false end
+    v.compare = nil
+    ns.PinShowPage("compare")
+    start(ns.FreshJob(function(out) ns.view.compare = ns.PinCompare(ns.view, out) end))
+    return true
+end
+
 -- Nothing is calculated before the first Calculate: the window opens at once. After that the
 -- player's own changes recalculate in steps, and bags or prices only mark the result outdated.
 function ns.Rebuild(flash, why)
@@ -2357,6 +2403,9 @@ function ns.Rebuild(flash, why)
         if runner then runner:Cancel(); runner = nil; driver:Hide() end
         if why == "target" and v.plan then v.stale = "target" end
     elseif v.plan or runner then
+        -- a changed setting frees a saved simulation; a pinned route of the character is
+        -- calculated again along its own recipes and settings (an avoided craft still leaves it)
+        if ns.sim and ns.sim.pin then ns.sim.pin = nil end
         ns.Calculate(flash)
         return
     end
