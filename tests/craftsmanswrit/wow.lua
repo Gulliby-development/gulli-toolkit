@@ -250,7 +250,7 @@ function W.AnswerSearches()
 end
 
 function Load()
-    return W.Load("Gulli-CraftsmansWrit", { "Locales.lua", "Data.lua", "Core.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-CraftsmansWrit", { "Locales.lua", "Data.lua", "Core.lua", "Pin.lua", "Skin.lua", "UI.lua", "PinUI.lua" })
 end
 
 return W
