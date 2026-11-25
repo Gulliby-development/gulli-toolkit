@@ -3878,6 +3878,25 @@ test("the first purchase or craft pins the route, with Undo; the switch turns th
     eq(select(2, e.PinNow()), "none")
 end)
 
+test("a pinned route is calculated again once the game shows one of its recipes grey", function()
+    local n = pinGame()
+    local pin = n.PinNow()
+    local prof = n.char.profs.Tailoring
+    eq(n.PinGreyed(pin, prof), nil, "nothing grey yet")
+    local sg = pin.segs[1]
+    local s = math.max(sg.from, prof.skill)
+    -- the profession window shows the first stretch's recipe grey at the skill the route crafts it at
+    local rec = prof.recipes[sg.rid]
+    rec.obs = rec.obs or {}
+    rec.obs[s] = 3
+    eq(n.PinGreyed(pin, prof), sg.rid)
+    n.Rebuild(false, "event")
+    local first = (n.view.plan.full or n.view.plan).segs[1]
+    assert(first and not (first.rid == sg.rid and first.from <= s and s < first.to), "the grey recipe no longer takes that point")
+    eq(n.view.pin, pin, "the route stays pinned")
+    rec.obs[s] = nil
+end)
+
 test("a pinned route survives a reload, ends at its target, and ten go on at most", function()
     local n = pinGame()
     local segs = segsOf(n)

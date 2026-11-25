@@ -786,6 +786,15 @@ function ns.StatTipLines(sum, st, list)
                 or colour(L.STATS_CAP_LEFT:format(("%.1f%%"):format(st.cap - base)), S.WARN)
         end
         out[#out + 1] = { L.STATS_CAP:format(cap), state }
+        if st.talent then
+            local pct = ("%d%%"):format(st.talent)
+            if st.talentSchool then
+                out[#out + 1] = { L.STATS_TALENT_SCHOOL:format(pct, L["SCHOOL_" .. st.talentSchool]) }
+            else
+                out[#out + 1] = { L.STATS_TALENT:format(pct, ("%d%%"):format(st.cap - st.talent)) }
+            end
+        end
+        if st.dual then out[#out + 1] = { L.STATS_DUAL:format(("%d%%"):format(st.dual)) } end
     end
     local items = sum.items[st.key] or {}
     if #items > 0 then

@@ -398,7 +398,8 @@ function ns.Estimate(obs, grey)
         elseif c == 2 then hiY = math.min(hiY, s - 1); loG = math.max(loG, s + 1)
         elseif c == 3 then hiG = math.min(hiG, s) end
     end
-    if grey and grey > 0 then loG, hiG, any = grey, grey, true end
+    -- the game's grey, unless the window showed the recipe grey below it (as ns.Thresholds)
+    if grey and grey > 0 then loG, hiG, any = math.min(grey, hiG), math.min(grey, hiG), true end
     if not any then return nil end
     local y
     if loY > -math.huge then y = math.min(loY, hiY)
