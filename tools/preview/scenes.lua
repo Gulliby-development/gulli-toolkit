@@ -151,16 +151,16 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
         GulliToolkit.modules.Restock.tweaks = { row("quests", "loot", "Buy reagents", "Restock is paused in this sample", "INV_Misc_Bag_08") }
         -- a module's row with settings of its own under it
         local feed = row("feed", "loot", "Loot feed", "A small panel of what you just looted", "INV_Misc_Bag_10")
-        db.feed, db.feedPrice, db.feedRows = true, true, 5
+        db.feed, db.feedRows = true, 5
         local function part(kind, key, label, more)
             local p = { kind = kind, key = key, label = label,
                         get = function() return db[key] end, set = function(v) db[key] = v end }
             for k, v in pairs(more or {}) do p[k] = v end
             return p
         end
-        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedPrice", "Price"),
+        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedBare", "No background"),
             part("step", "feedRows", "Lines at most", { min = 1, max = 8 }),
-            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }), part("switch", "feedBare", "No background") }
+            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }) }
         GulliToolkit.modules.Merchant.tweaks[#GulliToolkit.modules.Merchant.tweaks + 1] = feed
         ns.SetTweak("levelShot", true)
         ns.SetTweak("skipGossip", true)
@@ -324,6 +324,21 @@ S.merchant = { default = {
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
              prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = false } },
     open = function(ns) ns.atVendor = true; ns.Toggle() end,
+}, always = {
+    -- the "always sell" tab: the list with the place to drop an item
+    spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
+             prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = false, guild = true } },
+    open = function(ns)
+        ns.J.SetAlways(10, true); ns.J.SetAlways(11, true)
+        ns.tab = 2; ns.Toggle()
+    end,
+}, suggest = {
+    spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
+             prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = true, safe = true } },
+    open = function(ns)
+        ns.db.manual[11] = 2; ns.db.manual[13] = 3
+        ns.atVendor = true; ns.tab = 3; ns.Toggle()
+    end,
 }, rich = {
     -- a long money value in the junk tile
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
@@ -409,10 +424,17 @@ S.xp.levels.spec = S.xp.default.spec
 S.xp.settings.spec = S.xp.default.spec
 
 S.loot = { default = {
-    spec = { db = { quality = { [0] = "pass", [1] = "greed" }, items = { [2589] = "need", [2592] = "greed" }, report = true } },
+    spec = { db = { quality = { [0] = "pass", [1] = "greed", [2] = "safe" }, types = { [9] = "safe" },
+                    items = { [2589] = "need", [2592] = "greed", [10940] = "pass", [12364] = "ask" }, feed = true,
+                    log = { { id = 2589, link = "|cffffffff[Linen Cloth]|r", rule = "greed", reason = "type", winner = "Player" },
+                            { id = 9999, link = "|cff1eff00[Sage's Ring]|r", rule = "greed", reason = "nofit", winner = "Brakka" },
+                            { id = 9998, link = "|cff0070dd[Sandstorm Blade]|r", reason = "bop" },
+                            { id = 9997, link = "|cff9d9d9d[Broken Fang]|r", rule = "pass", reason = "quality" } } } },
     before = function()
         C_Item = C_Item or {}
-        C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
+        C_Item.GetItemNameByID = function(id)
+            return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth", [10940] = "Strange Dust", [12364] = "Huge Emerald" })[id]
+        end
     end,
 },
 -- The loot feed with every kind of line: gold, better gear, cloth, a quest item, a quest item
@@ -446,10 +468,17 @@ feed = { spec = { db = { feed = true }, worn = { [5] = 30 }, bags = { [14047] = 
         loot(8146, "Wicked Claw"); loot(14047, "Runecloth", 3); loot(10058, "Nightscape Tunic")
         W.Fire("LOOT_READY"); W.money = W.money + 1682; W.Fire("PLAYER_MONEY")
     end },
+pickup = { open = function(ns) ns.Toggle(); ns.ShowPage(2) end },
+items = { open = function(ns) ns.Toggle(); ns.ShowPage(3) end },
+history = { open = function(ns) ns.Toggle(); ns.ShowPage(4) end },
 -- Who rolled what: the sample the Unlock mode shows under the roll frames.
 rollers = { spec = { db = { rollers = true } }, crop = "GulliLootRollers",
     open = function(ns) ns.MoveRollers(true) end },
 }
+
+for _, k in ipairs({ "pickup", "items", "history" }) do
+    S.loot[k].spec, S.loot[k].before = S.loot.default.spec, S.loot.default.before
+end
 
 S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
     items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
@@ -1695,11 +1724,25 @@ local function fiPlay(ns, W)
     end
     W.Catch({ { 6299, 1 } })
     W.lureLeft = 420
+    ns.s.secs = 38 * 60
+    ns.got, ns.idleUntil = nil, nil
     ns.Refresh()
 end
-S.fishing = { default = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end },
-    settings = { open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
-    empty = { spec = { pole = false }, open = function(ns) ns.Toggle() end } }
+S.fishing = { default = { spec = { interact = "F", skill = { 187, 225 } },
+                          open = function(ns, W) ns.Toggle(); fiPlay(ns, W) end },
+    settings = { spec = { interact = "F" }, open = function(ns, W) ns.Toggle(); fiPlay(ns, W); select(4, ns.Parts()):Select(2) end },
+    -- the first time: no pole in the hand, one in the bags, the steps open
+    empty = { spec = { pole = false, interact = "F", slots = { [0] = { 6256 } } },
+              open = function(ns, W)
+                  C_Item.GetItemNameByID = function() return "Strong Fishing Pole" end
+                  ns.Toggle()
+              end },
+    -- the bar on the screen while the bobber is out
+    bar = { spec = { interact = "F", skill = { 187, 225 }, channel = 20 },
+            open = function(ns, W) fiPlay(ns, W); W.Cast(); W.now = W.now + 8; ns.TickBar() end },
+    -- the steps opened again while fishing
+    steps = { spec = { interact = "F", skill = { 187, 225 } },
+              open = function(ns, W) ns.Toggle(); fiPlay(ns, W); ns.howto = true; ns.Refresh() end } }
 
 -- Worth It: a level 20 hunter in Westfall with small bags, one chain in the log.
 local wiNames = { [1537] = "Old Blanchy's Feed Pouch", [3343] = "Captain Sander's Booty Bag", [1729] = "Gunnysack of the Night Watch",

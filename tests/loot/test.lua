@@ -108,54 +108,78 @@ test("rules by slash command and Alt-click; Ask on an item keeps a quality rule 
     eq(ns.db.items[7], "greed")
 end)
 
-test("type rules, where the rules apply, green you cannot use, upgrades", function()
-    Fake({ rolls = { { 10, 2 }, { 11, 2, false, false }, { 12, 2 } },
-           items = { [10] = { 9 }, [11] = { 4, "INVTYPE_CHEST", 30 }, [12] = { 4, "INVTYPE_CHEST", 30 } },
-           worn = { [5] = 25 } })
+test("a type rule wins over the quality; the rules apply everywhere", function()
+    Fake({ rolls = { { 10, 2 }, { 12, 2 } },
+           items = { [10] = { 9 }, [12] = { 4, "INVTYPE_CHEST", 30 } },
+           worn = { [5] = 25 }, raid = true })
     local ns = Load()
     ns.SetType(9, "pass")
     W.Fire("START_LOOT_ROLL", 1)
     eq(W.rolled[1], 0, "recipes: pass"); eq(ns.db.log[1].reason, "type")
-    ns.SetPref("where", "raid")
-    W.rolled = {}
-    W.Fire("START_LOOT_ROLL", 1)
-    eq(W.rolled[1], nil, "only in a raid")
-    ns.SetPref("where", "always")
-    ns.SetPref("greedUnusable", true)
     W.Fire("START_LOOT_ROLL", 2)
-    eq(W.rolled[2], 2, "greed on green the class cannot use")
-    ns.SetPref("needUpgrade", true)
-    W.Fire("START_LOOT_ROLL", 3)
-    eq(W.rolled[3], 1, "need: better than what is worn")
-    W.worn[5] = 40
-    W.rolled = {}
-    W.Fire("START_LOOT_ROLL", 3)
-    eq(W.rolled[3], nil, "not an upgrade: left to the player")
+    eq(W.rolled[2], nil, "green without a rule: left to the player")
 end)
 
-test("quality and type rules can roll Need, or Need only when the item fits you", function()
+test("a quality or type rule is Ask, Need when the item fits, Greed or Pass; never Need on all", function()
     -- 30 a green chest piece, 31 a green chest piece the class cannot need, 32 a recipe.
     Fake({ rolls = { { 30, 2 }, { 31, 2, false, false }, { 32, 2 }, { 30, 2 } },
            items = { [30] = { 4, "INVTYPE_CHEST", 30 }, [31] = { 4, "INVTYPE_CHEST", 30 }, [32] = { 9 } },
            worn = { [5] = 25 } })
     local ns = Load()
-    eq(table.concat(ns.RULES, ","), "ask,need,safe,greed,pass")
-    ns.db.quality[2] = "need"
-    W.Fire("START_LOOT_ROLL", 1); W.Fire("START_LOOT_ROLL", 2)
-    eq(W.rolled[1], 1, "plain need"); eq(W.rolled[2], 2, "need not allowed: greed")
+    eq(table.concat(ns.RULES, ","), "ask,safe,greed,pass")
     ns.db.quality[2] = "safe"
-    W.rolled = {}
     W.Fire("START_LOOT_ROLL", 1)
     eq(W.rolled[1], 1, "an upgrade you can use: need"); eq(ns.db.log[1].reason, "fits")
     W.Fire("START_LOOT_ROLL", 2)
-    eq(W.rolled[2], 2, "cannot need: greed"); eq(ns.db.log[1].reason, "nofit")
+    eq(W.rolled[2], 2, "need not allowed: greed"); eq(ns.db.log[1].reason, "nofit")
     W.worn[5] = 40
+    W.rolled = {}
     W.Fire("START_LOOT_ROLL", 4)
-    eq(W.rolled[4], 2, "not better than what you wear: greed")
+    eq(W.rolled[4], 2, "not an upgrade: greed")
     ns.SetType(9, "safe")
     W.Fire("START_LOOT_ROLL", 3)
-    eq(W.rolled[3], 1, "not gear and you can need it: need"); eq(ns.db.log[1].reason, "fits")
-    assert(ns.Test("32"):find("fits you", 1, true), ns.Test("32"))
+    eq(W.rolled[3], 1, "a recipe you can use: need")
+    -- an item's own rule can still be a plain Need
+    ns.SetItem(30, "need")
+    W.rolled = {}
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(W.rolled[1], 1, "the item rule: need")
+end)
+
+test("older saves: the settings that are fixed now go, and their choices become rules", function()
+    Fake({ db = { needUpgrade = true, report = false, where = "raid", feedPrice = false, feedNotes = false, feedTotal = false,
+                  quality = { [0] = "need", [1] = "ask", [2] = "ask" }, types = { [9] = "need", [7] = "greed" } } })
+    local ns = Load()
+    for _, k in ipairs({ "needUpgrade", "greedUnusable", "report", "where", "feedPrice", "feedNotes", "feedTotal" }) do
+        eq(ns.db[k], nil, k)
+    end
+    eq(ns.db.quality[2], "safe", "Need on a green upgrade is the rule for green now")
+    eq(ns.db.quality[0], "safe"); eq(ns.db.quality[1], "ask")
+    eq(ns.db.types[9], "safe"); eq(ns.db.types[7], "greed")
+    -- a green rule the player chose is kept
+    Fake({ db = { greedUnusable = true, quality = { [0] = "pass", [1] = "ask", [2] = "pass" } } })
+    ns = Load()
+    eq(ns.db.quality[2], "pass")
+    -- a History row of an older version still reads
+    assert(ns.LogSub({ reason = "where" }) ~= nil)
+end)
+
+test("the Items page lists the rules group by group, Need first", function()
+    Fake({})
+    local ns = Load()
+    ns.SetItem(30, "greed"); ns.SetItem(4, "pass"); ns.SetItem(7, "need"); ns.SetItem(8, "need")
+    local g = ns.ItemGroups()
+    eq(g[1].head, "need"); eq(g[1].count, 2); eq(g[2].id, 7); eq(g[3].id, 8)
+    eq(g[4].head, "greed"); eq(g[5].id, 30); eq(g[6].head, "pass"); eq(#g, 7)
+    eq(#ns.ItemGroups("item4"), 2, "a search keeps the heads of what it found")
+    ns.SetPref("feedBare", true)
+    ns.Toggle()
+    ns.Refresh()
+    -- the History row: you won in a word, anyone else by name
+    local why, won = ns.LogSub({ reason = "quality", winner = UnitName("player") })
+    eq(why, ns.L.WHY_QUALITY); assert(won:find(ns.L.LOG_YOU, 1, true))
+    assert(select(2, ns.LogSub({ reason = "quality", winner = "Brakka" })):find("Brakka", 1, true))
+    eq(select(2, ns.LogSub({ reason = "bop" })), nil, "nobody won yet")
 end)
 
 test("/glt test tells what would happen, and chat lines come as one", function()
@@ -185,7 +209,7 @@ test("fast loot takes every slot; the bind question is answered only alone", fun
     eq(ns.OnBindConfirm(2), true); eq(W.confirmedSlot, 2)
 end)
 
-test("item rules are sorted by name and can be searched; the window has three pages", function()
+test("item rules are sorted by name and can be searched; the window has four pages", function()
     Fake({})
     local ns = Load()
     ns.SetItem(30, "greed"); ns.SetItem(4, "pass")
@@ -368,7 +392,8 @@ test("the hub's Tweaks page gets rows on the window's own saved keys", function(
         assert(type(part.label) == "string" and part.label ~= "", "a label for " .. tostring(part.key))
         parts[part.key] = part
     end
-    for _, k in ipairs({ "feedCompact", "feedPrice", "feedNotes", "feedTotal", "feedBare" }) do
+    eq(#feed.panel, 4, "compact, no background, lines, width")
+    for _, k in ipairs({ "feedCompact", "feedBare" }) do
         eq(parts[k].kind, "switch", k)
         parts[k].set(true); eq(ns.db[k], true, k); eq(parts[k].get(), true)
         parts[k].set(false); eq(ns.db[k], false, k)
@@ -515,14 +540,7 @@ test("a feed line names the quest, the count in the bags, better gear and a farm
     f = facts(2, 3)
     eq(f.notes[1].key, "goal"); assert(f.notes[1].text:find("43/60", 1, true))
     GulliFarmTrackCharDB = nil
-    -- the switches: no price, no notes
-    ns.SetPref("feedPrice", false)
-    eq(facts(2, 3).total, nil)
-    ns.SetPref("feedPrice", true); ns.SetPref("feedNotes", false)
-    f = facts(2, 3)
-    eq(#f.notes, 0); eq(f.total, 1440)
     -- secret quest text is left alone
-    ns.SetPref("feedNotes", true)
     issecretvalue = function(v) return type(v) == "string" and v:find("Hatchlings") ~= nil end
     eq(facts(4).notes[1].key, "questitem")
     issecretvalue = nil
@@ -542,10 +560,10 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     eq(quest.src, nil); assert(quest.right:find("7/12")); assert(quest.note:find("Hope for Hatchlings", 1, true))
     eq(junk.src, "vendor"); assert(junk.note ~= nil)
     -- a price alone is no reason for a second line
-    ns.SetPref("feedNotes", false)
-    junk = ns.FeedLine(ns.FeedEntries()[1])
-    eq(junk.note, nil, "one line: the price's icon names the source"); eq(junk.src, nil)
-    assert(junk.right:find("3s"))
+    local plain = ns.FeedLine({ kind = "item", name = "Ruby", quality = 3, count = 1, fixed = true,
+                                facts = { total = 300, how = "vendor", notes = {} } })
+    eq(plain.note, nil, "one line: the price's icon names the source"); eq(plain.src, nil)
+    assert(plain.right:find("3s"))
     -- the panel keeps the player's width whatever the lines say
     ns.FeedPaint()
     eq(ns.feedWidth, 240, "the width at first")
@@ -554,7 +572,6 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     ns.SetPref("feedWidth", 9999); eq(ns.FeedWidth(), ns.FEED_WIDTH_MAX)
     ns.SetPref("feedWidth", 1); eq(ns.FeedWidth(), ns.FEED_WIDTH_MIN)
     ns.SetPref("feedWidth", 240)
-    ns.SetPref("feedNotes", true)
     e = ns.FeedEntries()
     local total, parts = ns.FeedTotal()
     eq(total, 1440 + 375); eq(parts, 2, "the quest item adds nothing")
@@ -578,12 +595,8 @@ test("the feed's two looks: a second line only when there is a note, a total of 
     assert(cloth.right:find("14s"))
     -- an item without anything to say stays one line in the detailed look
     ns.SetPref("feedCompact", false)
-    ns.SetPref("feedNotes", false); ns.SetPref("feedPrice", false)
-    eq(ns.FeedLine(ns.FeedEntries()[3]).note, nil)
-    local _, n = ns.FeedTotal()
-    eq(n, 0)
+    eq(ns.FeedLine({ kind = "item", name = "Ruby", quality = 3, count = 1, fixed = true, facts = { notes = {} } }).note, nil)
     -- the player's limit: only so many lines show, the total still counts all the loot
-    ns.SetPref("feedNotes", true); ns.SetPref("feedPrice", true)
     eq(ns.FeedRows(), 5, "five lines by default")
     ns.SetPref("feedRows", 2)
     ns.FeedPaint()

@@ -225,11 +225,10 @@ function ns.FeedFacts(e)
     local notes = out.notes
     local quest = ns.FeedQuest(f and f.name or e.name)
     local isQuest = f and f.class == QUEST_CLASS
-    if ns.db.feedPrice ~= false and not (quest and not quest.done) then
+    if not (quest and not quest.done) then
         out.unit, out.how = ns.FeedValue(id)
         if out.unit then out.total = out.unit * (e.count or 1) end
     end
-    if ns.db.feedNotes == false then return out end
     if quest then
         notes[#notes + 1] = { key = "quest", text = S.Hex(S.GOLD) .. L.FEED_QUEST .. "|r " .. quest.title,
                               right = quest.need > 0 and (quest.have .. "/" .. quest.need) or nil, done = quest.done }
@@ -535,7 +534,7 @@ function ns.FeedPaint()
     end
     if #list == 0 then frame:Hide() return end
     local total, parts = ns.FeedTotal(list)
-    local showFoot = ns.db ~= nil and ns.db.feedTotal ~= false and ns.db.feedPrice ~= false and parts >= 2
+    local showFoot = parts >= 2
     foot:SetShown(showFoot)
     if showFoot then
         foot.label:SetText(S.Upper and S.Upper(L.FEED_TOTAL) or L.FEED_TOTAL)
@@ -557,19 +556,22 @@ function ns.FeedTick()
     ns.FeedPaint()
 end
 
+-- Sample lines, for the Unlock mode and the example in the module's window.
+function ns.FeedSample()
+    return {
+        { kind = "money", copper = 1682, icon = "Interface\\Icons\\INV_Misc_Coin_02" },
+        { kind = "item", name = L.SAMPLE_ITEM, quality = 3, count = 1, fixed = true, icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_01",
+          facts = { total = 18500, how = "auction", notes = {} } },
+        { kind = "item", name = L.SAMPLE_CLOTH, quality = 1, count = 4, fixed = true, icon = "Interface\\Icons\\INV_Fabric_Linen_01",
+          facts = { total = 620, how = "vendor", notes = { { key = "bags", text = L.FEED_BAGS:format(43) } } } },
+    }
+end
+
 -- Unlock mode: sample lines so the player can place it; the real lines come back after.
 function ns.MoveFeed(on)
     local f = ns.FeedFrame()
     if on then
-        local price, notes = ns.db.feedPrice ~= false, ns.db.feedNotes ~= false
-        sample = {
-            { kind = "money", copper = 1682, icon = "Interface\\Icons\\INV_Misc_Coin_02" },
-            { kind = "item", name = L.SAMPLE_ITEM, quality = 3, count = 1, fixed = true, icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_01",
-              facts = { total = price and 18500 or nil, how = "auction", notes = {} } },
-            { kind = "item", name = L.SAMPLE_CLOTH, quality = 1, count = 4, fixed = true, icon = "Interface\\Icons\\INV_Fabric_Linen_01",
-              facts = { total = price and 620 or nil, how = "vendor",
-                        notes = notes and { { key = "bags", text = L.FEED_BAGS:format(43) } } or {} } },
-        }
+        sample = ns.FeedSample()
     else
         sample = nil
     end

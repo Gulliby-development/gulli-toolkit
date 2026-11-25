@@ -9,33 +9,29 @@ local L = ns.L
 ns.ROLL = { pass = 0, need = 1, greed = 2 }
 ns.ROLL_NAME = { [0] = "pass", [1] = "need", [2] = "greed" }
 -- For a quality or a type. "safe" is Need when the item fits you (you can need it and, for
--- gear, it beats what you wear), else Greed.
-ns.RULES = { "ask", "need", "safe", "greed", "pass" }
+-- gear, it beats what you wear), else Greed. Need on everything is only an item's own rule.
+ns.RULES = { "ask", "safe", "greed", "pass" }
 ns.ITEM_RULES = { "ask", "need", "greed", "pass" }
 ns.QUALITIES = { 0, 1, 2 }
 -- Item types with a rule of their own, by the game's item class id.
 ns.TYPES = { { key = "RECIPE", class = 9 }, { key = "TRADE", class = 7 }, { key = "CONSUMABLE", class = 0 },
              { key = "QUEST", class = 12 } }
--- Where the quality and type rules apply: everywhere, in a party (not a raid), in a raid.
-ns.WHERE = { "always", "party", "raid" }
 ns.LOG_MAX = 30
 ns.DEFAULTS = {
-    on = true, report = true, where = "always", greedUnusable = false, needUpgrade = false,
-    fastLoot = false, soloConfirm = false,
+    on = true, fastLoot = false, soloConfirm = false,
     window = false,   -- our loot window instead of the game's
     rollScale = 100,  -- the size of the group loot rolls, in percent
     rollMove = false, -- the group loot rolls stand where the player placed them
     feed = false,     -- the panel of what was just looted
     feedCompact = false, -- one line per item instead of two
-    feedPrice = true,    -- what a looted item is worth, at a vendor or the auction
-    feedNotes = true,    -- the quest that needs it, better gear, a farm goal, the count in the bags
-    feedTotal = true,    -- the sum of what was just looted
     feedRows = 5,        -- lines shown at most
     feedWidth = 240,     -- the panel's width; a longer line is cut
     feedBare = false,    -- no background and no frame, only the lines
     rollers = false,  -- the group's choices under the roll frames
     real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
 }
+-- Settings of older versions: fixed now, dropped on load (ns.Migrate).
+local GONE = { "report", "where", "greedUnusable", "needUpgrade", "feedPrice", "feedNotes", "feedTotal" }
 
 -- Equip slots by the item's equip location, for the upgrade check.
 local SLOTS = {
@@ -90,17 +86,17 @@ function ns.Upgrade(item, id)
     return false
 end
 
-local function whereOK()
-    local w = ns.db.where
-    if w == "always" then return true end
-    local raid = IsInRaid and IsInRaid() or false
-    if w == "raid" then return raid end
-    return not raid
+-- Older saves: the two green switches became the "safe" rule for green, "need" for a whole
+-- quality or type is "safe" too, and the settings that are fixed now go.
+function ns.Migrate(db)
+    if (db.needUpgrade or db.greedUnusable) and (db.quality[2] or "ask") == "ask" then db.quality[2] = "safe" end
+    for q, rule in pairs(db.quality) do if rule == "need" then db.quality[q] = "safe" end end
+    for class, rule in pairs(db.types) do if rule == "need" then db.types[class] = "safe" end end
+    for _, key in ipairs(GONE) do db[key] = nil end
 end
 
 -- The rule for a roll and its reason. rule: "need", "greed", "pass", or nil to leave it to the
--- player. reason: "item", "type", "quality", "unusable", "upgrade", "fits", "nofit", "bop",
--- "protected", "where", "ask", "off". extra: { upgrade = item link to compare } (optional).
+-- player. reason: "item", "type", "quality", "fits", "nofit", "bop", "protected", "ask", "off".
 function ns.Decide(id, quality, bop, canNeed, canGreed, link)
     local db = ns.db
     if not db.on then return nil, "off" end
@@ -109,16 +105,10 @@ function ns.Decide(id, quality, bop, canNeed, canGreed, link)
     if not rule then
         if bop then return nil, "bop" end
         if id and protected(id) then return nil, "protected" end
-        if not whereOK() then return nil, "where" end
         local class = id and itemClass(id)
         rule, reason = class and db.types[class], "type"
         if not rule then
             rule, reason = db.quality[quality], "quality"
-            if quality == 2 and db.needUpgrade and canNeed and link and ns.Upgrade(link, id) then
-                rule, reason = "need", "upgrade"
-            elseif quality == 2 and db.greedUnusable and not canNeed and canGreed then
-                rule, reason = "greed", "unusable"
-            end
         end
         if not rule or rule == "ask" then return nil, "ask" end
         if rule == "safe" then
@@ -145,7 +135,6 @@ end
 -- Chat lines for rolls are gathered for a moment and printed as one line per rule.
 local batch
 local function report(rule, link)
-    if not ns.db.report then return end
     if not (C_Timer and C_Timer.After) then
         say(L.ROLLED:format(L["RULE_" .. rule:upper()], link))
         return
@@ -272,6 +261,26 @@ function ns.Items(filter)
     return out
 end
 
+-- The item rules for the Items page, rule by rule: a { head = rule, count = n } entry, then that
+-- rule's items by name. Need first, the items left to the player last.
+ns.ITEM_GROUPS = { "need", "greed", "pass", "ask" }
+function ns.ItemGroups(filter)
+    local by = {}
+    for _, e in ipairs(ns.Items(filter)) do
+        by[e.rule] = by[e.rule] or {}
+        table.insert(by[e.rule], e)
+    end
+    local out = {}
+    for _, rule in ipairs(ns.ITEM_GROUPS) do
+        local list = by[rule]
+        if list then
+            out[#out + 1] = { head = rule, count = #list }
+            for _, e in ipairs(list) do out[#out + 1] = e end
+        end
+    end
+    return out
+end
+
 -- What the addon would do with this item now, as one line (for /glt test).
 function ns.Test(link)
     local id = link and tonumber(link:match("item:(%d+)") or link:match("^(%d+)$"))
@@ -324,6 +333,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.cdb = GulliLootCharDB
         -- Before the switch, a placed roll frame was moved: it stays so.
         if ns.db.rollMove == nil and ns.db.rollPoint then ns.db.rollMove = true end
+        ns.Migrate(ns.db)
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
@@ -411,20 +421,13 @@ function GulliLoot_Toggle() ns.Toggle() end
 
 ns.OPT_ICON = {
     on = "Interface\\Icons\\INV_Misc_Bag_10",
-    report = "Interface\\Icons\\INV_Letter_01",
-    greedUnusable = "Interface\\Icons\\INV_Misc_Coin_02",
-    needUpgrade = "Interface\\Icons\\INV_Chest_Plate06",
     fastLoot = "Interface\\Icons\\Ability_Rogue_Sprint",
     window = "Interface\\Icons\\INV_Misc_Bag_08",
     rollScale = "Interface\\Icons\\INV_Misc_Dice_01",
     soloConfirm = "Interface\\Icons\\INV_Misc_Key_03",
-    where = "Interface\\Icons\\INV_Misc_Map_01",
     rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
     feed = "Interface\\Icons\\INV_Misc_Note_01",
     feedCompact = "Interface\\Icons\\INV_Misc_Note_02",
-    feedPrice = "Interface\\Minimap\\Tracking\\Auctioneer",
-    feedNotes = "Interface\\Icons\\INV_Misc_Book_09",
-    feedTotal = "Interface\\Icons\\INV_Misc_Coin_01",
     feedRows = "Interface\\Icons\\INV_Misc_Note_05",
     feedWidth = "Interface\\Icons\\INV_Misc_Note_03",
     feedBare = "Interface\\Icons\\INV_Misc_Gem_Crystal_02",
@@ -457,13 +460,10 @@ local function feedTweak()
     end
     o.panel = {
         part("switch", "feedCompact", L.OPT_FEED_COMPACT, L.OPT_FEED_COMPACT_D),
-        part("switch", "feedPrice", L.OPT_FEED_PRICE, L.OPT_FEED_PRICE_D),
-        part("switch", "feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
-        part("switch", "feedTotal", L.OPT_FEED_TOTAL),
+        part("switch", "feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
         part("step", "feedRows", L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, { step = 1, min = 1, max = ns.FEED_ROWS_MAX or 8 }),
         part("step", "feedWidth", L.OPT_FEED_WIDTH, L.OPT_FEED_WIDTH_D,
             { step = ns.FEED_WIDTH_STEP or 10, min = ns.FEED_WIDTH_MIN or 160, max = ns.FEED_WIDTH_MAX or 400 }),
-        part("switch", "feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
     }
     return o
 end
@@ -506,7 +506,6 @@ do
         window = function() return ns.Window and ns.Window() end,
         options = {
             option("on", L.OPT_ON, L.OPT_ON_D),
-            option("report", L.OPT_REPORT),
             option("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
             option("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
         },
