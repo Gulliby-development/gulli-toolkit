@@ -8,6 +8,7 @@ local S = ns.Skin
 
 local BAR_W, BAR_H = 560, 132
 local BAR_SCALE = 0.7 -- the layout is drawn at 560 by 132 and shown smaller
+local TOP_SHARE = 0.055 -- the default place: so far under the top edge, as a share of the screen's height
 local PAD, ICON = 16, 56
 local TRACK_H, THIN_H = 20, 6
 local TEXT_EVERY = 0.2 -- seconds between two repaints of the texts
@@ -132,7 +133,11 @@ function ns.PlaceBar()
     bar:ClearAllPoints()
     local p = ns.db and ns.db.barPoint
     if p then bar:SetPoint(p[1], UIParent, p[2], p[3], p[4])
-    else bar:SetPoint("CENTER", UIParent, "CENTER", 0, 0) end
+    else
+        -- top of the screen, in the middle, a little under the edge (owner's own place)
+        local h = UIParent.GetHeight and tonumber((UIParent:GetHeight())) or 768
+        bar:SetPoint("TOP", UIParent, "TOP", 0, -math.floor(h * TOP_SHARE / BAR_SCALE + 0.5))
+    end
 end
 
 local function color(region, c) region:SetTextColor(c[1], c[2], c[3], 1) end
