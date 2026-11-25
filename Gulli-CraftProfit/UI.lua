@@ -484,6 +484,7 @@ local WHY_ICON = {
     CHEAPEST = "Interface\\Icons\\INV_Misc_Coin_03", BEST_RUN = "Interface\\Icons\\INV_Misc_Coin_03",
     FAST = "Interface\\Icons\\INV_Misc_PocketWatch_01", RECIPE_trainer = ns.STOP_ICONS.trainer,
     RECIPE_vendor = "Interface\\Icons\\INV_Scroll_03", RECIPE_ah = "Interface\\Icons\\INV_Scroll_03",
+    TOOL_get = "Interface\\Icons\\INV_Staff_Goldfeathered_01", TOOL_have = "Interface\\Icons\\INV_Staff_Goldfeathered_01",
 }
 -- the reasons that are good news get a green key number; the rest stay plain
 local WHY_GOOD = { EARN = true, GAIN = true, SELL_AH = true, SELL_VENDOR = true, SELL_DE = true, CHEAPEST = true, BEST_RUN = true,
@@ -513,7 +514,7 @@ function ns.WhyText(x)
     local function num(v) return good and (color(GOOD) .. v .. "|r") or S.Emph(v) end
     local t
     if key == "CHANCE" then t = L.WHY_CHANCE:format(x[2], num(("%.1f"):format(x[3])))
-    elseif key:sub(1, 5) == "FROM_" then t = L["WHY_" .. key]:format(whyItems(x[2]))
+    elseif key:sub(1, 5) == "FROM_" or key:sub(1, 5) == "TOOL_" then t = L["WHY_" .. key]:format(whyItems(x[2]))
     elseif key == "FAST" then t = L.WHY_FAST:format(recipeName(x[2]), S.MoneyText(math.floor(x[3] + 0.5)))
     elseif type(x[2]) == "number" then t = L["WHY_" .. key]:format(S.MoneyText(math.floor(x[2] + 0.5)))
     else t = L["WHY_" .. key] end
@@ -1377,6 +1378,12 @@ local function recipeTip(r)
         local it = st.items[id] or {}
         local each = ns.UnitCost(st, P, stock, known, id)
         tip[#tip + 1] = { (it.name or tostring(id)) .. " x" .. r.r[id], each < math.huge and ns.Money(each * r.r[id]) or L.NO_PRICE }
+    end
+    -- the tools it needs in the bags, and whether they are there
+    for _, id in ipairs(r.tools or {}) do
+        local it = st.items[id] or {}
+        local have = (it.bags or 0) > 0
+        tip[#tip + 1] = { L.TIP_TOOL:format(it.name or tostring(id)), have and L.TOOL_HAVE or L.TOOL_MISSING }
     end
     if r.src and r.src.text then tip[#tip + 1] = { (r.src.text:gsub("|n", "\n")), nil, nil, nil, true } end
     return tip

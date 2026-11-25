@@ -91,6 +91,12 @@ Yes. CraftProfit reads your recipes from the game, not from the window, so any p
 </details>
 
 <details>
+<summary><b>What about rods, hammers and other tools?</b></summary>
+
+Some recipes need a tool in your bags: an enchanting rod (Runed Copper, Silver, Golden, Truesilver or Arcanite Rod), a Blacksmith Hammer, an Arclight Spanner, a Gyromatic Micro-Adjustor or a Philosopher's Stone. CraftProfit reads which tool each recipe needs from the game. When you do not have it, the route gets it once, before the crafts that need it: it buys it, makes it when that is cheaper, or takes yours from the bank. A recipe whose tool you cannot get is left out of the route. Crafts now shows such a recipe with nothing to make, and its tooltip says which tool is missing.
+</details>
+
+<details>
 <summary><b>How does it know how many crafts a skill point takes?</b></summary>
 
 An orange recipe always gives a point. A yellow or green one gives it less often, the closer it is to grey. CraftProfit knows the levels of every WoW Forever recipe, so it knows the chance. Only a recipe it does not know (marked as an estimate) is guessed from the colours the game showed.

@@ -308,6 +308,70 @@ local function belongs(rid, name)
 end
 ns.RecipeBelongs = belongs
 
+-- ---------- tools ----------
+
+-- The tools profession recipes ask for in the bags (not used up): the enchanting rods, the
+-- blacksmith hammer, the engineering spanner and micro-adjustor, the philosopher's stone, with
+-- their English names for a client that has not loaded the item yet. Ids from WoW Forever's data
+-- (the rods and the engineering tools are made by recipes of tools/craftprofit/wowhead-professions.json).
+-- A new tool is a row here, with a case in the tools test.
+ns.TOOL_ITEMS = {
+    { 6218, "Runed Copper Rod" }, { 6339, "Runed Silver Rod" }, { 11130, "Runed Golden Rod" },
+    { 11145, "Runed Truesilver Rod" }, { 16207, "Runed Arcanite Rod" }, { 5956, "Blacksmith Hammer" },
+    { 6219, "Arclight Spanner" }, { 10498, "Gyromatic Micro-Adjustor" }, { 9149, "Philosopher's Stone" },
+    { 2901, "Mining Pick" }, { 7005, "Skinning Knife" },
+}
+-- The item of a tool the game names; nil, and whether every tool's name could be compared.
+local function toolId(name)
+    if type(name) ~= "string" or (issecretvalue and issecretvalue(name)) then return nil, false end
+    local key, sure = name:lower(), true
+    for _, t in ipairs(ns.TOOL_ITEMS) do
+        local n = itemName(t[1])
+        if type(n) == "string" and n ~= "" then
+            if n:lower() == key then return t[1], true end
+        else
+            sure = false
+            if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, t[1]) end
+        end
+        if t[2]:lower() == key then return t[1], true end
+    end
+    return nil, sure
+end
+ns.ToolId = toolId
+
+-- Notes the tools a recipe needs from the game's requirement lines (`names`: { name, met }).
+-- A tool no row of ns.TOOL_ITEMS names, and not in the bags, leaves the recipe out
+-- (`toolBlocked`); the ids go into GulliCraftProfitDB.tools too, for the simulation and the
+-- other characters.
+local function noteTools(rec, key, names)
+    local tools, blocked
+    for _, q in ipairs(names) do
+        local id, sure = toolId(q.name)
+        if id then
+            tools = tools or {}
+            tools[#tools + 1] = id
+        elseif sure and not q.met then
+            blocked = q.name
+        end
+    end
+    rec.tools, rec.toolBlocked = tools, blocked
+    if ns.db and ns.db.tools and not blocked then ns.db.tools[key] = tools or false end
+end
+
+-- The modern API: the requirements of a recipe; only the tools (Totem), not the anvil or forge.
+local function readTools(rec, rid)
+    local T = C_TradeSkillUI
+    if not (T and T.GetRecipeRequirements) then return end
+    local ok, reqs = pcall(T.GetRecipeRequirements, rid)
+    if not ok or type(reqs) ~= "table" then return end
+    local totem = Enum and Enum.RecipeRequirementType and Enum.RecipeRequirementType.Totem or 1
+    local names = {}
+    for _, q in ipairs(reqs) do
+        if type(q) == "table" and q.type == totem then names[#names + 1] = { name = q.name, met = q.met } end
+    end
+    noteTools(rec, rid, names)
+end
+
 -- A cooldown the game shows (seconds left): when the craft is ready again, and for a recipe
 -- ns.COOLDOWNS does not know, that it has one at all (at least as long as what is left, in hours).
 local function noteCooldown(rec, left)
@@ -351,6 +415,7 @@ local function scanModern(prof, skill, name)
                     end
                 end
             end
+            readTools(rec, rid)
             if not rec.learned and T.GetRecipeSourceText then rec.source = T.GetRecipeSourceText(rid) end
             if rec.learned and T.GetRecipeCooldown then
                 local ok, left = pcall(T.GetRecipeCooldown, rid)
@@ -383,6 +448,12 @@ local function scanClassic(prof, skill)
             end
             remember(rec, skill, diff)
             if GetTradeSkillCooldown then noteCooldown(rec, GetTradeSkillCooldown(i)) end
+            if GetTradeSkillTools then
+                -- name, has, name, has, ...
+                local t, names = { GetTradeSkillTools(i) }, {}
+                for k = 1, #t, 2 do names[#names + 1] = { name = t[k], met = t[k + 1] and true or false } end
+                noteTools(rec, key, names)
+            end
             prof.recipes[key] = rec
             n = n + 1
         end
@@ -917,11 +988,16 @@ function ns.State()
             -- a recipe of a specialization this character did not choose is no way to go
             local spec = not rec.learned and ns.SPEC_OF[rid]
             if spec and (sim or not ns.HasSpec(spec)) then src = { t = "spec", spec = spec, text = ns.SpecName(spec) } end
+            -- the tools the game named for this recipe, else what another character's scan saw
+            local tools = rec.tools
+            if tools == nil and ns.db.tools and ns.db.tools[rid] then tools = ns.db.tools[rid] end
             state.recipes[rid] = { name = rec.name or tostring(rid), skill = skill, guess = guess, r = rec.r or {},
                                    out = rec.out, count = rec.count, learned = rec.learned, src = src, icon = rec.icon,
                                    skip = skips[rid] == true or nil,
+                                   tools = tools or nil, toolBlocked = rec.toolBlocked and true or nil,
                                    cd = ns.COOLDOWNS[rid] or rec.cd, cdReady = rec.cdReady }
             for id in pairs(rec.r or {}) do itemFor(state, id) end
+            for _, id in ipairs(tools or {}) do itemFor(state, id) end
             if rec.out then itemFor(state, rec.out) end
         end
     end
@@ -1740,6 +1816,7 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         ns.db.vendor = ns.db.vendor or {}
         ns.db.trainer = ns.db.trainer or {}
         ns.db.trainerReq = ns.db.trainerReq or {}
+        ns.db.tools = ns.db.tools or {}
         ns.db.gather = ns.db.gather or {}
         ns.db.skip = ns.db.skip or {}
         ns.db.lots = ns.db.lots or {}
