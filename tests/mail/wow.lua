@@ -194,11 +194,22 @@ function Fake(spec)
     IsInGuild = function() return #W.guild > 0 end
     GetNumGuildMembers = function() return #W.guild end
     GetGuildRosterInfo = function(i) return W.guild[i] end
-    MailFrameTab2 = { Click = function() W.tab = 2 end }
-    SendMailNameEditBox = { SetText = function(_, t) W.to = t end }
+    MailFrameTab2 = { Click = function() W.tab = 2; SendMailFrame:Show() end }
+    W.to = nil
+    SendMailNameEditBox = { SetText = function(_, t) W.to = t end, GetText = function() return W.to or "" end }
+    MoneyInputFrame_GetCopper = function() return W.sendMoney or 0 end
+    -- the game's Send: enabled with a name (the subject is filled for the player)
+    W.sends = 0
+    SendMailMailButton = { IsEnabled = function() return (W.to or "") ~= "" and W.canSend ~= false end,
+                           Click = function() W.sends = W.sends + 1; SendMail(W.to) end }
+    W.canSend = nil
     SendMail = function() end
     W.hooks = {}
-    hooksecurefunc = function(name, fn) W.hooks[name] = fn end
+    hooksecurefunc = function(name, fn)
+        W.hooks[name] = fn
+        local old = _G[name]
+        if type(old) == "function" then _G[name] = function(...) old(...); fn(...) end end
+    end
     GulliMailDB = spec.db
     return W
 end

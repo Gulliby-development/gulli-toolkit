@@ -1,6 +1,6 @@
--- The mailbox: Take all with switches for what to take, one letter's Take and Return, a
--- visit total, warnings about letters that run out (on every character), a log, and the
--- send side: names to tap, quick attach by kind, gold to another character and mailing rules.
+-- The mailbox: Take all, take by kind, one letter's Take and Return, a visit total, warnings
+-- about letters that run out (on every character), a log, and the send side: names to tap,
+-- quick attach by kind, all gold to another character and a Send button of its own.
 -- Nothing is ever sent without the player's own click on Send.
 
 local ADDON, ns = ...
@@ -18,19 +18,7 @@ local TRIES = 3 -- a take that changes nothing this often is one the game refuse
 local WAIT_MAX = 70 -- the server sends the next letters at most once a minute
 local WAIT_STEP_SERVER = 5
 
--- What Take all takes, by kind of letter. `money` also covers the money of every letter.
-ns.KINDS = { "money", "sold", "bought", "expired", "player" }
-ns.OPT_ICON = {
-    money = "Interface\\Icons\\INV_Misc_Coin_02",
-    sold = "Interface\\Minimap\\Tracking\\Auctioneer",
-    bought = "Interface\\Icons\\INV_Misc_Bag_10",
-    expired = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-    player = "Interface\\Icons\\INV_Letter_15",
-    panel = "Interface\\Icons\\INV_Letter_15",
-    subject = "Interface\\Icons\\INV_Letter_01",
-    keepFree = "Interface\\Icons\\INV_Misc_Bag_08",
-    keepGold = "Interface\\Icons\\INV_Misc_Coin_02",
-}
+ns.OPT_ICON = { panel = "Interface\\Icons\\INV_Letter_15" }
 
 -- Quick attach: item class 7 (trade goods) subclasses, and class 3 (gems). `sample` is a
 -- typical item whose icon the tile shows when the bags hold none; `all` takes every kind above it.
@@ -191,22 +179,19 @@ end
 
 -- Does Take all take from this letter? Cash on delivery and GM letters never.
 function ns.Allowed(kind, h)
-    if h.cod > 0 or h.gm or kind == "system" then return false end
-    return ns.db[kind] ~= false
+    return not (h.cod > 0 or h.gm or kind == "system")
 end
 
--- What Take all would get: money, item count, letters left out (cash on delivery, switched
--- off), and the letters still on the server (it shows at most 50 at a time).
+-- What Take all would get: money, item count, letters left out (cash on delivery, GM), and
+-- the letters still on the server (it shows at most 50 at a time).
 function ns.Summary()
     local shown, total = numMail()
-    local s = { money = 0, items = 0, cod = 0, off = 0, letters = shown, more = math.max(0, total - shown) }
+    local s = { money = 0, items = 0, cod = 0, letters = shown, more = math.max(0, total - shown) }
     for i = 1, shown do
         local h = header(i)
-        local kind = ns.Kind(i, h)
-        if h.cod > 0 or h.gm then s.cod = s.cod + 1
-        elseif not ns.Allowed(kind, h) then s.off = s.off + 1
+        if not ns.Allowed(ns.Kind(i, h), h) then s.cod = s.cod + 1
         else
-            if ns.db.money then s.money = s.money + h.money end
+            s.money = s.money + h.money
             s.items = s.items + h.items
         end
     end
@@ -235,14 +220,12 @@ local function takeKey(i, h, what)
 end
 
 -- The next thing to take, from the last letter back: { i, j, kind = "money"|"item", key,
--- amount, letter }, "full" when the next one is an item and the bags are full (or at the
--- free slots to keep), or nil. `skip` holds the keys the game refused; `only` limits it to
--- one letter (its index), `force` takes from it whatever the switches say. `kind` (a key of
--- ns.ATTACH_KINDS) takes only the items of that kind, from every letter, and no money.
-function ns.Next(skip, only, force, kind)
+-- amount, letter }, "full" when the next one is an item and the bags are full, or nil.
+-- `skip` holds the keys the game refused; `only` limits it to one letter (its index).
+-- `kind` (a key of ns.ATTACH_KINDS) takes only the items of that kind, and no money.
+function ns.Next(skip, only, kind)
     local want = kind and ns.KindOf(kind)
     if kind and not want then return nil end
-    if want then force = true end
     skip = skip or {}
     local from, to = numMail(), 1
     if only then
@@ -252,9 +235,9 @@ function ns.Next(skip, only, force, kind)
     for i = from, to, -1 do
         local h = header(i)
         local kind = ns.Kind(i, h)
-        if h.cod == 0 and not h.gm and (force or ns.Allowed(kind, h)) then
+        if ns.Allowed(kind, h) then
             local k, what = takeKey(i, h, "money")
-            if h.money > 0 and not want and (force or ns.db.money) and not skip[k] then
+            if h.money > 0 and not want and not skip[k] then
                 return { i = i, kind = "money", key = k, what = what, amount = h.money, letter = kind, sender = h.sender }
             end
             if h.items > 0 then
@@ -267,7 +250,7 @@ function ns.Next(skip, only, force, kind)
                     if name then
                         k, what = takeKey(i, h, j .. ":" .. tostring(id or name))
                         if not skip[k] then
-                            if freeSlots() <= (ns.db.keepFree or 0) then return "full" end
+                            if freeSlots() <= 0 then return "full" end
                             return { i = i, j = j, kind = "item", key = k, what = what, letter = kind,
                                      sender = h.sender, name = name, count = count or 1 }
                         end
@@ -366,12 +349,12 @@ function ns.TakeAll(letters, kind)
             while true do
                 local i = current()
                 if not i then c = nil break end
-                c = ns.Next(t.skip, i, true)
+                c = ns.Next(t.skip, i)
                 if c ~= nil then break end
                 table.remove(t.queue, 1)
             end
         else
-            c = ns.Next(t.skip, nil, nil, t.kind)
+            c = ns.Next(t.skip, nil, t.kind)
         end
         -- The last take is done once something else comes next; the same thing again means
         -- the game did not take it.
@@ -593,9 +576,19 @@ function ns.Remember(name)
     while #list > RECENT_MAX do table.remove(list) end
 end
 
-function ns.Pick(name)
+-- Opens the game's send tab when it is not open. Returns whether it is open now.
+function ns.OpenSend()
+    if sendOpen() then return true end
+    if not ns.open or ns.paused then return false end
     if MailFrameTab2 and MailFrameTab2.Click then MailFrameTab2:Click() end
+    return sendOpen() and true or false
+end
+
+function ns.Pick(name)
+    ns.to = name
+    ns.OpenSend()
     if SendMailNameEditBox then SendMailNameEditBox:SetText(name) end
+    if ns.RefreshSend then ns.RefreshSend() end
 end
 
 -- Sending ------------------------------------------------------------------------------------
@@ -730,9 +723,10 @@ function ns.ItemsOfKind(key)
 end
 
 -- Puts items of one kind into the letter being written (a right-click on a bag item does that
--- while the send tab is open), up to the free attachment places. Returns how many.
+-- while the send tab is open, so it opens that tab first), up to the free attachment places.
+-- Returns how many.
 function ns.AttachKind(key)
-    if not sendOpen() then return 0 end
+    if not ns.OpenSend() then return 0 end
     local room = ns.Room()
     local n = 0
     for _, it in ipairs(ns.ItemsOfKind(key)) do
@@ -743,11 +737,17 @@ function ns.AttachKind(key)
     return n
 end
 
--- Fills the money of the letter with all the gold but `keepGold` (gold, not copper), less the
--- postage: a letter that takes every copper cannot pay for itself, and the game refuses it.
+-- All the gold that can go by mail: everything less the postage, since a letter that takes
+-- every copper cannot pay for itself and the game refuses it.
+function ns.GoldToSend()
+    local postage = sendOpen() and GetSendMailPrice and GetSendMailPrice() or ns.POSTAGE
+    return math.max(0, money() - (postage or 0))
+end
+
+-- Puts all that gold into the letter (opening the send tab first).
 function ns.FillGold()
-    local postage = GetSendMailPrice and GetSendMailPrice() or ns.POSTAGE
-    local amount = math.max(0, money() - (ns.db.keepGold or 0) * 10000 - (postage or 0))
+    if not ns.OpenSend() then return 0 end
+    local amount = ns.GoldToSend()
     if SendMailMoney and MoneyInputFrame_SetCopper then MoneyInputFrame_SetCopper(SendMailMoney, amount) end
     return amount
 end
@@ -781,11 +781,11 @@ function ns.ItemSubject()
     return ""
 end
 
--- Fills an empty subject (switch `subject`), since Send stays grey without one: the amount for
+-- Fills an empty subject, since Send stays grey without one: the amount for
 -- a letter of money alone, the first item's name for a letter with items when the game left it
 -- empty. A subject it filled follows the letter; one the player typed stays.
 function ns.AutoSubject()
-    if ns.paused or not ns.db or not ns.db.subject or not sendOpen() then return nil end
+    if ns.paused or not ns.db or not sendOpen() then return nil end
     local box = SendMailSubjectEditBox
     if not box or not SendMailMoney or not MoneyInputFrame_GetCopper then return nil end
     local text = box:GetText() or ""
@@ -811,7 +811,11 @@ end
 function ns.HookSubject()
     if ns.subjectHooked or not SendMailFrame then return end
     ns.subjectHooked = true
-    local function changed() if not ns.filling then ns.AutoSubject() end end
+    local function changed()
+        if ns.filling then return end
+        ns.AutoSubject()
+        if ns.RefreshSend then ns.RefreshSend() end
+    end
     for _, part in ipairs({ "Gold", "Silver", "Copper" }) do
         local box = _G["SendMailMoney" .. part]
         if box and box.HookScript then box:HookScript("OnTextChanged", changed) end
@@ -821,31 +825,54 @@ function ns.HookSubject()
         hooksecurefunc("SendMailFrame_Update", changed)
     end
     if hooksecurefunc and SendMailRadioButton_OnClick then hooksecurefunc("SendMailRadioButton_OnClick", changed) end
-end
-
--- Mailing rules: { kind = "cloth", to = "Name" }. Apply fills the letter for the first rule
--- with something to send: the recipient and the items. The player presses Send.
-function ns.NextRule()
-    for _, r in ipairs(ns.db.rules) do
-        if r.to and r.to ~= "" and short(r.to) ~= me() and #ns.ItemsOfKind(r.kind) > 0 then return r end
+    -- the game decides here whether Send works: our button and status line follow it
+    if hooksecurefunc and SendMailFrame_CanSend then
+        hooksecurefunc("SendMailFrame_CanSend", function() if ns.RefreshSend then ns.RefreshSend() end end)
     end
 end
 
-function ns.ApplyRule()
-    local r = ns.NextRule()
-    if not r or not sendOpen() then return nil end
-    if SendMailNameEditBox then SendMailNameEditBox:SetText(r.to) end
-    local n = ns.AttachKind(r.kind)
-    return r, n
+-- The letter being written, for the panel's status line and its Send button: { to, items,
+-- money, can }. `can` is the game's own Send button: we never decide that ourselves.
+function ns.SendState()
+    local st = { to = "", items = 0, money = 0, can = false }
+    if not sendOpen() then
+        st.to = ns.to or ""
+        return st
+    end
+    local name = SendMailNameEditBox and SendMailNameEditBox.GetText and SendMailNameEditBox:GetText()
+    st.to = type(name) == "string" and strtrim(name) or ""
+    st.items = SEND_MAX - ns.Room()
+    local cod = SendMailCODButton and SendMailCODButton.GetChecked and SendMailCODButton:GetChecked()
+    if not cod and SendMailMoney and MoneyInputFrame_GetCopper then st.money = MoneyInputFrame_GetCopper(SendMailMoney) or 0 end
+    local b = SendMailMailButton
+    st.can = b ~= nil and b.IsEnabled ~= nil and b:IsEnabled() and true or false
+    return st
 end
 
-function ns.AddRule(kind, to) ns.db.rules[#ns.db.rules + 1] = { kind = kind or ns.ATTACH_KINDS[1].key, to = to or "" } end
-function ns.RemoveRule(i) table.remove(ns.db.rules, i) end
+-- Our Send button: a click on the game's own, only inside the player's click and only while
+-- the game would take it.
+function ns.Send()
+    if ns.paused or not ns.SendState().can then return false end
+    SendMailMailButton:Click()
+    return true
+end
+
+-- The game empties the letter after it went; the name stays, so the next letter to the same
+-- character needs no new pick.
+function ns.Sent()
+    local name = ns.sentTo or ns.to
+    if not name or name == "" or not sendOpen() or not SendMailNameEditBox then return end
+    ns.to = name
+    SendMailNameEditBox:SetText(name)
+    if ns.RefreshSend then ns.RefreshSend() end
+end
 
 -- Events -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = true, money = true, sold = true, bought = true, expired = true, player = true,
-                keepFree = 0, keepGold = 0, subject = true }
+ns.DEFAULTS = { panel = true }
+-- Settings of older versions: Take all takes everything, the subject is always filled, the
+-- mailing rules are gone. Dropped on load.
+local GONE = { "money", "sold", "bought", "expired", "player", "keepFree", "keepGold", "subject", "rules" }
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -858,7 +885,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.alts = ns.db.alts or {}
         ns.db.chars = ns.db.chars or {}
         ns.db.log = ns.db.log or {}
-        ns.db.rules = ns.db.rules or {}
+        for _, k in ipairs(GONE) do ns.db[k] = nil end
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.MergeRealmless()
         self:RegisterEvent("PLAYER_LOGIN")
@@ -867,7 +894,14 @@ f:SetScript("OnEvent", function(self, event, a1)
         if ns.Skin and ns.Skin.ClosesWith then ns.Skin.ClosesWith("mail", function() ns.Closed() end) end
         self:RegisterEvent("MAIL_INBOX_UPDATE")
         self:RegisterEvent("BAG_UPDATE_DELAYED")
-        if SendMail then hooksecurefunc("SendMail", function(name) if not ns.paused then ns.Remember(name) end end) end
+        self:RegisterEvent("MAIL_SEND_SUCCESS")
+        if SendMail then
+            hooksecurefunc("SendMail", function(name)
+                if ns.paused then return end
+                ns.sentTo = name
+                ns.Remember(name)
+            end)
+        end
         return
     end
     -- Paused from the hub: only the closing events still run, so nothing stays open.
@@ -879,8 +913,12 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.alts[r][faction] = ns.db.alts[r][faction] or {}
         ns.db.alts[r][faction][me()] = true
         warnOthers()
+    elseif event == "MAIL_SEND_SUCCESS" then
+        -- after the game's own handler emptied the letter
+        if C_Timer and C_Timer.After then C_Timer.After(0, ns.Sent) else ns.Sent() end
     elseif event == "MAIL_SHOW" then
         ns.open = true
+        ns.to, ns.sentTo = nil, nil
         ns.visit = { money = 0, sold = 0, items = 0 }
         ns.warned = false
         ns.HookSubject()
@@ -932,11 +970,6 @@ do
         window = function() return ns.Window and ns.Window() end,
         options = {
             option("panel", ns.L.OPT_PANEL),
-            option("money", ns.L.OPT_MONEY),
-            option("sold", ns.L.OPT_SOLD),
-            option("bought", ns.L.OPT_BOUGHT),
-            option("expired", ns.L.OPT_EXPIRED),
-            option("player", ns.L.OPT_PLAYER),
         },
         -- letters with things in them that run out soon, on any character of this realm
         summary = function()

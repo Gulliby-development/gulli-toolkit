@@ -1021,11 +1021,15 @@ S.mail = { panel = {
                         [2318] = "Interface\\Icons\\INV_Misc_LeatherScrap_03", [10940] = "Interface\\Icons\\INV_Enchant_DustStrange", [774] = "Interface\\Icons\\INV_Misc_Gem_Emerald_03",
                         [2447] = "Interface\\Icons\\INV_Misc_Flower_02", [7067] = "Interface\\Icons\\INV_Stone_02" }
         C_Item.GetItemIconByID = function(id) return icons[id] end
-        W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); SendMailFrame:Show(); ns.ShowTab(2)
+        W.money = 1250000
+        W.Fire("PLAYER_LOGIN"); W.Fire("MAIL_SHOW"); ns.ShowTab(2)
+        ns.Pick("Amy"); W.sendItems, W.sendMoney = 3, 1249970; ns.Refresh()
     end,
     crop = "GulliMailPanel",
 }, settings = {
-    spec = {},
+    spec = { db = { log = { { t = 99000, sender = "Auction House", kind = "sold", money = 42100, items = 0 },
+                            { t = 98000, sender = "Bob", kind = "player", money = 0, items = 4 },
+                            { t = 90000, sender = "Auction House", kind = "bought", money = 0, items = 2 } } } },
     open = function(ns) ns.Toggle() end,
 } }
 
