@@ -43,13 +43,15 @@ local function castInfo()
     return { name = name, icon = icon, from = from / 1000, to = to / 1000, trade = trade == true, id = id, spell = spell }
 end
 
--- The crafts the game still repeats, this one counted; nil when it does not tell.
+-- The crafts the game still repeats, this one counted; nil when it does not tell. A craft the
+-- game repeats nothing after (one press of Create or Enchant) is 1.
 local function recasts()
     local T = C_TradeSkillUI
     if not (T and T.GetRemainingRecasts) then return nil end
     local ok, n = pcall(T.GetRemainingRecasts)
-    n = ok and not secret(n) and tonumber(n) or nil
-    return n and n > 0 and n or nil
+    if not ok or secret(n) then return nil end
+    n = tonumber(n)
+    return n and n > 1 and n or 1
 end
 
 -- The profession of a recipe and its skill now.
@@ -126,9 +128,11 @@ function ns.BarCastStart()
     local b = ns.batch
     if not left and b and ns.CastRecipe and ns.CastRecipe(c.spell) == b.rid then left = b.of - b.made end
     local t = now()
-    -- the same batch goes on, also one that looked finished a moment ago
-    local same = r and r.spell == c.spell
-        and (r.state == "run" or (r.state == "done" and t - (r.endAt or 0) <= ns.BAR_GAP))
+    -- The same batch goes on only while the game still repeats it: a craft the player starts
+    -- by hand after the last one is a batch of its own, however soon it comes. Without a count
+    -- from the game the next cast in time is all there is to go by.
+    local same = r and r.spell == c.spell and r.state == "run"
+    if same and r.known then same = (r.leftAt or 0) - (r.cast and 1 or 0) > 0 end
     if not same then
         r = { spell = c.spell, name = c.name, icon = ns.BarIcon(c.spell) or c.icon, of = left or 1, made = 0, known = left ~= nil,
               began = t, starts = 0 }
