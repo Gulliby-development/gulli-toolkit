@@ -2234,6 +2234,56 @@ S.Back = backButton
 -- Puts a window inside another frame (the hub): no shadow, no dragging, a back button instead
 -- of the close button, and opts.right (the hub's own controls) on the right of the header.
 -- opts: { back = fn, popOut = fn, onHide = fn, onResize = fn, right = { frames }, width, height }
+-- The title and the grey slash command stay clear of the header's controls on the right (a
+-- chip, the hub's switches): the command hides when it would run under them, and a title too
+-- long for the room is cut. Runs on show, on dock and undock, and when a header control shows,
+-- hides or changes its size.
+local function fitHeader(f)
+    if not (f and f.title and f.bar) then return end
+    local edge
+    local function take(b)
+        if b and b.IsShown and b:IsShown() then
+            local l = tonumber((b:GetLeft()))
+            if l and (not edge or l < edge) then edge = l end
+        end
+    end
+    take(f.close)
+    for _, b in ipairs(rawget(f, "headerItems") or {}) do take(b) end
+    if f.docked and f.dockOpts then for _, b in ipairs(f.dockOpts.right or {}) do take(b) end end
+    local left = tonumber((f.title:GetLeft()))
+    if not (edge and left) then return end
+    local room = edge - left - 8
+    local tw = f.title:GetStringWidth() or 0
+    if rawget(f, "titleCut") then f.title:SetWidth(0); rawset(f, "titleCut", nil) end
+    if tw > room and room > 20 then
+        f.title:SetWidth(room)
+        rawset(f, "titleCut", true)
+        tw = room
+    end
+    local sub = rawget(f, "subPill") or f.sub
+    local sw = (sub == f.sub) and (f.sub:GetStringWidth() or 0) or (sub:GetWidth() or 0)
+    local fits = (f.sub:GetText() or "") ~= "" and tw + 8 + sw <= room
+    f.sub:SetShown(fits)
+    if rawget(f, "subPill") then f.subPill:SetShown(fits) end
+end
+S.FitHeader = fitHeader
+
+-- fitHeader once now and once the next frame, when the game has placed what just moved
+local function refitHeader(f)
+    fitHeader(f)
+    if C_Timer and C_Timer.After then C_Timer.After(0, function() fitHeader(f) end) end
+end
+
+-- A header control that shows, hides or grows lets the title and command fit again.
+local function watchHeader(f, b)
+    if not b or rawget(b, "gulliHeadWatch") or not b.HookScript then return end
+    rawset(b, "gulliHeadWatch", true)
+    local function again() refitHeader(f) end
+    b:HookScript("OnShow", again)
+    b:HookScript("OnHide", again)
+    b:HookScript("OnSizeChanged", again)
+end
+
 local function dock(f, host, opts)
     opts = opts or {}
     f.size = f.size or { f:GetWidth(), f:GetHeight() }
@@ -2274,6 +2324,7 @@ local function dock(f, host, opts)
         b:ClearAllPoints()
         if last then b:SetPoint("RIGHT", last, "LEFT", -8, 0) else b:SetPoint("RIGHT", -12, 0) end
         b:Show()
+        watchHeader(f, b)
         last = b
     end
     -- Header buttons of the window (help, size...) move left of the hub's controls.
@@ -2289,6 +2340,7 @@ local function dock(f, host, opts)
         end)
     end
     f:Show()
+    refitHeader(f)
 end
 
 -- Takes a window out of the hub again: back to its own size in the middle of the screen. It
@@ -2400,6 +2452,7 @@ function S.Window(name, title, width, height, opts)
     if f.SetToplevel then f:SetToplevel(true) end
     local function opened(self)
         self = self or f
+        refitHeader(self)
         if self.docked then return end
         scaleWindow(self)
         if self.Raise then self:Raise() end
@@ -2427,6 +2480,11 @@ function S.Window(name, title, width, height, opts)
         b:SetPoint("RIGHT", self.headerRight, "LEFT", -6, 0)
         if self.headerRight == self.close then self.close.dockNext = b end
         self.headerRight = b
+        local items = rawget(self, "headerItems") or {}
+        items[#items + 1] = b
+        rawset(self, "headerItems", items)
+        watchHeader(self, b)
+        refitHeader(self)
         return b
     end
 
