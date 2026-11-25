@@ -770,6 +770,13 @@ function ns.ShowOnMap(spot)
     ns.Print(text); ns.Toast(text)
 end
 
+-- The craft stop makes this recipe (a stretch of the skill, or an intermediate).
+function ns.StopMakes(n, rid)
+    for _, sg in ipairs(n and n.segs or {}) do if sg.rid == rid then return true end end
+    for _, l in ipairs(n and n.lines or {}) do if l.recipe == rid then return true end end
+    return false
+end
+
 -- What the stop's buttons do now. Returns { primary = { text, run, warn = true }, second =
 -- { text, run }, tools = { { text, run } } (one with `pin` shows that spot on the map), counter = { text, at, of, right }, hint, bad (the
 -- hint is a warning), pill = { text, colour }, vendor = the vendor's plan }. A button without
@@ -787,7 +794,8 @@ function ns.StopAction(i, aside)
     end
     local prog = ns.RunProgress()
     local p = prog[i]
-    local now = (v.leg or 1) == 1 -- a later run of the way is only a plan
+    -- the run the skill is in: the first one, or a later one the skill has reached since the plan
+    local now = ns.LegNow(v)
     local done = p and p.done or false
     local a = { tools = {} }
     local onward = (not aside and v.route[i + 1]) and { L.NEXT_STOP, function() ns.Select(i + 1) end } or nil
@@ -910,6 +918,12 @@ function ns.StopAction(i, aside)
             end
         end
         a.hint = done and L.HINT_MADE or (closed and L.HINT_CRAFT_OPEN or L.HINT_CRAFT)
+        -- the batch the Make button started: a bar of the crafts made, the cast that runs moving in it
+        local b = not done and ns.Batch()
+        if b and ns.StopMakes(n, b.rid) then
+            a.counter = { text = L.CRAFTED_OF:format(b.made, b.of), at = b.made, of = b.of, bar = true, cast = b.cast }
+            a.primary, a.hint = { L.CRAFT_BUSY }, L.HINT_CRAFTING
+        end
     elseif n.kind == "trainer" then
         local spot = stopPin(n, p)
         if spot then a.tools[#a.tools + 1] = { L.SHOW_ON_MAP, function() ns.ShowOnMap(spot) end, pin = spot } end
@@ -921,8 +935,8 @@ function ns.StopAction(i, aside)
     else
         a.hint = L.HINT_SELL
     end
-    -- any stop of the run now can be ticked off by hand (made or bought elsewhere), and back
-    if now and #a.tools < 2 then
+    -- any stop can be ticked off by hand (made or bought elsewhere), and back
+    if #a.tools < 2 then
         if p and p.marked then
             a.tools[#a.tools + 1] = { L.MARK_UNDO, function() ns.MarkDone(i, false) end, mark = false }
             a.hint, a.bad = L.HINT_MARKED, false
@@ -1170,6 +1184,11 @@ local function makePanel(card, width)
     p.pipBox:SetSize(10, 6)
     p.pipBox:SetPoint("LEFT", p.counter, "RIGHT", 10, 0)
     p.count2:SetPoint("LEFT", p.pipBox, "RIGHT", 10, 0)
+    -- the bar of a batch of crafts: the crafts made, and the cast that runs growing in it
+    p.bar = S.Progress(card, 6)
+    p.bar:SetWidth(150)
+    p.bar:SetPoint("LEFT", p.counter, "RIGHT", 10, 0)
+    p.bar:Hide()
     for k = 1, 2 do
         local b = S.Ghost(S.FitButton(card, " ", 28, 60))
         b:SetScript("OnClick", function(self) flash = nil; if self.run then self.run() end end)
@@ -1204,7 +1223,7 @@ local function makePanel(card, width)
         local n = ns.view.route and ns.view.route[i]
         self.none:SetShown(not n)
         for _, x in ipairs(self.parts) do x:SetShown(n ~= nil) end
-        if not n then return end
+        if not n then self.bar:Hide(); self.bar:SetScript("OnUpdate", nil); return end
         local a = ns.StopAction(i, aside)
         self.action = a
         self.icon:SetIcon(stopIcon(n))
@@ -1216,7 +1235,25 @@ local function makePanel(card, width)
         local c = a.counter
         self.counter:SetText(c and c.text or "")
         self.count2:SetText(c and c.right or "")
-        local of = c and c.of or 0
+        local of = (c and not c.bar) and c.of or 0
+        self.bar:SetShown(c and c.bar or false)
+        self.bar:SetScript("OnUpdate", nil)
+        if c and c.bar then
+            local whole = c.of > 0 and c.at / c.of or 0
+            self.bar:Set(whole)
+            -- the cast that runs moves the fill toward the next craft (still with Reduce motion: a step per craft)
+            local cast = c.cast
+            if cast and not S.Calm() and GetTime then
+                local bar, step = self.bar, 1 / c.of
+                bar:SetScript("OnUpdate", function()
+                    local share = (GetTime() * 1000 - cast.from) / (cast.to - cast.from)
+                    share = math.max(0, math.min(1, share))
+                    local w = (tonumber(bar:GetWidth()) or 0) - 2
+                    bar.fill:SetWidth(math.max(2, w * math.min(1, whole + step * share)))
+                    bar.fill:SetShown(true)
+                end)
+            end
+        end
         local pw = of > 0 and math.max(4, math.min(22, math.floor((150 - (of - 1) * 4) / of))) or 0
         if of > 24 then of = 0 end
         for k = 1, math.max(of, #self.pips) do
@@ -1238,6 +1275,7 @@ local function makePanel(card, width)
             end
         end
         self.pipBox:SetWidth(math.max(1, of * (pw + 4) - 4))
+        if c and c.bar then self.pipBox:SetWidth(self.bar:GetWidth()) end
         -- the buttons: the main one takes the width the second leaves
         setButton(self.act1, a.primary)
         setButton(self.act2, a.second)
@@ -2068,7 +2106,7 @@ local function refreshRoute()
     end
     if selected > #v.route then selected = 1 end
     local prog = ns.RunProgress()
-    drawStops(prog, ((v.leg or 1) == 1 or ns.SimShopOn(v)) and ns.Here(v.route, prog, ns.Place()) or nil)
+    drawStops(prog, (ns.LegNow(v) or ns.SimShopOn(v)) and ns.Here(v.route, prog, ns.Place()) or nil)
     if unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
     ui.panel:Set(selected)
     if not v.route[selected] and not unknown then ui.unknown:SetText(plan.earn and L.WARN_EARN or "") end

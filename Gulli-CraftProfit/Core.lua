@@ -1413,10 +1413,14 @@ ns.Gets = gets
 -- itself. A craft stop counts its crafts: `made` (recipe -> crafts since the plan, read from the
 -- game's casts), each recipe's crafts going to its lines in their order; a stretch of the skill
 -- is also done once `skill` (the profession's skill now) reaches its end. `marks` (stop signature
--- -> true): stops the player marked done by hand. Other stops are never done.
-function ns.Progress(route, state, have, made, marks, skill)
+-- -> true): stops the player marked done by hand. `learned(rid)`: the character knows that
+-- recipe now, so a pattern bought for it is done although it left the bags. Other stops are
+-- never done.
+function ns.Progress(route, state, have, made, marks, skill, learned)
     local out, used, usedMade = {}, {}, {}
-    local function crafted(rid, n)
+    local function crafted(rid, n, reached)
+        -- a stretch the skill is past takes no casts: they go to the next stop of that recipe
+        if reached then return n end
         local got = math.max(0, ((made or {})[rid] or 0) - (usedMade[rid] or 0))
         usedMade[rid] = (usedMade[rid] or 0) + n
         return math.min(n, got)
@@ -1428,7 +1432,9 @@ function ns.Progress(route, state, have, made, marks, skill)
             for k, l in ipairs(node.lines or {}) do
                 local e = { got = 0, left = l.n, done = false }
                 local id = l.id or l.pattern
-                if id then
+                if not l.id and l.pattern and l.recipe and learned and learned(l.recipe) then
+                    e.got, e.left, e.done = l.n, 0, true
+                elseif id then
                     local base = ((state and state.items[id]) or {}).bags or 0
                     local gained = math.max(0, (have(id) or 0) - base - (used[id] or 0))
                     used[id] = (used[id] or 0) + l.n
@@ -1455,8 +1461,9 @@ function ns.Progress(route, state, have, made, marks, skill)
             for k, sg in ipairs(node.segs or {}) do
                 any = true
                 local n = ceil(sg.n)
-                local got = crafted(sg.rid, n)
-                local e = { got = got, left = n - got, done = got >= n or (skill and sg.to > sg.from and skill >= sg.to) or false }
+                local reached = skill and sg.to > sg.from and skill >= sg.to or false
+                local got = crafted(sg.rid, n, reached)
+                local e = { got = got, left = n - got, done = got >= n }
                 if e.done then e.left = 0 else p.left = p.left + 1 end
                 p.segs[k] = e
             end
