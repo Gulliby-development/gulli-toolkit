@@ -41,7 +41,18 @@ local function colour(text, c) return S.Hex(c) .. text .. "|r" end
 
 -- The state of a slot as a short line and its colour (never by colour alone: a word goes with it).
 -- Where the list's first item is: its colour and the word for the tooltip.
-ns.AT_COLOR = { worn = S.GOOD, bag = S.WARN, miss = S.BAD }
+ns.AT_COLOR = { worn = S.GOOD, bag = S.WARN, alt = S.WARN, miss = S.BAD }
+
+-- The slot's tooltip lines of where the first item is; with "alt", which item of the list the
+-- player has instead and where.
+function ns.AtLines(r)
+    local at = r and r.topAt
+    if not at then return {} end
+    if at ~= "alt" then return { { L["AT_" .. at:upper()], ns.AT_COLOR[at] } } end
+    local name = S.QualityHex(ns.ItemQuality(r.alt)) .. ns.ItemName(r.alt) .. "|r"
+    return { { L.AT_MISS, S.BAD }, { L.AT_ALT:format(r.altRank, name), S.WARN },
+             { L["AT_" .. r.altAt:upper()], S.MUTED } }
+end
 function ns.TopText(r)
     if r.state == "covered" then return L.ST_COVERED, S.FAINT end
     if not r.top then return L.ST_NONE, S.FAINT end
@@ -114,10 +125,11 @@ local function slotButton(parent, slot)
         local e = self.enchant
         if self.itemId then
             itemTip(self)
-            local at = self.row and self.row.topAt
-            if at and GameTooltip then
-                local c = ns.AT_COLOR[at]
-                GameTooltip:AddLine(L["AT_" .. at:upper()], c[1], c[2], c[3])
+            if GameTooltip then
+                for _, line in ipairs(ns.AtLines(self.row)) do
+                    local c = line[2]
+                    GameTooltip:AddLine(line[1], c[1], c[2], c[3])
+                end
             end
         elseif e and GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

@@ -635,6 +635,8 @@ end
 local function isTwoHand(id) local it = id and D.item[id]; return it ~= nil and it[1] == "2h" end
 
 -- One row per slot: { slot, ids, worn, rank, have, haveRank, counted, state }.
+-- topAt: where the first item is ("worn", "bag", "miss"), or "alt" when only another item of the
+-- list is worn or carried (alt, altRank, altAt).
 -- state: "bis" the first is worn, "bag" a better one is carried, "rank" worn but not the first,
 -- "miss" what is worn is not on the list, "none" the list has no such slot, "covered" the
 -- weapon is a two-hander.
@@ -663,6 +665,15 @@ function ns.SlotRows(list)
         r.top = ids[1]
         if r.top then
             r.topAt = (r.rank == 1 and "worn") or (itemCount(r.top) - (wornIds[r.top] or 0) > 0 and "bag") or "miss"
+            -- not the first, but another item of the list is worn or carried: "alt", with the best one
+            if r.topAt == "miss" and (r.rank or r.haveRank) then
+                if r.rank and (not r.haveRank or r.rank <= r.haveRank) then
+                    r.alt, r.altRank, r.altAt = r.worn, r.rank, "worn"
+                else
+                    r.alt, r.altRank, r.altAt = r.have, r.haveRank, "bag"
+                end
+                r.topAt = "alt"
+            end
         end
         if slot == "off" and isTwoHand(mainTop) then
             r.state, r.counted = "covered", false

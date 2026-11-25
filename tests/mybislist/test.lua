@@ -451,11 +451,23 @@ test("the slot shows the list's first item and where it is: worn, carried, not f
     fakeData(ns)
     local rows = ns.SlotRows(ns.Resolve(REF))
     eq(row(rows, "head").top, 101, "the first item")
-    eq(row(rows, "head").topAt, "miss", "not found")
+    eq(row(rows, "head").topAt, "alt", "the first not found, but the list's second is worn")
+    eq(row(rows, "head").alt, 103, "which one")
+    eq(row(rows, "head").altRank, 2, "its place (102 is Horde)")
+    eq(row(rows, "head").altAt, "worn", "worn")
+    eq(row(rows, "finger2").topAt, "miss", "nothing of the list")
+    eq(#ns.AtLines(row(rows, "head")), 3, "not found, what is had instead, where")
+    eq(#ns.AtLines(row(rows, "finger2")), 1, "not found only")
     eq(row(rows, "finger1").topAt, "worn", "worn")
     eq(row(rows, "main").topAt, "bag", "in the bags or the bank")
     local text = ns.TopText(row(rows, "head"))
     assert(text:find("Item101"), "the slot names the first item")
+    -- another item of the list in the bags or the bank counts too
+    W.worn[1], W.items[103] = 999, 1
+    local carried = row(ns.SlotRows(ns.Resolve(REF)), "head")
+    eq(carried.topAt, "alt", "a list item carried")
+    eq(carried.altAt, "bag", "in the bags or the bank")
+    W.items[103] = nil
     -- the card: the top five, then what is worn under a line when it is not on the list
     W.worn[1] = 999
     local r = row(ns.SlotRows(ns.Resolve(REF)), "head")
