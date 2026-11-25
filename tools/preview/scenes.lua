@@ -324,6 +324,21 @@ S.merchant = { default = {
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
              prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = false } },
     open = function(ns) ns.atVendor = true; ns.Toggle() end,
+}, always = {
+    -- the "always sell" tab: the list with the place to drop an item
+    spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
+             prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = false, guild = true } },
+    open = function(ns)
+        ns.J.SetAlways(10, true); ns.J.SetAlways(11, true)
+        ns.tab = 2; ns.Toggle()
+    end,
+}, suggest = {
+    spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
+             prices = { [10] = 125, [11] = 4210, [13] = 80 }, db = { sell = true, repair = true, guild = true, safe = true } },
+    open = function(ns)
+        ns.db.manual[11] = 2; ns.db.manual[13] = 3
+        ns.atVendor = true; ns.tab = 3; ns.Toggle()
+    end,
 }, rich = {
     -- a long money value in the junk tile
     spec = { slots = { { 0, 1, 10, 3, 0 }, { 0, 2, 11, 1, 0 }, { 0, 4, 13, 1, 0 } },
