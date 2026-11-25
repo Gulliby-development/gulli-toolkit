@@ -1,8 +1,10 @@
 -- The window, narrow, with three tabs. Deals: the scan line (when the next scan runs, how many
 -- lots it saw, what the list is worth) over a dense list (12 pt, 24 px rows) of the lines that
 -- sell to a vendor for more than they cost, each with its own small button, and the big button
--- in the footer that works on the top line. History: what was bought to sell. Settings: the
--- switches and limits. At the auction house it opens beside the auction window, in the shared
+-- in the footer that works on the top line, with few words: what a list or a button does is in
+-- its tooltip. History: what was bought to sell. Settings: the switches and limits, and in the
+-- footer the button that reads the whole market. A page with nothing for the footer hides it,
+-- so its list reaches the bottom of the window. At the auction house it opens beside the auction window, in the shared
 -- side tabs.
 
 local _, ns = ...
@@ -11,10 +13,9 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, cards, buyBtn, scanBtn, wholeBtn, viewTabs, viewHint, worthHead, pricesRow
+local histStats, histList, histEmpty, cards, buyBtn, scanBtn, wholeBtn, viewTabs, worthHead
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
-local HINT_H = 44 -- three lines under the list tabs
 -- column widths from the right: button, gain, vendor, auction, quantity
 local W_BTN, W_GAIN, W_VEND, W_AH, W_N, COL_GAP = 72, 58, 74, 66, 34, 6
 ns.ROW_H = ROW
@@ -252,14 +253,14 @@ local function refreshDeals()
         local n = ns.Open(v)
         viewTabs.buttons[i].text:SetText(L["VIEW_" .. v:upper()] .. (n > 0 and (" (" .. n .. ")") or ""))
     end
-    viewHint:SetText(de and L.VIEW_D_HINT or L.VIEW_V_HINT)
     worthHead:SetText(S.Upper(de and L.COL_DE or L.COL_VENDOR))
-    if de and not ns.Enchanter() then dealEmpty:Set(L.DE_NEED, L.DE_NEED_SUB)
-    elseif de and ns.db.de == false then dealEmpty:Set(L.DE_OFF, L.DE_OFF_SUB)
-    elseif not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
-    elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text, L.SCANNING_SUB)
-    elseif de then dealEmpty:Set(L.EMPTY_DE, L.EMPTY_DE_SUB)
-    else dealEmpty:Set(L.EMPTY, L.EMPTY_SUB) end
+    -- one short line; the why is in the tooltips and on the Settings tab
+    if de and not ns.Enchanter() then dealEmpty:Set(L.DE_NEED)
+    elseif de and ns.db.de == false then dealEmpty:Set(L.DE_OFF)
+    elseif not ns.atAH then dealEmpty:Set(L.NOT_AT_AH)
+    elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text)
+    elseif de then dealEmpty:Set(L.EMPTY_DE)
+    else dealEmpty:Set(L.EMPTY) end
     heads:SetShown(#shown > 0)
     scanBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
     bigButton()
@@ -270,8 +271,7 @@ local function refreshDeals()
     elseif #ns.queue > 0 then
         frame.footer:SetStatus(L.QUEUE_LINE:format(#ns.queue))
     else
-        local _, sum = ns.History("day")
-        frame.footer:SetStatus(sum.count > 0 and L.STATUS:format(sum.count, money(sum.paid), ns.FreeSlots()) or L.HOW)
+        frame.footer:SetStatus("")
     end
 end
 
@@ -282,8 +282,6 @@ local function refreshHistory()
     histStats.tiles[1]:Set(S.MoneyText(sum.profit, true))
     histStats.tiles[2]:Set(tostring(sum.count))
     histStats.tiles[3]:Set("+" .. sum.pct .. "%")
-    buyBtn:Hide()
-    frame.footer:SetStatus("")
 end
 
 function ns.Refresh()
@@ -291,16 +289,14 @@ function ns.Refresh()
     if not frame or not frame:IsShown() then return end
     if tab == 1 then return refreshDeals() end
     if tab == 2 then return refreshHistory() end
-    buyBtn:Hide()
     for _, card in ipairs(cards) do
         for _, row in ipairs(card.rows) do if row.control and row.control.Refresh then row.control:Refresh() end end
     end
-    pricesRow.label:SetText(ns.PricesLine())
     wholeBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
-    frame.footer:SetStatus(ns.atAH and "" or L.NOT_AT_AH)
+    frame.footer:SetStatus(ns.PricesLine())
 end
 
--- The Prices card of the Settings tab: how many prices the module holds and how old the last look at
+-- The footer of the Settings tab: how many prices the module holds and how old the last look at
 -- the whole market is.
 function ns.PricesLine()
     local m = ns.Market()
@@ -325,15 +321,47 @@ local function head(parent, text, width, right)
     return t
 end
 
+-- A tooltip of a title and a line, on a frame that keeps its own scripts.
+local function tip(f, title, text)
+    f:HookScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(type(title) == "function" and title() or title, 1, 1, 1)
+        local t = type(text) == "function" and text() or text
+        if t and t ~= "" then GameTooltip:AddLine(t, nil, nil, nil, true) end
+        GameTooltip:Show()
+    end)
+    f:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+-- The footer of each page: Deals the buy button, Settings the button that reads the whole
+-- market; History has none, so the footer hides and its list takes the room.
+local function showFooter(i)
+    buyBtn:SetShown(i == 1)
+    wholeBtn:SetShown(i == 3)
+    frame.footer:SetShown(i ~= 2)
+    frame.footer.status:SetPoint("RIGHT", i == 3 and wholeBtn or buyBtn, "LEFT", -12, 0)
+    -- set here too: the footer's own hooks do not run while the window is hidden
+    frame.body:SetPoint("BOTTOMRIGHT", -S.PAD, (i ~= 2 and S.FOOTER_H or 0) + S.PAD)
+end
+
 local function build()
     frame = S.Window("GulliVendorFlipFrame", L.TITLE, S.NARROW_W, S.DOCK_H, { sub = "/gvf" })
     local ft = S.Footer(frame)
     buyBtn = S.Primary(S.Button(ft, 200, 32))
     ft:Add(buyBtn)
     buyBtn:SetScript("OnClick", function() ns.Click(ns.Top()) end)
+    tip(buyBtn, function() return buyBtn.text and buyBtn.text:GetText() or "" end, L.HOW)
+    wholeBtn = S.Primary(S.Button(ft, 200, 32))
+    wholeBtn:SetPoint("RIGHT", -S.PAD, 0)
+    label(wholeBtn, L.SCAN_ALL, 140, 240)
+    wholeBtn:SetScript("OnClick", function() ns.Scan(true, true); ns.Refresh() end)
+    tip(wholeBtn, L.SCAN_ALL, function() return L.SCAN_ALL_TIP .. "\n\n" .. L.PRICES_TIP end)
+    wholeBtn:Hide()
     tabs = S.PageTabs(frame.body, { L.TAB_DEALS, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
+        showFooter(i)
         ns.Refresh()
     end, nil, { "Interface\\Icons\\INV_Misc_Coin_02", S.TAB.recent, S.TAB.settings })
     for i = 1, 3 do
@@ -381,16 +409,12 @@ local function build()
                       { "Interface\\Icons\\INV_Misc_Coin_02", ns.OPT_ICON.de })
     viewTabs.frame:ClearAllPoints()
     viewTabs.frame:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
-    viewHint = S.Text(dp, 12, S.MUTED)
-    viewHint:SetPoint("TOPLEFT", 2, -34 - 4 - S.GAP - 28 - 6)
-    viewHint:SetPoint("TOPRIGHT", -2, -34 - 4 - S.GAP - 28 - 6)
-    viewHint:SetHeight(HINT_H)
-    viewHint:SetJustifyH("LEFT")
-    viewHint:SetJustifyV("TOP")
-    viewHint:SetText(L.VIEW_V_HINT)
+    -- what each list holds is its tooltip, not a paragraph over the list
+    tip(viewTabs.buttons[1], L.VIEW_V, L.VIEW_V_HINT)
+    tip(viewTabs.buttons[2], L.VIEW_D, L.VIEW_D_HINT)
 
     dealCard = S.Card(dp)
-    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP - 28 - 6 - HINT_H - 6)
+    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP - 28 - S.GAP)
     dealCard:SetPoint("BOTTOMRIGHT")
     heads = CreateFrame("Frame", nil, dealCard.body)
     heads:SetPoint("TOPLEFT")
@@ -535,17 +559,7 @@ local function build()
                               1, 0, 30, nil, 130) },
     })
     card(L.CARD_NOTIFY, { switch("sound"), moneyRow("soundAt", 1), switch("sell") })
-    -- what the module keeps, and the one button that reads every lot
-    wholeBtn = S.Button(inner, 110, 28)
-    label(wholeBtn, L.SCAN_ALL_BTN, 90, 150)
-    wholeBtn:SetScript("OnClick", function() ns.Scan(true, true); ns.Refresh() end)
-    local blank = CreateFrame("Frame", nil, inner)
-    blank:SetSize(1, 1)
-    local prices = card(L.CARD_PRICES, {
-        { ns.PricesLine(), L.PRICES_TIP, control = blank, icon = ns.OPT_ICON.prices },
-        { L.SCAN_ALL, L.SCAN_ALL_TIP, control = wholeBtn, icon = ns.OPT_ICON.scan },
-    })
-    pricesRow = prices.rows[1]
+    -- the prices kept and the button that reads every lot are in the footer, always at hand
     page:SetContent(stack:Height())
     frame.settingsPage = page
 

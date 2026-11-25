@@ -806,6 +806,62 @@ function R.Outside(root)
     return found
 end
 
+-- Room a window wastes at its bottom: a footer that shows with nothing in it (a page that has no
+-- action hides it, S.Footer gives its height back to the body), and a list that has more rows
+-- than it shows while it ends above the bottom of the window's body. Returns texts to report.
+function R.Empty(root)
+    local found = {}
+    local function hasContent(f)
+        if not f.__shown then return false end
+        for _, r in ipairs(f.__regions) do
+            if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" then return true end
+        end
+        for _, c in ipairs(f.__children) do if hasContent(c) then return true end end
+        return false
+    end
+    local function bodyOf(f)
+        local p = f.__parent
+        while p do
+            if rawget(p, "body") and rawget(p, "inner") then return p.body end
+            p = p.__parent
+        end
+    end
+    -- Anything shown in the body under the list (a detail card, settings) uses that room.
+    local function below(body, list, y)
+        local function look(g)
+            if not g.__shown or g == list then return false end
+            for _, r in ipairs(g.__regions) do
+                if r.__kind == "FontString" and r.__shown and r.__text and r.__text ~= "" and R.Rect(r).t <= y + 1 then return true end
+            end
+            if g.__kind == "Button" and g ~= body and R.Rect(g).t <= y + 1 then return true end
+            for _, c in ipairs(g.__children) do if look(c) then return true end end
+            return false
+        end
+        return look(body)
+    end
+    local function walk(f)
+        if not f.__shown then return end
+        local ft = rawget(f, "footer")
+        if ft and rawget(f, "body") and ft.__shown and not hasContent(ft) then
+            found[#found + 1] = "empty footer (hide it on this page)"
+        end
+        local child = rawget(f, "child")
+        if f.__kind == "ScrollFrame" and child and rawget(f, "rows") then
+            local body = bodyOf(f)
+            local c, k = R.Rect(f), R.Rect(child)
+            if body and (k.t - k.b) > (c.t - c.b) + 1 then
+                local gap = c.b - R.Rect(body).b
+                if gap > 24 and not below(body, f, c.b) then
+                    found[#found + 1] = ("list stops %d px above the bottom while it has more rows"):format(gap)
+                end
+            end
+        end
+        for _, c in ipairs(f.__children) do walk(c) end
+    end
+    walk(root)
+    return found
+end
+
 -- Every shown one-line text that is wider than the room it has (the game cuts it with "..."),
 -- and every wrapped text that needs more lines than it may take: { text, need, room }.
 function R.Cut(root)
