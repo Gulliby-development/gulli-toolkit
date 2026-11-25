@@ -199,6 +199,7 @@ local function dropItem()
 end
 
 local INDENT = 38 -- a setting under another one starts where that one's text starts
+local SUB_ICON = 26
 
 -- A card of switches: the first is the group's own, the others stand under it, indented.
 -- defs: { key, label, desc, under = the key it depends on }.
@@ -207,16 +208,22 @@ local function group(parent, title, defs, width)
     local st = S.Stack(card.body, 0)
     for i, d in ipairs(defs) do
         local key = d[1]
-        S.rowWidth = width - 2 * S.INSET - (d.under and INDENT or 0)
+        S.rowWidth = width - 2 * S.INSET - (d.under and INDENT + SUB_ICON + 12 or 0)
         local row = S.SwitchRow(card.body, d[2], d[3], function() return ns.db[key] end,
-            function(v) ns.db[key] = v; ns.Refresh() end, nil, not d.under and ns.OPT_ICON[key] or nil)
+            function(v) ns.db[key] = v; ns.Refresh() end, nil, ns.OPT_ICON[key])
         if d.under then
+            -- The icon starts where the parent's text starts; the text after it.
+            local text = INDENT + SUB_ICON + 12
+            if row.icon then
+                row.icon:ClearAllPoints()
+                row.icon:SetPoint("LEFT", INDENT, 0)
+            end
             row.label:ClearAllPoints()
             if row.desc then
-                row.label:SetPoint("TOPLEFT", INDENT, -9)
+                row.label:SetPoint("TOPLEFT", text, -9)
                 row.label:SetPoint("TOPRIGHT", -56, -9)
             else
-                row.label:SetPoint("LEFT", INDENT, 0)
+                row.label:SetPoint("LEFT", text, 0)
                 row.label:SetPoint("RIGHT", -56, 0)
             end
             subRows[#subRows + 1] = { row = row, under = d.under }
@@ -236,7 +243,7 @@ local function build()
     sellBtn:SetScript("OnClick", function() ns.SellJunk() end)
 
     local body, width = frame.body, frame.inner[1]
-    local leftW = 320
+    local leftW = 360
     local left = CreateFrame("Frame", nil, body)
     left:SetPoint("TOPLEFT")
     left:SetPoint("BOTTOMLEFT")
