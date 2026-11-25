@@ -97,7 +97,13 @@ end
 -- The items in the bags: { bag, slot, id, count, locked, link, name, quality, maxStack, price,
 -- classID, subclassID, equipLoc, icon, inSet, bound, value }. normalOnly leaves out herb,
 -- soul and other special bags.
-J.BAGS = { 0, 1, 2, 3, 4 }
+-- The bags the player wears, read from the game on every call: the backpack, the bags and
+-- WoW Forever's reagent bag (5). Every bag loop uses this, never a list of its own.
+function J.Bags()
+    local out = {}
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do out[#out + 1] = bag end
+    return out
+end
 -- One bag slot as a Scan record, or nil when it is empty.
 function J.Item(bag, slot)
     local id, count, locked, link, icon, slotQuality, noValue = slotInfo(bag, slot)
@@ -115,7 +121,7 @@ end
 
 function J.Scan(normalOnly)
     local out = {}
-    for _, bag in ipairs(J.BAGS) do
+    for _, bag in ipairs(J.Bags()) do
         if not normalOnly or bagFamily(bag) == 0 then
             for slot = 1, numSlots(bag) do
                 local it = J.Item(bag, slot)
@@ -177,11 +183,17 @@ function J.Never(it)
         or (it.classID == ITEM_WEAPON and it.subclassID == FISHING_POLE) or false
 end
 
+-- Gear whose look the player still collects (the hub's appearance tweak, with its keep switch).
+function J.KeepsLook(id)
+    local f = GulliToolkit and GulliToolkit.KeepsAppearance
+    return f ~= nil and id ~= nil and f(id) == true
+end
+
 -- How sure we are an item is junk, and why: 1 for gray items and the "always sell" list,
 -- 2 for white weapons and armour and (opts.unusable) bound gear the class cannot use,
 -- 3 for other white items. nil means never offer it.
 function J.Tier(it, opts)
-    if J.Never(it) then return nil end
+    if J.Never(it) or J.KeepsLook(it.id) then return nil end
     if J.IsAlways(it.id) then return 1, "always" end
     if it.quality == 0 then return 1, "gray" end
     if opts and opts.unusable and (it.quality or 1) <= 2 and it.price > 0 and J.Unusable(it) then

@@ -12,6 +12,9 @@
 -- Prices are in copper. Green starts halfway between yellow and grey, as in the game.
 
 local ADDON, ns = ...
+
+-- The separator between parts of a line: a dot texture (S.DOT), since the game's fonts lack "·".
+function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 
 -- Settings a player picks in the right column. A new one gets a default here, a control in
@@ -109,6 +112,10 @@ function ns.Prefs(saved)
     local p = {}
     for k, v in pairs(ns.DEFAULTS) do p[k] = v end
     for k, v in pairs(saved or {}) do if ns.DEFAULTS[k] ~= nil then p[k] = v end end
+    -- the simulation's own copy: the settings that mean nothing for a new character are fixed
+    if ns.sim and saved == ns.sim.prefs and ns.SIM_FIXED then
+        for k, v in pairs(ns.SIM_FIXED) do p[k] = v end
+    end
     return p
 end
 
@@ -141,11 +148,33 @@ end
 
 -- Value of one unit put up for sale. `sold`: how many the plan already lists; past what the
 -- market takes the rest goes to a vendor. Returns the value and "ah" or "vendor".
+-- Items that are reagents of some recipe of the book (bolts, bars, Mooncloth): crafters buy
+-- them all the time, so they always sell at the auction (owner's request of 2026-11-24). The
+-- share that sells (`chance`) is for finished goods only.
+local reagents
+function ns.IsReagent(id)
+    if not reagents then
+        reagents = {}
+        for _, rows in pairs(ns.Data and ns.Data.book or {}) do
+            for _, row in ipairs(rows) do
+                for k = 9, #row, 2 do reagents[row[k]] = true end
+            end
+        end
+    end
+    return reagents[id] == true
+end
+
+-- The share of an item that sells at the auction: all of a reagent, else the setting.
+function ns.SellChance(P, id)
+    if ns.IsReagent(id) then return 1 end
+    return P.chance / 100
+end
+
 function ns.SellValue(state, P, id, sold)
     local it = state.items[id] or {}
     local vend = it.vend or 0
     if it.bop or not P.sellAH or not ns.Fresh(it, P) or (sold or 0) >= ns.MarketTake(state, P, id) then return vend, "vendor" end
-    local p = P.chance / 100
+    local p = ns.SellChance(P, id)
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
     local ev = p * it.ah * (1 - cut) + (1 - p) * (vend - ns.Deposit(it))
     if ev > vend then return ev, "ah" end
@@ -265,6 +294,13 @@ function ns.Chance(r, s)
     if s < o or s >= g then return 0 end
     if s < y then return 1 end
     return (g - s) / (g - y)
+end
+
+-- The skill where a recipe turns yellow, green and grey ({ orange, yellow, grey } as
+-- ns.Thresholds gives): green starts where ns.Color says so.
+function ns.Levels(sk)
+    local y, g = sk[2], sk[3]
+    return y, math.ceil((y + g) / 2 - 1e-9), g
 end
 
 -- Yellow to grey in the data: 20 points is the most common gap, so a recipe without data
@@ -405,6 +441,9 @@ function ns.LevelCrafts(p)
 end
 
 function ns.CraftCap(state, P)
+    -- the simulation asks what a profession costs, not how many clicks: no limit at all
+    -- (owner's decision of 2026-11-23)
+    if state.sim then return nil end
     local m = P.maxCrafts or 0
     if m < 0 then return nil end
     if m > 0 then return m end
@@ -500,6 +539,7 @@ local function planWith(state, P, allowed)
             if not nxt or (state.level or 0) < nxt[3] then acc.warn = { "WARN_LEVEL", cap, nxt and nxt[3] or 0 }; break end
             acc.rank = { at = nxt[2], cap = nxt[1], level = nxt[3], cost = nxt[4] }
             acc.spend = acc.spend + nxt[4]
+            acc.rankCost = (acc.rankCost or 0) + nxt[4]
             cap = nxt[1]
         else
             local best
@@ -519,8 +559,16 @@ local function planWith(state, P, allowed)
                     local cost = n * (rc - value)
                     if cost < math.huge then
                         local raw = cost + n * w
+                        -- in the simulation every recipe is still to learn: its price counts in the
+                        -- choice, spread over the points it is good for (ns.Plan would otherwise try
+                        -- the plan again without each of them, which takes minutes there)
+                        local once = 0
+                        if state.sim and not r.learned and not acc.buyRecipes[rid] then
+                            local sk = r.skill
+                            once = (r.src.cost or 0) / math.max(1, math.min(target, math.floor((sk[2] + sk[3]) / 2)) - s)
+                        end
                         local c = { rid = rid, n = n, ch = ch, rc = rc, value = value, how = how, cost = cost, raw = raw,
-                                    score = raw + ((last and last.rid ~= rid) and ns.SWITCH or 0) }
+                                    score = raw + once + ((last and last.rid ~= rid) and ns.SWITCH or 0) }
                         cands[#cands + 1] = c
                         -- `only`: a run of one recipe; the others still make its intermediates
                         if (not P.only or P.only == rid) and (not best or c.score < best.score - 1e-9) then best = c end
@@ -546,7 +594,12 @@ local function planWith(state, P, allowed)
         end
     end
     acc.reached, acc.target = s, target
-    for rid in pairs(acc.buyRecipes) do acc.spend = acc.spend + (state.recipes[rid].src.cost or 0) end
+    -- what learning costs on the way (recipes, patterns, ranks), for the simulation's totals
+    acc.learnCost = acc.rankCost or 0
+    for rid in pairs(acc.buyRecipes) do
+        local c = state.recipes[rid].src.cost or 0
+        acc.spend, acc.learnCost = acc.spend + c, acc.learnCost + c
+    end
     acc.level, acc.prepCrafts = acc.level or 0, 0
     for _, n in pairs(acc.prep) do acc.crafts = acc.crafts + n; acc.prepCrafts = acc.prepCrafts + n end
     acc.income, acc.sellAH, acc.sellVendor = 0, {}, {}
@@ -572,10 +625,13 @@ function ns.Plan(state, P)
     local allowed = {}
     for rid, r in pairs(state.recipes) do if (r.skill or r.other) and ns.CanGet(r, P) then allowed[rid] = true end end
     local best = planWith(state, P, allowed)
-    for _ = 1, 8 do
+    for _ = 1, state.sim and 3 or 8 do
         local better, drop
         local ids = {}
-        for rid in pairs(best.buyRecipes) do ids[#ids + 1] = rid end
+        for rid in pairs(best.buyRecipes) do
+            -- the simulation weighs the trainer's recipes in the plan itself (see planWith)
+            if not (state.sim and state.recipes[rid].src.t == "trainer") then ids[#ids + 1] = rid end
+        end
         table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
         for _, rid in ipairs(ids) do
             allowed[rid] = nil
@@ -809,6 +865,7 @@ end
 -- a leg is `unknown` up to the skill where a recipe turns orange, and the runs go on from there.
 -- `first`: the run the window shows now, so the first leg is the same plan. At most ns.MAX_LEGS.
 ns.MAX_LEGS = 20
+ns.SIM_LEGS = 40
 -- The recipe of a plan that uses only one, else nil.
 local function one(plan)
     local rid
@@ -865,7 +922,9 @@ function ns.Legs(state, P, first)
     -- the way the route's tile shows: the runs follow it, so a run is never missing where it goes
     local whole = first and (first.full or first)
     local legs, s = {}, state.skill
-    while s < target and #legs < ns.MAX_LEGS do
+    -- the simulation shows the whole way of a new character, which is longer
+    local most = state.sim and ns.SIM_LEGS or ns.MAX_LEGS
+    while s < target and #legs < most do
         ns.Part((s - state.skill) / math.max(1, target - state.skill))
         st.skill = s
         local run = (#legs == 0 and first) or nil
@@ -955,7 +1014,8 @@ function ns.Variants(state, P)
     if best then out[best].best = true end
     -- profit from guessed prices would only mislead: without a price addon only levelling shows
     for _, m in ipairs(ns.MODES) do
-        if ns.EARN[m] and not state.noPrices then out[#out + 1] = { mode = m, plan = ns.Earn(state, P, m == "own") } end
+        -- nor in the simulation: it asks what the levelling costs, the profit comes after the target
+        if ns.EARN[m] and not state.noPrices and not state.sim then out[#out + 1] = { mode = m, plan = ns.Earn(state, P, m == "own") } end
     end
     return out
 end
@@ -1577,7 +1637,7 @@ local function build(flash)
     local v = ns.view
     local state = ns.State and ns.State()
     if not state then return { state = nil, plan = nil, route = {} } end
-    local P = ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.SavedPrefs())
     local out = { state = state, prefs = P }
     ns.progress.done = 0
     ns.Phase(0, 0.45)
@@ -1605,9 +1665,10 @@ local function build(flash)
     ns.Phase(0.6, 1)
     local oldLeg = v.legs and v.leg and v.legs[v.leg]
     out.legs = (not ns.EARN[out.mode] and out.plan and not out.plan.earn) and ns.Legs(state, P, out.plan) or {}
-    out.leg = 1
+    -- the simulation opens on the whole way (leg 0), a run by a click
+    out.leg = state.sim and 0 or 1
     out.legsBy = { [out.mode] = out.legs }
-    if oldLeg then
+    if oldLeg and not state.sim then
         for i, l in ipairs(out.legs) do if l.from == oldLeg.from and l.unknown == oldLeg.unknown then out.leg = i end end
     end
     out.route = ns.LegRoute(out)
@@ -1626,7 +1687,10 @@ local function apply(out)
     local v = ns.view
     -- a result of another profession than the one chosen now never shows (a switch while it ran)
     local cur = ns.char and ns.char.current
+    if ns.sim then cur = ns.sim.name end
     if out.state and cur and out.state.name ~= cur then return v end
+    -- nor a simulated result outside the simulation, or a real one inside it
+    if out.state and (out.state.sim ~= nil) ~= (ns.sim ~= nil) then return v end
     for _, k in ipairs(FIELDS) do v[k] = out[k] end
     v.route = v.route or {}
     v.changed = v.changed or {}
@@ -1704,7 +1768,7 @@ function ns.LegsJob(mode)
         ns.view.legsBy[mode] = legs
         if ns.nameLate then ns.nameLate = nil; ns.FixNames(legs) end
         if ns.view.mode == mode then
-            ns.view.legs, ns.view.leg = legs, 1
+            ns.view.legs, ns.view.leg = legs, state.sim and 0 or 1
             -- the buy stops may now take the later runs in
             ns.view.route = ns.LegRoute(ns.view)
         end
@@ -1727,7 +1791,7 @@ function ns.PickMode(want)
     for _, x in ipairs(v.variants) do if x.mode == mode then v.plan = x.plan end end
     v.legsBy = v.legsBy or {}
     if ns.EARN[mode] or v.plan.earn then v.legsBy[mode] = v.legsBy[mode] or {} end
-    v.legs, v.leg = v.legsBy[mode], 1
+    v.legs, v.leg = v.legsBy[mode], v.state.sim and 0 or 1
     v.route = ns.LegRoute(v)
     v.changed, v.delta = {}, nil
     return true, v.legs == nil
@@ -1746,29 +1810,44 @@ end
 
 -- The stops of the chosen leg (the current run for the first one); none for an unknown leg.
 function ns.LegRoute(v)
+    -- the simulation's shopping list: everything the whole way buys
+    if v.leg == ns.SIM_SHOP and v.state and v.state.sim then return ns.SimShopping(v) end
     local l = v.legs and v.legs[v.leg or 1]
     if l and l.unknown then return {} end
     if l and v.leg > 1 then return ns.Route(l.state, l.plan) end
     local route = ns.Route(v.state, v.plan)
-    -- the first run buys for the whole way at once (`ahead`)
-    if ns.Prefs(ns.db and ns.db.prefs).ahead and v.legs then route = ns.BuyAhead(route, v.legs) end
+    -- the first run buys for the whole way at once (`ahead`); a simulated run shows only its own
+    if not v.state.sim and ns.Prefs(ns.SavedPrefs()).ahead and v.legs then route = ns.BuyAhead(route, v.legs) end
     return route
 end
 
 function ns.SelectLeg(i)
     local v = ns.view
-    if not v.legs or not v.legs[i] then return end
+    -- 0: the whole way, which only the simulation shows
+    -- and the shopping list of the whole way (ns.SIM_SHOP)
+    if not v.legs or not (v.legs[i] or ((i == 0 or i == ns.SIM_SHOP) and v.state and v.state.sim)) then return end
     v.leg = i
     v.route = ns.LegRoute(v)
     v.changed = {}
     if ns.Refresh then ns.Refresh() end
 end
 
+-- The settings as saved: the player's, or in the simulation its own copy of them, which is
+-- never saved (ns.SimOpen makes it, ns.SimStop drops it).
+function ns.SavedPrefs()
+    if ns.sim then return ns.sim.prefs end
+    if not ns.db then return nil end
+    ns.db.prefs = ns.db.prefs or {}
+    return ns.db.prefs
+end
+
 -- Changes one setting and rebuilds at once. nil value: back to the default.
 function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
-    ns.db.prefs = ns.db.prefs or {}
-    ns.db.prefs[key] = value
+    -- a setting the simulation fixes stays as it is there
+    if ns.sim and ns.SIM_FIXED[key] ~= nil then return end
+    ns.SavedPrefs()[key] = value
+    if ns.sim and key == "target" and value then ns.sim.to = value end
     if ns.NO_PLAN[key] then
         -- the buy stops take the later runs in or leave them out: the same plan, other stops
         if key == "ahead" and ns.view and ns.view.state and ns.view.plan then
@@ -1784,13 +1863,15 @@ end
 
 -- Several settings in one rebuild, so the change summary compares the right two plans.
 function ns.SetPrefs(t)
-    ns.db.prefs = ns.db.prefs or {}
-    for k, v in pairs(t) do if ns.DEFAULTS[k] ~= nil then ns.db.prefs[k] = v end end
+    local saved = ns.SavedPrefs()
+    for k, v in pairs(t) do if ns.DEFAULTS[k] ~= nil then saved[k] = v end end
     ns.Rebuild(true)
 end
 
 function ns.ResetPrefs()
-    ns.db.prefs = {}
+    -- in the simulation only its own copy goes back to the defaults; the target is its condition
+    if ns.sim then ns.sim.prefs = { target = ns.sim.to, level = true }
+    else ns.db.prefs = {} end
     ns.Rebuild(true)
 end
 
@@ -1800,13 +1881,16 @@ SLASH_GULLICRAFTPROFIT1 = "/gcp"
 SLASH_GULLICRAFTPROFIT2 = "/gullicraftprofit"
 SlashCmdList.GULLICRAFTPROFIT = function(msg)
     msg = strtrim and strtrim(msg or ""):lower() or ""
-    if msg == "probe" then
+    if msg == "sim" then
+        -- /gcp sim: the simulation on (with the window) or off
+        if ns.sim then ns.SimStop() else ns.SimOpen(); if ns.Visible and not ns.Visible() then ns.Toggle() end end
+    elseif msg == "probe" then
         if ns.Probe then for _, line in ipairs(ns.Probe()) do ns.Print(line) end end
     elseif msg:match("^gather") then
         -- /gcp gather <item link|id>: the plan counts it as gathered, never bought; again: off
         local id = tonumber(msg:match("item:(%d+)")) or tonumber(msg:match("(%d+)"))
         if id and ns.SetGather then
-            local on = not ns.db.gather[id]
+            local on = not ns.Gathered()[id]
             ns.SetGather(id, on)
             local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
             ns.Print((on and ns.L.GATHER_ON or ns.L.GATHER_OFF):format(name or ("#" .. id)))
@@ -1839,7 +1923,7 @@ local function option(key)
              get = function()
                  -- an auction switch shows off while no price addon is loaded; the choice is kept
                  if (key == "buyAH" or key == "sellAH") and ns.HasPrices and not ns.HasPrices() then return false end
-                 return ns.Prefs(ns.db and ns.db.prefs)[key] == true
+                 return ns.Prefs(ns.SavedPrefs())[key] == true
              end,
              set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
 end
@@ -1858,12 +1942,15 @@ do
                     option("sellAH") },
         -- the profession and its skill; the result of the last plan when the window made one
         summary = function()
+            -- a simulation says so: its numbers are not the character's
+            local sim = ns.sim
+            if sim and sim.prof then return ns.L.SIM_SUMMARY:format(sim.name, sim.from, sim.to), ns.SIM_ICON end
             local c = ns.char and ns.char.profs and ns.char.current and ns.char.profs[ns.char.current]
             if not c or (c.skill or 0) <= 0 then return nil end
             local text = ns.L.SUMMARY:format(ns.char.current, c.skill, c.cap or 0)
             local plan = ns.view and ns.view.plan
             if plan and ns.view.state and ns.view.state.name == ns.char.current and ns.Money then
-                text = text .. "  ·  " .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net)
+                text = text .. ns.Dot() .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net)
             end
             return text, c.icon
         end,

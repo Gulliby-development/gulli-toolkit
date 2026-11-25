@@ -756,117 +756,417 @@ text[98824]="Leve a Titan Relic para High Explorer Magellas no Hall of Explorers
 text[99156]="Leve Riptear's Heart para Deathguard Linnea."
 text[99187]="Vá a Blackmaw Hold, em Kalimdor, e recupere o Reliquary of Tyr."
 tips[17]={d="Há mais dentro da masmorra."}
+tips[142]={d="O Defias Messenger aparece em Moonbrook perto da ferraria e segue pela Old Coast Road até a Gold Coast Quarry: alcance-o no caminho."}
 tips[155]={d="Não pode ser compartilhada; cada jogador faz a escolta."}
+tips[167]={d="Foreman Thistlenettle (elite) fica no fim do circuito roxo dos mortos-vivos nas minas, fora da instância."}
+tips[168]={d="Os mineiros mortos-vivos da parte roxa das minas fora da instância carregam as cartas."}
+tips[203]={d="Os lutadores ficam no lado leste e os curandeiros no lado oeste do Kurzen's Compound (por volta de 44,10). Faça Bad Medicine ao mesmo tempo."}
+tips[204]={d="Os remédios caem devagar; o extrato de samambaia está em caixas em volta do acampamento (44,9 perto da casa, 44,10 perto da fogueira, 45,9 perto do estábulo). Interrompa as curas dos curandeiros."}
+tips[205]={d="Só os curandeiros e místicos Skullsplitter soltam os fetiches; eles dividem os pontos de surgimento com os guerreiros e os lançadores de machado."}
 tips[207]={t="Exige as duas missões de Yohwa entregues.",d="Múrlocs Saltscale (elite) o guardam, e Grom'gol (Horda) fica logo a leste."}
+tips[214]={t="Só aparece depois da escolta do Defias Traitor; Scout Riell está no alto da torre de Sentinel Hill."}
 tips[261]={d="Costumam vir em grupo. Dread Rippers (39-40), Magram Necromancers (42-43) e Magram Necrokhan (elite, nível 45) estão perto; Outcast Necromancers (39-40) ao sul."}
+tips[275]={d="Os fen creepers são difíceis de ver: percorra os rios e poças com /target Fen Creeper. Muitos estão entre 46,34 e 55,46."}
 tips[303]={d="São elite, nível 27-31, com Riflemen elite e Balgaras the Foul (elite, nível 34) entre eles: leve um grupo."}
+tips[356]={d="Os dois monstros andam pela fazenda perto do Bulwark, por volta de 77,62 em Tirisfal."}
+tips[373]={t="Edwin VanCleef solta a carta para todos que ainda não fizeram a missão."}
+tips[377]={d="Dextren Ward fica no fundo da ala esquerda."}
+tips[378]={t="Só é oferecida depois da primeira missão de Motley Garmason, The Dark Iron War."}
+tips[386]={d="Targorr está numa das celas da ala do meio; a cela dele muda de uma ida para outra."}
+tips[387]={d="Pode haver poucos condenados numa ida quando vários jogadores precisam deles; fique até o fim das alas."}
+tips[388]={t="Nikova Raskol anda por Old Town; se não a vir, dê uma volta pela praça."}
 tips[389]={t="Krazore (nível 44), perto da catedral, pode atacar."}
+tips[391]={d="Bazil Thredd está no fim do longo corredor principal: siga reto da entrada, depois à direita, e acompanhe a curva até a sala redonda."}
+tips[450]={d="O diário está na estalagem de Pyrewood: no andar de cima, o terceiro quarto à direita. Uma brecha no muro sul (por volta de 47,75) deixa você pular quase toda a vila."}
+tips[451]={d="As chances são baixas; as ilhas a leste do Decrepit Ferry têm os murlocs e os elementais."}
+tips[484]={d="Os crocoliscos jovens nadam na água em volta de Menethil Harbor; os de perto de 36,39 soltam melhor as peles."}
+tips[544]={d="Três dos quatro traidores ficam no Lordamere Internment Camp (por volta de 20,85 em Alterac Mountains), o quarto na casa ao lado. Eles são neutros, então você ataca primeiro."}
+tips[545]={d="Só restam as patrulhas da borda nordeste, fora das muralhas. Não suba os degraus da frente no sul: os guardas da cidade matam você."}
 tips[629]={t="Missão de grupo: os múrlocs Saltscale do recife são elite.",d="Múrlocs Saltscale (elite) o guardam; cuidado com o fôlego."}
+tips[704]={d="As urnas estão no túnel antes da instância: perto das tendas e dos dois lados do portal."}
+tips[709]={d="A tabuleta está fora da instância: na caverna, fique no caminho alto depois da saliência sobre o portal em vez de descer; ela está no fim desse caminho."}
+tips[720]={d="O mapa amassado está no chão ao lado de uma mesa no acampamento anão na crista a oeste de Hammertoe's Digsite."}
+tips[721]={d="Hammertoe Grez está sentado junto a uma fogueira na caverna, antes do penhasco de onde quase todos pulam para o portal. Se não conseguir falar com ele, ele está preso em combate: espere ele reiniciar."}
+tips[722]={d="Magregan Deepshadow patrulha a caverna fora da instância: espere na bifurcação entre a sala dos troggs e a dos anões. Ele chama os monstros próximos."}
+tips[723]={h="Hammertoe morre logo depois da entrega, então o resto do grupo espera por ele: entreguem um de cada vez."}
+tips[738]={d="O corpo de Agmond fica logo à direita do acampamento de Stonevault, ao norte de Theldurin the Lost."}
 tips[739]={d="Murdaloc é nível 42."}
+tips[762]={d="Dentro de Angor Fortress, fique à direita e desça a escada: Ambassador Infernus espera lá embaixo com dois guardas. Ele silencia."}
+tips[838]={t="Termine antes All Along the Watchtowers."}
+tips[865]={d="A chance é baixa; o ninho de raptores por volta de 58, 53 nos Barrens é o ponto mais denso."}
+tips[870]={d="O ponto é uma ostra borbulhante no fundo da piscina, por volta de 45, 22: nade por cima dela."}
+tips[877]={d="A fenda fica no fundo do lago: plante a semente bem em cima das bolhas."}
+tips[880]={d="Todo Oasis Snapjaw solta uma carapaça; eles vivem no Stagnant Oasis e no Lushwater Oasis."}
+tips[914]={d="Cada líder solta uma gema para cada membro do grupo que tenha a missão. Com os quatro mortos, o Disciple of Naralex no começo da instância oferece o evento que acorda Naralex."}
+tips[959]={d="Mad Magglish muda entre alguns pontos da caverna antes do portal e fica furtivo: confira os ramais curtos sem saída perto da boca da caverna e a depressão sob a saliência antes da última sala grande."}
+tips[962]={d="As plantas dentro da instância não voltam a crescer, então dividam no grupo; as da caverna fora do portal voltam."}
 tips[964]={d="Skeletal Flayers e Sorcerers também os derrubam.",h="Leve 15 de ouro e 2 Thorium Bars para a viagem."}
+tips[971]={d="O baú está debaixo d'água no nicho logo à direita de onde você entra na piscina de Ghamoo-ra; alguns nagas o guardam."}
+tips[1013]={d="O livro está na prateleira à esquerda ao entrar na sala de Fenrus. Depois que alguém o pega, ele volta em poucos segundos."}
+tips[1014]={d="Arugal fica mais fácil quando o tanque o puxa para a sala de Fenrus enquanto o resto espera na sala dele."}
 tips[1048]={t="Anya Rince (nível 52), perto, pode atacar.",d="Quando ele morre, entra uma onda de Scarlet Trainees."}
 tips[1049]={t="Mortos-vivos não podem pegá-la. Arrgrah Stonewall (nível 38), perto do mestre de voo, pode atacar."}
+tips[1050]={d="O livro está nos corredores estreitos da Library, sempre no mesmo lugar; confira cada livro, também em cadeiras e no chão."}
+tips[1051]={d="Nancy Vishas não está no Monastery: ela está na casa à beira do lago em Alterac Mountains com o avô, ambos elite. Espere até ela sair sozinha."}
 tips[1053]={d="Quando ele morre, entra uma onda de Scarlet Trainees."}
+tips[1098]={d="Liberte o prisioneiro das primeiras celas para abrir o pátio; o segundo Deathstalker é o que Arugal atormenta logo no começo, mais para dentro do castelo."}
 tips[1100]={t="Se não houver saque, tente o segundo corpo um pouco ao sul, pela estrada."}
+tips[1101]={d="Fique à direita ao entrar e siga esse lado até as pontes: assim você passa pelos outros chefes a caminho da Crone."}
 tips[1102]={t="Arrgrah Stonewall (nível 38), perto do mestre de voo, pode atacar."}
 tips[1109]={t="Anya Rince (nível 52), perto, pode atacar.",h="Depois ele oferece Hearts of Zeal para o Scarlet Monastery."}
 tips[1113]={t="Só depois de entregar Going, Going, Guano! de Razorfen Kraul; exige nível 30. Anya Rince (nível 52) aqui pode atacar."}
 tips[1139]={d="Só depois que Advisor Belgrum lhe der The Lost Tablets of Will; veja abaixo."}
+tips[1142]={t="Pega-se atrás de Charlga Razorflank, na tenda ao lado da escolta.",d="O pingente é um drop aleatório dos javatuscos dentro da instância."}
 tips[1144]={t="Ele dá a missão na hora; deixe uma vaga livre no registro, senão ela falha e é preciso reiniciar a instância."}
+tips[1160]={d="O livro está aberto numa mesa da primeira sala à esquerda ao entrar na Gallery of Treasures da Library."}
+tips[1198]={d="Thaelrid está a sudoeste da piscina da tartaruga. Não vá antes até o fim da instância: o altar no fim teletransporta você para fora."}
+tips[1199]={d="Qualquer cultista Twilight pode soltar um pingente, mas são poucos: um grupo cheio pode precisar de uma segunda ida."}
+tips[1200]={t="Lá dentro, Argent Guard Thaelrid está numa sala debaixo d'água ao lado da piscina de Ghamoo-ra, depois do túnel a sudoeste."}
 tips[1221]={t="Bruuz (elite, nível 20), perto do mestre de voo, e um Ratchet Enforcer (nível 57) podem atacar."}
+tips[1275]={d="Os nagas da entrada fora da instância soltam os troncos cerebrais; não precisa entrar."}
+tips[1360]={d="O baú está no North Common Hall fora da instância (no mapa é o do sul): pegue a bifurcação da direita, como para Solution to Doom. O baú do South Common Hall é o da Horda."}
 tips[1424]={d="Sawtooth Crocolisks e trolls Atal'ai (nível 36-38) ficam em volta do lago; Mukomonji (elite, nível 62) está em 62,53, na margem oeste."}
+tips[1429]={t="O exilado fica no templo do meio de Shadra'Alor nos Hinterlands. Cuidado com Shadra, a aranha elite."}
+tips[1442]={t="Pegue a missão antes de começar: sem ela os nagas não soltam a gema.",d="A Corrupted Kor Gem cai dos nagas dentro da instância e dos que ficam logo fora dela."}
+tips[1445]={d="Quase todo Atal'ai solta os fetiches, fora e dentro da instância."}
+tips[1446]={d="Mate primeiro os seis espíritos trolls nas sacadas ao redor de Jammal'an. Eles dão medo, então puxe-os até o grupo."}
 tips[1448]={d="Sawtooth Crocolisks e trolls Atal'ai (nível 36-38) ficam em volta do lago; Mukomonji (elite, nível 62) está em 62,53, na margem oeste."}
 tips[1452]={d="Arash-ethis (elite raro, 49) e grupos de Frayfeather e Lasher de nível 51 ficam por volta de 44-46,21-25."}
+tips[1475]={d="Antes da instância, a sala alagada tem três tabuletas: uma debaixo d'água no meio, duas nas mesas dos lados. Elas voltam depois de alguns minutos."}
+tips[1486]={t="Nalpak fica no olho esquerdo do rosto acima da caverna: suba o morro acima da entrada, pule no nariz e entre.",d="As feras desviadas soltam; os crocoliscos na água dentro da instância são um farm rápido."}
+tips[1487]={t="Ebru fica no olho esquerdo do rosto acima da caverna: suba o morro acima da entrada, pule no nariz e entre."}
+tips[1491]={d="Todo Ectoplasm solta uma essência; os Devouring Ectoplasms da caverna fora do portal não são elite."}
+tips[1654]={d="Quatro itens: Whitestone Oak Lumber dos marceneiros goblins da sala do mastro em Deadmines, o carregamento de minério através de Bailor Stonehand em Loch Modan, Jordan's Smithing Hammer em Shadowfang Keep e a Kor Gem dos nagas de Blackfathom em Ashenvale."}
+tips[1701]={d="Roogug: pegue o primeiro caminho à esquerda depois da entrada, atravesse a ponte de cipós e passe por uns dez elites; ele espera à direita."}
+tips[1740]={d="São duas masmorras: os três fragmentos pequenos em Blackfathom Deeps e o grande em Shadowfang Keep."}
+tips[1838]={d="Os Smoky Iron Ingots caem dos kobolds Windshear da mina de Stonetalon, o Powdered Azurite dos mineiros de Hillsbrad, as Iron Bars vêm de um ferreiro ou da casa de leilões, e a Lead Bar vem de Razorfen Kraul."}
+tips[1951]={d="O livro está numa prateleira de uma parede curta no último salão da Library, antes de Arcanist Doan."}
+tips[1956]={d="O Obsidian Sentinel está logo atrás da porta da entrada dos fundos, no leste das Badlands."}
+tips[2040]={d="Sneed's Shredder, na oficina goblin, solta; antes puxe os goblins daquela sala um por um."}
 tips[2198]={t="A chance de saque é baixa."}
 tips[2199]={d="Compre na casa de leilões ou funda minério de prata."}
+tips[2200]={d="O paladino está dentro da instância perto do começo, no segundo circuito do salão de dois circuitos."}
+tips[2201]={d="O topázio está numa urna perto dos anões de Dig Two, o rubi na caixa Shadowforge de Dig Three (vêm dois emboscadores) e a safira cai de Grimlok. Use a tigela de vidência antes de matar Archaedas."}
 tips[2202]={d="Há mais dentro da masmorra."}
+tips[2204]={d="A fonte de energia cai de Archaedas no fim."}
+tips[2240]={d="O Gni'kiv Medallion está no baú ao lado de Baelog, o Shaft of Tsol cai de Revelosh: junte-os no cajado para a sala do mapa."}
+tips[2258]={d="As chances são baixas: urubus no sul das Badlands, coiotes a oeste, elementais de pedra nas colinas perto de Kargath."}
+tips[2279]={d="Atrás de Archaedas, clique nos discos, fale com o espírito que aparece e clique nos discos de novo para pegar a cópia pequena. Cada jogador precisa fazer os dois cliques."}
+tips[2280]={d="Atrás de Archaedas, clique nos discos, fale com o espírito que aparece e clique nos discos de novo para pegar a cópia pequena. Cada jogador precisa fazer os dois cliques."}
 tips[2283]={d="A chance de saque é baixa."}
+tips[2284]={d="Da entrada principal da instância, siga a parede da direita; o corpo do paladino está nas primeiras salas, vigiado por alguns troggs."}
+tips[2339]={d="O rubi está no baú da sala de Galgann Firehammer (aparecem dois monstros), a safira cai de Grimlok, o topázio está no vaso da sala de Baelog e a fonte de energia cai de Archaedas."}
+tips[2342]={d="A caixa está fora da instância: de frente para o portal, pegue o caminho à esquerda (oeste) até uma sala; a caixa fica no canto dela."}
 tips[2398]={t="Opcional: leva a Baelog e The Hidden Chamber lá dentro.",h="Só com The Lost Dwarves."}
 tips[2418]={d="Os anões são elite (nível 35-37)."}
+tips[2500]={d="Elementais de pedra nas colinas a oeste de Kargath, urubus em volta da grande carcaça no sudoeste, coiotes em toda parte. Faça Barbecued Buzzard Wings ao mesmo tempo."}
+tips[2768]={d="Mate o Sandfury Executioner no alto do templo e liberte Sergeant Bly com a chave dele. Depois espere no alto da escada: sobem várias ondas de trolls. Mantenha o grupo de Bly vivo, eles ajudam muito."}
 tips[2770]={t="O grupo precisa do Mallet of Zul'Farrak para invocar Gahz'rilla."}
 tips[2841]={t="Pegue antes de falar com Sovik: quando você tem Chief Engineer Scooty, Rig Wars deixa de ser oferecida."}
+tips[2842]={t="Se a missão não aparecer, escolha a fala marcada com um balão no diálogo de Scooty: ela adiciona a missão. Rig Wars precisa estar antes no seu registro."}
+tips[2843]={d="Você pode jogar fora o transponder depois do salto; Scooty dá outro se você pedir."}
+tips[2846]={d="Hydromancer Velratha anda pela beira da piscina na sala de Gahz'rilla. Limpe antes as patrulhas da ponta sul da piscina."}
 tips[2865]={t="Se Tran'rek (a introdução) estiver no seu registro, entregue-a aqui primeiro."}
+tips[2904]={d="Kernobee está numa das salas à direita da escada depois da Clean Zone. Leve-o até a entrada principal da instância; ele nunca ataca, então furtividade funciona."}
+tips[2924]={d="Os suprimentos vêm das caixas cinza de robô ao longo do caminho; os circuitos em volta de Viscous Fallout e Grubbis têm mais, então um grupo cheio pode precisar limpar mais que os chefes."}
 tips[2926]={d="Irradiated Invaders são elite, nível 24-26."}
+tips[2928]={d="Qualquer humanoide e os Mechanical Sentries soltam as engrenagens; os chefes soltam muitas de uma vez."}
 tips[2930]={d="Todos menos os Lepers são elite, nível 24-26."}
 tips[2933]={t="Witherbark Scalpers e Zealots (nível 40-42) ficam perto das garrafas; Zul'arek Hatefowler (elite 43) está perto de 32,57."}
 tips[2934]={d="Witherheart the Stalker (elite raro, 45) ronda perto de 33,70."}
+tips[2936]={d="Theka the Martyr anda pela sala oeste cheia de escaravelhos. Os escaravelhos são neutros: nada de ataques em área ali. Um jogador furtivo pode ler a tabuleta sem lutar."}
+tips[2962]={d="Use o frasco em monstros vivos, não em cadáveres."}
 tips[2988]={d="Witherbark Scalpers e Zealots (nível 40-42) ficam perto das jaulas; Zul'arek Hatefowler (elite 43) está perto da terceira jaula."}
 tips[2989]={d="Qiaga the Keeper e Morta'gya the Keeper (elite, nível 50) e Vilebranch Soothsayers (46-47) estão perto."}
+tips[2991]={d="Nekrum vem com a última onda de trolls pela escadaria depois que você liberta Sergeant Bly."}
+tips[3042]={d="As têmperas caem dos trolls Sandfury da masmorra; a chance é baixa, então faça junto com as outras missões."}
+tips[3369]={d="Mate os quatro Leaders of the Fang, fale com o Disciple of Naralex no começo da instância e proteja-o até o druida adormecido. Mutanus the Devourer chega no fim e solta o fragmento."}
+tips[3370]={d="Mate os quatro Leaders of the Fang, fale com o Disciple of Naralex no começo da instância e proteja-o até o druida adormecido. Mutanus the Devourer chega no fim e solta o fragmento."}
+tips[3373]={d="Coloque a essência na fonte do canto esquerdo dos fundos da sala de Eranikus. Todos devem saquear Eranikus."}
+tips[3444]={d="O Stone Circle está no Marvon's Chest em Ratchet, do lado de fora da cabaninha perto das docas."}
+tips[3447]={d="Clique nas estátuas de serpente nesta ordem: sul, norte, sudoeste, sudeste, noroeste, nordeste. Depois mate o chefe que aparece e abra o baú."}
+tips[3520]={d="Mate um Vale Screecher, clique no corpo e use o instrumento. Muitos andam ao norte do cais da balsa de Feathermoon e no caminho em frente a Dire Maul."}
 tips[3523]={t="Depois ele oferece Extinguishing the Idol. Faça todos do grupo entregarem Scourge of the Downs antes que alguém comece a escolta."}
+tips[3525]={d="O grupo todo pode fazer ao mesmo tempo. Se o evento falhar, não precisa reiniciar: Belnistrasz volta depois de alguns minutos.",h="Clique no braseiro que se ergue na frente do ídolo."}
+tips[3527]={d="A primeira tabuleta cai de Theka the Martyr na sala dos escaravelhos, a segunda de Hydromancer Velratha perto da piscina de Gahz'rilla."}
+tips[3528]={d="Vá para a esquerda a partir da entrada e mantenha-se à direita no corredor sinuoso até a sala com quatro fogos e um anel no meio. Limpe-a, use o ovo e mantenha o Avatar longe dos fogos. Depois de matá-lo, pegue a Essence of Hakkar e use-a para encher o ovo. Se o grupo morrer, é preciso esperar um reinício."}
+tips[3636]={t="Não dá para compartilhar: cada um pega com Bishop DeLavey.",d="Amnennar the Coldbringer fica no alto do morro em espiral; vá para a direita a partir da entrada."}
 tips[3701]={d="War Reavers e elementais de fogo vagam pelas ruínas."}
+tips[3801]={t="Franclorn Forgewright só aparece para um fantasma: morra perto de Blackrock Mountain e encontre-o sobre o túmulo no meio da lava, abaixo das correntes que levam à instância."}
+tips[3802]={t="Franclorn Forgewright só aparece para um fantasma: morra perto de Blackrock Mountain e encontre-o sobre o túmulo no meio da lava, abaixo das correntes que levam à instância.",d="Faça primeiro o Ring of Law na arena, depois suba às arquibancadas e siga até Fineous Darkvire, que solta o martelo. Coloque-o no altar da sala do Black Anvil."}
 tips[3906]={d="Desça pela corrente pendurada da borda e siga pelo caminho de baixo."}
+tips[3907]={d="A tabuleta é saqueada de Overmaster Pyron."}
+tips[3981]={t="Você precisa terminar antes Disharmony of Fire (Overmaster Pyron), senão Galamav não a oferece.",d="Gor'shak está numa cela do Detention Block, à direita do salão principal. A chave cai de High Interrogator Gerstahn."}
 tips[3982]={d="Só um jogador inicia o evento; os outros pegam a missão depois."}
+tips[4001]={d="Abra a cela em frente à de Gor'shak com a chave de cela da prisão e ouça a história do anão. Avise o grupo: alguns elites entram correndo quando você fala com Gor'shak."}
+tips[4003]={d="Mate o Emperor, mas não a princesa: quando ele morre, ela fica amigável. Ocupe-a sem matá-la, porque ela o cura."}
 tips[4023]={d="O draco é elite."}
+tips[4024]={d="Use o Altered Black Dragonflight Molt em cima do corpo de Lord Incendius antes de seguir."}
+tips[4061]={d="Os war reavers em volta das Ruins of Thaurissan nas Burning Steppes soltam as peças, não os golens de Searing Gorge."}
+tips[4063]={d="Golem Lord Argelmach está na Manufactory: mate antes todos os autômatos da sala."}
+tips[4082]={t="O cartaz está do lado direito da porta da estalagem de Kargath; o primeiro está à esquerda.",d="Os grupos de anões no corredor que sobe até Bael'Gar contam."}
 tips[4121]={d="Inimigos Dark Iron e Blackrock atacam a escolta."}
 tips[4122]={t="Se pular isto, pule também os próximos sete passos.",d="No WoW Forever esta escolta pode falhar: jogadores viram Grark sumir no alto da rampa esquerda em Blackrock Mountain. Um grupo conseguiu andando logo atrás dele, passo a passo, sem furtividade.",h="Grark é elite."}
+tips[4123]={d="O Heart of the Mountain está no cofre atrás do painel secreto; muitas vezes dá para saqueá-lo pela parede sem abrir os cofres."}
 tips[4126]={d="No Grim Guzzler, quebre os três barris de cerveja da sala dos fundos. Então Hurley Blackbreath chega com seus amigos de elite, e cada um deles deixa cair uma receita para todos do grupo. Se o grupo morrer nessa luta, Hurley e os barris somem até a masmorra ser reiniciada."}
 tips[4134]={d="No Grim Guzzler, quebre os três barris de cerveja da sala dos fundos. Então Hurley Blackbreath chega com seus amigos de elite, e cada um deles deixa cair uma receita para todos do grupo. Se o grupo morrer nessa luta, Hurley e os barris somem até a masmorra ser reiniciada."}
+tips[4136]={d="Ribbly está no Grim Guzzler."}
 tips[4141]={d="Raptores e diabossauros (nível 48-55) também vagam por lá."}
+tips[4143]={d="Desça a escada logo depois da entrada até o fosso: as gosmas, vermes do lodo e espreitadores de lá soltam as amostras."}
+tips[4145]={d="Larion (Horda) e Muigin (Aliança) ficam dos dois lados do caminho que sobe para Marshal's Refuge em Un'Goro."}
+tips[4146]={d="Só as gosmas, vermes do lodo e espreitadores dentro da instância soltam o combustível: pegue o caminho da direita a partir da entrada e desça a escada até o fosso."}
 tips[4182]={d="A maioria é elite; leve um grupo.",h="Se pular esta cadeia, pule também os próximos oito passos."}
+tips[4185]={t="Se ela não falar com você, outro grupo está numa etapa posterior com ela. Espere alguns minutos até ela voltar."}
 tips[4224]={d="Guardas da Horda em Flame Crest."}
+tips[4241]={d="Marshal Windsor está numa cela do Detention Block, à direita do salão principal; os corredores laterais dão a volta até ele."}
+tips[4242]={h="Maxwell não dá próxima missão: de volta a Blackrock Depths, qualquer monstro pode soltar A Crumpled Up Note."}
 tips[4262]={d="Pyron é elite. Desça pela corrente pendurada da borda e siga pelo caminho de baixo."}
+tips[4263]={d="Pela masmorra: porta esquerda, porta direita, porta esquerda, suba a escada, depois a abertura à esquerda e saia pela janela para a saliência que desce até Lord Incendius."}
+tips[4264]={d="Qualquer monstro de Blackrock Depths pode soltar o bilhete depois que você terminar Abandoned Hope. Marshal Windsor está na cela dele, Marshal Maxwell em Morgan's Vigil."}
+tips[4282]={d="General Angerforge está descendo a escada à esquerda: mate os ajudantes, ele chama mais quando está com pouca vida. Não pegue Jail Break! antes de o grupo todo estar pronto, ela começa a escolta."}
+tips[4286]={d="Os cães perto da entrada e os anões do Grim Guzzler soltam os pacotes."}
+tips[4322]={t="Todos devem entregar A Shred of Hope antes que alguém comece Jail Break!, senão não recebem o crédito.",d="Limpe o caminho até a saída antes de começar a escolta. Se Windsor morrer, reinicie a instância e fale com ele de novo.",h="Fale com Windsor antes de sair da instância, senão a escolta não conta."}
+tips[4341]={d="Kharan está numa cela do Detention Block, à direita do salão principal; abra com a chave de cela da prisão."}
+tips[4362]={d="Mate o Emperor, mas não a princesa. Ela só fica amigável se o vir morrer, então mantenha-a perto, mas longe do seu curador."}
+tips[4363]={d="Mate o Emperor, mas não a princesa."}
 tips[4701]={d="Logo depois, Gizrul the Slavener vem atrás de você."}
+tips[4724]={d="Só um grupo de cinco recebe o crédito, não uma raide."}
 tips[4726]={t="Firesworn (60-61) passam bem ao lado dele.",d="Broodlings e Black Dragonspawn (51-56, alguns elite) vagam por aqui."}
+tips[4729]={d="Os filhotes de worg estão com uma matilha orc perto das aranhas; dá para usar a jaula até em combate. Não mate os filhotes com ataques em área."}
+tips[4734]={d="Congele um ovo no Rookery antes de chegar perto dos ovos, senão os filhotes chocam."}
 tips[4735]={d="Alguns ovos chocam filhotes."}
 tips[4742]={t="Você precisa de um Unadorned Seal of Ascension (saque aleatório dos inimigos de Spire) e das gemas de Highlord Omokk, War Master Voone e Overlord Wyrmthalak."}
 tips[4743]={d="Emberstrife é um dragão elite de nível 61 com draconídeos elite à volta: leve seu grupo.",h="Você recebe o Seal of Ascension, que abre a porta de Upper Blackrock Spire."}
+tips[4764]={d="A caixa está na sala de Father Flame em Upper Blackrock Spire, descendo a rampinha; ela volta na hora, então o grupo todo pode saqueá-la."}
+tips[4766]={t="Faça antes de Doomrigger's Clasp, senão ela deixa de ser oferecida."}
+tips[4768]={d="A tabuleta é um quadrado cinza na sala dos ovos de Upper Blackrock Spire: suba e depois vá à esquerda."}
+tips[4771]={d="Coloque o gambito no Viewing Room enquanto Vectus está lá: os alunos viram esqueletos e Vectus fica hostil."}
 tips[4787]={t="Bandidos Wastewander (nível 40-46) vagam pelas dunas.",d="Hitah'ya the Keeper (elite, nível 51) e elites Vilebranch (nível 49-51) guardam o ninho; leve um grupo."}
 tips[4808]={h="Hailspite (elite 60) fica perto de 60.7,38.2, junto a Everlook; deixe-o em paz."}
 tips[4809]={d="As quimeras são nível 55-57; Shardtooth Maulers, Spell Eaters e Cobalt Broodlings (54-56) vagam pela encosta."}
+tips[4862]={d="Os ovos de aranha estão nas cavernas de aranhas abaixo; suba até a pedra de encontro, pegue a passagem atrás dela e fique à direita."}
+tips[4866]={d="O veneno de Mother Smolderweb precisa estar em você ao sair: deixe que ela o envenene, saia da instância e vá a pé até Ragged John nas Burning Steppes. Mudar de forma o remove."}
 tips[4867]={t="Coloque Omokk's Head e a Roughshod Pike em Urok's Tribute Pile; Urok e suas ondas de ogros chegam, e o Mojo dele cai."}
+tips[4903]={t="Fale com Warlord Goretooth e leia tudo o que ele diz: ele lhe dá o Command dele, que inicia a missão."}
+tips[4981]={t="Bijou fica embaixo de um buraco no chão logo depois da segunda ponte de madeira."}
+tips[4982]={d="A caixa aparece cada vez num lugar diferente, no nível de baixo entre Warmaster Voone e o túnel das aranhas; procure ao longo do corredor com os orcs de fogo."}
+tips[5001]={d="A caixa aparece cada vez num lugar diferente, no nível de baixo entre Warmaster Voone e o túnel das aranhas; procure ao longo do corredor com os orcs de fogo."}
+tips[5047]={t="Um esfolador com 300 de perícia esfola a Besta com Finkle's Skinner; Finkle sai e dá a missão."}
 tips[5081]={d="As mortes só contam com a missão no registro."}
+tips[5089]={d="O bilhete cai de Overlord Wyrmthalak, o último chefe de Lower Blackrock Spire."}
 tips[5096]={t="Pegue a Flame in a Bottle da caixa ao lado dele."}
 tips[5097]={d="Andorhal está cheia de mortos-vivos (nível 50-56); Araj the Summoner (61, elite) fica no centro, em 45,69; Skeletal Warlords e Flesh Golems elite (56-57) e Putridius (58, elite) em 48,67 também vagam."}
 tips[5098]={d="Andorhal está cheia de mortos-vivos (nível 50-56); Araj the Summoner (61, elite) fica no centro, em 45,69; Skeletal Warlords e Flesh Golems elite (56-57) e Putridius (58, elite) em 48,67 também vagam."}
+tips[5102]={d="General Drakkisath é o último chefe de Upper Blackrock Spire: leve uma raide."}
+tips[5125]={d="O Medallion of Faith está num bauzinho numa sala lateral à esquerda, a um terço da metade Scarlet; entregue-o a Aurius e ele ajuda contra o Baron."}
+tips[5127]={t="Só para ferreiros com pelo menos 270 de perícia."}
+tips[5160]={d="Na caverna do dragão em 57,50 em Winterspring, pise na runa azul da sala dos fundos."}
+tips[5212]={d="Qualquer elite do lado morto-vivo pode soltar as amostras."}
 tips[5213]={d="Ele aparece em um deles."}
+tips[5214]={d="Vire sempre à esquerda até o beco sem saída com a loja de Fras Siabi; abra a caixa e mate-o. Os mortos-vivos soltos por perto vêm ajudá-lo."}
+tips[5243]={d="Só algumas caixas têm água benta; anões podem vê-las com Find Treasure."}
+tips[5251]={d="Queime o arquivo clicando no livro sobre a mesa do Archivist. Se precisar do quadro para Of Love and Family, pegue-o antes na mesma sala."}
+tips[5262]={t="Depois de entregar The Archivist, Balnazzar solta a cabeça, que inicia esta missão."}
+tips[5265]={h="A recompensa está na caixa logo atrás de Lord Maxwell Tyrosus."}
 tips[5281]={h="Não pode ser compartilhada; cada jogador a recebe de Alen e Egan."}
+tips[5282]={d="Atinja um fantasma com o desintegrador e depois as almas penadas que vêm atrás. Fique logo depois do portão da metade Scarlet."}
+tips[5341]={d="Southshore: primeira sala grande depois da ponte, numa escrivaninha ao lado de uma estante num canto. Tarren Mill: numa escrivaninha na sala antes dos filhotes. Brill: ao lado de Ras Frostwhisper. Caer Darrow: atrás de Lord Alexei Barov. Um grupo que já foi raide não consegue saqueá-los."}
+tips[5343]={d="Southshore: primeira sala grande depois da ponte, numa escrivaninha ao lado de uma estante num canto. Tarren Mill: numa escrivaninha na sala antes dos filhotes. Brill: ao lado de Ras Frostwhisper. Caer Darrow: atrás de Lord Alexei Barov. Um grupo que já foi raide não consegue saqueá-los."}
+tips[5382]={d="Quando o Butcher morrer, clique nos dois montes de restos dos lados da sala dele."}
+tips[5384]={d="Passe o primeiro portão, vire à esquerda descendo a escada, passe os dois portões seguintes, o tapete roxo e vá à direita: acenda ali o braseiro com o sangue. Se Kirtonos não soltar o que você precisa, abandone a missão e pegue de novo."}
+tips[5466]={d="Use o Soulbound Keepsake em Ras Frostwhisper: é uma canalização de 10 segundos a até 30 metros, então fique longe do medo e do empurrão dele."}
 tips[5505]={h="Você recebe a Skeleton Key."}
 tips[5511]={t="Você recebe a Skeleton Key."}
+tips[5514]={t="Leve duas Thorium Bars: o próximo passo, em Fire Plume Ridge em Un'Goro, precisa delas."}
+tips[5515]={d="Jandice Barov está numa sala secreta perto da escada que desce ao Viewing Room. As cópias dela não recebem dano: só a verdadeira tem placa de nome."}
+tips[5522]={t="A cadeia começa congelando um ovo no Rookery de Upper Blackrock Spire para Tinkee Steamboil."}
+tips[5525]={d="A chave cai dos guardas da ala norte; use-a nas algemas de Knot Thimblejack."}
 tips[5528]={t="Pegue depois do Tribute Run e entregue: The Gordok Taste Test"}
 tips[5529]={d="Eles podem derrubar uma Healthy Dragon Scale, que inicia Healthy Dragon Scale."}
+tips[5533]={t="Termine antes Clear the Way e All Along the Watchtowers."}
 tips[5537]={d="Skeletal Flayers e Sorcerers os derrubam. O local vem de onde os inimigos surgem, não de uma fonte da missão.",h="Leve 15 de ouro e 2 Thorium Bars para a viagem."}
+tips[5538]={t="Leve duas Thorium Bars: o próximo passo, em Fire Plume Ridge em Un'Goro, precisa delas."}
+tips[5544]={d="Os Carrion Devourers do norte soltam a carne bem mais vezes que as larvas."}
 tips[5722]={h="Não pode ser compartilhada, então cada jogador saqueia o corpo."}
+tips[5724]={d="Na bifurcação no fundo da caverna, pegue o caminho mais próximo à direita e para cima; o corpo de Maura está na salinha à esquerda, lá em cima."}
+tips[5725]={d="Os livros caem dos cultistas Searing Blade nos acampamentos ao longo do lado esquerdo da rampa principal de descida."}
 tips[5726]={d="Felweaver Scornn, um elite, e Gazz'uz (nível 14) também estão aqui."}
 tips[5727]={d="Íncubos ficam em volta da Cleft; podem ser hostis."}
+tips[5728]={d="Bazzalan fica numa saliência logo acima de Jergosh; a subida começa perto das pontezinhas sobre a lava."}
+tips[5742]={t="Termine antes as três missões de matar de Tirion.",d="Clique nos balões brancos de fala enquanto ele fala."}
+tips[5761]={d="Puxe Taragaman da ponte de pedra antes: ele pode jogar jogadores na lava."}
+tips[5781]={d="Fique no monte de terra em 28,87 em Western Plaguelands enquanto os monstros chegam e permaneça nele até saquear o martelo."}
+tips[5801]={d="Pegue o caminho pelo lado norte de Fire Plume Ridge e fique na borda norte do lago de lava, não dentro dele."}
+tips[5802]={d="Pegue o caminho pelo lado norte de Fire Plume Ridge e fique na borda norte do lago de lava, não dentro dele.",h="Entregue a Apothecary Dithers, não ao goblin."}
 tips[5803]={d="Araj é elite de nível 61, com guardas esqueletos e Spectral Attendants de nível 60 perto dele: leve um grupo."}
 tips[5804]={d="Araj é elite de nível 61, com guardas esqueletos e Spectral Attendants de nível 60 perto dele: leve um grupo."}
+tips[5845]={d="A bandeira está num baú debaixo d'água no lago em frente a Northdale."}
+tips[5846]={d="O pintor está fora dos portões internos de Caer Darrow: da ponte, pegue o caminho à esquerda até a primeira casa com telhado."}
+tips[5848]={d="O quadro está pendurado na parede direita da sala do Archivist, a sala antes do último chefe da metade Scarlet. Pegue-o antes de queimar o arquivo."}
 tips[5961]={t="A cadeia de Nathanos precisa dela.",h="Nathanos é nível 62. Duggan Wildhammer (55, elite, amigável à Aliança) fica logo a sudeste."}
 tips[6022]={d="Stitched Horrors elite (58) andam pela cidade."}
+tips[6042]={d="Os Noxious plaguebats voam no vale entre 46,65 e 56,61, os monstrous plaguebats por volta de 48,38. O veneno deles deixa você lento."}
 tips[6133]={d="Os patrulheiros do pavilhão são nível 58-60, e Ranger Lord Hawkspear (60, elite) fica lá."}
+tips[6135]={t="Você também precisa de Un-Life's Little Annoyances feita.",d="Duskwing voa em círculos pelos campos por volta de 31,74 em Eastern Plaguelands."}
 tips[6136]={d="Borelgore é elite de nível 61; leve o grupo."}
+tips[6163]={t="Termine as três primeiras missões de Nathanos; aí ele oferece as duas mortes de elite e esta."}
+tips[6521]={d="Ambassador Malcin está fora da instância, numa das tendas do labirinto de espinhos, e troca de tenda. Ele conta como morto-vivo para o rastreamento."}
 tips[6522]={t="Sem o pergaminho, pule este passo e o próximo.",h="Precisa da missão do pergaminho concluída antes. Anya Rince (nível 52) e um Darkspear Emissary (nível 30), perto, podem atacar."}
+tips[6561]={t="A Horda pode pegar lá dentro: Argent Guard Thaelrid está deitado junto a uma fogueira numa sala ao lado da piscina de Ghamoo-ra, pelo túnel submerso a sudoeste."}
+tips[6563]={d="Os cristais azuis crescem nos túneis antes do portal, não na instância, e voltam mais rápido que os monstros."}
+tips[6564]={t="O bilhete cai das Blackfathom Tide Priestesses no caminho."}
+tips[6626]={d="Qualquer elite do labirinto de espinhos fora da instância conta; não precisa entrar."}
+tips[6921]={d="A Fathom Stone está debaixo d'água na piscina grande antes de Kelris, abaixo da passarela longa. Clicar nela chama Baron Aquanis, que solta o globo para a próxima missão."}
+tips[6922]={t="Baron Aquanis sempre solta o Strange Water Globe que a inicia; um personagem abaixo do nível 21 não recebe o globo."}
 tips[6981]={h="Deviate Slayers e Ectoplasms (elite, nível 16-17) vagam pelo topo da colina."}
+tips[7028]={d="O Nameless Prophet anda pelas cavernas antes da instância e solta muitos entalhes; ele volta a poucos passos logo depois de morrer. Os demônios do lado roxo também soltam."}
+tips[7029]={d="Encha o frasco na grande poça com cristais laranja fora do lado laranja (não na poça pequena da dríade). Lá dentro, use-o perto das plantinhas; mate os Noxxious Scions que aparecem."}
+tips[7041]={d="Encha o frasco na grande poça com cristais laranja fora do lado laranja (não na poça pequena da dríade). Lá dentro, use-o perto das plantinhas; mate os Noxxious Scions que aparecem."}
+tips[7044]={d="A Celebrian Rod cai de Noxxion no lado laranja, o Celebrian Diamond de Lord Vyletongue no lado roxo. Vyletongue tem dois demônios ocultos que entram na luta."}
+tips[7046]={d="O cetro abre o portal para o interior de Maraudon, assim da próxima vez você pula os lados laranja e roxo. Perdeu? Mate Celebras de novo e peça outro."}
+tips[7065]={d="Princess é uma elite forte com medo: leve um tanque e um curador."}
 tips[7066]={t="Opcional: Keeper Remulos em Moonglade a recebe; veja o último passo.",h="Sem rota até aqui: chegue a Moonglade pelo voo de Thunder Bluff ou Orgrimmar (Horda) ou Rut'theran Village (Aliança), ou pelo feitiço Teleport: Moonglade dos druidas. Pule este passo se não for lá."}
 tips[7067]={t="Ele anda entre aqui e mais ou menos 43,85. Kaskk (elite raro, nível 40), Whirlwind Shredders e Nether Sorceresses (nível 32-40) podem estar perto."}
+tips[7068]={d="Os fragmentos caem dos elementais de pedra das cavernas de cristal roxo antes da entrada roxa; não precisa entrar na instância."}
+tips[7070]={d="Os fragmentos caem dos elementais de pedra das cavernas de cristal roxo antes da entrada roxa; não precisa entrar na instância."}
+tips[7201]={d="Qualquer elemental das Burning Steppes e de Searing Gorge solta as essências, não só os de fogo."}
+tips[7441]={d="Na ala leste, siga a saliência à esquerda até o fim. O diabrete Pusillin foge quando você fala com ele; persiga-o até ele lutar."}
+tips[7461]={d="Mate todos os elementais em volta de cada um dos cinco pilares da ala oeste; um pilar apaga quando morre o último.",h="Entregue dentro de Dire Maul, não na cratera de Dalaran."}
 tips[7463]={t="Lydros fica no Athenaeum. Nível 60. Hydrospawn está em Dire Maul East; entregue na próxima visita."}
+tips[7481]={d="Os ossos estão no meio da biblioteca, ao lado de Lorekeeper Lydros. Você precisa de uma Crescent Key (ou arrombamento) para a ala norte e a porta da biblioteca."}
+tips[7482]={d="Os ossos estão no meio da biblioteca, ao lado de Lorekeeper Lydros. Você precisa de uma Crescent Key (ou arrombamento) para a ala norte e a porta da biblioteca."}
+tips[7488]={d="Lethtendris está na ala leste: fique na parede da direita depois da entrada."}
+tips[7489]={d="Lethtendris está na ala leste: fique na parede da direita depois da entrada."}
 tips[7494]={t="Ele anda por aí; Crier Goodman em Stormwind e Herald Moonstalker em Darnassus dão a mesma missão."}
+tips[7498]={h="Entregue o livro a Lorekeeper Lydros na biblioteca: ala norte, desça ao fosso, a porta trancada à esquerda. Você precisa de uma Crescent Key ou de arrombamento."}
+tips[7500]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7501]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7502]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7503]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7504]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7505]={h="Entregue o livro na biblioteca dentro de Dire Maul, mesmo que o mapa mostre a cratera de Dalaran: ala norte com uma Crescent Key, pela porta grande à esquerda."}
+tips[7506]={h="Entregue o livro na biblioteca: ala norte com uma Crescent Key, desça a rampa e passe pela porta grande à esquerda."}
+tips[7581]={d="Entre pela entrada dos fundos da ala oeste; fique na parede da direita e deixe os elementais em paz."}
+tips[7629]={d="Liberte o diabrete no laboratório de alquimia da sala de Ras Frostwhisper e espere enquanto ele trabalha; o papel fica no pote."}
+tips[7631]={d="Mate primeiro Immol'thar e depois liberte o diabrete. Mantenha o sino, a roda e a vela acesos com a Black Lodestone enquanto vêm as ondas: cada uso gasta um fragmento de alma, então leve de 10 a 15."}
+tips[7642]={d="A água benta está em caixas de suprimentos em Stratholme, algumas por caixa; as caixas erradas soltam insetos. As Arthas' Tears estão na casa de leilões."}
+tips[7643]={d="O Ancient Equine Spirit precisa das duas cadeias feitas, o exorcismo de Terrordale também."}
 tips[7703]={h="Num Tribute Run seguinte, quando você tiver o Gauntlet."}
+tips[7877]={d="O baú grande fica perto da escada da biblioteca."}
+tips[8236]={d="WoW Forever dá os três itens de recompensa."}
+tips[8253]={d="Morphaz está no fundo do templo, ligado a outro dragão."}
+tips[8258]={d="No porão do Ossuary, fique no canto da direita antes de colocar o vidente. Vêm quatro ondas de fantasmas elite, cada uma termina com um Aspect, depois o próprio Darkreaver."}
+tips[8413]={d="Mate os seis trolls mortos-vivos nas sacadas que guardam Jammal'an."}
+tips[8422]={d="Mate os seis trolls mortos-vivos nas sacadas que guardam Jammal'an."}
+tips[8425]={d="Mate os seis trolls mortos-vivos nas sacadas que guardam Jammal'an: suba pela escada ou pelo caminho da direita, não pela escada em espiral."}
+tips[9053]={d="Acenda em ordem as seis estátuas de serpente do lado leste: sul, norte, sudoeste, sudeste, noroeste, nordeste. A trepadeira cai do guardião que aparece na piscina abaixo."}
+tips[79360]={t="Para xamãs: Prate Cloudseer em Thousand Needles oferece depois de Call of Air."}
+tips[79946]={d="Aeonas está na Catedral, atrás da porta da sala de Whitemane."}
+tips[79963]={d="Aeonas está na sala de Whitemane, na Catedral: cure-o por completo e entregue a missão."}
+tips[80411]={d="No pátio com os lançadores de sombra em volta da fonte, vire à direita; antes do longo corredor procure um Clay Vessel nas cabanas da direita."}
+tips[81790]={d="Os infernais de Felwood são elites e a aura de fogo deles atrasa seus lançamentos; vá com um amigo."}
 tips[82062]={t="Do Ring of Law, pegue a ponte a leste que segue para o norte sobre a lava. Junto ao pequeno braseiro do lado esquerdo, pule do parapeito para a plataforma abaixo, siga a parede até o canto e desça para a saliência de rocha: o Rugged Traveler está lá. A porta da saliência leva a um ponto acima de Lord Incendius, sem volta."}
+tips[82084]={d="O papiro cai dos zumbis de Zul'Farrak, a pena dos corujões dos Hinterlands. A resina cai devagar dos insetos Zukk'ash em Feralas (por volta de 75,65); os operários e escavadores parecem soltar mais."}
+tips[84330]={t="Paladinos mortos-vivos também podem pegar."}
+tips[92065]={t="Neutro com os Timbermaw basta; a cadeia começa com Legashi Threat ao sul de Ursalan."}
 tips[92066]={d="Encontre o Totem of Ursoc e o Totem of Ursol."}
+tips[92070]={d="A lembrança cai ao acaso dos furbolgs, também dos de fora da entrada."}
 tips[92343]={d="Colete 10 Nordrassil Root Caps."}
 tips[92344]={d="Colete 10 Nordrassil Root Caps."}
+tips[92401]={d="O gato fantasma adormecido está perto do cemitério onde se luta contra Rath'mael; fique perto dele."}
+tips[92415]={t="A Blood-Stained Letter está no cemitério lá no fundo, perto de um dos chefes."}
+tips[92422]={t="Faça antes Rear Guard Patrol (o elite Riptear em Tirisfal).",h="A entrega em 65,60, a leste de Undercity na estrada, não tem marca no mapa-múndi."}
+tips[92432]={h="A imagem de Archmage Modera fica fora da cidade, perto da entrada do esgoto do lado norte, não dentro."}
+tips[92434]={t="Termine antes as outras missões de Magus Wordeen Voidglare; as de Keeper Bel'Varil não são necessárias."}
+tips[92456]={d="A amostra está na masmorra City of Dalaran, não na cidade lá fora."}
+tips[92457]={d="Pode não haver restos suficientes para todos numa ida."}
+tips[92458]={t="Jogadores da Aliança precisam pegar An Alarming Request antes."}
+tips[92742]={d="Use o item nos dois poços: Molsen Farm por volta de 46, 38 e Jansen Stead por volta de 57, 19."}
+tips[92744]={d="A chance é baixa: jogadores falam em 30 a 100 mortes. Os murlocs de nível 15 para cima parecem soltar mais."}
 tips[92745]={d="No caminho, Sergeant Brashclaw e Leprithus (elites raros, nível 18-19) podem aparecer."}
 tips[92747]={d="Forlorn Spirits (nível 25-26) assombram a casa ao norte da cidade. Defias Henchmen, Conjurers e Watchmen elite (nível 15-18) guardam a cidade."}
+tips[92749]={d="Agora pede Rough Dynamite, não Coarse como diz o texto: barata na casa de leilões, ou feita por um engenheiro iniciante com linho e pedra bruta."}
+tips[92752]={t="Só aparece depois que A Dynamite Plan também estiver feita."}
+tips[92753]={d="Coloque os explosivos perto do meio da sala da forja, onde fica Gilnid.",h="Saia pela porta dos fundos de Deadmines: a entrega espera fora da saída sul em Westfall, não onde a missão começou."}
+tips[92819]={h="Saia pela porta dos fundos de Deadmines: a entrega espera fora da saída sul em Westfall."}
+tips[93404]={d="Na piscina abaixo de Princess Theradras, onde Rotgrip nada, ache o pequeno gêiser sob a ponte de pedra do lado leste e encha o frasco ali.",h="Use a água na árvore em chamas ao lado de Woodwyrd, não no PNJ."}
+tips[93604]={d="Não precisa entrar: a tenda fora do portal tem o objeto. Antes do portal, suba a rampa; clicar no objeto chama o monstro que solta o item da missão."}
+tips[93680]={d="O baú está na casa de dois andares a oeste do acampamento murado no morro (por volta de 16,89 em Alterac Mountains): segunda sala do térreo, no fundo perto da escada."}
 tips[94968]={t="Abre quando você leva para ele It Is Time, Brother... de Da'grosh."}
 tips[94972]={t="Libera do mesmo jeito que Eye of Mugg."}
-tips[94974]={h="A chave abre a parte de cima da masmorra."}
+tips[94973]={t="Tunk solta o molde para o grupo todo; ele fica na forja atrás do acampamento de lobos de War Handler Ashka. Siga a estrada para nordeste a partir do chefe anterior, ou digite /tar Tunk."}
+tips[94974]={t="Tenha 4 Thick Leather e 12 Iron Bars antes de começar.",h="A chave abre a parte de cima da masmorra."}
 tips[94975]={t="Abre quando você entrega Bring Me His Head a ele. Twilight Enforcers (elite 45) e Fanatics (42-43) ficam em volta do Shroud.",h="Twilight Enforcers (elite 45) estão por perto."}
+tips[94980]={t="Tunk solta o molde para o grupo todo; ele fica na forja atrás do acampamento de lobos de War Handler Ashka."}
 tips[94981]={h="A chave abre a parte de cima da masmorra."}
+tips[94982]={t="Abre quando Kilgar estiver morto."}
 tips[94983]={t="Abre quando você entrega Bring Me His Head a ele. Executioner Morg, o Twilight Forgemaster e Kargra the Blind (todos elite 46) estão perto.",h="Elites (46) por perto."}
 tips[94984]={t="Abre depois de A Small Favor, dela."}
+tips[95036]={d="A Whitestone Oak Lumber cai dos goblins da oficina de Sneed em Deadmines, o Enchanted Silver Ingot está na mesa ao lado de Arugal em Shadowfang Keep, e a Purified Kor Gem vem dos nagas conjuradores elite fora de Blackfathom Deeps depois que você fala com o elfo no Zoram Strand. Guarde o bilhete nas bolsas: com ele no banco, a madeira não cai."}
+tips[95161]={t="A Blood-Stained Letter está no cemitério lá no fundo, perto de um dos chefes."}
+tips[95189]={d="O brasão aparece num de alguns lugares: no alto da torre perto do pátio das aranhas, no alto da torre perto de The Abandoned, atrás da porta da banshee no pátio das aranhas, ou na sala com a escada e a porta trancada."}
+tips[95194]={h="Sully McCleary está na estalagem de Theramore."}
+tips[95195]={d="Os mortos-vivos soltam as insígnias; há o bastante para o grupo todo.",h="Se General Marcus Jonathan sumiu, alguém está fazendo a cena da Onyxia em Stormwind: espere terminar."}
+tips[95196]={t="Sully também fica perto do cemitério fora de Theramore (por volta de 63,42)."}
 tips[95198]={d="Fique longe de Jaina: ela vê através do disfarce. Se ficar preso depois de concluir a missão, use o botão de sair do veículo."}
+tips[95204]={d="O brasão aparece num de alguns lugares: no alto da torre perto do pátio das aranhas, no alto da torre perto de The Abandoned, atrás da porta da banshee no pátio das aranhas, ou na sala com a escada e a porta trancada."}
+tips[95216]={t="Começa com quem dá a missão, depois que A Recipe For Death estiver concluída."}
+tips[95250]={t="Captain Truman fica à esquerda logo na entrada."}
+tips[95263]={d="Não mate o Questioner antes do último chefe, ou você não consegue pegar a última missão."}
+tips[95454]={d="O bilhete fica no chão depois que o último chefe morre."}
+tips[95646]={t="Greenwarden só oferece depois das três missões anteriores dele, entre elas Tramping Paws.",d="No Lost Dig Site, o elemental do pântano que você precisa fica à direita dos elementais de fogo."}
+tips[95647]={h="O homem fica numa plataforma à direita logo antes do último chefe."}
+tips[95663]={d="O Deathstalker Agent espera nas colinas acima do acampamento Dragonmaw perto de Thelgen Rock (por volta de 51,59); a subida começa em 53,66."}
+tips[95682]={t="Pegue antes a missão anterior com Zaruk, no pé da escada em Hammerfall."}
+tips[95697]={t="Borstan, ao lado do instrutor de culinária no Drag de Orgrimmar, dá a missão."}
 tips[95748]={d="Não precisa de couro nem carvão; basta clicar na tábua."}
+tips[95772]={h="A entrega é dentro da instância, numa tenda da parte Dragonmaw."}
 tips[95773]={t="Exige The Gurubashi Legends of Old entregue.",d="A chance é baixa e as nagas ficam debaixo d'água; leve um grupo ou algo para respirar.",h="Exige Enemies in the Water e Locating the Lost City entregues."}
+tips[95775]={d="As tabuletas: descendo a escada à esquerda quando você vê a piscina, à esquerda de Var'Taka, na boca de uma caveira perto de Captain Dreadrise e atrás de Min'loth the Serpent, o último chefe."}
+tips[95786]={t="Brother Nimetz, no Rebel Camp, oferece a missão depois de Troll Witchery."}
+tips[95787]={d="A primeira fica descendo à esquerda depois do primeiro chefe, a segunda metade dentro de uma caveira na área dos piratas, a terceira perto do chefe naga, a quarta perto do último chefe."}
+tips[95788]={t="Antes é preciso a cadeia de Stranglethorn: The Second Rebellion, Bad Medicine, Troll Witchery e depois An Acquaintance in Southshore."}
 tips[95789]={t="As duas exigem nível 34.",d="Jogadores dizem que cai pouco para um grupo inteiro numa só ida; limpe bem a área dos piratas."}
 tips[95790]={t="Não pode ser compartilhada; cada jogador clica."}
+tips[95791]={t="Krazek, no último andar da estalagem de Booty Bay, dá a missão."}
+tips[95810]={h="Entregue no outro sítio de escavação, Whelgar's Excavation Site no oeste dos Wetlands (por volta de 34,40), não na masmorra."}
+tips[95925]={d="Use o kit em: o Pillar of Assimilation (área do último chefe, leste), o Achromatic Crystal no poço de piche a leste da entrada, os Western Gates atrás do titanossauro, o Regrowth Vestibule (templo norte de Vitrix) e o Stone Watcher a leste dos Western Gates."}
 tips[95926]={t="Anya Rince (nível 52), perto, pode atacar."}
 tips[96334]={d="Chance baixa; jogadores precisaram de várias idas."}
 tips[96335]={t="Não mate The Questioner antes disso, ou a missão nunca aparece.",d="Chance baixa.",h="Um jogador conta que não conseguiu entregar depois do grupo; entreguem juntos."}
 tips[96337]={h="Moonbrook está cheia de Defias. Se a Box não oferecer nada, fale com Nazgrel."}
+tips[96377]={t="A missão só aparece no minimapa; você precisa da Document Box nas bolsas."}
+tips[96381]={t="Sully dá a missão logo depois que você espionar Jaina."}
+tips[96391]={t="O Dark Iron Map cai dos espiões Dark Iron no sudeste de Dun Morogh (por volta de 77,60) e inicia a missão."}
+tips[96393]={t="O Dark Iron Map cai dos espiões Dark Iron no sudeste de Dun Morogh (por volta de 77,60) e inicia a missão."}
+tips[96394]={d="Chega-se a Afadra Dunwall pelo High Seat: vire logo à esquerda para a área da nova entrada da masmorra."}
+tips[96395]={t="O Ghostly Attendant dá e recebe a missão lá dentro, na segunda sala depois da entrada."}
+tips[96403]={d="As relíquias têm aparências diferentes: passe o mouse pelas paredes, cadeiras e mesas. A última sala também tem algumas."}
 tips[96771]={t="Depois viaje para Riverglades."}
 tips[96772]={d="Só se você a pegou em Dalaran."}
 tips[96773]={d="Saqueie logo depois do primeiro do grupo; jogadores dizem que deixa de ser saqueável após uns 30 segundos."}
+tips[96774]={d="Saqueie o Deathless Marrow, o penúltimo chefe, bem a oeste no Eternal Amphitheater.",h="A subida até quem dá a missão começa em 40.2,17.4 em Mulgore."}
+tips[96776]={d="Procure logo ao lado de Landslide, o chefe golem."}
+tips[96800]={d="O livro (vermelho) está numa mesa do lado direito da sala de Arcanist Doan, no fim da Library."}
+tips[96984]={d="O grupo todo precisa estar dentro da masmorra antes que ele apareça, senão ele vai embora e não volta."}
+tips[96987]={d="O livro fica depois da sala do portal, na parede do fundo."}
+tips[97049]={d="As gosmas em volta de Loris' Tar Pits soltam a essência."}
+tips[97130]={d="O ídolo cai do Deathless Marrow."}
 tips[97173]={d="Encontre o Blackmaw Ritual Totem (só se você pegou a missão em Dalaran)."}
+tips[97185]={d="Vários paladinos num grupo podem usar a Charger's Lost Soul depois de um único evento."}
 tips[97196]={d="Saqueie logo depois do primeiro do grupo; jogadores dizem que deixa de ser saqueável após uns 30 segundos."}
+tips[97197]={d="Magmus, no fim de Blackrock Depths, solta."}
 tips[97198]={d="Encontre o Blackmaw Ritual Totem."}
+tips[97287]={h="Entregue à imagem de Archmage Modera fora da entrada do esgoto; não entre na cidade."}
+tips[97288]={d="Suba a escada da direita até a poça de gosma verde com os canos e a passarela e use o item ao lado de Ganoosh."}
+tips[97289]={d="O tubo de alimentação está no andar de cima, acima da abominação, perto do caminho de gosma verde a oeste (por volta de 44,62)."}
+tips[97291]={d="O Toxic Skullcap cai de Tawny Grisette, que anda pelo anel superior do Trade Quarter; a Blisterweed cresce atrás de Katrina Alliestar; Ezekiel vende a Essence of Agony."}
+tips[97292]={d="O grande verme rosa está ao lado do caminho fora da sala de cima, à direita. Use o soro pelo registro de missões, não clicando no verme."}
 tips[97327]={d="Colete 5 Blackmaw Pouches."}
+tips[98325]={h="Depois, fale de novo com Warlord Goretooth e leia tudo o que ele diz: o Command dele inicia a próxima missão."}
+tips[98423]={t="Começa num objeto de pedra atrás de uma das portas do cofre na sala do último chefe, a da direita entre as portas do nordeste."}
+tips[98815]={t="Termine antes Young Crocolisk Skins para James Halloran.",d="Com um grupo cheio, corra pelo capim alto para fazer mais raptores virem."}
+tips[98823]={h="Muln Earthfury está na maior tenda do Camp Grev'rek no Skywatcher Plateau; a subida começa em 39.7,16.9."}
+tips[98824]={d="Você precisa da Titan Relic do último chefe da masmorra, não da do sítio de escavação. Se a sua sumiu, abandone a missão e pegue de novo."}
+tips[99156]={d="Riptear se enfurece por volta de 20% de vida; guarde um atordoamento para essa hora."}
+tips[99187]={d="O chefe só solta um Reliquary of Tyr."}

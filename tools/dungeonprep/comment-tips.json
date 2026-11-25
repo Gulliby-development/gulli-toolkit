@@ -1,0 +1,926 @@
+{
+ "142": {
+  "d": "The Defias Messenger appears in Moonbrook by the smithy and walks the Old Coast Road to the Gold Coast Quarry: catch him on the way."
+ },
+ "167": {
+  "d": "Foreman Thistlenettle (elite) is at the end of the purple undead loop of the mines, outside the instance."
+ },
+ "168": {
+  "d": "The undead miners in the purple part of the mines outside the instance carry the cards."
+ },
+ "203": {
+  "d": "The fighters stand on the east side and the medicine men on the west side of Kurzen's Compound (around 44,10). Do Bad Medicine at the same time."
+ },
+ "204": {
+  "d": "The remedies drop slowly; the fern extract is in boxes around the camp (44,9 by the house, 44,10 by the fire, 45,9 by the stables). Interrupt the medicine men's heals."
+ },
+ "205": {
+  "d": "Only the Skullsplitter witchdoctors and mystics drop the fetishes; they share spawn points with the warriors and axe throwers."
+ },
+ "214": {
+  "t": "Shows up only after the Defias Traitor escort; Scout Riell stands at the top of the tower on Sentinel Hill."
+ },
+ "275": {
+  "d": "The fen creepers are hard to see: walk the rivers and puddles with /target Fen Creeper. Many are around 46,34 to 55,46."
+ },
+ "356": {
+  "d": "Both mobs walk around the farm near the Bulwark, around 77,62 in Tirisfal."
+ },
+ "373": {
+  "t": "Edwin VanCleef drops the letter for everyone who has not done the quest yet."
+ },
+ "377": {
+  "d": "Dextren Ward is in the far end of the left wing."
+ },
+ "378": {
+  "t": "Offered only after Motley Garmason's first quest, The Dark Iron War, is done."
+ },
+ "386": {
+  "d": "Targorr is in one of the cells of the middle wing; his cell changes from run to run."
+ },
+ "387": {
+  "d": "There may be too few convicts in one run when several players need them; stay till the end of the wings."
+ },
+ "388": {
+  "t": "Nikova Raskol walks around Old Town; if you do not see her, walk the square once."
+ },
+ "391": {
+  "d": "Bazil Thredd is at the end of the long main hall: go straight from the entrance, then right, and follow the curve to the round room."
+ },
+ "450": {
+  "d": "The journal is in the inn of Pyrewood: upstairs, the third room on the right. A gap in the south wall (around 47,75) lets you skip most of the village."
+ },
+ "451": {
+  "d": "The drop rates are low; the islands east of the Decrepit Ferry hold the murlocs and elementals."
+ },
+ "484": {
+  "d": "The young crocolisks swim in the water around Menethil Harbor; the ones around 36,39 drop the skins best."
+ },
+ "544": {
+  "d": "Three of the four traitors stand in Lordamere Internment Camp (around 20,85 in Alterac Mountains), the fourth in the house next door. They are neutral, so you attack them first."
+ },
+ "545": {
+  "d": "Only the patrols on the north-east edge, outside the city walls, are left. Do not climb the front steps in the south: the city guards kill you."
+ },
+ "704": {
+  "d": "The urns are in the tunnel before the instance: by the tents and on both sides of the portal."
+ },
+ "709": {
+  "d": "The tablet is outside the instance: in the cave, stay on the high path past the ledge over the portal instead of dropping down; it lies at the end of that path."
+ },
+ "720": {
+  "d": "The crumpled map lies on the ground beside a table in the dwarf camp on the ridge west of Hammertoe's Digsite."
+ },
+ "721": {
+  "d": "Hammertoe Grez sits by a campfire in the cave, before the cliff where most players jump down to the portal. If you cannot talk to him, he is stuck in combat: wait for him to reset."
+ },
+ "722": {
+  "d": "Magregan Deepshadow patrols the cave outside the instance: wait at the fork between the trogg room and the dwarf room. He calls the nearby mobs."
+ },
+ "723": {
+  "h": "Hammertoe dies right after the turn-in, so the rest of the group waits for him: hand it in one by one."
+ },
+ "738": {
+  "d": "Agmond's body lies just right of the Stonevault camp, north of Theldurin the Lost."
+ },
+ "762": {
+  "d": "Inside Angor Fortress keep right and go down the stairs: Ambassador Infernus waits at the bottom with two guards. He silences."
+ },
+ "838": {
+  "t": "Finish All Along the Watchtowers first."
+ },
+ "865": {
+  "d": "The drop rate is low; the raptor nest around 58, 53 in the Barrens is the densest spot."
+ },
+ "870": {
+  "d": "The spot is a bubbling clam at the bottom of the pool, around 45, 22: swim over it."
+ },
+ "877": {
+  "d": "The fissure lies at the bottom of the lake: plant the seed right over the bubbles."
+ },
+ "880": {
+  "d": "Every Oasis Snapjaw drops a shell; they live at the Stagnant Oasis and the Lushwater Oasis."
+ },
+ "914": {
+  "d": "Each leader drops a gem for everyone in the group who has the quest. With all four dead, the Disciple of Naralex at the start of the instance offers the event that wakes Naralex."
+ },
+ "959": {
+  "d": "Mad Magglish moves between a few spots in the cave before the portal and stealths: check the short dead-end branches near the cave mouth and the hollow below the ledge before the last big room."
+ },
+ "962": {
+  "d": "The plants inside the instance do not grow back, so share them in a group; the ones in the cave outside the portal do."
+ },
+ "971": {
+  "d": "The chest lies under water in the alcove just right of where you enter Ghamoo-ra's pool; a few naga guard it."
+ },
+ "1013": {
+  "d": "The book stands on the shelf on the left as you enter Fenrus's room. After someone loots it, it comes back in a few seconds."
+ },
+ "1014": {
+  "d": "Arugal is easier when the tank pulls him back to Fenrus's room while the rest wait in his own room."
+ },
+ "1050": {
+  "d": "The book lies in the narrow halls of the Library, always in the same place; check every book, also on chairs and on the floor."
+ },
+ "1051": {
+  "d": "Nancy Vishas is not in the Monastery: she is in the house by the lake in Alterac Mountains with her grandfather, both elite. Wait until she walks out alone."
+ },
+ "1098": {
+  "d": "Free the prisoner in the first cells to open the courtyard; the second Deathstalker is the one Arugal torments right at the start, deeper in the keep."
+ },
+ "1101": {
+  "d": "Stay right after you enter and follow that side to the bridges: this passes the other bosses on the way to the Crone."
+ },
+ "1142": {
+  "t": "Taken behind Charlga Razorflank, in the tent beside the escort.",
+  "d": "The pendant is a random drop from the quilboar inside the instance."
+ },
+ "1160": {
+  "d": "The book lies open on a table in the first room on the left as you enter the Gallery of Treasures in the Library."
+ },
+ "1198": {
+  "d": "Thaelrid lies southwest of the turtle pool. Do not go on to the end of the instance first: the altar at the end teleports you out."
+ },
+ "1199": {
+  "d": "Every Twilight cultist can drop a pendant, but there are only so many: a full group may need a second run."
+ },
+ "1200": {
+  "t": "Inside, Argent Guard Thaelrid lies in a room under water off Ghamoo-ra's pool, past the tunnel to the southwest."
+ },
+ "1275": {
+  "d": "The naga at the entrance outside the instance drop the brain stems; no need to go in."
+ },
+ "1360": {
+  "d": "The chest is in the North Common Hall outside the instance (on the map it is the southern one): take the right fork, as for Solution to Doom. The South Common Hall chest is the Horde one."
+ },
+ "1429": {
+  "t": "The exile stands on the middle temple of Shadra'Alor in the Hinterlands. Watch out for Shadra, the elite spider."
+ },
+ "1442": {
+  "t": "Take the quest before you start: without it the naga drop no gem.",
+  "d": "The Corrupted Kor Gem drops from the naga inside the instance and from those right outside it."
+ },
+ "1445": {
+  "d": "Almost every Atal'ai mob drops the fetishes, outside and inside the instance."
+ },
+ "1446": {
+  "d": "First kill the six troll spirits on the balconies around Jammal'an. They fear you, so pull them back to the group."
+ },
+ "1475": {
+  "d": "Before the instance, the flooded room has three tablets: one under the water in the middle, two on the tables at the sides. They come back after a few minutes."
+ },
+ "1486": {
+  "t": "Nalpak stands in the left eye of the face over the cave: climb the hill above the entrance, drop onto the nose and walk in.",
+  "d": "The deviate beasts drop them; the crocolisks in the water inside the instance are a quick farm."
+ },
+ "1487": {
+  "t": "Ebru stands in the left eye of the face over the cave: climb the hill above the entrance, drop onto the nose and walk in."
+ },
+ "1491": {
+  "d": "Every Ectoplasm drops an essence; the Devouring Ectoplasms in the cave outside the portal are not elite."
+ },
+ "1654": {
+  "d": "Four items: Whitestone Oak Lumber from the goblin woodworkers in the Deadmines mast room, the ore shipment through Bailor Stonehand in Loch Modan, Jordan's Smithing Hammer in Shadowfang Keep and the Kor Gem from the Blackfathom naga in Ashenvale."
+ },
+ "1701": {
+  "d": "Roogug: take the first path left after the entrance, cross the vine bridge and fight past about ten elites; he waits on the right."
+ },
+ "1740": {
+  "d": "You need two dungeons: the three small shards in Blackfathom Deeps and the large one in Shadowfang Keep."
+ },
+ "1838": {
+  "d": "Smoky Iron Ingots drop from the Windshear kobolds in the Stonetalon mine, Powdered Azurite from the Hillsbrad miners, Iron Bars come from a blacksmith or the auction house, and the Lead Bar comes from Razorfen Kraul."
+ },
+ "1951": {
+  "d": "The book hangs on a shelf on a short wall in the last hall of the Library, before Arcanist Doan."
+ },
+ "1956": {
+  "d": "The Obsidian Sentinel is right behind the door of the back entrance in the east of the Badlands."
+ },
+ "2040": {
+  "d": "Sneed's Shredder in the goblin workshop drops it; pull the goblins of that room out one by one first."
+ },
+ "2200": {
+  "d": "The paladin lies inside the instance near the start, in the second loop of the two-loop hall."
+ },
+ "2201": {
+  "d": "The topaz is in an urn near the dwarves of Dig Two, the ruby in the Shadowforge crate of Dig Three (two ambushers come), and the sapphire drops from Grimlok. Use the scrying bowl before you kill Archaedas."
+ },
+ "2204": {
+  "d": "The power source drops from Archaedas at the end."
+ },
+ "2240": {
+  "d": "The Gni'kiv Medallion is in the chest beside Baelog, the Shaft of Tsol drops from Revelosh: join them into the staff for the map room."
+ },
+ "2258": {
+  "d": "The drop rates are low: buzzards in the south of the Badlands, coyotes to the west, rock elementals on the hills near Kargath."
+ },
+ "2279": {
+  "d": "Behind Archaedas, click the discs, talk to the spirit that appears, then click the discs again to get the small copy. Each player has to do both clicks."
+ },
+ "2280": {
+  "d": "Behind Archaedas, click the discs, talk to the spirit that appears, then click the discs again to get the small copy. Each player has to do both clicks."
+ },
+ "2284": {
+  "d": "From the main entrance of the instance follow the right wall; the paladin's body lies in the first halls, guarded by a few troggs."
+ },
+ "2339": {
+  "d": "The ruby is in the chest in Galgann Firehammer's room (two mobs appear), the sapphire drops from Grimlok, the topaz is in the vase in Baelog's room, and the power source drops from Archaedas."
+ },
+ "2342": {
+  "d": "The box is outside the instance: facing the portal, take the path to the left (west) into a room, the box is in its corner."
+ },
+ "2500": {
+  "d": "Rock elementals on the hills west of Kargath, buzzards around the big carcass in the southwest, coyotes everywhere. Do Barbecued Buzzard Wings at the same time."
+ },
+ "2768": {
+  "d": "Kill the Sandfury Executioner on top of the temple and free Sergeant Bly with his key. Then wait at the top of the stairs: several waves of trolls come up. Keep Bly's group alive, they help a lot."
+ },
+ "2842": {
+  "t": "If the quest does not show, pick the speech line marked with a bubble in Scooty's dialogue: it adds the quest. Rig Wars must be in your quest log first."
+ },
+ "2843": {
+  "d": "You can throw the transponder away after the jump; Scooty gives a new one if you ask."
+ },
+ "2846": {
+  "d": "Hydromancer Velratha walks by the pool in Gahz'rilla's room. Clear the patrols at the south end of the pool first."
+ },
+ "2904": {
+  "d": "Kernobee is in one of the rooms right of the stairs after the Clean Zone. Lead him to the front entrance of the instance; he never attacks, so stealth works."
+ },
+ "2924": {
+  "d": "The essentials come from the grey robot boxes along the way; the loops around Viscous Fallout and Grubbis have the most, so a full group may need to clear more than the bosses."
+ },
+ "2928": {
+  "d": "Any humanoid and the Mechanical Sentries drop the gears; the bosses drop many at once."
+ },
+ "2936": {
+  "d": "Theka the Martyr walks in the western room full of scarabs. The scarabs are neutral: no area attacks there. A stealthed player can read the tablet without a fight."
+ },
+ "2962": {
+  "d": "Use the vial on living mobs, not on corpses."
+ },
+ "2991": {
+  "d": "Nekrum comes with the last wave of trolls up the big stairs after you free Sergeant Bly."
+ },
+ "3042": {
+  "d": "The tempers drop from the Sandfury trolls in the dungeon; the drop rate is low, so do it beside the other quests."
+ },
+ "3369": {
+  "d": "Kill all four Leaders of the Fang, then talk to the Disciple of Naralex at the start of the instance and protect him on his way to the sleeping druid. Mutanus the Devourer comes at the end and drops the shard."
+ },
+ "3370": {
+  "d": "Kill all four Leaders of the Fang, then talk to the Disciple of Naralex at the start of the instance and protect him on his way to the sleeping druid. Mutanus the Devourer comes at the end and drops the shard."
+ },
+ "3373": {
+  "d": "Put the essence into the font in the left back corner of Eranikus' room. Everyone should loot Eranikus."
+ },
+ "3444": {
+  "d": "The Stone Circle is in Marvon's Chest in Ratchet, outside the small hut next to the docks."
+ },
+ "3447": {
+  "d": "Click the snake statues in this order: south, north, southwest, southeast, northwest, northeast. Then kill the boss that appears and open the chest."
+ },
+ "3520": {
+  "d": "Kill a Vale Screecher, click its body, then use the instrument. Many walk north of the Feathermoon ferry dock and on the path in front of Dire Maul."
+ },
+ "3525": {
+  "d": "Everyone in the group can do it at once. If the event fails, no reset is needed: Belnistrasz comes back after a few minutes.",
+  "h": "Click the brazier that rises in front of the idol."
+ },
+ "3527": {
+  "d": "The first tablet drops from Theka the Martyr in the scarab room, the second from Hydromancer Velratha by Gahz'rilla's pool."
+ },
+ "3528": {
+  "d": "Go left from the entrance and keep right up the winding hall to the room with four fires and a ring in the middle. Clear it, use the egg, keep the Avatar off the fires. After the kill, pick up the Essence of Hakkar and use it to fill the egg. A wipe means waiting for a reset."
+ },
+ "3636": {
+  "t": "It cannot be shared: everyone takes it from Bishop DeLavey.",
+  "d": "Amnennar the Coldbringer stands at the top of the spiral hill; go right from the entrance."
+ },
+ "3801": {
+  "t": "Franclorn Forgewright shows only to a ghost: die near Blackrock Mountain and find him on the tomb in the middle of the lava, below the chains to the instance."
+ },
+ "3802": {
+  "t": "Franclorn Forgewright shows only to a ghost: die near Blackrock Mountain and find him on the tomb in the middle of the lava, below the chains to the instance.",
+  "d": "Do the Ring of Law in the arena first, then go up to the stands and on to Fineous Darkvire, who drops the hammer. Put it into the altar in the Black Anvil room."
+ },
+ "3907": {
+  "d": "The tablet is looted from Overmaster Pyron."
+ },
+ "3981": {
+  "t": "You must finish Disharmony of Fire (Overmaster Pyron) first, or Galamav will not offer it.",
+  "d": "Gor'shak is in a cell of the Detention Block, right of the main hall. The key drops from High Interrogator Gerstahn."
+ },
+ "4001": {
+  "d": "Open the cell across the hall from Gor'shak with the prison cell key and listen to the dwarf's story. Warn the group: some elites run in when you talk to Gor'shak."
+ },
+ "4003": {
+  "d": "Kill the Emperor but not the princess: once he is dead she turns friendly. Keep her busy without killing her, since she heals him."
+ },
+ "4024": {
+  "d": "Use the Altered Black Dragonflight Molt while standing on Lord Incendius' body before you move on."
+ },
+ "4061": {
+  "d": "The war reavers around the Ruins of Thaurissan in the Burning Steppes drop the parts, not the Searing Gorge golems."
+ },
+ "4063": {
+  "d": "Golem Lord Argelmach is in the Manufactory: kill all the constructs in the room first."
+ },
+ "4082": {
+  "t": "The poster is on the right side of the Kargath inn door; the first one is on the left.",
+  "d": "The dwarf groups on the hall up to Bael'Gar count."
+ },
+ "4123": {
+  "d": "The Heart of the Mountain is in the vault behind the secret panel; you can often loot it through the wall without opening the coffers."
+ },
+ "4136": {
+  "d": "Ribbly is in the Grim Guzzler."
+ },
+ "4143": {
+  "d": "Take the stairs right after the entrance down to the pit: the oozes, murk worms and lurkers there drop the samples."
+ },
+ "4145": {
+  "d": "Larion (Horde) and Muigin (Alliance) stand on the two sides of the path up to Marshal's Refuge in Un'Goro."
+ },
+ "4146": {
+  "d": "Only the oozes, murk worms and lurkers inside the instance drop the fuel: take the right path from the entrance and go down the stairs to the pit."
+ },
+ "4185": {
+  "t": "If she does not talk to you, another group is on a later step with her. Wait a few minutes until she comes back."
+ },
+ "4241": {
+  "d": "Marshal Windsor is in a cell of the Detention Block, right of the main hall; the side halls loop round to it."
+ },
+ "4242": {
+  "h": "Maxwell gives no next quest: back in Blackrock Depths, any mob may drop A Crumpled Up Note."
+ },
+ "4263": {
+  "d": "Through the dungeon: left door, right door, left door, up the stairs, then the opening on the left and out of the window onto the ledge that leads down to Lord Incendius."
+ },
+ "4264": {
+  "d": "Any mob in Blackrock Depths may drop the note once you finished Abandoned Hope. Marshal Windsor is in his cell, Marshal Maxwell at Morgan's Vigil."
+ },
+ "4282": {
+  "d": "General Angerforge is down the stairs on the left: kill his adds, he calls more when he is low. Do not take Jail Break! before the whole group is ready, it starts the escort."
+ },
+ "4286": {
+  "d": "The hounds near the entrance and the dwarves in the Grim Guzzler drop the packs."
+ },
+ "4322": {
+  "t": "Everyone must hand in A Shred of Hope before anyone starts Jail Break!, or they get no credit.",
+  "d": "Clear the path to the exit before you start the escort. If Windsor dies, reset the instance and talk to him again.",
+  "h": "Talk to Windsor before you leave the instance, or the escort does not count."
+ },
+ "4341": {
+  "d": "Kharan is in a cell of the Detention Block, right of the main hall; open it with the prison cell key."
+ },
+ "4362": {
+  "d": "Kill the Emperor but not the princess. She turns friendly only if she can see him when he dies, so keep her close but away from your healer."
+ },
+ "4363": {
+  "d": "Kill the Emperor but not the princess."
+ },
+ "4724": {
+  "d": "Only a group of five gets credit, not a raid."
+ },
+ "4729": {
+  "d": "The worg pups lie with an orc pack near the spiders; you can use the cage even in combat. Do not kill the pups with area attacks."
+ },
+ "4734": {
+  "d": "Freeze an egg in the Rookery before you walk close to the eggs, or the whelps hatch."
+ },
+ "4764": {
+  "d": "The box is in Father Flame's room in Upper Blackrock Spire, down the small ramp; it comes back at once, so the whole group can loot it."
+ },
+ "4766": {
+  "t": "Do it before Doomrigger's Clasp, or it is no longer offered."
+ },
+ "4768": {
+  "d": "The tablet is a grey square in the egg room of Upper Blackrock Spire: go up and then left."
+ },
+ "4771": {
+  "d": "Put the gambit down in the Viewing Room while Vectus is there: the students turn into skeletons and Vectus turns hostile."
+ },
+ "4862": {
+  "d": "The spider eggs are in the spider caves below; head up to the meeting stone, take the passage behind it and keep right."
+ },
+ "4866": {
+  "d": "Mother Smolderweb's poison must be on you when you leave: let her poison you, then leave the instance and walk to Ragged John in the Burning Steppes. Changing form clears it."
+ },
+ "4903": {
+  "t": "Talk to Warlord Goretooth and read all his words: he gives you his Command, which starts the quest."
+ },
+ "4981": {
+  "t": "Bijou stands below a hole in the floor just after the second wooden bridge."
+ },
+ "4982": {
+  "d": "The box spawns in a different spot each time, on the lower level between Warmaster Voone and the spider tunnel; look along the hall with the fire orcs."
+ },
+ "5001": {
+  "d": "The box spawns in a different spot each time, on the lower level between Warmaster Voone and the spider tunnel; look along the hall with the fire orcs."
+ },
+ "5047": {
+  "t": "A skinner with 300 skill skins the Beast with Finkle's Skinner; Finkle comes out and gives the quest."
+ },
+ "5089": {
+  "d": "The note drops from Overlord Wyrmthalak, the last boss of Lower Blackrock Spire."
+ },
+ "5102": {
+  "d": "General Drakkisath is the last boss of Upper Blackrock Spire: bring a raid."
+ },
+ "5125": {
+  "d": "The Medallion of Faith is in a small chest in a side room on the left about a third of the way into the Scarlet half; give it to Aurius and he helps against the Baron."
+ },
+ "5127": {
+  "t": "Only for blacksmiths with at least 270 skill."
+ },
+ "5160": {
+  "d": "In the dragon cave at 57,50 in Winterspring, step on the blue rune in the back room."
+ },
+ "5212": {
+  "d": "Any elite on the undead side may drop the samples."
+ },
+ "5214": {
+  "d": "Keep turning left to the dead end with Fras Siabi's shop; open the box and kill him. Loose undead nearby come to help him."
+ },
+ "5243": {
+  "d": "Only some crates hold holy water; dwarves can see them with Find Treasure."
+ },
+ "5251": {
+  "d": "Burn the archive by clicking the book on the Archivist's table. Take the painting from the same room first if you need it for Of Love and Family."
+ },
+ "5262": {
+  "t": "After The Archivist is handed in, Balnazzar drops his head, which starts this quest."
+ },
+ "5265": {
+  "h": "The reward is in the box right behind Lord Maxwell Tyrosus."
+ },
+ "5282": {
+  "d": "Zap a ghost with the blaster, then zap the restless souls that come after it. Stand just inside the gate of the Scarlet half."
+ },
+ "5341": {
+  "d": "Southshore: first big room after the bridge, on a desk by a bookshelf in a corner. Tarren Mill: on a desk in the room before the whelps. Brill: by Ras Frostwhisper. Caer Darrow: behind Lord Alexei Barov. A group that was ever a raid cannot loot them."
+ },
+ "5343": {
+  "d": "Southshore: first big room after the bridge, on a desk by a bookshelf in a corner. Tarren Mill: on a desk in the room before the whelps. Brill: by Ras Frostwhisper. Caer Darrow: behind Lord Alexei Barov. A group that was ever a raid cannot loot them."
+ },
+ "5382": {
+  "d": "After the Butcher dies, click the two piles of remains at the sides of his room."
+ },
+ "5384": {
+  "d": "Through the first gate, turn left down the stairs, through the next two gates, past the purple rug and right: light the brazier with the blood there. If Kirtonos does not drop what you need, abandon the quest and take it again."
+ },
+ "5466": {
+  "d": "Use the Soulbound Keepsake on Ras Frostwhisper: a 10 second channel within 30 yards, so stay clear of his fear and knockback."
+ },
+ "5514": {
+  "t": "Bring two Thorium Bars: the next step, at Fire Plume Ridge in Un'Goro, needs them."
+ },
+ "5515": {
+  "d": "Jandice Barov is in a secret room near the stairs down to the Viewing Room. Her copies take no damage: only the real one has a name plate."
+ },
+ "5522": {
+  "t": "The chain starts with freezing an egg in the Rookery of Upper Blackrock Spire for Tinkee Steamboil."
+ },
+ "5525": {
+  "d": "The key drops from the guards of the north wing; use it on Knot Thimblejack's shackles."
+ },
+ "5533": {
+  "t": "Finish Clear the Way and All Along the Watchtowers first."
+ },
+ "5538": {
+  "t": "Bring two Thorium Bars: the next step, at Fire Plume Ridge in Un'Goro, needs them."
+ },
+ "5544": {
+  "d": "The Carrion Devourers in the north drop the meat much more often than the grubs."
+ },
+ "5724": {
+  "d": "At the fork deep in the cave, take the nearest path right and up; Maura's body lies in the small room on the left at the top."
+ },
+ "5725": {
+  "d": "The books drop from the Searing Blade cultists in the camps along the left side of the main ramp down."
+ },
+ "5728": {
+  "d": "Bazzalan stands on a ledge right above Jergosh; the way up starts by the small bridges over the lava."
+ },
+ "5742": {
+  "t": "Finish all three of Tirion's kill quests first.",
+  "d": "Click the white speech bubbles while he talks."
+ },
+ "5761": {
+  "d": "Pull Taragaman off the rock bridge first: he can throw players into the lava."
+ },
+ "5781": {
+  "d": "Stand on the dirt mound at 28,87 in Western Plaguelands while the mobs come and stay on it until you loot the hammer."
+ },
+ "5801": {
+  "d": "Take the path up the north side of Fire Plume Ridge and stand at the north edge of the lava lake, not in it."
+ },
+ "5802": {
+  "d": "Take the path up the north side of Fire Plume Ridge and stand at the north edge of the lava lake, not in it.",
+  "h": "Hand it in to Apothecary Dithers, not to the goblin."
+ },
+ "5845": {
+  "d": "The flag is in a chest under the water of the lake in front of Northdale."
+ },
+ "5846": {
+  "d": "The painter is outside the inner gates of Caer Darrow: from the bridge take the path left to the first house with a roof."
+ },
+ "5848": {
+  "d": "The painting hangs on the right wall of the Archivist's room, the room before the last boss of the Scarlet half. Take it before you burn the archive."
+ },
+ "6042": {
+  "d": "Noxious plaguebats fly in the valley between 46,65 and 56,61, monstrous plaguebats around 48,38. Their poison slows you."
+ },
+ "6135": {
+  "t": "You need Un-Life's Little Annoyances done too.",
+  "d": "Duskwing circles in the fields around 31,74 in Eastern Plaguelands."
+ },
+ "6163": {
+  "t": "Finish all three of Nathanos' first quests; then he offers the two elite kills and this one."
+ },
+ "6521": {
+  "d": "Ambassador Malcin is outside the instance, in one of the tents of the thorny maze, and changes his tent. He counts as undead for tracking."
+ },
+ "6561": {
+  "t": "Horde can take it inside: Argent Guard Thaelrid lies by a campfire in a room off Ghamoo-ra's pool, through the underwater tunnel to the southwest."
+ },
+ "6563": {
+  "d": "The blue crystals grow in the tunnels before the portal, not in the instance, and come back faster than the mobs."
+ },
+ "6564": {
+  "t": "The note drops from the Blackfathom Tide Priestesses on the way in."
+ },
+ "6626": {
+  "d": "Every elite in the thorny maze outside the instance counts; no need to go in."
+ },
+ "6921": {
+  "d": "The Fathom Stone lies under water in the big pool before Kelris, below the long walkway. Clicking it calls Baron Aquanis, who drops the globe for the next quest."
+ },
+ "6922": {
+  "t": "Baron Aquanis always drops the Strange Water Globe that starts it; a character below level 21 gets no globe."
+ },
+ "7028": {
+  "d": "The Nameless Prophet walks in the caves before the instance and drops many carvings; he comes back a few steps away right after he dies. The demons inside the purple side drop them too."
+ },
+ "7029": {
+  "d": "Fill the vial at the large pool with orange crystals outside the orange side (not the dryad's small pool). Inside, use it near the small plants; kill the Noxxious Scions that come."
+ },
+ "7041": {
+  "d": "Fill the vial at the large pool with orange crystals outside the orange side (not the dryad's small pool). Inside, use it near the small plants; kill the Noxxious Scions that come."
+ },
+ "7044": {
+  "d": "The Celebrian Rod drops from Noxxion on the orange side, the Celebrian Diamond from Lord Vyletongue on the purple side. Vyletongue has two hidden demons that join the fight."
+ },
+ "7046": {
+  "d": "The scepter opens the portal to inner Maraudon, so you can skip the orange and purple sides next time. Lost it? Kill Celebras again and ask him for a new one."
+ },
+ "7065": {
+  "d": "Princess is a strong elite with a fear: bring a tank and a healer."
+ },
+ "7068": {
+  "d": "The fragments drop from the stone elementals in the purple crystal caves before the purple entrance; no need to enter the instance."
+ },
+ "7070": {
+  "d": "The fragments drop from the stone elementals in the purple crystal caves before the purple entrance; no need to enter the instance."
+ },
+ "7201": {
+  "d": "Any elemental in the Burning Steppes and Searing Gorge drops the essences, not only fire elementals."
+ },
+ "7441": {
+  "d": "In the east wing, follow the ledge left to its end. Pusillin the imp runs away when you talk to him; chase him until he fights."
+ },
+ "7461": {
+  "d": "Kill every elemental around each of the five pylons of the west wing; a pylon goes dark when the last one dies.",
+  "h": "Hand it in inside Dire Maul, not at the Dalaran crater."
+ },
+ "7481": {
+  "d": "The bones lie in the middle of the library next to Lorekeeper Lydros. You need a Crescent Key (or a lockpick) for the north wing and the library door."
+ },
+ "7482": {
+  "d": "The bones lie in the middle of the library next to Lorekeeper Lydros. You need a Crescent Key (or a lockpick) for the north wing and the library door."
+ },
+ "7488": {
+  "d": "Lethtendris is in the east wing: keep to the right wall after the entrance."
+ },
+ "7489": {
+  "d": "Lethtendris is in the east wing: keep to the right wall after the entrance."
+ },
+ "7498": {
+  "h": "Hand the book to Lorekeeper Lydros in the library: north wing, down into the pit, the locked door on the left. You need a Crescent Key or a lockpick."
+ },
+ "7500": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7501": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7502": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7503": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7504": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7505": {
+  "h": "Hand the book in at the library inside Dire Maul, even if the map shows the Dalaran crater: north wing with a Crescent Key, through the big door on the left."
+ },
+ "7506": {
+  "h": "Hand the book in at the library: north wing with a Crescent Key, down the ramp, through the big door on the left."
+ },
+ "7581": {
+  "d": "Go in through the back entrance of the west wing; keep to the right wall and leave the elementals alone."
+ },
+ "7629": {
+  "d": "Free the imp in the alchemy lab in Ras Frostwhisper's room and wait while he works; the paper stays in the jar."
+ },
+ "7631": {
+  "d": "Kill Immol'thar first, then free the imp. Keep the bell, wheel and candle burning with the Black Lodestone while the waves come: each use takes a soul shard, so bring 10 to 15."
+ },
+ "7642": {
+  "d": "The holy water is in supply crates in Stratholme, a few per crate; the wrong crates release bugs. Arthas' Tears are on the auction house."
+ },
+ "7643": {
+  "d": "The Ancient Equine Spirit needs both chains done, the Terrordale exorcism too."
+ },
+ "7877": {
+  "d": "The big chest stands by the stairs in the library."
+ },
+ "8236": {
+  "d": "WoW Forever gives you all three reward items."
+ },
+ "8253": {
+  "d": "Morphaz is at the bottom of the temple, linked to another dragon."
+ },
+ "8258": {
+  "d": "In the Ossuary basement, stand in the corner on the right before you set the scryer. Four waves of elite ghosts come, each ends with an Aspect, then Darkreaver himself."
+ },
+ "8413": {
+  "d": "Kill the six undead trolls on the balconies that guard Jammal'an."
+ },
+ "8422": {
+  "d": "Kill the six undead trolls on the balconies that guard Jammal'an."
+ },
+ "8425": {
+  "d": "Kill the six undead trolls on the balconies that guard Jammal'an: take the stairs up or the path to the right, not the spiral stairs."
+ },
+ "9053": {
+  "d": "Light the six serpent statues on the east side in order: south, north, southwest, southeast, northwest, northeast. The vine drops from the guardian that comes in the pool below."
+ },
+ "79360": {
+  "t": "For shamans: Prate Cloudseer in Thousand Needles offers it after Call of Air."
+ },
+ "79946": {
+  "d": "Aeonas is in the Cathedral, behind the door of Whitemane's room."
+ },
+ "79963": {
+  "d": "Aeonas is in Whitemane's room in the Cathedral: heal him to full, then hand it in."
+ },
+ "80411": {
+  "d": "In the courtyard with the shadowcasters round the fountain, turn right; before the long hallway look in the huts on the right for a Clay Vessel."
+ },
+ "81790": {
+  "d": "The infernals in Felwood are elites and their fire aura pushes back your casts; go with a friend."
+ },
+ "82084": {
+  "d": "The papyrus drops from the zombies in Zul'Farrak, the quill from owlbeasts in the Hinterlands. The resin drops slowly from Zukk'ash insects in Feralas (around 75,65); the workers and tunnelers seem to drop it best."
+ },
+ "84330": {
+  "t": "Undead paladins can take it too."
+ },
+ "92065": {
+  "t": "Neutral with the Timbermaw is enough; the chain starts with Legashi Threat south of Ursalan."
+ },
+ "92070": {
+  "d": "The memento drops at random from the furbolgs, also those outside the entrance."
+ },
+ "92401": {
+  "d": "The sleeping ghost cat lies by the graveyard where Rath'mael is fought; stand near it."
+ },
+ "92415": {
+  "t": "The Blood-Stained Letter lies at the graveyard deep inside, by one of the bosses."
+ },
+ "92422": {
+  "t": "Do Rear Guard Patrol (the Riptear elite in Tirisfal) first.",
+  "h": "The turn-in at 65,60, east of Undercity on the road, has no mark on the world map."
+ },
+ "92432": {
+  "h": "The image of Archmage Modera stands outside the city, by the sewer entrance on the north side, not inside."
+ },
+ "92434": {
+  "t": "Finish Magus Wordeen Voidglare's other quests first; Keeper Bel'Varil's are not needed."
+ },
+ "92456": {
+  "d": "The sample is in the City of Dalaran dungeon, not in the city outside."
+ },
+ "92457": {
+  "d": "There may not be enough remnants for everyone in one run."
+ },
+ "92458": {
+  "t": "Alliance players must take An Alarming Request first."
+ },
+ "92742": {
+  "d": "Use the item at both wells: Molsen Farm around 46, 38 and Jansen Stead around 57, 19."
+ },
+ "92744": {
+  "d": "The drop rate is low: players report 30 to 100 kills. The murlocs of level 15 and up seem to drop more."
+ },
+ "92749": {
+  "d": "It now asks for Rough Dynamite, not Coarse as the text says: cheap at the auction house, or made by a new engineer from linen and rough stone."
+ },
+ "92752": {
+  "t": "Shows up only after A Dynamite Plan is done too."
+ },
+ "92753": {
+  "d": "Plant the explosives near the middle of the forge room, where Gilnid stands.",
+  "h": "Leave by the back door of the Deadmines: the turn-in waits outside the south exit in Westfall, not where the quest began."
+ },
+ "92819": {
+  "h": "Leave by the back door of the Deadmines: the turn-in waits outside the south exit in Westfall."
+ },
+ "93404": {
+  "d": "In the pool below Princess Theradras, where Rotgrip swims, find the small water geyser under the stone bridge on the east side and fill the vial there.",
+  "h": "Use the water on the burning tree next to Woodwyrd, not on the NPC."
+ },
+ "93604": {
+  "d": "No need to go in: the tent outside the portal has the object. Before the portal, take the ramp up; clicking the object calls the mob that drops the quest item."
+ },
+ "93680": {
+  "d": "The chest is in the two-storey house west of the walled camp on the hill (around 16,89 in Alterac Mountains): second room downstairs, at the back by the stairs."
+ },
+ "94973": {
+  "t": "Tunk drops the mould for the whole group; he stands at the forge behind War Handler Ashka's wolf camp. Follow the road north-east from the boss before it, or type /tar Tunk."
+ },
+ "94974": {
+  "t": "Carry 4 Thick Leather and 12 Iron Bars before you start."
+ },
+ "94980": {
+  "t": "Tunk drops the mould for the whole group; he stands at the forge behind War Handler Ashka's wolf camp."
+ },
+ "94982": {
+  "t": "It opens once Kilgar is dead."
+ },
+ "95036": {
+  "d": "Whitestone Oak Lumber drops from the goblins in Sneed's workshop in the Deadmines, the Enchanted Silver Ingot lies on the table beside Arugal in Shadowfang Keep, and the Purified Kor Gem comes from the elite naga casters outside Blackfathom Deeps once you talked to the elf on the Zoram Strand. Keep the note in your bags: with it in the bank the lumber does not drop."
+ },
+ "95161": {
+  "t": "The Blood-Stained Letter lies at the graveyard deep inside, by one of the bosses."
+ },
+ "95189": {
+  "d": "The crest spawns in one of a few spots: the top of the tower by the spider courtyard, the top of the tower by The Abandoned, behind the banshee's door in the spider courtyard, or the room with the stairs and the locked door."
+ },
+ "95194": {
+  "h": "Sully McCleary is in the Theramore inn."
+ },
+ "95195": {
+  "d": "The undead mobs drop the insignias; there are enough for the whole group.",
+  "h": "If General Marcus Jonathan is gone, someone is doing the Onyxia scene in Stormwind: wait until it ends."
+ },
+ "95196": {
+  "t": "Sully also stands by the graveyard outside Theramore (around 63,42)."
+ },
+ "95204": {
+  "d": "The crest spawns in one of a few spots: the top of the tower by the spider courtyard, the top of the tower by The Abandoned, behind the banshee's door in the spider courtyard, or the room with the stairs and the locked door."
+ },
+ "95216": {
+  "t": "It starts from the giver after A Recipe For Death is finished."
+ },
+ "95250": {
+  "t": "Captain Truman stands on the left right as you enter."
+ },
+ "95263": {
+  "d": "Do not kill the Questioner before the last boss, or you cannot get the last quest."
+ },
+ "95454": {
+  "d": "The note lies on the ground after the last boss dies."
+ },
+ "95646": {
+  "t": "Greenwarden offers it only after his three earlier quests, Tramping Paws among them.",
+  "d": "At the Lost Dig Site, the swamp elemental you need is to the right of the fire elementals."
+ },
+ "95647": {
+  "h": "The man stands on a platform on the right just before the last boss."
+ },
+ "95663": {
+  "d": "The Deathstalker Agent waits in the hills above the Dragonmaw camp near Thelgen Rock (around 51,59); the path up starts at 53,66."
+ },
+ "95682": {
+  "t": "Take the earlier quest from Zaruk at the bottom of the stairs in Hammerfall first."
+ },
+ "95697": {
+  "t": "Borstan, by the cooking trainer in the Drag of Orgrimmar, gives it."
+ },
+ "95772": {
+  "h": "The turn-in is inside the instance, in a tent of the Dragonmaw part."
+ },
+ "95775": {
+  "d": "The tablets: down the stairs on the left when you see the pool, left of Var'Taka, in a skull's mouth by Captain Dreadrise, and behind Min'loth the Serpent, the last boss."
+ },
+ "95786": {
+  "t": "Brother Nimetz in the Rebel Camp offers it after Troll Witchery."
+ },
+ "95787": {
+  "d": "The first is down the left after the first boss, the second half inside a skull in the pirate area, the third by the naga boss, the fourth by the last boss."
+ },
+ "95788": {
+  "t": "It needs the Stranglethorn chain first: The Second Rebellion, Bad Medicine, Troll Witchery, then An Acquaintance in Southshore."
+ },
+ "95791": {
+  "t": "Krazek, on the top floor of the Booty Bay inn, gives it."
+ },
+ "95810": {
+  "h": "Hand it in at the other dig site, Whelgar's Excavation Site in the west of the Wetlands (around 34,40), not in the dungeon."
+ },
+ "95925": {
+  "d": "Use the kit at: the Pillar of Assimilation (last boss area, east), the Achromatic Crystal in the tar pit east of the entrance, the Western Gates behind the titanosaur, the Regrowth Vestibule (north temple of Vitrix), and the Stone Watcher east of the Western Gates."
+ },
+ "96377": {
+  "t": "The quest shows only on the minimap; you need the Document Box in your bags."
+ },
+ "96381": {
+  "t": "Sully gives it right after you spied on Jaina."
+ },
+ "96391": {
+  "t": "The Dark Iron Map drops from the Dark Iron spies in southeast Dun Morogh (around 77,60) and starts the quest."
+ },
+ "96393": {
+  "t": "The Dark Iron Map drops from the Dark Iron spies in southeast Dun Morogh (around 77,60) and starts the quest."
+ },
+ "96394": {
+  "d": "Afadra Dunwall is reached from the High Seat: turn left at once into the new dungeon entrance area."
+ },
+ "96395": {
+  "t": "The Ghostly Attendant gives it and takes it back inside, in the second room after the entrance."
+ },
+ "96403": {
+  "d": "The heirlooms look different from each other: move the mouse over the walls, chairs and tables. The last room has some too."
+ },
+ "96774": {
+  "d": "Loot the Deathless Marrow, the boss before the last one, far west in the Eternal Amphitheater.",
+  "h": "The path up to the giver starts at 40.2,17.4 in Mulgore."
+ },
+ "96776": {
+  "d": "Look right next to Landslide, the golem boss."
+ },
+ "96800": {
+  "d": "The book (red) lies on a table on the right side of Arcanist Doan's room at the end of the Library."
+ },
+ "96984": {
+  "d": "The whole group must be inside the dungeon before he appears, or he leaves and does not come back."
+ },
+ "96987": {
+  "d": "The book lies past the portal room, on the back wall."
+ },
+ "97049": {
+  "d": "The slimes around Loris' Tar Pits drop the essence."
+ },
+ "97130": {
+  "d": "The idol drops from the Deathless Marrow."
+ },
+ "97185": {
+  "d": "Several paladins in one group can use the Charger's Lost Soul after one event."
+ },
+ "97197": {
+  "d": "Magmus at the end of Blackrock Depths drops it."
+ },
+ "97287": {
+  "h": "Hand it to the image of Archmage Modera outside the sewer entrance; do not walk into the city."
+ },
+ "97288": {
+  "d": "Go up the stairs on the right to the green ooze pool with the pipes and the walkway, and use the item next to Ganoosh."
+ },
+ "97289": {
+  "d": "The feeding tube is upstairs, above the abomination, by the green sludge path to the west (around 44,62)."
+ },
+ "97291": {
+  "d": "The Toxic Skullcap drops from Tawny Grisette, who walks the upper ring of the Trade Quarter; the Blisterweed grows behind Katrina Alliestar; Ezekiel sells the Essence of Agony."
+ },
+ "97292": {
+  "d": "The big pink worm lies next to the path outside the upper room, on the right. Use the serum from your quest log, not by clicking the worm."
+ },
+ "98325": {
+  "h": "After it, talk to Warlord Goretooth again and read all his words: his Command starts the next quest."
+ },
+ "98423": {
+  "t": "It starts from a stone object behind one of the vault doors in the last boss's room, the right one of the doors in the north-east."
+ },
+ "98815": {
+  "t": "Finish Young Crocolisk Skins for James Halloran first.",
+  "d": "With a full group, run through the tall grass to make more raptors come."
+ },
+ "98823": {
+  "h": "Muln Earthfury is in the biggest tent of Camp Grev'rek on Skywatcher Plateau; the path up starts at 39.7,16.9."
+ },
+ "98824": {
+  "d": "You need the Titan Relic from the dungeon's last boss, not the one from the dig site. If yours is gone, abandon the quest and take it again."
+ },
+ "99156": {
+  "d": "Riptear enrages at about 20% health; keep a stun for then."
+ },
+ "99187": {
+  "d": "Only one Reliquary of Tyr drops from the boss."
+ }
+}

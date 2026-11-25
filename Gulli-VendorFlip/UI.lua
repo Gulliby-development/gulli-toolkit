@@ -11,9 +11,10 @@ local S = ns.Skin
 
 local frame, tabs, pages = nil, nil, {}
 local scanIcon, scanText, sumText, bar, dealCard, dealList, dealEmpty, heads
-local histStats, histList, histEmpty, setCard, filterCard, buyBtn, scanBtn
+local histStats, histList, histEmpty, cards, buyBtn, scanBtn, wholeBtn, viewTabs, viewHint, worthHead, pricesRow
 local tab, period = 1, "all"
 local ROW, HIST_ROW = 24, 24
+local HINT_H = 44 -- three lines under the list tabs
 -- column widths from the right: button, gain, vendor, auction, quantity
 local W_BTN, W_GAIN, W_VEND, W_AH, W_N, COL_GAP = 72, 58, 74, 66, 34, 6
 ns.ROW_H = ROW
@@ -24,13 +25,6 @@ local function clock(sec)
     sec = math.max(0, math.floor(sec or 0))
     return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
 end
-
--- A gem of each quality's colour for its row on the Settings tab.
-local QUALITY_ICON = {
-    [0] = "Interface\\Icons\\INV_Stone_15", [1] = "Interface\\Icons\\INV_Misc_Gem_Pearl_01",
-    [2] = "Interface\\Icons\\INV_Misc_Gem_Emerald_01", [3] = "Interface\\Icons\\INV_Misc_Gem_Sapphire_01",
-    [4] = "Interface\\Icons\\INV_Misc_Gem_Amethyst_01",
-}
 
 -- ---------- deal rows ----------
 
@@ -90,7 +84,8 @@ end
 function ns.LineTip(line)
     local each = line.each or line.cost / math.max(1, line.n)
     local sellEach = line.sellEach or line.value / math.max(1, line.n)
-    local out = { L.TIP_LOT:format(line.left or line.n, S.MoneyText(math.floor(each + 0.5)), S.MoneyText(sellEach)) }
+    local lot = line.mode == "d" and L.TIP_LOT_DE or L.TIP_LOT
+    local out = { lot:format(line.left or line.n, S.MoneyText(math.floor(each + 0.5)), S.MoneyText(sellEach)) }
     if line.left then out[2] = L.TIP_ONE:format(S.MoneyText(line.gain))
     else out[2] = L.TIP_ALL:format(line.n, S.MoneyText(line.gain)) end
     return out
@@ -210,8 +205,10 @@ function ns.ScanLine()
     local s = ns.scan
     if not ns.CanScan() then return L.NO_API, 0 end
     if s.held and s.phase ~= "idle" then return L.SCAN_HELD, 0 end
-    if s.phase == "browse" then return L.SCAN_BROWSE:format(#s.results), math.min(1, s.pages / ns.MAX_PAGES) end
-    if s.phase == "sift" then return L.SCAN_BROWSE:format(#s.results), #s.results > 0 and s.sifted / #s.results or 1 end
+    local browse = s.full and L.SCAN_FULL or L.SCAN_BROWSE
+    -- nobody knows how many pages the whole market has: its bar fills with the lots looked at
+    if s.phase == "browse" then return browse:format(#s.results), s.full and 0 or math.min(1, s.pages / s.maxPages) end
+    if s.phase == "sift" then return browse:format(#s.results), #s.results > 0 and s.sifted / #s.results or 1 end
     if s.phase == "detail" then return L.SCAN_DETAIL:format(math.min(s.done + 1, s.n), s.n), s.n > 0 and s.done / s.n or 0 end
     if time() < s.quietUntil then return L.SCAN_QUIET, 0 end
     local left = ns.NextIn()
@@ -249,8 +246,19 @@ local function refreshDeals()
     sumText:SetText((open > 0 and not ns.Scanning()) and L.SUM:format(open, money(worth)) or "")
     dealList:SetData(shown)
     dealEmpty:SetShown(#shown == 0)
-    if not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
+    local de = ns.view == "d"
+    -- each list says how many deals it holds, and under the tabs what its gain comes from
+    for i, v in ipairs(ns.VIEWS) do
+        local n = ns.Open(v)
+        viewTabs.buttons[i].text:SetText(L["VIEW_" .. v:upper()] .. (n > 0 and (" (" .. n .. ")") or ""))
+    end
+    viewHint:SetText(de and L.VIEW_D_HINT or L.VIEW_V_HINT)
+    worthHead:SetText(S.Upper(de and L.COL_DE or L.COL_VENDOR))
+    if de and not ns.Enchanter() then dealEmpty:Set(L.DE_NEED, L.DE_NEED_SUB)
+    elseif de and ns.db.de == false then dealEmpty:Set(L.DE_OFF, L.DE_OFF_SUB)
+    elseif not ns.atAH then dealEmpty:Set(L.NOT_AT_AH, L.NOT_AT_AH_SUB)
     elseif ns.Scanning() or not ns.scan.at then dealEmpty:Set(text, L.SCANNING_SUB)
+    elseif de then dealEmpty:Set(L.EMPTY_DE, L.EMPTY_DE_SUB)
     else dealEmpty:Set(L.EMPTY, L.EMPTY_SUB) end
     heads:SetShown(#shown > 0)
     scanBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
@@ -284,10 +292,23 @@ function ns.Refresh()
     if tab == 1 then return refreshDeals() end
     if tab == 2 then return refreshHistory() end
     buyBtn:Hide()
-    for _, card in ipairs({ setCard, filterCard }) do
-        for _, row in ipairs(card.rows or {}) do if row.control and row.control.Refresh then row.control:Refresh() end end
+    for _, card in ipairs(cards) do
+        for _, row in ipairs(card.rows) do if row.control and row.control.Refresh then row.control:Refresh() end end
     end
-    frame.footer:SetStatus("")
+    pricesRow.label:SetText(ns.PricesLine())
+    wholeBtn:SetEnabled(ns.atAH == true and ns.CanScan() and not ns.Scanning())
+    frame.footer:SetStatus(ns.atAH and "" or L.NOT_AT_AH)
+end
+
+-- The Prices card of the Settings tab: how many prices the module holds and how old the last look at
+-- the whole market is.
+function ns.PricesLine()
+    local m = ns.Market()
+    if not m or (m.n or 0) == 0 then return L.PRICES_NONE end
+    if not m.at then return L.PRICES_PART:format(m.n) end
+    local mins = math.max(0, math.floor((time() - m.at) / 60))
+    local span = mins < 60 and L.MINS:format(mins) or L.HOURS:format(math.floor(mins / 60))
+    return L.PRICES_LINE:format(m.n, span)
 end
 
 -- ---------- build ----------
@@ -310,8 +331,6 @@ local function build()
     buyBtn = S.Primary(S.Button(ft, 200, 32))
     ft:Add(buyBtn)
     buyBtn:SetScript("OnClick", function() ns.Click(ns.Top()) end)
-
-
     tabs = S.PageTabs(frame.body, { L.TAB_DEALS, L.TAB_HISTORY, L.TAB_SETTINGS }, nil, function(i)
         tab = i
         for j, p in ipairs(pages) do p:SetShown(j == i) end
@@ -354,8 +373,24 @@ local function build()
     bar:SetPoint("TOPLEFT", 0, -34)
     bar:SetPoint("TOPRIGHT", 0, -34)
 
+    -- which list: what sells to a vendor for more, or what disenchants for more
+    -- the two lists, named by what the player does with a purchase; each half of the page wide,
+    -- so a count fits beside the name
+    viewTabs = S.Tabs(dp, { L.VIEW_V, L.VIEW_D }, math.floor(frame.inner[1] / 2) - 2,
+                      function(i) ns.SetView(ns.VIEWS[i]) end, 28,
+                      { "Interface\\Icons\\INV_Misc_Coin_02", ns.OPT_ICON.de })
+    viewTabs.frame:ClearAllPoints()
+    viewTabs.frame:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
+    viewHint = S.Text(dp, 12, S.MUTED)
+    viewHint:SetPoint("TOPLEFT", 2, -34 - 4 - S.GAP - 28 - 6)
+    viewHint:SetPoint("TOPRIGHT", -2, -34 - 4 - S.GAP - 28 - 6)
+    viewHint:SetHeight(HINT_H)
+    viewHint:SetJustifyH("LEFT")
+    viewHint:SetJustifyV("TOP")
+    viewHint:SetText(L.VIEW_V_HINT)
+
     dealCard = S.Card(dp)
-    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP)
+    dealCard:SetPoint("TOPLEFT", 0, -34 - 4 - S.GAP - 28 - 6 - HINT_H - 6)
     dealCard:SetPoint("BOTTOMRIGHT")
     heads = CreateFrame("Frame", nil, dealCard.body)
     heads:SetPoint("TOPLEFT")
@@ -363,7 +398,7 @@ local function build()
     heads:SetHeight(18)
     local x = -2 - W_BTN - COL_GAP
     head(heads, L.COL_GAIN, W_GAIN, x); x = x - W_GAIN - COL_GAP
-    head(heads, L.COL_VENDOR, W_VEND, x); x = x - W_VEND - COL_GAP
+    worthHead = head(heads, L.COL_VENDOR, W_VEND, x); x = x - W_VEND - COL_GAP
     head(heads, L.COL_AH, W_AH, x); x = x - W_AH - COL_GAP
     head(heads, L.COL_N, W_N, x); x = x - W_N - COL_GAP
     local item = head(heads, L.COL_ITEM)
@@ -409,64 +444,109 @@ local function build()
     histEmpty = S.Empty(histCard.body)
     histEmpty:Set(L.HIST_EMPTY, L.HIST_EMPTY_SUB)
 
-    -- Settings
-    local rows = {}
-    for _, key in ipairs({ "scan", "auto", "sell", "sound" }) do
-        rows[#rows + 1] = { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] end,
-                            function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
-    end
+    -- Settings: a card per question. Scan, what the vendor list buys (each kind with its own
+    -- qualities), the disenchant list, the limits, sound and selling, the prices kept.
     local sp = pages[3]
     local page = S.ScrollPage(sp, frame.inner[1])
     page:SetAllPoints()
+    local inner = page.inner
+    cards = {}
+    local stack = S.Stack(inner)
+    local function switch(key)
+        return { L["OPT_" .. key], L["TIP_" .. key], function() return ns.db[key] ~= false and ns.db[key] ~= nil end,
+                 function(v) ns.SetPref(key, v and true or false) end, icon = ns.OPT_ICON[key] }
+    end
+    local function moneyRow(key, min)
+        return { L["OPT_" .. key], L["TIP_" .. key], icon = ns.OPT_ICON[key],
+                 control = S.MoneyStepper(inner, function() return ns.db[key] end, function(v) ns.SetPref(key, v) end,
+                                          min, ns.MAX_MONEY) }
+    end
+    -- A row of ticks, one per quality, for the kind above it (prefix gq: gear, oq: the rest).
+    local function qualities(prefix)
+        local row = CreateFrame("Frame", nil, inner)
+        row.height = 36
+        local boxes, x = {}, 38
+        for _, q in ipairs(ns.QUALITIES) do
+            local key = prefix .. q
+            local cell = CreateFrame("Button", nil, row)
+            local c = S.Check(cell, 26)
+            c:SetPoint("LEFT")
+            local t = S.Text(cell, 12)
+            t:SetPoint("LEFT", c, "RIGHT", 2, 0)
+            t:SetWordWrap(false)
+            t:SetText(S.QualityHex(q) .. L["Q" .. q] .. "|r")
+            local w = 26 + 2 + math.ceil(t:GetStringWidth() or 40)
+            cell:SetSize(w, 30)
+            cell:SetPoint("LEFT", x, 0)
+            x = x + w + 10
+            local function toggle() ns.SetPref(key, ns.db[key] == false) end
+            cell:SetScript("OnClick", toggle)
+            c:SetScript("OnClick", toggle)
+            boxes[#boxes + 1] = { c, key }
+        end
+        row.control = { Refresh = function() for _, b in ipairs(boxes) do b[1]:SetChecked(ns.db[b[2]] ~= false) end end }
+        row.control.Refresh()
+        row:SetScript("OnShow", row.control.Refresh)
+        row.line = S.Divider(row)
+        row.line:SetPoint("BOTTOMLEFT")
+        row.line:SetPoint("BOTTOMRIGHT")
+        row.line:SetHeight(1)
+        return row
+    end
+    local function card(title, rows, icon)
+        local c = S.Card(inner, title, nil, icon)
+        c.rows = {}
+        local st = S.Stack(c.body, 0)
+        S.rowWidth = S.GuessWidth(inner) - 2 * S.INSET
+        for i, r in ipairs(rows) do
+            local row = r.row or (r.control and S.SettingRow(c.body, r[1], r[2], r.control, nil, r.icon))
+                or S.SwitchRow(c.body, r[1], r[2], r[3], r[4], nil, r.icon)
+            if r.row then row:SetParent(c.body) end
+            st:Add(row, row.height)
+            row.line:SetShown(i < #rows)
+            c.rows[i] = row
+        end
+        S.rowWidth = nil
+        stack:Add(c, c:Fit(st:Height() - 6))
+        cards[#cards + 1] = c
+        return c
+    end
     -- the interval steps through ns.INTERVALS
     local function slot()
         for i, v in ipairs(ns.INTERVALS) do if v == ns.Interval() then return i end end
         return 1
     end
-    rows[#rows + 1] = { L.OPT_interval, L.TIP_interval, icon = ns.OPT_ICON.interval,
-        control = S.Stepper(page.inner, slot, function(i) ns.SetPref("interval", ns.INTERVALS[i]) end, 1, 1, #ns.INTERVALS,
-                            function(i)
-                                local v = ns.INTERVALS[i]
-                                return v < 60 and L.SECS:format(v) or L.MINS:format(v / 60)
-                            end, 130) }
-    rows[#rows + 1] = { L.OPT_minGain, L.TIP_minGain, icon = ns.OPT_ICON.minGain,
-        control = S.MoneyStepper(page.inner, function() return ns.db.minGain end, function(v) ns.SetPref("minGain", v) end,
-                                 ns.MIN_GAIN, ns.MAX_MONEY) }
-    rows[#rows + 1] = { L.OPT_reserve, L.TIP_reserve, icon = ns.OPT_ICON.reserve,
-        control = S.MoneyStepper(page.inner, function() return ns.db.reserve end, function(v) ns.SetPref("reserve", v) end,
-                                 0, ns.MAX_MONEY) }
-    rows[#rows + 1] = { L.OPT_keepFree, L.TIP_keepFree, icon = ns.OPT_ICON.keepFree,
-        control = S.Stepper(page.inner, function() return ns.db.keepFree end, function(v) ns.SetPref("keepFree", v) end,
-                            1, 0, 30, nil, 130) }
-    local h
-    setCard, h = S.SettingsCard(page.inner, nil, rows)
-    setCard:SetPoint("TOPLEFT")
-    setCard:SetPoint("TOPRIGHT")
-    setCard:SetHeight(h)
-
-    -- What to buy: the kinds and qualities a scan looks at, and the price limits of a line.
-    local frows = {}
-    local function switch(key, label, tip, icon)
-        frows[#frows + 1] = { label, tip, function() return ns.db[key] ~= false end,
-                              function(v) ns.SetPref(key, v and true or false) end, icon = icon }
-    end
-    switch("gear", L.OPT_gear, L.TIP_gear, ns.OPT_ICON.gear)
-    switch("goods", L.OPT_goods, L.TIP_goods, ns.OPT_ICON.goods)
-    for _, q in ipairs(ns.QUALITIES) do
-        switch("q" .. q, S.QualityHex(q) .. L["Q" .. q] .. "|r", nil, QUALITY_ICON[q])
-    end
-    frows[#frows + 1] = { L.OPT_maxPrice, L.TIP_maxPrice, icon = ns.OPT_ICON.maxPrice,
-        control = S.MoneyStepper(page.inner, function() return ns.db.maxPrice end, function(v) ns.SetPref("maxPrice", v) end,
-                                 0, ns.MAX_MONEY) }
-    frows[#frows + 1] = { L.OPT_minPct, L.TIP_minPct, icon = ns.OPT_ICON.minPct,
-        control = S.Stepper(page.inner, function() return ns.db.minPct end, function(v) ns.SetPref("minPct", v) end,
-                            5, 0, ns.MAX_PCT, function(v) return L.PCT:format(v) end, 130) }
-    local fh
-    filterCard, fh = S.SettingsCard(page.inner, L.FILTERS, frows, L.FILTERS_HINT)
-    filterCard:SetPoint("TOPLEFT", setCard, "BOTTOMLEFT", 0, -S.GAP)
-    filterCard:SetPoint("TOPRIGHT", setCard, "BOTTOMRIGHT", 0, -S.GAP)
-    filterCard:SetHeight(fh)
-    page:SetContent(h + S.GAP + fh)
+    card(L.CARD_SCAN, {
+        switch("scan"),
+        { L.OPT_interval, L.TIP_interval, icon = ns.OPT_ICON.interval,
+          control = S.Stepper(inner, slot, function(i) ns.SetPref("interval", ns.INTERVALS[i]) end, 1, 1, #ns.INTERVALS,
+                              function(i)
+                                  local v = ns.INTERVALS[i]
+                                  return v < 60 and L.SECS:format(v) or L.MINS:format(v / 60)
+                              end, 130) },
+        switch("auto"),
+    })
+    card(L.FILTERS, { switch("gear"), { row = qualities("gq") }, switch("goods"), { row = qualities("oq") } })
+    card(L.CARD_DE, { switch("de") })
+    card(L.CARD_LIMITS, {
+        moneyRow("minGain", ns.MIN_GAIN), moneyRow("reserve", 0),
+        { L.OPT_keepFree, L.TIP_keepFree, icon = ns.OPT_ICON.keepFree,
+          control = S.Stepper(inner, function() return ns.db.keepFree end, function(v) ns.SetPref("keepFree", v) end,
+                              1, 0, 30, nil, 130) },
+    })
+    card(L.CARD_NOTIFY, { switch("sound"), moneyRow("soundAt", 1), switch("sell") })
+    -- what the module keeps, and the one button that reads every lot
+    wholeBtn = S.Button(inner, 110, 28)
+    label(wholeBtn, L.SCAN_ALL_BTN, 90, 150)
+    wholeBtn:SetScript("OnClick", function() ns.Scan(true, true); ns.Refresh() end)
+    local blank = CreateFrame("Frame", nil, inner)
+    blank:SetSize(1, 1)
+    local prices = card(L.CARD_PRICES, {
+        { ns.PricesLine(), L.PRICES_TIP, control = blank, icon = ns.OPT_ICON.prices },
+        { L.SCAN_ALL, L.SCAN_ALL_TIP, control = wholeBtn, icon = ns.OPT_ICON.scan },
+    })
+    pricesRow = prices.rows[1]
+    page:SetContent(stack:Height())
     frame.settingsPage = page
 
     frame:SetScript("OnShow", function() ns.Refresh() end)
@@ -483,6 +563,12 @@ end
 function ns.ShowTab(i)
     ns.Window()
     tabs:Select(i)
+end
+
+-- Shows one list of the Deals page: "v" vendor, "d" disenchant.
+function ns.ShowView(view)
+    ns.ShowTab(1)
+    for i, v in ipairs(ns.VIEWS) do if v == view then viewTabs:Select(i) end end
 end
 
 -- The window, for the hub (/gulli) to show inside it.

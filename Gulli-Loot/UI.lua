@@ -105,8 +105,8 @@ local function fillLogRow(r, e)
     r.icon:SetTexture(e.id and itemIcon(e.id) or "Interface\\Icons\\INV_Misc_QuestionMark")
     r.text:SetText(e.link or "?")
     local what = e.rule and L["RULE_" .. e.rule:upper()] or L.RULE_ASK
-    local line = what .. " · " .. L["WHY_" .. (e.reason or "ask"):upper()]
-    if e.winner then line = line .. " · " .. L.WINNER:format(e.winner) end
+    local line = what .. S.DOT .. L["WHY_" .. (e.reason or "ask"):upper()]
+    if e.winner then line = line .. S.DOT .. L.WINNER:format(e.winner) end
     r.sub:SetText(line)
     r.make:SetShown(e.id ~= nil and ns.db.items[e.id] == nil)
 end
@@ -193,11 +193,26 @@ local function buildRules(page, width)
         switch("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
         switch("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
         switch("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
+        switch("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
         { L.OPT_ROLL_SCALE, L.OPT_ROLL_SCALE_D, icon = ns.OPT_ICON.rollScale,
           control = S.Stepper(page, function() return ns.db.rollScale or 100 end,
               function(v) ns.SetPref("rollScale", v) end, 10, 70, 150, function(v) return L.PCT:format(v) end, 110) },
     })
     st:Add(oc, oh)
+    local fc, fh = S.SettingsCard(page, L.SEC_FEED, {
+        switch("feedCompact", L.OPT_FEED_COMPACT, L.OPT_FEED_COMPACT_D),
+        switch("feedPrice", L.OPT_FEED_PRICE, L.OPT_FEED_PRICE_D),
+        switch("feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
+        switch("feedTotal", L.OPT_FEED_TOTAL),
+        { L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, icon = ns.OPT_ICON.feedRows,
+          control = S.Stepper(page, function() return ns.FeedRows() end,
+              function(v) ns.SetPref("feedRows", v) end, 1, 1, ns.FEED_ROWS_MAX, nil, 110) },
+        { L.OPT_FEED_WIDTH, L.OPT_FEED_WIDTH_D, icon = ns.OPT_ICON.feedWidth,
+          control = S.Stepper(page, function() return ns.FeedWidth() end,
+              function(v) ns.SetPref("feedWidth", v) end, ns.FEED_WIDTH_STEP, ns.FEED_WIDTH_MIN, ns.FEED_WIDTH_MAX, nil, 110) },
+        switch("feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
+    })
+    st:Add(fc, fh)
     local note, nh = S.Paragraph(page, L.NOTE, width)
     st:Add(note, nh)
     return st:Height()

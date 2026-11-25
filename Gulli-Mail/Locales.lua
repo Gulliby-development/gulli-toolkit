@@ -85,6 +85,8 @@ T.en = {
     TIP_bought = "Take all takes items won at the auction.",
     TIP_expired = "Take all takes auctions that did not sell.",
     TIP_player = "Take all takes items players sent.",
+    OPT_SUBJECT = "Fill in the subject",
+    TIP_subject = "A letter with only gold gets a subject, so you can press Send at once. You can change it.",
 }
 
 T.de = {
@@ -163,6 +165,8 @@ T.de = {
     TIP_bought = "Alles nehmen holt ersteigerte Gegenstände.",
     TIP_expired = "Alles nehmen holt abgelaufene Auktionen.",
     TIP_player = "Alles nehmen holt Sendungen von Spielern.",
+    OPT_SUBJECT = "Betreff ausfüllen",
+    TIP_subject = "Ein Brief nur mit Gold bekommt einen Betreff, damit du gleich auf Senden drücken kannst. Du kannst ihn ändern.",
 }
 
 T.es = {
@@ -241,6 +245,8 @@ T.es = {
     TIP_bought = "Tomar todo recoge lo comprado en subasta.",
     TIP_expired = "Tomar todo recoge subastas caducadas.",
     TIP_player = "Tomar todo recoge envíos de jugadores.",
+    OPT_SUBJECT = "Rellenar el asunto",
+    TIP_subject = "Una carta solo con oro recibe un asunto, así puedes pulsar Enviar enseguida. Puedes cambiarlo.",
 }
 
 T.fr = {
@@ -319,6 +325,8 @@ T.fr = {
     TIP_bought = "Tout prendre récupère les achats aux enchères.",
     TIP_expired = "Tout prendre récupère les enchères expirées.",
     TIP_player = "Tout prendre récupère les envois des joueurs.",
+    OPT_SUBJECT = "Remplir l’objet",
+    TIP_subject = "Une lettre avec seulement de l’or reçoit un objet, pour envoyer tout de suite. Tu peux le modifier.",
 }
 
 T.pl = {
@@ -397,6 +405,8 @@ T.pl = {
     TIP_bought = "Weź wszystko bierze kupione na aukcji.",
     TIP_expired = "Weź wszystko bierze niesprzedane aukcje.",
     TIP_player = "Weź wszystko bierze przesyłki graczy.",
+    OPT_SUBJECT = "Uzupełniaj temat",
+    TIP_subject = "List z samym złotem dostaje temat, więc od razu możesz nacisnąć Wyślij. Możesz go zmienić.",
 }
 
 T.pt = {
@@ -475,6 +485,8 @@ T.pt = {
     TIP_bought = "Pegar tudo pega compras do leilão.",
     TIP_expired = "Pegar tudo pega leilões expirados.",
     TIP_player = "Pegar tudo pega envios de jogadores.",
+    OPT_SUBJECT = "Preencher o assunto",
+    TIP_subject = "Uma carta só com ouro ganha um assunto, para você enviar na hora. Você pode mudá-lo.",
 }
 
 T.ru = {
@@ -553,6 +565,8 @@ T.ru = {
     TIP_bought = "«Забрать всё» берёт покупки с аукциона.",
     TIP_expired = "«Забрать всё» берёт непроданные лоты.",
     TIP_player = "«Забрать всё» берёт посылки игроков.",
+    OPT_SUBJECT = "Заполнять тему",
+    TIP_subject = "Письмо только с золотом получает тему, и его можно сразу отправить. Тему можно изменить.",
 }
 
 T.zh = {
@@ -631,6 +645,8 @@ T.zh = {
     TIP_bought = "全部拿取会拿拍得物品。",
     TIP_expired = "全部拿取会拿流拍物品。",
     TIP_player = "全部拿取会拿玩家寄来的物品。",
+    OPT_SUBJECT = "自动填写主题",
+    TIP_subject = "只寄金币的信件会自动填写主题，可以直接发送。你可以修改它。",
 }
 
 ns.T = T

@@ -354,6 +354,7 @@ test("an escort in a group: who it waits for, the ask and the answers", function
     } })
     local ns = Load()
     eq(ns.EVENT_QUESTS[155], true)
+    eq(ns.EVENT_QUESTS[94927], true, "Dunston Checks Out: help ... break out is an escort")
     W.party[1].quests[155] = nil
     W.party[2].quests = {}
     -- Ann runs the module, Bob and Cid do not (yet)
@@ -410,6 +411,25 @@ test("a member asks: ready at once with the quest in my log, else a card", funct
     eq(ns.escortAsk.id, 1234); eq(ns.escortAsk.title, "Some Escort"); eq(ns.escortAsk.from, "Ann")
     ns.AnswerEscort(1234, false)
     eq(W.sent[#W.sent][2], "Y1234:0")
+end)
+
+test("the hub's Tweaks page gets rows on the window's own saved keys", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local GROUPS = { level = true, quests = true, combat = true, loot = true, people = true, ui = true, requests = true }
+    assert(#reg.tweaks >= 2)
+    local seen = {}
+    for _, o in ipairs(reg.tweaks) do
+        assert(GROUPS[o.group], "a group of the page for " .. o.key)
+        assert(type(o.label) == "string" and type(o.desc) == "string" and o.icon, "texts and icon for " .. o.key)
+        assert(not seen[o.key], "one row per key"); seen[o.key] = true
+        o.set(true); eq(GulliPartyQuestsDB[o.key], true, o.key .. " on"); eq(o.get(), true)
+        o.set(false); eq(GulliPartyQuestsDB[o.key], false, o.key .. " off"); eq(o.get(), false)
+    end
+    assert(seen.autoShare and seen.track)
 end)
 
 W.finish()

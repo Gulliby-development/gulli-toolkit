@@ -130,6 +130,15 @@ test("the always-sell list: /gmc junk adds a white item, it sells, and protected
     GulliToolkit = nil
 end)
 
+test("an \"always sell\" item in WoW Forever's reagent bag is sold too", function()
+    Fake({ slots = { { REAGENT_BAG, 1, 42, 1, 1 } }, prices = { [42] = 9 } })
+    local ns = Load()
+    ns.J.SetAlways(42, true)
+    W.Fire("MERCHANT_SHOW")
+    W.Drain()
+    eq(#W.sold, 1); eq(W.sold[1], 42, "the reagent bag is one of the bags")
+end)
+
 test("both addons share the always-sell list", function()
     Fake({})
     local ns = Load()
@@ -325,6 +334,17 @@ test("a junk item's tooltip line goes into the Gulli block and warns", function(
     assert(l.icon and l.left:match("^%u"), "an icon and a capital: " .. l.left)
     ns.J.SetAlways(10, false)
     eq(#ns.J.TipLines(11), 0, "no line for the rest")
+end)
+
+test("junk rules keep gear whose look the player still collects", function()
+    Fake({})
+    local ns = Load()
+    local gray = { id = 77, quality = 0, price = 5, classID = 4, subclassID = 1 }
+    eq(ns.J.Tier(gray), 1, "gray gear is junk")
+    GulliToolkit = { KeepsAppearance = function(id) return id == 77 end }
+    eq(ns.J.Tier(gray), nil, "a new look stays")
+    eq(ns.J.Tier({ id = 78, quality = 0, price = 5, classID = 4, subclassID = 1 }), 1, "others still go")
+    GulliToolkit = nil
 end)
 
 W.finish()

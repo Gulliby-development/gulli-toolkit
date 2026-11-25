@@ -149,9 +149,23 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
         GulliToolkit.modules.Merchant.tweaks = { row("repair", "loot", "Repair at a vendor", "Repairs your gear when you open a vendor who can", "Trade_BlackSmithing"),
             row("sell", "loot", "Sell junk", "Sells grey items when you open a vendor", "INV_Misc_Coin_02") }
         GulliToolkit.modules.Restock.tweaks = { row("quests", "loot", "Buy reagents", "Restock is paused in this sample", "INV_Misc_Bag_08") }
+        -- a module's row with settings of its own under it
+        local feed = row("feed", "loot", "Loot feed", "A small panel of what you just looted", "INV_Misc_Bag_10")
+        db.feed, db.feedPrice, db.feedRows = true, true, 5
+        local function part(kind, key, label, more)
+            local p = { kind = kind, key = key, label = label,
+                        get = function() return db[key] end, set = function(v) db[key] = v end }
+            for k, v in pairs(more or {}) do p[k] = v end
+            return p
+        end
+        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedPrice", "Price"),
+            part("step", "feedRows", "Lines at most", { min = 1, max = 8 }),
+            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }), part("switch", "feedBare", "No background") }
+        GulliToolkit.modules.Merchant.tweaks[#GulliToolkit.modules.Merchant.tweaks + 1] = feed
         ns.SetTweak("levelShot", true)
         ns.SetTweak("skipGossip", true)
         ns.OpenTweaks()
+        ns.TweaksView().open["Merchant:feed"] = true
         ns.TweaksView().open.skipGossip = true
         ns.TweaksView().open.hideTracker = true
         ns.TweaksView().open.levelShot = true
@@ -400,7 +414,56 @@ S.loot = { default = {
         C_Item = C_Item or {}
         C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
     end,
-} }
+},
+-- The loot feed with every kind of line: gold, better gear, cloth, a quest item, a quest item
+-- to sell, junk. `feedcompact` is the same loot in the one-line look.
+feed = { spec = { db = { feed = true }, worn = { [5] = 30 }, bags = { [14047] = 43, [8146] = 7, [50001] = 7 },
+        items = { [10058] = { 4, "INVTYPE_CHEST", 44, 2, 2, 9200 }, [14047] = { 7, nil, 50, 1, 0, 400 },
+                  [8146] = { 7, nil, 45, 1, 0, 505 }, [50001] = { 12, nil, 1, 1, 4, 0 },
+                  [50002] = { 12, nil, 1, 1, 4, 250 }, [50003] = { 15, nil, 1, 0, 0, 375 } },
+        quests = { { 77, "Hope for Hatchlings", { { "7/12 Hyjal Owl Egg", 7, 12 } } } } },
+    crop = "GulliLootFeed",
+    before = function()
+        local names = { [10058] = "Nightscape Tunic", [14047] = "Runecloth", [8146] = "Wicked Claw", [50001] = "Hyjal Owl Egg",
+                        [50002] = "Torn Field Report", [50003] = "Broken Antler" }
+        local icons = { [10058] = "INV_Chest_Leather_08", [14047] = "INV_Fabric_PurpleFire_01", [8146] = "INV_Misc_MonsterClaw_03",
+                        [50001] = "INV_Egg_03", [50002] = "INV_Scroll_03", [50003] = "INV_Misc_Dust_02" }
+        local old = C_Item.GetItemInfo
+        C_Item.GetItemInfo = function(id)
+            local r = { old(id) }
+            r[1] = names[id] or r[1]
+            return unpack(r, 1, 14)
+        end
+        C_Item.GetItemIconByID = function(id) return "Interface\\Icons\\" .. (icons[id] or "INV_Misc_QuestionMark") end
+    end,
+    open = function(ns, W)
+        ns.Skin.AuctionPrice = function(id) return ({ [10058] = 18500, [14047] = 480, [8146] = 620 })[id] end
+        local q = { [10058] = "1eff00", [50003] = "9d9d9d" }
+        local function loot(id, name, n)
+            W.Fire("CHAT_MSG_LOOT", "You receive loot: |cff" .. (q[id] or "ffffff") .. "|Hitem:" .. id .. "|h[" .. name .. "]|h|r" .. (n and ("x" .. n) or "") .. ".")
+        end
+        loot(50003, "Broken Antler"); loot(50002, "Torn Field Report"); loot(50001, "Hyjal Owl Egg")
+        loot(8146, "Wicked Claw"); loot(14047, "Runecloth", 3); loot(10058, "Nightscape Tunic")
+        W.Fire("LOOT_READY"); W.money = W.money + 1682; W.Fire("PLAYER_MONEY")
+    end },
+-- Who rolled what: the sample the Unlock mode shows under the roll frames.
+rollers = { spec = { db = { rollers = true } }, crop = "GulliLootRollers",
+    open = function(ns) ns.MoveRollers(true) end },
+}
+
+S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
+    items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
+    before = S.loot.feed.before, open = S.loot.feed.open }
+
+-- Three lines at most and no background: the rest of the loot is only in the total.
+S.loot.feedbare = { spec = { db = { feed = true, feedRows = 3, feedBare = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
+    items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
+    before = S.loot.feed.before, open = S.loot.feed.open }
+
+-- One plain line, as most loot is: the panel is only as big as it.
+S.loot.feedone = { spec = { db = { feed = true }, items = { [50004] = { 0, nil, 1, 1, 0, 200 } } }, crop = "GulliLootFeed",
+    before = function() C_Item.GetItemIconByID = function() return "Interface\\Icons\\INV_Mushroom_03" end end,
+    open = function(_, W) W.Fire("CHAT_MSG_LOOT", "You receive loot: |cffffffff|Hitem:50004|h[Dried King Bolete]|h|r.") end }
 
 -- PartyQuests: a level 47 character with quests in several zones, and a group of three: Ann runs
 -- the module (progress and zones), Bob does not, Cid is offline.
@@ -698,6 +761,73 @@ S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofi
         for i, n in ipairs(ns.view.route) do if n.segs then ns.Select(i) break end end
     end }
 
+-- The simulation: Tailoring 1 » 230 for Mooncloth on a character that has Enchanting.
+do
+    local NAMES = { [2589] = "Linen Cloth", [2996] = "Bolt of Linen Cloth", [2320] = "Coarse Thread", [2321] = "Fine Thread",
+        [2592] = "Wool Cloth", [2997] = "Bolt of Woolen Cloth", [4306] = "Silk Cloth", [4305] = "Bolt of Silk Cloth",
+        [4338] = "Mageweave Cloth", [4339] = "Bolt of Mageweave", [2570] = "Linen Cloak", [4307] = "Heavy Linen Gloves",
+        [2580] = "Reinforced Linen Cape", [2584] = "Woolen Cape", [4314] = "Double-stitched Woolen Shoulders",
+        [7048] = "Azure Silk Hood", [9998] = "Black Mageweave Vest", [9999] = "Black Mageweave Leggings",
+        [10003] = "Black Mageweave Gloves", [14256] = "Felcloth", [14342] = "Mooncloth", [4291] = "Silken Thread",
+        [8343] = "Heavy Silken Thread", [2605] = "Green Dye", [2604] = "Red Dye", [6260] = "Blue Dye", [2318] = "Light Leather" }
+    local function open(then_)
+        return function(ns, W)
+            for _, row in ipairs(ns.Data.book[197]) do
+                for k = 9, #row, 2 do
+                    local id = row[k]
+                    W.items[id] = W.items[id] or { name = NAMES[id] or ("Reagent " .. id), ah = 60 + id % 90, sell = 10, age = 0.1 }
+                end
+                if row[2] > 0 then
+                    W.items[row[2]] = W.items[row[2]] or { name = NAMES[row[2]] or ("Tailored Item " .. row[2]), ah = 150 + row[2] % 400, sell = 30, age = 0.1 }
+                end
+            end
+            W.items[14342] = { name = "Mooncloth", ah = 150000, sell = 4000, age = 0.1, icon = "Interface\\Icons\\INV_Fabric_Moonrag_01" }
+            W.items[14256] = { name = "Felcloth", ah = 40000, sell = 1000, age = 0.1, icon = "Interface\\Icons\\INV_Fabric_FelRag" }
+            ns.Toggle()
+            ns.SimOpen()
+            ns.SimSet({ line = 197, from = 1, to = 230, goal = 18560 })
+            if then_ then then_(ns, W) end
+        end
+    end
+    local before = function()
+        GetProfessions = function() return 1, 2 end
+        GetProfessionInfo = function(i)
+            if i == 1 then return "Enchanting", "Interface\\Icons\\Trade_Engraving", 92, 150, 0, 0, 333 end
+            return "Cooking", "Interface\\Icons\\INV_Misc_Food_15", 40, 75, 0, 0, 185
+        end
+    end
+    local spec = { items = {} }
+    S.craftprofit.simsetup = { spec = spec, before = before, open = open() }
+    S.craftprofit.simfind = { spec = spec, before = before, open = open(function(ns)
+        ns.SimSet({ goal = false }); ns.simUI.find:SetText("cloth"); ns.SimFindRefresh() end) }
+    S.craftprofit.sim = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate() end) }
+    S.craftprofit.simrun = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.SelectLeg(2) end) }
+    S.craftprofit.simcrafts = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.Tab(2) end) }
+    S.craftprofit.simsettings = { spec = spec, before = before, open = open(function(ns)
+        ns.SimCalculate(); ns.Tab(5); ns.SetPref("chance", 60); ns.SetPref("useBank", false) end) }
+    -- the settings the simulation does not read, dim, and why
+    S.craftprofit.simfixed = { spec = spec, before = before, open = open(function(ns) ns.SimCalculate(); ns.Tab(5) end) }
+    -- the shopping list at the auction house: one line bought, the next asked for
+    local function shop(ns, W)
+        ns.SimCalculate()
+        W.Fire("AUCTION_HOUSE_SHOW")
+        ns.BuyClick()
+        local l = ns.BuyLine()
+        W.Fire("COMMODITY_PRICE_UPDATED", l.unit or 100, (l.unit or 100) * l.n)
+        ns.BuyClick()
+        W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+        ns.BuyClick()
+        l = ns.BuyLine()
+        if l then W.Fire("COMMODITY_PRICE_UPDATED", l.unit or 100, (l.unit or 100) * l.n) end
+    end
+    S.craftprofit.simshop = { spec = spec, before = before, open = open(shop) }
+    S.craftprofit.simside = { spec = spec, before = before, crop = "GulliCraftProfitSide", open = open(function(ns, W)
+        AuctionHouseFrame = nil
+        ns.Toggle()
+        shop(ns, W)
+    end) }
+end
+
 -- A vendor stop whose patterns name who sells them, with Show on map (`trainer`: the trainer stop).
 local function cpPin(trainer)
     return function(ns, W)
@@ -981,6 +1111,9 @@ S.dungeonprep = {
     alcaz = { spec = { level = 50, raceID = 2, faction = "Horde", className = "WARRIOR", active = { [96335] = true },
                        objectives = { [96335] = { { text = "Ornate Shackle Key: 0/1", finished = false } } } },
               open = function(ns) ns.home = false; ns.selected = "ALCAZ"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96335) end },
+    -- Blackrock Depths' Ever After: a long tip on its first stage, shown whole.
+    everafter = { spec = { level = 54, raceID = 2, faction = "Horde", className = "WARRIOR" },
+              open = function(ns) ns.home = false; ns.selected = "BRD"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(82062) end },
     alcaztake = { spec = { level = 50, raceID = 2, faction = "Horde", className = "WARRIOR" },
               open = function(ns) ns.home = false; ns.selected = "ALCAZ"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(96335) end },
     insidechain = { spec = dpMara, open = function(ns) ns.home = false; ns.selected = "MARA"; ns.Toggle(); ns.ShowTab(3); ns.OpenQuest(7046) end },
@@ -1657,7 +1790,7 @@ local function vfIcons()
         local r = { get(item) }
         local id = type(item) == "number" and item or tonumber(tostring(item):match("item:(%d+)"))
         if r[1] then r[10] = "Interface\\Icons\\" .. (VF_ICONS[id] or "INV_Misc_QuestionMark") end
-        return unpack(r, 1, 11)
+        return unpack(r, 1, 12)
     end
 end
 local function vfOpen(tab, quote)
@@ -1679,6 +1812,37 @@ local function vfOpen(tab, quote)
         ns.Refresh()
     end
 end
+-- An enchanter at the auction house: gear that costs less than its dust, essence or shard.
+VF_ICONS[10940], VF_ICONS[10938], VF_ICONS[10978] = "INV_Enchant_DustStrange", "INV_Enchant_EssenceMagicSmall", "INV_Enchant_ShardGlimmeringSmall"
+VF_ICONS[11083], VF_ICONS[11082], VF_ICONS[11084] = "INV_Enchant_DustSoul", "INV_Enchant_EssenceAstralLarge", "INV_Enchant_ShardGlimmeringLarge"
+VF_ICONS[6001], VF_ICONS[6002], VF_ICONS[6003], VF_ICONS[6004], VF_ICONS[6005] =
+    "INV_Chest_Leather_04", "INV_Axe_09", "INV_Bracer_05", "INV_Staff_08", "INV_Boots_05"
+local function vfDeSpec(locale)
+    local items = { [10940] = { "Strange Dust", 1, 1, 20, 7 }, [10938] = { "Lesser Magic Essence", 2, 1, 10, 7 },
+        [10978] = { "Small Glimmering Shard", 3, 1, 10, 7 }, [11083] = { "Soul Dust", 1, 1, 20, 7 },
+        [11082] = { "Greater Astral Essence", 2, 1, 10, 7 }, [11084] = { "Large Glimmering Shard", 3, 1, 10, 7 },
+        [6001] = { "Bandit Jerkin of the Monkey", 2, 310, 1, 4, 14 }, [6002] = { "Skullsplitter Tomahawk of Power", 3, 2100, 1, 2, 28 },
+        [6003] = { "Wrangler's Wristbands of the Owl", 2, 520, 1, 4, 27 }, [6004] = { "Staff of the Shade", 3, 4400, 1, 2, 30 },
+        [6005] = { "Scouting Boots of the Eagle", 2, 180, 1, 4, 12 } }
+    return { locale = locale, items = items, money = 2340000, free = 11, enchanter = true,
+        browse = { { 10940, 610 }, { 10938, 1450 }, { 10978, 9800 }, { 11083, 2400 }, { 11082, 3300 }, { 11084, 21500 },
+                   { 6001, 320 }, { 6002, 12400 }, { 6003, 1500 }, { 6004, 16000 }, { 6005, 450 } },
+        commodity = { [10940] = { { 610, 80 } }, [10938] = { { 1450, 22 } }, [10978] = { { 9800, 6 } }, [11083] = { { 2400, 40 } },
+                      [11082] = { { 3300, 9 } }, [11084] = { { 21500, 3 } } },
+        lots = { [6001] = { { 931, 3, 320 } }, [6002] = { { 932, 1, 12400 } }, [6003] = { { 933, 1, 1500 } },
+                 [6004] = { { 934, 2, 16000 } }, [6005] = { { 935, 1, 450 } } },
+        db = { minGain = 100 } }
+end
+local function vfDeOpen(ns, W)
+    vfIcons()
+    AuctionHouseFrame = nil
+    W.ScanAll(ns)
+    W.now = W.now + 42
+    ns.Window():Show()
+    ns.ShowView("d")
+    ns.Refresh()
+end
+
 S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
     quote = { spec = vfSpec(), open = vfOpen(1, true) },
     ru = { spec = vfSpec("ruRU"), open = vfOpen(1, true) },
@@ -1699,6 +1863,10 @@ S.vendorflip = { default = { spec = vfSpec(), open = vfOpen(1) },
         sf:SetVerticalScroll(560)
     end },
     empty = { spec = { items = {} }, open = function(ns) ns.Window():Show(); ns.Refresh() end },
+    disenchant = { spec = vfDeSpec(), open = vfDeOpen },
+    disenchant_ru = { spec = vfDeSpec("ruRU"), open = vfDeOpen },
+    disenchant_de = { spec = vfDeSpec("deDE"), open = vfDeOpen },
+    noenchanter = { spec = vfSpec("ruRU"), open = function(ns, W) vfOpen(1)(ns, W); ns.ShowView("d") end },
     sidetabs = { spec = vfSpec("ruRU"), open = function(ns, W)
         vfOpen(1)(ns, W)
         local S2 = ns.Skin

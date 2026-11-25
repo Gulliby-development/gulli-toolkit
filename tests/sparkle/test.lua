@@ -39,7 +39,7 @@ local function frame()
 end
 
 local function reset()
-    W.cvars = { SoftTargetInteract = "1", SoftTargetNameplateInteract = "0", SoftTargetInteractRange = "10",
+    W.cvars = { SoftTargetInteract = "1", SoftTargetNameplateInteract = "0", SoftTargetInteractRange = "10", SoftTargetInteractArc = "0",
         SoftTargetIconInteract = "0", SoftTargetIconGameObject = "0" }
     W.frames, W.textures, W.sounds = {}, {}, {}
     W.soft = nil     -- { guid, name, related, lines }
@@ -74,6 +74,8 @@ local function reset()
     SOUNDKIT = { MAP_PING = 7 }
     PlaySound = function(id) W.sounds[#W.sounds + 1] = id end
     issecretvalue = nil
+    UnitIsInInteractRange = nil
+    W.calm = nil
     Enum = nil
     GulliToolkitDB = {}
     W.tweak = nil
@@ -124,6 +126,7 @@ test("enable sets the interact settings and disable puts the player's values bac
     assert(W.cvars.SoftTargetInteract == "3", "keyboard soft interact")
     assert(W.cvars.SoftTargetNameplateInteract == "1", "nameplate on the object")
     assert(W.cvars.SoftTargetInteractRange == "15", "range")
+    assert(W.cvars.SoftTargetInteractArc == "2", "objects only straight ahead")
     assert(GulliToolkitDB.sparkleSaved.SoftTargetInteract == "1", "the old value is kept")
     -- a reload enables again: the player's value must stay the saved one
     Q.Enable(Q.Get)
@@ -131,7 +134,19 @@ test("enable sets the interact settings and disable puts the player's values bac
     Q.Disable()
     assert(W.cvars.SoftTargetInteract == "1" and W.cvars.SoftTargetInteractRange == "10", "not put back")
     assert(W.cvars.SoftTargetNameplateInteract == "0", "nameplate not put back")
+    assert(W.cvars.SoftTargetInteractArc == "0", "arc not put back")
     assert(GulliToolkitDB.sparkleSaved == nil, "saved values left")
+end)
+
+test("with all around off the game looks only ahead, as the player had it", function()
+    local Q = reset()
+    W.opts.around = false
+    Q.Enable(Q.Get)
+    assert(W.cvars.SoftTargetInteractArc == "0", "arc changed with the switch off")
+    W.opts.around = true
+    Q.Changed("around", true, Q.Get)
+    assert(W.cvars.SoftTargetInteractArc == "2", "the switch does not widen the arc")
+    Q.Disable()
 end)
 
 test("a setting that is unknown to the client is never set", function()
@@ -224,6 +239,81 @@ test("an object no quest needs gets nothing", function()
     Q.Disable()
 end)
 
+test("a quest giver or other NPC never gets the mark, even when related", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "Creature-0-1-2-3-4-5", name = "Kaylaena", related = true, lines = { { type = 17 } } }
+    Q.Refresh()
+    assert(not (_G.GulliSparkleMarker and _G.GulliSparkleMarker.shown), "marked a quest giver")
+    assert(not (_G.GulliSparkleCrosshair and _G.GulliSparkleCrosshair.shown), "crosshair on a quest giver")
+    assert(#W.sounds == 0, "rang for a quest giver")
+    Q.Disable()
+end)
+
+test("an object the game says nothing about is found by an open objective's name", function()
+    local Q = reset()
+    local quests = { { questID = 1, objs = { { text = "0/6 Untainted Soil", finished = false } } },
+        { questID = 2, objs = { { text = "Crate: 1/1", finished = true } } } }
+    C_QuestLog.GetNumQuestLogEntries = function() return #quests + 1 end
+    C_QuestLog.GetInfo = function(i)
+        if i == 1 then return { isHeader = true } end
+        return quests[i - 1]
+    end
+    C_QuestLog.GetQuestObjectives = function(id)
+        for _, q in ipairs(quests) do if q.questID == id then return q.objs end end
+    end
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "GameObject-9", name = "Untainted Soil", related = false }
+    Q.Refresh()
+    assert(_G.GulliSparkleMarker and _G.GulliSparkleMarker.shown, "no mark on the soil")
+    W.soft = { guid = "GameObject-10", name = "Crate", related = false }
+    Q.Refresh()
+    assert(not _G.GulliSparkleCrosshair.shown, "lit a done objective")
+    Q.Disable()
+end)
+
+test("an object UnitExists denies is still marked, its plate found among the shown ones", function()
+    local Q = reset()
+    UnitExists = function() return false end
+    UnitIsGameObject = function(u) return u == "softinteract" and W.soft ~= nil end
+    UnitGUID = function() return nil end
+    UnitIsUnit = function(a, b) return a == "nameplate3" and b == "softinteract" end
+    local quests = { { questID = 1, title = "Prickly Pinecones", objs = { { text = "Prickly Pinecone: 3/10", type = "item", finished = false } } },
+        { questID = 2, title = "A Prolific Source", objs = { { text = "Noxious Slime slain: 0/8", type = "monster", finished = false } } } }
+    C_QuestLog.GetNumQuestLogEntries = function() return #quests end
+    C_QuestLog.GetInfo = function(i) return quests[i] end
+    C_QuestLog.GetQuestObjectives = function(id) return quests[id].objs end
+    local plate = frame(); plate.namePlateUnitToken = "nameplate3"
+    C_NamePlate.GetNamePlates = function() return { frame(), plate } end
+    Q.Enable(Q.Get)
+    W.soft = { name = "Prickly Pinecone" }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    assert(m and m.shown, "no mark on an object UnitExists denies")
+    assert(m.points[1][2] == plate, "not on the swept plate")
+    assert(_G.GulliSparkleCrosshair.shown, "no crosshair")
+    -- a word they share, for something to pick up
+    W.soft = { name = "Prickly Pine Cluster" }
+    Q.Refresh()
+    assert(_G.GulliSparkleCrosshair.shown, "a shared word did not count")
+    -- a kill objective never ties an object by a shared word
+    W.soft = { name = "Noxious Barrel" }
+    Q.Refresh()
+    assert(not _G.GulliSparkleCrosshair.shown, "a kill objective lit an object")
+    -- the tooltip under the mouse names the quest: that name counts from then on
+    C_TooltipInfo.GetWorldCursor = function()
+        return { lines = { { leftText = "Strange Mound" }, { leftText = "Prickly Pinecones" } } }
+    end
+    Q.LearnFromCursor()
+    W.soft = { name = "Strange Mound" }
+    Q.Refresh()
+    assert(_G.GulliSparkleCrosshair.shown, "a name learned from the tooltip did not count")
+    UnitIsGameObject, UnitIsUnit = nil, nil
+    Q.Disable()
+end)
+
 test("a secret guid or name shows nothing it cannot read", function()
     local Q = reset()
     Q.Enable(Q.Get)
@@ -237,6 +327,45 @@ test("a secret guid or name shows nothing it cannot read", function()
     assert(_G.GulliSparkleCrosshair.text.text == string.format(ns.L.TWP_SPARKLE_PRESS, "F", ns.L.TWP_SPARKLE_OBJECT),
         "a secret name was shown")
     Q.Disable()
+end)
+
+test("the crosshair sits on the light, which waits through a plate the game drops for a moment", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    local plate = frame(); plate.shown = true
+    plate.GetEffectiveScale = function() return 0.4 end
+    UIParent.GetEffectiveScale = function() return 1 end
+    W.plate = plate
+    W.soft = { guid = "GameObject-7", name = "Prickly Pine Cluster", related = true }
+    Q.Refresh()
+    local m, c = _G.GulliSparkleMarker, _G.GulliSparkleCrosshair
+    m.GetCenter = function() return 500, 400 end
+    local scale
+    m.SetScale = function(_, v) scale = v end
+    Q.Refresh()
+    assert(scale == Q.SCALE_MIN, "the light does not shrink with a far plate")
+    assert(c.shown and c.points[1][2] == m, "crosshair not on the light")
+    assert(c.onMarker, "a second ring beside the light")
+    m.v.appear = 1
+    -- far off: the plate goes, the picked object stays
+    W.plate = nil
+    Q.Refresh()
+    assert(m.shown and not m.v.leaving, "the light went with the plate at once")
+    assert(m.points[1][2] == UIParent, "the light follows a plate that is gone")
+    W.plate = plate
+    Q.Refresh()
+    assert(m.v.appear == 1, "the light arrived again for the same object")
+    -- the plate goes for good: after the wait the light leaves, the crosshair goes back to the middle
+    W.plate = nil
+    Q.Refresh()
+    W.time = W.time + Q.HOLD + 0.1
+    Q.Refresh()
+    assert(m.v.leaving, "the light stays without its plate")
+    assert(c.shown and not c.onMarker and c.points[1][2] == UIParent, "crosshair not back in the middle")
+    -- the same object back while the light fades: it goes on, no new arrival
+    W.plate = plate
+    Q.Refresh()
+    assert(not m.v.leaving and m.v.appear == 1, "a returning object arrived again")
 end)
 
 test("switches: no marker without world, no crosshair without crosshair", function()
@@ -276,6 +405,76 @@ test("every style lays out and brightness and size grow", function()
     W.calm = true
     Q.Animate(m, 0.1)
     assert(m.alpha == 1, "moves with Reduce motion")
+    Q.Disable()
+end)
+
+test("the light arrives, flares in reach, fades where it stood, and stands still when calm", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    local reach = false
+    UnitIsInInteractRange = function() return reach end
+    W.soft = { guid = "GameObject-6", name = "Crate", related = true }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    assert(m.v.appear == 0, "a new object does not arrive")
+    Q.Animate(m, 0.2)
+    assert(m.v.state == false, "far at first")
+    assert(m.v.appear > 0 and m.v.appear < 1, "arrives over time")
+    for _ = 1, 10 do Q.Animate(m, 0.1) end
+    assert(m.v.appear == 1, "arrived")
+    -- in reach: only once it held, then a flare and a ring that closes in
+    reach = true
+    Q.Animate(m, 0.2)
+    assert(m.v.state == false, "a change shows before it held")
+    Q.Animate(m, 0.2)
+    assert(m.v.state == true and m.v.flash > 0, "no flare in reach")
+    local closing = false
+    for _, w in ipairs(m.waves) do if w.age and w.inward then closing = true end end
+    assert(closing, "no ring closes in")
+    -- the same object again does not arrive again
+    Q.Refresh()
+    assert(m.v.appear == 1, "arrived again for the same object")
+    -- gone: fades where it stood, then hides
+    m.GetCenter = function() return 300, 200 end
+    W.soft = nil
+    Q.Refresh()
+    assert(m.shown and m.v.leaving == 0, "does not fade where it stood")
+    for _ = 1, 6 do Q.Animate(m, 0.1) end
+    assert(not m.shown, "still shows after the fade")
+    -- back: arrives again
+    W.soft = { guid = "GameObject-7", name = "Crate", related = true }
+    Q.Refresh()
+    assert(m.shown and m.v.appear == 0 and not m.v.leaving)
+    -- Reduce motion: whole at once, nothing turns, and it goes at once
+    W.calm = true
+    local spin = m.v.spin
+    Q.Animate(m, 0.5)
+    assert(m.v.appear == 1 and m.v.spin == spin, "moves with Reduce motion")
+    W.soft = nil
+    Q.Refresh()
+    assert(not m.shown, "fades with Reduce motion")
+    Q.Disable()
+end)
+
+test("every style draws the light brighter than its dark veil and whiter in the middle", function()
+    local Q = reset()
+    Q.Enable(Q.Get)
+    W.plate = frame()
+    W.soft = { guid = "GameObject-8", name = "Crate", related = true }
+    Q.Refresh()
+    local m = _G.GulliSparkleMarker
+    for _, style in ipairs(Q.STYLES) do
+        W.opts.style = style
+        Q.Style(m, Q.Get)
+        for _ = 1, 8 do Q.Animate(m, 0.1) end
+        local c = Q.context
+        assert(c.wr >= c.hr and c.hr >= c.r and c.wb > c.b, style .. ": the glint is not whiter")
+        local star = false
+        for _, t in ipairs(m.stars) do star = star or t.shown end
+        assert(m.flare.shown or m.arrow.shown or star, style .. ": no glint")
+        assert(m.shade.shown and m.shade.color[1] == 0, style .. ": no dark veil")
+    end
     Q.Disable()
 end)
 

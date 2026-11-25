@@ -26,6 +26,7 @@ ns.OPT_ICON = {
     expired = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     player = "Interface\\Icons\\INV_Letter_15",
     panel = "Interface\\Icons\\INV_Letter_15",
+    subject = "Interface\\Icons\\INV_Letter_01",
     keepFree = "Interface\\Icons\\INV_Misc_Bag_08",
     keepGold = "Interface\\Icons\\INV_Misc_Coin_02",
 }
@@ -77,7 +78,7 @@ local function invoice(i)
 end
 local function freeSlots()
     local free = 0
-    for bag = 0, 4 do
+    for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         local f, family = (C.GetContainerNumFreeSlots or GetContainerNumFreeSlots)(bag)
         if (family or 0) == 0 then free = free + (f or 0) end
     end
@@ -748,6 +749,66 @@ function ns.FillGold()
     return amount
 end
 
+-- The subject of a letter with only money (the game names a letter with items itself, and
+-- Send stays grey without a subject). The plain amount, in the client's words when it has them.
+function ns.SubjectFor(copper)
+    copper = math.floor(copper or 0)
+    if GetCoinText then
+        local t = GetCoinText(copper >= 10000 and copper - copper % 100 or copper, " ")
+        if type(t) == "string" and t ~= "" then return t:sub(1, 64) end
+    end
+    local g, sv, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = g .. "g" end
+    if sv > 0 then parts[#parts + 1] = sv .. "s" end
+    if (c > 0 and g == 0) or #parts == 0 then parts[#parts + 1] = c .. "c" end
+    return table.concat(parts, " ")
+end
+
+-- Fills an empty subject from the money of the letter (switch `subject`). A subject it filled
+-- follows the amount; one the player typed stays. With items in the letter it steps back for
+-- the item's name, as the game would have given it.
+function ns.AutoSubject()
+    if ns.paused or not ns.db or not ns.db.subject or not sendOpen() then return nil end
+    local box = SendMailSubjectEditBox
+    if not box or not SendMailMoney or not MoneyInputFrame_GetCopper then return nil end
+    local text = box:GetText() or ""
+    local ours = ns.autoSubject
+    if text ~= "" and text ~= ours then ns.autoSubject = nil; return nil end
+    local items = ns.Room() < SEND_MAX
+    local cod = SendMailCODButton and SendMailCODButton.GetChecked and SendMailCODButton:GetChecked()
+    local copper = not items and not cod and MoneyInputFrame_GetCopper(SendMailMoney) or 0
+    local want = copper > 0 and ns.SubjectFor(copper) or ""
+    if want == text then return want end
+    ns.autoSubject = want ~= "" and want or nil
+    ns.filling = true
+    box:SetText(want)
+    ns.filling = nil
+    if items and text == ours and SendMailFrame_Update and not ns.updating then
+        -- the game's own name of the letter after its first item
+        ns.updating = true
+        SendMailFrame_Update()
+        ns.updating = nil
+    end
+    return want
+end
+
+-- Hooks the send side once the game's mail frame exists.
+function ns.HookSubject()
+    if ns.subjectHooked or not SendMailFrame then return end
+    ns.subjectHooked = true
+    local function changed() if not ns.filling then ns.AutoSubject() end end
+    for _, part in ipairs({ "Gold", "Silver", "Copper" }) do
+        local box = _G["SendMailMoney" .. part]
+        if box and box.HookScript then box:HookScript("OnTextChanged", changed) end
+    end
+    if SendMailFrame.HookScript then SendMailFrame:HookScript("OnShow", changed) end
+    if hooksecurefunc and SendMailFrame_Update then
+        hooksecurefunc("SendMailFrame_Update", function() if not ns.updating then changed() end end)
+    end
+    if hooksecurefunc and SendMailRadioButton_OnClick then hooksecurefunc("SendMailRadioButton_OnClick", changed) end
+end
+
 -- Mailing rules: { kind = "cloth", to = "Name" }. Apply fills the letter for the first rule
 -- with something to send: the recipient and the items. The player presses Send.
 function ns.NextRule()
@@ -770,7 +831,7 @@ function ns.RemoveRule(i) table.remove(ns.db.rules, i) end
 -- Events -------------------------------------------------------------------------------------
 
 ns.DEFAULTS = { panel = true, money = true, sold = true, bought = true, expired = true, player = true,
-                keepFree = 0, keepGold = 0 }
+                keepFree = 0, keepGold = 0, subject = true }
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -808,6 +869,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.open = true
         ns.visit = { money = 0, sold = 0, items = 0 }
         ns.warned = false
+        ns.HookSubject()
         if ns.db.panel and ns.ShowPanel then ns.ShowPanel() end
     elseif event == "MAIL_INBOX_UPDATE" then
         ns.InboxChanged()

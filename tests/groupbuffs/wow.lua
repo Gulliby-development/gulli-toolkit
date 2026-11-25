@@ -55,6 +55,9 @@ function Fake(spec)
     W.spec = spec
     W.frames, W.printed, W.bindings = {}, {}, {}
     W.combat = false
+    -- C_Secrets.ShouldAurasBeSecret: a boss fight, from the pull on. While it is true the
+    -- game leaves auras out of the list without a sign (spec.noSecrets: a client without it).
+    W.aurasSecret = false
     local units = spec.units or {}
     W.units = units
 
@@ -85,6 +88,7 @@ function Fake(spec)
         GetAuraDataByIndex = function(unit, i)
             local x = u(unit)
             if not x or not x.auras then return nil end
+            if W.aurasSecret then return nil end
             if x.hidden then return { name = W.SECRET, expirationTime = 0 } end
             local names = {}
             for name in pairs(x.auras) do names[#names + 1] = name end
@@ -96,15 +100,20 @@ function Fake(spec)
             if x.refuse and x.refuse[name] then error("Auras cannot be accessed when secret while tainted") end
             local a = { name = name, expirationTime = left == 0 and 0 or GetTime() + left }
             if name == "Camp Benefits" then a.spellId, a.auraInstanceID = 1229741, 77 end
+            -- x.from[name]: who cast it ("player", "party1", ...); the client says it only then.
+            local src = x.from and x.from[name]
+            if src then a.sourceUnit, a.isFromPlayerOrPlayerPet = src, src == "player" end
             return a
         end,
         -- Only with spec.byName, so the tests without it cover a client that lacks it.
         GetAuraDataBySpellName = spec.byName and function(unit, name)
             local x = u(unit)
+            if W.aurasSecret and W.byNameDrops then return nil end
             if not x or not x.auras or not x.auras[name] then return nil end
             return { name = W.SECRET, expirationTime = W.SECRET }
         end or nil,
     }
+    C_Secrets = not spec.noSecrets and { ShouldAurasBeSecret = function() return W.aurasSecret end } or nil
     -- The camp aura's tooltip: W.camp[unit] = { "First Aid Kit: Stamina increased by 34." }.
     W.camp = spec.camp or {}
     C_TooltipInfo = { GetUnitBuffByAuraInstanceID = function(unit)

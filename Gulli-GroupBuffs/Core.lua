@@ -152,19 +152,37 @@ end
 
 -- The unit's buffs as name -> seconds left (math.huge: no end), and how many of them the
 -- game hides (secret values). One hidden aura must not hide the rest.
+-- Aura list -> name -> "mine" or "other", for the buffs whose caster the game told.
+local sourceOf = setmetatable({}, { __mode = "k" })
+
+-- "mine", "other" or nil (the game did not say) for one aura's caster.
+local function caster(mine, src)
+    if mine ~= nil and not secret(mine) then return mine and "mine" or "other" end
+    if src ~= nil and not secret(src) then
+        local ok, me = pcall(UnitIsUnit, src, "player")
+        if ok and not secret(me) then return me and "mine" or "other" end
+    end
+end
+
 local function readAuras(unit)
     local out, hidden, t = {}, 0, now()
+    local from = {}
+    sourceOf[out] = from
     for i = 1, 40 do
-        local name, expires, refused
+        local name, expires, refused, who
         if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
             -- A secret aura raises an error for a tainted addon in a fight: it counts as hidden.
             local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
             if ok and not a then break end
-            if ok then name, expires = a.name, a.expirationTime else refused = true end
+            if ok then
+                name, expires = a.name, a.expirationTime
+                who = caster(a.isFromPlayerOrPlayerPet, a.sourceUnit)
+            else refused = true end
         elseif UnitBuff then
-            local n, _, _, _, _, e = UnitBuff(unit, i)
+            local n, _, _, _, _, e, src = UnitBuff(unit, i)
             if not n then break end
             name, expires = n, e
+            who = caster(nil, src)
         else
             break
         end
@@ -173,9 +191,16 @@ local function readAuras(unit)
         elseif name then
             local left = (secret(expires) or not expires or expires == 0) and math.huge or (expires - t)
             if not out[name] or out[name] < left then out[name] = left end
+            if who and from[name] ~= "mine" then from[name] = who end
         end
     end
     return out, hidden
+end
+
+-- Who cast this buff on the unit: "mine", "other", or nil when the game did not say.
+function ns.CasterOf(auras, name)
+    local from = sourceOf[auras]
+    return from and from[name]
 end
 
 -- Asks the game for one buff by name: true and seconds left when the unit has it.
@@ -188,20 +213,39 @@ local function byName(unit, name)
     return true, e - now()
 end
 
+-- Does the game hide auras now? C_Secrets says so (a boss fight, also the moment of the pull,
+-- before the lockdown); a client without the call is taken as hiding them in every fight.
+-- While it hides them the game can leave buffs out of the list without a sign.
+function ns.AurasHidden()
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret then
+        local ok, v = pcall(C_Secrets.ShouldAurasBeSecret)
+        if ok and v ~= nil then return v and true or false end
+    end
+    return (InCombatLockdown and InCombatLockdown())
+        or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+end
+
 -- The unit's buffs, as readAuras. When the game hides some of them, each of `names` that
 -- did not show is asked for by name; nil when the game cannot tell (the unit is left alone).
 function ns.Auras(unit, names)
     local ok, out, hidden = pcall(readAuras, unit)
     if not ok then return nil end
-    if hidden == 0 then return out end
-    if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then return nil end
-    -- In a fight the game hides names, so "not found" by name proves nothing: then only a
-    -- found buff counts, and a unit with nothing found is left alone.
-    local fighting = (InCombatLockdown and InCombatLockdown())
+    local hiding = ns.AurasHidden()
+    if hidden == 0 and not hiding then return out end
+    -- In a fight the game hides names, so a miss by name proves nothing there either.
+    local fighting = hiding or (InCombatLockdown and InCombatLockdown())
         or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+    if not (names and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then
+        -- Without a way to ask by name, only a list the game showed whole counts.
+        if hidden == 0 and next(out) then return out end
+        return nil
+    end
+    -- While the game hides auras, "not found" proves nothing: then only a found buff counts,
+    -- and a unit with nothing found is left alone (no false alarm at the pull).
     local found = false
     for _, n in ipairs(names) do
-        if not out[n] then
+        if out[n] then found = true
+        else
             local has, left = byName(unit, n)
             if has == nil then return nil end
             if has then out[n], found = left, true end
@@ -450,6 +494,34 @@ end
 
 ns.Present = present
 
+-- Your next blessing for a unit whose chosen one another paladin gave (the game says so),
+-- while none of yours is on it: the first of B.BLESS_NEXT you know that is not there.
+function ns.NextBlessing(fam, chosen, unit, auras, low)
+    local opt = fam.options[chosen]
+    local by
+    for _, n in ipairs(opt.names) do
+        local c = auras[n] and auras[n] > low and ns.CasterOf(auras, n)
+        if c == "mine" then return nil end
+        if c == "other" then by = true end
+    end
+    if not by then return nil end
+    for _, o in pairs(fam.options) do
+        for _, n in ipairs(o.names) do
+            if auras[n] and ns.CasterOf(auras, n) == "mine" then return nil end
+        end
+    end
+    local _, class = ask(UnitClass, unit)
+    local r = role(unit)
+    for _, key in ipairs(B.BLESS_NEXT) do
+        if key == "own" then key = class and B.BLESS_DEFAULT[class] end
+        local o = key and key ~= chosen and fam.options[key]
+        local fits = o and not (key == "wisdom" and class and B.NO_MANA[class])
+            and not (key == "might" and B.CASTERS[class or ""])
+            and not (key == "sanctuary" and r ~= "TANK")
+        if fits and not present(o.names, auras, 0) then return o end
+    end
+end
+
 local function weaponMissing(low)
     if not GetWeaponEnchantInfo then return false end
     local has, ms = GetWeaponEnchantInfo()
@@ -638,6 +710,14 @@ function ns.Plan()
                     found[#found + 1] = { unit = u.unit, sub = u.group, key = fam.key,
                                           spell = opt.name, id = opt.id, names = opt.names,
                                           bless = opt, bclass = cls }
+                elseif opt then
+                    -- Another paladin gave this one: your own slot takes your next blessing.
+                    local nxt = ns.NextBlessing(fam, bkey, u.unit, auras, low)
+                    if nxt and not ns.IsBounced(u.unit, nxt.name) then
+                        found[#found + 1] = { unit = u.unit, sub = u.group, key = fam.key,
+                                              spell = nxt.name, id = nxt.id, names = nxt.names,
+                                              bless = nxt, instead = true }
+                    end
                 end
             elseif applies(fam, u.unit, ctx, u.pet) then
                 local missing

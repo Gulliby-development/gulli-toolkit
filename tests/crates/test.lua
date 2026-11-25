@@ -865,11 +865,11 @@ test("a line shows the item's name, never its id", function()
     w:Show()
     local line = ns.ItemLine(WB, 10)
     eq(line:find("3819") == nil, true, "no item id while the name loads")
-    eq(line, "10 × " .. ns.L.ITEM_LOADING)
+    eq(line, "10 x " .. ns.L.ITEM_LOADING)
     W.names[WB] = "Wintersbite"
     W.Fire("GET_ITEM_INFO_RECEIVED", WB, true)
     W.RunTimers()
-    eq(ns.ItemLine(WB, 10), "10 × Wintersbite")
+    eq(ns.ItemLine(WB, 10), "10 x Wintersbite")
     eq(ns.namesPending, nil, "the redraw ran")
 end)
 

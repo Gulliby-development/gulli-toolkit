@@ -42,9 +42,11 @@ def parse_time(s):
 
 
 def releases_of(repo):
-    """Every release, page by page (the newest 1000 are plenty)."""
-    out = []
-    for page in range(1, 11):
+    """Every release, page by page. The repository has more than 1000, and the old `bundle`
+    pre-release is among the last, so the walk has no page limit."""
+    out, page = [], 0
+    while True:
+        page += 1
         text = subprocess.run(["gh", "api", "repos/%s/releases?per_page=100&page=%d" % (repo, page)],
                               capture_output=True, text=True, check=True).stdout
         got = json.loads(text)

@@ -133,6 +133,24 @@ test("own items count at what they would sell for; bolts are made when that is c
     eq(how, "craft"); near(v, 4 * own)
 end)
 
+test("crafting materials always sell; the share that sells is for finished goods", function()
+    Fake({})
+    local n = Load()
+    for _, id in ipairs({ 4339, 14342, 2840, 3575 }) do assert(n.IsReagent(id), "reagent " .. id) end
+    local robe = 14152 -- Robe of the Archmage: no recipe asks for it
+    assert(not n.IsReagent(robe))
+    local st = { items = { [4339] = { ah = 1000, vend = 100, age = 0 }, [robe] = { ah = 1000, vend = 100, age = 0 } } }
+    local P = n.Prefs({ chance = 50 })
+    near(n.SellValue(st, P, 4339, 0), 1000 * 0.95, "a bolt sells every time")
+    near(n.SellValue(st, P, robe, 0), 0.5 * 950 + 0.5 * (100 - n.Deposit(st.items[robe])), "a robe by the share")
+    eq(n.SellChance(P, 4339), 1); eq(n.SellChance(P, robe), 0.5)
+    -- the value tooltip says so
+    local tip = {}
+    n.ValueTip(tip, st, P, { out = 4339, count = 1 }, { how = "ah", value = 950 })
+    eq(tip[#tip][1], n.L.TIP_SURE)
+    assert(tip[1][1]:find("100%%"), "sold 100% of the time")
+end)
+
 test("skill-up chance and colours", function()
     local c = core()
     local r = { skill = { 145, 160, 175 } }
@@ -634,7 +652,7 @@ test("no price addon: the auction switches are off and grey, a banner says so, o
     for _, x in ipairs(v.variants) do assert(not n.EARN[x.mode], "no profit route from guessed prices: " .. x.mode) end
     assert(v.plan, "a levelling route all the same")
     assert(n.ui.priceBanner:IsShown(), "the banner tells why")
-    assert(n.ui.priceBanner.text:GetText():find("×" .. n.AH_GUESS, 1, true))
+    assert(n.ui.priceBanner.text:GetText():find("x" .. n.AH_GUESS, 1, true))
     n.Tab(5)
     for _, k in ipairs({ "buyAH", "sellAH" }) do
         eq(n.ui.checks[k]:GetChecked(), false, k .. " shows off")
@@ -696,6 +714,25 @@ test("every price addon is read: auxForever, Naowh Forever, TSM, Hammerprice; a 
     eq(table.concat(n.PriceAddons(), ","), "Naowh Forever,Hammerprice")
     eq(n.HasPrices(), true)
     NaowhForever, Hammerprice = nil, nil
+end)
+
+test("Gulli's own scans are a price source, the first one, once they hold a price", function()
+    local n = game({ auctionator = false })
+    local ready = false
+    GulliAuction = { Ready = function() return ready end,
+                     Price = function(id) if id == 1 then return 140, 0 elseif id == 2 then return 90, 9 end end }
+    eq(n.HasPrices(), false, "an empty list is no price addon: the price settings stay grey")
+    eq(n.AuctionPrice(1), nil)
+    ready = true
+    eq(n.HasPrices(), true)
+    eq(n.PriceAddons()[1], "Gulli Auction")
+    eq(n.AuctionPrice(1), 140)
+    local now = W.now
+    NaowhForever = { AuctionPrice = function(id) return 100, now end }
+    eq(n.AuctionPrice(1), 140, "the own scan of this realm goes first")
+    eq(n.AuctionPrice(2), 100, "an old own price gives way to a fresh one")
+    eq(n.AuctionPrice(3), 100, "what the own scan never saw comes from the others")
+    GulliAuction, NaowhForever = nil, nil
 end)
 
 test("another player's profession (a trade link) is never saved; one the spellbook lacks is not listed", function()
@@ -2481,6 +2518,30 @@ test("the profession window counts as open while the game shows it, whatever ord
     ProfessionsFrame = nil
 end)
 
+test("the game's profession window: an item's tooltip tells the skill-up chance and the colour levels", function()
+    local n = game()
+    eq(#n.RecipeTipLines(4), 0, "no line while the game's window is closed")
+    ProfessionsFrame = W.stub(); ProfessionsFrame:Show()
+    local lines = n.RecipeTipLines(4)
+    eq(#lines, 2)
+    local rec
+    for rid, r in pairs(n.char.profs.Tailoring.recipes) do if r.out == 4 then rec = { rid, r } end end
+    local sk = n.RecipeSkill(rec[1], rec[2])
+    local y, g, gy = n.Levels(sk)
+    local pct = math.floor(n.Chance({ skill = sk }, SKILL) * 100 + 0.5)
+    assert(lines[1].left:find(tostring(pct), 1, true), "the chance: " .. lines[1].left)
+    for _, v in ipairs({ y, g, gy }) do assert(lines[2].left:find(tostring(v), 1, true), "level " .. v) end
+    assert(y <= g and g <= gy)
+    eq(#n.RecipeTipLines(1), 0, "Silk Cloth is no craft of this profession")
+    -- the colours follow ns.Color: green from the middle between yellow and grey
+    local a, b, c = n.Levels({ 0, 100, 120 })
+    eq(a, 100); eq(b, 110); eq(c, 120)
+    eq(n.Color({ skill = { 0, 100, 120 } }, 109), "ye"); eq(n.Color({ skill = { 0, 100, 120 } }, 110), "gr")
+    a, b, c = n.Levels({ 0, 100, 115 })
+    eq(b, 108); eq(n.Color({ skill = { 0, 100, 115 } }, 107), "ye"); eq(n.Color({ skill = { 0, 100, 115 } }, 108), "gr")
+    ProfessionsFrame = nil
+end)
+
 test("the first run's buy stops also buy what the later runs need, behind a switch that plans nothing", function()
     local c = core()
     local st = state()
@@ -3040,6 +3101,372 @@ test("each stretch of a route says why its recipe was chosen, and the next best 
     end
     assert(gain, "the gain of a craft")
     if #we.alts > 0 then assert(best, "the best series against the next"); assert(c.WhyAltSide(we.alts[1]) ~= "") end
+end)
+
+-- ---------- the simulation ----------
+
+-- A character without Tailoring, and a price for everything the Tailoring book names.
+local function simGame(extra)
+    local spec = { items = {}, spellbook = {} }
+    for k, v in pairs(extra or {}) do spec[k] = v end
+    Fake(spec)
+    local n = Load()
+    for _, row in ipairs(n.Data.book[197]) do
+        for k = 9, #row, 2 do W.items[row[k]] = W.items[row[k]] or { name = "R" .. row[k], ah = 100, sell = 10, age = 0.1 } end
+        if row[2] > 0 then W.items[row[2]] = W.items[row[2]] or { name = "Out" .. row[2], ah = 150, sell = 30, age = 0.1 } end
+    end
+    W.items[14342] = { name = "Mooncloth", ah = 150000, sell = 4000, age = 0.1 }
+    W.items[14256] = { name = "Felcloth", ah = 40000, sell = 1000, age = 0.1 }
+    return n
+end
+-- A table as text, keys sorted: two saves are the same when their texts are.
+local function dump(t, seen)
+    if type(t) ~= "table" then return tostring(t) end
+    seen = seen or {}
+    if seen[t] then return "<again>" end
+    seen[t] = true
+    local keys = {}
+    for k in pairs(t) do keys[#keys + 1] = k end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    local out = {}
+    for _, k in ipairs(keys) do out[#out + 1] = tostring(k) .. "=" .. dump(t[k], seen) end
+    return "{" .. table.concat(out, ",") .. "}"
+end
+local function simRun(n, opts)
+    n.SimOpen()
+    n.SimSet(opts)
+    assert(n.SimStart(), "the simulated profession is built")
+    n.Recalc(false)
+    return n.view
+end
+
+test("the recipe book: every profession of the simulation, whole rows, starters free", function()
+    local n = simGame()
+    local B = n.Data.book
+    for _, line in ipairs(n.SIM_LINES) do
+        assert(B[line] and #B[line] >= 10, "recipes of " .. line)
+        assert(n.SIM_PROF_ICON[line] and n.T.en["PROF_" .. line], "icon and name of " .. line)
+        for _, row in ipairs(B[line]) do
+            assert(#row >= 10 and #row % 2 == 0, "row of " .. row[1])
+            assert(row[4] >= 1 and row[5] <= row[6] and row[4] <= row[6], "levels of " .. row[1])
+            for k = 10, #row, 2 do assert(row[k] > 0, "reagent count of " .. row[1]) end
+            assert(not n.Data.gone[row[1]] or true)
+        end
+    end
+    local bolt, moon
+    for _, row in ipairs(B[197]) do
+        if row[1] == 2963 then bolt = row end
+        if row[1] == 18560 then moon = row end
+    end
+    -- Bolt of Linen Cloth is known from the start: learned at 1, free
+    eq(bolt[4], 1); eq(bolt[7], 1)
+    assert(moon and moon[8] == 1 and moon[2] == 14342, "Mooncloth comes from a pattern")
+end)
+
+test("the simulation plans a profession the character does not have, from skill 1", function()
+    local n = simGame()
+    local v = simRun(n, { line = 197, from = 1, to = 75 })
+    assert(v.state and v.state.sim, "a simulated state")
+    eq(v.state.name, n.SimProfName(197)); eq(v.state.skill, 1)
+    for _, r in pairs(v.state.recipes) do assert(not r.learned, "no recipe is learned") end
+    local full = v.plan.full or v.plan
+    eq(full.reached, 75, "the way reaches the target")
+    assert(#v.legs > 0 and v.leg == 0, "the whole way shows first")
+    -- no profit routes: the simulation is about the way
+    for _, x in ipairs(v.variants) do assert(not n.EARN[x.mode], "no profit route") end
+    -- the totals add up to the result
+    local t = n.SimTotals(full)
+    near(t.materials + t.learn - t.sales, -t.net, "totals")
+    assert(t.learn > 0, "recipes and ranks cost something")
+    eq(t.level, 5, "the Apprentice rank's level")
+    eq(n.SimLevel(230), 35); eq(n.SimLevel(150), 10)
+    n.SimStop()
+end)
+
+test("nothing of the simulation is saved, and the exit brings the real profession back", function()
+    local n = game()
+    n.Recalc(false)
+    local plan, name = n.view.plan, n.view.state.name
+    assert(plan, "a real plan")
+    local before = dump(GulliCraftProfitDB) .. dump(GulliCraftProfitCharDB)
+    n.SimOpen()
+    n.SimSet({ line = 171, from = 20, to = 60, empty = true })
+    n.SetPref("chance", 55)
+    n.SetSkip(2330, true)
+    n.SetGather(765, true)
+    assert(n.SimStart())
+    n.Recalc(false)
+    assert(n.view.state.sim and n.view.plan ~= plan, "the simulation has its own result")
+    eq(n.view.prefs.chance, 55, "the simulation uses its own settings")
+    n.MarkDone(1); n.StartRun(); n.OnCast(2330)
+    eq(dump(GulliCraftProfitDB) .. dump(GulliCraftProfitCharDB), before, "the saved variables are untouched")
+    assert(n.SimStop())
+    eq(n.sim, nil)
+    eq(n.view.plan, plan, "the real result is back")
+    eq(n.view.state.name, name)
+    eq(n.Prefs(n.SavedPrefs()).chance, n.Prefs(n.db.prefs).chance)
+    assert(n.Prefs(n.SavedPrefs()).chance ~= 55, "the changed setting is forgotten")
+    assert(not n.SkipSet()[2330] and not n.Gathered()[765], "and the avoided craft and the gathered item")
+    eq(dump(GulliCraftProfitDB) .. dump(GulliCraftProfitCharDB), before)
+    -- a second simulation starts clean
+    n.SimOpen()
+    eq(n.sim.from, 1); eq(n.sim.goal, nil); eq(n.sim.empty, false); eq(n.sim.prof, nil)
+    n.SimStop()
+end)
+
+test("settings changed inside the simulation are named, and the player's own come back", function()
+    local n = simGame()
+    simRun(n, { line = 197, from = 1, to = 30 })
+    eq(#n.SimChanged(), 0)
+    n.SetPref("chance", 55); n.SetPref("useBank", false)
+    eq(table.concat(n.SimChanged(), " "), "chance useBank")
+    eq(n.view.prefs.chance, 55, "the plan was built again with it")
+    n.SimRevert()
+    eq(#n.SimChanged(), 0)
+    eq(n.view.prefs.target, 30, "the target is the simulation's own")
+    -- the target stepper moves the simulation's target, not a saved one
+    n.SetPref("target", 40)
+    eq(n.sim.to, 40); eq(n.db.prefs.target, nil)
+    n.SimStop()
+end)
+
+test("a goal recipe moves the target, and the payback counts crafts and cooldown days", function()
+    local n = simGame()
+    n.SimOpen()
+    n.SimSet({ line = 197, from = 215, goal = 18560 })
+    eq(n.sim.to, 230, "the target stands at the skill the recipe is learned at")
+    assert(n.SimStart()); n.Recalc(false)
+    local res = n.SimResult()
+    assert(res and res.goal, "the goal recipe is the one after the target")
+    local p, t = res.pay, res.totals
+    eq(p.recipe, 18560); eq(p.reach, true); eq(p.need, 230)
+    near(p.cost, 80000, "two Felcloth")
+    assert(p.gain > 0 and p.value > p.cost, "it gains")
+    eq(p.cd, n.COOLDOWNS[18560])
+    assert(t.net < 0, "the way costs money")
+    eq(p.crafts, n.Ceil((-t.net + p.extra) / p.gain))
+    eq(p.days, n.Ceil(p.crafts * p.cd / n.DAY))
+    local left, right = n.SimPayText(res)
+    assert(left == n.L.SIM_PAY and right:find(tostring(p.crafts), 1, true) and right:find(tostring(p.days), 1, true))
+    -- without a goal: the craft that gains the most at the end of the way
+    n.SimSet({ goal = false })
+    eq(n.sim.goal, nil); eq(n.sim.prof, nil, "new conditions drop the result")
+    assert(n.SimStart()); n.Recalc(false)
+    res = n.SimResult()
+    eq(res.goal, false)
+    assert(res.pay and res.after.recipes[res.pay.recipe].learned, "the best craft is one the way has learned")
+    -- a craft that loses money never pays back
+    W.items[14342].ah = 100
+    n.SimSet({ goal = 18560 }); assert(n.SimStart()); n.Recalc(false)
+    res = n.SimResult()
+    assert(res.pay.gain <= 0 and res.pay.crafts == nil)
+    assert(select(2, n.SimPayText(res)):find(n.L.SIM_PAY_NEVER, 1, true))
+    n.SimStop()
+end)
+
+test("reputation patterns and specialization recipes are no part of a simulation", function()
+    local n = simGame({ tips = { [14526] = { { "Pattern: Mooncloth" }, { "Requires Timbermaw Hold - Friendly" } } } })
+    local v = simRun(n, { line = 197, from = 225, to = 235 })
+    local r = v.state.recipes[18560]
+    eq(r.src.t, "rep", "a new character has no reputation")
+    assert(not n.CanGet(r, v.prefs))
+    local res = n.SimResult()
+    assert(not res.after.recipes[18560].learned, "so the way never learns it")
+    n.SimStop()
+    -- every specialization recipe of Engineering
+    v = simRun(n, { line = 202, from = 200, to = 205 })
+    local seen = 0
+    for _, list in pairs(n.SPECS) do
+        for _, rid in ipairs(list) do
+            local x = v.state.recipes[rid]
+            if x then seen = seen + 1; eq(x.src.t, "spec"); assert(not n.CanGet(x, v.prefs)) end
+        end
+    end
+    assert(seen >= 10, "the book has specialization recipes: " .. seen)
+    n.SimStop()
+end)
+
+test("empty bags: the simulation buys everything; else the own stock counts", function()
+    local n = simGame()
+    W.items[2589] = { name = "Linen Cloth", ah = 100, sell = 10, age = 0.1, bags = 60, bank = 40 }
+    W.items[2996] = { name = "Bolt of Linen Cloth", ah = 5000, sell = 10, age = 0.1 } -- dear: weaving the own cloth wins
+    local v = simRun(n, { line = 197, from = 1, to = 20 })
+    eq(v.state.items[2589].bags, 60); eq(v.state.items[2589].bank, 40)
+    local own = (v.plan.full or v.plan).own
+    assert(own > 0, "own cloth is used")
+    n.SimSet({ empty = true }); assert(n.SimStart()); n.Recalc(false)
+    v = n.view
+    eq(v.state.items[2589].bags, 0); eq(v.state.items[2589].bank, 0)
+    eq((v.plan.full or v.plan).own, 0, "nothing is own")
+    n.SimStop()
+end)
+
+test("the conditions keep within their bounds", function()
+    local n = simGame()
+    n.SimOpen()
+    n.SimSet({ from = 500 }); eq(n.sim.from, 299); eq(n.sim.to, 300)
+    n.SimSet({ from = 100, to = 50 }); assert(n.sim.from < n.sim.to)
+    n.SimSet({ to = 150 }); n.SimSet({ from = 150 }); eq(n.sim.to, 151, "the target stays above the start")
+    n.SimSet({ line = 171 }); eq(n.sim.name, n.SimProfName(171)); eq(n.sim.goal, nil)
+    n.SimSet({ goal = 18560 }); eq(n.sim.goal, nil, "a recipe of another profession is no goal")
+    local list, all = n.SimFind(197, "moon", 5)
+    assert(all >= 1 and list[1].name:lower():find("moon"), "the goal box finds by name")
+    eq(n.SimFind(197, "18560", 5)[1].recipe, 18560, "and by id")
+    eq(#n.SimFind(197, "", 5), 0)
+    n.SimStop()
+end)
+
+test("the window in the simulation: switch, strip, conditions, the whole way, read-only stops", function()
+    local n = simGame()
+    n.Toggle()
+    local u = n.simUI
+    assert(u.toggle and not u.strip:IsShown() and n.ui.simTry:IsShown(), "no profession: the simulation is offered")
+    W.Click(u.toggle)
+    assert(n.sim and u.strip:IsShown() and u.setup:IsShown() and not n.ui.main:IsShown(), "the conditions page")
+    eq(u.toggle.switch:GetChecked(), true)
+    W.Click(u.tiles[1]); eq(n.sim.line, n.SIM_LINES[1])
+    W.Click(u.tiles[6]); eq(n.sim.line, 197)
+    W.Click(u.to.chips[1]); eq(n.sim.to, 150)
+    W.Click(u.from.chips[2]); eq(n.sim.from, 75)
+    W.Click(u.from.stepper.plus); eq(n.sim.from, 80)
+    W.Click(u.from.stepper.minus); W.Click(u.from.stepper.minus); eq(n.sim.from, 70)
+    n.SimSet({ from = 1, to = 40 })
+    W.Click(u.empty.switch); eq(n.sim.empty, true)
+    W.Click(u.empty.switch); eq(n.sim.empty, false)
+    W.Click(u.go)
+    local v = n.view
+    assert(v.plan and v.state.sim, "Calculate plans the simulated profession")
+    assert(n.ui.main:IsShown() and not u.setup:IsShown())
+    assert(u.way:IsShown() and not n.ui.stopsBox:IsShown() and not n.ui.detailCard:IsShown(), "the whole way first")
+    eq(n.ui.chips[1]:GetText():match("^(.-)%s*$"), n.L.SIM_WHOLE)
+    eq(n.ui.tabs.buttons[2]:GetText(), n.L.SIM_TAB_CRAFTS:format(40))
+    eq(n.ui.tabs.buttons[3]:IsEnabled(), false, "My items is no part of a simulation")
+    assert(n.ui.prof:GetText():find("1 » 40", 1, true))
+    -- a run: its stops, with nothing to press
+    n.SelectLeg(1)
+    assert(not u.way:IsShown() and n.ui.stopsBox:IsShown() and #v.route > 0)
+    for i = 1, #v.route do
+        local a = n.StopAction(i)
+        eq(a.pill[1], n.L.SIM_PILL)
+        assert(not a.primary and not a.second and #a.tools == 0, "a simulated stop has no buttons")
+    end
+    for _, p in ipairs(n.RunProgress()) do assert(not p.done) end
+    eq(#n.TipLines(2589), 0, "no line in the item tooltips")
+    assert(not n.SideShow("ah"), "no window beside the auction house")
+    -- the lists and the settings
+    n.Tab(2); n.Tab(4); n.Tab(5)
+    n.SetPref("chance", 55)
+    assert(u.back:IsShown(), "the footer gives the player's own settings back")
+    W.Click(u.back); eq(#n.SimChanged(), 0); assert(not u.back:IsShown())
+    -- the profession pill leads back to the conditions
+    n.Tab(1)
+    W.Click(n.ui.prof)
+    assert(n.sim and not n.sim.prof and u.setup:IsShown())
+    -- closing the window keeps the simulation; the exit ends it
+    n.Toggle(); assert(n.sim, "a closed window keeps the simulation")
+    n.Toggle()
+    W.Click(u.strip.exit)
+    assert(not n.sim and not u.strip:IsShown() and not u.setup:IsShown() and n.ui.main:IsShown())
+    eq(u.toggle.switch:GetChecked(), false)
+    eq(n.ui.tabs.buttons[2]:GetText(), n.L.TAB_CRAFTS); eq(n.ui.tabs.buttons[3]:IsEnabled(), true)
+end)
+
+test("/gcp sim turns the simulation on with the window, and off again", function()
+    local n = simGame()
+    SlashCmdList.GULLICRAFTPROFIT("sim")
+    assert(n.sim and n.Visible())
+    SlashCmdList.GULLICRAFTPROFIT("sim")
+    assert(not n.sim)
+end)
+
+test("the simulation has no crafts limit, and the settings it does not read are fixed and dim", function()
+    local n = simGame()
+    local v = simRun(n, { line = 197, from = 1, to = 60 })
+    eq(n.CraftCap(v.state, v.prefs), nil)
+    eq(n.CraftCap(v.state, n.Prefs({ maxCrafts = 40 })), nil, "a set limit does not count either")
+    for _, x in ipairs(v.variants) do assert(not x.many, "no route is refused for its crafts") end
+    -- fixed: it levels, learns from the trainer, has no limit, whatever is set
+    n.SetPref("trainer", false); n.SetPref("maxCrafts", 40); n.SetPref("level", false)
+    local P = n.Prefs(n.SavedPrefs())
+    eq(P.trainer, true); eq(P.maxCrafts, -1); eq(P.level, true)
+    n.sim.prefs.minGain, n.sim.prefs.ahead = 0, false
+    eq(#n.SimChanged(), 0, "a setting the simulation does not read is no change")
+    -- the Settings tab dims them and says why
+    n.Toggle(); n.Tab(5)
+    for k in pairs(n.SIM_IGNORED) do eq(n.ui.rows[k]:GetAlpha(), 0.4, k .. " is dim") end
+    eq(n.ui.checks.trainer:IsEnabled(), false); eq(n.ui.steppers.maxCrafts.plus:IsEnabled(), false)
+    eq(n.ui.rows.chance:GetAlpha(), 1, "the others stay")
+    eq(n.ui.toast:GetText(), n.L.SIM_IGNORED)
+    n.SimStop()
+    eq(n.ui.rows.maxCrafts:GetAlpha(), 1, "back to normal after the simulation")
+    eq(n.Prefs(n.SavedPrefs()).trainer, true); eq(n.db.prefs.maxCrafts, nil, "the player's own settings untouched")
+end)
+
+test("the simulation's shopping list buys the whole way at the auction house, for another character", function()
+    local n = simGame({ money = 100000000 })
+    n.Toggle()
+    n.SimOpen()
+    n.SimSet({ line = 197, from = 1, to = 60, empty = true })
+    n.SimCalculate()
+    local v = n.view
+    assert(v.plan and v.legs and #v.legs > 0, "the simulation is calculated")
+    -- the list adds up what every run buys at the auction
+    local want = {}
+    for _, l in ipairs(v.legs) do
+        if l.plan and not l.unknown then
+            for _, m in ipairs(n.Route(l.state, l.plan)) do
+                if m.kind == "ah" and m.title == "STOP_AH_BUY" then
+                    for _, x in ipairs(m.lines) do if x.id then want[x.id] = (want[x.id] or 0) + x.n end end
+                end
+            end
+        end
+    end
+    local shop = n.SimShopping(v)
+    local ah
+    for i, x in ipairs(shop) do if x.kind == "ah" then ah = i end end
+    assert(ah, "an auction stop")
+    local got = {}
+    for _, x in ipairs(shop[ah].lines) do
+        assert(not x.ahead, "no run note on the list")
+        if x.id then got[x.id] = (got[x.id] or 0) + x.n end
+    end
+    for id, k in pairs(want) do eq(got[id], k, "units of " .. id) end
+    -- its chip stands after the whole way
+    eq(n.ui.chips[2]:GetText():match("^(.-)%s*$"), n.L.SIM_SHOP_CHIP)
+    eq(v.leg, 0)
+    -- at the auction house the list comes up, with a live button
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq(v.leg, n.SIM_SHOP)
+    assert(n.simUI.strip.text:GetText():find(n.L.SIM_STRIP_SHOP:format(n.sim.name, 1, 60), 1, true))
+    local i = (n.Selected())
+    local node = v.route[i]
+    eq(node.kind, "ah")
+    local line = node.lines[1]
+    local a = n.StopAction(i)
+    assert(a.primary and a.primary[2] and not a.sim, "the list buys for real")
+    for _, t in ipairs(a.tools) do assert(t[1] ~= n.L.LOTS_UPDATE, "no lots read in the simulation") end
+    W.calls = {}
+    W.Click(n.ui.act1)
+    eq(W.calls[1][1], "start"); eq(W.calls[1][2], line.id); eq(W.calls[1][3], line.n)
+    W.Fire("COMMODITY_PRICE_UPDATED", line.price, line.price * line.n)
+    W.Click(n.ui.act1)
+    eq(W.calls[2][1], "confirm")
+    W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(n.sim.bought[line.id], line.n, "noted for the list")
+    assert(n.RunProgress()[i].lines[1].done, "the line is ticked off")
+    -- the run stops stay read-only
+    n.SelectLeg(1)
+    for k = 1, #v.route do eq(n.StopAction(k).sim, true) end
+    -- with the big window closed, the list opens beside the auction house
+    n.SelectLeg(0)
+    n.Toggle()
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    W.Fire("AUCTION_HOUSE_SHOW")
+    eq(v.leg, n.SIM_SHOP)
+    assert(n.SideWindow():IsShown(), "the window beside the auction house")
+    eq(#n.TipLines(line.id), 0, "still no tooltip line")
+    n.SimStop()
+    assert(not n.sim)
 end)
 
 W.finish()

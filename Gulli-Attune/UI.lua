@@ -104,7 +104,7 @@ local function needLine(step, char, mine)
             parts[#parts + 1] = S.Hex(have >= it.count and S.GOOD or S.MUTED) .. L.HAVE:format(name, have) .. "|r"
         end
     end
-    return table.concat(parts, "  ·  ")
+    return table.concat(parts, S.DOT)
 end
 
 local function fillRow(r, item)

@@ -13,6 +13,8 @@ local function stub()
         if k == "SetShown" then return function(_, v) rawset(t, "_shown", v and true or false) end end
         if k == "IsEnabled" then return function() return rawget(t, "_enabled") ~= false end end
         if k == "SetEnabled" then return function(_, v) rawset(t, "_enabled", v and true or false) end end
+        if k == "SetAlpha" then return function(_, v) rawset(t, "_alpha", v) end end
+        if k == "GetAlpha" then return function() return rawget(t, "_alpha") or 1 end end
         if k == "GetText" then return function() return rawget(t, "_text") end end
         if k == "SetText" then return function(_, v) rawset(t, "_text", v) end end
         if k == "GetNumber" then return function() return tonumber(rawget(t, "_text")) or 0 end end
@@ -333,7 +335,7 @@ function Fake(spec)
 end
 
 function Load()
-    return W.Load("Gulli-CraftProfit", { "Locales.lua", "Data.lua", "Core.lua", "Scan.lua", "Skin.lua", "UI.lua" })
+    return W.Load("Gulli-CraftProfit", { "Locales.lua", "Data.lua", "Book.lua", "Core.lua", "Scan.lua", "Sim.lua", "Skin.lua", "UI.lua", "SimUI.lua" })
 end
 
 -- Calls a frame's script as a click or a press would.

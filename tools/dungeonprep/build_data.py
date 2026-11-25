@@ -104,6 +104,15 @@ NPCS = {
 # gives The Man in the Iron Chains (ATT and the players' reports; not offered once The
 # Questioner is dead). An npc here that stands in the dungeon belongs in NPCS too.
 STARTERS = {96335: 264770, 82062: 222530}  # and the Rugged Traveler's Ever After
+# NPCs the classic data puts on no map although they stand outside the dungeon (a ghost seen
+# only while dead, an NPC that walks in for an event): name -> area, x, y of where to look for
+# them (0, 0 without a spot). A quest they give or take back is not taken or handed in inside.
+OUTSIDE_NPCS = {
+    "Franclorn Forgewright": (46, 29.4, 37.6),  # a ghost in Blackrock Mountain, by the way to the Depths
+    "Lothos Riftwaker": (46, 29.4, 37.6),       # Blackrock Mountain, by the way to the Depths
+    "Bodley": (46, 29.4, 37.6),                 # a ghost in Blackrock Mountain, by the way to the Spire
+    "Reginald Windsor": (1519, 0, 0),           # rides up to the gates of Stormwind
+}
 # Who takes a quest back where the data names nobody, by npc id: Mason Connery again.
 FINISHERS = {96335: 264770}
 # Quests the data cannot tie to their dungeon (their item has no drop data).
@@ -161,6 +170,16 @@ TIPS = {
                 "ramp in Blackrock Mountain. One group got him through by walking right behind him, step "
                 "by step, and without stealth."},
 }
+
+def comment_tips():
+    """Tips from the players' Wowhead comments (tools/dungeonprep/comments.py), in our own words:
+    `comment-tips.json`, quest id -> stage -> English text. A guide's tip and TIPS win."""
+    path = os.path.join(HERE, "comment-tips.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as fh:
+        return {int(q): by for q, by in json.load(fh).items()}
+
 
 # A class quest the dungeon's list has is a chain for the dungeon too (owner's decision of
 # 2026-11-22: every class's quests that lead into or are done in a dungeon show there, also
@@ -222,6 +241,16 @@ def class_quest(qid, q):
 # "inside" mark of that part is dropped by hand (the quest stays in the dungeon's list).
 OUTSIDE_WORK = {
     93604: "d",  # Agamaggan's Blood: the elite area outside Razorfen Downs too (hotfix of 2026-11-17)
+    # What the players' comments on Wowhead put outside the instance (tools/dungeonprep/comments.py):
+    959: "d",  # Trouble at the Docks: Mad Magglish walks the cave before the portal
+    6626: "d",  # A Host of Evil: the elites of the thorny maze outside Razorfen Downs
+    721: "d",  # A Sign of Hope: Hammertoe Grez camps in the cave before Uldaman's portal
+    722: "d",  # Amulet of Secrets: Magregan Deepshadow patrols that cave
+    1360: "d",  # Reclaimed Treasures: the chests in the halls outside Uldaman
+    2342: "d",  # Reclaimed Treasures, the Horde copy
+    7068: "d",  # Shadowshard Fragments: the elementals before Maraudon's purple portal
+    7070: "d",  # Shadowshard Fragments, the Horde copy
+    92432: "d",  # An Alarming Request: a breadcrumb to Archmage Modera outside the portal
 }
 # Quests whose work is done in the dungeon while the data cannot place it there (an object or
 # item with no spawns): quest id -> the flags to add.
@@ -230,6 +259,14 @@ INSIDE_WORK = {
     3374: "d",  # The Essence of Eranikus: from the Shade of Eranikus in the Sunken Temple
     3528: "d",  # The God Hakkar: the egg is filled at the altar of the Sunken Temple
     2930: "d",  # Data Rescue: the punch card machines of Gnomeregan
+    # What the players' comments on Wowhead put inside (tools/dungeonprep/comments.py); the flags
+    # to add are any of t, d, h:
+    92415: "t",  # Remember That I Love You: the letter lies by a boss deep in the Ruins of Lordaeron
+    95161: "t",  # Remember That I Love You, the Horde copy
+    95795: "t",  # Fallen in the Fen: taken in the Excavation
+    95647: "h",  # Lost in the Thicket Things: handed in on the ramp by the last boss
+    95772: "h",  # Songblade Search: handed in at the tent of the Dragonmaw part
+    95790: "t",  # Digestible Research: taken at the start of Shaper's Terrace
 }
 
 # Each dungeon's levelling guides in Guidelime_DungeonQuests (the part of the file name after
@@ -452,13 +489,13 @@ def write_translations(texts, tips, game=None):
         for qid in sorted(texts):
             v = game.get(lang, {}).get(qid) or (tr_text.get(texts[qid]) or {}).get(lang)
             if v and texts[qid]:
-                lines.append("text[%d]=%s" % (qid, lua_str(v)))
+                lines.append("text[%d]=%s" % (qid, lua_str(i18n.font_safe(v, lang))))
         for qid in sorted(tips):
             parts = []
             for k in "tdh":
                 v = (tr_tips.get(tips[qid].get(k)) or {}).get(lang)
                 if v:
-                    parts.append("%s=%s" % (k, lua_str(v)))
+                    parts.append("%s=%s" % (k, lua_str(i18n.font_safe(v, lang))))
             if parts:
                 lines.append("tips[%d]={%s}" % (qid, ",".join(parts)))
         out = os.path.join(os.path.dirname(OUT), "Data_%s.lua" % lang)
@@ -477,7 +514,7 @@ def main(root, att_root=None, gdq_root=None):
     add_set_masks(quests)
     guide_tips = {}
     guide_quests = load_guides(gdq_root, guide_tips)
-    for qid, by in TIPS.items():
+    for qid, by in list(TIPS.items()) + list(comment_tips().items()):
         for stage, text in by.items():
             guide_tips.setdefault(qid, {}).setdefault(stage, text)
     att_side = {}
@@ -605,6 +642,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             zs = sorted(zones_of(n, N_SPAWNS, N_ZONE))
             zone = n.get(N_ZONE) or (zs[0] if zs else 0)
+            if not zone and n.get(N_NAME) in OUTSIDE_NPCS:
+                return (n[N_NAME],) + OUTSIDE_NPCS[n[N_NAME]]
             return (n.get(N_NAME) or "", zone) + spot(n, N_SPAWNS, zone)
         for oid in seq(sb.get(2) or {}):
             o = objects.get(oid) or {}
@@ -671,6 +710,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             zs = sorted(zones_of(n, N_SPAWNS, N_ZONE))
             zone = n.get(N_ZONE) or (zs[0] if zs else 0)
+            if not zone and n.get(N_NAME) in OUTSIDE_NPCS:
+                return (n[N_NAME],) + OUTSIDE_NPCS[n[N_NAME]]
             return (n.get(N_NAME) or "", zone) + spot(n, N_SPAWNS, zone)
         for oid in seq(fb.get(2) or {}):
             o = objects.get(oid) or {}
@@ -716,6 +757,8 @@ def main(root, att_root=None, gdq_root=None):
             n = npcs.get(nid) or {}
             if npc_key(nid) == key:
                 return True
+            if n.get(N_NAME) in OUTSIDE_NPCS:
+                return False
             if qid < FOREVER_QUESTS and not zones_of(n, N_SPAWNS, N_ZONE) and not n.get(N_ZONE):
                 return True
             return False

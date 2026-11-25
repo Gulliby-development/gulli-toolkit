@@ -176,6 +176,17 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
     Fake({ items = items })
     ns = Load()
     eq(ns.ItemValue(BLUE), 1000)
+    -- vendor only: no auction and no disenchanting, every item at the vendor's price
+    Fake({ items = items, enchanter = true, ah = { [9] = 25000, [CLOTH2] = 400, [BLUE] = 50000, [11137] = 2000, [11134] = 1500 } })
+    ns = Load()
+    ns.SetPref("vendorOnly", true)
+    eq(ns.ItemValue(BLUE), 1000)
+    eq(select(2, ns.ItemValue(CLOTH2)), "vendor")
+    eq(select(2, ns.ItemValue(GREEN, true)), "vendor", "no disenchanting with vendor only")
+    eq(select(2, ns.ItemValue(9)), "vendor")
+    eq(select(2, ns.ItemValue(QUEST)), "quest")
+    ns.SetPref("vendorOnly", false)
+    eq(select(2, ns.ItemValue(BLUE)), "auction", "back to the auction when it goes off")
 end)
 
 test("the Session tab shows how the estimate is made, item by item", function()
@@ -204,7 +215,7 @@ test("the Session tab shows how the estimate is made, item by item", function()
     eq(p.total, ns.SessionValue(), "the parts make the panel's worth")
     eq(p.total, 1000 + 4000 + 200 + 90)
     local lines, note = ns.WorthLines()
-    eq(#lines, 5)
+    eq(#lines, 6)
     assert(note:find("200", 1, true) or note:find("2s", 1, true), note)
     assert(note:find(ns.L.NOTE_NOPRICE, 1, true), "says why some items count at the vendor")
     eq(#ns.WorthItems(), 3, "items that add nothing are left off the list")
@@ -246,6 +257,110 @@ test("the worth line shows with its switch, and sales are not counted twice", fu
     eq(ns.SessionValue(), 200, "but the worth counts the loot only once")
     ns.SetPref("value", false)
     eq(ns.WorthText(), nil)
+end)
+
+test("crafting counts only the end product, less what the reagents cost at the auction", function()
+    local SMELT, FORGE, BAR, SWORD = 1001, 1002, 3860, 7941
+    local items = {
+        [ORE] = { quality = 1, sell = 5, class = 7 }, [BAR] = { quality = 1, sell = 20, class = 7 },
+        [SWORD] = { quality = 2, sell = 50000, class = 2, ilvl = 40 },
+    }
+    Fake({ items = items, ah = { [ORE] = 150, [BAR] = 300 }, money = 100000, recipes = { [SMELT] = true, [FORGE] = true } })
+    local ns = Load()
+    -- 20 ore bought at the auction for 2000 copper (100 each, under the auction's price now)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    W.Money(-2000); W.Loot(ORE, 20)
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    eq(ns.s.items[ORE], nil, "an auction buy is not loot")
+    eq(ns.s.lots[ORE].n, 20); eq(ns.s.lots[ORE].copper, 2000)
+    -- smelted: two ore a bar
+    W.now = W.now + 10
+    for _ = 1, 10 do W.Craft(SMELT, { [ORE] = 2 }, { [BAR] = 1 }) end
+    eq(ns.s.items[BAR], nil, "a crafted bar is not loot")
+    eq(ns.s.made[BAR], 10); eq(ns.s.used[ORE], 20)
+    eq(ns.CraftWorth(), 10 * 300 - 2000, "the bars less what the ore cost")
+    eq(ns.SessionValue(), 1000)
+    -- the bars into a sword, sold to a vendor: the bars count once, the sword once
+    W.Craft(FORGE, { [BAR] = 10 }, { [SWORD] = 1 })
+    eq(ns.CraftWorth(), 50000 - 2000, "the end product less what was bought")
+    W.now = W.now + 10
+    W.Fire("MERCHANT_SHOW"); W.Loot(SWORD, -1); W.Money(50000); W.Fire("MERCHANT_CLOSED")
+    eq(ns.s.money, 50000, "the sale is gold")
+    eq(ns.SessionValue(), 48000, "and the sword's worth counts only once")
+    local p = ns.WorthParts()
+    eq(p.craft, 48000); eq(p.items, 0); eq(p.total, ns.SessionValue())
+    local lines, note = ns.WorthLines()
+    eq(#lines, 6)
+    assert(note:find(ns.L.NOTE_CRAFT, 1, true), note)
+    local used
+    for _, r in ipairs(ns.WorthItems()) do if r.how == "used" then used = r end end
+    assert(used and used.total < 0, "a used reagent takes off on the list")
+    -- the hub gets the same worth, also below zero
+    eq(ns.Session().worth, 48000)
+    -- later loot counts again as loot
+    W.now = W.now + 10
+    W.Loot(ORE, 3)
+    eq(ns.s.items[ORE], 3)
+end)
+
+test("farmed ore smelted counts as the bars, a disenchant as its dust", function()
+    local SMELT, BAR, GREEN, DUST = 1001, 3860, 5, 11137
+    local items = {
+        [ORE] = { quality = 1, sell = 5, class = 7 }, [BAR] = { quality = 1, sell = 20, class = 7 },
+        [GREEN] = { quality = 2, sell = 900, class = 4, ilvl = 35 }, [DUST] = { quality = 1, sell = 10, class = 7 },
+    }
+    Fake({ items = items, ah = { [ORE] = 150, [BAR] = 400, [DUST] = 2000, [11134] = 1500 }, recipes = { [SMELT] = true },
+           enchanter = true })
+    local ns = Load()
+    W.Loot(ORE, 4)
+    W.now = W.now + 10
+    W.Craft(SMELT, { [ORE] = 2 }, { [BAR] = 1 }); W.Craft(SMELT, { [ORE] = 2 }, { [BAR] = 1 })
+    eq(ns.SessionValue(), 800, "4 ore looted, now 2 bars")
+    -- disenchanting a looted green: the item goes at the cast, the dust comes with the loot
+    W.now = W.now + 10
+    W.Loot(GREEN, 1)
+    eq(ns.SessionValue(), 800 + 1500)
+    W.Fire("UNIT_SPELLCAST_START", "player", "cast", 13262)
+    W.bags[GREEN] = 0
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 13262)
+    W.Fire("BAG_UPDATE_DELAYED")
+    W.Fire("LOOT_READY")
+    W.now = W.now + 20 -- the loot window waits for a click
+    W.Loot(DUST, 1)
+    W.Fire("LOOT_CLOSED")
+    eq(ns.s.items[DUST], nil, "the dust is not new loot")
+    eq(ns.SessionValue(), 800 + 2000, "the green became its dust")
+    W.now = W.now + 10
+    W.Loot(DUST, 1)
+    eq(ns.s.items[DUST], 1, "after the craft, loot counts again")
+end)
+
+test("a cast that is no craft changes nothing, and crafting needs no open window", function()
+    Fake({ items = { [ORE] = { quality = 1, sell = 5, class = 7 } } })
+    local ns = Load()
+    W.Fire("UNIT_SPELLCAST_START", "player", "cast", 133) -- a fireball
+    W.Fire("UNIT_SPELLCAST_STOP", "player", "cast", 133)
+    W.Loot(ORE, 2)
+    eq(ns.s.items[ORE], 2)
+    eq(ns.Crafting(), false)
+    W.Fire("UNIT_SPELLCAST_START", "party1", "cast", 13262)
+    eq(ns.Crafting(), false, "another unit's cast")
+    issecretvalue = function() return true end
+    eq(ns.IsCraft(13262), false, "a secret spell id")
+end)
+
+test("with the mail switch, auction buys count as farmed and their cost goes off", function()
+    Fake({ items = { [ORE] = { quality = 1, sell = 5, class = 7 } }, ah = { [ORE] = 150 }, money = 10000 })
+    local ns = Load()
+    ns.SetPref("mail", true)
+    W.Fire("AUCTION_HOUSE_SHOW")
+    W.Money(-1000); W.Loot(ORE, 10)
+    W.Fire("AUCTION_HOUSE_CLOSED")
+    eq(ns.s.items[ORE], 10)
+    eq(ns.s.spent, 1000)
+    eq(ns.s.lots, nil, "no lots: the ore is loot already")
+    eq(ns.SessionValue(), 1500 - 1000)
+    eq(ns.WorthParts().spent, 1000)
 end)
 
 test("targets: at most three, one per item, gold once", function()
@@ -421,7 +536,7 @@ test("the hub gets the module's window and switches", function()
     local ns = Load()
     eq(got.key, "FarmTrack")
     assert(got.window() == ns.Window())
-    eq(#got.options, 3, "the panel's show switch is the hub's, in Frames on screen")
+    eq(#got.options, 4, "the panel's show switch is the hub's, in Frames on screen")
     got.options[1].set(false)
     eq(ns.db.sales, false)
     local fr = got.frames[1]

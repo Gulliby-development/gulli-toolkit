@@ -75,6 +75,17 @@ class Version(unittest.TestCase):
 
 
 class Upload(unittest.TestCase):
+    def test_a_project_on_hold_or_without_an_id_is_not_uploaded(self):
+        config = {"toolkit": {"id": 1}, "separate": {"A": {"id": 2}, "B": {"id": 3, "hold": True}, "C": {"id": None}}}
+        self.assertEqual(U.uploadable(["toolkit", "A", "B", "C"], config), ["toolkit", "A"])
+
+    def test_vendor_flip_uploads_to_its_own_project(self):
+        # The owner lifted the hold of 2026-11-24 on 2026-11-25; it stays a project of its own.
+        with open(U.CONFIG) as f:
+            config = json.load(f)
+        self.assertEqual(U.uploadable(["VendorFlip"], config), ["VendorFlip"])
+        self.assertIn("VendorFlip", config["separate"])
+
     def test_metadata_links_a_separate_project_to_the_toolkit(self):
         m = U.metadata("Gulli-Legacy 1.3.0", "notes", 2, "gulli-toolkit")
         self.assertEqual(m["gameVersions"], [2])

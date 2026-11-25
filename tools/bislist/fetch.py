@@ -18,8 +18,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 OUT = os.path.join(ROOT, "tools", "bislist", "wowtbc.json")
 BASE = "https://wowtbc.gg/page-data/warcraftforever/bis-list/%s/page-data.json"
 SPECS = ["balance-druid", "feral-tank-druid", "feral-dps-druid", "restoration-druid", "beast-mastery-hunter",
-         "marksmanship-hunter", "survival-hunter", "arcane-mage", "fire-mage", "frost-mage", "holy-paladin",
-         "protection-paladin", "retribution-paladin", "discipline-priest", "holy-priest", "shadow-priest",
+         "marksmanship-hunter", "survival-hunter", "survival-melee-hunter",
+         "arcane-mage", "fire-mage", "frost-mage", "holy-paladin",
+         "protection-paladin", "retribution-paladin", "shockadin-paladin",
+         "discipline-priest", "holy-priest", "shadow-priest",
          "assassination-rogue", "combat-rogue", "subtlety-rogue", "elemental-shaman", "enhancement-shaman",
          "restoration-shaman", "affliction-warlock", "demonology-warlock", "destruction-warlock", "arms-warrior",
          "fury-warrior", "protection-warrior"]

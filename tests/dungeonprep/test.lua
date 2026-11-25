@@ -647,7 +647,39 @@ test("entering a dungeon with quests not taken: one warning per entry, and the j
     W.printed = {}
     ns.Set("warnEnter", false)
     W.instance = "party"; W.Fire("ZONE_CHANGED_NEW_AREA")
-    for _, l in ipairs(W.printed) do assert(not l:find("did not take", 1, true), "the switch stops the warning") end
+    for _, l in ipairs(W.printed) do assert(not l:find("you did not take", 1, true), "the switch stops the warning") end
+    GetInstanceInfo = nil
+end)
+
+test("the entering warning counts only quests taken outside the dungeon, and names them", function()
+    local W = Fake({ level = 56, raceID = 2, faction = "Horde", className = "PRIEST", areas = AREAS, instance = "party" })
+    GetInstanceInfo = function() return "Blackrock Depths" end
+    local ns = Load()
+    local q = ns.Quests("BRD", 56)
+    local out, inside = {}, 0
+    for _, x in ipairs(q.take) do
+        if ns.Inside("BRD", x.id).take then inside = inside + 1
+        elseif x.area and x.area > 0 then out[#out + 1] = x.name end
+    end
+    assert(inside > 0, "some quests are given inside the dungeon")
+    assert(#out > 0, "and some outside")
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local line
+    for _, l in ipairs(W.printed) do if l:find("you did not take", 1, true) then line = l end end
+    assert(line, "warned")
+    assert(line:find("take: " .. #out .. ".", 1, true), "only the outside ones are counted: " .. line)
+    assert(line:find(out[1], 1, true), "and named: " .. line)
+    -- Franclorn Forgewright is a ghost outside the dungeon: his quest is one to take before.
+    local legacy
+    for _, n in ipairs(out) do if n == "Dark Iron Legacy" then legacy = true end end
+    assert(legacy, "Dark Iron Legacy is taken outside")
+    eq(ns.Inside("BRD", 3801).take, false)
+    eq(ns.Inside("BRD", 82062).take, true, "Ever After is taken on the ledge inside")
+    for _, it in ipairs((ns.TrackerItems("BRD", 56))) do
+        if it.id == 82062 then
+            assert(not it.lines[1].text:find(ns.ZONE_ICON, 1, true), "no zone on a quest taken inside: " .. it.lines[1].text)
+        end
+    end
     GetInstanceInfo = nil
 end)
 
@@ -1570,6 +1602,12 @@ test("inside the dungeon: the data's flags, the stages of a quest's way, the tra
     eq(ns.Inside(nil, 96776).work, false)
     -- Agamaggan's Blood: the game moved its work out of Razorfen Downs (OUTSIDE_WORK).
     eq(ns.Inside("RFD", 93604).work, false, "Agamaggan's Blood is done outside too")
+    -- What the players' Wowhead comments put outside or inside (OUTSIDE_WORK, INSIDE_WORK).
+    eq(ns.Inside("WC", 959).work, false, "Mad Magglish walks the cave before the portal")
+    eq(ns.Inside("ULDA", 721).work, false, "Hammertoe Grez camps outside Uldaman")
+    eq(ns.Inside("MARA", 7068).work, false, "the shadowshard elementals stand before the portal")
+    eq(ns.Inside("EXCAVATION", 95647).turnin, true, "handed in by the last boss")
+    eq(ns.Inside("LORDAERON", 92415).take, true, "the letter lies deep in the dungeon")
     -- The way of a quest in the log: taken, its work now, the hand-in waits.
     local function states(id)
         local out = {}

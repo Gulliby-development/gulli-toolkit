@@ -102,7 +102,7 @@ end
 -- The session -----------------------------------------------------------------------------------
 
 local function newSession(t)
-    return { t = t, active = 0, lastActive = t, items = {}, money = 0, reached = {} }
+    return { t = t, active = 0, lastActive = t, items = {}, made = {}, used = {}, money = 0, reached = {} }
 end
 
 function ns.Start(t)
@@ -116,7 +116,7 @@ end
 function ns.Resume(t)
     local s = ns.cdb and ns.cdb.s
     if type(s) == "table" and s.t then
-        s.items, s.reached = s.items or {}, s.reached or {}
+        s.items, s.reached, s.made, s.used = s.items or {}, s.reached or {}, s.made or {}, s.used or {}
         s.money, s.active, s.lastActive = s.money or 0, s.active or 0, s.lastActive or s.t
         ns.s = s
         ns.last, ns.lastMoney = ns.CountBags(), money()
@@ -187,13 +187,39 @@ function ns.Busy()
     local any = false
     for what in pairs(ns.busy) do
         -- ns.last followed the bags all along, so only the flag goes.
-        if ns.StillOpen(what) == false then ns.busy[what] = nil
+        if ns.StillOpen(what) == false then
+            if what == "auction" then ns.SettleVisit() end
+            ns.busy[what] = nil
         elseif ns.Blocks(what) then any = true end
     end
     return any or fromMail()
 end
 
+-- An auction visit's buys become lots: what they cost, shared by the items' worth. Without the
+-- mail switch they were not farmed, so a craft that uses them takes off what they cost.
+function ns.SettleVisit()
+    local v = ns.visit
+    ns.visit = nil
+    if not v or v.paid <= 0 or not ns.Blocks("auction") then return end
+    local weights, sum = {}, 0
+    for id, n in pairs(v.got) do
+        local w = n * math.max(ns.ItemValue(id) or 0, 1)
+        weights[id], sum = w, sum + w
+    end
+    if sum <= 0 then return end
+    ns.s.lots = ns.s.lots or {}
+    for id, n in pairs(v.got) do
+        local l = ns.s.lots[id] or { n = 0, copper = 0 }
+        l.n, l.copper = l.n + n, l.copper + v.paid * weights[id] / sum
+        ns.s.lots[id] = l
+    end
+end
+
 function ns.SetBusy(what, on)
+    if what == "auction" then
+        if on and not ns.busy.auction then ns.visit = { got = {}, paid = 0 }
+        elseif not on then ns.SettleVisit() end
+    end
     ns.busy[what] = on and true or nil
     if not on then
         if ns.Blocks(what) then ns.quietUntil = now() + QUIET end
@@ -211,11 +237,82 @@ function ns.Gain(id, n, t)
     ns.CheckGoals(t)
 end
 
--- The bags changed: what went up counts, unless something else moved it.
+-- Crafting turns items into others: what a craft makes was not farmed, and what it uses is gone.
+-- A craft is a cast of a recipe (the game crafts only with the profession window open), or a spell
+-- that turns an item into loot (disenchanting, prospecting, milling); its bag changes come with the
+-- cast or within CRAFT_WAIT seconds after it, and its loot (a disenchant) until the loot closes.
+ns.CONVERT = { [13262] = true, [31252] = true, [51005] = true }
+local CRAFT_WAIT = 2
+
+local function secret(v) return issecretvalue and issecretvalue(v) end
+
+function ns.IsCraft(spell)
+    if not spell or secret(spell) then return false end
+    if ns.CONVERT[spell] then return true end
+    local T = C_TradeSkillUI
+    if T and T.GetRecipeInfo then
+        local ok, info = pcall(T.GetRecipeInfo, spell)
+        if ok and info then return true end
+    end
+    for _, name in ipairs({ "ProfessionsFrame", "TradeSkillFrame" }) do
+        local fr = _G[name]
+        if type(fr) == "table" and fr.IsShown and fr:IsShown() then return true end
+    end
+    return false
+end
+
+-- what: "start" (a cast began), "done" (it succeeded), "end" (it stopped, failed or was cut).
+function ns.OnCast(what, spell)
+    local t = now()
+    if what == "start" then
+        if ns.IsCraft(spell) then ns.crafting = true end
+        return
+    end
+    if ns.crafting or (what == "done" and ns.IsCraft(spell)) then
+        ns.crafting = nil
+        ns.craftUntil = math.max(ns.craftUntil or 0, t + CRAFT_WAIT)
+    end
+end
+
+-- A loot window that opens for a craft (a disenchant) belongs to it until it closes.
+function ns.OnLoot(open)
+    if open then
+        if ns.Crafting() then ns.craftLoot = true end
+    elseif ns.craftLoot then
+        ns.craftLoot = nil
+        ns.craftUntil = math.max(ns.craftUntil or 0, now() + CRAFT_WAIT)
+    end
+end
+
+function ns.Crafting()
+    return (ns.crafting or ns.craftLoot or now() < (ns.craftUntil or 0)) and true or false
+end
+
+-- The bags changed: what went up counts, unless something else moved it. While crafting, what
+-- came in is made and what went out is used, also at a vendor or the auction house.
 function ns.OnBags(t)
     if CursorHasItem and CursorHasItem() then return end -- an item in the hand comes back later
     local cur = ns.CountBags()
-    if not ns.Busy() and now() >= (ns.quietUntil or 0) then
+    if ns.Crafting() then
+        local s, last = ns.s, ns.last or {}
+        for id, n in pairs(cur) do
+            local d = n - (last[id] or 0)
+            if d > 0 then s.made[id] = (s.made[id] or 0) + d end
+        end
+        for id, n in pairs(last) do
+            local d = n - (cur[id] or 0)
+            if d > 0 then s.used[id] = (s.used[id] or 0) + d end
+        end
+    elseif ns.Busy() then
+        -- the auction's buys, for what crafting uses: what came in and (OnMoney) what it cost
+        local v = ns.visit
+        if v and ns.busy.auction then
+            for id, n in pairs(cur) do
+                local d = n - ((ns.last or {})[id] or 0)
+                if d > 0 then v.got[id] = (v.got[id] or 0) + d end
+            end
+        end
+    elseif now() >= (ns.quietUntil or 0) then
         for id, n in pairs(cur) do
             local d = n - ((ns.last or {})[id] or 0)
             if d > 0 then ns.Gain(id, d, t) end
@@ -229,7 +326,14 @@ function ns.OnMoney(t)
     local m = money()
     local d = m - (ns.lastMoney or m)
     ns.lastMoney = m
-    if d <= 0 then return end
+    if d < 0 then
+        -- with the mail switch the auction's buys count as farmed, so what they cost goes off
+        ns.Busy()
+        if ns.busy.auction and not ns.Blocks("auction") then ns.s.spent = (ns.s.spent or 0) - d end
+        if ns.busy.auction and ns.visit then ns.visit.paid = ns.visit.paid - d end
+        return
+    end
+    if d == 0 then return end
     if fromMail() then return end
     ns.Busy()
     local other = false
@@ -340,7 +444,8 @@ end
 -- An estimate of what everything looted would bring: grey and plain white things at a vendor,
 -- trade goods, reagents and recipes at the auction, bind-on-equip blue and purple gear at the
 -- auction, green gear disenchanted (with Enchanting, its cheapest result) or sold to a vendor,
--- whichever brings more. Without an auction price an item counts at the vendor's price.
+-- whichever brings more. Without an auction price an item counts at the vendor's price. With
+-- `vendorOnly` every item counts at the vendor's price.
 
 local GEAR = { [2] = true, [4] = true }
 local AUCTION = { [5] = true, [7] = true, [9] = true }
@@ -399,6 +504,8 @@ function ns.ItemValue(id, enchanter)
     if f.class == ns.QUEST_CLASS then return 0, "quest" end
     local vendor = f.sell
     if f.quality == 0 then return vendor, "vendor" end
+    -- The player sells everything to a vendor: no auction and no disenchanting.
+    if ns.db and ns.db.vendorOnly then return vendor, "vendor" end
     if AUCTION[f.class] or (GEAR[f.class] and f.quality >= 3 and f.bind == 2) then
         local ah = ns.AuctionPrice(id)
         if ah then return ah, "auction" end
@@ -429,9 +536,45 @@ function ns.ItemsWorth()
     return total, unknown
 end
 
+-- What n used of an item cost: the auction lots of this session at what was paid first, the
+-- rest (looted, or from before) at what it would bring. nil while the client does not know it.
+function ns.UsedCost(id, n, enchanter)
+    local l = ns.s.lots and ns.s.lots[id]
+    local k = l and math.min(n, l.n) or 0
+    local cost = k > 0 and l.copper * k / l.n or 0
+    if n - k <= 0 then return cost end
+    local v = ns.ItemValue(id, enchanter)
+    return v and cost + v * (n - k)
+end
+
+-- What crafting added: the worth of what it made less what it used (bought reagents at their
+-- price, others at their worth), so only the end product counts and a chain of crafts counts once.
+-- Second value: items the client does not know yet.
+function ns.CraftWorth()
+    local total, unknown = 0, 0
+    local enchanter = ns.CanDisenchant()
+    for id, n in pairs(ns.s.made or {}) do
+        local v = ns.ItemValue(id, enchanter)
+        if v then total = total + v * n else unknown = unknown + 1 end
+    end
+    for id, n in pairs(ns.s.used or {}) do
+        local c = ns.UsedCost(id, n, enchanter)
+        if c then total = total - c else unknown = unknown + 1 end
+    end
+    return total, unknown
+end
+
+-- What the items add to the session: the loot, what crafting added and, with the mail switch,
+-- less what the auction's buys cost. The hub adds it to its own gold.
+function ns.GoodsWorth()
+    local items, u1 = ns.ItemsWorth()
+    local craft, u2 = ns.CraftWorth()
+    return items + craft - (ns.s.spent or 0), u1 + u2
+end
+
 -- Everything the session looted at its worth, plus the gold looted.
 function ns.SessionValue()
-    local total, unknown = ns.ItemsWorth()
+    local total, unknown = ns.GoodsWorth()
     return total + ns.s.money - (ns.s.sold or 0), unknown
 end
 
@@ -443,6 +586,15 @@ function ns.WorthRows()
     for id, n in pairs(ns.s.items) do
         local v, how = ns.ItemValue(id, enchanter)
         out[#out + 1] = { id = id, n = n, unit = v, total = v and v * n, how = v and how or "unknown" }
+    end
+    -- crafting: what it made adds, what it used takes off (how "made" and "used")
+    for id, n in pairs(ns.s.made or {}) do
+        local v = ns.ItemValue(id, enchanter)
+        out[#out + 1] = { id = id, n = n, unit = v, total = v and v * n, how = v and "made" or "unknown" }
+    end
+    for id, n in pairs(ns.s.used or {}) do
+        local c = ns.UsedCost(id, n, enchanter)
+        out[#out + 1] = { id = id, n = n, unit = c and c / n, total = c and -c, how = c and "used" or "unknown" }
     end
     table.sort(out, function(a, b)
         local x, y = a.total or -1, b.total or -1
@@ -456,19 +608,22 @@ end
 -- The parts of the estimate: the gold looted (without vendor sales, since what was sold is in
 -- the items already), the items by how they were judged, and the sum, which is SessionValue.
 function ns.WorthParts()
-    local p = { gold = ns.s.money - (ns.s.sold or 0), sold = ns.s.sold or 0, items = 0, unknown = 0,
-                by = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0 },
-                count = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0 } }
+    local spent = ns.s.spent or 0
+    local p = { gold = ns.s.money - (ns.s.sold or 0) - spent, sold = ns.s.sold or 0, spent = spent, items = 0,
+                craft = 0, unknown = 0,
+                by = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0, made = 0, used = 0 },
+                count = { vendor = 0, auction = 0, disenchant = 0, noprice = 0, quest = 0, made = 0, used = 0 } }
     for _, r in ipairs(ns.WorthRows()) do
         if r.total then
-            p.items = p.items + r.total
+            if r.how == "made" or r.how == "used" then p.craft = p.craft + r.total
+            else p.items = p.items + r.total end
             p.by[r.how] = p.by[r.how] + r.total
             p.count[r.how] = p.count[r.how] + r.n
         else
             p.unknown = p.unknown + 1
         end
     end
-    p.total = p.gold + p.items
+    p.total = p.gold + p.items + p.craft
     return p
 end
 
@@ -527,20 +682,23 @@ function ns.Session()
             if not tile and t.kind == "item" then tile = { icon = i.icon, value = ns.Short(i.gained), label = i.name } end
         end
     end
-    local worth = ns.ItemsWorth()
-    if not tile and worth <= 0 then return nil end
+    -- with anything looted or crafted the hub's gold is an estimate, even when the worth is 0 or less
+    local worth = ns.GoodsWorth()
+    local any = next(ns.s.items) or next(ns.s.made or {}) or next(ns.s.used or {}) or (ns.s.spent or 0) > 0
+    if not tile and not any then return nil end
     return { tile = tile, worth = worth, tip = tile and { head = L.TITLE, value = "", rows = rows } or nil }
 end
 
 -- Settings -------------------------------------------------------------------------------------
 
-ns.DEFAULTS = { panel = false, sales = true, mail = false, alert = true, value = false, alpha = 100, scale = 100 }
+ns.DEFAULTS = { panel = false, sales = true, mail = false, alert = true, value = false, vendorOnly = false, alpha = 100, scale = 100 }
 ns.OPT_ICON = {
     panel = "Interface\\Icons\\INV_Misc_Spyglass_02",
     sales = "Interface\\Icons\\INV_Misc_Coin_02",
     mail = "Interface\\Icons\\INV_Letter_15",
     alert = "Interface\\Icons\\INV_Misc_Bell_01",
     value = "Interface\\Icons\\INV_Misc_Gem_Pearl_04",
+    vendorOnly = "Interface\\Icons\\INV_Misc_Coin_01",
 }
 
 function ns.SetPref(key, value)
@@ -614,9 +772,15 @@ local BUSY = {
     TRADE_SHOW = { "trade", true }, TRADE_CLOSED = { "trade", false },
 }
 
+local CAST = {
+    UNIT_SPELLCAST_START = "start", UNIT_SPELLCAST_CHANNEL_START = "start", UNIT_SPELLCAST_SUCCEEDED = "done",
+    UNIT_SPELLCAST_STOP = "end", UNIT_SPELLCAST_FAILED = "end", UNIT_SPELLCAST_INTERRUPTED = "end",
+    UNIT_SPELLCAST_CHANNEL_STOP = "end",
+}
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, a1, a2)
+f:SetScript("OnEvent", function(self, event, a1, a2, ...)
     if event == "ADDON_LOADED" then
         if a1 ~= ADDON then return end
         GulliFarmTrackDB = GulliFarmTrackDB or {}
@@ -629,9 +793,13 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         if not ns.db.hudHidden then ns.db.panel, ns.db.hudHidden = false, true end
         ns.db.locked = nil
         ns.cdb.targets = ns.cdb.targets or {}
-        local events = { "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED", "LOOT_READY" }
+        local events = { "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "CURSOR_CHANGED",
+                         "LOOT_READY", "LOOT_CLOSED" }
         for e in pairs(BUSY) do events[#events + 1] = e end
         for _, e in ipairs(events) do self:RegisterEvent(e) end
+        for e in pairs(CAST) do
+            if self.RegisterUnitEvent then self:RegisterUnitEvent(e, "player") else self:RegisterEvent(e) end
+        end
         if hooksecurefunc then
             for _, fn in ipairs({ "TakeInboxItem", "TakeInboxMoney", "AutoLootMailItem" }) do
                 if _G[fn] then hooksecurefunc(fn, ns.MailTake) end
@@ -640,11 +808,19 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.Resume()
         return
     end
+    if CAST[event] then
+        if a1 == "player" then ns.OnCast(CAST[event], (...)) end
+        return
+    end
+    if event == "LOOT_READY" or event == "LOOT_CLOSED" then ns.OnLoot(event == "LOOT_READY") end
     if event == "LOOT_READY" or event == "PLAYER_ENTERING_WORLD" then
         -- Looting or a loading screen: no vendor, mailbox, bank or trade window is in use,
         -- unless the game still says it is open.
         for what in pairs(ns.busy) do
-            if event == "PLAYER_ENTERING_WORLD" or ns.StillOpen(what) ~= true then ns.busy[what] = nil end
+            if event == "PLAYER_ENTERING_WORLD" or ns.StillOpen(what) ~= true then
+                if what == "auction" then ns.SettleVisit() end
+                ns.busy[what] = nil
+            end
         end
     end
     if event == "PLAYER_ENTERING_WORLD" then
@@ -692,6 +868,8 @@ do
               get = function() return ns.db ~= nil and ns.db.mail == true end, set = function(v) ns.SetPref("mail", v) end },
             { label = L.OPT_VALUE, icon = ns.OPT_ICON.value, tip = L.OPT_VALUE_TIP,
               get = function() return ns.db ~= nil and ns.db.value == true end, set = function(v) ns.SetPref("value", v) end },
+            { label = L.OPT_VENDOR, icon = ns.OPT_ICON.vendorOnly, tip = L.OPT_VENDOR_TIP,
+              get = function() return ns.db ~= nil and ns.db.vendorOnly == true end, set = function(v) ns.SetPref("vendorOnly", v) end },
         },
     })
 end

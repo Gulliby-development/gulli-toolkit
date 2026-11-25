@@ -141,7 +141,10 @@ S.COPPER = { 0.93, 0.65, 0.37, 1 }
 S.TIME = { 0.45, 0.85, 0.80, 1 }
 S.XP = { 0.79, 0.63, 1.00, 1 }
 S.KILLS = { 0.95, 0.55, 0.50, 1 }
-S.DOT = "  |cff9c8f7c·|r  "
+-- The dot is a texture, not the "·" sign: the game's fonts (Friz Quadrata Cyrillic, the fallback
+-- when a font file cannot load) draw that sign as an empty box. S.DOT_MARK is the dot alone.
+S.DOT_MARK = "|TInterface\\AddOns\\" .. tostring(addon) .. "\\Media\\Round:5:5:0:0:64:64:0:64:0:64:156:143:124|t"
+S.DOT = "  " .. S.DOT_MARK .. "  "
 -- A window, a HUD panel or a notice: the dense brown of S.BG (the names stay from Gulli Glass,
 -- so older calls keep working). A frame that must hide what is behind it uses S.SOLID.
 S.GLASS = S.BG
@@ -207,6 +210,7 @@ local function canScale(f)
 end
 function S.ApplyScale(f, k)
     if canScale(f) then f:SetScale(k) end
+    if S.SnapLines then S.SnapLines() end
 end
 -- A window that stands alone gets S.FitScale on each show and when the screen changes.
 local function scaleWindow(f)
@@ -368,6 +372,54 @@ local function roundRect(f, layer, sub, color, r, i, round)
     return list
 end
 
+-- Hairlines: the 1 unit edges of a box. The game snaps every texture to the pixel grid, so where
+-- a unit is less than a screen pixel a 1 unit line can round to no pixel at all and leave a gap
+-- in a border. Each box keeps its lines at exactly one pixel for the scale it shows at
+-- (PixelUtil), checked when it is made, when a scale changes and a few times a second.
+local boxes = setmetatable({}, { __mode = "k" })
+local function snapBox(f, force)
+    local list = rawget(f, "hair")
+    if not list or not f.GetEffectiveScale then return end
+    local k = tonumber((f:GetEffectiveScale()))
+    if not k or k <= 0 or (not force and rawget(f, "hairScale") == k) then return end
+    rawset(f, "hairScale", k)
+    local px = 1
+    if PixelUtil and PixelUtil.GetNearestPixelSize then
+        local ok, v = pcall(PixelUtil.GetNearestPixelSize, 1, k, 1)
+        if ok and tonumber(v) and v > 0 then px = v end
+    end
+    for _, h in ipairs(list) do
+        if h[2] == "v" then h[1]:SetWidth(px) else h[1]:SetHeight(px) end
+    end
+end
+function S.SnapLines()
+    for f in pairs(boxes) do
+        if not f.IsVisible or f:IsVisible() then snapBox(f) end
+    end
+end
+local function hairline(f, t, dir)
+    local list = rawget(f, "hair")
+    if not list then
+        list = {}
+        rawset(f, "hair", list)
+        boxes[f] = true
+    end
+    list[#list + 1] = { t, dir }
+    if dir == "v" then t:SetWidth(1) else t:SetHeight(1) end
+end
+do
+    local ok, ev = pcall(CreateFrame, "Frame")
+    if ok and ev and ev.SetScript and PixelUtil then
+        local wait = 0
+        ev:SetScript("OnUpdate", function(_, dt)
+            wait = wait - (tonumber(dt) or 0)
+            if wait > 0 then return end
+            wait = 0.25
+            S.SnapLines()
+        end)
+    end
+end
+
 -- A filled rectangle with a 1 pixel border around it. radius (optional) rounds its corners;
 -- corners = "top" or "bottom" rounds only those two, "bottomleft" only that one. f.fills and f.edges are its textures.
 function S.Box(f, bg, border, radius, corners)
@@ -383,9 +435,10 @@ function S.Box(f, bg, border, radius, corners)
             local e = tex(f, "BORDER", 7, b)
             e:SetPoint(p[1])
             e:SetPoint(p[2])
-            if p[3] == 1 then e:SetWidth(1) else e:SetHeight(1) end
+            hairline(f, e, p[3] == 1 and "v" or "h")
             f.edges[i] = e
         end
+        snapBox(f, true)
         return f
     end
     local round = WHICH[corners or ""] or { TOPLEFT = true, TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true }
@@ -398,7 +451,7 @@ function S.Box(f, bg, border, radius, corners)
         local e = tex(f, "BORDER", 7, b)
         e:SetPoint(p[1], p[2], p[3])
         e:SetPoint(p[4], p[5], p[6])
-        if p[7] == "v" then e:SetWidth(1) else e:SetHeight(1) end
+        hairline(f, e, p[7])
         f.edges[i] = e
     end
     for _, p in ipairs(CORNERS) do
@@ -407,15 +460,18 @@ function S.Box(f, bg, border, radius, corners)
         else
             -- A sharp corner: the two edges run on to the corner.
             local e1 = tex(f, "BORDER", 7, b)
-            e1:SetSize(r, 1)
+            e1:SetWidth(r)
+            hairline(f, e1, "h")
             e1:SetPoint(p, 0, 0)
             local e2 = tex(f, "BORDER", 7, b)
-            e2:SetSize(1, r)
+            e2:SetHeight(r)
+            hairline(f, e2, "v")
             e2:SetPoint(p, 0, 0)
             f.edges[#f.edges + 1] = e1
             f.edges[#f.edges + 1] = e2
         end
     end
+    snapBox(f, true)
     return f
 end
 
@@ -3920,6 +3976,9 @@ end
 local function priceNum(v) return type(v) == "number" and v > 0 and v or nil end
 local function auctionatorApi() return Auctionator and Auctionator.API and Auctionator.API.v1 end
 S.PRICE_SOURCES = {
+    -- Gulli's own scans of this realm's auction house (Vendor Flip keeps them), once it has any
+    { name = "Gulli Auction", on = function() return GulliAuction and GulliAuction.Price and GulliAuction.Ready and GulliAuction.Ready() end,
+      price = function(id) return GulliAuction.Price(id) end },
     { name = "Auctionator", on = auctionatorApi, price = function(id, caller)
         local api = auctionatorApi()
         if not api.GetAuctionPriceByItemID then return nil end

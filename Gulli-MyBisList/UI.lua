@@ -439,7 +439,7 @@ local function pickFill(r, it)
     end
     r.icon:SetIcon(ns.SpecIcon(it.spec))
     local text = ns.SpecName(it.spec) .. "  " .. colour(ns.ClassName(s[2]), S.FAINT)
-    if it.stage then text = text .. colour(" · " .. ns.StageName(it.stage), S.FAINT) end
+    if it.stage then text = text .. colour(S.DOT .. ns.StageName(it.stage), S.FAINT) end
     r.name:SetText(text)
     r:SetSelected(shown ~= nil and not shown.own and shown.spec == it.spec and (not it.stage or shown.stage == it.stage) or false)
 end
@@ -481,11 +481,14 @@ ns.MENU_STRATA, ns.MENU_LEVEL = "TOOLTIP", 10
 local function newMenu(w, h)
     local p = CreateFrame("Frame", nil, UIParent)
     p:SetSize(w, h)
+    -- The game ignores SetFrameStrata and SetFrameLevel while they are fixed: unfix, set, fix again.
     local function raise(self)
-        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(false) end
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(false) end
         self:SetFrameStrata(ns.MENU_STRATA)
-        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
         self:SetFrameLevel(ns.MENU_LEVEL)
+        if self.SetFixedFrameStrata then self:SetFixedFrameStrata(true) end
+        if self.SetFixedFrameLevel then self:SetFixedFrameLevel(true) end
         local mine = frame and frame.GetEffectiveScale and tonumber(frame:GetEffectiveScale())
         local base = UIParent.GetEffectiveScale and tonumber(UIParent:GetEffectiveScale())
         if mine and base and mine > 0 and base > 0 then self:SetScale(mine / base) end
@@ -823,7 +826,7 @@ function ns.PieceSource(id)
     d = d and d[1]
     if d and d.boss then
         local where = dj.Name and dj.Name(d.key)
-        return where and (d.boss .. " · " .. where) or d.boss
+        return where and (d.boss .. S.DOT .. where) or d.boss
     end
     return ""
 end
@@ -833,7 +836,7 @@ end
 function ns.PieceLine(g)
     if g.from then
         local have = g.fromHave and colour(L.SET_HAVE, S.GOOD) or colour(L.SET_NOT, S.FAINT)
-        return L.SET_FROM:format(S.QualityHex(ns.ItemQuality(g.from)) .. ns.ItemName(g.from) .. "|r") .. " · " .. have
+        return L.SET_FROM:format(S.QualityHex(ns.ItemQuality(g.from)) .. ns.ItemName(g.from) .. "|r") .. S.DOT .. have
     end
     return ns.PieceSource(g.id)
 end

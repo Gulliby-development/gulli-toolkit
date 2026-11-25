@@ -243,6 +243,55 @@ test("our window replaces the game's only while the switch is on and the module 
     eq(LootFrame.events.LOOT_OPENED, true)
 end)
 
+test("with fast loot the game's loot window stays shut, and opens for what could not be taken", function()
+    Fake({ slots = { { "i1", "Ruby", 1, 3 } }, db = { fastLoot = true } })
+    W.lootN = 1
+    local ns = Load()
+    W.Fire("PLAYER_ENTERING_WORLD")
+    local opened = 0
+    function LootFrame:Open() opened = opened + 1; self.shown = true end
+    -- everything is taken: no window at all
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil, "the game's window does not hear the loot open")
+    eq(table.concat(W.looted, ","), "1")
+    W.Fire("LOOT_OPENED", true)
+    W.slots = {}
+    W.Fire("LOOT_CLOSED")
+    for _, fn in ipairs(W.timers) do fn() end
+    W.timers = {}
+    eq(opened, 0)
+    eq(LootFrame.events.LOOT_OPENED, true, "back after the loot")
+    -- a slot stays (full bags): the game's window opens after the wait
+    W.slots = { { "i1", "Ruby", 1, 3 } }
+    W.Fire("LOOT_READY")
+    W.Fire("LOOT_OPENED", true)
+    eq(opened, 0, "not at once")
+    for _, fn in ipairs(W.timers) do fn() end
+    W.timers = {}
+    eq(opened, 1)
+    eq(LootFrame.isAutoLoot, false)
+    W.Fire("LOOT_CLOSED")
+    -- the modifier turns auto loot off: the game's window as always
+    IsModifiedClick = function() return true end
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    IsModifiedClick = function() return false end
+    -- the switch off, or paused: the game's window as always
+    ns.SetPref("fastLoot", false)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    ns.SetPref("fastLoot", true)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil)
+    W.Fire("LOOT_CLOSED")
+    eq(LootFrame.events.LOOT_OPENED, true)
+    -- our own window keeps its rule
+    ns.SetPref("window", true)
+    W.Fire("LOOT_READY")
+    eq(LootFrame.events.LOOT_OPENED, nil)
+    eq(ns.quiet, false)
+end)
+
 test("the window opens with the loot, closes with it, and shows auto loot for a moment", function()
     Fake({ slots = { { "i1", "Ruby", 1, 3 } }, db = { window = true } })
     W.lootN = 1
@@ -269,6 +318,8 @@ test("loot rolls stay where the game puts them until the player placed them", fu
     eq(#GroupLootContainer.points, 0)
     ns.db.rollPoint = { "CENTER", "CENTER", 10, 20 }
     ns.SetPref("rollScale", 120)
+    eq(#GroupLootContainer.points, 0, "only with the switch")
+    ns.SetPref("rollMove", true)
     eq(GroupLootContainer.scale, 1.2)
     -- the game anchors it again: ours follows
     GroupLootContainer:ClearAllPoints()
@@ -290,6 +341,483 @@ test("the Unlock mode shows a sample window and the roll place, never in combat"
     ns.MoveFrames(false)
     eq(ns.LootWindowFrame():IsShown(), false)
     eq(ns.RollAnchor():IsShown(), false)
+end)
+
+test("the hub's Tweaks page gets rows on the window's own saved keys", function()
+    Fake({})
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    local GROUPS = { level = true, quests = true, combat = true, loot = true, people = true, ui = true, requests = true }
+    assert(#reg.tweaks >= 3)
+    local seen = {}
+    for _, o in ipairs(reg.tweaks) do
+        assert(GROUPS[o.group], "a group of the page for " .. o.key)
+        assert(type(o.label) == "string" and o.icon, "label and icon for " .. o.key)
+        assert(not seen[o.key], "one row per key"); seen[o.key] = true
+        o.set(true); eq(ns.db[o.key], true, o.key .. " on"); eq(o.get(), true)
+        o.set(false); eq(ns.db[o.key], false, o.key .. " off"); eq(o.get(), false)
+    end
+    assert(seen.fastLoot and seen.window and seen.soloConfirm and seen.feed and seen.rollMove)
+    -- the loot feed's row opens the settings of the Rules page, on the same saved keys
+    local feed
+    for _, o in ipairs(reg.tweaks) do if o.key == "feed" then feed = o end end
+    local parts = {}
+    for _, part in ipairs(feed.panel) do
+        assert(type(part.label) == "string" and part.label ~= "", "a label for " .. tostring(part.key))
+        parts[part.key] = part
+    end
+    for _, k in ipairs({ "feedCompact", "feedPrice", "feedNotes", "feedTotal", "feedBare" }) do
+        eq(parts[k].kind, "switch", k)
+        parts[k].set(true); eq(ns.db[k], true, k); eq(parts[k].get(), true)
+        parts[k].set(false); eq(ns.db[k], false, k)
+    end
+    eq(parts.feedRows.kind, "step")
+    eq(parts.feedRows.max, ns.FEED_ROWS_MAX)
+    parts.feedRows.set(3); eq(ns.db.feedRows, 3); eq(parts.feedRows.get(), 3)
+    eq(parts.feedWidth.kind, "step"); eq(parts.feedWidth.min, ns.FEED_WIDTH_MIN); eq(parts.feedWidth.max, ns.FEED_WIDTH_MAX)
+    parts.feedWidth.set(300); eq(ns.db.feedWidth, 300); eq(parts.feedWidth.get(), 300)
+    parts.feedWidth.set(240)
+    eq(ns.FeedRows(), 3)
+end)
+
+test("a roll frame placed before the switch keeps its place", function()
+    Fake({ db = { rollPoint = { "CENTER", "CENTER", 0, 0 } } })
+    local ns = Load()
+    eq(ns.db.rollMove, true)
+    Fake({})
+    ns = Load()
+    eq(ns.db.rollMove, false, "off for a new player")
+end)
+
+local LINK = "|cff1eff00|Hitem:7|h[Ruby]|h|r"
+
+test("the loot feed shows what was looted, items and money, and fades away", function()
+    Fake({ items = { [7] = { 7, nil, 10, 3 } } })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0, "off by default")
+    local fr
+    for _, x in ipairs(reg.frames) do if x.key == "feed" then fr = x end end
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.db.feed, true)
+    -- fast loot: the window opens, money comes in, the loot chat names the items
+    W.Fire("LOOT_READY")
+    W.money = W.money + 1682
+    W.Fire("PLAYER_MONEY")
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. "x3.")
+    W.Fire("CHAT_MSG_LOOT", "Someone receives loot: " .. LINK .. ".")
+    W.Fire("LOOT_CLOSED")
+    local e = ns.FeedEntries()
+    eq(#e, 2)
+    eq(e[1].kind, "item"); eq(e[1].count, 4, "the same item adds up"); eq(e[1].quality, 3); eq(e[1].icon, "icon7")
+    eq(e[2].kind, "money"); eq(e[2].copper, 1682)
+    eq(ns.FeedFrame():IsShown(), true)
+    -- money that does not come from loot is not in it
+    W.now = W.now + 10
+    W.money = W.money + 500
+    W.Fire("PLAYER_MONEY")
+    ns.FeedTick()
+    eq(#ns.FeedEntries(), 0, "every line goes after a few seconds")
+    eq(ns.FeedFrame():IsShown(), false)
+end)
+
+test("the loot feed is quiet while paused, safe with secret text, and shows a sample in Unlock mode", function()
+    Fake({ db = { feed = true } })
+    local ns = Load()
+    ns.paused = true
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0)
+    ns.paused = false
+    issecretvalue = function() return true end
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    issecretvalue = nil
+    eq(#ns.FeedEntries(), 0)
+    ns.MoveFeed(true)
+    eq(ns.FeedFrame():IsShown(), true)
+    W.now = W.now + 60; ns.FeedTick()
+    eq(ns.FeedFrame():IsShown(), true, "the sample stays while placing")
+    ns.MoveFeed(false)
+    eq(ns.FeedFrame():IsShown(), false)
+    ns.SetPref("feed", false)
+    W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. LINK .. ".")
+    eq(#ns.FeedEntries(), 0)
+end)
+
+local function link(id, name) return "|cffffffff|Hitem:" .. id .. "|h[" .. name .. "]|h|r" end
+local function loot(id, n) W.Fire("CHAT_MSG_LOOT", "You receive loot: " .. link(id, "Item" .. id) .. (n and ("x" .. n) or "") .. ".") end
+
+-- items: 1 grey junk, 2 cloth (trade goods), 3 green BoE chest, 4 quest item a quest asks for,
+-- 5 quest item nobody asks for that a vendor buys, 6 a bound white thing, 10940 strange dust
+local FEED_ITEMS = {
+    [1] = { 15, nil, 1, 0, 0, 375 }, [2] = { 7, nil, 50, 1, 0, 100 },
+    [3] = { 4, "INVTYPE_CHEST", 40, 2, 2, 2000 }, [4] = { 12, nil, 1, 1, 4, 0 },
+    [5] = { 12, nil, 1, 1, 4, 250 }, [6] = { 15, nil, 1, 1, 1, 80 },
+}
+
+test("a feed line prices its item at a vendor or the auction, whichever pays more", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS })
+    local ns = Load()
+    local S = ns.Skin
+    local prices = { [1] = 9000, [2] = 480, [3] = 18500, [6] = 9000 }
+    S.AuctionPrice = function(id) return prices[id] end
+    local v, how = ns.FeedValue(1); eq(v, 375); eq(how, "vendor", "grey never goes to the auction")
+    v, how = ns.FeedValue(2); eq(v, 480); eq(how, "auction")
+    v, how = ns.FeedValue(3); eq(v, 18500); eq(how, "auction")
+    v, how = ns.FeedValue(6); eq(v, 80); eq(how, "vendor", "a plain white thing a vendor buys stays there")
+    eq(ns.FeedValue(4), nil, "nothing to say about an item worth nothing")
+    prices[2] = 60
+    v, how = ns.FeedValue(2); eq(v, 100); eq(how, "vendor", "the vendor pays more than the auction")
+    S.AuctionPrice = function() error("broken price addon") end
+    v, how = ns.FeedValue(2); eq(v, 100, "a failing price addon leaves the vendor price")
+    S.AuctionPrice = function() return nil end
+    v, how = ns.FeedValue(3); eq(v, 2000); eq(how, "vendor", "without a price addon: the vendor")
+    -- an enchanter: green gear as dust when that brings most
+    GetProfessions = function() return 1 end
+    GetProfessionInfo = function() return "Enchanting", nil, 1, 1, 0, 0, 333 end
+    S.AuctionPrice = function(id) if id == 11137 then return 30000 elseif id == 11135 then return 26000 end end
+    v, how = ns.FeedValue(3); eq(v, 26000); eq(how, "disenchant")
+    GetProfessions, GetProfessionInfo = nil, nil
+end)
+
+test("a feed line names the quest, the count in the bags, better gear and a farm goal", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS, worn = { [5] = 30 }, bags = { [2] = 43, [4] = 7 },
+           quests = { { 77, "Hope for Hatchlings", { { "7/12 Item4", 7, 12 } } },
+                      { 78, "Other", { { "Large Item5: 0/3", 0, 3 } } } } })
+    local ns = Load()
+    local S = ns.Skin
+    S.AuctionPrice = function(id) return ({ [2] = 480, [3] = 18500 })[id] end
+    local function facts(id, n) return ns.FeedFacts({ kind = "item", id = id, count = n or 1, name = "Item" .. id, link = link(id, "Item" .. id) }) end
+    local f = facts(4)
+    eq(f.notes[1].key, "quest"); eq(f.notes[1].right, "7/12")
+    assert(f.notes[1].text:find("Hope for Hatchlings", 1, true), "the quest's name")
+    eq(f.total, nil, "an item a quest still needs has no price")
+    f = facts(5)
+    eq(f.notes[1].key, "sell", "the whole name must match: Large Item5 is another item")
+    eq(f.total, 250); eq(f.how, "vendor")
+    f = facts(2, 3)
+    eq(f.total, 1440, "the price of the whole stack"); eq(f.notes[1].key, "bags")
+    assert(f.notes[1].text:find("43"))
+    f = facts(3)
+    eq(f.notes[1].key, "upgrade", "item level 40 over the worn 30")
+    C_PlayerInfo = { CanUseItem = function() return false end }
+    eq(#facts(3).notes, 0, "gear the class cannot use is no upgrade")
+    C_PlayerInfo = nil
+    f = facts(1)
+    eq(f.notes[1].key, "junk")
+    GulliFarmTrackCharDB = { targets = { { kind = "item", id = 2, goal = 60 } }, s = { items = { [2] = 43 } } }
+    f = facts(2, 3)
+    eq(f.notes[1].key, "goal"); assert(f.notes[1].text:find("43/60", 1, true))
+    GulliFarmTrackCharDB = nil
+    -- the switches: no price, no notes
+    ns.SetPref("feedPrice", false)
+    eq(facts(2, 3).total, nil)
+    ns.SetPref("feedPrice", true); ns.SetPref("feedNotes", false)
+    f = facts(2, 3)
+    eq(#f.notes, 0); eq(f.total, 1440)
+    -- secret quest text is left alone
+    ns.SetPref("feedNotes", true)
+    issecretvalue = function(v) return type(v) == "string" and v:find("Hatchlings") ~= nil end
+    eq(facts(4).notes[1].key, "questitem")
+    issecretvalue = nil
+end)
+
+test("the feed's two looks: a second line only when there is a note, a total of the lines", function()
+    Fake({ db = { feed = true }, items = FEED_ITEMS, bags = { [2] = 43 },
+           quests = { { 77, "Hope for Hatchlings", { { "7/12 Item4", 7, 12 } } } } })
+    local ns = Load()
+    ns.Skin.AuctionPrice = function(id) return ({ [2] = 480 })[id] end
+    eq(ns.db.feedCompact, false, "detailed by default")
+    loot(2, 3); loot(4); loot(1)
+    local e = ns.FeedEntries()
+    local junk, quest, cloth = ns.FeedLine(e[1]), ns.FeedLine(e[2]), ns.FeedLine(e[3])
+    assert(cloth.right:find("14s") and cloth.right:find("40c"), "the stack's price")
+    eq(cloth.src, "auction"); assert(cloth.note:find("43"))
+    eq(quest.src, nil); assert(quest.right:find("7/12")); assert(quest.note:find("Hope for Hatchlings", 1, true))
+    eq(junk.src, "vendor"); assert(junk.note ~= nil)
+    -- a price alone is no reason for a second line
+    ns.SetPref("feedNotes", false)
+    junk = ns.FeedLine(ns.FeedEntries()[1])
+    eq(junk.note, nil, "one line: the price's icon names the source"); eq(junk.src, nil)
+    assert(junk.right:find("3s"))
+    -- the panel keeps the player's width whatever the lines say
+    ns.FeedPaint()
+    eq(ns.feedWidth, 240, "the width at first")
+    ns.SetPref("feedWidth", 300)
+    eq(ns.feedWidth, 300, "a changed width shows at once")
+    ns.SetPref("feedWidth", 9999); eq(ns.FeedWidth(), ns.FEED_WIDTH_MAX)
+    ns.SetPref("feedWidth", 1); eq(ns.FeedWidth(), ns.FEED_WIDTH_MIN)
+    ns.SetPref("feedWidth", 240)
+    ns.SetPref("feedNotes", true)
+    e = ns.FeedEntries()
+    local total, parts = ns.FeedTotal()
+    eq(total, 1440 + 375); eq(parts, 2, "the quest item adds nothing")
+    -- the bags changed: the count is read again, not on every frame
+    local reads = 0
+    local count = C_Item.GetItemCount
+    C_Item.GetItemCount = function(id) reads = reads + 1; return count(id) end
+    ns.FeedTick(); ns.FeedTick()
+    eq(reads, 0, "nothing is read again while nothing changed")
+    W.bags[2] = 46
+    W.now = W.now + 1
+    W.Fire("BAG_UPDATE_DELAYED")
+    ns.FeedTick()
+    assert(ns.FeedLine(e[3]).note:find("46"), "the new count after the bags changed")
+    -- compact: one line, the quest's count on the right, no second line
+    ns.SetPref("feedCompact", true)
+    e = ns.FeedEntries()
+    quest, cloth = ns.FeedLine(e[2]), ns.FeedLine(e[3])
+    eq(cloth.note, nil); eq(quest.note, nil)
+    assert(quest.right:find("7/12") and quest.right:find("Quest", 1, true))
+    assert(cloth.right:find("14s"))
+    -- an item without anything to say stays one line in the detailed look
+    ns.SetPref("feedCompact", false)
+    ns.SetPref("feedNotes", false); ns.SetPref("feedPrice", false)
+    eq(ns.FeedLine(ns.FeedEntries()[3]).note, nil)
+    local _, n = ns.FeedTotal()
+    eq(n, 0)
+    -- the player's limit: only so many lines show, the total still counts all the loot
+    ns.SetPref("feedNotes", true); ns.SetPref("feedPrice", true)
+    eq(ns.FeedRows(), 5, "five lines by default")
+    ns.SetPref("feedRows", 2)
+    ns.FeedPaint()
+    local shown = 0
+    for _, fr in ipairs(W.frames) do if rawget(fr, "entry") and fr:IsShown() then shown = shown + 1 end end
+    eq(shown, 2, "two lines of the three")
+    eq(#ns.FeedEntries(), 3)
+    eq((ns.FeedTotal()), 1440 + 375, "the hidden line is in the total")
+    ns.SetPref("feedRows", 99); eq(ns.FeedRows(), ns.FEED_ROWS_MAX)
+    ns.SetPref("feedRows", 0); eq(ns.FeedRows(), 1)
+    ns.SetPref("feedRows", 5)
+    -- the bare look takes the panel away, not the lines; the Unlock mode shows it for placing
+    local back = ns.FeedFrame().back
+    eq(back:IsShown(), true)
+    ns.SetPref("feedBare", true)
+    eq(back:IsShown(), false, "no background and no frame")
+    eq(ns.FeedFrame():IsShown(), true, "the lines stay")
+    ns.MoveFeed(true); eq(back:IsShown(), true, "placing shows the panel")
+    ns.MoveFeed(false); eq(back:IsShown(), false)
+    ns.SetPref("feedBare", false)
+    -- paused: nothing new comes in
+    ns.FeedClear(); ns.paused = true
+    loot(2)
+    eq(#ns.FeedEntries(), 0)
+end)
+
+local function rollStrings()
+    LOOT_ROLL_NEED = "%s has selected Need for: %s"
+    LOOT_ROLL_GREED = "%s has selected Greed for: %s"
+    LOOT_ROLL_PASSED = "%s passed on: %s"
+    LOOT_ROLL_PASSED_AUTO = "%s automatically passed on: %s because he cannot loot that item."
+    LOOT_ROLL_NEED_SELF = "You have selected Need for: %s"
+    LOOT_ROLL_PASSED_SELF = "You passed on: %s"
+    LOOT_ROLL_ROLLED_NEED = "Need Roll - %d for %s by %s"
+end
+
+local function lootFrame(i, rollID)
+    local f = W.stub()
+    rawset(f, "rollID", rollID)
+    f:Show()
+    rawset(f, "IsMouseOver", function() return rawget(f, "_over") == true end)
+    _G["GroupLootFrame" .. i] = f
+    return f
+end
+
+test("who rolled what: off by default, then the chat choices of the group under the roll frame", function()
+    Fake({ rolls = { { 7, 2 } } })
+    rollStrings()
+    local ns = Load()
+    eq(ns.db.rollers, false, "off by default")
+    lootFrame(1, 1)
+    W.Fire("START_LOOT_ROLL", 1)
+    eq(ns.RollersFrame():IsShown(), false, "nothing shows while off")
+    ns.SetPref("rollers", true)
+    W.Fire("START_LOOT_ROLL", 1)
+    local item = "|Hitem:7|h[Item]|h"
+    W.Fire("CHAT_MSG_LOOT", "Bob has selected Greed for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Ann has selected Need for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Cid automatically passed on: " .. item .. " because he cannot loot that item.")
+    W.Fire("CHAT_MSG_LOOT", "Bob has selected Need for: |Hitem:99|h[Other]|h")
+    local r, list, counts = ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), true)
+    eq(#list, 4, "three choices and the player still waiting")
+    eq(list[1].name, "Ann"); eq(list[1].choice, "need")
+    eq(list[2].name, "Bob"); eq(list[3].choice, "pass")
+    eq(list[4].name, "Tester"); eq(list[4].choice, "wait"); eq(list[4].self, true)
+    eq(counts.need, 1); eq(counts.greed, 1); eq(counts.pass, 1); eq(counts.wait, 1)
+    W.Fire("CHAT_MSG_LOOT", "You have selected Need for: " .. item)
+    W.Fire("CHAT_MSG_LOOT", "Need Roll - 87 for " .. item .. " by Ann")
+    r, list, counts = ns.RollersPaint()
+    eq(counts.need, 2); eq(counts.wait, 0)
+    eq(r.by.Ann.roll, 87, "the roll number shows once known")
+    -- a secret line is left alone, and the roll's end hides the panel
+    issecretvalue = function(v) return v == "secret" end
+    eq(ns.RollerChat("secret"), nil)
+    issecretvalue = nil
+    GroupLootFrame1:Hide()
+    ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), false)
+    ns.paused = true
+    GroupLootFrame1:Show()
+    ns.RollersPaint()
+    eq(ns.RollersFrame():IsShown(), false, "paused from the hub")
+    GroupLootFrame1 = nil
+end)
+
+test("who rolled what: the loot history gives the class, Main or Off spec and those still waiting", function()
+    Fake({ rolls = { { 7, 2 }, { 7, 2 } }, db = { rollers = true } })
+    rollStrings()
+    Enum = { EncounterLootDropRollState = { NeedMainSpec = 0, NeedOffSpec = 1, Transmog = 2, Greed = 3, NoRoll = 4, Pass = 5 } }
+    C_LootHistory = { GetSortedInfoForDrop = function(enc, key)
+        return { itemHyperlink = "|Hitem:7|h[Item]|h", rollInfos = {
+            { playerName = "Ann", playerClass = "WARRIOR", state = 1 },
+            { playerName = "Bob", playerClass = "PALADIN", state = 0 },
+            { playerName = "Tester", playerClass = "PRIEST", state = 4, isSelf = true },
+            { playerName = "Cid", playerClass = "MAGE", state = 5 },
+        } }
+    end }
+    local ns = Load()
+    lootFrame(1, 1)
+    local f2 = lootFrame(2, 2)
+    W.Fire("START_LOOT_ROLL", 1)
+    W.now = W.now + 1
+    W.Fire("START_LOOT_ROLL", 2)
+    W.Fire("LOOT_HISTORY_UPDATE_DROP", 5, 1)
+    eq(ns.RollerData(1).drop, "5:1", "the history drop goes to the older roll of the same item")
+    local _, list, counts = ns.RollersPaint()
+    eq(list[1].name, "Bob"); eq(list[1].spec, "main", "Main spec before Off spec")
+    eq(list[2].name, "Ann"); eq(list[2].spec, "off"); eq(list[2].class, "WARRIOR")
+    eq(list[3].choice, "pass"); eq(list[4].choice, "wait")
+    eq(counts.need, 2); eq(counts.pass, 1)
+    -- the mouse on the second roll frame shows that roll
+    rawset(f2, "_over", true)
+    local r = ns.RollersPaint()
+    eq(r, ns.RollerData(2))
+    -- chat for the same item goes to the roll that lacks that name
+    W.Fire("CHAT_MSG_LOOT", "Ann has selected Greed for: |Hitem:7|h[Item]|h")
+    eq(ns.RollerData(2).by.Ann.choice, "greed")
+    eq(ns.RollerData(1).by.Ann.choice, "need")
+    -- Unlock mode shows a sample under the roll anchor
+    GroupLootFrame1, GroupLootFrame2 = nil, nil
+    ns.MoveRollers(true)
+    eq(ns.RollersFrame():IsShown(), true)
+    ns.MoveRollers(false)
+    eq(ns.RollersFrame():IsShown(), false)
+    C_LootHistory, Enum = nil, nil
+end)
+
+test("a format with numbered arguments is read in its own order", function()
+    Fake({})
+    local ns = Load()
+    local pat, order = ns.CompileFormat("%2$s : %1$s a choisi Besoin")
+    local a, b = ("[Item] : Bob a choisi Besoin"):match(pat)
+    eq(a, "[Item]"); eq(b, "Bob"); eq(order[1], 2); eq(order[2], 1)
+end)
+
+local function realWorld(spec)
+    Fake(spec)
+    GulliLootCharDB = spec.cdb
+    W.real = { qty = spec.qty or 10, max = spec.max or 250 }
+    C_CurrencyInfo = { GetCurrencyInfo = function(id)
+        if id ~= 3469 then return nil end
+        return { name = "Tarnished Undermine Real", quantity = W.real.qty, maxQuantity = W.real.max, iconFileID = 7 }
+    end }
+    C_DateAndTime = { GetSecondsUntilDailyReset = function() return 3600 end }
+    W.inst = spec.inst or { "Scholomance", "party", 1, "Normal", 5, 0, false, 289 }
+    GetInstanceInfo = function() return unpack(W.inst) end
+    W.bossLevel = spec.bossLevel or 61
+    UnitExists = function(u) return u == "boss1" end
+    UnitCanAttack = function() return true end
+    UnitLevel = function(u) if u == "player" then return W.level end return W.bossLevel end
+end
+
+local function kill(id)
+    W.Fire("ENCOUNTER_START", id, "Boss", 1, 5)
+    W.RunTimers()
+    W.Fire("ENCOUNTER_END", id, "Boss", 1, 5, 1)
+end
+
+local function gain(n)
+    W.real.qty = W.real.qty + n
+    W.Fire("CURRENCY_DISPLAY_UPDATE", 3469, W.real.qty, n)
+end
+
+test("after a boss that drops a Real, an icon shows until it is looted", function()
+    realWorld({ db = {} })
+    local reg
+    GulliToolkit = { Register = function(t) reg = t end }
+    local ns = Load()
+    GulliToolkit = nil
+    kill(101)
+    eq(#ns.RealPending(), 0, "off by default")
+    local fr
+    for _, x in ipairs(reg.frames) do if x.key == "real" then fr = x end end
+    eq(fr.get(), false)
+    fr.set(true)
+    eq(ns.db.real, true)
+    W.Fire("PLAYER_ENTERING_WORLD")
+    kill(101)
+    eq(#ns.RealPending(), 1)
+    eq(ns.RealFrame():IsShown(), true)
+    W.Fire("CURRENCY_DISPLAY_UPDATE", 1, 5, 5)
+    eq(ns.RealFrame():IsShown(), true, "another currency changes nothing")
+    gain(1)
+    eq(#ns.RealPending(), 0)
+    eq(ns.RealFrame():IsShown(), false, "looted: the icon goes")
+    eq(ns.RealLootedToday(101), true)
+    kill(101)
+    eq(#ns.RealPending(), 0, "a boss looted today is skipped")
+    kill(102)
+    eq(#ns.RealPending(), 1, "another boss still counts")
+    W.now = W.now + ns.REAL_WAIT + 1
+    ns.RealPaint()
+    eq(ns.RealFrame():IsShown(), false, "it goes when no Real came")
+    W.now = W.now + 3600
+    eq(ns.RealLootedToday(101), false, "a new day after the daily reset")
+end)
+
+test("the Real reminder stays quiet below 60, at the cap, for low bosses and outside its dungeons", function()
+    realWorld({ db = { real = true }, level = 59 })
+    local ns = Load()
+    kill(1); eq(#ns.RealPending(), 0, "below level 60")
+    W.level = 60
+    W.real.qty = 250
+    kill(1); eq(#ns.RealPending(), 0, "at the cap")
+    W.real.qty, W.real.max = 250, 0
+    kill(1); eq(#ns.RealPending(), 0, "the cap of 250 when the game names none")
+    W.real.qty = 10
+    W.bossLevel = 50
+    kill(1); eq(#ns.RealPending(), 0, "a boss below 55")
+    W.bossLevel = -1
+    kill(1); eq(#ns.RealPending(), 1, "a skull counts")
+    ns.RealClear()
+    W.inst = { "Zul'Farrak", "party", 1, "Normal", 5, 0, false, 209 }
+    kill(2); eq(#ns.RealPending(), 0, "a dungeon without Reals")
+    W.inst = { "Blackmaw Hold", "party", 1, "Normal", 5, 0, false, 9001 }
+    kill(3); eq(#ns.RealPending(), 1, "WoW Forever's own dungeon by name")
+    gain(1)
+    eq(ns.db.realLearned[9001], true, "its id is learned with the Real")
+    W.Fire("ENCOUNTER_END", 4, "Boss", 1, 5, 0)
+    eq(#ns.RealPending(), 0, "a wipe is no kill")
+    issecretvalue = function() return true end
+    W.inst = { "Scholomance", "party", 1, "Normal", 5, 0, false, 289 }
+    kill(5)
+    issecretvalue = nil
+    eq(#ns.RealPending(), 1, "secret values are left alone: it still reminds")
+    ns.RealClear()
+    ns.paused = true
+    kill(6); eq(#ns.RealPending(), 0, "paused")
+    ns.paused = false
+    ns.MoveReal(true)
+    eq(ns.RealFrame():IsShown(), true, "Unlock mode shows it to place")
+    ns.MoveReal(false)
+    eq(ns.RealFrame():IsShown(), false)
 end)
 
 W.finish()

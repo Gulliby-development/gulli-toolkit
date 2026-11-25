@@ -95,7 +95,7 @@ local GAINS = { 0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 }
 
 -- The saved settings, not the ones of the last result: a calculation may still be running.
 local function pref(key)
-    local P = ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.SavedPrefs())
     if key == "target" then
         local st = ns.view.state or (ns.Skill and ns.Skill())
         if st then return ns.Target(st, P) end
@@ -134,13 +134,14 @@ local function stepper(parent, key, step, min, max, fmt, width)
         local top = max
         local function auto()
             local st = ns.view.state or (ns.Skill and ns.Skill())
-            local P = ns.Prefs(ns.db and ns.db.prefs)
+            local P = ns.Prefs(ns.SavedPrefs())
             P.maxCrafts = 0
             return st and ns.CraftCap(st, P) or ns.CRAFTS_SPARE
         end
         get = function()
             local v = pref(key) or 0
-            if v < 0 then return top + step end
+            -- the simulation's long way has no automatic limit
+            if v < 0 or (v == 0 and ns.sim) then return top + step end
             return v == 0 and auto() or v
         end
         set = function(v) ns.SetPref(key, (v > top and -1) or (v == auto() and 0) or v) end
@@ -167,6 +168,8 @@ local function stepRow(parent, key, step, min, max, fmt)
     row.label:SetWordWrap(true)
     row.label:SetMaxLines(2)
     row.isRow = true
+    ui.rows = ui.rows or {}
+    ui.rows[key] = row
     ui.steppers[key] = st
     if key ~= "target" then ui[key] = st end
     return row
@@ -184,6 +187,8 @@ local function rowsCard(parent, title, rows)
             row.label:SetWordWrap(true)
             row.label:SetMaxLines(2)
             ui.checks[r.key] = row.switch
+            ui.rows = ui.rows or {}
+            ui.rows[r.key] = row
         end
         st:Add(row, row.height)
         row.line:SetShown(i < #rows)
@@ -356,7 +361,7 @@ local AH_SWITCH = { buyAH = true, sellAH = true, neutral = true, freshOnly = tru
 local AH_STEP = { maxBuy = true, chance = true, maxSell = true, minGain = true }
 
 local function refreshSettings()
-    local P = ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.SavedPrefs())
     local priced = ns.HasPrices()
     for k, c in pairs(ui.checks) do
         -- without a price addon the auction switches can do nothing: off and grey
@@ -373,10 +378,19 @@ local function refreshSettings()
         local st = ui.steppers[k]
         if st then st.minus:SetEnabled(priced); st.plus:SetEnabled(priced); st:SetAlpha(priced and 1 or 0.4) end
     end
+    -- the settings the simulation does not read: dim and locked while it runs
+    for k, row in pairs(ui.rows or {}) do
+        local off = ns.sim ~= nil and ns.SIM_IGNORED[k] or false
+        row:SetAlpha(off and 0.4 or 1)
+        if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not (AH_SWITCH[k] and not priced)) end
+        local st = ui.steppers[k]
+        if st and off then st.minus:SetEnabled(false); st.plus:SetEnabled(false) end
+    end
     ui.target:Refresh()
     refreshSkip()
     if ns.char then
         local run = ns.char.run
+        ui.logBtn:SetEnabled(not ns.sim)
         ui.logBtn:SetText(run and L.LOG_FINISH or L.LOG_START)
         local lines = {}
         if run then lines[#lines + 1] = L.LOG_RUNNING:format(run.from, run.to, ns.Money(run.net, true)) end
@@ -394,8 +408,10 @@ local function refreshSettings()
         end
         ui.toast:SetText(text)
     else
-        ui.toast:SetText(ns.view.plan and L.TOAST_HINT or "")
+        -- the simulation says why some settings are dim
+        ui.toast:SetText(ns.sim and L.SIM_IGNORED or (ns.view.plan and L.TOAST_HINT or ""))
     end
+    ns.SimSettings()
 end
 
 -- ---------- why a stretch crafts its recipe ----------
@@ -626,7 +642,7 @@ local function fillNode(b, n, p, here)
     b.icon:SetGlow(kc)
     local done = p and p.done or false
     b.icon:SetAlpha(done and 0.6 or 1)
-    b.head:SetText(n.index .. " · " .. (L["KIND_" .. n.kind] or n.kind))
+    b.head:SetText(n.index .. S.DOT .. (L["KIND_" .. n.kind] or n.kind))
     b.sub:SetText(stopSub(n))
     b.tick:SetShown(done)
     b.here:SetShown(here and not done)
@@ -715,6 +731,12 @@ function ns.StopAction(i, aside)
     local v = ns.view
     local n = v.route and v.route[i]
     if not n then return nil end
+    -- a simulated stop only shows what would be bought and made: nothing to press, but for the
+    -- shopping list, which buys for another character for real
+    local shop = ns.SimShopOn(v) and ns.Gets(n)
+    if v.state and v.state.sim and not shop then
+        return { tools = {}, pill = { L.SIM_PILL, ns.SIM_COLOR }, hint = L.SIM_STOP_HINT, sim = true }
+    end
     local prog = ns.RunProgress()
     local p = prog[i]
     local now = (v.leg or 1) == 1 -- a later run of the way is only a plan
@@ -730,7 +752,8 @@ function ns.StopAction(i, aside)
                 ns.Print(text); ns.Toast(text)
             end }
         end
-        if ns.atAH then
+        -- the simulation reads no lots: they would be saved
+        if ns.atAH and not shop then
             a.tools[#a.tools + 1] = { L.LOTS_UPDATE, function() ns.Toast(L.LOTS_BUSY:format(ns.ScanLots(v.route))) end }
         end
         a.pill = done and { L.STOP_DONE, GOOD } or (ns.atAH and { L.OPEN_ah, GOOD } or { L.AWAY_ah })
@@ -888,7 +911,7 @@ local function detailRows(n, i, a)
         local c = ns.COLORS[sg.color or "gy"] or ns.COLORS.gy
         local row = { rid = sg.rid, seg = sg, out = r.out, icon = r.out and ns.ItemIcon(r.out), q = r.out and (st.items[r.out] or {}).quality,
                             text = color(c) .. r.name .. "|r" .. color(S.MUTED) .. " x" .. ns.Ceil(sg.n) .. "|r",
-                            note = sg.from .. " - " .. sg.to .. (r.cd and ("  ·  " .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
+                            note = sg.from .. " - " .. sg.to .. (r.cd and (S.DOT .. L.CD_EVERY:format(ns.CdText(r.cd))) or ""),
                             right = L.CRAFTS_N:format(ns.Ceil(sg.n)) }
         craftMark(row, p and p.segs and p.segs[si], n, p, sg.rid)
         rows[#rows + 1] = row
@@ -946,7 +969,7 @@ local function detailRows(n, i, a)
             -- the price the auction just answered, for this many
             if buying.phase == "ready" and buying.quote then
                 local dear = ns.BuyDear()
-                note = L.EACH:format(S.MoneyText(buying.quote.unit)) .. "  ·  "
+                note = L.EACH:format(S.MoneyText(buying.quote.unit)) .. S.DOT
                     .. color(dear and GOLD or GOOD) .. (dear and L.NOTE_DEAR or L.NOTE_PLANNED) .. "|r"
                 right = S.MoneyText(buying.quote.total)
             end
@@ -971,7 +994,7 @@ local function makeLine(r)
         local e = r.entry
         if not e then return end
         if button == "RightButton" and e.id then
-            ns.SetGather(e.id, not ns.db.gather[e.id])
+            ns.SetGather(e.id, not ns.Gathered()[e.id])
         elseif e.rid then
             if not ns.OpenRecipe(e.rid) then ns.Print(L.OPEN_PROF) end
         elseif e.pin then
@@ -984,7 +1007,7 @@ local function makeLine(r)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if e.id then
             GameTooltip:SetItemByID(e.id)
-            GameTooltip:AddLine(ns.db.gather[e.id] and L.GATHER_TIP_OFF or L.GATHER_TIP, 0.6, 0.6, 0.6, true)
+            GameTooltip:AddLine(ns.Gathered()[e.id] and L.GATHER_TIP_OFF or L.GATHER_TIP, 0.6, 0.6, 0.6, true)
         elseif e.rid then
             if ns.ItemTip(e.out) then GameTooltip:AddLine(L.RECIPE_TIP, 0.6, 0.6, 0.6, true)
             else GameTooltip:SetText(L.RECIPE_TIP, 1, 1, 1, 1, true) end
@@ -1118,7 +1141,7 @@ local function makePanel(card, width)
         self.action = a
         self.icon:SetIcon(stopIcon(n))
         self.title:SetText(L["KIND_" .. n.kind] or n.kind)
-        self.sub:SetText(n.segs and (stopTitle(n) .. "  ·  " .. L.CRAFTS_N:format(n.crafts)) or stopTitle(n))
+        self.sub:SetText(n.segs and (stopTitle(n) .. S.DOT .. L.CRAFTS_N:format(n.crafts)) or stopTitle(n))
         self.pill:Set(a.pill and a.pill[1], a.pill and a.pill[2])
         self.list:SetData(detailRows(n, i, a))
         -- the counter: "Click 3 of 4" with a pip per click
@@ -1277,8 +1300,11 @@ local function valueTip(tip, st, P, r, x)
     local it = r.out and st.items[r.out]
     if x.how ~= "ah" or not (it and it.ah) then return end
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
-    tip[#tip + 1] = { L.TIP_VALUE:format(S.MoneyText(it.ah), math.floor(cut * 100 + 0.5), P.chance,
+    local sure = ns.IsReagent(r.out)
+    tip[#tip + 1] = { L.TIP_VALUE:format(S.MoneyText(it.ah), math.floor(cut * 100 + 0.5), sure and 100 or P.chance,
                                          S.MoneyText(math.floor(x.value / (r.count or 1) + 0.5))), nil, nil, nil, true }
+    -- a reagent always sells: the share set in the settings is for finished goods
+    if sure then tip[#tip + 1] = { L.TIP_SURE, nil, nil, nil, true } end
 end
 ns.ValueTip = valueTip
 
@@ -1286,6 +1312,8 @@ local function listRows(which)
     local st, P = ns.view.state, ns.view.prefs
     local rows = {}
     if not st then return rows end
+    -- the simulation lists the crafts as they stand at the end of the way
+    if st.sim and which == 2 then st = (ns.SimCached() or {}).after or st end
     if which == 2 then
         for _, x in ipairs(ns.Crafts(st, P)) do
             local r = st.recipes[x.recipe]
@@ -1498,7 +1526,7 @@ local function buildRoute(route, height)
         b:SetScript("OnClick", function(self)
             if ns.EARN[m] then ns.ChooseMode(m); return end
             -- the best route within the budget stays automatic; a levelling tile turns levelling on
-            ns.ChooseMode((self.best and (ns.Prefs(ns.db.prefs).budget or 0) > 0) and "auto" or m)
+            ns.ChooseMode((self.best and (ns.Prefs(ns.SavedPrefs()).budget or 0) > 0) and "auto" or m)
         end)
         b:SetScript("OnEnter", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.Accent()) end end)
         b:SetScript("OnLeave", function(self) if ns.view.mode ~= m then S.SetBorder(self, S.CARD_EDGE) end end)
@@ -1541,6 +1569,7 @@ local function buildRoute(route, height)
     stopsBox:SetPoint("TOPLEFT", 0, -top)
     stopsBox:SetPoint("BOTTOMLEFT", 0, LEDGER_H + STOP_GAP)
     stopsBox:SetWidth(STOPS_W)
+    ui.stopsBox = stopsBox
     ui.stops = S.Scroll(stopsBox)
     ui.stops:SetAllPoints()
     ui.stops.step = STOP_H + STOP_GAP
@@ -1558,6 +1587,7 @@ local function buildRoute(route, height)
     head:SetPoint("RIGHT", ui.net, "LEFT", -8, 0)
     head:SetWordWrap(false)
     head:SetText(S.Upper(L.LEDGER))
+    ui.ledgerHead = head
     ui.money = S.Text(ledger, 12, S.MUTED)
     ui.money:SetPoint("TOPLEFT", S.INSET, -32)
     ui.money:SetPoint("RIGHT", -S.INSET, 0)
@@ -1621,7 +1651,10 @@ local function build()
     frame = S.Window("GulliCraftProfitFrame", L.TITLE, W, H)
     ui.frame = frame
     ui.age = frame.sub
-    local main = frame.body
+    -- everything sits in one container, so the simulation's strip can push it down
+    local main = CreateFrame("Frame", nil, frame.body)
+    main:SetPoint("TOPLEFT", 0, 0)
+    main:SetPoint("BOTTOMRIGHT", 0, 0)
     local bodyH = frame.inner[2]
     ui.main = main
     local labels = { L.TAB_ROUTE, L.TAB_CRAFTS, L.TAB_ITEMS, L.TAB_RECIPES, L.TAB_SETTINGS }
@@ -1641,6 +1674,8 @@ local function build()
     ui.prof.text:SetPoint("LEFT", ui.prof.icon, "RIGHT", 8, 0)
     ui.prof.text:SetJustifyH("LEFT")
     ui.prof:SetScript("OnClick", function()
+        -- in the simulation the pill leads back to its conditions
+        if ns.sim then ns.SimSetup(); return end
         local profs = ns.Professions()
         if #profs < 2 then return end
         local at = 1
@@ -1650,6 +1685,7 @@ local function build()
     ui.prof:HookScript("OnEnter", function(self)
         if not (GameTooltip and GameTooltip.SetOwner) then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        if ns.sim then GameTooltip:SetText(L.SIM_PILL_TIP, 1, 1, 1); GameTooltip:Show(); return end
         GameTooltip:SetText(L.SIDE_PROF, 1, 1, 1)
         for _, p in ipairs(ns.Professions()) do
             GameTooltip:AddDoubleLine(p.name, p.skill .. "/" .. p.cap, 0.8, 0.8, 0.8, 1, 1, 1)
@@ -1731,11 +1767,20 @@ local function build()
 
     frame:SetScript("OnShow", function() ns.Rebuild(false, "open") end)
     ui.tabs:Select(1, true)
+    ns.SimBuild(ui, frame)
 end
 
 -- ---------- refreshing ----------
 
 local function refreshProfession()
+    if ns.sim then
+        local sim = ns.sim
+        ui.prof:Show()
+        ui.prof.icon:SetIcon(ns.SIM_PROF_ICON[sim.line])
+        ui.prof:SetText(L.SIM_RANGE:format(sim.name, sim.from, sim.to))
+        ui.prof:SetWidth(math.max(72, math.floor((tonumber((ui.prof.text:GetStringWidth())) or 0) + 46)))
+        return
+    end
     local profs = ns.Professions()
     local cur
     for _, p in ipairs(profs) do if ns.char and p.name == ns.char.current then cur = p end end
@@ -1773,15 +1818,25 @@ local function makeChip(parent)
 end
 local function refreshChips(v)
     local legs = v.legs or {}
-    local n = #legs
+    -- the simulation shows the whole way first (leg 0) and its shopping list (ns.SIM_SHOP)
+    -- before the runs, the list only when the way buys something
+    local list = {}
+    if v.state and v.state.sim and #legs > 0 then
+        list[1] = { i = 0, leg = { whole = true } }
+        if #ns.SimShopping(v) > 0 then list[2] = { i = ns.SIM_SHOP, leg = { shop = true } } end
+    end
+    for i, l in ipairs(legs) do list[#list + 1] = { i = i, leg = l } end
+    local n = #list
     local room = ui.chipW
     local fit = math.min(n, math.floor((room + 6) / (CHIP_MIN + 6)))
     local cw = fit > 0 and math.floor((room - (fit - 1) * 6) / fit) or 0
     local sel = v.leg or 1
-    local first = math.max(1, math.min(sel - math.floor(fit / 2), n - fit + 1))
+    local at = 1
+    for j, e in ipairs(list) do if e.i == sel then at = j end end
+    local first = math.max(1, math.min(at - math.floor(fit / 2), n - fit + 1))
     for k = 1, math.max(#ui.chips, fit) do
-        local i = first + k - 1
-        local leg = k <= fit and legs[i]
+        local e = k <= fit and list[first + k - 1]
+        local i, leg = e and e.i, e and e.leg
         local b = ui.chips[k]
         if leg then
             if not b then b = makeChip(ui.chipBox); ui.chips[k] = b end
@@ -1793,7 +1848,11 @@ local function refreshChips(v)
             -- it gains or loses, so the whole way reads at a glance
             local range = tostring(leg.to)
             local c = BAD
-            if leg.unknown then
+            if leg.whole or leg.shop then
+                c = ns.SIM_COLOR
+                b.text:SetText(leg.whole and L.SIM_WHOLE or L.SIM_SHOP_CHIP)
+                b.net:SetText("")
+            elseif leg.unknown then
                 b.text:SetText(color(BAD) .. range .. " ?|r")
                 b.net:SetText("")
             else
@@ -1829,9 +1888,16 @@ end
 
 local function refreshRoute()
     local v = ns.view
+    local sim = v.state.sim
     local leg = v.legs and v.legs[v.leg or 1]
     -- a later run shows its own plan; an unknown stretch has none and keeps the current one's numbers
-    local plan = (leg and leg.plan and (v.leg or 1) > 1) and leg.plan or v.plan
+    local plan = (leg and leg.plan and ((v.leg or 1) > 1 or sim)) and leg.plan or v.plan
+    -- the shopping list is for the whole way
+    if sim and v.leg == ns.SIM_SHOP then plan = v.plan.full or v.plan end
+    -- the simulation's whole way takes the place of the stops
+    local whole = sim and (v.leg or 0) == 0
+    ui.stopsBox:SetShown(not whole); ui.ledger:SetShown(not whole); ui.detailCard:SetShown(not whole)
+    ns.SimWay(whole)
     local levels, anyLevel = 0, false
     for _, x in ipairs(v.variants or {}) do if not ns.EARN[x.mode] and x.plan then levels = levels + 1; anyLevel = true end end
     -- the tiles shown: the levelling routes there are (or one that says why there are none), the profit ones
@@ -1886,6 +1952,10 @@ local function refreshRoute()
             b.value:SetText(color(full.net >= 0 and GOOD or BAD) .. (full.net < 0 and "-" or "+") .. ns.Short(full.net) .. "|r")
             local sub = (full.reached < full.target) and L.VAR_STOP:format(full.reached)
                 or (p.earn and L.VAR_GOLD:format(ns.Ceil(ns.LevelCrafts(p))) or L.VAR_RUN:format(full.target, ns.Ceil(ns.LevelCrafts(full))))
+            local runs = sim and v.legsBy and v.legsBy[x.mode]
+            if runs and #runs > 0 and full.reached >= full.target then
+                sub = L.SIM_TILE:format(ns.Ceil(ns.LevelCrafts(full)), #runs)
+            end
             if x.many then sub = color(BAD) .. L.VAR_MANY .. "|r"
             elseif x.over then sub = color(BAD) .. L.VAR_OVER .. "|r"
             elseif x.best and v.prefs.budget > 0 then sub = color(GOOD) .. L.VAR_BEST .. "|r" end
@@ -1900,7 +1970,10 @@ local function refreshRoute()
     end
     refreshChips(v)
     local unknown = leg and leg.unknown
-    local start = (leg and (v.leg or 1) > 1) and leg.from or v.state.skill
+    local start = (leg and ((v.leg or 1) > 1 or sim)) and leg.from or v.state.skill
+    if whole then return end
+    -- the shopping list counts the whole way
+    ui.ledgerHead:SetText(S.Upper(ns.SimShopOn(v) and L.SIM_WHOLE or L.LEDGER))
     ui.skillNow:SetText(tostring(start))
     -- what is paid, what own stock is worth, what the sales bring, and the result with its sign
     local w = plan.warn or (plan.full and plan.full.warn)
@@ -1923,7 +1996,7 @@ local function refreshRoute()
     end
     if selected > #v.route then selected = 1 end
     local prog = ns.RunProgress()
-    drawStops(prog, (v.leg or 1) == 1 and ns.Here(v.route, prog, ns.Place()) or nil)
+    drawStops(prog, ((v.leg or 1) == 1 or ns.SimShopOn(v)) and ns.Here(v.route, prog, ns.Place()) or nil)
     if unknown then ui.unknown:SetText(L.LEG_UNKNOWN:format(leg.from, leg.to)) end
     ui.panel:Set(selected)
     if not v.route[selected] and not unknown then ui.unknown:SetText(plan.earn and L.WARN_EARN or "") end
@@ -1963,17 +2036,19 @@ function ns.Visible() return frame ~= nil and frame:IsShown() end
 function ns.Refresh()
     if ns.SideRefresh then ns.SideRefresh() end
     if not ns.Visible() then return end
+    -- the simulation: its strip and switch, and its conditions page instead of everything else
+    if ns.SimRefresh() then return end
     refreshProfession()
     refreshSettings()
     local v = ns.view
     local age = ns.PriceAge(v.state)
-    local slash = "/gcp  ·  "
+    local slash = "/gcp" .. S.DOT
     if not ns.HasPrices() then ui.age:SetText(slash .. color(GOLD) .. L.NO_AUCTIONATOR .. "|r")
     elseif age then ui.age:SetText(slash .. L.PRICES_AGE:format(age < 1 and L.AGE_TODAY or L.AGE_DAYS:format(math.floor(age))))
     else ui.age:SetText("/gcp") end
     local busy = ns.BusyKind() == "all"
     local has = v.state ~= nil and v.plan ~= nil and not busy
-    local known = ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current]
+    local known = ns.sim or (ns.char and ns.char.current and ns.char.profs and ns.char.profs[ns.char.current])
     local label = (ns.Busy() and busy) and L.CALC_STOP or (v.plan and L.RECALC or L.CALC)
     ui.calc:SetText(label)
     ui.calc:SetEnabled(known and true or false)
@@ -1984,7 +2059,7 @@ function ns.Refresh()
         local f = ns.progress.done
         ui.empty:Set(L.CALC_BUSY:format(math.floor(f * 100)), L.CALC_SUB)
         ui.progress:Set(f)
-    elseif not known then ui.empty:Set(L.NO_PROF)
+    elseif not known then ui.empty:Set(L.NO_PROF, L.SIM_OFFER)
     elseif not v.plan then ui.empty:Set(L.CALC_TITLE, L.CALC_SUB)
     else ui.empty:Set("") end
     -- bags or prices changed since the plan: the button says so, in a word and on its edge
@@ -2018,7 +2093,8 @@ function ns.Refresh()
     ui.emptyBox:SetShown(not has and tab ~= 5)
     ui.route:SetShown(has and tab == 1)
     ui.listFrame:SetShown(has and tab > 1 and tab < 5)
-    ui.mine:SetShown(tab == 4)
+    ui.mine:SetShown(tab == 4 and not ns.sim)
+    ui.simTry:SetShown(not known and not busy)
     ui.mine:SetChecked(ns.db.onlyMine == true)
     if not has or tab == 5 then return end
     if tab == 1 then refreshRoute() else refreshList() end
@@ -2040,7 +2116,11 @@ end
 local SIDE_STOPS = { ah = "STOP_AH_BUY", vendor = "STOP_VENDOR_BUY" }
 local function sideStop()
     local v = ns.view
-    if not v.route or not v.plan or (v.leg or 1) > 1 then return nil end
+    if not v.route or not v.plan then return nil end
+    -- the current run, or in the simulation its shopping list
+    if v.state and v.state.sim then
+        if not ns.SimShopOn(v) then return nil end
+    elseif (v.leg or 1) > 1 then return nil end
     local place = ns.sidePlace or "ah"
     local prog = ns.RunProgress()
     for i, n in ipairs(v.route) do
@@ -2097,8 +2177,16 @@ local function refreshSideWindow()
     local plan, st = v.plan, v.state
     local from, to = st.skill, plan.target or st.skill
     for _, x in ipairs(v.route) do if x.segs then from, to = x.from, x.to end end
-    sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. "  ·  " .. L.SIDE_STOP:format(i, #v.route)))
-    sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
+    if st.sim and ns.sim then
+        -- the simulation's shopping list: in its colour, with what the whole way buys
+        local cost = 0
+        for _, x in ipairs(v.route) do cost = cost + (x.cost or 0) end
+        sui.run:SetText(color(ns.SIM_COLOR) .. S.Upper(L.SIDE_SIM:format(ns.sim.name, ns.sim.from, ns.sim.to)) .. "|r")
+        sui.net:SetText(S.MoneyText(cost, true))
+    else
+        sui.run:SetText(S.Upper((to > from and L.SIDE_RUN:format(from, to) or L.SIDE_RUN_EARN) .. S.DOT .. L.SIDE_STOP:format(i, #v.route)))
+        sui.net:SetText(L.SIDE_RESULT:format(color(plan.net >= 0 and GOOD or BAD) .. (plan.net < 0 and "-" or "+") .. ns.Short(plan.net) .. "|r"))
+    end
     -- the icons around the stop shown, when the run has more than fit
     local prog = ns.RunProgress()
     local count = math.min(#v.route, STRIP_MAX)
@@ -2153,7 +2241,7 @@ end
 -- there when another Gulli window stands in the same place), unless the big window is on the
 -- screen. A vendor gets it only when it sells something the stop still needs.
 function ns.SideShow(place)
-    local P = ns.Prefs(ns.db and ns.db.prefs)
+    local P = ns.Prefs(ns.SavedPrefs())
     local big = frame and frame:IsShown() and not frame.docked
     ns.sidePlace = place or "ah"
     if not P.side or big or not S.SideOpen or not sideStop() then return false end
@@ -2175,7 +2263,18 @@ end
 -- or the vendor gets the small window beside it.
 function ns.Arrive(place)
     local v = ns.view
-    if place and v.route and (v.leg or 1) == 1 then
+    if place and v.route and (v.leg or 1) == 1 and not ns.sim then
+        local here = ns.Here(v.route, ns.RunProgress(), place)
+        if here then selected, flash = here, nil end
+    end
+    -- the simulation at the auction house or a vendor offers its shopping list: everything the
+    -- whole way buys, for the character who will level (owner's request of 2026-11-23)
+    if (place == "ah" or place == "vendor") and ns.sim and v.state and v.state.sim and v.plan
+        and v.leg ~= ns.SIM_SHOP and #ns.SimShopping(v) > 0 then
+        v.leg = ns.SIM_SHOP
+        v.route, v.changed = ns.LegRoute(v), {}
+    end
+    if place and ns.SimShopOn(v) and v.route then
         local here = ns.Here(v.route, ns.RunProgress(), place)
         if here then selected, flash = here, nil end
     end
@@ -2224,13 +2323,13 @@ end
 -- A route tile: the routes are all in the result already, so the switch is instant; only the
 -- runs of a route not shown before are built, in steps, while its graph is already there.
 function ns.ChooseMode(want)
-    local P = ns.Prefs(ns.db.prefs)
+    local P = ns.Prefs(ns.SavedPrefs())
     local level = true
     if ns.EARN[want] then level = P.level end
     if ns.BusyKind() ~= "all" and level == P.level then
         local ok, needLegs = ns.PickMode(want)
         if ok then
-            ns.db.prefs.mode = want
+            ns.SavedPrefs().mode = want
             if needLegs then start(ns.LegsJob(ns.view.mode)) else
                 if runner then runner:Cancel(); runner = nil; driver:Hide() end
                 ns.Refresh()
@@ -2287,12 +2386,32 @@ end
 -- The item tooltip: how many of it the chosen run needs, in the Gulli block (see S.TipCollect).
 function ns.TipLines(id)
     local v = ns.view
-    if not id or not v or not v.route or not v.state or #v.route == 0 then return {} end
+    if not id or not v or not v.route or not v.state or v.state.sim or #v.route == 0 then return {} end
     local n = ns.RunNeeds(v.state, v.route)[id]
     if not (n and n > 0) then return {} end
     return { { group = "craft", sub = true, icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
                left = S.Emph(L.TOOLTIP_NEED:format(n)), color = S.MUTED } }
 end
+-- The item tooltip in the game's profession window: the chance of a skill-up now and where the
+-- recipe that makes it turns yellow, green and grey (the game shows only the colour).
+function ns.RecipeTipLines(id)
+    local rid, sk, guess, skill = ns.RecipeOfItem(id)
+    if not rid then return {} end
+    local y, g, gy = ns.Levels(sk)
+    local pct = math.floor(ns.Chance({ skill = sk }, skill) * 100 + 0.5)
+    local levels = color(ns.COLORS.ye) .. y .. "|r  " .. color(ns.COLORS.gr) .. g .. "|r  " .. color(ns.COLORS.gy) .. gy .. "|r"
+    if guess then levels = levels .. "  (" .. L.TIP_GUESS .. ")" end
+    return {
+        { group = "craft", icon = "Interface\\AddOns\\Gulli-CraftProfit\\icon",
+          left = S.Emph(L.TIP_SKILLUP:format(pct)), color = S.MUTED },
+        { group = "craft", sub = true, left = L.TIP_LEVELS:format(levels), color = S.MUTED },
+    }
+end
+
 S.TipProvider("item", "CraftProfit", function(id, tip)
-    if tip == GameTooltip or tip == ItemRefTooltip then return ns.TipLines(id) end
+    if tip == GameTooltip or tip == ItemRefTooltip then
+        local lines = ns.RecipeTipLines(id)
+        for _, l in ipairs(ns.TipLines(id)) do lines[#lines + 1] = l end
+        return lines
+    end
 end)

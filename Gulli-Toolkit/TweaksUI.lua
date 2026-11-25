@@ -168,7 +168,7 @@ local function fillRow(f, r, w, first)
     f.tag:SetShown(r.kind == "module")
     if r.kind == "module" then
         local label = r.module.title
-        if not live then label = label .. " · " .. L.TW_OFF end
+        if not live then label = label .. S.DOT .. L.TW_OFF end
         f.tag.text:SetText(label)
         f.tag.icon:SetIcon(r.module.icon)
         f.tag.ring:ClearAllPoints()
@@ -203,13 +203,12 @@ end
 
 -- Builds the controls of a tweak's settings once; layout() places the ones `when` lets show.
 local function buildPanel(r)
-    local t = r.tweak
-    local key = t.key
+    local key = r.key
     local p = CreateFrame("Frame", nil, page.inner)
     S.Box(p, S.INPUT, S.LINE, S.R_MD)
     p.parts = {}
-    local get = ns.TweakGetter(key)
-    for _, part in ipairs(t.panel or {}) do
+    local get, setOpt = ns.TweakPanelAccess(r)
+    for _, part in ipairs(r.panel or {}) do
         local e = { part = part }
         if part.kind == "head" then
             e.text = partLabel(p, part.label, S.FAINT)
@@ -217,14 +216,14 @@ local function buildPanel(r)
             e.text = partLabel(p, part.label)
             e.control = S.Switch(p)
             e.control:SetScript("OnClick", function()
-                ns.SetTweakOpt(key, part.key, not get(part.key))
+                setOpt(part.key, not get(part.key))
                 ns.Refresh()
             end)
         elseif part.kind == "check" then
             e.control = S.Check(p, 26)
             e.text = partLabel(p, part.label)
             e.control:SetScript("OnClick", function()
-                ns.SetTweakOpt(key, part.key, not get(part.key))
+                setOpt(part.key, not get(part.key))
                 ns.Refresh()
             end)
         elseif part.kind == "choice" then
@@ -232,14 +231,14 @@ local function buildPanel(r)
             local labels = {}
             for i, v in ipairs(part.values or {}) do labels[i] = v[2] end
             e.tabs = S.Tabs(p, labels, nil, function(i)
-                ns.SetTweakOpt(key, part.key, part.values[i][1])
+                setOpt(part.key, part.values[i][1])
                 ns.Refresh()
             end, 30)
             e.control = e.tabs.frame
         elseif part.kind == "step" then
             e.text = partLabel(p, part.label)
             e.control = S.Stepper(p, function() return get(part.key) or part.min or 0 end,
-                function(v) ns.SetTweakOpt(key, part.key, v) end,
+                function(v) setOpt(part.key, v) end,
                 part.step or 1, part.min or 0, part.max or 100, part.fmt, part.width or 110)
         end
         if part.tip and e.control then
@@ -531,7 +530,7 @@ function ns.FillTweaks(list)
             fillRow(f, r, w, i == 1)
             f:SetFrameLevel((tonumber(c:GetFrameLevel()) or 0) + 2)
             cy = cy + ROW_H
-            if r.kind == "own" and r.panel and view.open[r.key] then
+            if r.live and r.panel and view.open[r.key] then
                 local p = panels[r.key] or buildPanel(r)
                 local ph = p:Layout(w - TEXT_X - 12)
                 p:ClearAllPoints()

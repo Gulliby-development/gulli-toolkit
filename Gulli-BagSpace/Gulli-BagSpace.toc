@@ -10,9 +10,9 @@
 ## Notes-zhCN: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
 ## Notes-zhTW: 腾出你要的背包格数：先合并堆叠，再出售或删除最便宜的杂物。操作前先显示列表。 /gbs
 ## Author: Gulliby
-## Version: 1.16.0
+## Version: 1.17.3
 ## IconTexture: Interface\AddOns\Gulli-BagSpace\icon
-## OptionalDeps: Gulli-Toolkit, Auctionator, auxForever, NaowhForever, TradeSkillMaster, Hammerprice
+## OptionalDeps: Gulli-Toolkit, Gulli-VendorFlip, Auctionator, auxForever, NaowhForever, TradeSkillMaster, Hammerprice
 ## X-Gulli-Module: BagSpace
 ## SavedVariables: GulliBagSpaceDB
 ## AddonCompartmentFunc: GulliBagSpace_Toggle

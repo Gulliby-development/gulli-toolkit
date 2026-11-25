@@ -555,6 +555,13 @@ local function option(key, label, tip)
              set = function(on) if ns.db then ns.db[key] = on and true or false end end }
 end
 
+-- A row the hub's Tweaks page shows: the same saved key as the window.
+local function tweak(key, group, label, desc, shift)
+    local o = option(key, label, desc)
+    o.key, o.group, o.desc, o.tip, o.shift = key, group, desc, nil, shift
+    return o
+end
+
 -- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
@@ -572,6 +579,22 @@ do
             option("noDuels", L.OPT_DUELS),
             option("busy", L.OPT_BUSY, L.OPT_BUSY_D),
             option("spam", L.OPT_SPAM, L.TIP_SPAM),
+        },
+        tweaks = {
+            tweak("blockStrangers", "requests", L.OPT_BLOCK, L.TIP_BLOCK),
+            tweak("noTrade", "requests", L.OPT_TRADE),
+            tweak("noDuels", "requests", L.OPT_DUELS),
+            tweak("noGuildInvites", "requests", L.OPT_GUILD),
+            tweak("noPetition", "requests", L.OPT_PETITION),
+            tweak("noBnet", "requests", L.OPT_NO_BNET),
+            tweak("noJoin", "requests", L.OPT_NO_JOIN, L.OPT_NO_JOIN_D),
+            tweak("noShared", "requests", L.OPT_NO_SHARED),
+            tweak("acceptKnown", "requests", L.OPT_ACCEPT_KNOWN, L.TIP_ACCEPT),
+            tweak("summon", "requests", L.OPT_SUMMON),
+            tweak("res", "requests", L.OPT_RES),
+            tweak("spam", "people", L.OPT_SPAM, L.TIP_SPAM),
+            tweak("bgRelease", "combat", L.OPT_BG_RELEASE, L.OPT_BG_RELEASE_D, true),
+            tweak("bgSpirit", "combat", L.OPT_BG_SPIRIT),
         },
         -- The hub's home page: what was turned away today.
         summary = function()

@@ -773,11 +773,13 @@ function ns.TrackerItems(key, level)
         all[#all + 1] = it
     end
     for _, e in ipairs(q.take) do
-        local where = ns.WhereTag(e)
+        -- Taken inside: the dungeon's icon says where, not the zone the data files the giver under.
+        local inside = ns.Inside(key, e.id).take or nil
+        local where = ns.WhereTag(inside and { who = e.who, area = 0 } or e)
         all[#all + 1] = { id = e.id, name = e.name, level = e.level, state = "take",
                           lines = { { text = where ~= "" and where or L.Q_TAKE } },
                           pin = pinOf(e.who, e.area, e.x, e.y), entry = e,
-                          inside = ns.Inside(key, e.id).take or nil }
+                          inside = inside }
     end
     for _, e in ipairs(q.later) do
         if e.why == "WHY_EARLIER" and e.need and e.need.name then

@@ -626,8 +626,17 @@ test("the session card's gold is an estimate when a module tells what the loot i
     -- a worth that is no plain number is left out
     farm = { worth = "many" }
     eq(ns.SessionCard().empty, true)
-    farm = { worth = -5 }
-    eq(ns.SessionCard().empty, true)
+    -- crafting that cost more than it made: the estimate goes down, the vendor sales stay out
+    ns.SesEvent("MERCHANT_SHOW"); w.money = w.money + 30000; ns.SesEvent("PLAYER_MONEY"); ns.SesEvent("MERCHANT_CLOSED")
+    farm = { worth = -5000 }
+    card = ns.SessionCard()
+    g = gold(card)
+    assert(plain(g.value):find("^%-50s"), plain(g.value))
+    eq(g.rows[#g.rows][3], true, "a loss shows as bad")
+    -- a worth of 0 still keeps the sales out (what was sold was crafted and counted there)
+    farm = { worth = 0 }
+    g = gold(ns.SessionCard())
+    assert(not plain(g.value):find("30s"), plain(g.value))
 end)
 
 test("the home page always shows the session card, empty at first", function()
@@ -1162,6 +1171,7 @@ test("the home page counts what runs, waits, is refused or updated, and lists ev
     UpdateAddOnMemoryUsage = function() end
     GetAddOnMemoryUsage = function(name) return ({ ["Gulli-XP"] = 360, ["Gulli-Chores"] = 2048 })[name] or 0 end
     local ns = Load()
+    ns.MeasureMemory()
     GulliToolkit.Register({ key = "XP", open = function() end, slash = "/gxp", summary = function() return "8k XP/h" end })
     GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
     local o = ns.Overview()
@@ -1183,23 +1193,60 @@ test("the home page counts what runs, waits, is refused or updated, and lists ev
     UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
 end)
 
-test("the memory of the addons is read at most once in ten seconds", function()
+test("the hub never measures the addons' memory while it draws: only a loading screen or a click", function()
     Fake({ addons = { { name = "Gulli-Chores", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Chores" } } } })
     local calls = 0
     UpdateAddOnMemoryUsage = function() calls = calls + 1 end
     GetAddOnMemoryUsage = function() return 100 end
     local ns = Load()
     GulliToolkit.Register({ key = "Chores", open = function() end, slash = "/gch" })
-    local t = 1000
-    local was = GetTime
-    GetTime = function() return t end
-    ns.Overview(); ns.Overview(); ns.Overview()
-    eq(calls, 1, "a burst of redraws reads it once")
-    t = t + 11
-    ns.Overview()
-    eq(calls, 2, "ten seconds later it reads again")
-    GetTime = was
+    eq(ns.Overview().kb, 0, "nothing measured yet: no memory shown")
+    ns.Toggle(); ns.Refresh(); ns.Overview()
+    eq(calls, 0, "opening and drawing the hub never measures")
+    ns.MeasureMemory()
+    eq(calls, 1)
+    eq(ns.Overview().kb, 100, "the last measure shows")
+    ns.Toggle(); ns.Toggle()
+    eq(calls, 1, "a second open reads the last numbers")
     UpdateAddOnMemoryUsage, GetAddOnMemoryUsage = nil, nil
+end)
+
+test("the home page asks the modules a few a frame, so opening the hub never stops the game", function()
+    local addons = {}
+    local keys = { "XP", "Chores", "Loot", "Mail", "Social", "Merchant" }
+    for _, k in ipairs(keys) do
+        addons[#addons + 1] = { name = "Gulli-" .. k, enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = k } }
+    end
+    Fake({ addons = addons })
+    local ns = Load()
+    local asked = 0
+    for _, k in ipairs(keys) do
+        GulliToolkit.Register({ key = k, open = function() end, summary = function() asked = asked + 1; return "3 things" end })
+    end
+    local t = 0
+    debugprofilestop = function() t = t + 3; return t end -- every look at the clock costs 3 ms
+    ns.Toggle()
+    local S = ns.Skin
+    assert(S.JobRunning("hubHome"), "the home page goes on in the next frames")
+    assert(asked < #keys, "not every module in the first frame: " .. asked)
+    local driver
+    for _, f in ipairs(W.frames) do
+        if f:GetScript("OnUpdate") then driver = f end
+    end
+    local frames = 0
+    while S.JobRunning("hubHome") and frames < 100 do
+        driver:GetScript("OnUpdate")(driver)
+        frames = frames + 1
+    end
+    debugprofilestop = nil
+    assert(not S.JobRunning("hubHome"))
+    assert(frames > 0)
+    eq(asked, #keys, "every module was asked once")
+    assert(ns.perf and ns.perf.total > 0, "/gulli perf has the open")
+    local named = {}
+    for _, st in ipairs(ns.perf.steps) do named[st.name] = true end
+    assert(named.Tiles and named["Module list"], "the steps are named")
+    ns.PrintPerf()
 end)
 
 test("the minimap button sits on the circle, or on the edge of a square minimap", function()
@@ -2110,6 +2157,42 @@ test("a bound key works on every keyboard layout", function()
     eq(bound.Q, "B"); eq(bound["Й"], "B"); eq(bound["й"], "B")
 end)
 
+test("a box border stays one screen pixel at any scale, so it never breaks", function()
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local oldPU = PixelUtil
+    PixelUtil = { GetNearestPixelSize = function(u, k, minPx) return math.max(minPx, math.floor(u * k * 0.75 + 0.5)) / (k * 0.75) end }
+    local scale = 1
+    local texs = {}
+    local f = { GetEffectiveScale = function() return scale end, IsVisible = function() return true end }
+    function f:CreateTexture()
+        local t = { w = 0, h = 0 }
+        function t:SetTexture() end; function t:SetVertexColor() end; function t:SetPoint() end
+        function t:SetAllPoints() end; function t:SetTexCoord() end
+        function t:SetWidth(v) self.w = v end; function t:SetHeight(v) self.h = v end
+        function t:SetSize(a, b) self.w, self.h = a, b end
+        texs[#texs + 1] = t
+        return t
+    end
+    S.Box(f, nil, nil, 13)
+    local lines = f.hair
+    eq(#lines, 4, "four straight edges")
+    for _, h in ipairs(lines) do
+        local v = h[2] == "v" and h[1].w or h[1].h
+        assert(math.abs(v * 0.75 - 1) < 1e-9, "one pixel at 0.75 pixels a unit, got " .. v)
+    end
+    scale = 1.2
+    S.SnapLines()
+    for _, h in ipairs(lines) do
+        local v = h[2] == "v" and h[1].w or h[1].h
+        assert(math.abs(v * 1.2 * 0.75 - 1) < 1e-9, "follows a new scale")
+    end
+    local g = { GetEffectiveScale = f.GetEffectiveScale, IsVisible = f.IsVisible, CreateTexture = f.CreateTexture }
+    S.Box(g, nil, nil, 8, "top")
+    eq(#g.hair, 8, "a sharp corner's two short edges are hairlines too")
+    PixelUtil = oldPU
+end)
+
 test("a window that opens at a place closes with it, walking away too, once per visit", function()
     Fake({ addons = { QC } })
     local S = Load().Skin
@@ -2241,6 +2324,35 @@ test("module rows come from Register, dim while the module is paused", function(
     eq(mod.on, false)
 end)
 
+test("a module row may bring a panel of its own settings", function()
+    Fake({ addons = { QC, { name = "Gulli-Loot", enabled = true, loaded = true, meta = { ["X-Gulli-Module"] = "Loot" } } } })
+    local ns = Load()
+    local db = { feed = true, rows = 5, bare = false }
+    GulliToolkit.Register({ key = "Loot", open = function() end, pause = function() end,
+        tweaks = { { key = "feed", group = "loot", label = "Loot feed",
+                     get = function() return db.feed end, set = function(on) db.feed = on end,
+                     panel = { { kind = "head", label = "Look" },
+                               { kind = "switch", key = "bare", label = "No background",
+                                 get = function() return db.bare end, set = function(v) db.bare = v end },
+                               { kind = "step", key = "rows", label = "Lines", min = 1, max = 8,
+                                 get = function() return db.rows end, set = function(v) db.rows = v end },
+                               { kind = "switch", key = "bad", label = "Broken",
+                                 get = function() error("x") end, set = function() error("y") end } } } } })
+    local rows = ns.TweakRows()
+    local mod = rows[#rows]
+    eq(mod.key, "Loot:feed")
+    eq(#mod.panel, 4)
+    local get, set = ns.TweakPanelAccess(mod)
+    eq(get("rows"), 5)
+    eq(set("rows", 3), true)
+    eq(db.rows, 3)
+    set("bare", true)
+    eq(get("bare"), true)
+    eq(get("bad"), nil, "a part that fails reads as unset")
+    eq(set("bad", true), false)
+    eq(get("nothing"), nil)
+end)
+
 test("Recommended and Turn all off change only own tweaks, and Undo puts them back", function()
     local ns = tweakNs()
     local db = { fast = false }
@@ -2312,6 +2424,72 @@ test("guild message of the day: a notice once per text, nothing for a secret one
     ns.GuildMotdEvent(nil, "GUILD_MOTD", "secret")
     eq(#shown, 2)
     issecretvalue, IsInGuild, GetGuildRosterMOTD = nil, nil, nil
+end)
+
+test("appearance collector: new looks get a line and keep junk selling away, by its switches", function()
+    local ns = tweakNs()
+    -- item 1: new look; 2: a known look from another item; 3: another class's; 4: known
+    C_TransmogCollection = {
+        GetItemInfo = function(id) return id * 10, id * 100 end,
+        PlayerKnowsSource = function(s) return s == 400 or s == 999 end,
+        PlayerCanCollectSource = function(s) return true, s ~= 300 end,
+        GetAllAppearanceSources = function(look) return look == 20 and { 200, 999 } or { look * 10 } end,
+    }
+    eq(ns.AppearanceState(1), "new"); eq(ns.AppearanceState(2), "source")
+    eq(ns.AppearanceState(3), "alt"); eq(ns.AppearanceState(4), nil)
+    eq(#ns.AppearanceTip(1), 0, "nothing while the tweak is off")
+    eq(GulliToolkit.KeepsAppearance(1), false)
+    ns.SetTweak("appearances", true)
+    eq(#ns.AppearanceTip(1), 1)
+    eq(#ns.AppearanceTip(2), 0, "another item of a known look only with its switch")
+    eq(#ns.AppearanceTip(3), 0)
+    ns.SetTweakOpt("appearances", "source", true)
+    ns.SetTweakOpt("appearances", "alts", true)
+    eq(#ns.AppearanceTip(2), 1); eq(#ns.AppearanceTip(3), 1); eq(#ns.AppearanceTip(4), 0)
+    eq(GulliToolkit.KeepsAppearance(1), true, "junk selling keeps it")
+    ns.SetTweakOpt("appearances", "keep", false)
+    eq(GulliToolkit.KeepsAppearance(1), false, "unless the keep switch is off")
+    ns.SetTweak("appearances", false)
+    C_TransmogCollection = nil
+end)
+
+test("equip new bags: a new plain bag goes into an empty slot, never in a fight or with Shift", function()
+    local ns = tweakNs()
+    local bags = { [0] = { 101 }, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
+    local worn = { [31] = 50, [32] = 50, [33] = 50 }   -- the fourth bag slot is empty
+    local put = {}
+    C_Container = {
+        GetContainerNumSlots = function(b) return (b == 0 and 16) or (worn[30 + b] and 6) or 0 end,
+        GetContainerItemID = function(b, s) return bags[b] and bags[b][s] end,
+        ContainerIDToInventoryID = function(b) return 30 + b end,
+        PickupContainerItem = function(b, s) put.from = bags[b][s] end,
+    }
+    GetInventoryItemID = function(_, inv) return worn[inv] end
+    C_Item.GetItemInfoInstant = function(id) return id, nil, nil, nil, nil, (id >= 100 and 1 or 4), (id == 102 and 2 or 0) end
+    PutItemInBag = function(inv) put[#put + 1] = inv; worn[inv] = put.from end
+    C_TooltipInfo = { GetItemByID = function() return { lines = { { leftText = "10 Slot Bag" } } } end }
+    ns.SetTweak("autoBags", true)
+    eq(#put, 0, "what was in the bags at the start is not new")
+    bags[0][2] = 103
+    IsShiftKeyDown = function() return true end
+    eq(ns.EquipNewBags(), 0, "Shift skips it once"); IsShiftKeyDown = nil
+    bags[0][3] = 102                                     -- a quiver-like bag: not plain
+    InCombatLockdown = function() return true end
+    bags[0][4] = 104
+    eq(ns.EquipNewBags(), 0, "nothing in a fight")
+    InCombatLockdown = nil
+    eq(ns.EquipNewBags(), 1, "after the fight it goes on")
+    eq(put[1], 34); eq(worn[34], 104)
+    local toasts = {}
+    ns.Skin.Toast = function(o) toasts[#toasts + 1] = o end
+    bags[0][5] = 105
+    eq(ns.EquipNewBags(), 0, "no empty slot")
+    eq(#toasts, 1, "a bigger bag gets a notice")
+    eq(toasts[1].buttons[1] ~= nil, true, "the smaller bag is empty: it can swap")
+    toasts[1].buttons[1].onClick()
+    eq(put[2], 31)
+    ns.SetTweak("autoBags", false)
+    C_Container, GetInventoryItemID, PutItemInBag, C_TooltipInfo, C_Item.GetItemInfoInstant = nil, nil, nil, nil, nil
 end)
 
 test("new spell ranks: a lower rank on a button gets the new one, a higher rank and a fight wait", function()

@@ -413,7 +413,7 @@ local function fillSteps(r, steps)
         line:SetShown(st ~= nil)
         if st then
             local key = (st.done and "done") or (st.missing and "missing") or (st.active and "active")
-            local mark = key and ("|T" .. STEP_ICON[key] .. ":12|t ") or "|cff666666·|r  "
+            local mark = key and ("|T" .. STEP_ICON[key] .. ":12|t ") or (S.DOT_MARK .. "  ")
             local text = mark .. st.n .. ".  " .. st.name
             if i == STEPS_MAX and #steps > STEPS_MAX then text = text .. "  |cff888888+" .. (#steps - STEPS_MAX) .. "|r" end
             line:SetText(text)
@@ -527,12 +527,12 @@ local function fillRow(r, item)
         end
         if stop.entrance then
             r.text:SetText(L.ENTRANCE:format(stop.who))
-            r.sub:SetText((stop.zone and (stop.zone .. "  ·  ") or "") .. coords(stop) .. "  ·  " .. L.STOP_PIN)
+            r.sub:SetText((stop.zone and (stop.zone .. S.DOT) or "") .. coords(stop) .. S.DOT .. L.STOP_PIN)
             return
         end
         r.text:SetText(stop.zone and L.WHERE:format(stop.who, stop.zone) or stop.who)
         local at = stop.here and L.STOP_HERE:format(coords(stop)) or L.STOP_AT:format(coords(stop))
-        r.sub:SetText(at .. "  ·  " .. L.STOP_PIN)
+        r.sub:SetText(at .. S.DOT .. L.STOP_PIN)
         return
     end
     -- A quest card.
@@ -571,7 +571,7 @@ local function fillRow(r, item)
     if q.class then parts[#parts + 1] = ns.ClassTag() end
     if q.steps and q.steps > 1 then parts[#parts + 1] = L.STEP:format(q.step, q.steps) end
     if group ~= "done" then parts[#parts + 1] = ns.XPText(q.id, ns.level) end
-    r.sub:SetText(table.concat(parts, "  ·  "))
+    r.sub:SetText(table.concat(parts, S.DOT))
     -- What comes next: the earlier quest first, where to hand in, how hard.
     local ahead = {}
     if group == "take" then
@@ -597,7 +597,7 @@ local function fillRow(r, item)
         end
     end
     r.chain:SetTextColor(unpack(group == "later" and S.WARN or S.FAINT))
-    r.chain:SetText(table.concat(ahead, "  ·  "))
+    r.chain:SetText(table.concat(ahead, S.DOT))
     fillSteps(r, ns.CardSteps(item))
 end
 
@@ -649,8 +649,8 @@ local function fillHead(current, level)
     local quests = total > 0 and S.Emph(L.HEAD_QUESTS:format(c.done, total)) or nil
     if quests then
         local more = quests
-        if c.log > 0 then more = more .. "  ·  " .. L.HEAD_LOG:format(c.log) end
-        if c.take > 0 then more = more .. "  ·  " .. L.HEAD_TAKE:format(c.take) end
+        if c.log > 0 then more = more .. S.DOT .. L.HEAD_LOG:format(c.log) end
+        if c.take > 0 then more = more .. S.DOT .. L.HEAD_TAKE:format(c.take) end
         head.chips[2]:Set(more)
         shown[#shown + 1] = head.chips[2]
     end
@@ -955,7 +955,7 @@ local function fillLoot(r, item)
     if l.better then sub[#sub + 1] = S.Hex(S.GOOD) .. L.BETTER .. "|r"
     elseif not mine then sub[#sub + 1] = L.NOT_FOR_YOU end
     if l.seen then sub[#sub + 1] = S.Hex(S.Accent()) .. L.SEEN .. "|r" end
-    r.sub:SetText(table.concat(sub, "  ·  "))
+    r.sub:SetText(table.concat(sub, S.DOT))
     local bar = not l.zone and l.pct > 0
     r.track:SetShown(bar); r.fill:SetShown(bar)
     r.pct:ClearAllPoints()
@@ -1062,7 +1062,7 @@ local function fillBoss(r, item)
     r.name:SetText(b.name)
     -- The level on its own line, so the name keeps the row's width.
     local sub = S.Hex(bossColor(b)) .. bossLevel(b) .. "|r"
-    if killed then sub = sub .. "  ·  " .. S.Hex(S.GOOD) .. "×" .. b.kills .. "|r" end
+    if killed then sub = sub .. S.DOT .. S.Hex(S.GOOD) .. "x" .. b.kills .. "|r" end
     r.sub:SetText(sub)
     r:SetSelected(b.npc == ns.boss)
 end
@@ -1152,7 +1152,7 @@ local function fillBossPage()
     if b.tag ~= "" then parts[#parts + 1] = b.tag end
     if b.rare then parts[#parts + 1] = L.RARE
     elseif b.of then parts[#parts + 1] = L.BOSS_N:format(b.n, b.of) end
-    p.sub:SetText(table.concat(parts, "  ·  "))
+    p.sub:SetText(table.concat(parts, S.DOT))
     -- Kills: the count, and how far the player's own drop chances are (ns.OWN_AFTER kills).
     local killed = b.kills > 0
     p.kills:SetText(killed and (S.Hex(S.GOOD) .. L.KILLS:format(b.kills) .. "|r") or L.NO_KILLS)
@@ -1200,7 +1200,7 @@ local function fillLootPage()
         local g = l.zone and "mobs" or l.npc
         if filter ~= "mobs" and g ~= group then
             group = g
-            local head = l.zone and L.MOBS or (l.rare and (L.RARE .. "  ·  " .. l.boss)) or (l.bossN .. "  ·  " .. l.boss)
+            local head = l.zone and L.MOBS or (l.rare and (L.RARE .. S.DOT .. l.boss)) or (l.bossN .. S.DOT .. l.boss)
             items[#items + 1] = { header = true, text = head }
         end
         items[#items + 1] = { loot = l }
@@ -1464,6 +1464,10 @@ local function buildDetail(parent)
     d.infoPage:SetAllPoints()
     local b = d.infoPage.inner
     d.infoBody = b
+    -- A hidden copy of the page's text, to measure how high a wrapped text is.
+    d.measure = S.Text(b, 12)
+    d.measure:SetJustifyH("LEFT")
+    d.measure:Hide()
     local TEXT_X = STAGE_ICON + 14
     local function stage(kind, title)
         local s = CreateFrame("Frame", nil, b)
@@ -1513,6 +1517,8 @@ local function buildDetail(parent)
             if not GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L.TIP_GUIDE, 1, 1, 1)
+            -- The whole tip again, in case the box was drawn before the client knew its width.
+            if self.full then GameTooltip:AddLine(self.full, 0.9, 0.9, 0.9, true) end
             GameTooltip:AddLine("Guidelime_DungeonQuests", 0.7, 0.7, 0.7)
             GameTooltip:Show()
         end)
@@ -1761,7 +1767,7 @@ function ns.FillDetail(level)
     if not q.outside then sub[#sub + 1] = L[SIDE_TEXT[q.side] or "FACTION_BOTH"] end
     if q.class then sub[#sub + 1] = ns.ClassTag() end
     sub[#sub + 1] = ns.XPText(q.id, level)
-    d.sub:SetText(table.concat(sub, "  ·  "))
+    d.sub:SetText(table.concat(sub, S.DOT))
     local state = q.state == "later" and q.why == "WHY_LEVEL" and "later" or q.state
     d.state:Set(L["STATE_" .. (state == "hidden" and "TAKE" or state):upper()] or "", STATE_COLOR[state] or S.MUTED)
     d.side:SetShown(SIDE_ICON[q.side] ~= nil)
@@ -1797,7 +1803,7 @@ function ns.FillDetail(level)
             elseif st.area > 0 then
                 s.title:SetText(st.who ~= "" and st.who or "-")
                 local zone, xy = whereLine("", st.area), spot(st.x, st.y)
-                s.sub:SetText(zone .. ((zone ~= "" and xy ~= "") and "  ·  " or "") .. xy)
+                s.sub:SetText(zone .. ((zone ~= "" and xy ~= "") and S.DOT or "") .. xy)
             elseif st.who ~= "" then
                 s.title:SetText(st.kind == "take" and L.FROM_ITEM:format(st.who) or st.who)
                 s.sub:SetText("")
@@ -1894,17 +1900,26 @@ function ns.FillDetail(level)
     -- in the way, and its tip.
     local work = d.work
     local wide = math.max(160, (d.infoBody:GetWidth() or 0) - STAGE_ICON - 14)
-    local function linesOf(t, width)
-        return math.min(4, math.max(1, math.ceil((t:GetStringWidth() or 0) * 1.12 / width)))
+    -- The height a wrapped text takes at this width, whole: the page scrolls, so nothing is cut.
+    -- The game measures it on a hidden copy; where it cannot, a guess by its width.
+    local function heightOf(t, width, line)
+        local m = d.measure
+        m:SetWidth(width)
+        m:SetText(t:GetText() or "")
+        local h = tonumber((m:GetStringHeight())) or 0
+        local guess = math.max(1, math.ceil((tonumber((t:GetStringWidth())) or 0) * 1.12 / width))
+        local lines = h > 0 and math.max(1, math.ceil(h / (line - 1) - 0.2)) or guess
+        return lines
     end
     -- A stage's tip under what is above it, at y; returns the y under it.
     local function placeTip(st, text, y)
         local tip = st.tip
         tip:SetShown(text ~= nil and text ~= "")
+        tip.full = tip:IsShown() and text or nil
         if not tip:IsShown() then return y end
         tip.text:SetText(text)
-        local lines = linesOf(tip.text, wide - 32)
-        tip.text:SetMaxLines(lines)
+        local lines = heightOf(tip.text, wide - 32, TIP_LINE)
+        tip.text:SetMaxLines(0)
         tip.text:SetHeight(lines * TIP_LINE)
         tip:SetHeight(lines * TIP_LINE + 10)
         tip:ClearAllPoints()
@@ -1922,8 +1937,8 @@ function ns.FillDetail(level)
     d.objText:SetText(sentence)
     d.objText:SetShown(sentence ~= "")
     if sentence ~= "" then
-        local lines = linesOf(d.objText, wide)
-        d.objText:SetMaxLines(lines)
+        local lines = heightOf(d.objText, wide, 16)
+        d.objText:SetMaxLines(0)
         d.objText:SetHeight(lines * 16)
         d.objText:ClearAllPoints()
         d.objText:SetPoint("TOP", work, "TOP", 0, -y)
@@ -1969,7 +1984,7 @@ function ns.FillDetail(level)
             local level = bo.min <= 0 and "??" or (bo.min == bo.max and tostring(bo.min) or (bo.min .. "-" .. bo.max))
             local color = bo.min <= 0 and S.BAD or ns.DiffColor(ns.Difficulty(bo.max, ns.level or 1))
             r.name:SetText(bo.name)
-            r.sub:SetText(S.Hex(color) .. level .. "|r" .. (bo.rare and "" or ("  ·  " .. L.BOSS_N:format(bo.n, bo.of))))
+            r.sub:SetText(S.Hex(color) .. level .. "|r" .. (bo.rare and "" or (S.DOT .. L.BOSS_N:format(bo.n, bo.of))))
             r.go:SetText(L.BOSS_PAGE .. " »")
             r:ClearAllPoints()
             r:SetPoint("TOP", work, "TOP", 0, -y)
@@ -2029,7 +2044,7 @@ function ns.FillDetail(level)
         if seen and #after < 2 then after[#after + 1] = S.Hex(S.TEXT) .. st.name .. "|r" end
         if st.this then seen = true end
     end
-    d.summary.gives:SetText(table.concat(gives, "  ·  "))
+    d.summary.gives:SetText(table.concat(gives, S.DOT))
     d.summary.next:SetText(#after > 0 and L.THEN_STEPS:format(table.concat(after, " » ")) or "")
     local sumLines = (#gives > 0 and 1 or 0) + (#after > 0 and 1 or 0)
     local sumH = sumLines > 0 and (sumLines * 16 + 12) or 0
@@ -2251,7 +2266,7 @@ function fillChainPage(level)
             b.mark:SetShown(mark ~= nil)
             if mark then b.mark:SetTexture(mark) end
             b.num:SetShown(mark == nil)
-            b.num:SetText(l.single and "·" or tostring(s.n or n))
+            b.num:SetText(l.single and S.DOT_MARK or tostring(s.n or n))
             b.text:SetText(s.name)
             b.text:SetTextColor(c[1], c[2], c[3])
             b.edge = (s.state == "now" or s.state == "ready" or s.state == "take") and S.EDGE or S.CARD_EDGE

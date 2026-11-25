@@ -28,6 +28,9 @@ jobs:
       - name: Names and GUIDs of other units are checked for secret values
         run: lua5.1 tools/ci/secret_units.lua Gulli-*/*.lua Gulli-*/Tweaks/*.lua
 
+      - name: Signs the game's fonts lack (an empty box in game)
+        run: python3 tools/ci/glyphs.py
+
       - name: Tests on a fake WoW client
         run: |
           rc=0
@@ -63,6 +66,19 @@ jobs:
             echo "Use S.SwitchRow or S.SwitchLabel for an on/off setting (AGENTS.md, Working conventions)."
             exit 1
           fi
+
+      - name: Bag loops read the last worn bag from the game
+        run: |
+          rc=0
+          if grep -rnE 'for [A-Za-z_]+ = 0, *4 do' Gulli-*/*.lua Gulli-*/Tweaks/*.lua; then
+            echo "::error::A bag loop stops at 4 and misses WoW Forever's reagent bag. Use J.Bags() or NUM_TOTAL_EQUIPPED_BAG_SLOTS (AGENTS.md, Junk rules)."
+            rc=1
+          fi
+          if grep -rn 'GetNormalizedRealmName' Gulli-*/*.lua Gulli-*/Tweaks/*.lua; then
+            echo "::error::GetNormalizedRealmName drops the realm's spaces, so its key differs from the saved one (AGENTS.md, Working conventions)."
+            rc=1
+          fi
+          exit $rc
 
       - name: The addons do not name Runeloader
         run: |

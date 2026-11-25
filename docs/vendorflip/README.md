@@ -18,15 +18,17 @@ Players often put items on the auction house for less than a vendor pays for the
 
 ## Features
 
-- **A scan as often as you like.** While the auction house is open, Vendor Flip looks at the whole market every minute. Pick another wait in the settings: from 5 seconds to 5 minutes. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once. A good lot shows in the list as soon as the scan finds it, so you can buy it before the scan ends.
+- **A scan as often as you like.** While the auction house is open, Vendor Flip looks at the cheapest lots of the market every minute. Pick another wait in the settings: from 5 seconds to 5 minutes. The line at the top tells you when the next scan comes. **Scan now** beside it scans at once. A good lot shows in the list as soon as the scan finds it, so you can buy it before the scan ends.
 - **A dense list.** Small text and low rows, so many lines fit. Each line shows the item, how many one click buys, the auction price of one, what a vendor pays for one and your gain from that click. The best gain is on top. Point at a line to see how many are on sale.
 - **Buy with clicks.** Each line has its own button. The big button at the bottom always buys the top line, so you can press it again and again.
 - **A queue.** Click more lines while one is being bought: they wait in a queue, and each press of the big button buys the next one. While you buy, the scan waits, so your purchase goes through at once.
 - **Two clicks for goods, one for gear.** Ore, herbs, leather and other goods are sold in stacks: the first click asks the auction house for the real price, the second buys. Gear and bags are bought one at a time: a line is one item, and it stays while more are on sale at that price.
 - **Never at a loss.** If the price went up since the scan and a vendor would now pay less, the line says **Too dear** and nothing is bought. It only buys out: it never bids.
 - **Your limits.** Lines you cannot pay for, or that would take the gold you keep, or the bag slots you keep free, are not shown. Lines below your least gain are not shown either. Set the least gain and the gold you keep in gold, silver and copper: press - or + on each, or type the number. The least gain goes down to 1 copper.
-- **Only what you want.** Choose what to buy: gear (weapons and armour), goods and the rest, and which qualities, from grey to purple. Set the most one line may cost and the least gain in percent of its price.
+- **Only what you want.** Choose what to buy: gear (weapons and armour) and goods and the rest. Each of the two has its own quality ticks, from grey to purple.
 - **It waits for you.** When you search the auction house yourself, the scan waits, so your own results stay on screen.
+- **Buy to disenchant.** If your character is an enchanter, the **Disenchant** list shows green and blue gear that costs less than the dust, essence or shard it gives at the least. These items are for you to disenchant: Vendor Flip never sells them to a vendor.
+- **Its own prices.** Every scan remembers the lowest price of each item, for 14 days. Nothing long runs by itself: press **Read** in the Prices card of the settings when you want the prices of the whole market. The card shows how many prices are kept and how old they are. The other Gulli addons (Craft Profit, Waylaid Crates, Tooltip and more) use these prices, so they work without another price addon.
 - **Sell at the vendor.** At any vendor a notice offers to sell what you bought here, with what the vendor pays. Turn on **Sell at once at a vendor** to sell without the notice. It sells only what Vendor Flip bought, never your own items and never items you protected in the toolkit.
 - **Keep one.** Right-click a line in the History tab to keep that item: it is not sold.
 - **History.** Everything you bought to sell, with what you paid and what the vendor pays, green once it is sold. Today, 7 days or all, with your gain on top.
@@ -66,4 +68,10 @@ Yes, down to every 5 seconds. But the auction house limits how many questions an
 <summary><b>Does it use Auctionator?</b></summary>
 
 No. It reads the auction house itself, and the vendor price comes from the game.
+</details>
+
+<details>
+<summary><b>How does it know what disenchanting gives?</b></summary>
+
+It uses the usual table by item level and counts only the least you can get: for green gear the cheaper of its dust and its essence, for blue gear its shard. Then it takes off the auction house cut. The prices of dust, essences and shards come from its own scans. A line shows only when all of them have a price.
 </details>

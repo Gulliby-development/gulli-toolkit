@@ -839,6 +839,7 @@ function GulliPartyQuests_Toggle() ns.Toggle() end
 ns.OPT_ICON = {
     autoShare = "Interface\\Icons\\INV_Letter_15",
     tooltip = "Interface\\Icons\\INV_Misc_Note_01",
+    track = "Interface\\Icons\\INV_Misc_Spyglass_02",
     escort = "Interface\\Icons\\Ability_Warrior_RallyingCry",
 }
 
@@ -860,6 +861,14 @@ do
               get = function() return ns.Get("autoShare") end, set = function(v) ns.Set("autoShare", v) end },
             { label = L.OPT_TOOLTIP, icon = ns.OPT_ICON.tooltip,
               get = function() return ns.Get("tooltip") end, set = function(v) ns.Set("tooltip", v) end },
+        },
+        -- Rows of the hub's Tweaks page, on the window's own saved keys.
+        tweaks = {
+            { key = "autoShare", group = "quests", label = L.OPT_AUTOSHARE, desc = L.OPT_AUTOSHARE_D,
+              icon = ns.OPT_ICON.autoShare,
+              get = function() return ns.Get("autoShare") end, set = function(v) ns.Set("autoShare", v and true or false) end },
+            { key = "track", group = "quests", label = L.OPT_TRACK, desc = L.OPT_TRACK_D, icon = ns.OPT_ICON.track,
+              get = function() return ns.Get("track") end, set = function(v) ns.Set("track", v and true or false) end },
         },
     })
 end

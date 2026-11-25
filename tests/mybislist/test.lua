@@ -27,7 +27,8 @@ test("the data: every spec has every stage, at most five known items a slot, and
     Fake({})
     local ns = Load()
     local D = ns.Data
-    eq(#D.specs, 28, "specs")
+    eq(#D.specs, 30, "specs")
+    assert(ns.SpecName("HUNTER_SURVIVALMELEE") and ns.SpecName("PALADIN_SHOCKADIN"), "the specs wowtbc.gg added")
     for _, s in ipairs(D.specs) do
         assert(ns.SpecName(s[1]), "no name for " .. s[1])
         assert(ns.ROLE_ICON[s[3]], "no role icon for " .. s[1])
@@ -732,15 +733,20 @@ test("a menu is a frame of the screen in the tooltip strata, never a child of th
     eq(ns.MENU_STRATA, "TOOLTIP", "the strata over the hub's FULLSCREEN_DIALOG")
     for i, menu in ipairs(ns.menus) do
         eq(rawget(menu, "_parent"), UIParent, "menu " .. i .. " hangs on the screen, so the hub's levels never reach it")
-        local got = {}
-        rawset(menu, "SetFrameStrata", function(_, v) got.strata = v end)
+        -- as in the game: a fixed strata or level ignores a change, and the first show fixed them
+        local got = { fixed = true, fixedLevel = true }
+        rawset(menu, "SetFrameStrata", function(_, v) if not got.fixed then got.strata = v end end)
         rawset(menu, "SetFixedFrameStrata", function(_, v) got.fixed = v end)
+        rawset(menu, "SetFrameLevel", function(_, v) if not got.fixedLevel then got.level = v end end)
+        rawset(menu, "SetFixedFrameLevel", function(_, v) got.fixedLevel = v end)
         rawset(menu, "SetScale", function(_, v) got.scale = v end)
         rawset(win, "GetEffectiveScale", function() return 0.9 end)
         rawset(UIParent, "GetEffectiveScale", function() return 0.6 end)
         menu._OnShow(menu)
         eq(got.strata, "TOOLTIP", "menu " .. i .. " over every window on each show")
         eq(got.fixed, true, "and nothing moves its strata")
+        eq(got.level, ns.MENU_LEVEL, "at its own level")
+        eq(got.fixedLevel, true, "which stays")
         assert(math.abs(got.scale - 1.5) < 1e-9, "at the window's own scale")
     end
     -- the window going away closes them, since they are no longer its children

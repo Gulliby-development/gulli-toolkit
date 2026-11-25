@@ -33,12 +33,12 @@ end
 local function sortBags() local fn = C.SortBags or SortBags if fn then fn() return true end end
 
 ns.TOOLS = J.TOOLS
-ns.BAGS = J.BAGS
+ns.Bags = J.Bags
 
 -- Free and total slots in normal bags (a herb or soul bag does not help other items).
 function ns.Space()
     local free, total = 0, 0
-    for _, bag in ipairs(ns.BAGS) do
+    for _, bag in ipairs(ns.Bags()) do
         local f, family = freeSlots(bag)
         if family == 0 then
             free = free + f
@@ -300,7 +300,7 @@ function ns.LootShort()
     local n = GetNumLootItems and GetNumLootItems() or 0
     if n == 0 or not GetLootSlotLink then return nil end
     local room, special = {}, {}
-    for _, bag in ipairs(ns.BAGS) do
+    for _, bag in ipairs(ns.Bags()) do
         local f, family = freeSlots(bag)
         if family and family ~= 0 and f > 0 then special[#special + 1] = { family = family, free = f } end
     end
@@ -315,7 +315,7 @@ function ns.LootShort()
         end
     end
     if #want == 0 then return 0 end
-    for _, bag in ipairs(ns.BAGS) do
+    for _, bag in ipairs(ns.Bags()) do
         for s = 1, numSlots(bag) do
             local id, count = slotInfo(bag, s)
             if id and room[id] then room[id] = room[id] + math.max(0, maxStackOf(id) - (count or 1)) end
@@ -387,7 +387,7 @@ function ns.BagPlace(owner, id)
         return bag, slot
     end
     if not inBagFrame(owner) then return nil end
-    for _, b in ipairs(ns.BAGS) do
+    for _, b in ipairs(ns.Bags()) do
         for s = 1, numSlots(b) do
             if slotInfo(b, s) == id and ns.DisenchantTarget(b, s) then return b, s end
         end
@@ -551,6 +551,12 @@ do
         options = { option("unusable", ns.L.OPT_UNUSABLE), option("counter", ns.L.OPT_COUNTER),
                     option("popup", ns.L.OPT_POPUP), option("disenchant", ns.L.OPT_DISENCHANT),
                     option("bank", ns.L.OPT_BANK) },
+        -- the hub's Tweaks page: the same saved key as the window
+        tweaks = { (function()
+            local o = option("bank", ns.L.OPT_BANK)
+            o.key, o.group, o.desc, o.tip = "bank", "loot", ns.L.TIP_bank, nil
+            return o
+        end)() },
         key = "BagSpace",
         icon = "Interface\\AddOns\\Gulli-BagSpace\\icon",
         slash = "/gbs",

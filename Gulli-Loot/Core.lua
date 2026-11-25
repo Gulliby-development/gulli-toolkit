@@ -24,6 +24,17 @@ ns.DEFAULTS = {
     fastLoot = false, soloConfirm = false,
     window = false,   -- our loot window instead of the game's
     rollScale = 100,  -- the size of the group loot rolls, in percent
+    rollMove = false, -- the group loot rolls stand where the player placed them
+    feed = false,     -- the panel of what was just looted
+    feedCompact = false, -- one line per item instead of two
+    feedPrice = true,    -- what a looted item is worth, at a vendor or the auction
+    feedNotes = true,    -- the quest that needs it, better gear, a farm goal, the count in the bags
+    feedTotal = true,    -- the sum of what was just looted
+    feedRows = 5,        -- lines shown at most
+    feedWidth = 240,     -- the panel's width; a longer line is cut
+    feedBare = false,    -- no background and no frame, only the lines
+    rollers = false,  -- the group's choices under the roll frames
+    real = false,     -- the icon after a boss that leaves a Tarnished Undermine Real
 }
 
 -- Equip slots by the item's equip location, for the upgrade check.
@@ -228,8 +239,12 @@ end
 
 function ns.SetPref(key, value)
     ns.db[key] = value
-    if key == "window" and ns.ApplyWindow then ns.ApplyWindow() end
-    if key == "rollScale" and ns.PlaceRolls then ns.PlaceRolls() end
+    if (key == "window" or key == "fastLoot") and ns.ApplyWindow then ns.ApplyWindow() end
+    if (key == "rollScale" or key == "rollMove") and ns.PlaceRolls then ns.PlaceRolls() end
+    if key == "feed" and ns.SetFeed then ns.SetFeed(value) end
+    if key:find("^feed%u") and ns.FeedRestyle then ns.FeedRestyle() end
+    if key == "rollers" and ns.SetRollers then ns.SetRollers(value) end
+    if key == "real" and ns.SetReal then ns.SetReal(value) end
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -268,12 +283,17 @@ end
 
 ---- Looting on your own ---------------------------------------------------------------
 
--- Fast loot: takes every slot at once when the game would loot automatically anyway.
-function ns.FastLoot()
-    if not ns.db.fastLoot or not GetNumLootItems then return 0 end
+-- Whether Fast loot takes this loot: the switch is on and the game would loot automatically anyway.
+function ns.FastLootNow()
+    if not ns.db or not ns.db.fastLoot or ns.paused or not GetNumLootItems then return false end
     local auto = GetCVarBool and GetCVarBool("autoLootDefault")
     if IsModifiedClick and IsModifiedClick("AUTOLOOTTOGGLE") then auto = not auto end
-    if not auto then return 0 end
+    return auto and true or false
+end
+
+-- Fast loot: takes every slot at once when the game would loot automatically anyway.
+function ns.FastLoot()
+    if not ns.FastLootNow() then return 0 end
     local n = GetNumLootItems()
     for i = n, 1, -1 do LootSlot(i) end
     return n
@@ -300,12 +320,16 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.db.items = ns.db.items or {}
         ns.db.types = ns.db.types or {}
         ns.db.log = ns.db.log or {}
+        GulliLootCharDB = GulliLootCharDB or {}
+        ns.cdb = GulliLootCharDB
+        -- Before the switch, a placed roll frame was moved: it stays so.
+        if ns.db.rollMove == nil and ns.db.rollPoint then ns.db.rollMove = true end
         for k, v in pairs(ns.DEFAULTS) do
             if ns.db[k] == nil then ns.db[k] = v end
         end
         for _, e in ipairs({ "START_LOOT_ROLL", "CONFIRM_LOOT_ROLL", "CHAT_MSG_LOOT", "LOOT_READY", "LOOT_BIND_CONFIRM",
                              "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_SLOT_CHANGED", "LOOT_CLOSED",
-                             "PLAYER_ENTERING_WORLD" }) do
+                             "PLAYER_MONEY", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE" }) do
             self:RegisterEvent(e)
         end
         if hooksecurefunc and HandleModifiedItemClick then
@@ -318,6 +342,12 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
     end
     -- Paused from the hub: only the closing events still run, so nothing stays open.
     if ns.paused and not event:find("_CLOSED$") then return end
+    if ns.OnFeedEvent and (event == "LOOT_READY" or event == "LOOT_OPENED" or event == "LOOT_CLOSED"
+        or event == "CHAT_MSG_LOOT" or event == "PLAYER_MONEY" or event == "BAG_UPDATE_DELAYED"
+        or event == "QUEST_LOG_UPDATE") then
+        ns.OnFeedEvent(event, a1)
+        if event == "PLAYER_MONEY" or event == "BAG_UPDATE_DELAYED" or event == "QUEST_LOG_UPDATE" then return end
+    end
     if event == "PLAYER_ENTERING_WORLD" then
         if ns.ApplyWindow then ns.ApplyWindow() end
         if ns.PlaceRolls then ns.PlaceRolls() end
@@ -332,7 +362,10 @@ f:SetScript("OnEvent", function(self, event, a1, a2)
         ns.OnRoll(a1)
     elseif event == "CONFIRM_LOOT_ROLL" then ns.OnConfirm(a1, a2)
     elseif event == "CHAT_MSG_LOOT" then ns.OnLootMessage(a1)
-    elseif event == "LOOT_READY" then ns.FastLoot()
+    elseif event == "LOOT_READY" then
+        -- before LOOT_OPENED, which is what shows the game's loot window
+        if ns.QuietLoot then ns.QuietLoot() end
+        ns.FastLoot()
     elseif event == "LOOT_BIND_CONFIRM" then ns.OnBindConfirm(a1) end
 end)
 
@@ -386,6 +419,17 @@ ns.OPT_ICON = {
     rollScale = "Interface\\Icons\\INV_Misc_Dice_01",
     soloConfirm = "Interface\\Icons\\INV_Misc_Key_03",
     where = "Interface\\Icons\\INV_Misc_Map_01",
+    rollMove = "Interface\\Icons\\INV_Misc_Dice_02",
+    feed = "Interface\\Icons\\INV_Misc_Note_01",
+    feedCompact = "Interface\\Icons\\INV_Misc_Note_02",
+    feedPrice = "Interface\\Minimap\\Tracking\\Auctioneer",
+    feedNotes = "Interface\\Icons\\INV_Misc_Book_09",
+    feedTotal = "Interface\\Icons\\INV_Misc_Coin_01",
+    feedRows = "Interface\\Icons\\INV_Misc_Note_05",
+    feedWidth = "Interface\\Icons\\INV_Misc_Note_03",
+    feedBare = "Interface\\Icons\\INV_Misc_Gem_Crystal_02",
+    rollers = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    real = "Interface\\Icons\\INV_Misc_Coin_19",
 }
 
 local function option(key, label, tip)
@@ -394,21 +438,67 @@ local function option(key, label, tip)
              set = function(on) if ns.db then ns.SetPref(key, on and true or false) end end }
 end
 
+-- A row the hub's Tweaks page shows: the same saved key as the window.
+local function tweak(key, label, desc)
+    local o = option(key, label, desc)
+    o.key, o.group, o.desc, o.tip = key, "loot", desc, nil
+    return o
+end
+
+-- The loot feed's row on the Tweaks page opens the same settings as the Rules page.
+local function feedTweak()
+    local o = tweak("feed", L.OPT_FEED, L.OPT_FEED_D)
+    local function part(kind, key, label, tip, more)
+        local p = { kind = kind, key = key, label = label, tip = tip,
+            get = function() return ns.db ~= nil and ns.db[key] end,
+            set = function(v) if ns.db then ns.SetPref(key, v) end end }
+        for k, v in pairs(more or {}) do p[k] = v end
+        return p
+    end
+    o.panel = {
+        part("switch", "feedCompact", L.OPT_FEED_COMPACT, L.OPT_FEED_COMPACT_D),
+        part("switch", "feedPrice", L.OPT_FEED_PRICE, L.OPT_FEED_PRICE_D),
+        part("switch", "feedNotes", L.OPT_FEED_NOTES, L.OPT_FEED_NOTES_D),
+        part("switch", "feedTotal", L.OPT_FEED_TOTAL),
+        part("step", "feedRows", L.OPT_FEED_ROWS, L.OPT_FEED_ROWS_D, { step = 1, min = 1, max = ns.FEED_ROWS_MAX or 8 }),
+        part("step", "feedWidth", L.OPT_FEED_WIDTH, L.OPT_FEED_WIDTH_D,
+            { step = ns.FEED_WIDTH_STEP or 10, min = ns.FEED_WIDTH_MIN or 160, max = ns.FEED_WIDTH_MAX or 400 }),
+        part("switch", "feedBare", L.OPT_FEED_BARE, L.OPT_FEED_BARE_D),
+    }
+    return o
+end
+
 -- With the hub: its row and button there; alone: its own minimap button (Skin.lua).
 do
     local register = GulliToolkit and GulliToolkit.Register or function(info) ns.alone = info end
     register({
         pause = function(on)
             ns.paused = on
+            if on and ns.FeedClear then ns.FeedClear() end
+            if on and ns.RealClear then ns.RealClear() end
             if ns.ApplyWindow then ns.ApplyWindow() end
             if ns.PlaceRolls then ns.PlaceRolls() end
+            if ns.RollersPaint then ns.RollersPaint() end
         end,
         key = "Loot",
-        move = function(on) if ns.MoveFrames then ns.MoveFrames(on) end end,
+        move = function(on)
+            if ns.MoveFrames then ns.MoveFrames(on) end
+            if ns.MoveFeed and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveFeed(on) end
+            if ns.MoveRollers and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveRollers(on) end
+            if ns.MoveReal and not (on and InCombatLockdown and InCombatLockdown()) then ns.MoveReal(on) end
+        end,
         frames = {
             { key = "window", label = L.FR_WINDOW, icon = ns.OPT_ICON.window,
               frame = function() return ns.LootWindowFrame and ns.LootWindowFrame() end },
             { key = "rolls", label = L.FR_ROLLS, icon = ns.OPT_ICON.rollScale },
+            { key = "feed", label = L.FR_FEED, icon = ns.OPT_ICON.feed,
+              get = function() return ns.db ~= nil and ns.db.feed == true end,
+              set = function(on) if ns.db then ns.SetPref("feed", on and true or false) end end,
+              frame = function() return ns.FeedFrame and ns.FeedFrame() end },
+            { key = "real", label = L.FR_REAL, icon = ns.OPT_ICON.real,
+              get = function() return ns.db ~= nil and ns.db.real == true end,
+              set = function(on) if ns.db then ns.SetPref("real", on and true or false) end end,
+              frame = function() return ns.RealFrame and ns.RealFrame() end },
         },
         icon = "Interface\\AddOns\\Gulli-Loot\\icon",
         slash = "/glt",
@@ -419,6 +509,15 @@ do
             option("report", L.OPT_REPORT),
             option("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
             option("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
+        },
+        tweaks = {
+            tweak("fastLoot", L.OPT_FAST, L.OPT_FAST_D),
+            tweak("window", L.OPT_WINDOW, L.OPT_WINDOW_D),
+            tweak("soloConfirm", L.OPT_SOLO, L.OPT_SOLO_D),
+            feedTweak(),
+            tweak("rollMove", L.OPT_ROLLMOVE, L.OPT_ROLLMOVE_D),
+            tweak("rollers", L.OPT_ROLLERS, L.OPT_ROLLERS_D),
+            tweak("real", L.OPT_REAL, L.OPT_REAL_D),
         },
         summary = function()
             if not ns.db then return nil end
