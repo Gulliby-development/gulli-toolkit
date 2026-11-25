@@ -215,6 +215,9 @@ ns.DE_GREEN = {
 ns.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45, 11177 }, { 50, 11178 },
                { 55, 14343 }, { 999, 14344 } }
 local GEAR = { [2] = true, [4] = true }
+-- Nobody counted WoW Forever's own disenchants, so a green counts on the safe side (owner's
+-- decision of 2026-11-25), below the Classic tables' 75/20/5: { dust, essence, shard } shares.
+ns.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
 
 -- The materials one disenchant of an item gives on average: { { id, n } }; nil for anything but
 -- green or blue weapons and armour (the item's `class`, `quality` and `ilvl` from the scan).
@@ -222,8 +225,12 @@ function ns.DisenchantMats(it)
     if not (it and GEAR[it.class] and it.ilvl and it.ilvl > 0) then return nil end
     if it.quality == 2 then
         for _, t in ipairs(ns.DE_GREEN) do
-            -- its dust and its essence; the shares are left to DisenchantValue
-            if it.ilvl <= t[1] then return { { t[2], t[3] }, { t[4], t[5] }, guess = true } end
+            if it.ilvl <= t[1] then
+                local sh = ns.DE_SAFE[it.class == 2 and "weapon" or "armour"]
+                local out = { { t[2], sh[1] * t[3] }, { t[4], sh[2] * t[5] } }
+                if t[6] then out[3] = { t[6], sh[3] } end
+                return out
+            end
         end
     elseif it.quality == 3 then
         for _, t in ipairs(ns.DE_BLUE) do
@@ -232,28 +239,16 @@ function ns.DisenchantMats(it)
     end
 end
 
--- Nobody counted WoW Forever's own disenchants, so a green is valued on the safe side (owner's
--- request of 2026-11-25): ns.DE_SAFE of the disenchants give the cheaper of its dust and its
--- essence, the rest the dearer one, and no shard. A material without a fresh price counts nothing,
--- so it is the cheaper one.
-ns.DE_SAFE = 0.8
-
 -- What one disenchant brings at the auction after its cut; nil while a material has no price.
 -- A material without a fresh price counts nothing, so the guess stays low.
 function ns.DisenchantValue(state, P, id)
     local mats = ns.DisenchantMats(state.items[id])
     if not mats then return nil end
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
-    local sum, any, each = 0, false, {}
-    for k, m in ipairs(mats) do
+    local sum, any = 0, false
+    for _, m in ipairs(mats) do
         local it = state.items[m[1]]
-        each[k] = 0
-        if it and ns.Fresh(it, P) then each[k], any = m[2] * it.ah * (1 - cut), true end
-        sum = sum + each[k]
-    end
-    if mats.guess and any then
-        local lo, hi = math.min(each[1], each[2]), math.max(each[1], each[2])
-        sum = ns.DE_SAFE * lo + (1 - ns.DE_SAFE) * hi
+        if it and ns.Fresh(it, P) then sum, any = sum + m[2] * it.ah * (1 - cut), true end
     end
     return any and sum or nil
 end

@@ -4218,10 +4218,12 @@ end)
 
 test("disenchanting: the materials by item level, worth them at the auction, only for an enchanter", function()
     local c = core()
-    -- green gear of level 57 nobody counted: its dust and its essence, the shares on the safe side
+    -- green armour of level 57 on the safe side: dust 85% of 1.5, essence 13% of 1.5, a shard 2%
     local m = c.DisenchantMats({ class = 4, quality = 2, ilvl = 57 })
-    eq(#m, 2); eq(m.guess, true); eq(m[1][1], 16204); near(m[1][2], 1.5); eq(m[2][1], 16203); near(m[2][2], 1.5)
-    eq(c.DisenchantMats({ class = 2, quality = 2, ilvl = 57 })[2][1], 16203, "a weapon: the same")
+    eq(m[1][1], 16204); near(m[1][2], 0.85 * 1.5); eq(m[2][1], 16203); near(m[2][2], 0.13 * 1.5); eq(m[3][1], 14344); near(m[3][2], 0.02)
+    -- a weapon: dust 50%, essence 48%, a shard 2%
+    local w = c.DisenchantMats({ class = 2, quality = 2, ilvl = 57 })
+    near(w[1][2], 0.5 * 1.5); near(w[2][2], 0.48 * 1.5); near(w[3][2], 0.02)
     -- blue gear one shard; no gear, white gear or a bag nothing
     eq(c.DisenchantMats({ class = 4, quality = 3, ilvl = 45 })[1][1], 11177)
     eq(c.DisenchantMats({ class = 4, quality = 1, ilvl = 57 }), nil)
@@ -4233,11 +4235,7 @@ test("disenchanting: the materials by item level, worth them at the auction, onl
     st.items[16203] = { name = "Greater Eternal Essence", ah = 20000, age = 0.1 }
     local P = prefs({ chance = 100, disenchant = true })
     local de = c.DisenchantValue(st, P, "robe")
-    -- dust 1.5 x 4000 = 6000 is the cheaper, essence 1.5 x 20000 = 30000: 80% / 20%, no shard
-    near(de, (0.8 * 6000 + 0.2 * 30000) * 0.95, "the cheaper material takes 80%")
-    st.items[16203].age = 99
-    near(c.DisenchantValue(st, P, "robe"), 0.2 * 6000 * 0.95, "a material without a price is the cheaper one")
-    st.items[16203].age = 0.1
+    near(de, (0.85 * 1.5 * 4000 + 0.13 * 1.5 * 20000) * 0.95, "the shard has no price and counts nothing")
     -- an enchanter disenchants when it brings more; without Enchanting or the switch it sells
     eq(select(2, c.SellValue(st, P, "robe", 0)), "ah")
     st.enchanter = true
