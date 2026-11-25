@@ -1,6 +1,7 @@
 -- Run from the repository root: lua5.1 tests/farmtrack/test.lua
 local W = dofile("tests/farmtrack/wow.lua")
 local test, eq = W.test, W.eq
+local function near(a, b, msg) if type(a) ~= "number" or math.abs(a - b) > 1e-6 then error((msg or "value") .. ": expected " .. tostring(b) .. ", got " .. tostring(a), 2) end end
 
 local CLOTH, ORE = 4338, 2772
 
@@ -150,7 +151,7 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
         [10] = { quality = 1, sell = 1, class = 15, bind = 1 },        -- bound: stays at the vendor
     }
     Fake({ items = items, ah = { [9] = 25000, [10] = 25000, [CLOTH2] = 400, [BLUE] = 50000, [BLUE_BOP] = 99999, [TOOTH] = 9999,
-                                 [11137] = 2000, [11134] = 1500 } })
+                                 [11083] = 400, [11134] = 1500 } })
     local ns = Load()
     W.Loot(GREY, 2); W.Loot(TOOTH, 3); W.Loot(CLOTH2, 10); W.Loot(BLUE, 1); W.Loot(BLUE_BOP, 1)
     W.Loot(GREEN, 1); W.Loot(QUEST, 1); W.Loot(UNKNOWN, 1)
@@ -165,12 +166,14 @@ test("the loot's worth: vendor, auction, disenchant, and the gold looted", funct
     local total, unknown = ns.SessionValue()
     eq(unknown, 1, "an item the client does not know yet")
     eq(total, 777 + 200 + 60 + 4000 + 50000 + 900 + 300)
-    -- with Enchanting a green is worth its cheapest disenchant result, when that beats the vendor
-    Fake({ items = items, enchanter = true, ah = { [11137] = 2000, [11134] = 1500 } })
+    -- with Enchanting gear is worth its disenchant, when that beats the vendor: a green of 33 on
+    -- the safe side (85% of 3.5 Soul Dust, 13% of 1.5 Greater Mystic Essence, the shard unpriced)
+    Fake({ items = items, enchanter = true, ah = { [11083] = 400, [11134] = 1000, [14344] = 20000, [BLUE] = 50000 } })
     ns = Load()
-    eq(ns.ItemValue(GREEN, true), 1500)
+    near(ns.ItemValue(GREEN, true), 0.85 * 3.5 * 400 + 0.13 * 1.5 * 1000)
     eq(select(2, ns.ItemValue(GREEN, true)), "disenchant")
-    W.ah[11134] = 100; W.ah[11137] = 100
+    eq(select(2, ns.ItemValue(BLUE_BOP, true)), "vendor", "a bound blue with no shard price: the vendor")
+    W.ah[11134] = 50; W.ah[11083] = 50
     eq(ns.ItemValue(GREEN, true), 300, "the vendor when it pays more")
     -- without Auctionator everything counts at the vendor
     Fake({ items = items })
@@ -309,7 +312,7 @@ test("farmed ore smelted counts as the bars, a disenchant as its dust", function
         [ORE] = { quality = 1, sell = 5, class = 7 }, [BAR] = { quality = 1, sell = 20, class = 7 },
         [GREEN] = { quality = 2, sell = 900, class = 4, ilvl = 35 }, [DUST] = { quality = 1, sell = 10, class = 7 },
     }
-    Fake({ items = items, ah = { [ORE] = 150, [BAR] = 400, [DUST] = 2000, [11134] = 1500 }, recipes = { [SMELT] = true },
+    Fake({ items = items, ah = { [ORE] = 150, [BAR] = 400, [DUST] = 2000, [11083] = 400, [11134] = 1000 }, recipes = { [SMELT] = true },
            enchanter = true })
     local ns = Load()
     W.Loot(ORE, 4)
@@ -319,7 +322,7 @@ test("farmed ore smelted counts as the bars, a disenchant as its dust", function
     -- disenchanting a looted green: the item goes at the cast, the dust comes with the loot
     W.now = W.now + 10
     W.Loot(GREEN, 1)
-    eq(ns.SessionValue(), 800 + 1500)
+    near(ns.SessionValue(), 800 + 0.85 * 3.5 * 400 + 0.13 * 1.5 * 1000, "the green at its disenchant")
     W.Fire("UNIT_SPELLCAST_START", "player", "cast", 13262)
     W.bags[GREEN] = 0
     W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 13262)

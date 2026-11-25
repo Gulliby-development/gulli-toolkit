@@ -797,41 +797,40 @@ local DE_ITEMS = {
 
 local function deMarket(extra)
     local spec = { items = DE_ITEMS, money = 1000000, free = 10, enchanter = true, db = { minGain = 0 },
-        browse = { { SDUST, 400 }, { LMAGIC, 900 }, { GLIMMER, 3000 }, { RING, 200 }, { AXE, 2500 }, { SHIRT, 100 } },
+        browse = { { SDUST, 400 }, { LMAGIC, 900 }, { GLIMMER, 3000 }, { RING, 200 }, { AXE, 2000 }, { SHIRT, 100 } },
         commodity = { [SDUST] = { { 400, 50 } }, [LMAGIC] = { { 900, 10 } }, [GLIMMER] = { { 3000, 4 } } },
-        lots = { [RING] = { { 801, 2, 200 }, { 802, 1, 390 } }, [AXE] = { { 811, 1, 2500 } }, [SHIRT] = { { 821, 1, 100 } } } }
+        lots = { [RING] = { { 801, 2, 200 }, { 802, 1, 390 } }, [AXE] = { { 811, 1, 2000 } }, [SHIRT] = { { 821, 1, 100 } } } }
     for k, v in pairs(extra or {}) do spec[k] = v end
     return spec
 end
 
-test("what a disenchant gives on the safe side: 85/13/2 for armour, 50/48/2 for a weapon, a blue's shard, after the cut", function()
+test("what a disenchant gives: a green on the safe side, a blue's shard, a purple's shards or Nexus Crystal, after the cut", function()
     Fake({})
     local ns = Load()
-    local prices = { [SDUST] = 400, [LMAGIC] = 900, [GLIMMER] = 3000 }
+    local prices = { [SDUST] = 400, [LMAGIC] = 900, [GLIMMER] = 3000, [14344] = 20000, [20725] = 90000, [11177] = 5000 }
     local priceOf = function(id) return prices[id] end
-    eq(ns.DisenchantFloor(2, 12, priceOf, 4), math.floor((0.85 * 400 + 0.13 * 900 + 0.02 * 3000) * ns.DE_CUT), "armour")
-    eq(ns.DisenchantFloor(2, 12, priceOf, 2), math.floor((0.5 * 400 + 0.48 * 900 + 0.02 * 3000) * ns.DE_CUT), "a weapon")
+    -- item level 12: 1.5 dust or 1.5 essence, no shard in that tier
+    eq(ns.DisenchantFloor(2, 12, priceOf, 4), math.floor((0.85 * 1.5 * 400 + 0.13 * 1.5 * 900) * ns.DE_CUT), "armour")
+    eq(ns.DisenchantFloor(2, 12, priceOf, 2), math.floor((0.5 * 1.5 * 400 + 0.48 * 1.5 * 900) * ns.DE_CUT), "a weapon")
     eq(ns.DisenchantFloor(3, 14, priceOf), math.floor(3000 * ns.DE_CUT))
     local astral = { [SDUST] = 400, [10998] = 1000 }
     eq(ns.DisenchantFloor(2, 22, function(id) return astral[id] end, 4),
-       math.floor((0.85 * 4 * 400 + 0.13 * 1000) * ns.DE_CUT), "four dust; a shard without a price counts nothing")
+       math.floor((0.85 * 5 * 400 + 0.13 * 1.5 * 1000) * ns.DE_CUT), "five dust; a shard without a price counts nothing")
+    eq(ns.DisenchantFloor(4, 45, priceOf), math.floor(3 * 5000 * ns.DE_CUT), "a purple of 45: three Small Radiant Shards")
+    eq(ns.DisenchantFloor(4, 60, priceOf), math.floor(90000 * ns.DE_CUT), "a purple of 60: a Nexus Crystal")
+    eq(ns.DisenchantFloor(4, 70, priceOf), math.floor(1.5 * 90000 * ns.DE_CUT))
+    eq(ns.DisenchantFloor(4, 60, function() return nil end), nil, "no price, no line")
     eq(ns.DisenchantFloor(1, 12, priceOf), nil, "white gear cannot be disenchanted")
-    eq(ns.DisenchantFloor(4, 60, priceOf), nil, "epics are left alone")
     eq(ns.DisenchantFloor(2, 3, priceOf), nil, "too low")
     eq(ns.DisenchantFloor(2, 12, function(id) return id == SDUST and 400 or nil end), nil, "no guess without both prices")
-    eq(ns.DisenchantFloor(2, 80, priceOf), nil, "a level the table does not know")
-    for i, t in ipairs(ns.DE_TIERS) do
-        eq(#t, 6)
-        assert(i == 1 or t[1] > ns.DE_TIERS[i - 1][1], "tiers go up")
-    end
 end)
 
 test("an enchanter gets gear that costs less than its disenchant, in a list of its own", function()
     local w = Fake(deMarket())
     local ns = Load()
     w.ScanAll(ns)
-    -- the vests are armour: 85% dust, 13% essence, 2% shard
-    local floor = math.floor((0.85 * 400 + 0.13 * 900 + 0.02 * 3000) * ns.DE_CUT)
+    -- the vests are armour of item level 12: 85% of 1.5 dust, 13% of 1.5 essences
+    local floor = math.floor((0.85 * 1.5 * 400 + 0.13 * 1.5 * 900) * ns.DE_CUT)
     eq(#ns.Shown("v"), 0, "nothing sells to a vendor for more")
     local shown = ns.Shown("d")
     eq(#shown, 3, "the axe under its shard, the two vests at 2s and the one at 3s90; the shirt is not")
@@ -860,7 +859,7 @@ test("gear bought to disenchant is never owed to a vendor", function()
     ns.SetView("d")
     local axe = ns.Shown("d")[1]
     ns.Click(axe)
-    eq(w.calls[#w.calls], "bid 811 2500")
+    eq(w.calls[#w.calls], "bid 811 2000")
     w.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 811)
     eq(ns.db.history[1].de, true)
     eq(next(ns.Owed()), nil, "nothing to sell at the next vendor")
@@ -878,7 +877,7 @@ test("no disenchant list without Enchanting, with the switch off or without mate
     ns = Load()
     w.ScanAll(ns)
     eq(#ns.Shown("d"), 0, "switched off")
-    w = Fake(deMarket({ browse = { { RING, 200 }, { AXE, 2500 } }, commodity = {} }))
+    w = Fake(deMarket({ browse = { { RING, 200 }, { AXE, 2000 } }, commodity = {} }))
     ns = Load()
     w.ScanAll(ns)
     eq(#ns.Shown("d"), 0, "no price for dust, essence or shard: no guess")

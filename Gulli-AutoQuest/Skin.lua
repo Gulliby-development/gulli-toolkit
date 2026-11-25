@@ -4243,6 +4243,66 @@ function S.PriceAddons()
 end
 function S.HasPrices() return #S.PriceAddons() > 0 end
 
+-- ---------- disenchanting ----------
+-- What disenchanting gear gives, the one table every module reads (owner's decision of
+-- 2026-11-25). Nobody counted WoW Forever's own disenchants, so a green counts on the safe side:
+-- armour 85% dust, 13% essence, 2% shard, a weapon 50/48/2 (S.DE_SAFE), with the Vanilla counts.
+-- A blue gives its shard, a purple three shards up to item level 55, then a Nexus Crystal (1.5
+-- from item level 61), as in Vanilla.
+-- Green: { up to item level, dust, dust per disenchant, essence, essence per disenchant, shard }.
+S.DE_GREEN = {
+    { 15, 10940, 1.5, 10938, 1.5 }, { 20, 10940, 2.5, 10939, 1.5, 10978 }, { 25, 10940, 5, 10998, 1.5, 10978 },
+    { 30, 11083, 1.5, 11082, 1.5, 11084 }, { 35, 11083, 3.5, 11134, 1.5, 11138 }, { 40, 11137, 1.5, 11135, 1.5, 11139 },
+    { 45, 11137, 3.5, 11174, 1.5, 11177 }, { 50, 11176, 1.5, 11175, 1.5, 11178 }, { 55, 11176, 3.5, 16202, 1.5, 14343 },
+    { 60, 16204, 1.5, 16203, 1.5, 14344 }, { 999, 16204, 3.5, 16203, 2.5, 14344 },
+}
+S.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45, 11177 }, { 50, 11178 },
+              { 55, 14343 }, { 999, 14344 } }
+S.NEXUS = 20725
+S.DE_EPIC = { { 55, nil, 3 }, { 60, S.NEXUS, 1 }, { 999, S.NEXUS, 1.5 } }
+S.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
+S.DE_MIN_LEVEL = 5
+local DE_GEAR = { [2] = true, [4] = true }
+
+local function deTier(list, ilvl)
+    for _, t in ipairs(list) do if ilvl <= t[1] then return t end end
+end
+
+-- The materials one disenchant gives on average: { { item id, count }, ..., need = n } (the first
+-- `need` must have a price to judge it; a green's shard need not), nil for anything else than
+-- green, blue or purple weapons and armour. `class` 2 is a weapon.
+function S.DisenchantMats(quality, ilvl, class)
+    if not (DE_GEAR[class] and ilvl and ilvl >= S.DE_MIN_LEVEL) then return nil end
+    if quality == 2 then
+        local t = deTier(S.DE_GREEN, ilvl)
+        local sh = S.DE_SAFE[class == 2 and "weapon" or "armour"]
+        local out = { { t[2], sh[1] * t[3] }, { t[4], sh[2] * t[5] }, need = 2 }
+        if t[6] then out[3] = { t[6], sh[3] } end
+        return out
+    elseif quality == 3 then
+        return { { deTier(S.DE_BLUE, ilvl)[2], 1 }, need = 1 }
+    elseif quality == 4 then
+        local t = deTier(S.DE_EPIC, ilvl)
+        return { { t[2] or deTier(S.DE_BLUE, ilvl)[2], t[3] }, need = 1 }
+    end
+end
+
+-- What one disenchant brings, in copper: each material at priceOf(id), times `keep` (what is left
+-- after the auction's cut, 1 by default). nil when it cannot be disenchanted or a material it
+-- needs has no price; a green's shard without a price counts nothing.
+function S.DisenchantWorth(quality, ilvl, class, priceOf, keep)
+    local mats = S.DisenchantMats(quality, ilvl, class)
+    if not mats then return nil end
+    local sum = 0
+    for k, m in ipairs(mats) do
+        local p = priceOf(m[1])
+        if not p and k <= mats.need then return nil end
+        sum = sum + m[2] * (p or 0)
+    end
+    if sum <= 0 then return nil end
+    return sum * (keep or 1)
+end
+
 -- ---------- sessions ----------
 -- A session lasts until the player leaves the game. A /reload, a loading screen and a dungeon
 -- keep it (PLAYER_ENTERING_WORLD without isInitialLogin, or with isReloadingUi). A real login

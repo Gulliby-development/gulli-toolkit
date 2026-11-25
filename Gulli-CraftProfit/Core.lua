@@ -37,9 +37,12 @@ ns.DEFAULTS = {
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
     autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
     disenchant = false, -- an enchanter may disenchant crafted gear and sell the materials at the auction
+    bar = false, -- the craft bar shows a batch of crafts on the screen (Bar.lua)
+    barHide = true, -- the game's own cast bar hides while it does
+    barOne = false, -- one craft alone gets the bar too
 }
 -- Settings that change no plan: the window only redraws.
-ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true }
+ns.NO_PLAN = { guard = true, side = true, ahead = true, autoPin = true, bar = true, barHide = true, barOne = true }
 
 ns.CUT, ns.NEUTRAL_CUT = 0.05, 0.15
 ns.FRESH_DAYS = 3
@@ -209,47 +212,14 @@ end
 
 -- ---------- disenchanting ----------
 
--- What disenchanting gives, by the item's level (the Vanilla tables). Green: { up to item level,
--- dust per disenchant that gives dust, essence, essence per disenchant, shard or nil }, the shares
--- in ns.DE_SAFE. Blue: one shard.
-ns.DE_GREEN = {
-    { 15, 10940, 1.5, 10938, 1.5 },
-    { 20, 10940, 2.5, 10939, 1.5, 10978 },
-    { 25, 10940, 5, 10998, 1.5, 10978 },
-    { 30, 11083, 1.5, 11082, 1.5, 11084 },
-    { 35, 11083, 3.5, 11134, 1.5, 11138 },
-    { 40, 11137, 1.5, 11135, 1.5, 11139 },
-    { 45, 11137, 3.5, 11174, 1.5, 11177 },
-    { 50, 11176, 1.5, 11175, 1.5, 11178 },
-    { 55, 11176, 3.5, 16202, 1.5, 14343 },
-    { 60, 16204, 1.5, 16203, 1.5, 14344 },
-    { 999, 16204, 3.5, 16203, 2.5, 14344 },
-}
-ns.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45, 11177 }, { 50, 11178 },
-               { 55, 14343 }, { 999, 14344 } }
-local GEAR = { [2] = true, [4] = true }
--- Nobody counted WoW Forever's own disenchants, so a green counts on the safe side (owner's
--- decision of 2026-11-25), below the Classic tables' 75/20/5: { dust, essence, shard } shares.
-ns.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
-
 -- The materials one disenchant of an item gives on average: { { id, n } }; nil for anything but
--- green or blue weapons and armour (the item's `class`, `quality` and `ilvl` from the scan).
+-- green, blue or purple weapons and armour (the item's `class`, `quality` and `ilvl` from the
+-- scan). The table is the skin's, shared by every module (S.DisenchantMats): a green on the safe
+-- side, a blue its shard, a purple shards or a Nexus Crystal.
 function ns.DisenchantMats(it)
-    if not (it and GEAR[it.class] and it.ilvl and it.ilvl > 0) then return nil end
-    if it.quality == 2 then
-        for _, t in ipairs(ns.DE_GREEN) do
-            if it.ilvl <= t[1] then
-                local sh = ns.DE_SAFE[it.class == 2 and "weapon" or "armour"]
-                local out = { { t[2], sh[1] * t[3] }, { t[4], sh[2] * t[5] } }
-                if t[6] then out[3] = { t[6], sh[3] } end
-                return out
-            end
-        end
-    elseif it.quality == 3 then
-        for _, t in ipairs(ns.DE_BLUE) do
-            if it.ilvl <= t[1] then return { { t[2], 1 } } end
-        end
-    end
+    local S = ns.Skin
+    if not (it and S and S.DisenchantMats) then return nil end
+    return S.DisenchantMats(it.quality, it.ilvl, it.class)
 end
 
 -- What one disenchant brings at the auction after its cut; nil while a material has no price.
@@ -2021,6 +1991,8 @@ function ns.SetPref(key, value)
     if ns.DEFAULTS[key] == nil then return end
     -- a setting the simulation fixes stays as it is there
     if ns.sim and ns.SIM_FIXED[key] ~= nil then return end
+    -- the craft bar's switches are the player's own, in the simulation too
+    if ns.BAR_KEYS[key] then return ns.SetBarPref(key, value) end
     -- a pinned route keeps its target
     if key == "target" and ns.view.pin and not ns.sim then return end
     ns.SavedPrefs()[key] = value
@@ -2049,6 +2021,7 @@ function ns.ResetPrefs()
     -- in the simulation only its own copy goes back to the defaults; the target is its condition
     if ns.sim then ns.sim.prefs = { target = ns.sim.to, level = true }
     else ns.db.prefs = {} end
+    if ns.RefreshBar then ns.RefreshBar() end
     ns.Rebuild(true)
 end
 
@@ -2094,6 +2067,8 @@ ns.OPT_ICON = {
     useMail = "Interface\\Icons\\INV_Letter_15", useAlts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     guard = "Interface\\Icons\\Spell_Nature_TimeStop", side = "Interface\\Minimap\\Tracking\\Auctioneer",
     autoPin = "Interface\\Icons\\INV_Misc_Map_01", disenchant = "Interface\\Icons\\INV_Enchant_Disenchant",
+    bar = "Interface\\Icons\\INV_Hammer_20", barHide = "Interface\\Icons\\Spell_Nature_TimeStop",
+    barOne = "Interface\\Icons\\INV_Misc_Note_01",
 }
 
 local function option(key)
@@ -2133,5 +2108,15 @@ do
             return text, c.icon
         end,
         reset = function() if ns.db then ns.ResetPrefs() end end,
+        -- the craft bar: placed in the Unlock mode, on the screen only while a batch of crafts runs
+        move = function(on) ns.Move(on) end,
+        frames = { { key = "bar", label = ns.L.P_bar, icon = ns.OPT_ICON.bar,
+                     get = function() return ns.BarPref("bar") end,
+                     set = function(v) ns.SetBarPref("bar", v) end,
+                     frame = function() return ns.BarFrame and ns.BarFrame() end } },
+        tweaks = {
+            { key = "bar", group = "ui", label = ns.L.P_bar, desc = ns.L.TWK_bar_D, icon = ns.OPT_ICON.bar,
+              get = function() return ns.BarPref("bar") end, set = function(v) ns.SetBarPref("bar", v) end },
+        },
     })
 end

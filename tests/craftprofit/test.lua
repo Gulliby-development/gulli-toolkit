@@ -4242,6 +4242,11 @@ test("disenchanting: the materials by item level, worth them at the auction, onl
     near(w[1][2], 0.5 * 1.5); near(w[2][2], 0.48 * 1.5); near(w[3][2], 0.02)
     -- blue gear one shard; no gear, white gear or a bag nothing
     eq(c.DisenchantMats({ class = 4, quality = 3, ilvl = 45 })[1][1], 11177)
+    -- purple gear: three shards up to item level 55, then a Nexus Crystal (1.5 from 61)
+    local e = c.DisenchantMats({ class = 4, quality = 4, ilvl = 52 })
+    eq(e[1][1], 14343); eq(e[1][2], 3)
+    eq(c.DisenchantMats({ class = 2, quality = 4, ilvl = 60 })[1][1], 20725)
+    eq(c.DisenchantMats({ class = 2, quality = 4, ilvl = 65 })[1][2], 1.5)
     eq(c.DisenchantMats({ class = 4, quality = 1, ilvl = 57 }), nil)
     eq(c.DisenchantMats({ class = 1, quality = 2, ilvl = 57 }), nil)
     eq(c.DisenchantMats({ class = 7, quality = 2, ilvl = 57 }), nil)
@@ -4330,6 +4335,308 @@ test("Use again shows at once, also while the calculation it starts still runs o
     eq(n.db.skip[rid], true, "the button adds it, as its text said")
     n.ui.skipEdit:SetText("")
     n.Tab(1)
+end)
+
+-- ---------- the craft bar ----------
+
+-- A craft cast of the player begins: what UnitCastingInfo says, then the event. len in seconds.
+local function barCast(spell, len, left, o)
+    o = o or {}
+    local from = W.now
+    UnitCastingInfo = function()
+        return o.name or "Bolt of Runecloth", "", "icon", from * 1000, (from + len) * 1000, o.trade ~= false, "guid" .. from, false, spell
+    end
+    C_TradeSkillUI.GetRemainingRecasts = left and function() return left end or nil
+    W.Fire("UNIT_SPELLCAST_START", "player", "guid" .. from, spell)
+    return "guid" .. from
+end
+local function barMade(spell, len)
+    W.now = W.now + len
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", spell)
+end
+
+-- The bar starts off, like every frame on the screen: these tests switch it on.
+local function barGame()
+    local n = game()
+    n.SetBarPref("bar", true)
+    return n
+end
+
+test("craft bar: a batch counts its crafts, tells the time left and ends as done", function()
+    local n = barGame()
+    date = function(_, t) return "t" .. t end
+    barCast(101, 3, 5)
+    eq(n.BarState(), "run")
+    assert(n.BarFrame():IsShown(), "the bar is on the screen")
+    local v = n.BarView("run")
+    eq(v.made, 0); eq(v.of, 5); eq(v.name, "Bolt of Runecloth"); eq(v.ticks, 5)
+    eq(v.left, n.L.BAR_S:format(15)); eq(v.foot, n.L.BAR_LEFT)
+    eq(v.right, n.L.BAR_END:format("t" .. (W.now + 15)))
+    W.now = W.now + 1.5
+    v = n.BarView("run")
+    eq(v.cast, 0.5); eq(v.frac, 0.1); eq(v.doneFrac, 0)
+    W.now = W.now - 1.5
+    -- half a second passes between two crafts: the rest is counted at that pace
+    barMade(101, 3); W.now = W.now + 0.5
+    barCast(101, 3, 4)
+    v = n.BarView("run")
+    eq(v.made, 1); eq(v.of, 5)
+    eq(v.left, n.L.BAR_S:format(14), "3 for this one and 3 times 3.5")
+    for left = 3, 1, -1 do barMade(101, 3); W.now = W.now + 0.5; barCast(101, 3, left) end
+    barMade(101, 3)
+    eq(n.BarState(), "done")
+    v = n.BarView("done")
+    eq(v.made, 5); eq(v.tone, "good"); eq(v.foot, n.L.BAR_DONE); eq(v.frac, 1)
+    eq(v.right, n.L.BAR_TOOK:format(n.L.BAR_S:format(17)))
+    W.now = W.now + n.BAR_HOLD + 0.1
+    eq(n.BarState(), nil, "a finished batch leaves after a moment")
+    n.TickBar()
+    eq(n.BarFrame():IsShown(), false)
+end)
+
+test("craft bar: a batch of hours shows hours and minutes, no seconds, and one smooth bar", function()
+    local n = barGame()
+    eq(n.BarSpan(24), n.L.BAR_S:format(24))
+    eq(n.BarSpan(760), n.L.BAR_MS:format(12, 40))
+    eq(n.BarSpan(3600), n.L.BAR_HM:format(1, 0))
+    eq(n.BarSpan(4841), n.L.BAR_HM:format(1, 21))
+    eq(n.BarSpan(3 * 3600 + 59 * 60 + 30), n.L.BAR_HM:format(4, 0), "minutes round up, never 60")
+    barCast(101, 30, 400)
+    local v = n.BarView(n.BarState())
+    eq(v.of, 400); eq(v.ticks, nil, "too many crafts for a cut each")
+    eq(v.left, n.L.BAR_HM:format(3, 20))
+    n.run = nil
+    barCast(101, 30, n.BAR_TICKS)
+    eq(n.BarView("run").of, n.BAR_TICKS)
+end)
+
+test("craft bar: a cut cast, a cast that never comes and the game's stop end the batch as stopped", function()
+    local n = barGame()
+    local id = barCast(101, 3, 4)
+    barMade(101, 3)
+    id = barCast(101, 3, 3)
+    W.Fire("UNIT_SPELLCAST_FAILED", "player", "another", 101)
+    eq(n.BarState(), "run", "another cast's failure is not ours")
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", id, 101)
+    eq(n.BarState(), "stop")
+    local v = n.BarView("stop")
+    eq(v.tone, "warn"); eq(v.foot, n.L.BAR_STOPPED); eq(v.right, n.L.BAR_STOP_D:format(1, 3)); eq(v.left, "")
+    W.now = W.now + n.BAR_HOLD + 0.1
+    eq(n.BarState(), nil)
+    -- the materials ran out: no next cast comes
+    barCast(101, 3, 4); barMade(101, 3)
+    W.now = W.now + n.BAR_GAP - 0.5
+    eq(n.BarState(), "run", "the next craft may still come")
+    W.now = W.now + 1
+    eq(n.BarState(), "stop")
+    -- the game says at once that its batch stopped
+    W.now = W.now + 60
+    barCast(101, 3, 4); barMade(101, 3)
+    W.Fire("UPDATE_TRADESKILL_CAST_STOPPED", false)
+    W.now = W.now + n.BAR_HALT + 0.1
+    eq(n.BarState(), "stop")
+    -- a batch that looked finished goes on when its next cast begins
+    W.now = W.now + 60
+    n.SetBarPref("barOne", true)
+    barCast(101, 3, 1); barMade(101, 3)
+    eq(n.BarState(), "done")
+    W.now = W.now + 0.5
+    barCast(101, 3, 1)
+    eq(n.BarState(), "run"); eq(n.BarView("run").made, 1); eq(n.BarView("run").of, 2)
+end)
+
+test("craft bar: the switches keep it away; one craft alone only when asked; other spells never", function()
+    local n = game()
+    eq(n.BarPref("bar"), false, "the bar starts off, like every frame on the screen (owner's decision)")
+    barCast(101, 3, 3)
+    eq(n.BarState(), nil, "off until the player switches it on")
+    n.run = nil
+    n.SetBarPref("bar", true)
+    eq(n.BarPref("barHide"), true); eq(n.BarPref("barOne"), false)
+    barCast(101, 3, 1)
+    eq(n.BarState(), nil, "one craft alone")
+    n.SetPref("barOne", true)
+    eq(n.db.prefs.barOne, true)
+    eq(n.BarState(), "run")
+    n.SetBarPref("bar", false)
+    eq(n.BarState(), nil, "the switch")
+    eq(n.BarFrame():IsShown(), false)
+    n.SetBarPref("bar", true)
+    -- a spell that is no craft is not a batch
+    n.run = nil
+    barCast(5, 3, nil, { trade = false, name = "Fireball" })
+    eq(n.run, nil)
+    -- a secret name: nothing is read
+    issecretvalue = function(v) return v == "Secret" end
+    barCast(101, 3, 5, { name = "Secret" })
+    eq(n.run, nil)
+    issecretvalue = nil
+    -- the simulation has its own settings; the bar keeps the player's
+    n.SetBarPref("barOne", false)
+    n.sim = { prefs = {} }
+    n.SetPref("barOne", true)
+    eq(n.sim.prefs.barOne, nil); eq(n.db.prefs.barOne, true)
+    n.sim = nil
+    -- the hub's frame entry and its Tweaks row are the same switch
+    eq(n.ResetPrefs and true, true)
+end)
+
+test("craft bar: without the game's count the Make button's batch gives it, else only what is made shows", function()
+    local n = barGame()
+    n.BatchStart(101, 6)
+    n.CastRecipe = function(spell) return spell end
+    barCast(101, 3, nil)
+    eq(n.BarView(n.BarState()).of, 6)
+    n.run, n.batch = nil, nil
+    barCast(101, 3, nil); barMade(101, 3); barCast(101, 3, nil)
+    local v = n.BarView(n.BarState())
+    eq(v.of, nil); eq(v.made, 1); eq(v.left, ""); eq(v.foot, n.L.BAR_GOING)
+end)
+
+test("craft bar: the game's cast bar hides only while a batch runs and the switch is on", function()
+    local n = barGame()
+    local alpha = 1
+    PlayerCastingBarFrame = { GetAlpha = function() return alpha end, SetAlpha = function(_, a) alpha = a end }
+    n.SetBarPref("barHide", false)
+    barCast(101, 3, 3)
+    n.TickBar()
+    eq(alpha, 1, "the switch is off")
+    n.SetBarPref("barHide", true)
+    eq(alpha, 0)
+    barMade(101, 3); barCast(101, 3, 2)
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(alpha, 1, "the batch stopped: the game's bar is back")
+    PlayerCastingBarFrame = nil
+end)
+
+test("craft bar: another addon's cast bar of the player hides too and gets its own alpha back", function()
+    local n = barGame()
+    local function fake(alpha, extra)
+        local f = { a = alpha, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end,
+            IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end }
+        for k, v in pairs(extra or {}) do f[k] = v end
+        return f
+    end
+    local named = fake(0.8)
+    local ouf = fake(0.9, { __owner = { unit = "player" }, casting = true })
+    local target = fake(1, { __owner = { unit = "target" }, casting = true })
+    local health = fake(1, { unit = "player" })
+    ElvUF_Player_CastBar = named
+    local list = { ouf, target, health }
+    EnumerateFrames = function(f)
+        if not f then return list[1] end
+        for i, g in ipairs(list) do if g == f then return list[i + 1] end end
+    end
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(named.a, 0, "a bar known by its name")
+    eq(ouf.a, 0, "a bar found on the screen")
+    eq(target.a, 1, "the target's cast bar stays")
+    eq(health.a, 1, "a bar of the player that is no cast bar stays")
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(named.a, 0.8); eq(ouf.a, 0.9)
+    ElvUF_Player_CastBar, EnumerateFrames = nil, nil
+end)
+
+test("craft bar: a cast bar its addon fades (EllesmereUI) is hidden only while the batch runs and comes back as its addon left it", function()
+    local n = barGame()
+    local oldHook = hooksecurefunc
+    hooksecurefunc = function(t, name, fn)
+        local was = t[name]
+        t[name] = function(...) was(...); fn(...) end
+    end
+    local erb = { a = 1, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end }
+    ERB_CastBarFrame = erb
+    -- the unit frame's cast bar: no name, kept as the frame's Castbar on a backing of its own
+    local unitFrame = { _euiUnit = "player" }
+    local backing = { a = 1, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha, GetParent = function() return unitFrame end }
+    local castbar = { a = 1, __owner = unitFrame, GetAlpha = erb.GetAlpha, SetAlpha = erb.SetAlpha,
+        IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end,
+        GetParent = function() return backing end }
+    unitFrame.Castbar = castbar
+    EnumerateFrames = function(f) if not f then return castbar end end
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0, "hidden while the craft runs")
+    eq(backing.a, 0, "the unit frame's cast bar goes with its backing")
+    eq(castbar.a, 1)
+    erb:SetAlpha(1) -- its addon lights it for the next cast
+    eq(erb.a, 0, "and it stays hidden")
+    -- the craft is cut: the bar is back at once after the game's own fade
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 1, "back when the craft is cut")
+    eq(backing.a, 1)
+    erb:SetAlpha(0.4)
+    eq(erb.a, 0.4, "and its addon owns it again")
+    -- a batch during which its addon put the bar to rest: it does not come back lit
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(erb.a, 0)
+    erb:SetAlpha(1); erb:SetAlpha(0)
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(erb.a, 0, "an idle bar stays as its addon left it")
+    ERB_CastBarFrame, EnumerateFrames, hooksecurefunc = nil, nil, oldHook
+end)
+
+test("craft bar: a craft the game never reported counts when the next one starts; the picture is the made item's", function()
+    local n = barGame()
+    barCast(101, 3, 3)
+    W.now = W.now + 3
+    barCast(101, 3, 2) -- no UNIT_SPELLCAST_SUCCEEDED came
+    eq(n.run.made, 1); eq(n.run.of, 3)
+    barMade(101, 3)
+    eq(n.run.made, 2)
+    barCast(101, 3, 1)
+    eq(n.run.made, 2, "a reported craft is not counted twice"); eq(n.run.of, 3)
+    -- the game names the made craft by another spell id: the cast id counts it
+    W.now = W.now + 3
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", n.run.cast.id, 999)
+    eq(n.run.made, 3); eq(n.BarState(), "done")
+    -- no report at all, without the game's count: every cast that ran to its end counts, the last too
+    n.run = nil
+    n.SetBarPref("barOne", true)
+    barCast(102, 3); W.now = W.now + 3
+    barCast(102, 3); W.now = W.now + 3 + n.BAR_GAP + 0.1
+    eq(n.BarState(), "done"); eq(n.run.made, 2)
+    -- the picture is the one of what the craft makes, not the spell's
+    n.run = nil
+    barCast(101, 3, 2)
+    eq(n.run.icon ~= "icon", true)
+end)
+
+test("craft bar: materials for the rest, the skill gained, and the sample in the Unlock mode", function()
+    local n = barGame()
+    local skill = 150
+    C_TradeSkillUI.GetProfessionInfoByRecipeID = function() return { professionName = "Tailoring", skillLevel = skill } end
+    n.char.profs = { Tailoring = { recipes = { [101] = { r = { [1] = 4 } } } } }
+    local have = 40
+    C_Item = C_Item or {}
+    C_Item.GetItemCount = function() return have end
+    barCast(101, 3, 5)
+    local v = n.BarView("run")
+    eq(v.sub, "Tailoring 150" .. n.Dot() .. n.L.BAR_MATS_ALL)
+    have = 9
+    v = n.BarView("run")
+    eq(v.sub, "Tailoring 150" .. n.Dot() .. "|cffff9f40" .. n.L.BAR_MATS_N:format(2) .. "|r"); eq(v.subTone, "warn")
+    skill = 152
+    for left = 4, 1, -1 do barMade(101, 3); barCast(101, 3, left) end
+    barMade(101, 3)
+    v = n.BarView("done")
+    eq(v.right, n.L.BAR_TOOK:format(n.L.BAR_S:format(15)) .. n.Dot() .. n.L.BAR_SKILL:format(152, 2))
+    W.now = W.now + 60
+    eq(n.BarState(), nil)
+    n.Move(true)
+    assert(n.BarFrame():IsShown(), "the Unlock mode shows it to place")
+    eq(n.BarView(nil).of, 40)
+    n.Move(false)
+    eq(n.BarFrame():IsShown(), false)
 end)
 
 W.finish()
