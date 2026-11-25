@@ -599,6 +599,7 @@ text[84193]="Kehrt mit Dreadmist Sandals, Dreadmist Leggings und Dreadmist Mantl
 text[84194]="Kehrt mit Boots of Valor, Legplates of Valor und Spaulders of Valor zu Mokvar in Orgrimmar zurück."
 text[84195]="Gebt Deliana Eure Wildheart Cowl und Wildheart Vest."
 text[84196]="Gebt Deliana Eure Beaststalker's Cap und Beaststalker's Tunic."
+text[84198]="Gebt Deliana Euren Lightforge Helm und Eure Lightforge Breastplate."
 text[84200]="Gebt Deliana Eure Shadowcraft Cap und Shadowcraft Tunic."
 text[84202]="Gebt Deliana Euren Helm of Valor und Eure Breastplate of Valor."
 text[84203]="Gebt Mokvar Eure Wildheart Cowl und Wildheart Vest."

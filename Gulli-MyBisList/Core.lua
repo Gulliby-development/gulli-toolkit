@@ -1230,6 +1230,205 @@ function ns.Slash(msg)
     end
 end
 
+-- Stats ----------------------------------------------------------------------------------------------
+-- Hit, crit, attack power, spell damage and healing: what the character has now and what the
+-- shown list's first items would change. The game converts strength, agility and intellect for
+-- the class and level itself (GetAttackPowerForStat, GetCritChanceFromStat,
+-- GetSpellCritChanceFromStat), so no class formula lives here.
+
+-- Which stats a list shows: by its spec.
+ns.STAT_KIND = {
+    HUNTER_BEASTMASTERY = "ranged", HUNTER_MARKSMANSHIP = "ranged", HUNTER_SURVIVAL = "ranged",
+    MAGE_ARCANE = "spell", MAGE_FIRE = "spell", MAGE_FROST = "spell",
+    WARLOCK_AFFLICTION = "spell", WARLOCK_DEMONOLOGY = "spell", WARLOCK_DESTRUCTION = "spell",
+    PRIEST_SHADOW = "spell", SHAMAN_ELEMENTAL = "spell", DRUID_BALANCE = "spell", PALADIN_SHOCKADIN = "spell",
+}
+-- The stats of each kind, in order; heal joins a kind only when it says more (see ns.StatSummary).
+ns.STAT_ORDER = {
+    melee = { "hit", "crit", "ap" }, ranged = { "hit", "crit", "ap" },
+    spell = { "hit", "crit", "sd" }, heal = { "crit", "heal", "sd" },
+}
+-- Hit a raid boss three levels up asks for, from the classic rules (not checked in WoW Forever).
+ns.HIT_CAP = { melee = 9, ranged = 9, spell = 16 }
+
+function ns.StatKind(spec)
+    local info = spec and SPEC[spec]
+    if info and info[3] == "heal" then return "heal" end
+    return ns.STAT_KIND[spec] or "melee"
+end
+
+-- C_Item.GetItemStats keys -> our stat names. Hit and crit "ratings" are percent on a client
+-- without ratings (see ratingPct).
+local STAT_KEYS = {
+    ITEM_MOD_STRENGTH_SHORT = "str", ITEM_MOD_AGILITY_SHORT = "agi", ITEM_MOD_INTELLECT_SHORT = "int",
+    ITEM_MOD_ATTACK_POWER_SHORT = "ap", ITEM_MOD_MELEE_ATTACK_POWER_SHORT = "map",
+    ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "rap",
+    ITEM_MOD_SPELL_POWER_SHORT = "sp", ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "sd",
+    ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
+    ITEM_MOD_HIT_RATING_SHORT = "hit", ITEM_MOD_HIT_MELEE_RATING_SHORT = "hitm",
+    ITEM_MOD_HIT_RANGED_RATING_SHORT = "hitr", ITEM_MOD_HIT_SPELL_RATING_SHORT = "hits",
+    ITEM_MOD_CRIT_RATING_SHORT = "crit", ITEM_MOD_CRIT_MELEE_RATING_SHORT = "critm",
+    ITEM_MOD_CRIT_RANGED_RATING_SHORT = "critr", ITEM_MOD_CRIT_SPELL_RATING_SHORT = "crits",
+}
+
+local function secret(v) return v ~= nil and issecretvalue ~= nil and issecretvalue(v) end
+-- A number from the game, or nil when it gives none or hides it.
+local function num(f, ...)
+    if not f then return nil end
+    local ok, v = pcall(f, ...)
+    if not ok or type(v) ~= "number" or secret(v) then return nil end
+    return v
+end
+
+ns.itemStats = {}
+-- The stats of an item by id, or nil while the client has not loaded it.
+function ns.ItemStats(id)
+    if not id then return {} end
+    local cached = ns.itemStats[id]
+    if cached then return cached end
+    local get = C_Item and C_Item.GetItemStats
+    if not get then return {} end
+    local loaded = not (C_Item.IsItemDataCachedByID) or C_Item.IsItemDataCachedByID(id)
+    local ok, t = pcall(get, "item:" .. id)
+    if not ok then return {} end
+    if type(t) ~= "table" then
+        if not loaded and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+        if loaded then ns.itemStats[id] = {} return ns.itemStats[id] end
+        return nil
+    end
+    local s = {}
+    for k, v in pairs(t) do
+        local key = STAT_KEYS[k]
+        if key and type(v) == "number" then s[key] = (s[key] or 0) + v end
+    end
+    ns.itemStats[id] = s
+    return s
+end
+
+-- A hit or crit rating as percent: through the character's own rating when it has some, else
+-- the number is the percent itself (an item of the classic rules: "+1% hit").
+local function ratingPct(crName, n)
+    if not n or n == 0 then return 0 end
+    local cr = _G[crName]
+    local rating = cr and num(GetCombatRating, cr)
+    local bonus = cr and num(GetCombatRatingBonus, cr)
+    if rating and bonus and rating > 0 then return n * bonus / rating end
+    return n
+end
+
+-- The game's conversion of a stat amount, for a gain or a loss.
+local function conv(f, stat, v)
+    if not v or v == 0 then return 0 end
+    local r = num(f, stat, math.abs(v))
+    if not r then return 0 end
+    return v > 0 and r or -r
+end
+
+-- What a set of item stats is worth in the shown stats of a kind.
+function ns.StatValue(kind, s)
+    local out = {}
+    if kind == "melee" or kind == "ranged" then
+        local ranged = kind == "ranged"
+        out.hit = (s[ranged and "hitr" or "hitm"] or 0) + ratingPct(ranged and "CR_HIT_RANGED" or "CR_HIT_MELEE", s.hit)
+        out.crit = conv(GetCritChanceFromStat, 2, s.agi) * 100 + (s[ranged and "critr" or "critm"] or 0)
+            + ratingPct(ranged and "CR_CRIT_RANGED" or "CR_CRIT_MELEE", s.crit)
+        if ranged then
+            out.ap = conv(GetRangedAttackPowerForStat, 1, s.str) + conv(GetRangedAttackPowerForStat, 2, s.agi)
+                + (s.ap or 0) + (s.rap or 0)
+        else
+            out.ap = conv(GetAttackPowerForStat, 1, s.str) + conv(GetAttackPowerForStat, 2, s.agi)
+                + (s.ap or 0) + (s.map or 0)
+        end
+    else
+        out.hit = (s.hits or 0) + ratingPct("CR_HIT_SPELL", s.hit)
+        out.crit = conv(GetSpellCritChanceFromStat, 4, s.int) * 100 + (s.crits or 0)
+            + ratingPct("CR_CRIT_SPELL", s.crit)
+        out.sd = (s.sp or 0) + (s.sd or 0)
+    end
+    out.heal = (s.sp or 0) + (s.heal or 0)
+    return out
+end
+
+-- What the character has now, as the game's character window says it.
+function ns.StatNow(kind)
+    local now = {}
+    local function rating(cr) return _G[cr] and num(GetCombatRatingBonus, _G[cr]) or 0 end
+    if kind == "melee" then
+        local m = num(GetHitModifier)
+        now.hit = m and (m + rating("CR_HIT_MELEE"))
+        now.crit = num(GetCritChance)
+    elseif kind == "ranged" then
+        local m = num(GetRangedHitModifier)
+        now.hit = m and (m + rating("CR_HIT_RANGED"))
+        now.crit = num(GetRangedCritChance)
+    else
+        local m = num(GetSpellHitModifier)
+        now.hit = m and (m + rating("CR_HIT_SPELL"))
+        now.crit = num(GetSpellCritChance)
+    end
+    if kind == "melee" or kind == "ranged" then
+        local ok, base, pos, neg = pcall(kind == "ranged" and UnitRangedAttackPower or UnitAttackPower, "player")
+        if ok and type(base) == "number" and not secret(base) and not secret(pos) and not secret(neg) then
+            now.ap = base + (pos or 0) + (neg or 0)
+        end
+    end
+    -- spell damage: the best school, so +shadow damage counts for a shadow priest
+    local best
+    for school = 2, 7 do
+        local v = num(GetSpellBonusDamage, school)
+        if v and (not best or v > best) then best = v end
+    end
+    now.sd = best
+    now.heal = num(GetSpellBonusHealing)
+    return now
+end
+
+-- The stats of the shown list against what is worn: { kind, stats = { { key, now, gain, cap } },
+-- items = key -> { { id, gain } }, wait = true while an item is not loaded yet }.
+function ns.StatSummary(list)
+    if not list then return nil end
+    local kind = ns.StatKind(list.spec)
+    local gains, items, wait = {}, {}, false
+    local function add(id, sign)
+        local s = ns.ItemStats(id)
+        if not s then wait = true; return end
+        for key, v in pairs(ns.StatValue(kind, s)) do
+            if v ~= 0 then
+                gains[key] = (gains[key] or 0) + sign * v
+                items[key] = items[key] or {}
+                items[key][#items[key] + 1] = { id = id, gain = sign * v }
+            end
+        end
+    end
+    for _, r in ipairs(ns.SlotRows(list)) do
+        local top = r.top
+        if r.state == "covered" then top = nil end
+        -- a slot the list has nothing for keeps what is worn
+        if (top or r.state == "covered") and top ~= r.worn then
+            if top then add(top, 1) end
+            if r.worn then add(r.worn, -1) end
+        end
+    end
+    local now = ns.StatNow(kind)
+    local keys = {}
+    for _, k in ipairs(ns.STAT_ORDER[kind]) do keys[#keys + 1] = k end
+    local heal = now.heal or 0
+    if kind == "heal" then
+        -- a healer sees spell damage only when there is some
+        if (now.sd or 0) <= 0 and (gains.sd or 0) <= 0 then table.remove(keys) end
+    elseif heal > 0 and (kind ~= "spell" or heal > (now.sd or 0)) then
+        keys[#keys + 1] = "heal"
+    end
+    local stats = {}
+    for _, k in ipairs(keys) do
+        local cap = k == "hit" and ns.HIT_CAP[kind] or nil
+        stats[#stats + 1] = { key = k, now = now[k], gain = gains[k] or 0, cap = cap }
+    end
+    -- the biggest changes first in the tooltip
+    for _, t in pairs(items) do table.sort(t, function(a, b) return math.abs(a.gain) > math.abs(b.gain) end) end
+    return { kind = kind, stats = stats, items = items, wait = wait }
+end
+
 -- Events ----------------------------------------------------------------------------------------------
 
 -- Bag, gear and item news come in bursts: one refresh a moment later.

@@ -1985,12 +1985,21 @@ local function mbOpen(ns, W, slot)
     for _, e in pairs(D.ench.WARRIOR_ARMS.PRE) do names[e[1]], icons[e[1]] = e[2], icon[e[3]] end
     C_Spell.GetSpellName = function(id) return names[id] end
     C_Spell.GetSpellTexture = function(id) return icons[id] and ("Interface\\Icons\\" .. icons[id]) or nil end
+    -- stats for the bar beside the tabs: made up from the item id, so every item adds something
+    W.char = { hit = 3, crit = 14.2, ap = 1124, shit = 1, scrit = 6.2, sd = 212, heal = 231 }
+    C_Item.GetItemStats = function(link)
+        local id = tonumber(link:match("item:(%d+)")) or 0
+        return { ITEM_MOD_STRENGTH_SHORT = id % 13, ITEM_MOD_AGILITY_SHORT = id % 7,
+                 ITEM_MOD_HIT_RATING_SHORT = id % 5 == 0 and 1 or nil, ITEM_MOD_INTELLECT_SHORT = id % 11,
+                 ITEM_MOD_SPELL_POWER_SHORT = id % 17 }
+    end
     ns.SetMySpec("WARRIOR_ARMS")
     ns.Toggle()
     ns.Show(slot or "head")
 end
 local mbSpec = function() return { level = 60, class = "WARRIOR", faction = "Alliance", spec = 71 } end
 S.mybislist = { default = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "legs") end },
+    caster = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "legs"); W.char.heal = 260; ns.ViewList("PRIEST_SHADOW", "PRE") end },
     head = { spec = mbSpec(), open = function(ns, W) mbOpen(ns, W, "head") end },
     level = { spec = { level = 34, class = "PRIEST", faction = "Horde", spec = 258 }, open = function(ns, W)
         mbOpen(ns, W); W.worn = {}; ns.SetMySpec("PRIEST_SHADOW"); ns.SetMain("auto"); ns.Show("main") end },

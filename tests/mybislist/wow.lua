@@ -168,7 +168,33 @@ function Fake(spec)
             return "Item" .. id, nil, 3, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, (W.setOf or {})[id]
         end,
         GetItemSetInfo = function(id) return (W.setNames or {})[id] end,
+        -- stats: item id -> the game's stat table; an id in notLoaded is not cached yet
+        GetItemStats = function(link)
+            local id = tonumber(link:match("item:(%d+)"))
+            if W.notLoaded[id] then return nil end
+            return W.stats[id] or {}
+        end,
+        IsItemDataCachedByID = function(id) return not W.notLoaded[id] end,
     }
+    W.SECRET = W.SECRET or {}
+    -- the character's stats (spec.char): hit, crit, ap, sd, heal) and the game's conversions; a secret
+    -- value stands for one the game hides
+    W.stats, W.notLoaded, W.char = spec.stats or {}, spec.notLoaded or {}, spec.char or {}
+    local function nowOf(key) return function() return W.char[key] end end
+    GetHitModifier, GetRangedHitModifier, GetSpellHitModifier = nowOf("hit"), nowOf("rhit"), nowOf("shit")
+    GetCritChance, GetRangedCritChance, GetSpellCritChance = nowOf("crit"), nowOf("rcrit"), nowOf("scrit")
+    GetSpellBonusHealing = nowOf("heal")
+    GetSpellBonusDamage = function(school) return (W.char.schools or {})[school] or W.char.sd or 0 end
+    UnitAttackPower = function() return W.char.ap or 0, 0, 0 end
+    UnitRangedAttackPower = function() return W.char.rap or 0, 0, 0 end
+    GetCombatRating, GetCombatRatingBonus = function() return 0 end, function() return 0 end
+    CR_HIT_MELEE, CR_HIT_RANGED, CR_HIT_SPELL = 6, 7, 8
+    -- a warrior: 2 AP a strength, 20 agility a percent of crit; 60 intellect a percent of spell crit
+    GetAttackPowerForStat = function(stat, v) return stat == 1 and v * 2 or 0 end
+    GetRangedAttackPowerForStat = function(stat, v) return stat == 2 and v * 2 or 0 end
+    GetCritChanceFromStat = function(stat, v) return stat == 2 and v / 20 / 100 or 0 end
+    GetSpellCritChanceFromStat = function(stat, v) return stat == 4 and v / 60 / 100 or 0 end
+    issecretvalue = function(v) return v == W.SECRET end
     -- tips: item id -> the lines of its tooltip
     W.equip, W.setOf, W.setNames, W.tipLines = spec.equip or {}, spec.setOf or {}, spec.setNames or {}, spec.tipLines or {}
     C_TooltipInfo = { GetItemByID = function(id)

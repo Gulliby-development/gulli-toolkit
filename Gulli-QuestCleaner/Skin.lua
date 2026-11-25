@@ -745,6 +745,20 @@ end
 
 -- Buttons ------------------------------------------------------------------------------------
 
+-- Keeps a widget's look in step with whether it is enabled. The game does not always send
+-- OnEnable/OnDisable (not for a frame that is hidden when its state changes), so the look is
+-- also set from SetEnabled, Enable, Disable and OnShow, always from IsEnabled.
+function S.FollowEnabled(b, look)
+    local function sync(self) look(self, self:IsEnabled() and true or false) end
+    local set, en, dis = b.SetEnabled, b.Enable, b.Disable
+    if set then b.SetEnabled = function(self, v) set(self, v); sync(self) end end
+    if en then b.Enable = function(self) en(self); sync(self) end end
+    if dis then b.Disable = function(self) dis(self); sync(self) end end
+    b:SetScript("OnDisable", sync)
+    b:SetScript("OnEnable", sync)
+    b:HookScript("OnShow", sync)
+end
+
 local function paint(b)
     local hover = b.hover and b:IsEnabled()
     local down = b.down and b:IsEnabled()
@@ -807,8 +821,7 @@ function S.Button(parent, width, height)
     b.GetText = function(self) return self.text:GetText() end
     b:SetScript("OnEnter", function(self) self.hover = true; paint(self) end)
     b:SetScript("OnLeave", function(self) self.hover = false; paint(self) end)
-    b:SetScript("OnDisable", function(self) self.text:SetAlpha(0.4); paint(self) end)
-    b:SetScript("OnEnable", function(self) self.text:SetAlpha(1); paint(self) end)
+    S.FollowEnabled(b, function(self, on) self.text:SetAlpha(on and 1 or 0.4); paint(self) end)
     -- A press darkens it and moves the text one pixel down. No scaling: a box made of many
     -- textures scaled by a fraction shows seams between them.
     b:HookScript("OnMouseDown", function(self)
@@ -902,8 +915,7 @@ function S.IconTile(parent, width, height, vertical)
     local function dim(self, a) self.item:SetAlpha(a); self.title:SetAlpha(a); self.sub:SetAlpha(a) end
     b:SetScript("OnEnter", function(self) self.hover = true; paint(self) end)
     b:SetScript("OnLeave", function(self) self.hover = false; paint(self) end)
-    b:SetScript("OnDisable", function(self) dim(self, 0.4); paint(self) end)
-    b:SetScript("OnEnable", function(self) dim(self, 1); paint(self) end)
+    S.FollowEnabled(b, function(self, on) dim(self, on and 1 or 0.4); paint(self) end)
     return b
 end
 
@@ -1058,8 +1070,7 @@ function S.Switch(parent)
     function s:GetChecked() return self.on end
     s:SetScript("OnEnter", function(self) self.hover = true; edge(self) end)
     s:SetScript("OnLeave", function(self) self.hover = false; edge(self) end)
-    s:SetScript("OnDisable", function(self) self:SetAlpha(0.4) end)
-    s:SetScript("OnEnable", function(self) self:SetAlpha(1) end)
+    S.FollowEnabled(s, function(self, on) self:SetAlpha(on and 1 or 0.4) end)
     s:SetChecked(false)
     return s
 end
@@ -1214,8 +1225,7 @@ function S.Pill(parent, width, height)
     b.kind = "normal"
     b.SetText = function(self, s) self.text:SetText(s) end
     b.GetText = function(self) return self.text:GetText() end
-    b:SetScript("OnDisable", function(self) self.text:SetAlpha(0.4) end)
-    b:SetScript("OnEnable", function(self) self.text:SetAlpha(1) end)
+    S.FollowEnabled(b, function(self, on) self.text:SetAlpha(on and 1 or 0.4) end)
     function b:SetSelected(on)
         self.selected = on
         local a = S.Accent()
