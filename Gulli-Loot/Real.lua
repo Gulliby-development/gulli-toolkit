@@ -171,29 +171,62 @@ local function takeOne()
     ns.RealPaint()
 end
 
-local lootHadReal
+local lootHadReal, lootBoss
+
+-- The GUIDs of the bosses in sight, into set.
+local function bossGuids(set)
+    if not UnitGUID then return set end
+    for _, u in ipairs({ "boss1", "boss2", "boss3", "boss4", "boss5", "target" }) do
+        if UnitExists and UnitExists(u) and (u ~= "target" or not UnitIsPlayer or not UnitIsPlayer(u)) then
+            local g = UnitGUID(u)
+            if g ~= nil and not secret(g) and type(g) == "string" and (g:find("^Creature") or g:find("^Vehicle")) then
+                set[g] = true
+            end
+        end
+    end
+    return set
+end
+
+-- The kill whose corpse the open loot window is: by the loot's source GUID, else the oldest
+-- kill when the game names no source or no boss GUID was seen.
+local function lootKill()
+    local sources, any = {}, false
+    if GetLootSourceInfo then
+        for i = 1, GetNumLootItems() or 0 do
+            local g = GetLootSourceInfo(i)
+            if g ~= nil and not secret(g) then sources[g] = true; any = true end
+        end
+    end
+    for _, p in ipairs(pending) do
+        for g in pairs(p.guids or {}) do if sources[g] then return p end end
+    end
+    if not any or not next(pending[1].guids or {}) then return pending[1] end
+    return nil
+end
 
 function ns.OnRealEvent(event, a1, _, _, _, a5, ...)
     if event == "ENCOUNTER_START" then
-        fight = { id = a1, level = ns.RealBossLevel(), qty = ns.RealCount() }
+        fight = { id = a1, level = ns.RealBossLevel(), qty = ns.RealCount(), guids = bossGuids({}) }
         -- the boss frames come a moment after the pull
         if C_Timer and C_Timer.After then
             C_Timer.After(1, function()
                 if fight and fight.id == a1 then
                     local lv = ns.RealBossLevel()
                     if lv and (lv < 0 or not fight.level or lv > fight.level) then fight.level = lv end
+                    bossGuids(fight.guids)
                 end
             end)
         end
     elseif event == "ENCOUNTER_END" then
         local level = fight and fight.id == a1 and fight.level or nil
         local before = fight and fight.id == a1 and fight.qty or nil
+        local guids = bossGuids(fight and fight.id == a1 and fight.guids or {})
         fight = nil
         if a5 ~= 1 or hidden[a1] or not ns.RealWanted(a1, level) then return end
         hidden[a1] = true
         local _, _, _, _, _, _, _, inst = GetInstanceInfo()
         if #pending == 0 then baseQty = before or ns.RealCount() end
-        pending[#pending + 1] = { id = a1, at = now(), instance = inst }
+        pending[#pending + 1] = { id = a1, at = now(), instance = inst, guids = guids }
         -- the Real may have come in before the boss's end
         if not ns.RealCheck() then ns.RealPaint() end
         if C_Timer and C_Timer.After then C_Timer.After(ns.REAL_WAIT + 1, function() ns.RealPaint() end) end
@@ -206,14 +239,25 @@ function ns.OnRealEvent(event, a1, _, _, _, a5, ...)
         if #pending > 0 and ns.IsRealText(a1) and selfLoot(a1, guid) then takeOne() end
     elseif event == "LOOT_OPENED" or event == "LOOT_READY" then
         if #pending == 0 or not GetNumLootItems then return end
+        lootBoss = lootKill() or lootBoss
         for i = 1, GetNumLootItems() or 0 do
             local link = GetLootSlotLink and GetLootSlotLink(i)
             local name = GetLootSlotInfo and select(2, GetLootSlotInfo(i))
             if ns.IsRealText(link) or ns.IsRealText(name) then lootHadReal = true end
         end
     elseif event == "LOOT_CLOSED" then
-        -- the window showed the Real: it is taken, or the player chose to leave it
-        if lootHadReal then lootHadReal = nil; takeOne() else ns.RealCheck() end
+        -- the window showed the Real: it is taken, or the player chose to leave it. The boss's
+        -- own loot without a Real: this boss gave none, nothing is left to remind of.
+        local boss = lootBoss
+        lootBoss = nil
+        if lootHadReal then lootHadReal = nil; takeOne()
+        elseif not ns.RealCheck() and boss then
+            for i, p in ipairs(pending) do
+                if p == boss then table.remove(pending, i) break end
+            end
+            if #pending == 0 then baseQty = nil end
+            ns.RealPaint()
+        end
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- out of the dungeon, nothing is left to loot
         if not ns.RealDungeon() then wipe(pending); wipe(hidden); baseQty = nil end
@@ -320,4 +364,4 @@ ev:SetScript("OnEvent", function(_, event, ...)
     ns.OnRealEvent(event, ...)
 end)
 
-function ns.RealClear() wipe(pending); baseQty = nil; lootHadReal = nil; if frame then ns.RealPaint() end end
+function ns.RealClear() wipe(pending); baseQty = nil; lootHadReal, lootBoss = nil, nil; if frame then ns.RealPaint() end end
