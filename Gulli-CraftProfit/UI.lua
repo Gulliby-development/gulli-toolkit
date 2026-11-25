@@ -2348,6 +2348,11 @@ end
 -- or the vendor gets the small window beside it.
 function ns.Arrive(place)
     local v = ns.view
+    -- the first run buys ahead only at the place the player stands at (ns.LegRoute)
+    if v.route and v.plan and (v.leg or 1) == 1 and not ns.sim and v.legs and #v.legs > 1
+        and ns.Prefs(ns.SavedPrefs()).ahead then
+        v.route = ns.LegRoute(v)
+    end
     if place and v.route and (v.leg or 1) == 1 and not ns.sim then
         local here = ns.Here(v.route, ns.RunProgress(), place)
         if here then selected, flash = here, nil end
