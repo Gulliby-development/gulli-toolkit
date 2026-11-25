@@ -4197,6 +4197,29 @@ end)
 
 -- ---------- disenchanting ----------
 
+test("disenchanting: what WoW Forever's disenchants gave wins over the tables once enough were counted", function()
+    local c = core()
+    c.Data = c.Data or {}
+    local keep = c.Data.de
+    -- Wyrmhide Spaulders: mostly essences, though armour
+    c.Data.de = { [12082] = { 200, { 16203, 0.9 }, { 16204, 0.525 }, { 14344, 0.05 } }, [5] = { 10, { 16203, 1.5 } } }
+    local it = { class = 4, quality = 2, ilvl = 57 }
+    local m = c.DisenchantMats(it, 12082)
+    eq(#m, 3); eq(m[1][1], 16203); near(m[1][2], 0.9); near(m[2][2], 0.525)
+    -- too few counted: the tables by item level
+    eq(c.DisenchantMats(it, 5)[1][1], 16204)
+    eq(c.DisenchantMats(it, 6)[1][1], 16204, "an item Wowhead has nothing for")
+    -- the worth follows the counted shares
+    local st = state()
+    st.items[12082] = { name = "Wyrmhide Spaulders", class = 4, quality = 2, ilvl = 57 }
+    st.items[16204] = { name = "Illusion Dust", ah = 4000, age = 0.1 }
+    st.items[16203] = { name = "Greater Eternal Essence", ah = 20000, age = 0.1 }
+    st.items[14344] = { name = "Large Brilliant Shard", ah = 30000, age = 0.1 }
+    local P = prefs({ disenchant = true })
+    near(c.DisenchantValue(st, P, 12082), (0.9 * 20000 + 0.525 * 4000 + 0.05 * 30000) * (1 - c.CUT))
+    c.Data.de = keep
+end)
+
 test("disenchanting: the materials by item level, worth them at the auction, only for an enchanter", function()
     local c = core()
     -- green armour of level 57: illusion dust 75% of 1.5, greater eternal essence 20% of 1.5, a shard 5%

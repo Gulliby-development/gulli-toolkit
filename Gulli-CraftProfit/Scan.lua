@@ -443,7 +443,7 @@ local function itemFor(state, id)
                         gather = gather, lots = ns.db.lots[id], ilvl = ilvl, class = class }
     -- crafted gear an enchanter may disenchant: its materials need their prices too
     if state.enchanter then
-        for _, m in ipairs(ns.DisenchantMats(state.items[id]) or {}) do itemFor(state, m[1]) end
+        for _, m in ipairs(ns.DisenchantMats(state.items[id], id) or {}) do itemFor(state, m[1]) end
     end
 end
 

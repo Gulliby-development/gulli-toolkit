@@ -216,9 +216,22 @@ ns.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45,
                { 55, 14343 }, { 999, 14344 } }
 local GEAR = { [2] = true, [4] = true }
 
+-- What WoW Forever's own disenchants of an item gave (Data.de, written by the generator from
+-- Wowhead's Disenchanting tabs, tools/craftprofit/disenchant.py): { total counted, { mat id, mean
+-- count per disenchant }, ... }. Taken once at least DE_MIN disenchants were counted; some items
+-- give other shares than the Vanilla tables (Wyrmhide Spaulders: mostly essences).
+ns.DE_MIN = 20
+
 -- The materials one disenchant of an item gives on average: { { id, n } }; nil for anything but
 -- green or blue weapons and armour (the item's `class`, `quality` and `ilvl` from the scan).
-function ns.DisenchantMats(it)
+-- `id`: the item, for what Wowhead counted in WoW Forever; else the tables by item level.
+function ns.DisenchantMats(it, id)
+    local seen = id and ns.Data and ns.Data.de and ns.Data.de[id]
+    if seen and (seen[1] or 0) >= ns.DE_MIN and #seen > 1 then
+        local out = {}
+        for k = 2, #seen do out[#out + 1] = { seen[k][1], seen[k][2] } end
+        return out
+    end
     if not (it and GEAR[it.class] and it.ilvl and it.ilvl > 0) then return nil end
     if it.quality == 2 then
         for _, t in ipairs(ns.DE_GREEN) do
@@ -240,7 +253,7 @@ end
 -- What one disenchant brings at the auction after its cut; nil while a material has no price.
 -- A material without a fresh price counts nothing, so the guess stays low.
 function ns.DisenchantValue(state, P, id)
-    local mats = ns.DisenchantMats(state.items[id])
+    local mats = ns.DisenchantMats(state.items[id], id)
     if not mats then return nil end
     local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
     local sum, any = 0, false
