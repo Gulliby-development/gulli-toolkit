@@ -194,11 +194,24 @@ function ns.SellValue(state, P, id, sold)
     return v, how
 end
 
+-- What an own item (bags, bank, mail, alts, gathered) costs the plan: what it would bring. A
+-- reagent of the book (dust, essences, cloth, bars) sells at the auction even while the player
+-- sells nothing there (`sellAH` off, owner's request of 2026-11-25): its vendor price, often a
+-- copper, would make it free to use.
+function ns.OwnValue(state, P, id)
+    local v = ns.SellValue(state, P, id, 0)
+    if P.sellAH or not ns.IsReagent(id) then return v end
+    local it = state.items[id] or {}
+    if it.bop or not ns.Fresh(it, P) then return v end
+    local cut = P.neutral and ns.NEUTRAL_CUT or ns.CUT
+    return math.max(v, it.ah * (1 - cut))
+end
+
 -- ---------- disenchanting ----------
 
 -- What disenchanting gives, by the item's level (the Vanilla tables). Green: { up to item level,
--- dust, dust per item, essence, essence per item, shard or nil }; armour gives dust 75%, essence
--- 20%, a shard 5%; a weapon the dust and the essence the other way round. Blue: one shard.
+-- dust per disenchant that gives dust, essence, essence per disenchant, shard or nil }, the shares
+-- in ns.DE_SAFE. Blue: one shard.
 ns.DE_GREEN = {
     { 15, 10940, 1.5, 10938, 1.5 },
     { 20, 10940, 2.5, 10939, 1.5, 10978 },
@@ -215,6 +228,9 @@ ns.DE_GREEN = {
 ns.DE_BLUE = { { 25, 10978 }, { 30, 11084 }, { 35, 11138 }, { 40, 11139 }, { 45, 11177 }, { 50, 11178 },
                { 55, 14343 }, { 999, 14344 } }
 local GEAR = { [2] = true, [4] = true }
+-- Nobody counted WoW Forever's own disenchants, so a green counts on the safe side (owner's
+-- decision of 2026-11-25), below the Classic tables' 75/20/5: { dust, essence, shard } shares.
+ns.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
 
 -- The materials one disenchant of an item gives on average: { { id, n } }; nil for anything but
 -- green or blue weapons and armour (the item's `class`, `quality` and `ilvl` from the scan).
@@ -223,10 +239,9 @@ function ns.DisenchantMats(it)
     if it.quality == 2 then
         for _, t in ipairs(ns.DE_GREEN) do
             if it.ilvl <= t[1] then
-                local weapon = it.class == 2
-                local dust, ess = weapon and 0.2 or 0.75, weapon and 0.75 or 0.2
-                local out = { { t[2], dust * t[3] }, { t[4], ess * t[5] } }
-                if t[6] then out[3] = { t[6], 0.05 } end
+                local sh = ns.DE_SAFE[it.class == 2 and "weapon" or "armour"]
+                local out = { { t[2], sh[1] * t[3] }, { t[4], sh[2] * t[5] } }
+                if t[6] then out[3] = { t[6], sh[3] } end
                 return out
             end
         end
@@ -323,7 +338,7 @@ function ns.ForgetMakers(recipes) makers[recipes] = nil end
 local reagentCost
 local function unitCost(state, P, st, known, id, depth)
     local best, how = math.huge, nil
-    if left(st, id) > 0 then best, how = ns.SellValue(state, P, id, 0), "own" end
+    if left(st, id) > 0 then best, how = ns.OwnValue(state, P, id), "own" end
     local b, bh = ns.BuyOption(state, P, id)
     if b and b < best then best, how = b, bh end
     if (depth or 0) < 2 then
@@ -472,7 +487,7 @@ local function take(state, P, st, known, acc, id, n, depth)
                 add(acc[pool], id, c)
             end
         end
-        if used > 0 then acc.own = acc.own + used * ns.SellValue(state, P, id, 0) end
+        if used > 0 then acc.own = acc.own + used * ns.OwnValue(state, P, id) end
     end
     if n <= 1e-9 then return end
     local b, how = ns.BuyOption(state, P, id)

@@ -94,11 +94,14 @@ ns.DE_TIERS = {
 }
 ns.DE_MIN_LEVEL = 5
 
--- The least one disenchant brings, in copper after the auction's cut: for a green the cheaper of
--- its dust and its essence (both must have a price), for a blue its shard. nil when the item
--- cannot be disenchanted, its tier is not known or a material has no price. priceOf(id) is the
--- auction price of one.
-function ns.DisenchantFloor(quality, ilvl, priceOf)
+-- What one disenchant brings on the safe side, in copper after the auction's cut: for a green
+-- ns.DE_SAFE of its dust, essence and shard (owner's decision of 2026-11-25: armour 85/13/2, a
+-- weapon 50/48/2, below the Classic 75/20/5; dust and essence must have a price, a shard without
+-- one counts nothing), for a blue its shard. nil when the item cannot be disenchanted, its tier is
+-- not known or a material has no price. priceOf(id) is the auction price of one; `class` the
+-- item class (2 a weapon, else armour).
+ns.DE_SAFE = { armour = { 0.85, 0.13, 0.02 }, weapon = { 0.50, 0.48, 0.02 } }
+function ns.DisenchantFloor(quality, ilvl, priceOf, class)
     if not ilvl or ilvl < ns.DE_MIN_LEVEL or (quality ~= 2 and quality ~= 3) then return nil end
     for _, t in ipairs(ns.DE_TIERS) do
         if ilvl <= t[1] then
@@ -108,7 +111,8 @@ function ns.DisenchantFloor(quality, ilvl, priceOf)
             else
                 local dust, essence = priceOf(t[2]), priceOf(t[4])
                 if not dust or not essence then return nil end
-                worth = math.min(dust * t[3], essence * t[5])
+                local sh = ns.DE_SAFE[class == 2 and "weapon" or "armour"]
+                worth = sh[1] * dust * t[3] + sh[2] * essence * t[5] + sh[3] * (priceOf(t[6]) or 0)
             end
             if not worth or worth <= 0 then return nil end
             return math.floor(worth * ns.DE_CUT)

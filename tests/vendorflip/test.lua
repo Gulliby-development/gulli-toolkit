@@ -804,16 +804,17 @@ local function deMarket(extra)
     return spec
 end
 
-test("what a disenchant gives at the least: the cheaper of dust and essence, a blue's shard, after the cut", function()
+test("what a disenchant gives on the safe side: 85/13/2 for armour, 50/48/2 for a weapon, a blue's shard, after the cut", function()
     Fake({})
     local ns = Load()
     local prices = { [SDUST] = 400, [LMAGIC] = 900, [GLIMMER] = 3000 }
     local priceOf = function(id) return prices[id] end
-    eq(ns.DisenchantFloor(2, 12, priceOf), math.floor(400 * ns.DE_CUT), "one dust is the least")
+    eq(ns.DisenchantFloor(2, 12, priceOf, 4), math.floor((0.85 * 400 + 0.13 * 900 + 0.02 * 3000) * ns.DE_CUT), "armour")
+    eq(ns.DisenchantFloor(2, 12, priceOf, 2), math.floor((0.5 * 400 + 0.48 * 900 + 0.02 * 3000) * ns.DE_CUT), "a weapon")
     eq(ns.DisenchantFloor(3, 14, priceOf), math.floor(3000 * ns.DE_CUT))
     local astral = { [SDUST] = 400, [10998] = 1000 }
-    eq(ns.DisenchantFloor(2, 22, function(id) return astral[id] end),
-       math.floor(1000 * ns.DE_CUT), "four dust are worth more than the essence")
+    eq(ns.DisenchantFloor(2, 22, function(id) return astral[id] end, 4),
+       math.floor((0.85 * 4 * 400 + 0.13 * 1000) * ns.DE_CUT), "four dust; a shard without a price counts nothing")
     eq(ns.DisenchantFloor(1, 12, priceOf), nil, "white gear cannot be disenchanted")
     eq(ns.DisenchantFloor(4, 60, priceOf), nil, "epics are left alone")
     eq(ns.DisenchantFloor(2, 3, priceOf), nil, "too low")
@@ -829,10 +830,11 @@ test("an enchanter gets gear that costs less than its disenchant, in a list of i
     local w = Fake(deMarket())
     local ns = Load()
     w.ScanAll(ns)
-    local floor = math.floor(400 * ns.DE_CUT)
+    -- the vests are armour: 85% dust, 13% essence, 2% shard
+    local floor = math.floor((0.85 * 400 + 0.13 * 900 + 0.02 * 3000) * ns.DE_CUT)
     eq(#ns.Shown("v"), 0, "nothing sells to a vendor for more")
     local shown = ns.Shown("d")
-    eq(#shown, 2, "the axe under its shard, the two vests at 2s; the vest at 3s90 and the shirt are not")
+    eq(#shown, 3, "the axe under its shard, the two vests at 2s and the one at 3s90; the shirt is not")
     eq(shown[1].id, AXE)
     eq(shown[1].mode, "d")
     eq(shown[1].value, math.floor(3000 * ns.DE_CUT))
@@ -840,7 +842,8 @@ test("an enchanter gets gear that costs less than its disenchant, in a list of i
     eq(shown[2].left, 2)
     eq(shown[2].value, floor)
     eq(shown[2].gain, floor - 200)
-    eq(ns.Open(), 2, "the number on the side tab counts both lists")
+    eq(shown[3].id, RING); eq(shown[3].gain, floor - 390)
+    eq(ns.Open(), 3, "the number on the side tab counts both lists")
     eq(ns.Open("v"), 0)
     for _, line in ipairs(ns.Shown("all")) do assert(line.cost < line.value, "a line at a loss") end
     ns.SetView("d")

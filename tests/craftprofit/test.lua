@@ -133,6 +133,22 @@ test("own items count at what they would sell for; bolts are made when that is c
     eq(how, "craft"); near(v, 4 * own)
 end)
 
+test("own reagents count at the auction even while nothing is sold there", function()
+    Fake({})
+    local n = Load()
+    local robe = 14152
+    -- Strange Dust: a copper at a vendor, a silver at the auction
+    local st = { items = { [10940] = { ah = 100, vend = 1, age = 0, bags = 5 }, [robe] = { ah = 1000, vend = 100, age = 0 } } }
+    local off = n.Prefs({ sellAH = false })
+    assert(n.IsReagent(10940))
+    eq(n.SellValue(st, off, 10940, 0), 1, "what a route sells still goes to a vendor")
+    near(n.OwnValue(st, off, 10940), 100 * 0.95, "own dust costs what it brings at the auction")
+    eq(n.OwnValue(st, off, robe), 100, "a finished good: the vendor")
+    near(n.OwnValue(st, n.Prefs({}), 10940), n.SellValue(st, n.Prefs({}), 10940, 0), "selling there on: the same")
+    st.items[10940].age = 99
+    eq(n.OwnValue(st, off, 10940), 1, "no fresh price: the vendor")
+end)
+
 test("crafting materials always sell; the share that sells is for finished goods", function()
     Fake({})
     local n = Load()
@@ -4218,11 +4234,13 @@ end)
 
 test("disenchanting: the materials by item level, worth them at the auction, only for an enchanter", function()
     local c = core()
-    -- green armour of level 57: illusion dust 75% of 1.5, greater eternal essence 20% of 1.5, a shard 5%
+    -- green armour of level 57 on the safe side: dust 85% of 1.5, essence 13% of 1.5, a shard 2%
     local m = c.DisenchantMats({ class = 4, quality = 2, ilvl = 57 })
-    eq(m[1][1], 16204); near(m[1][2], 1.125); eq(m[2][1], 16203); near(m[2][2], 0.3); eq(m[3][1], 14344); near(m[3][2], 0.05)
-    -- a weapon the other way round; blue gear one shard; no gear, white gear or a bag nothing
-    near(c.DisenchantMats({ class = 2, quality = 2, ilvl = 57 })[2][2], 1.125)
+    eq(m[1][1], 16204); near(m[1][2], 0.85 * 1.5); eq(m[2][1], 16203); near(m[2][2], 0.13 * 1.5); eq(m[3][1], 14344); near(m[3][2], 0.02)
+    -- a weapon: dust 50%, essence 48%, a shard 2%
+    local w = c.DisenchantMats({ class = 2, quality = 2, ilvl = 57 })
+    near(w[1][2], 0.5 * 1.5); near(w[2][2], 0.48 * 1.5); near(w[3][2], 0.02)
+    -- blue gear one shard; no gear, white gear or a bag nothing
     eq(c.DisenchantMats({ class = 4, quality = 3, ilvl = 45 })[1][1], 11177)
     eq(c.DisenchantMats({ class = 4, quality = 1, ilvl = 57 }), nil)
     eq(c.DisenchantMats({ class = 1, quality = 2, ilvl = 57 }), nil)
@@ -4233,7 +4251,7 @@ test("disenchanting: the materials by item level, worth them at the auction, onl
     st.items[16203] = { name = "Greater Eternal Essence", ah = 20000, age = 0.1 }
     local P = prefs({ chance = 100, disenchant = true })
     local de = c.DisenchantValue(st, P, "robe")
-    near(de, (1.125 * 4000 + 0.3 * 20000) * 0.95, "the shard has no price and counts nothing")
+    near(de, (0.85 * 1.5 * 4000 + 0.13 * 1.5 * 20000) * 0.95, "the shard has no price and counts nothing")
     -- an enchanter disenchants when it brings more; without Enchanting or the switch it sells
     eq(select(2, c.SellValue(st, P, "robe", 0)), "ah")
     st.enchanter = true

@@ -343,14 +343,14 @@ local function sellOf(id)
     return sell
 end
 
--- What disenchanting one gives at the least, for the "buy to disenchant" list: only green and
+-- What disenchanting one gives on the safe side, for the "buy to disenchant" list: only green and
 -- blue weapons and armour, only for an enchanter with the `de` switch on, and only while the
 -- materials have a price. The vendor list's kinds and qualities do not apply to it.
 local function deOf(id)
     if not scan.de then return nil end
     local name, q, _, _, _, class, level = ns.ItemInfo(id, true)
     if not name or not ns.GEAR_CLASSES[class or -1] then return nil end
-    return ns.DisenchantFloor(q, level, ns.MatPrice)
+    return ns.DisenchantFloor(q, level, ns.MatPrice, class)
 end
 
 local function wantedLine(line)
