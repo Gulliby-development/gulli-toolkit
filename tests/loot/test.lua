@@ -503,11 +503,12 @@ test("a feed line prices its item at a vendor or the auction, whichever pays mor
     v, how = ns.FeedValue(2); eq(v, 100, "a failing price addon leaves the vendor price")
     S.AuctionPrice = function() return nil end
     v, how = ns.FeedValue(3); eq(v, 2000); eq(how, "vendor", "without a price addon: the vendor")
-    -- an enchanter: green gear as dust when that brings most
+    -- an enchanter: gear as dust when that brings most; a green of 40 on the safe side, 85% of 1.5
+    -- Vision Dust, 13% of 1.5 Lesser Nether Essence, the shard without a price
     GetProfessions = function() return 1 end
     GetProfessionInfo = function() return "Enchanting", nil, 1, 1, 0, 0, 333 end
     S.AuctionPrice = function(id) if id == 11137 then return 30000 elseif id == 11135 then return 26000 end end
-    v, how = ns.FeedValue(3); eq(v, 26000); eq(how, "disenchant")
+    v, how = ns.FeedValue(3); assert(math.abs(v - (0.85 * 1.5 * 30000 + 0.13 * 1.5 * 26000)) < 1e-6, v); eq(how, "disenchant")
     GetProfessions, GetProfessionInfo = nil, nil
 end)
 

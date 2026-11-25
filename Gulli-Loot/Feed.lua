@@ -90,12 +90,6 @@ end
 local GEAR = { [2] = true, [4] = true }
 local AUCTION = { [5] = true, [7] = true, [9] = true }   -- reagents, trade goods, recipes
 local QUEST_CLASS = 12
--- Disenchanting green gear: the dust and the lesser essence for its item level (Vanilla tiers).
-ns.FEED_DE = {
-    { 15, 10940, 10938 }, { 20, 10940, 10939 }, { 25, 11083, 10998 }, { 30, 11083, 11082 },
-    { 35, 11137, 11134 }, { 40, 11137, 11135 }, { 45, 11176, 11174 }, { 50, 11176, 11175 },
-    { 55, 16204, 16202 }, { 999, 16204, 16203 },
-}
 ns.FEED_SRC_ICON = {
     vendor = "Interface\\Icons\\INV_Misc_Coin_02",
     auction = "Interface\\Minimap\\Tracking\\Auctioneer",
@@ -129,20 +123,16 @@ local function enchanter()
     return false
 end
 
-local function disenchant(ilvl)
-    for _, t in ipairs(ns.FEED_DE) do
-        if ilvl <= t[1] then
-            local a, b = auction(t[2]), auction(t[3])
-            if a and b then return math.min(a, b) end
-            return a or b
-        end
-    end
+-- What disenchanting one gives at the auction: the skin's table shared by every module (a green
+-- on the safe side, a blue its shard, a purple shards or a Nexus Crystal).
+local function disenchant(f)
+    return S.DisenchantWorth and S.DisenchantWorth(f.quality, f.ilvl, f.class, auction) or nil
 end
 
 -- What one of the item brings and where: "vendor", "auction" or "disenchant", the most of them.
 -- Grey things and bound gear only go to a vendor; cloth, leather, ore, reagents, recipes and gear
--- that binds when equipped may go to the auction; green gear of an enchanter may be worth more as
--- dust. nil when it brings nothing or the client does not know the item yet.
+-- that binds when equipped may go to the auction; an enchanter's gear may be worth more as dust,
+-- shards or a Nexus Crystal. nil when it brings nothing or the client does not know the item yet.
 function ns.FeedValue(id)
     local f = id and info(id)
     if not f then return nil end
@@ -155,8 +145,8 @@ function ns.FeedValue(id)
             local ah = auction(id)
             if ah and ah > best then best, how = ah, "auction" end
         end
-        if gear and f.quality == 2 and enchanter() then
-            local de = disenchant(f.ilvl)
+        if gear and f.quality >= 2 and enchanter() then
+            local de = disenchant(f)
             if de and de > best then best, how = de, "disenchant" end
         end
     end

@@ -4242,6 +4242,11 @@ test("disenchanting: the materials by item level, worth them at the auction, onl
     near(w[1][2], 0.5 * 1.5); near(w[2][2], 0.48 * 1.5); near(w[3][2], 0.02)
     -- blue gear one shard; no gear, white gear or a bag nothing
     eq(c.DisenchantMats({ class = 4, quality = 3, ilvl = 45 })[1][1], 11177)
+    -- purple gear: three shards up to item level 55, then a Nexus Crystal (1.5 from 61)
+    local e = c.DisenchantMats({ class = 4, quality = 4, ilvl = 52 })
+    eq(e[1][1], 14343); eq(e[1][2], 3)
+    eq(c.DisenchantMats({ class = 2, quality = 4, ilvl = 60 })[1][1], 20725)
+    eq(c.DisenchantMats({ class = 2, quality = 4, ilvl = 65 })[1][2], 1.5)
     eq(c.DisenchantMats({ class = 4, quality = 1, ilvl = 57 }), nil)
     eq(c.DisenchantMats({ class = 1, quality = 2, ilvl = 57 }), nil)
     eq(c.DisenchantMats({ class = 7, quality = 2, ilvl = 57 }), nil)
