@@ -28,6 +28,7 @@ ns.STOP_ICONS = {
     mail = "Interface\\Icons\\INV_Letter_15", gather = "Interface\\Icons\\Trade_Herbalism",
 }
 local PATTERN_ICON = "Interface\\Icons\\INV_Scroll_03"
+local DE_ICON = "Interface\\Icons\\INV_Enchant_Disenchant"
 local RANK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
 local REFRESH_ICON = "Interface\\Buttons\\UI-RefreshButton"
 local GOLD = S.WARN -- warnings (stale prices, no Auctionator); gold is for names only
@@ -239,10 +240,12 @@ local function toggleSkip(rid)
     local st = ns.view.state
     local r = st and st.recipes[rid]
     if not r then return end
-    local on = not r.skip
+    -- the saved mark decides: the shown state is old until the calculation it starts ends
+    local on = ns.SkipSet()[rid] ~= true
     local text = (on and L.SKIP_ON or L.SKIP_OFF):format(r.name)
     ns.SetSkip(rid, on)
     ns.Toast(text)
+    refreshSkip()
 end
 local function skipCard(parent)
     local card = S.Card(parent, L.SIDE_SKIP)
@@ -292,8 +295,9 @@ function ns.SkipRows()
     if type(text) ~= "string" then text = "" end
     text = text:match("^%s*(.-)%s*$")
     local rows, all
-    if text ~= "" then rows, all = ns.FindRecipes(st, text, SKIP_ROWS)
-    else rows = ns.Skipped(st); all = #rows end
+    local set = ns.SkipSet()
+    if text ~= "" then rows, all = ns.FindRecipes(st, text, SKIP_ROWS, set)
+    else rows = ns.Skipped(st, set); all = #rows end
     local note
     if all == 0 then note = text ~= "" and L.SKIP_NONE or L.SKIP_EMPTY
     elseif all > SKIP_ROWS then
@@ -365,6 +369,10 @@ local function buildSettings(box)
         stepRow(cols[2], "chance", 5, 30, 100, function(v) return v .. "%" end),
         stepRow(cols[2], "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end),
         stepRow(cols[2], "minGain", 1, 1, #GAINS, function(i) return ns.Money(GAINS[i]) end) }))
+    -- disenchanting what is made: one switch, with what it needs in a line under it
+    local de = sw("disenchant")
+    de[2] = L.D_disenchant
+    add(2, rowsCard(cols[2], L.SIDE_DE, { de }))
 
     -- the run log: what the plan promised against what the run really did
     local log = S.Card(cols[1], L.SIDE_LOG)
@@ -392,15 +400,17 @@ local function buildSettings(box)
 end
 
 -- The settings that need auction prices.
-local AH_SWITCH = { buyAH = true, sellAH = true, neutral = true, freshOnly = true }
+local AH_SWITCH = { buyAH = true, sellAH = true, neutral = true, freshOnly = true, disenchant = true }
 local AH_STEP = { maxBuy = true, chance = true, maxSell = true, minGain = true }
 
 local function refreshSettings()
     local P = ns.Prefs(ns.SavedPrefs())
     local priced = ns.HasPrices()
+    -- disenchanting needs Enchanting on this character; the choice is kept for when it has it
+    local function idle(k) return (AH_SWITCH[k] and not priced) or (k == "disenchant" and not ns.Enchanter()) end
     for k, c in pairs(ui.checks) do
         -- without a price addon the auction switches can do nothing: off and grey
-        local ah = AH_SWITCH[k] and not priced
+        local ah = idle(k)
         c:SetChecked(not ah and P[k] and true or false)
         c:SetEnabled(not ah)
     end
@@ -420,7 +430,7 @@ local function refreshSettings()
     for k, row in pairs(ui.rows or {}) do
         local off = ns.sim ~= nil and ns.SIM_IGNORED[k] or false
         row:SetAlpha(off and 0.4 or 1)
-        if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not (AH_SWITCH[k] and not priced)) end
+        if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not idle(k)) end
     end
     ui.target:Refresh()
     refreshSkip()
@@ -458,14 +468,14 @@ local WHY_ICON = {
     CD = "Interface\\Icons\\Spell_Nature_TimeStop", FROM_bags = "Interface\\Icons\\INV_Misc_Bag_08",
     FROM_bank = ns.STOP_ICONS.bank, FROM_mail = ns.STOP_ICONS.mail, FROM_alts = "Interface\\Icons\\INV_Misc_GroupNeedMore",
     FROM_gather = ns.STOP_ICONS.gather, FROM_own = "Interface\\Icons\\INV_Misc_Bag_08", FROM_vendor = ns.STOP_ICONS.vendor,
-    FROM_ah = ns.STOP_ICONS.ah, SELL_AH = ns.STOP_ICONS.ah, SELL_VENDOR = ns.STOP_ICONS.sell,
+    FROM_ah = ns.STOP_ICONS.ah, SELL_AH = ns.STOP_ICONS.ah, SELL_VENDOR = ns.STOP_ICONS.sell, SELL_DE = DE_ICON,
     COST = "Interface\\Icons\\INV_Misc_Coin_01", EARN = "Interface\\Icons\\INV_Misc_Coin_01", GAIN = "Interface\\Icons\\INV_Misc_Coin_01",
     CHEAPEST = "Interface\\Icons\\INV_Misc_Coin_03", BEST_RUN = "Interface\\Icons\\INV_Misc_Coin_03",
     FAST = "Interface\\Icons\\INV_Misc_PocketWatch_01", RECIPE_trainer = ns.STOP_ICONS.trainer,
     RECIPE_vendor = "Interface\\Icons\\INV_Scroll_03", RECIPE_ah = "Interface\\Icons\\INV_Scroll_03",
 }
 -- the reasons that are good news get a green key number; the rest stay plain
-local WHY_GOOD = { EARN = true, GAIN = true, SELL_AH = true, SELL_VENDOR = true, CHEAPEST = true, BEST_RUN = true,
+local WHY_GOOD = { EARN = true, GAIN = true, SELL_AH = true, SELL_VENDOR = true, SELL_DE = true, CHEAPEST = true, BEST_RUN = true,
                    FROM_bags = true, FROM_bank = true, FROM_mail = true, FROM_alts = true, FROM_gather = true, FROM_own = true }
 
 -- Item names of a reason, in their quality colour: at most three, then "+n".
@@ -543,6 +553,7 @@ local function stopIcon(n)
         if r and r.out then return ns.ItemIcon(r.out) end
     end
     if n.kind == "craft" and ns.view.state.icon then return ns.view.state.icon end
+    if n.title == "STOP_DE" then return DE_ICON end
     return ns.STOP_ICONS[n.kind]
 end
 
@@ -564,7 +575,7 @@ end
 -- What a stop is for, as "label: number", so no language needs plural forms.
 local SUB = { STOP_BANK = "SUB_TAKE", STOP_MAIL = "SUB_TAKE", STOP_AH_BUY = "SUB_BUY", STOP_VENDOR_BUY = "SUB_BUY",
               STOP_PREP = "SUB_MAKE", STOP_TRAINER = "SUB_LEARN", STOP_RANK = "SUB_LEARN", STOP_AH_SELL = "SUB_LIST",
-              STOP_VENDOR_SELL = "SUB_SELL", STOP_GATHER = "SUB_GATHER" }
+              STOP_VENDOR_SELL = "SUB_SELL", STOP_GATHER = "SUB_GATHER", STOP_DE = "SUB_DE" }
 local function stopSub(n)
     if n.segs then return runName(n) .. " x" .. n.crafts end
     return L[SUB[n.title] or "SUB_BUY"]:format(#(n.lines or {}))
@@ -739,7 +750,8 @@ end
 -- ---------- the chosen stop ----------
 
 local SRC = { bank = "SRC_bank", ah = "SRC_ah", vendor = "SRC_vendor", trainer = "SRC_trainer", prep = "SRC_prep",
-              sellah = "SRC_sellah", sellv = "SRC_sellv", mail = "SRC_mail", alts = "SRC_alts", gather = "SRC_gather" }
+              sellah = "SRC_sellah", sellv = "SRC_sellv", mail = "SRC_mail", alts = "SRC_alts", gather = "SRC_gather",
+              de = "SRC_de" }
 
 -- The pin of a stop: who sells or teaches the first line that is still open, when the data
 -- knows where that is.
@@ -904,6 +916,8 @@ function ns.StopAction(i, aside)
         a.hint = L.HINT_TRAINER
     elseif n.kind == "gather" then
         a.hint = L.HINT_GATHER
+    elseif n.title == "STOP_DE" then
+        a.hint = L.HINT_DE
     else
         a.hint = L.HINT_SELL
     end

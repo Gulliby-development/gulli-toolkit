@@ -721,7 +721,7 @@ S.craftprofit = { default = {
         GetProfessions = function() return 1, 2 end
         GetProfessionInfo = function(i)
             if i == 1 then return "Tailoring", "Interface\\Icons\\Trade_Tailoring", 150, 225 end
-            return "Enchanting", "Interface\\Icons\\Trade_Engraving", 92, 150
+            return "Enchanting", "Interface\\Icons\\Trade_Engraving", 92, 150, 0, 0, 333
         end
     end,
     open = function(ns, W)
@@ -969,6 +969,9 @@ S.craftprofit.vendor = { spec = cpSpec({ vendor = { { 3, 50 }, { 5, 500, 5 } }, 
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Select(cpStop(ns, "STOP_VENDOR_BUY")) end }
 S.craftprofit.settings = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(5) end }
+-- The bottom of the Settings page: the Sell card and the Disenchant card under it.
+S.craftprofit.settingsde = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
+    open = function(ns, W) S.craftprofit.default.open(ns, W); ns.Tab(5); ns.ui.page.scroll:SetVerticalScroll(400) end }
 -- A craft stop with its "Without this craft" tool, and the Settings card of the avoided crafts.
 S.craftprofit.craft = { spec = S.craftprofit.default.spec, before = S.craftprofit.default.before,
     open = function(ns, W)
