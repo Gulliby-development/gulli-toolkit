@@ -151,16 +151,16 @@ S.toolkit.tweaks = { spec = S.toolkit.default.spec,
         GulliToolkit.modules.Restock.tweaks = { row("quests", "loot", "Buy reagents", "Restock is paused in this sample", "INV_Misc_Bag_08") }
         -- a module's row with settings of its own under it
         local feed = row("feed", "loot", "Loot feed", "A small panel of what you just looted", "INV_Misc_Bag_10")
-        db.feed, db.feedPrice, db.feedRows = true, true, 5
+        db.feed, db.feedRows = true, 5
         local function part(kind, key, label, more)
             local p = { kind = kind, key = key, label = label,
                         get = function() return db[key] end, set = function(v) db[key] = v end }
             for k, v in pairs(more or {}) do p[k] = v end
             return p
         end
-        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedPrice", "Price"),
+        feed.panel = { part("switch", "feedCompact", "Compact lines"), part("switch", "feedBare", "No background"),
             part("step", "feedRows", "Lines at most", { min = 1, max = 8 }),
-            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }), part("switch", "feedBare", "No background") }
+            part("step", "feedWidth", "Panel width", { min = 160, max = 400, step = 10 }) }
         GulliToolkit.modules.Merchant.tweaks[#GulliToolkit.modules.Merchant.tweaks + 1] = feed
         ns.SetTweak("levelShot", true)
         ns.SetTweak("skipGossip", true)
@@ -409,10 +409,17 @@ S.xp.levels.spec = S.xp.default.spec
 S.xp.settings.spec = S.xp.default.spec
 
 S.loot = { default = {
-    spec = { db = { quality = { [0] = "pass", [1] = "greed" }, items = { [2589] = "need", [2592] = "greed" }, report = true } },
+    spec = { db = { quality = { [0] = "pass", [1] = "greed", [2] = "safe" }, types = { [9] = "safe" },
+                    items = { [2589] = "need", [2592] = "greed", [10940] = "pass", [12364] = "ask" }, feed = true,
+                    log = { { id = 2589, link = "|cffffffff[Linen Cloth]|r", rule = "greed", reason = "type", winner = "Player" },
+                            { id = 9999, link = "|cff1eff00[Sage's Ring]|r", rule = "greed", reason = "nofit", winner = "Brakka" },
+                            { id = 9998, link = "|cff0070dd[Sandstorm Blade]|r", reason = "bop" },
+                            { id = 9997, link = "|cff9d9d9d[Broken Fang]|r", rule = "pass", reason = "quality" } } } },
     before = function()
         C_Item = C_Item or {}
-        C_Item.GetItemNameByID = function(id) return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth" })[id] end
+        C_Item.GetItemNameByID = function(id)
+            return ({ [2589] = "Linen Cloth", [2592] = "Wool Cloth", [10940] = "Strange Dust", [12364] = "Huge Emerald" })[id]
+        end
     end,
 },
 -- The loot feed with every kind of line: gold, better gear, cloth, a quest item, a quest item
@@ -446,10 +453,17 @@ feed = { spec = { db = { feed = true }, worn = { [5] = 30 }, bags = { [14047] = 
         loot(8146, "Wicked Claw"); loot(14047, "Runecloth", 3); loot(10058, "Nightscape Tunic")
         W.Fire("LOOT_READY"); W.money = W.money + 1682; W.Fire("PLAYER_MONEY")
     end },
+pickup = { open = function(ns) ns.Toggle(); ns.ShowPage(2) end },
+items = { open = function(ns) ns.Toggle(); ns.ShowPage(3) end },
+history = { open = function(ns) ns.Toggle(); ns.ShowPage(4) end },
 -- Who rolled what: the sample the Unlock mode shows under the roll frames.
 rollers = { spec = { db = { rollers = true } }, crop = "GulliLootRollers",
     open = function(ns) ns.MoveRollers(true) end },
 }
+
+for _, k in ipairs({ "pickup", "items", "history" }) do
+    S.loot[k].spec, S.loot[k].before = S.loot.default.spec, S.loot.default.before
+end
 
 S.loot.feedcompact = { spec = { db = { feed = true, feedCompact = true }, worn = S.loot.feed.spec.worn, bags = S.loot.feed.spec.bags,
     items = S.loot.feed.spec.items, quests = S.loot.feed.spec.quests }, crop = "GulliLootFeed",
