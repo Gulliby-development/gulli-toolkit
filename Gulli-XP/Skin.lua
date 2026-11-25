@@ -1949,12 +1949,30 @@ function S.ItemIcon(parent, size)
 end
 
 -- A number with - and + buttons: get() reads it, set(value) writes it; fmt(value) shows it.
--- stepper.minus, stepper.plus and stepper.value; stepper:Refresh() redraws the number.
-function S.Stepper(parent, get, set, step, min, max, fmt, width)
+-- stepper.minus, stepper.plus and stepper.value; stepper:Refresh() redraws the number, and
+-- stepper:SetLocked(true) greys it out. - and + grey out at the ends of min..max.
+-- `limit` adds the round "no limit" button left of - (owner's decision of 2026-11-25: no limit is
+-- never a step past the top): { off = fn, setOff = fn, word, tip, back, default, menu }. off()
+-- says whether the setting has no limit now, setOff() makes it so; word shows instead of the
+-- number, tip and back are the button's tooltips. A click on the button, or - while there is no
+-- limit, brings back the number shown before (else `default`). menu() instead makes the button
+-- open a short list of { text, on, pick } (a setting with more special values, such as auto).
+S.LIMIT_W = 32
+function S.Stepper(parent, get, set, step, min, max, fmt, width, limit)
     local f = CreateFrame("Frame", nil, parent)
     f:SetSize(width or 110, 28)
+    local left = f
+    if limit then
+        f.inf = S.Button(f, 28, 28)
+        f.inf:SetPoint("LEFT")
+        f.inf.mark = f.inf:CreateTexture(nil, "OVERLAY")
+        f.inf.mark:SetTexture(MEDIA .. "Infinity")
+        f.inf.mark:SetSize(18, 9)
+        f.inf.mark:SetPoint("CENTER")
+        left = f.inf
+    end
     f.minus = S.Button(f, 28, 28)
-    f.minus:SetPoint("LEFT")
+    if limit then f.minus:SetPoint("LEFT", left, "RIGHT", S.LIMIT_W - 28, 0) else f.minus:SetPoint("LEFT") end
     f.minus:SetText("-")
     f.plus = S.Button(f, 28, 28)
     f.plus:SetPoint("RIGHT")
@@ -1964,12 +1982,138 @@ function S.Stepper(parent, get, set, step, min, max, fmt, width)
     f.value:SetPoint("RIGHT", f.plus, "LEFT", -2, 0)
     f.value:SetJustifyH("CENTER")
     f.value:SetWordWrap(false)
-    function f:Refresh() self.value:SetText((fmt or tostring)(get())) end
+    local function off() return limit and limit.off() and true or false end
+    function f:Refresh()
+        local none = off()
+        self.value:SetText(none and limit.word or (fmt or tostring)(get()))
+        local c = none and S.Accent() or S.TEXT
+        self.value:SetTextColor(c[1], c[2], c[3], 1)
+        if limit then
+            -- filled while there is no limit, as a chosen row; the word says it too
+            self.inf.kind = none and "primary" or "normal"
+            paint(self.inf)
+            local m = none and S.TEXT or S.MUTED
+            self.inf.mark:SetVertexColor(m[1], m[2], m[3], 1)
+            self.inf:SetEnabled(not rawget(self, "locked"))
+        end
+        if rawget(self, "locked") then
+            self.minus:SetEnabled(false); self.plus:SetEnabled(false)
+        else
+            local v = not none and get()
+            self.minus:SetEnabled(none or not v or v > min)
+            self.plus:SetEnabled(not none and (not v or v < max))
+        end
+    end
+    function f:SetLocked(on)
+        self.locked = on and true or false
+        self:Refresh()
+    end
+    -- back from no limit: the number shown before, else the default
+    local function back()
+        set(math.max(min, math.min(max, rawget(f, "last") or limit.default or min)))
+    end
+    local function moved()
+        f:Refresh()
+        S.MotionIn(f.value, -5, S.BASE)
+        if limit and rawget(f.inf, "hover") and f.inf:GetScript("OnEnter") then f.inf:GetScript("OnEnter")(f.inf) end
+    end
     -- The new number drops in from a few pixels above.
-    f.minus:SetScript("OnClick", function() set(math.max(min, get() - step)); f:Refresh(); S.MotionIn(f.value, -5, S.BASE) end)
-    f.plus:SetScript("OnClick", function() set(math.min(max, get() + step)); f:Refresh(); S.MotionIn(f.value, -5, S.BASE) end)
+    f.minus:SetScript("OnClick", function()
+        if off() then back() else set(math.max(min, get() - step)) end
+        moved()
+    end)
+    f.plus:SetScript("OnClick", function()
+        if off() then return end
+        set(math.min(max, get() + step))
+        moved()
+    end)
+    if limit then
+        f.inf:SetScript("OnClick", function(self)
+            if limit.menu then
+                S.LimitMenu(f, limit.menu())
+                return
+            end
+            if off() then back() else f.last = get(); limit.setOff() end
+            moved()
+        end)
+        f.inf:HookScript("OnEnter", function(self)
+            if GameTooltip and GameTooltip.SetOwner then
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:SetText(off() and limit.back or limit.tip)
+                GameTooltip:Show()
+            end
+        end)
+        f.inf:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        f:HookScript("OnHide", function() if S.limitMenu and S.limitMenu.owner == f then S.limitMenu:Hide() end end)
+        -- the number is remembered when a menu entry takes the limit away too
+        f.remember = function() if not off() then f.last = get() end end
+    end
     f:Refresh()
     return f
+end
+
+-- The short list a "no limit" button opens: rows of { text, on, pick }, the chosen one marked
+-- with a dot and a word in the accent colour. It lies over the window (a frame of UIParent in
+-- the TOOLTIP strata, with the stepper's scale), and a click anywhere else closes it.
+function S.LimitMenu(stepper, items)
+    local m = S.limitMenu
+    if m and m:IsShown() and m.owner == stepper then m:Hide(); return end
+    if not m then
+        m = CreateFrame("Frame", nil, UIParent)
+        m:SetFrameStrata("TOOLTIP")
+        S.Box(m, S.SOLID, S.EDGE, S.R_MD)
+        m.catch = CreateFrame("Button", nil, UIParent)
+        m.catch:SetFrameStrata("TOOLTIP")
+        m.catch:SetAllPoints(UIParent)
+        m.catch:SetScript("OnClick", function() m:Hide() end)
+        m.catch:Hide()
+        m:SetScript("OnHide", function(self) self.catch:Hide() end)
+        m.rows = {}
+        S.limitMenu = m
+    end
+    m.owner = stepper
+    local a, b = stepper:GetEffectiveScale(), UIParent:GetEffectiveScale()
+    if type(a) == "number" and type(b) == "number" and b > 0 then m:SetScale(a / b) end
+    m.catch:SetFrameLevel(1)
+    m:SetFrameLevel(10)
+    local w = stepper:GetWidth()
+    for i, it in ipairs(items) do
+        local r = m.rows[i]
+        if not r then
+            r = S.Button(m, w, 28)
+            r.kind = "ghost"
+            r.dot = r:CreateTexture(nil, "OVERLAY")
+            r.dot:SetTexture(S.ROUND)
+            r.dot:SetSize(7, 7)
+            r.dot:SetPoint("LEFT", 9, 0)
+            r.textPad = 22
+            r.text:SetJustifyH("LEFT")
+            m.rows[i] = r
+        end
+        r:SetWidth(w - 6)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 3, -3 - (i - 1) * 28)
+        r:SetText(it.text)
+        local c = it.on and S.Accent() or S.TEXT
+        r.text:SetTextColor(c[1], c[2], c[3], 1)
+        local d = it.on and S.Accent() or S.MUTED
+        r.dot:SetVertexColor(d[1], d[2], d[3], it.on and 1 or 0.35)
+        r:SetScript("OnClick", function()
+            m:Hide()
+            if rawget(stepper, "remember") then stepper.remember() end
+            it.pick()
+            stepper:Refresh()
+        end)
+        paint(r)
+        r:Show()
+    end
+    for i = #items + 1, #m.rows do m.rows[i]:Hide() end
+    m:SetSize(w, #items * 28 + 6)
+    m:ClearAllPoints()
+    m:SetPoint("TOPLEFT", stepper, "BOTTOMLEFT", 0, -3)
+    m.catch:Show()
+    m:Show()
+    return m
 end
 
 -- Money split into gold, silver and copper, and back; silver and copper are kept to 0..99.

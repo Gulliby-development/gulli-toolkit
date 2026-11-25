@@ -86,12 +86,15 @@ local function segColor(key) return ns.COLORS[key or "gy"] or ns.COLORS.gy end
 
 -- ---------- the Settings tab ----------
 
--- The loss budgets the stepper offers, in copper; 0 is no limit.
--- count settings whose stepper ends in "no limit"
+-- The loss budgets the stepper offers, in copper; no limit (0) is the stepper's own button.
+local BUDGETS = { 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
+-- The least gain of one profit craft the stepper offers, in copper; any gain (0) is the button.
+local GAINS = { 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 }
+-- Count settings with a "no limit" button, saved as 0 (owner's decision of 2026-11-25: no limit
+-- is a button beside the number, never a step past the top).
 local UNLIMITED = { maxSell = true, maxBuy = true }
-local BUDGETS = { 0, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000 }
--- The least gain of one profit craft the stepper offers, in copper; 0 is any gain.
-local GAINS = { 0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 }
+-- A stepper with that button is a little wider, so the button never takes the number's room.
+local LIMIT_W = STEP_W + S.LIMIT_W
 
 -- The saved settings, not the ones of the last result: a calculation may still be running.
 local function pref(key)
@@ -109,62 +112,94 @@ local function sw(key)
              function(on) ns.SetPref(key, on and true or false) end, icon = ns.OPT_ICON[key], key = key }
 end
 
--- What a stepper reads, writes and shows for a setting.
+-- The place of a value in a list of steps: the last one not above it.
+local function listAt(list, v, fallback)
+    local at = nil
+    for i, x in ipairs(list) do if x <= v then at = i end end
+    return at or fallback or 1
+end
+
+-- What a stepper reads, writes and shows for a setting, and its "no limit" button.
 local function stepper(parent, key, step, min, max, fmt, width)
     local get = function() return pref(key) or ns.DEFAULTS[key] end
     local set = function(v) ns.SetPref(key, v) end
+    local limit
+    local function none(saved, word)
+        return { off = function() return (pref(key) or 0) == saved end,
+                 setOff = function() ns.SetPref(key, saved) end,
+                 word = word or L.NO_LIMIT, tip = L.LIMIT_TIP, back = L.LIMIT_BACK }
+    end
     if key == "budget" then
         -- the stepper walks the BUDGETS list, the setting keeps copper
-        get = function()
-            local b, at = pref("budget") or 0, 1
-            for i, x in ipairs(BUDGETS) do if x <= b then at = i end end
-            return at
-        end
+        get = function() return listAt(BUDGETS, pref("budget") or 0) end
         set = function(i) ns.SetPref("budget", BUDGETS[i]) end
+        limit = none(0)
+        limit.default = listAt(BUDGETS, 50000)
     elseif key == "minGain" then
-        get = function()
-            local g, at = pref("minGain") or 0, 1
-            for i, x in ipairs(GAINS) do if x <= g then at = i end end
-            return at
-        end
+        get = function() return listAt(GAINS, pref("minGain") or 0) end
         set = function(i) ns.SetPref("minGain", GAINS[i]) end
+        limit = none(0, L.GAIN_ANY)
+        limit.default = listAt(GAINS, ns.DEFAULTS.minGain)
+        limit.tip = L.LIMIT_TIP_ANY
+    elseif key == "guard" then
+        -- never ask: saved as -1; 0% stays "ask at any rise"
+        limit = { off = function() return (pref(key) or 0) < 0 end,
+                  setOff = function() ns.SetPref(key, -1) end,
+                  word = L.GUARD_NEVER, tip = L.LIMIT_TIP_NEVER, back = L.LIMIT_BACK, default = ns.DEFAULTS.guard }
+        get = function() local v = pref(key) or ns.DEFAULTS[key]; return v < 0 and ns.DEFAULTS[key] or v end
     elseif key == "maxCrafts" then
-        -- auto (0) shows and steps from the limit it stands for; stepping back onto that value
-        -- binds it to the target again; one step past the top is "no limit" (-1)
-        local top = max
+        -- three states, so the button opens a short list: auto (0, the limit the target gives),
+        -- a number of its own, no limit (-1); - and + from auto give a number of its own
         local function auto()
             local st = ns.view.state or (ns.Skill and ns.Skill())
             local P = ns.Prefs(ns.SavedPrefs())
             P.maxCrafts = 0
             return st and ns.CraftCap(st, P) or ns.CRAFTS_SPARE
         end
+        -- the simulation's long way has no automatic limit
+        local function isNone() local v = pref(key) or 0; return v < 0 or (v == 0 and ns.sim ~= nil) end
         get = function()
             local v = pref(key) or 0
-            -- the simulation's long way has no automatic limit
-            if v < 0 or (v == 0 and ns.sim) then return top + step end
-            return v == 0 and auto() or v
+            if v <= 0 then return math.max(min, math.min(max, math.floor(auto() / step + 0.5) * step)) end
+            return v
         end
-        set = function(v) ns.SetPref(key, (v > top and -1) or (v == auto() and 0) or v) end
-        fmt = function(v)
-            if v > top then return L.NO_LIMIT end
-            return (pref(key) or 0) == 0 and L.CRAFTS_AUTO:format(v) or tostring(v)
+        local function show()
+            local v = pref(key) or 0
+            return v == 0 and L.CRAFTS_AUTO:format(auto()) or tostring(v)
         end
-        max = top + step
+        fmt = function(v) return (pref(key) or 0) == 0 and show() or tostring(v) end
+        local holder = {}
+        limit = { off = isNone, setOff = function() ns.SetPref(key, -1) end, word = L.NO_LIMIT,
+                  tip = L.LIMIT_TIP_CRAFTS, back = L.LIMIT_TIP_CRAFTS }
+        limit.menu = function()
+            local v = pref(key) or 0
+            local own = holder.st and rawget(holder.st, "last") or (v > 0 and v) or get()
+            return {
+                { text = L.CRAFTS_AUTO:format(auto()), on = v == 0 and not ns.sim, pick = function() ns.SetPref(key, 0) end },
+                { text = L.CRAFTS_OWN:format(own), on = v > 0, pick = function() ns.SetPref(key, own) end },
+                { text = L.NO_LIMIT, on = isNone(), pick = function() ns.SetPref(key, -1) end },
+            }
+        end
+        local st = S.Stepper(parent, get, set, step, min, max, fmt, width, limit)
+        holder.st = st
+        return st
     elseif UNLIMITED[key] then
-        -- one step past the top is "no limit", saved as 0
-        local top, show = max, fmt
-        get = function() local v = pref(key) or ns.DEFAULTS[key]; return v == 0 and top + step or v end
-        set = function(v) ns.SetPref(key, v > top and 0 or v) end
-        fmt = function(v) return v > top and L.NO_LIMIT or show(v) end
-        max = top + step
+        get = function() local v = pref(key) or ns.DEFAULTS[key]; return v == 0 and ns.DEFAULTS[key] or v end
+        limit = none(0)
+        limit.default = ns.DEFAULTS[key]
     end
-    return S.Stepper(parent, get, set, step, min, max, fmt, width)
+    return S.Stepper(parent, get, set, step, min, max, fmt, width, limit)
 end
+
+-- The settings whose stepper has the "no limit" button (Target skill and the share do not).
+local LIMITED = { budget = true, minGain = true, guard = true, maxCrafts = true, maxBuy = true, maxSell = true }
+local function st_width(key) return LIMITED[key] and LIMIT_W or STEP_W end
 
 -- A row with the label on the left (two lines when it is long) and a - value + stepper.
 local function stepRow(parent, key, step, min, max, fmt)
-    local st = stepper(parent, key, step, min, max, fmt, STEP_W)
-    local row = S.SettingRow(parent, key == "target" and L.SIDE_TARGET or L["P_" .. key], nil, st, STEP_W, ns.OPT_ICON[key])
+    local w = st_width(key)
+    local st = stepper(parent, key, step, min, max, fmt, w)
+    local row = S.SettingRow(parent, key == "target" and L.SIDE_TARGET or L["P_" .. key], nil, st, w, ns.OPT_ICON[key])
     row.label:SetWordWrap(true)
     row.label:SetMaxLines(2)
     row.isRow = true
@@ -319,7 +354,7 @@ local function buildSettings(box)
 
     add(1, rowsCard(cols[1], L.SIDE_TARGET, { sw("level"), stepRow(cols[1], "target", 5, 1, 300),
         stepRow(cols[1], "maxCrafts", 5, 5, 500),
-        stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return BUDGETS[i] == 0 and L.NO_LIMIT or ns.Money(BUDGETS[i]) end) }))
+        stepRow(cols[1], "budget", 1, 1, #BUDGETS, function(i) return ns.Money(BUDGETS[i]) end) }))
     add(1, skipCard(cols[1]))
     add(1, rowsCard(cols[1], L.SIDE_BUYING, { stepRow(cols[1], "guard", 5, 0, 100, function(v) return v .. "%" end), sw("side"), sw("ahead"), sw("autoPin") }))
     add(1, rowsCard(cols[1], L.SIDE_LEARN, { sw("buyRecipes"), sw("trainer") }))
@@ -329,7 +364,7 @@ local function buildSettings(box)
     add(2, rowsCard(cols[2], L.SIDE_SELL, { sw("sellAH"), sw("neutral"), sw("freshOnly"),
         stepRow(cols[2], "chance", 5, 30, 100, function(v) return v .. "%" end),
         stepRow(cols[2], "maxSell", 1, 1, 40, function(v) return L.UNITS:format(v) end),
-        stepRow(cols[2], "minGain", 1, 1, #GAINS, function(i) return GAINS[i] == 0 and L.GAIN_ANY or ns.Money(GAINS[i]) end) }))
+        stepRow(cols[2], "minGain", 1, 1, #GAINS, function(i) return ns.Money(GAINS[i]) end) }))
 
     -- the run log: what the plan promised against what the run really did
     local log = S.Card(cols[1], L.SIDE_LOG)
@@ -369,22 +404,23 @@ local function refreshSettings()
         c:SetChecked(not ah and P[k] and true or false)
         c:SetEnabled(not ah)
     end
-    for _, st in ipairs({ ui.target, ui.steppers.target, ui.steppers.maxCrafts, ui.steppers.budget }) do
-        st.minus:SetEnabled(P.level and true or false)
-        st.plus:SetEnabled(P.level and true or false)
+    -- a stepper is grey when its setting can do nothing now: the levelling ones without levelling,
+    -- the auction ones without prices, the ones the simulation does not read
+    local LEVEL = { target = true, maxCrafts = true, budget = true }
+    local function locked(k)
+        return (LEVEL[k] and not P.level) or (AH_STEP[k] and not priced) or (ns.sim ~= nil and ns.SIM_IGNORED[k]) or false
     end
-    for _, s in pairs(ui.steppers) do s:Refresh() end
+    ui.target:SetLocked(not P.level)
+    for k, s in pairs(ui.steppers) do s:SetLocked(locked(k)) end
     for k in pairs(AH_STEP) do
         local st = ui.steppers[k]
-        if st then st.minus:SetEnabled(priced); st.plus:SetEnabled(priced); st:SetAlpha(priced and 1 or 0.4) end
+        if st then st:SetAlpha(priced and 1 or 0.4) end
     end
     -- the settings the simulation does not read: dim and locked while it runs
     for k, row in pairs(ui.rows or {}) do
         local off = ns.sim ~= nil and ns.SIM_IGNORED[k] or false
         row:SetAlpha(off and 0.4 or 1)
         if ui.checks[k] then ui.checks[k]:SetEnabled(not off and not (AH_SWITCH[k] and not priced)) end
-        local st = ui.steppers[k]
-        if st and off then st.minus:SetEnabled(false); st.plus:SetEnabled(false) end
     end
     ui.target:Refresh()
     refreshSkip()

@@ -32,7 +32,7 @@ ns.DEFAULTS = {
     useMail = true, -- items waiting in the mailbox count as own
     useAlts = false, -- items on the other characters (Gulli Chores) count as own, sent by mail
     ahead = true, -- the first run's buy stops also buy what the later runs of the way need
-    guard = 10, -- percent an auction price may be above the plan before the Buy button asks first
+    guard = 10, -- percent an auction price may be above the plan before the Buy button asks first; -1: never ask
     side = true, -- at the auction house the run's buy stop opens in the window beside it
     minGain = 500, -- copper a profit craft must gain at least; 0: any gain
     autoPin = true, -- the route pins itself at the first purchase or craft (Pin.lua)
@@ -1411,8 +1411,9 @@ function ns.BuyQueue(node, p)
 end
 
 -- The auction asks more than the plan by more than the guard (percent): ask before buying.
+-- A guard below 0 is "never ask".
 function ns.Dear(unit, planned, guard)
-    if not unit or not planned or planned <= 0 then return false end
+    if not unit or not planned or planned <= 0 or (guard and guard < 0) then return false end
     return unit > planned * (1 + (guard or 0) / 100)
 end
 

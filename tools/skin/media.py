@@ -4,7 +4,8 @@ an alpha channel (the game tints them): Round (a disc), RoundSq (a
 rounded square, the mask of HUD icons), Glow (a soft halo), Ring<R> (a
 1 pixel ring for a corner of radius R, as S.Box draws it), and the two glass lights of
 S.Glass: Sheen (white at the top fading to nothing at the bottom) and Radial (white in the top
-left corner fading out in a quarter circle). Standard library only.
+left corner fading out in a quarter circle), and Infinity (the "no limit" mark of S.Stepper: the
+game's fonts may lack the sign). Standard library only.
 Run from the repository root, then tools/skin/sync.sh copies them into every module."""
 import math
 import os
@@ -73,6 +74,24 @@ def main():
             d = math.hypot((x + 0.5) / 64, (y + 0.5) / 64)
             radial.append(0 if d >= 1 else (1 - d) ** 2)
     write_tga(f"{OUT}/Radial.tga", 64, radial)
+    # Infinity: a lemniscate drawn as a stroke, 64 by 32.
+    pts = []
+    for i in range(720):
+        t = i / 720 * 2 * math.pi
+        d = 1 + math.sin(t) ** 2
+        pts.append((0.5 + 0.43 * math.cos(t) / d, 0.5 + 0.43 * 2 * math.sin(t) * math.cos(t) / d))
+    inf = []
+    for y in range(32):
+        for x in range(64):
+            hit = 0
+            for sy in range(SS):
+                for sx in range(SS):
+                    px, py = (x + (sx + 0.5) / SS) / 64, (y + (sy + 0.5) / SS) / 32
+                    # distance in texels of the 64 wide picture (y counts half)
+                    best = min((px - a) ** 2 + ((py - b) / 2) ** 2 for a, b in pts)
+                    hit += math.sqrt(best) * 64 <= 2.6
+            inf.append(hit / (SS * SS))
+    write_rect(f"{OUT}/Infinity.tga", 64, 32, inf)
     for r in RADII:
         size = 64 if r >= 6 else 32
         inner = (r - 1.15) / r
