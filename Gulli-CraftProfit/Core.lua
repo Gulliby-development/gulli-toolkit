@@ -197,8 +197,8 @@ end
 -- ---------- disenchanting ----------
 
 -- What disenchanting gives, by the item's level (the Vanilla tables). Green: { up to item level,
--- dust, dust per item, essence, essence per item, shard or nil }; armour gives dust 75%, essence
--- 20%, a shard 5%; a weapon the dust and the essence the other way round. Blue: one shard.
+-- dust per disenchant that gives dust, essence, essence per disenchant, shard or nil }, the shares
+-- in ns.DE_SAFE. Blue: one shard.
 ns.DE_GREEN = {
     { 15, 10940, 1.5, 10938, 1.5 },
     { 20, 10940, 2.5, 10939, 1.5, 10978 },
