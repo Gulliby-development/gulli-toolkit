@@ -79,11 +79,11 @@ class Upload(unittest.TestCase):
         config = {"toolkit": {"id": 1}, "separate": {"A": {"id": 2}, "B": {"id": 3, "hold": True}, "C": {"id": None}}}
         self.assertEqual(U.uploadable(["toolkit", "A", "B", "C"], config), ["toolkit", "A"])
 
-    def test_vendor_flip_is_on_hold(self):
-        # Owner's decision of 2026-11-24: no CurseForge upload until the new media is ready.
+    def test_vendor_flip_uploads_to_its_own_project(self):
+        # The owner lifted the hold of 2026-11-24 on 2026-11-25; it stays a project of its own.
         with open(U.CONFIG) as f:
             config = json.load(f)
-        self.assertEqual(U.uploadable(["VendorFlip"], config), [])
+        self.assertEqual(U.uploadable(["VendorFlip"], config), ["VendorFlip"])
         self.assertIn("VendorFlip", config["separate"])
 
     def test_metadata_links_a_separate_project_to_the_toolkit(self):

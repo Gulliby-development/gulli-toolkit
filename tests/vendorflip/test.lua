@@ -604,8 +604,10 @@ test("the filters: gear only, goods only, by quality", function()
     end
     eq(ids({ goods = false }), tostring(BELT), "gear only")
     eq(ids({ gear = false }), ORE .. "," .. FANG, "goods only")
-    eq(ids({ q2 = false }), ORE .. "," .. FANG, "no greens")
-    eq(ids({ q0 = false, q1 = false }), tostring(BELT), "greens and better")
+    eq(ids({ gq2 = false }), ORE .. "," .. FANG, "no green gear")
+    eq(ids({ oq2 = false }), ORE .. "," .. FANG .. "," .. BELT, "the ticks of goods leave gear alone")
+    eq(ids({ oq0 = false, oq1 = false }), tostring(BELT), "no grey or white goods")
+    eq(ids({ q0 = false, q1 = false }), tostring(BELT), "an older save: one row for both kinds")
     local got, w = ids({ gear = false, goods = false })
     eq(got, "", "nothing wanted")
     eq(#w.searches, 0, "an item left out is never searched")
@@ -622,26 +624,14 @@ test("a filter changed after the scan hides its lines at once", function()
     eq(#ns.Shown(), 3)
 end)
 
-test("the most per line and the least gain in percent", function()
-    local w = Fake(market({ db = { minGain = 0, maxPrice = 100 } }))
+test("settings of an older version move over", function()
+    local w = Fake(market({ db = { minGain = 0, q2 = false, q4 = false, full = true, maxPrice = 100, minPct = 50 } }))
     local ns = Load()
-    w.ScanAll(ns)
-    local got = {}
-    for _, line in ipairs(ns.Shown()) do got[line.id] = line; assert(line.cost <= 100, "a line over the most") end
-    assert(not got[BELT], "the belt costs 48 silver")
-    eq(got[ORE].n, 25, "the ore is cut to what 100 copper buys")
-    eq(got[FANG].n, 1, "one fang costs 75, two 150")
-    w = Fake(market({ db = { minGain = 0, minPct = 100 } }))
-    ns = Load()
-    w.ScanAll(ns)
-    got = {}
-    for _, line in ipairs(ns.Shown()) do got[line.id] = line end
-    eq(got[ORE].n, 30, "only the ore at 4 doubles its money; at 6 it gains 66%")
-    assert(got[FANG] and got[BELT], "fangs and the belt gain more than 100%")
-    eq(ns.PriceOK({ cost = 100, gain = 9 }, 0, 10), false)
-    eq(ns.PriceOK({ cost = 100, gain = 10 }, 0, 10), true)
-    eq(ns.PriceOK({ cost = 101, gain = 500 }, 100, 0), false)
-    eq(ns.Wanted(5, 4, { q4 = false }), false, "legendary counts as purple")
+    eq(ns.db.gq2, false); eq(ns.db.oq2, false); eq(ns.db.gq4, false); eq(ns.db.gq1, true)
+    eq(ns.db.q2, nil); eq(ns.db.full, nil); eq(ns.db.maxPrice, nil); eq(ns.db.minPct, nil)
+    eq(ns.db.soundAt, 10000, "the sound keeps its old 1 gold until the player sets another")
+    eq(ns.Wanted(5, 4, { gq4 = false }), false, "legendary counts as purple")
+    eq(ns.Wanted(5, 7, { gq4 = false }), true, "the gear ticks are not for goods")
 end)
 
 test("a big market is looked at a part per frame, loads few items and redraws once per burst", function()
@@ -697,10 +687,8 @@ test("random markets: nothing is offered at a loss or past the limits", function
         local money, free = math.random(0, 50000), math.random(0, 6)
         local w = Fake({ items = items, browse = browse, commodity = commodity, lots = lots, money = money, free = free,
                          db = { minGain = 0, reserve = math.random(0, 3) * 1000, keepFree = math.random(0, 2),
-                                maxPrice = math.random() < 0.5 and 0 or math.random(1, 5000),
-                                minPct = math.random() < 0.5 and 0 or math.random(0, 20) * 5,
                                 gear = math.random() < 0.8, goods = math.random() < 0.8,
-                                q0 = math.random() < 0.8, q2 = math.random() < 0.8 } })
+                                oq0 = math.random() < 0.8, gq2 = math.random() < 0.8, oq1 = math.random() < 0.8 } })
         local ns = Load()
         w.ScanAll(ns)
         for _, line in ipairs(ns.Shown()) do
@@ -708,8 +696,6 @@ test("random markets: nothing is offered at a loss or past the limits", function
             assert(line.cost < line.value, "a line at a loss")
             assert(line.cost <= money - ns.db.reserve, "a line past the reserve")
             assert(line.slots <= free - ns.db.keepFree, "a line past the free slots")
-            assert(ns.db.maxPrice == 0 or line.cost <= ns.db.maxPrice, "a line past the most per line")
-            assert(line.gain * 100 >= line.cost * ns.db.minPct, "a line under the least percent")
             local it = items[line.id]
             assert(ns.Wanted(it[2], it[5], ns.db), "a line the filters leave out")
             if line.kind == "i" then
@@ -777,26 +763,19 @@ test("a scan notes the price of everything it saw; the cheapest key of an item w
     eq(GulliAuction.Normal(ORE), 4)
 end)
 
-test("the whole market is read once an hour, the cheapest pages in between; the switch stops it", function()
+test("a scan reads the cheapest pages; only the button reads the whole market", function()
     local w = Fake(market({ db = { minGain = 0 } }))
     local ns = Load()
-    eq(ns.FullDue(), true, "never read yet")
     w.ScanAll(ns)
-    eq(ns.Market().at, w.now)
-    eq(ns.FullDue(), false)
+    eq(ns.Market().at, nil, "a usual scan is no look at the whole market")
+    assert(ns.Market().n > 0, "but it saved the prices it saw")
+    w.now = w.now + 7200
     assert(ns.Scan(true))
-    eq(ns.scan.full, false)
+    eq(ns.scan.full, false, "never by itself, however long ago")
     eq(ns.scan.maxPages, ns.MAX_PAGES)
     ns.StopScan()
-    w.now = w.now + ns.FULL_EVERY
-    assert(ns.Scan(true))
-    eq(ns.scan.full, true)
-    eq(ns.scan.maxPages, ns.FULL_PAGES)
-    ns.StopScan()
-    ns.SetPref("full", false)
-    eq(ns.FullDue(), false)
-    assert(ns.PricesLine():find("%d"), "the Settings footer tells how many prices there are")
-    -- the button reads it all whatever the switches say
+    assert(ns.PricesLine():find("%d"), "the Prices card tells how many prices there are")
+    -- the button reads it all, also with scanning off
     ns.SetPref("scan", false)
     assert(ns.Scan(true, true))
     eq(ns.scan.full, true)
@@ -902,15 +881,31 @@ test("no disenchant list without Enchanting, with the switch off or without mate
     eq(#ns.Shown("d"), 0, "no price for dust, essence or shard: no guess")
 end)
 
-test("the disenchant list follows the gear and quality filters", function()
-    local w = Fake(deMarket({ db = { minGain = 0, q3 = false } }))
+test("the disenchant list has its own switch; the vendor list's kinds and ticks leave it alone", function()
+    local w = Fake(deMarket({ db = { minGain = 0, gq3 = false, gear = false } }))
     local ns = Load()
     w.ScanAll(ns)
-    local shown = ns.Shown("d")
-    eq(#shown, 1)
-    eq(shown[1].id, RING)
-    ns.SetPref("gear", false)
+    local n = #ns.Shown("d")
+    assert(n >= 1, "gear to disenchant shows with the vendor list's gear off")
+    ns.SetPref("de", false)
+    w.ScanAll(ns)
     eq(#ns.Shown("d"), 0)
+end)
+
+test("the sound rings from the gain the player set", function()
+    local rang
+    local function run(at)
+        local w = Fake(market({ db = { minGain = 0, sound = true, soundAt = at } }))
+        rang = 0
+        PlaySound = function() rang = rang + 1 end
+        SOUNDKIT = { AUCTION_WINDOW_OPEN = 1 }
+        local ns = Load()
+        w.ScanAll(ns)
+    end
+    run(1)
+    assert(rang >= 1, "any gain rings at 1 copper")
+    run(99999999)
+    eq(rang, 0, "nothing gains that much")
 end)
 
 W.finish()
