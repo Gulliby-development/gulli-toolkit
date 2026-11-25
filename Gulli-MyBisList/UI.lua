@@ -6,7 +6,7 @@ local L = ns.L
 local S = ns.Skin
 local D = ns.Data
 
-local frame, footer, tabs, mainBtn, autoBtn, copyBtn, delBtn
+local frame, footer, tabs, mainBtn, autoBtn, copyBtn, delBtn, statBar
 local pages = {}
 local gear = {}         -- the gear page's parts
 local sets = {}         -- the sets page's parts
@@ -737,6 +737,162 @@ local function gearPage(body)
     return p
 end
 
+-- The stats beside the page tabs ------------------------------------------------------------------
+-- Hit, crit, attack power or spell damage, healing: now, and what the shown list's first items
+-- change. Only on the Gear page.
+
+local STAT_FULL = {
+    melee = { hit = "STAT_HIT", crit = "STAT_CRIT", ap = "STAT_AP" },
+    ranged = { hit = "STAT_RHIT", crit = "STAT_RCRIT", ap = "STAT_RAP" },
+    spell = { hit = "STAT_SHIT", crit = "STAT_SCRIT" },
+    heal = { crit = "STAT_SCRIT" },
+}
+local PERCENT = { hit = true, crit = true }
+local STAT_MAX_ITEMS = 8
+
+function ns.StatFull(kind, key)
+    return L[(STAT_FULL[kind] or {})[key] or ("STAT_" .. key:upper())]
+end
+function ns.StatNumber(key, v)
+    if v == nil then return "?" end
+    if PERCENT[key] then return ("%.1f%%"):format(v) end
+    return ("%d"):format(math.floor(v + 0.5))
+end
+-- A change with its sign, in the colour of good or bad news; a change of nothing is a faint 0.
+function ns.StatGain(key, v)
+    local small = PERCENT[key] and 0.05 or 0.5
+    if not v or math.abs(v) < small then return colour("0", S.FAINT) end
+    local text = PERCENT[key] and ("%+.1f"):format(v) or ("%+d"):format(math.floor(v + (v > 0 and 0.5 or -0.5)))
+    return colour(text, v > 0 and S.GOOD or S.BAD)
+end
+-- One cell's text: short label, the value now, the change.
+function ns.StatCell(st)
+    return colour(L["STATS_" .. st.key:upper()], S.MUTED) .. " " .. colour(ns.StatNumber(st.key, st.now), S.TEXT)
+        .. " " .. ns.StatGain(st.key, st.gain)
+end
+
+-- The tooltip of one stat: now, with the list, the hit cap, the items behind the change.
+function ns.StatTipLines(sum, st, list)
+    local out = {}
+    local with = st.now and (st.now + st.gain) or nil
+    out[#out + 1] = { L.STATS_NOW, ns.StatNumber(st.key, st.now) }
+    out[#out + 1] = { L.STATS_WITH, ns.StatNumber(st.key, with) .. " " .. ns.StatGain(st.key, st.gain) }
+    if st.cap then
+        local cap = ("%d%%"):format(st.cap)
+        local base = with or st.now
+        local state = ""
+        if base then
+            state = base >= st.cap - 0.05 and colour(L.STATS_CAP_DONE, S.GOOD)
+                or colour(L.STATS_CAP_LEFT:format(("%.1f%%"):format(st.cap - base)), S.WARN)
+        end
+        out[#out + 1] = { L.STATS_CAP:format(cap), state }
+    end
+    local items = sum.items[st.key] or {}
+    if #items > 0 then
+        out[#out + 1] = { head = L.STATS_CHANGES }
+        for i, it in ipairs(items) do
+            if i > STAT_MAX_ITEMS then
+                out[#out + 1] = { L.STATS_MORE:format(#items - STAT_MAX_ITEMS), "" }
+                break
+            end
+            local q = ns.ItemQuality(it.id)
+            out[#out + 1] = { S.QualityHex(q) .. ns.ItemName(it.id) .. "|r", ns.StatGain(st.key, it.gain), id = it.id }
+        end
+    elseif not sum.wait then
+        out[#out + 1] = { L.STATS_SAME }
+    end
+    if sum.wait then out[#out + 1] = { L.STATS_WAIT } end
+    if list then out[#out + 1] = { foot = L.STATS_LIST:format(ns.ListName(list)) } end
+    return out
+end
+
+local function statTip(self)
+    if not (self.st and GameTooltip and GameTooltip.SetOwner) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(ns.StatFull(self.sum.kind, self.st.key), S.GOLD[1], S.GOLD[2], S.GOLD[3])
+    for _, l in ipairs(ns.StatTipLines(self.sum, self.st, self.list)) do
+        if l.head then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(S.Upper(l.head), S.GOLD_DIM[1], S.GOLD_DIM[2], S.GOLD_DIM[3])
+        elseif l.foot then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(l.foot, S.FAINT[1], S.FAINT[2], S.FAINT[3], true)
+        elseif l[2] then
+            GameTooltip:AddDoubleLine(l[1], l[2], S.MUTED[1], S.MUTED[2], S.MUTED[3], 1, 1, 1)
+        else
+            GameTooltip:AddLine(l[1], S.MUTED[1], S.MUTED[2], S.MUTED[3], true)
+        end
+    end
+    GameTooltip:Show()
+end
+
+local function buildStats(body)
+    local bar = CreateFrame("Frame", nil, body)
+    -- beside the page tabs, its text level with theirs and clear of the hairline under them
+    bar:SetPoint("TOPRIGHT", body, "TOPRIGHT", 0, -1)
+    bar:SetSize(10, 28)
+    bar.cells, bar.dots = {}, {}
+    for i = 1, 5 do
+        local c = CreateFrame("Button", nil, bar)
+        c:SetHeight(28)
+        c.text = S.Text(c, 12, S.TEXT)
+        c.text:SetPoint("LEFT")
+        c.text:SetWordWrap(false)
+        c:SetScript("OnEnter", statTip)
+        c:SetScript("OnLeave", hideTip)
+        bar.cells[i] = c
+        local d = S.Text(bar, 12, S.FAINT)
+        d:SetJustifyH("CENTER")
+        d:SetText(S.DOT_MARK)
+        bar.dots[i] = d
+    end
+    return bar
+end
+
+-- room: how wide the bar may be (the page row less the tabs).
+local function paintStats(bar, list, room)
+    local sum = list and ns.StatSummary(list)
+    if not sum then bar:Hide(); return end
+    bar:Show()
+    local widths, total, gap = {}, 0, 16
+    for i, c in ipairs(bar.cells) do
+        local st = sum.stats[i]
+        c.st, c.sum, c.list = st, sum, list
+        if st then
+            c.text:SetText(ns.StatCell(st))
+            widths[i] = math.ceil(c.text:GetStringWidth() or 0)
+        end
+    end
+    -- the last stats give way when the row is too narrow
+    local n = 0
+    for i = 1, #sum.stats do
+        local w = total + (i > 1 and gap or 0) + widths[i]
+        if room and w > room then break end
+        total, n = w, i
+    end
+    local x = 0
+    for i, c in ipairs(bar.cells) do
+        local show = i <= n
+        c:SetShown(show)
+        bar.dots[i]:SetShown(show and i > 1)
+        if show then
+            if i > 1 then
+                bar.dots[i]:ClearAllPoints()
+                bar.dots[i]:SetPoint("LEFT", bar, "LEFT", x, 0)
+                bar.dots[i]:SetWidth(gap)
+                x = x + gap
+            end
+            c:ClearAllPoints()
+            c:SetPoint("LEFT", bar, "LEFT", x, 0)
+            c:SetWidth(widths[i])
+            x = x + widths[i]
+        end
+    end
+    bar:SetWidth(math.max(1, x))
+    bar.shown = n
+end
+ns.PaintStats = paintStats
+
 local function paintGear()
     local list = ns.Shown()
     if not list then return end
@@ -746,6 +902,7 @@ local function paintGear()
         byslot[r.slot] = r
         paintSlot(gear.slots[r.slot], r, list)
     end
+    if statBar then paintStats(statBar, list, ns.StatRoom and ns.StatRoom()) end
     local spec = ns.SpecInfo(list.spec)
     gear.chip:SetText(ns.SpecName(list.spec))
     if gear.chip.btnIcon then gear.chip.btnIcon:SetTexture(ns.SpecIcon(list.spec)) end
@@ -1418,8 +1575,17 @@ local function build()
         if adder then adder:Hide() end
         if classMenu then classMenu:Hide() end
         footer:SetShown(i ~= SETTINGS)
+        if statBar then statBar:SetShown(i == 1) end
         ns.Refresh()
     end, nil, { "Interface\\Icons\\INV_Chest_Plate06", ns.SET_ICON, S.TAB.settings })
+    statBar = buildStats(body)
+    -- the room beside the tabs: the page row less the tabs and a gap
+    function ns.StatRoom()
+        local last = tabs.buttons[#tabs.buttons]
+        local w = tonumber(body:GetWidth()) or 0
+        if w <= 0 then w = (tonumber(width) or 0) > 0 and width or S.WIDE_W end
+        return w - ((last.x or 0) + (tonumber(last:GetWidth()) or 0)) - 24
+    end
     pages[1] = gearPage(body)
     pages[SETS] = setsPage(body)
     pages[SETTINGS] = settingsPage(body, width)
@@ -1458,4 +1624,5 @@ end
 
 -- For the tests and the previews.
 function ns.Parts() return gear, footer, mainBtn, tabs, sets end
+function ns.StatBar() return statBar end
 function ns.ShowTab(i) ns.Window(); tabs:Select(i) end
