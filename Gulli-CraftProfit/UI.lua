@@ -1495,8 +1495,7 @@ local function roundButton(parent, picture)
         S.SetBorder(self, self.edge or S.EDGE)
         if GameTooltip then GameTooltip:Hide() end
     end)
-    b:SetScript("OnDisable", function(self) self.pic:SetAlpha(0.4) end)
-    b:SetScript("OnEnable", function(self) self.pic:SetAlpha(1) end)
+    S.FollowEnabled(b, function(self, on) self.pic:SetAlpha(on and 1 or 0.4) end)
     return b
 end
 

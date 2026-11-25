@@ -1552,6 +1552,22 @@ test("an icon tile shows its title and count and greys out when disabled", funct
     eq(texts.count, "", "no count on an empty kind")
 end)
 
+test("an icon tile dims exactly when it is disabled, also without OnEnable/OnDisable", function()
+    -- the game sends no OnDisable to a hidden frame, so the look must follow SetEnabled
+    Fake({ addons = { QC } })
+    local S = Load().Skin
+    local tile = S.IconTile(CreateFrame("Frame"), 80, 52, true)
+    local alpha
+    tile.item.SetAlpha = function(_, a) alpha = a end
+    tile:SetEnabled(false)
+    eq(alpha, 0.4, "an empty kind is dim")
+    tile:SetEnabled(true)
+    eq(alpha, 1, "a kind with items is bright")
+    alpha = nil
+    tile:GetScript("OnEnable")(tile)
+    eq(alpha, 1, "a late OnEnable reads the state, never flips it")
+end)
+
 test("a button with an icon keeps its text after the icon when hovered or pressed", function()
     Fake({ addons = { QC } })
     local S = Load().Skin
