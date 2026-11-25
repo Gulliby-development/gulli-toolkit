@@ -298,6 +298,10 @@ end
 local function setTexts(v)
     bar.icon:SetIcon(v.icon or ns.OPT_ICON.bar)
     bar.name:SetText(v.name or "")
+    -- without a total the count stands alone in the corner: empty texts give it no place
+    bar.made:ClearAllPoints()
+    if v.of then bar.made:SetPoint("BOTTOMRIGHT", bar.word, "BOTTOMLEFT", -5, -4)
+    else bar.made:SetPoint("TOPRIGHT", bar, "TOPRIGHT", -PAD, -12) end
     bar.made:SetText(tostring(v.made or 0))
     bar.word:SetText(v.of and L.BAR_OF or "")
     bar.of:SetText(v.of and tostring(v.of) or "")

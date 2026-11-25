@@ -4552,14 +4552,41 @@ test("craft bar: a cut cast, a cast that never comes and the game's stop end the
     W.Fire("UPDATE_TRADESKILL_CAST_STOPPED", false)
     W.now = W.now + n.BAR_HALT + 0.1
     eq(n.BarState(), "stop")
-    -- a batch that looked finished goes on when its next cast begins
-    W.now = W.now + 60
+end)
+
+test("craft bar: crafts pressed one by one never add up to a batch", function()
+    local n = barGame()
+    -- Enchant, Enchant, Enchant: the game repeats nothing (0), each press is a craft of its own
+    for _ = 1, 5 do
+        barCast(101, 3, 0)
+        eq(n.run.made, 0); eq(n.run.of, 1); eq(n.run.known, true)
+        eq(n.BarState(), nil, "one craft alone shows no bar")
+        barMade(101, 3)
+        eq(n.BarState(), nil)
+        W.now = W.now + 0.4
+    end
+    -- the same when the game never said the craft before was made
+    n.run = nil
+    barCast(101, 3, 1); W.now = W.now + 3.2
+    barCast(101, 3, 1)
+    eq(n.run.made, 0); eq(n.run.of, 1)
+    -- asked for, one craft shows cleanly: 0 of 1, then done, and the next press starts anew
+    n.run = nil
     n.SetBarPref("barOne", true)
-    barCast(101, 3, 1); barMade(101, 3)
+    barCast(101, 3, 1)
+    local v = n.BarView(n.BarState())
+    eq(v.made, 0); eq(v.of, 1); eq(v.ticks, nil)
+    barMade(101, 3)
     eq(n.BarState(), "done")
     W.now = W.now + 0.5
     barCast(101, 3, 1)
-    eq(n.BarState(), "run"); eq(n.BarView("run").made, 1); eq(n.BarView("run").of, 2)
+    v = n.BarView(n.BarState())
+    eq(v.made, 0); eq(v.of, 1); eq(v.ticks, nil)
+    -- a batch the game repeats, started right after single crafts, counts from its own start
+    barMade(101, 3); W.now = W.now + 0.5
+    barCast(101, 3, 3)
+    v = n.BarView(n.BarState())
+    eq(v.made, 0); eq(v.of, 3)
 end)
 
 test("craft bar: the switches keep it away; one craft alone only when asked; other spells never", function()
