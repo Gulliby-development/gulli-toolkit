@@ -2272,12 +2272,13 @@ test("a pattern on the auction is bought by clicks: search, then the cheapest bu
     n.db.vendor[6] = 9000
     local st = n.State()
     eq(st.recipes[104].src.t, "ah")
+    -- at the auction house first: arriving there builds the first run's stops anew
+    W.Fire("AUCTION_HOUSE_SHOW")
     local line = { recipe = 104, name = "Thing", n = 1, src = "ah", price = 500, pattern = 6, pname = "Pattern: Thing" }
     n.view.route = { { kind = "ah", title = "STOP_AH_BUY", index = 1, sig = "p", cost = 500, lines = { line } } }
     local q, hand = n.BuyQueue(n.view.route[1], nil)
     eq(#q, 1); eq(hand, 0); eq(q[1].id, 6); eq(q[1].pattern, true); eq(q[1].name, "Pattern: Thing")
     eq(n.Shopping(n.view.route)[1].name, "Pattern: Thing", "the Auctionator list searches the pattern")
-    W.Fire("AUCTION_HOUSE_SHOW")
     n.Select(1)
     W.calls = {}
     -- first click: the search, no purchase
@@ -2659,6 +2660,56 @@ test("the ahead switch changes the buy stops, not the plan", function()
     eq(n.view.plan, plan)
     n.SetPref("ahead", true)
     eq(n.view.plan, plan)
+end)
+
+test("with ahead a purchase shows once, in its own stage, and the first stage buys ahead at the place", function()
+    local n = game({
+        items = {
+            [1] = { name = "Silk Cloth", ah = 160, sell = 38 },
+            [2] = { name = "Bolt of Silk Cloth", ah = 900, sell = 150 },
+            [3] = { name = "Blue Dye", sell = 12 },
+            [4] = { name = "Azure Silk Hood", ah = 1500, sell = 420, quality = 2 },
+            [5] = { name = "Fine Thread", sell = 25 },
+            [6] = { name = "Silk Headband", ah = 2600, sell = 520, quality = 2 },
+            [8] = { name = "Bolt of Mageweave", ah = 4000, sell = 250 },
+            [9] = { name = "Black Mageweave Vest", ah = 2400, sell = 900, quality = 2 },
+        },
+        prof = { name = "Tailoring", skill = SKILL, cap = 225, recipes = {
+            { id = 101, name = "Bolt of Silk Cloth", learned = true, diff = 3, grey = 145, out = 2, r = { [1] = 4 } },
+            { id = 102, name = "Azure Silk Hood", learned = true, diff = 0, grey = 175, out = 4, r = { [2] = 2, [3] = 2 } },
+            { id = 103, name = "Silk Headband", learned = true, diff = 0, grey = 185, out = 6, r = { [2] = 3, [5] = 2 } },
+            { id = 105, name = "Black Mageweave Vest", learned = true, diff = 0, grey = 230, out = 9, r = { [2] = 2, [8] = 1 } },
+        } },
+    })
+    n.db.prefs.ahead, n.db.prefs.target = true, 225
+    n.Toggle(); n.Calculate()
+    local legs = n.view.legs or {}
+    local function aheadLines()
+        local c = 0
+        for _, s in ipairs(n.view.route) do
+            for _, l in ipairs(s.lines or {}) do if l.ahead then c = c + 1 end end
+        end
+        return c
+    end
+    -- away from the auction house each stage shows only its own purchases, once
+    eq(aheadLines(), 0, "the first stage shows only its own purchases")
+    local own = false
+    for i = 2, #legs do
+        if legs[i].plan then
+            n.SelectLeg(i)
+            for _, s in ipairs(n.view.route) do
+                if s.kind == "ah" and s.title == "STOP_AH_BUY" then own = true end
+            end
+        end
+    end
+    assert(own, "a later stage shows its own purchases")
+    -- at the auction house the first stage buys for the whole way at once
+    n.SelectLeg(1)
+    n.atAH = true; n.Arrive("ah")
+    assert(aheadLines() > 0, "at the auction house it buys ahead")
+    for k, s in ipairs(n.view.route) do eq(s.index, k) end
+    n.atAH = false; n.Arrive(nil)
+    eq(aheadLines(), 0, "and away from it again only its own")
 end)
 
 test("a later stage's buy stop buys for that stage now; what came in goes to the stages before it first", function()

@@ -1258,7 +1258,9 @@ end
 -- player goes to the auction house and the vendor once for the whole way. `legs`: the runs of
 -- the way (ns.Legs), the first one being this route. A line added for a later run carries
 -- `ahead` (the skill that run reaches); a stop the first run lacks comes before its first craft.
-function ns.BuyAhead(route, legs)
+-- `at` (optional, `{ ah = bool, vendor = bool }`): only the places the player stands at now, so
+-- away from them each run shows its own purchases once (owner's request of 2026-11-25).
+function ns.BuyAhead(route, legs, at)
     if not legs or #legs < 2 then return route end
     local function stopOf(kind, title)
         for _, n in ipairs(route) do if n.kind == kind and n.title == title then return n end end
@@ -1268,7 +1270,8 @@ function ns.BuyAhead(route, legs)
         local l = legs[i]
         if l.plan and l.state then
             for _, m in ipairs(ns.Route(l.state, l.plan)) do
-                if (m.kind == "ah" and m.title == "STOP_AH_BUY") or (m.kind == "vendor" and m.title == "STOP_VENDOR_BUY") then
+                if ((m.kind == "ah" and m.title == "STOP_AH_BUY") or (m.kind == "vendor" and m.title == "STOP_VENDOR_BUY"))
+                    and (not at or at[m.kind]) then
                     local n = stopOf(m.kind, m.title)
                     if not n then
                         n = { kind = m.kind, title = m.title, lines = {}, cost = 0 }
@@ -1957,16 +1960,14 @@ function ns.LegRoute(v)
     if l and v.leg > 1 then route = ns.Route(l.state, l.plan)
     else
         route = ns.Route(v.state, v.plan)
-        -- the first run buys for the whole way at once (`ahead`); a simulated run shows only its own
-        if ahead then route = ns.BuyAhead(route, v.legs) end
+        -- the first run buys for the whole way at once (`ahead`), at the place the player stands at;
+        -- elsewhere each run shows only its own purchases. A simulated run shows only its own.
+        if ahead then route = ns.BuyAhead(route, v.legs, { ah = ns.atAH and true, vendor = ns.atVendor and true }) end
     end
     -- a pinned route counts its purchases over the whole way, whatever the stops show
     if pin then
-        local whole = route
-        if not (ahead and (v.leg or 1) == 1) then
-            whole = ns.Route(v.state, v.plan)
-            if v.legs then whole = ns.BuyAhead(whole, v.legs) end
-        end
+        local whole = ns.Route(v.state, v.plan)
+        if v.legs then whole = ns.BuyAhead(whole, v.legs) end
         ns.PinSync(pin, whole, v.state, route)
     end
     return route
