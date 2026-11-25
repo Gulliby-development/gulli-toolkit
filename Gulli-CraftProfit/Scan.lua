@@ -1734,6 +1734,8 @@ f:SetScript("OnEvent", function(self, event, a1, a2, a3)
         if a1 ~= ADDON then return end
         GulliCraftProfitDB = GulliCraftProfitDB or {}
         ns.db = GulliCraftProfitDB
+        -- the craft bar became smaller and starts in the middle: a place saved for the big one goes
+        if ns.db.barV ~= 2 then ns.db.barV = 2; ns.db.barPoint = nil end
         ns.db.prefs = ns.db.prefs or {}
         ns.db.vendor = ns.db.vendor or {}
         ns.db.trainer = ns.db.trainer or {}

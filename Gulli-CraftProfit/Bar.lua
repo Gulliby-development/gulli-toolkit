@@ -65,6 +65,21 @@ local function profession(spell)
     return name, skill and skill > 0 and skill or nil
 end
 
+-- The icon of what the craft makes: the item the profession window saved for the recipe, else
+-- the recipe's own picture; nil leaves the spell's.
+function ns.BarIcon(spell)
+    for _, prof in pairs(ns.char and ns.char.profs or {}) do
+        local rec = prof.recipes and prof.recipes[spell]
+        if rec and rec.out and ns.ItemIcon then return ns.ItemIcon(rec.out) end
+    end
+    local T = C_TradeSkillUI
+    if T and T.GetRecipeInfo then
+        local ok, i = pcall(T.GetRecipeInfo, spell)
+        if ok and type(i) == "table" and i.icon then return i.icon end
+    end
+    return nil
+end
+
 -- How many more crafts the bags hold reagents for, from the recipe the profession window saved;
 -- nil for a recipe it never saw.
 function ns.BarMats(spell)
@@ -115,13 +130,21 @@ function ns.BarCastStart()
     local same = r and r.spell == c.spell
         and (r.state == "run" or (r.state == "done" and t - (r.endAt or 0) <= ns.BAR_GAP))
     if not same then
-        r = { spell = c.spell, name = c.name, icon = c.icon, of = left or 1, made = 0, known = left ~= nil,
+        r = { spell = c.spell, name = c.name, icon = ns.BarIcon(c.spell) or c.icon, of = left or 1, made = 0, known = left ~= nil,
               began = t, starts = 0 }
         r.prof, r.skill0 = profession(c.spell)
         ns.run = r
-    elseif left then
-        r.of, r.known = r.made + left, true
+    else
+        -- crafts nobody reported as made still count: the game repeats fewer than it did, or
+        -- the cast before ran to its end
+        if left and r.leftAt and left < r.leftAt then
+            r.made = r.made + (r.leftAt - left)
+        elseif r.cast and c.from >= r.cast.to - 0.5 then
+            r.made = r.made + 1
+        end
+        if left then r.of, r.known = r.made + left, true end
     end
+    r.leftAt = left
     if r.made >= r.of then r.of = r.made + 1 end
     r.state, r.endAt, r.took, r.haltAt = "run", nil, nil, nil
     r.starts = r.starts + 1
@@ -133,10 +156,15 @@ function ns.BarCastStart()
 end
 
 -- A craft was made.
-function ns.BarCastDone(spell)
+function ns.BarCastDone(spell, id)
     local r = ns.run
-    if not r or r.state ~= "run" or secret(spell) or spell ~= r.spell then return false end
+    if not r or r.state ~= "run" or not r.cast then return false end
+    -- the game may name the made craft by another spell id than the cast: the cast id tells too
+    local mine = r.cast.id
+    local byId = mine ~= nil and id ~= nil and not secret(mine) and not secret(id) and id == mine
+    if not byId and (secret(spell) or spell ~= r.spell) then return false end
     r.made, r.cast, r.doneAt = r.made + 1, nil, now()
+    if r.leftAt then r.leftAt = r.leftAt - 1 end
     if r.known and r.made >= r.of then halt(r, "done") end
     return true
 end
@@ -174,6 +202,8 @@ function ns.BarState(t)
         if not r.cast then since = t - (r.doneAt or r.began)
         elseif t > r.cast.to then since = t - r.cast.to end
         if since and (since > ns.BAR_GAP or (not r.cast and r.haltAt and t - r.haltAt > ns.BAR_HALT)) then
+            -- a cast that ran to its end and was never cut was made, also when nobody said so
+            if r.cast then r.made, r.cast = r.made + 1, nil end
             if r.made == 0 then ns.run = nil; return nil end
             halt(r, (r.made >= r.of or not r.known) and "done" or "stop")
         end
@@ -265,7 +295,7 @@ end
 -- From the module's event frame (Scan.lua). Returns nothing: the bar repaints itself.
 function ns.OnBarEvent(event, id, spell)
     if event == "UNIT_SPELLCAST_START" then ns.BarCastStart()
-    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then ns.BarCastDone(spell)
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then ns.BarCastDone(spell, id)
     elseif event == "UPDATE_TRADESKILL_CAST_STOPPED" then ns.BarHalted()
     else ns.BarCastBreak(id, spell) end
     if ns.RefreshBar then ns.RefreshBar() end

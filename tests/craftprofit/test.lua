@@ -4398,6 +4398,7 @@ test("craft bar: a batch of hours shows hours and minutes, no seconds, and one s
     local v = n.BarView(n.BarState())
     eq(v.of, 400); eq(v.ticks, nil, "too many crafts for a cut each")
     eq(v.left, n.L.BAR_HM:format(3, 20))
+    n.run = nil
     barCast(101, 30, n.BAR_TICKS)
     eq(n.BarView("run").of, n.BAR_TICKS)
 end)
@@ -4496,6 +4497,63 @@ test("craft bar: the game's cast bar hides only while a batch runs and the switc
     W.RunTimers()
     eq(alpha, 1, "the batch stopped: the game's bar is back")
     PlayerCastingBarFrame = nil
+end)
+
+test("craft bar: another addon's cast bar of the player hides too and gets its own alpha back", function()
+    local n = game()
+    local function fake(alpha, extra)
+        local f = { a = alpha, GetAlpha = function(self) return self.a end, SetAlpha = function(self, a) self.a = a end,
+            IsObjectType = function(_, t) return t == "StatusBar" end, IsVisible = function() return true end }
+        for k, v in pairs(extra or {}) do f[k] = v end
+        return f
+    end
+    local named = fake(0.8)
+    local ouf = fake(0.9, { __owner = { unit = "player" }, casting = true })
+    local target = fake(1, { __owner = { unit = "target" }, casting = true })
+    local health = fake(1, { unit = "player" })
+    ElvUF_Player_CastBar = named
+    local list = { ouf, target, health }
+    EnumerateFrames = function(f)
+        if not f then return list[1] end
+        for i, g in ipairs(list) do if g == f then return list[i + 1] end end
+    end
+    barCast(101, 3, 3)
+    W.now = W.now + 1
+    n.TickBar()
+    eq(named.a, 0, "a bar known by its name")
+    eq(ouf.a, 0, "a bar found on the screen")
+    eq(target.a, 1, "the target's cast bar stays")
+    eq(health.a, 1, "a bar of the player that is no cast bar stays")
+    W.Fire("UNIT_SPELLCAST_INTERRUPTED", "player", nil, 101)
+    W.RunTimers()
+    eq(named.a, 0.8); eq(ouf.a, 0.9)
+    ElvUF_Player_CastBar, EnumerateFrames = nil, nil
+end)
+
+test("craft bar: a craft the game never reported counts when the next one starts; the picture is the made item's", function()
+    local n = game()
+    barCast(101, 3, 3)
+    W.now = W.now + 3
+    barCast(101, 3, 2) -- no UNIT_SPELLCAST_SUCCEEDED came
+    eq(n.run.made, 1); eq(n.run.of, 3)
+    barMade(101, 3)
+    eq(n.run.made, 2)
+    barCast(101, 3, 1)
+    eq(n.run.made, 2, "a reported craft is not counted twice"); eq(n.run.of, 3)
+    -- the game names the made craft by another spell id: the cast id counts it
+    W.now = W.now + 3
+    W.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", n.run.cast.id, 999)
+    eq(n.run.made, 3); eq(n.BarState(), "done")
+    -- no report at all, without the game's count: every cast that ran to its end counts, the last too
+    n.run = nil
+    n.SetBarPref("barOne", true)
+    barCast(102, 3); W.now = W.now + 3
+    barCast(102, 3); W.now = W.now + 3 + n.BAR_GAP + 0.1
+    eq(n.BarState(), "done"); eq(n.run.made, 2)
+    -- the picture is the one of what the craft makes, not the spell's
+    n.run = nil
+    barCast(101, 3, 2)
+    eq(n.run.icon ~= "icon", true)
 end)
 
 test("craft bar: materials for the rest, the skill gained, and the sample in the Unlock mode", function()

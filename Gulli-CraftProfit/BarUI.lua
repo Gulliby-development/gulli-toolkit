@@ -7,6 +7,7 @@ local L = ns.L
 local S = ns.Skin
 
 local BAR_W, BAR_H = 560, 132
+local BAR_SCALE = 0.7 -- the layout is drawn at 560 by 132 and shown smaller
 local PAD, ICON = 16, 56
 local TRACK_H, THIN_H = 20, 6
 local TEXT_EVERY = 0.2 -- seconds between two repaints of the texts
@@ -21,24 +22,73 @@ local bar
 
 local function now() return GetTime and GetTime() or time() end
 
-local function gameBar()
-    return PlayerCastingBarFrame or CastingBarFrame
+-- The player's cast bars: the game's own and the ones of the popular interface addons, by
+-- their frame names. A new addon's bar is a name here.
+ns.CAST_BARS = { "PlayerCastingBarFrame", "CastingBarFrame", "ElvUF_Player_CastBar", "Quartz3CastBarPlayer",
+    "oUF_Player_Castbar", "oUF_PlayerCastbar", "SUFUnitplayerCastBar", "LUFUnitplayerCastBar", "TukuiPlayerCastBar",
+    "GwCastingBarPlayer", "EllesmereUIPlayerCastBar", "EUI_PlayerCastBar", "CastbarsPlayerCastBar",
+    "ClassicCastbarsPlayer", "DragonflightUIPlayerCastbar", "NDui_PlayerCastbar", "PitBull4_Frames_player_CastBar" }
+
+local found -- the other cast bars of the player the screen had, looked for once
+local hidden = {} -- frame -> the alpha it had
+
+local function isPlayerBar(f)
+    if f == bar or (f.IsForbidden and f:IsForbidden()) then return false end
+    if not (f.IsObjectType and f:IsObjectType("StatusBar") and f.IsVisible and f:IsVisible()) then return false end
+    if f.GetParent and bar and f:GetParent() == bar then return false end
+    local owner = rawget(f, "__owner")
+    local unit = rawget(f, "unit") or (type(owner) == "table" and rawget(owner, "unit"))
+    if unit ~= "player" then return false end
+    -- a bar that says it is casting now: the game's mixin and oUF both keep these fields
+    return rawget(f, "casting") == true or rawget(f, "castID") ~= nil or rawget(f, "isTradeSkill") ~= nil
 end
 
--- The game's own cast bar comes back (the switch went off, the batch ended).
+-- Any other addon's cast bar of the player that shows while a craft runs; one walk over the
+-- frames per session, a moment into the first cast.
+function ns.FindCastBars()
+    if found or not EnumerateFrames then return found end
+    found = {}
+    local f = EnumerateFrames()
+    while f do
+        local ok, yes = pcall(isPlayerBar, f)
+        if ok and yes then found[#found + 1] = f end
+        f = EnumerateFrames(f)
+    end
+    return found
+end
+
+local function each(fn)
+    for _, name in ipairs(ns.CAST_BARS) do
+        local g = _G[name]
+        if type(g) == "table" and g.SetAlpha and g.GetAlpha then fn(g) end
+    end
+    for _, g in ipairs(found or {}) do fn(g) end
+end
+
+-- The cast bars come back (the switch went off, the batch ended).
 function ns.ShowGameBar()
-    local g = gameBar()
-    if g and ns.hidGame then
-        ns.hidGame = nil
-        if g.SetAlpha then g:SetAlpha(1) end
+    if not ns.hidGame then return end
+    ns.hidGame = nil
+    for g, a in pairs(hidden) do
+        pcall(g.SetAlpha, g, a)
+        hidden[g] = nil
+    end
+end
+
+local function hideOne(g)
+    local ok, a = pcall(g.GetAlpha, g)
+    a = ok and tonumber(a) or 0
+    if a > 0 then
+        if hidden[g] == nil then hidden[g] = a end
+        pcall(g.SetAlpha, g, 0)
     end
 end
 
 local function hideGameBar()
-    local g = gameBar()
-    if not (g and g.SetAlpha and g.GetAlpha) then return end
     ns.hidGame = true
-    if (tonumber(g:GetAlpha()) or 0) > 0 then g:SetAlpha(0) end
+    local r = ns.run
+    if not found and r and r.cast and now() - r.cast.from > 0.3 then ns.FindCastBars() end
+    each(hideOne)
 end
 
 function ns.PlaceBar()
@@ -46,7 +96,7 @@ function ns.PlaceBar()
     bar:ClearAllPoints()
     local p = ns.db and ns.db.barPoint
     if p then bar:SetPoint(p[1], UIParent, p[2], p[3], p[4])
-    else bar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 190) end
+    else bar:SetPoint("CENTER", UIParent, "CENTER", 0, 0) end
 end
 
 local function color(region, c) region:SetTextColor(c[1], c[2], c[3], 1) end
@@ -60,6 +110,7 @@ end
 local function build()
     bar = CreateFrame("Frame", "GulliCraftProfitBar", UIParent)
     bar:SetSize(BAR_W, BAR_H)
+    bar:SetScale(BAR_SCALE)
     bar:SetFrameStrata("MEDIUM")
     S.HudPanel(bar)
 
