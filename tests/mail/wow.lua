@@ -33,6 +33,10 @@ function W.Base(spec)
     W.level = spec.level or 60
     GetLocale = function() return spec.locale or "enUS" end
     UnitName = function(u) if u == "player" then return spec.name or "Tester" end end
+    -- WoW Forever: UnitName gives the first name, the game's NameUtil the whole name
+    NameUtil = spec.surname and { GetUnmodifiedUnitFullName = function(u)
+        if u == "player" then return (spec.name or "Tester") .. " " .. spec.surname end
+    end } or nil
     UnitClass = function() return "Priest", spec.class or "PRIEST" end
     UnitLevel = function(u) if u == "player" then return W.level end return 60 end
     UnitRace = function() return "Human", spec.race or "Human" end

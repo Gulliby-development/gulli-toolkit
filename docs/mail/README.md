@@ -49,7 +49,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 <details>
 <summary><b>The list of names is empty</b></summary>
 
-It fills by itself. Your other characters on the realm show up after you log in with each of them once, with the addon on. Players you send mail to, and players whose letters you take, show up too. Until then the list says **No names yet**.
+It fills by itself. Your other characters on the realm show up after you log in with each of them once, with the addon on. Players you send mail to, and players whose letters you take, show up too. A character with a surname shows by its whole name (such as Bullet Rainy) once you log in with it after the update. Until then the list says **No names yet**.
 </details>
 
 <details>
