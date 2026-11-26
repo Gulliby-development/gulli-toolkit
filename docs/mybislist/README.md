@@ -21,8 +21,8 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 ## Features
 
 - **Every class and spec.** 30 specs, tanks, healers and damage, with lists for levels 20, 30, 40 and 50 and before the raids. Your spec and level are picked for you; the button at the top left shows the list of any other spec.
-- **Five items for each slot.** The best first. Items of the other faction leave the list.
-- **Against what you wear.** Each slot shows the best item of the list with a dot: green when you wear it, yellow when it is in your bags or bank, or when you already have another item of the list (worn, in your bags or bank), red when you have nothing of the list yet. Point at the slot to see which item you have. Open a slot to see its five items, and what you wear under a line when it is not one of them. A bar shows how many best items you wear.
+- **Ten items for each slot.** The best first. Items of the other faction leave the list.
+- **Against what you wear.** Each slot shows the best item of the list with a dot: green when you wear it, yellow when it is in your bags or bank, or when you already have another item of the list (worn, in your bags or bank), red when you have nothing of the list yet. Point at the slot to see which item you have. Open a slot to see its ten items, and what you wear under a line when it is not one of them. A bar shows how many best items you wear.
 - **Hit, crit and power at a glance.** Right of the Gear, Sets and Settings tabs you see your hit, crit and attack power (or spell hit, spell crit and spell damage for casters, crit and healing for healers), and in green or red how much the whole list would change them. Healing shows too when it is more than your spell damage. Point at a number to see which items change it and, for hit, how far you are from the hit cap against a raid boss. The game itself turns strength, agility and intellect into these numbers for your class.
 - **Where to get it.** Each item says where it comes from: a boss and its dungeon, a quest, a reputation, a craft or a world drop.
 - **The best enchants.** The lists before the raids name the best enchant for each slot. A small mark on the slot is bright in a green ring when the item you wear there has an enchant, and grey in a red ring when it has none. Under the slot's items you see the enchant, who makes it (an enchanter, a leatherworker, an engineer or a quest), and point at it for its details.
@@ -33,7 +33,7 @@ Which helmet should you hunt for at level 40? My BiS List shows the best items f
 - **Favourite lists.** The star keeps a list at the top of the picker, for an alt or a second spec.
 - **Your main list.** **Track this list** chooses the list the tooltips and notices follow. Until you choose, it is the list of your spec and level.
 - **In the tooltip.** An item on your main list shows its place in its slot, and the place of what you wear there. It also names the best enchant for that slot, and on the item you wear, whether it has one.
-- **A sound when it drops.** When an item of your main list that beats what you wear is in the loot window (also master loot) or in a need or greed roll, you hear a sound and get a notice. A switch in the settings turns it off.
+- **A sound when it drops.** When your pick for a slot (the first item of that slot on your main list) is in the loot window (also master loot) or in a need or greed roll, you hear a sound and get a notice. A second switch, off at first, does the same for the other items of the slot's top ten that beat what you wear. Each one has its own switch in the settings.
 - **A note for a better item.** When an item near the top of your list comes into your bags, a notice says so, once.
 - **In the toolkit.** The home page shows how many best items you wear.
 
@@ -46,7 +46,7 @@ My BiS List works alone. With [Gulli Toolkit](../../README.md) installed, it als
 ## How to use it
 
 1. Type `/gbis`.
-2. Click a slot to see its five best items.
+2. Click a slot to see its ten best items.
 3. Shift-click an item to put its link in the chat.
 4. Press the target button on an item to make it your first choice for that slot.
 5. To change a list, press **Copy to mine**, then **Add item**, the target button or the cross on a row.

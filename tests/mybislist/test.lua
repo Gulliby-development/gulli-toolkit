@@ -23,7 +23,7 @@ test("every language has every text", function()
     W.CheckLocales(Load())
 end)
 
-test("the data: every spec has every stage, at most five known items a slot, and its texts", function()
+test("the data: every spec has every stage, at most ten known items a slot, and its texts", function()
     Fake({})
     local ns = Load()
     local D = ns.Data
@@ -39,7 +39,7 @@ test("the data: every spec has every stage, at most five known items a slot, and
             assert(ns.StageName(stage), "no name for " .. stage)
             for slot, ids in pairs(l) do
                 assert(ns.INV[slot], "unknown slot " .. slot)
-                assert(#ids <= 5, s[1] .. " " .. stage .. " " .. slot .. " has more than five")
+                assert(#ids <= 10, s[1] .. " " .. stage .. " " .. slot .. " has more than ten")
                 for _, id in ipairs(ids) do
                     local item = D.item[id]
                     assert(item, "unknown item " .. id)
@@ -294,7 +294,7 @@ test("the hub: summary, options, pause and reset", function()
     eq(r.key, "MyBisList", "key")
     eq(r.slash, "/gbis", "slash")
     assert(r.window and r.pause and r.reset and r.summary, "fields")
-    eq(#r.options, 4, "options")
+    eq(#r.options, 5, "options")
     local line, _, tile = r.summary()
     assert(line, "line")
     eq(tile.value, "1/5", "tile")
@@ -537,6 +537,41 @@ test("a wanted item in the loot or a roll rings once, behind its switch", functi
     W.items[101] = nil
     ns.Pause(true)
     eq(ns.CheckDrop({ "|Hitem:101|h" }), 0, "paused")
+end)
+
+test("two drop notices: the pick on by default, the rest of the list behind its own switch", function()
+    Fake({ hub = true, cdb = { main = REF }, loot = { 103 } })
+    local ns = Load()
+    fakeData(ns)
+    eq(ns.db.drop, true, "the pick's notice starts on")
+    eq(ns.db.dropTop, false, "the rest of the list starts off")
+    eq(ns.DropKind(101), "mine", "the slot's first item is the pick")
+    eq(ns.DropKind(103), nil, "the second item waits for its switch")
+    W.Fire("LOOT_READY")
+    eq(W.sounds or 0, 0, "no sound for the rest while its switch is off")
+    ns.SetPref("dropTop", true)
+    eq(ns.DropKind(103), "top", "the second item with its switch on")
+    W.Fire("LOOT_READY")
+    eq(W.sounds, 1, "a sound for it now")
+    assert(W.toasts[1].text:find("#2", 1, true), "its place on the list")
+    ns.dropAt = nil
+    ns.SetPref("drop", false)
+    eq(ns.DropKind(101), nil, "the pick's switch stops the pick")
+    eq(ns.DropKind(103), "top", "and leaves the rest")
+    eq(ns.CheckDrop({ "|Hitem:101|h" }), 0, "no notice for the pick")
+end)
+
+test("a site list keeps ten items a slot, and a copy takes all ten", function()
+    Fake({})
+    local ns = Load()
+    assert(ns.COPY_MAX >= 10 and ns.OWN_MAX >= ns.COPY_MAX, "a copy fits its own list")
+    local most = 0
+    for _, stages in pairs(ns.Data.lists) do
+        for _, slots in pairs(stages) do
+            for _, ids in pairs(slots) do if #ids > most then most = #ids end end
+        end
+    end
+    eq(most, 10, "ten items on the longest slot")
 end)
 
 -- Sets ------------------------------------------------------------------------------------------------

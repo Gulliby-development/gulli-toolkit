@@ -1474,7 +1474,7 @@ local function settingsPage(body, width)
         return { L["OPT_" .. up], L["OPT_" .. up .. "_TIP"], function() return ns.db[key] end,
                  function(v) ns.SetPref(key, v) end, icon = ns.OPT_ICON[key] }
     end
-    for _, sec in ipairs({ { L.SEC_MAIN, { "real" } }, { L.SEC_NOTICES, { "tooltip", "notify", "drop" } } }) do
+    for _, sec in ipairs({ { L.SEC_MAIN, { "real" } }, { L.SEC_NOTICES, { "tooltip", "notify", "drop", "dropTop" } } }) do
         local rows = {}
         for _, k in ipairs(sec[2]) do rows[#rows + 1] = row(k) end
         local card, h = S.SettingsCard(page.inner, sec[1], rows)
