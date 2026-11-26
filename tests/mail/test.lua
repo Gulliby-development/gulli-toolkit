@@ -90,6 +90,30 @@ test("names: own characters of this faction first, then recent recipients", func
     eq(W.to, "Bank"); eq(W.tab, 2)
 end)
 
+test("names: a character with a surname is saved and offered by its whole name", function()
+    Fake({ name = "Bullet", surname = "Rainy", faction = "Horde", db = {
+        alts = { Realm = { Horde = { Bullet = true, Hero = true } } },
+        chars = { Realm = { Bullet = { seen = 5, ends = {} } } },
+        recent = { Realm = { "bullet rainy", "Niviera Smiles" } } } })
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    eq(ns.db.alts.Realm.Horde.Bullet, nil, "the first name alone is gone")
+    eq(ns.db.alts.Realm.Horde["Bullet Rainy"], true)
+    eq(ns.db.chars.Realm.Bullet, nil); eq(ns.db.chars.Realm["Bullet Rainy"].seen, 5)
+    local names = ns.Names()
+    eq(#names, 2, "the player is never listed, in any case")
+    eq(names[1].name, "Hero"); eq(names[2].name, "Niviera Smiles")
+    -- on the other character the whole name is the one to write to
+    Fake({ name = "Hero", faction = "Horde", db = { alts = { Realm = { Horde = { ["Bullet Rainy"] = true } } } } })
+    ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    W.Fire("MAIL_SHOW")
+    names = ns.Names()
+    eq(names[1].name, "Bullet Rainy"); eq(names[1].alt, true)
+    ns.Pick(names[1].name)
+    eq(W.to, "Bullet Rainy")
+end)
+
 test("names: a player whose letter was taken is someone to write back to", function()
     Fake({ inbox = { { sender = "Pen Pal", items = { 1 } } } })
     local ns = Load()

@@ -148,7 +148,20 @@ local function realm()
     return ns.db and (ns.db.realm or savedRealm()) or ""
 end
 ns.Realm = realm
-local function me() return UnitName("player") or "?" end
+-- The player's whole name. WoW Forever names have a surname ("Bullet Rainy"): UnitName gives the
+-- first name alone, and a letter to the first name alone finds nobody. The game's own NameUtil
+-- joins the surname on such a client and leaves the name alone elsewhere.
+local function me()
+    local first = UnitName("player")
+    if NameUtil and NameUtil.GetUnmodifiedUnitFullName then
+        local ok, full = pcall(NameUtil.GetUnmodifiedUnitFullName, "player")
+        if ok and type(full) == "string" and not (issecretvalue and issecretvalue(full)) and full ~= "" then
+            return full
+        end
+    end
+    return first or "?"
+end
+ns.Me = me
 local function protected(id)
     return GulliToolkit and GulliToolkit.IsProtected and GulliToolkit.IsProtected(id) or false
 end
@@ -526,13 +539,14 @@ local function short(name) return name and (name:match("^([^%-]+)") or name) end
 -- Names for a new letter: the player's other characters on this realm and faction, then the
 -- recent recipients, friends and guild members. `filter` keeps the names that contain it.
 function ns.Names(filter)
-    local out, seen = {}, { [me()] = true }
+    local out, seen = {}, { [me():lower()] = true }
     filter = filter and filter ~= "" and filter:lower() or nil
     local function add(name, group)
         name = short(name)
-        if not name or name == "" or seen[name] then return end
-        if filter and not name:lower():find(filter, 1, true) then return end
-        seen[name] = true
+        local key = name and name:lower()
+        if not name or name == "" or seen[key] then return end
+        if filter and not key:find(filter, 1, true) then return end
+        seen[key] = true
         out[#out + 1] = { name = name, alt = group == "alt", group = group }
     end
     local alts = ns.db.alts[realm()] and ns.db.alts[realm()][UnitFactionGroup("player")] or {}
@@ -911,7 +925,17 @@ f:SetScript("OnEvent", function(self, event, a1)
         local r, faction = realm(), UnitFactionGroup("player") or "?"
         ns.db.alts[r] = ns.db.alts[r] or {}
         ns.db.alts[r][faction] = ns.db.alts[r][faction] or {}
-        ns.db.alts[r][faction][me()] = true
+        local full, first = me(), UnitName("player")
+        -- older versions saved this character by its first name alone
+        if first and first ~= full then
+            ns.db.alts[r][faction][first] = nil
+            local chars = ns.db.chars[r]
+            if chars and chars[first] then
+                chars[full] = chars[full] or chars[first]
+                chars[first] = nil
+            end
+        end
+        ns.db.alts[r][faction][full] = true
         warnOthers()
     elseif event == "MAIL_SEND_SUCCESS" then
         -- after the game's own handler emptied the letter
