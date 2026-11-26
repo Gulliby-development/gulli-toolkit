@@ -6,9 +6,15 @@ local _, ns = ...
 local DELAY = 1.2
 local frame
 
+-- The game's Screenshot may be no plain Lua function (C_Timer.After refused it), so the timer
+-- gets one of ours that looks the global up when it runs.
+local function take()
+    if Screenshot then Screenshot() end
+end
+
 local function shoot()
     if not Screenshot then return end
-    if C_Timer and C_Timer.After then C_Timer.After(DELAY, Screenshot) else Screenshot() end
+    if C_Timer and C_Timer.After then C_Timer.After(DELAY, take) else take() end
 end
 
 local get

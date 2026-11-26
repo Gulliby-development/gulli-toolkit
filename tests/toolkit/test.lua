@@ -2442,7 +2442,18 @@ test("level-up screenshot: a level, and an achievement only with its switch", fu
     ns.SetTweakOpt("levelShot", "achievement", true)
     ns.LevelShotEvent(nil, "ACHIEVEMENT_EARNED")
     eq(shots, 2)
-    Screenshot = nil
+    -- The client's Screenshot is not a Lua function: the timer must get one of ours.
+    local waiting
+    C_Timer = { After = function(_, fn)
+        assert(type(fn) == "function", "Usage: C_Timer.After(seconds, callback)")
+        waiting = fn
+    end }
+    Screenshot = setmetatable({}, { __call = function() shots = shots + 1 end })
+    ns.LevelShotEvent(nil, "PLAYER_LEVEL_UP")
+    eq(shots, 2, "waits for the banner")
+    waiting()
+    eq(shots, 3, "shot after the wait")
+    C_Timer, Screenshot = nil, nil
 end)
 
 test("guild message of the day: a notice once per text, nothing for a secret one", function()
