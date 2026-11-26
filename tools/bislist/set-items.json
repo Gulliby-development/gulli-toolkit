@@ -831,10 +831,6 @@
 21404,
 ""
 ],
-"Dal'Rend's Tribal Guardian": [
-12939,
-""
-],
 "Darkmantle Boots": [
 226851,
 "leather"
@@ -918,14 +914,6 @@
 "Dawnstalker Wristguards": [
 239544,
 "mail"
-],
-"Deathbone Gauntlets": [
-14622,
-"plate"
-],
-"Deathbone Sabatons": [
-14621,
-"plate"
 ],
 "Deathdealer's Boots": [
 21359,
@@ -4063,10 +4051,6 @@
 272453,
 "cloth"
 ],
-"Premier Magus Gloves": [
-272455,
-"cloth"
-],
 "Premier Magus Hood": [
 272457,
 "cloth"
@@ -4613,10 +4597,6 @@
 ],
 "Robes of Transcendence": [
 16923,
-"cloth"
-],
-"Rotmender's Leggings": [
-271207,
 "cloth"
 ],
 "Sabatons of Might": [
@@ -5449,6 +5429,10 @@
 ],
 "Waywatcher Wristguards": [
 240084,
+"leather"
+],
+"Wildheart Kilt": [
+16719,
 "leather"
 ],
 "Wristguards of Undead Slaying": [
