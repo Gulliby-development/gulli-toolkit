@@ -31,7 +31,7 @@ SLOTS = ["head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist",
 # The site's slot names of the pre-raid lists.
 PRE_SLOT = {"finger 1": "finger1", "finger 2": "finger2", "trinket 1": "trinket1", "trinket 2": "trinket2",
             "weapon": "main", "off hand": "off"}
-KEEP = 5  # items per slot (owner's decision of 2026-11-21)
+KEEP = 10  # items per slot (owner's decision of 2026-11-26; 5 before)
 # Item slot codes in the data (the game's equip location, short).
 ITEM_SLOT = {"head": "head", "neck": "neck", "shoulder": "shoulder", "back": "back", "chest": "chest",
              "wrist": "wrist", "hands": "hands", "waist": "waist", "legs": "legs", "feet": "feet",

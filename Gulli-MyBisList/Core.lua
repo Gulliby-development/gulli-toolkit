@@ -8,11 +8,12 @@ function ns.Dot() return ns.Skin and ns.Skin.DOT or ", " end
 local L = ns.L
 local D = ns.Data
 
-ns.DEFAULTS = { tooltip = true, notify = true, real = false, drop = true }
+ns.DEFAULTS = { tooltip = true, notify = true, real = false, drop = true, dropTop = false }
 ns.ICON = "Interface\\AddOns\\Gulli-MyBisList\\icon"
 ns.OPT_ICON = {
     tooltip = "Interface\\Icons\\INV_Misc_Note_01", notify = "Interface\\Icons\\INV_Misc_Bell_01",
     real = "Interface\\Icons\\INV_Misc_Coin_02", drop = "Interface\\Icons\\INV_Box_02",
+    dropTop = "Interface\\Icons\\INV_Box_01",
 }
 ns.TOP = 3              -- a bag item this high on the list is worth a notice
 -- The game's inventory slot of each list slot.
@@ -329,8 +330,8 @@ end
 -- A copy of a site list the player edits, for the whole account: db.own[n] = { name, spec, stage,
 -- slots = { slot -> ids }, from = the site ref, snap = { slot -> the site's first item then } }.
 
-ns.OWN_MAX = 8          -- items a slot of an own list holds
-ns.COPY_MAX = 5         -- items a copy takes from the site, like the site's own lists
+ns.OWN_MAX = 12         -- items a slot of an own list holds
+ns.COPY_MAX = 10        -- items a copy takes from the site, like the site's own lists
 
 -- Own lists in the order they were made: { ref, n, name, spec, stage }.
 function ns.OwnLists()
@@ -1138,36 +1139,54 @@ function ns.CheckBags(first)
 end
 
 -- A wanted item: on the main list, better than what is worn there and not carried yet.
--- Returns the slot and its place.
+-- Returns the slot and its place, the best place when it is on two slots (rings, trinkets).
 function ns.Wanted(id)
     if not id then return nil end
     local list = ns.Main()
     if not list or ns.Carried(id) then return nil end
+    local slot, best
     for _, r in ipairs(ns.SlotRows(list)) do
         local rank = rankOf(r.ids, id)
-        if rank and r.state ~= "covered" and (not r.rank or rank < r.rank) then return r.slot, rank end
+        if rank and r.state ~= "covered" and (not r.rank or rank < r.rank) and (not best or rank < best) then
+            slot, best = r.slot, rank
+        end
     end
+    return slot, best
 end
 
 local function linkId(link)
     return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
 end
 
+-- Which drop notice an item gets: "mine" for the first item of its slot on the main list (the
+-- player's pick, `drop`), "top" for any other item of that slot's list that beats what is worn
+-- (`dropTop`, off by default; owner's decision of 2026-11-26). Nil when its switch is off.
+function ns.DropKind(id)
+    local slot, rank = ns.Wanted(id)
+    if not slot then return nil end
+    if rank == 1 then
+        if ns.db.drop then return "mine", slot, rank end
+    elseif ns.db.dropTop then
+        return "top", slot, rank
+    end
+end
+
 -- A wanted item in the loot window (also master loot) or in a roll: a sound and a notice, once a
 -- minute per item.
 function ns.CheckDrop(links)
-    if not ns.db or not ns.db.drop or ns.paused then return 0 end
+    if not ns.db or not (ns.db.drop or ns.db.dropTop) or ns.paused then return 0 end
     ns.dropAt = ns.dropAt or {}
     local now, n = GetTime and GetTime() or 0, 0
     for _, link in ipairs(links) do
         local id = linkId(link)
-        local slot, rank = ns.Wanted(id)
-        if slot and not (ns.dropAt[id] and now - ns.dropAt[id] < 60) then
+        local kind, slot, rank = ns.DropKind(id)
+        if kind and not (ns.dropAt[id] and now - ns.dropAt[id] < 60) then
             ns.dropAt[id] = now
             n = n + 1
             if n == 1 then
                 if PlaySound then PlaySound((SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959, "Master") end
-                local text = L.DROP:format(ns.ItemName(id), rank, L["SLOT_" .. slot])
+                local text = kind == "mine" and L.DROP_MINE:format(ns.ItemName(id), L["SLOT_" .. slot])
+                    or L.DROP:format(ns.ItemName(id), rank, L["SLOT_" .. slot])
                 if GulliToolkit and GulliToolkit.Notify then GulliToolkit.Notify("MyBisList", text) end
                 toast({ key = "drop", icon = ns.ItemIcon(id), title = L.TITLE, text = text, seconds = 12 })
             end
@@ -1592,6 +1611,6 @@ do
         summary = function() return ns.Summary() end,
         pause = function(on) ns.Pause(on) end,
         reset = function() ns.Reset() end,
-        options = { opt("tooltip"), opt("notify"), opt("drop"), opt("real") },
+        options = { opt("tooltip"), opt("notify"), opt("drop"), opt("dropTop"), opt("real") },
     })
 end
