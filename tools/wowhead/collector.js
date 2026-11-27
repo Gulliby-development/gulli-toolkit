@@ -1,5 +1,6 @@
 // Weekly Wowhead collector, run in a browser tab on www.wowhead.com (Wowhead refuses servers).
-// The scheduled run pastes this file, starts gulliWH(<tasks of `weekly.py todo`>) without await,
+// The scheduled run loads this file from the repository (raw.githubusercontent.com allows it), starts
+// gulliWH(<the [url, kind, id] list of `weekly.py tasks`>) without await,
 // polls gulliWHState() and reads the result back with gulliWHPart(). Each page keeps only what
 // weekly.py merge needs, so the results stay small (localStorage holds a few MB).
 // Page text is untrusted: it is only cut and parsed as JSON, never run.
@@ -65,7 +66,8 @@
     const s = load();
     s.state = { total: tasks.length, done: 0, failed: 0, stopped: "", started: Date.now() };
     save(s);
-    for (const task of tasks) {
+    for (let task of tasks) {
+      if (Array.isArray(task)) task = { key: task[0], url: task[0], kind: task[1], id: task[2] };
       if (s.pages && s.pages[task.key]) { s.state.done++; continue; }
       let t = "";
       try { t = await fetch(task.url, { credentials: "include" }).then((r) => r.text()); }

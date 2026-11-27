@@ -1,6 +1,7 @@
 """The weekly read of what only Wowhead has: comments, quest experience, boss models and drop chances.
 
     python3 tools/wowhead/weekly.py todo [tasks.json]     the pages to read now (default tools/wowhead/todo.json)
+    python3 tools/wowhead/weekly.py tasks                 those tasks as [url, kind, id], for gulliWH()
     python3 tools/wowhead/weekly.py js <run.js>           collector.js with those tasks, to paste into the tab
     python3 tools/wowhead/weekly.py merge <pages.json>    take the pages read into the snapshots
 
@@ -191,6 +192,11 @@ def merge(path):
     print("merged: %s" % ", ".join("%s %d" % kv for kv in counts.items()))
 
 
+def compact():
+    """The tasks of todo.json as [url, kind, id], for gulliWH()."""
+    return [[t["url"], t["kind"], t["id"]] for t in json.load(open(TODO, encoding="utf-8"))]
+
+
 def script(out):
     """collector.js and the call that starts it on the tasks of todo.json, to paste into the tab."""
     tasks = [{"key": t["key"], "url": t["url"], "kind": t["kind"], "id": t["id"]}
@@ -204,6 +210,8 @@ def script(out):
 def main(argv):
     if argv[:1] == ["todo"]:
         todo(argv[1] if len(argv) > 1 else TODO)
+    elif argv[:1] == ["tasks"]:
+        print(json.dumps(compact(), separators=(",", ":")))
     elif argv[:1] == ["js"] and len(argv) > 1:
         script(argv[1])
     elif argv[:1] == ["merge"] and len(argv) > 1:
