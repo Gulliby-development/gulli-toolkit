@@ -214,6 +214,10 @@ function Fake(spec)
         local old = _G[name]
         if type(old) == "function" then _G[name] = function(...) old(...); fn(...) end end
     end
+    -- spec.profs = { { name, rank, max, icon, skill line } }
+    W.profs = spec.profs or {}
+    GetProfessions = function() local o = {} for i in ipairs(W.profs) do o[i] = i end return unpack(o) end
+    GetProfessionInfo = function(i) local p = W.profs[i]; return p[1], p[4] or "icon", p[2], p[3], 0, 0, p[5] end
     GulliMailDB = spec.db
     return W
 end

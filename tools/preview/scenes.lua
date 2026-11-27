@@ -1094,6 +1094,9 @@ S.mail = { panel = {
     crop = "GulliMailPanel",
 }, write = {
     spec = { friends = { "Amy", "Zed" }, guild = { "Gil" }, inbox = {},
+             db = { rules = { { kind = "ore", to = "Brakka" } },
+                    alts = { Realm = { Alliance = { Lirien = true, Brakka = true } } },
+                    profs = { Realm = { Alliance = { Lirien = { [197] = 225, [333] = 180 }, Brakka = { [164] = 150 } } } } },
              bags = { [0] = { { id = 2589, count = 20 }, { id = 2589, count = 20 }, { id = 4306, count = 12 },
                               { id = 2770, count = 10 }, { id = 2318, count = 8 }, { id = 2318, count = 4 },
                               { id = 10940, count = 6 }, { id = 774, count = 1 } } },
@@ -1110,10 +1113,24 @@ S.mail = { panel = {
     end,
     crop = "GulliMailPanel",
 }, settings = {
-    spec = { db = { log = { { t = 99000, sender = "Auction House", kind = "sold", money = 42100, items = 0 },
+    spec = { db = { rules = { { kind = "ore", to = "Brakka" }, { kind = "elemental", to = "" } },
+                    alts = { Realm = { Alliance = { Lirien = true, Brakka = true, Tovan = true } } },
+                    profs = { Realm = { Alliance = { Lirien = { [197] = 225, [333] = 180 }, Brakka = { [164] = 150 }, Tovan = { [171] = 260 } } } },
+                    ruleOff = { enchanting = true },
+                    log = { { t = 99000, sender = "Auction House", kind = "sold", money = 42100, items = 0 },
                             { t = 98000, sender = "Bob", kind = "player", money = 0, items = 4 },
                             { t = 90000, sender = "Auction House", kind = "bought", money = 0, items = 2 } } } },
-    open = function(ns) ns.Toggle() end,
+    open = function(ns)
+        local icons = { [2589] = "Interface\\Icons\\INV_Fabric_Linen_01", [2770] = "Interface\\Icons\\INV_Ore_Copper_01",
+                        [2447] = "Interface\\Icons\\INV_Misc_Flower_02", [7067] = "Interface\\Icons\\INV_Stone_02",
+                        [10940] = "Interface\\Icons\\INV_Enchant_DustStrange" }
+        C_Item.GetItemIconByID = function(id) return icons[id] end
+        ns.Toggle()
+    end,
+}, log = {
+    spec = { db = { log = { { t = 99000, sender = "Auction House", kind = "sold", money = 42100, items = 0 },
+                            { t = 98000, sender = "Bob", kind = "player", money = 0, items = 4 } } } },
+    open = function(ns) ns.Toggle(); ns.ShowRules(); ns.ShowLogTab() end,
 } }
 
 -- A level 33 Horde tauren in Orgrimmar, Gnomeregan chosen.

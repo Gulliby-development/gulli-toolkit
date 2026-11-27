@@ -1,7 +1,8 @@
 -- The panel next to the mailbox, in two tabs: Letters (Take all, the summary, each letter
 -- with Take and Return, ticks for Take selected) and Write (names to tap with a search,
 -- quick attach by kind, all gold, and a Send button with a line that says what the letter
--- holds). /gml away from a mailbox opens the settings window: the panel's switch and the log.
+-- holds, and the letters the mailing rules would send). /gml away from a mailbox opens the
+-- settings window: the panel's switch, the mailing rules and the log.
 
 local _, ns = ...
 local L = ns.L
@@ -10,13 +11,15 @@ local S = ns.Skin
 local panel, tabs, pages = nil, nil, {}
 local summary, stats, takeBtn, takeRow, letters, noLetters, takeSel
 local names, noNames, search, attachRow, goldBtn, sendBtn, sendLine
-local settings, logList, logEmpty
+local tools, rulesBox, ruleRows, rulesMore = nil, nil, {}, nil
+local settings, logList, logEmpty, setTabs, setPages, rulesList, rulesEmpty, addBtn
 local selected = {}
 
 local PANEL_W, PANEL_H = 380, 728
 local TILE_H = 52
 local GOLD_ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local SEND_W, SEND_H = 116, 36
+local RULE_H, RULES_MAX, RULES_HEAD = 38, 3, 22
 
 -- The tooltip of a quick-attach tile: what goes, most first, and how many fit.
 local function kindTip(self)
@@ -204,6 +207,75 @@ function ns.RefreshSend()
     end
 end
 
+-- The letters of the mailing rules: a row each (the kind, how many, who gets them), Fill puts
+-- one letter together. Shown only while a rule has something to send.
+local function makeRuleRow(parent)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(RULE_H)
+    S.Box(r, S.SURFACE, S.CARD_EDGE, S.R_MD)
+    r.icon = S.IconBox(r, 26)
+    r.icon:SetPoint("LEFT", 6, 0)
+    r.fill = S.FitButton(r, L.FILL, 28, 64)
+    r.fill:SetPoint("RIGHT", -5, 0)
+    r.fill:SetScript("OnClick", function(self) ns.FillRule(self:GetParent().index); ns.Refresh() end)
+    r.what = S.Text(r, 12)
+    r.what:SetPoint("BOTTOMLEFT", r.icon, "RIGHT", 8, 1)
+    r.what:SetPoint("RIGHT", r.fill, "LEFT", -6, 0)
+    r.what:SetWordWrap(false)
+    r.to = S.Text(r, 12, S.MUTED)
+    r.to:SetPoint("TOPLEFT", r.icon, "RIGHT", 8, -1)
+    r.to:SetPoint("RIGHT", r.fill, "LEFT", -6, 0)
+    r.to:SetWordWrap(false)
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self)
+        if not (GameTooltip and GameTooltip.SetOwner and self.entry) then return end
+        local e = self.entry
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["KIND_" .. e.kind:upper()] .. " » " .. e.to)
+        if e.rule.auto then GameTooltip:AddLine(ns.RuleWhy(e.rule), 0.8, 0.8, 0.8, true) end
+        GameTooltip:AddLine(L.RULE_LETTERS:format(e.letters), 1, 0.82, 0)
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    return r
+end
+
+-- Why a profession rule sends there: "By profession: Alchemy 250".
+function ns.RuleWhy(rule)
+    if not rule.auto then return nil end
+    local prof = L["PROF_" .. tostring(rule.line)] or ""
+    return L.RULE_AUTO:format(prof .. (rule.rank and rule.rank > 0 and (" " .. rule.rank) or ""))
+end
+
+local function layoutTools(n)
+    local shown = math.min(n, RULES_MAX)
+    local h = shown > 0 and (RULES_HEAD + shown * (RULE_H + 4) + 4) or 0
+    rulesBox:SetHeight(math.max(1, h))
+    rulesBox:SetShown(shown > 0)
+    attachRow:ClearAllPoints()
+    attachRow:SetPoint("TOPLEFT", 0, -h)
+    attachRow:SetPoint("TOPRIGHT", 0, -h)
+    tools:SetHeight(h + attachRow:GetHeight() + (30 + 6) + (SEND_H + 8))
+end
+
+local function refreshRules()
+    local list = ns.RuleLetters()
+    for i, r in ipairs(ruleRows) do
+        local e = list[i]
+        r:SetShown(e ~= nil)
+        if e then
+            r.entry, r.index = e, i
+            r.icon:SetIcon(ns.KindInfo(e.kind).icon or ns.KindIcon(e.kind))
+            r.what:SetText(L["KIND_" .. e.kind:upper()] .. "  " .. S.Emph("x" .. e.total))
+            local why = e.rule.auto and (S.Hex(S.FAINT) .. "  " .. L.RULE_AUTO_SHORT .. "|r") or ""
+            r.to:SetText("» " .. S.Hex(S.Accent()) .. e.to .. "|r" .. why)
+            r.fill:SetEnabled(not ns.paused)
+        end
+    end
+    rulesMore:SetText(#list > RULES_MAX and L.RULES_MORE:format(#list - RULES_MAX) or "")
+    layoutTools(#list)
+end
+
 -- Refresh -------------------------------------------------------------------------------------
 
 function ns.Refresh()
@@ -253,6 +325,7 @@ function ns.Refresh()
     local gold = ns.GoldToSend()
     goldBtn:SetEnabled(gold > 0)
     goldBtn:SetText(L.ALL_GOLD:format(S.MoneyText(gold)))
+    refreshRules()
     ns.RefreshSend()
 end
 
@@ -318,13 +391,31 @@ local function buildPanel()
     search:SetJustifyH("LEFT")
     S.Placeholder(search, L.SEARCH)
     search:SetScript("OnTextChanged", function() ns.Refresh() end)
-    local tools = CreateFrame("Frame", nil, p)
+    tools = CreateFrame("Frame", nil, p)
     tools:SetPoint("BOTTOMLEFT")
     tools:SetPoint("BOTTOMRIGHT")
+    rulesBox = CreateFrame("Frame", nil, tools)
+    rulesBox:SetPoint("TOPLEFT")
+    rulesBox:SetPoint("TOPRIGHT")
+    local head = S.Text(rulesBox, 12, S.GOLD_DIM, nil, "bold")
+    head:SetPoint("TOPLEFT", 2, -3)
+    head:SetText(S.Upper(L.RULES_TITLE))
+    local edit = S.Ghost(S.FitButton(rulesBox, L.RULES_EDIT, 20, 40))
+    edit:SetPoint("TOPRIGHT", 0, 0)
+    edit:SetScript("OnClick", function() ns.ShowRules() end)
+    rulesMore = S.Text(rulesBox, 12, S.FAINT)
+    rulesMore:SetPoint("RIGHT", edit, "LEFT", -6, 0)
+    head:SetPoint("RIGHT", rulesMore, "LEFT", -6, 0)
+    head:SetWordWrap(false)
+    head:SetJustifyH("LEFT")
+    for i = 1, RULES_MAX do
+        local r = makeRuleRow(rulesBox)
+        r:SetPoint("TOPLEFT", 0, -(RULES_HEAD + (i - 1) * (RULE_H + 4)))
+        r:SetPoint("TOPRIGHT", 0, -(RULES_HEAD + (i - 1) * (RULE_H + 4)))
+        ruleRows[i] = r
+    end
     attachRow = kindTiles(tools, ns.AttachKind, kindTip, true)
-    tools:SetHeight(attachRow:GetHeight() + (30 + 6) + (SEND_H + 8))
-    attachRow:SetPoint("TOPLEFT")
-    attachRow:SetPoint("TOPRIGHT")
+    layoutTools(0)
     goldBtn = S.Button(tools, 1, 30)
     S.SetButtonIcon(goldBtn, GOLD_ICON)
     goldBtn:SetPoint("TOPLEFT", attachRow, "BOTTOMLEFT", 0, -6)
@@ -406,13 +497,90 @@ local function fillLog(r, e)
     r.text:SetText(S.Hex(S.FAINT) .. when .. "|r  " .. e.sender .. "  " .. table.concat(what, ", "))
 end
 
+-- A mailing rule: the kind (a click turns to the next, a right-click back), the recipient
+-- (typed, or the next own character from the button beside it), an on/off switch, and Remove
+-- for the player's own rules. The line under it says where a rule comes from.
+local function makeRule(r)
+    r.kind = S.Button(r, 150, 30)
+    r.kind:SetPoint("TOPLEFT", 4, -6)
+    r.kind:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    r.kind:SetScript("OnClick", function(self, button)
+        local rule = self:GetParent().rule
+        if rule and not rule.auto then ns.CycleRuleKind(rule.index, button == "RightButton"); ns.Refresh() end
+    end)
+    r.arrow = S.Text(r, 14, S.FAINT)
+    r.arrow:SetPoint("LEFT", r.kind, "RIGHT", 6, 0)
+    r.arrow:SetText("»")
+    r.on = S.Switch(r)
+    r.on:SetPoint("RIGHT", -4, 0)
+    r.on:SetScript("OnClick", function(self)
+        local rule = self:GetParent().rule
+        ns.SetRuleOn(rule, rule.off and true or false)
+        ns.Refresh()
+    end)
+    r.pick = S.Button(r, 30, 30)
+    r.pick:SetPoint("RIGHT", r.on, "LEFT", -10, 0)
+    r.pick:SetPoint("TOP", r.kind, "TOP")
+    S.SetButtonIcon(r.pick, S.TAB.char)
+    r.pick.btnIcon:ClearAllPoints()
+    r.pick.btnIcon:SetPoint("CENTER")
+    r.pick:SetScript("OnClick", function(self) ns.CycleRuleTo(self:GetParent().rule); ns.Refresh() end)
+    r.pick:SetScript("OnEnter", function(self)
+        if GameTooltip and GameTooltip.SetOwner then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L.PICK_OWN)
+            GameTooltip:Show()
+        end
+    end)
+    r.pick:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r.to = S.Edit(r, 120, 30)
+    r.to:SetPoint("LEFT", r.arrow, "RIGHT", 6, 0)
+    r.to:SetPoint("RIGHT", r.pick, "LEFT", -6, 0)
+    r.to:SetJustifyH("LEFT")
+    S.Placeholder(r.to, L.RULE_NAME)
+    local function save(self)
+        local rule = self:GetParent().rule
+        if rule and strtrim(self:GetText() or "") ~= (rule.to or "") then ns.SetRuleTo(rule, self:GetText()); ns.Refresh() end
+    end
+    r.to:SetScript("OnEnterPressed", function(self) save(self); self:ClearFocus() end)
+    r.to:SetScript("OnEditFocusLost", save)
+    r.to:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    r.why = S.Text(r, 12, S.FAINT)
+    r.why:SetPoint("TOPLEFT", r.kind, "BOTTOMLEFT", 4, -4)
+    r.why:SetWordWrap(false)
+    r.del = S.Ghost(S.FitButton(r, L.REMOVE, 20, 40))
+    r.del:SetPoint("TOPRIGHT", r.pick, "BOTTOMRIGHT", 0, -2)
+    r.del:SetScript("OnClick", function(self) ns.RemoveRule(self:GetParent().rule.index); ns.Refresh() end)
+    r.why:SetPoint("RIGHT", r.del, "LEFT", -6, 0)
+end
+
+local function fillRule(r, rule)
+    r.rule = rule
+    r.kind:SetText(L["KIND_" .. rule.kind:upper()])
+    S.SetButtonIcon(r.kind, ns.KindIcon(rule.kind))
+    if not (r.to.HasFocus and r.to:HasFocus()) and r.to:GetText() ~= rule.to then r.to:SetText(rule.to or "") end
+    r.on:SetChecked(not rule.off)
+    r.del:SetShown(not rule.auto)
+    local why
+    if rule.off then why = L.RULE_OFF
+    elseif rule.auto then why = ns.RuleWhy(rule)
+    elseif (rule.to or "") == "" then why = L.RULE_NO_NAME
+    else why = L.RULE_OWN end
+    r.why:SetText(why)
+    r:SetAlpha(rule.off and 0.6 or 1)
+end
+
 function ns.RefreshSettings()
     if not settings then return end
+    local rules = ns.Rules()
+    rulesList:SetData(rules)
+    rulesEmpty:SetShown(#rules == 0)
     logList:SetData(ns.db.log)
     logEmpty:SetShown(#ns.db.log == 0)
 end
 
--- One switch, the log, and one line about Take all: there is nothing else to set.
+-- The panel's switch on top, then two pages: the mailing rules (Add a rule in the footer) and
+-- the log with one line about Take all.
 local function buildSettings()
     settings = S.Window("GulliMailFrame", L.TITLE, S.NARROW_W, S.DOCK_H)
     local body, width = settings.body, settings.inner[1]
@@ -423,20 +591,61 @@ local function buildSettings()
     card:SetPoint("TOPLEFT")
     card:SetPoint("TOPRIGHT")
     card:SetHeight(h)
-    local hint = S.Note(body, 12)
+    local footer = S.Footer(settings)
+    addBtn = footer:Add(S.Primary(S.FitButton(footer, L.ADD_RULE, 32, 140)))
+    addBtn:SetScript("OnClick", function() ns.AddRule(); ns.Refresh() end)
+    setPages = {}
+    setTabs = S.PageTabs(body, { L.TAB_RULES, L.TAB_LOG }, math.floor((width - 4) / 2), function(i)
+        for j, pg in ipairs(setPages) do pg:SetShown(i == j) end
+        footer:SetShown(i == 1)
+        ns.RefreshSettings()
+    end, nil, { S.TAB.rules, S.TAB.recent })
+    setTabs.frame:ClearAllPoints()
+    setTabs.frame:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -S.GAP)
+    for i = 1, 2 do
+        local pg = CreateFrame("Frame", nil, body)
+        pg:SetPoint("TOPLEFT", setTabs.frame, "BOTTOMLEFT", 0, -S.GAP)
+        pg:SetPoint("BOTTOMRIGHT")
+        setPages[i] = pg
+    end
+
+    local rcard = S.Card(setPages[1], nil)
+    rcard:SetAllPoints()
+    local help = S.Note(rcard.body, 12)
+    help:SetPoint("TOPLEFT", 2, 0)
+    help:SetPoint("TOPRIGHT", -2, 0)
+    help:SetText(L.RULES_HELP)
+    help:SetMaxLines(3)
+    rulesList = S.List(rcard.body, 62, makeRule, fillRule)
+    rulesList:SetPoint("TOPLEFT", 0, -52)
+    rulesList:SetPoint("BOTTOMRIGHT", -10, 0)
+    rulesEmpty = S.Empty(rcard.body)
+    rulesEmpty:Set(L.RULES_EMPTY, L.RULES_EMPTY_SUB)
+
+    local hint = S.Note(setPages[2], 12)
     hint:SetPoint("BOTTOMLEFT", 2, 0)
     hint:SetPoint("BOTTOMRIGHT", -2, 0)
     hint:SetWidth(width - 4)
     hint:SetText(L.TAKE_HINT)
-    local lcard = S.Card(body, L.LOG_TITLE, nil, "Interface\\Icons\\INV_Misc_PocketWatch_01")
-    lcard:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 0, -S.GAP)
+    local lcard = S.Card(setPages[2], L.LOG_TITLE, nil, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+    lcard:SetPoint("TOPLEFT")
     lcard:SetPoint("BOTTOMRIGHT", 0, 40)
     logList = S.List(lcard.body, 26, makeLog, fillLog)
     logList:SetPoint("TOPLEFT")
     logList:SetPoint("BOTTOMRIGHT", -10, 0)
     logEmpty = S.Empty(lcard.body)
     logEmpty:Set(L.LOG_EMPTY, "")
+    setTabs:Select(1)
     settings:SetScript("OnShow", function() ns.RefreshSettings() end)
+end
+
+function ns.ShowLogTab() if setTabs then setTabs:Select(2) end end
+
+-- The settings window on its Rules page (the link on the Write tab).
+function ns.ShowRules()
+    local w = ns.Window()
+    if not w:IsShown() then S.ToggleWindow(w) end
+    if setTabs then setTabs:Select(1) end
 end
 
 function ns.Toggle()

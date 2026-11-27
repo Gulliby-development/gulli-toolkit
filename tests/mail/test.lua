@@ -184,9 +184,10 @@ test("Take all takes everything but cash on delivery and GM letters; old switche
            inbox = { { sender = "AH", invoice = "seller", money = 100 }, { sender = "Bob", money = 50, items = { 1 } },
                      { sender = "Cod", cod = 10, items = { 2 } } } })
     local ns = Load()
-    for _, k in ipairs({ "money", "player", "sold", "keepFree", "keepGold", "subject", "rules" }) do
+    for _, k in ipairs({ "money", "player", "sold", "keepFree", "keepGold", "subject" }) do
         eq(ns.db[k], nil, k .. " is gone from the save")
     end
+    eq(ns.db.rules[1].to, "Bob", "the mailing rules stay")
     eq(ns.db.panel, true)
     W.Fire("MAIL_SHOW")
     local s = ns.Summary()
@@ -642,6 +643,70 @@ test("a letter of gold alone gets a subject, which the player can change", funct
     SendMailFrame:Hide()
     eq(ns.AutoSubject(), nil, "only on the send tab")
     SendMailSubjectEditBox, MoneyInputFrame_GetCopper, SendMailFrame_Update = nil, nil, nil
+end)
+
+test("a kind goes to the own character whose profession uses it, never to this one", function()
+    Fake({ profs = { { "Mining", 120, 300, nil, 186 } },
+           db = { alts = { Realm = { Alliance = { Zot = true, Amy = true, Kim = true } } },
+                  profs = { Realm = { Alliance = { Zot = { [171] = 120 }, Amy = { [171] = 250, [197] = 75 }, Kim = { [164] = 90 } } } } },
+           bags = { [0] = { [1] = { id = 10, count = 20 }, [2] = { id = 12, count = 5 }, [3] = { id = 14, count = 8 } } },
+           classes = { [10] = { 7, 9 }, [12] = { 7, 5 }, [14] = { 7, 7 } } })
+    local ns = Load()
+    W.Fire("PLAYER_LOGIN")
+    eq(ns.db.profs.Realm.Alliance.Tester[186], 120, "this character's professions are noted at login")
+    eq((ns.ProfAlt("herb")), "Amy", "the highest skill")
+    eq((ns.ProfAlt("ore")), "Kim", "blacksmith or engineer")
+    eq(ns.ProfAlt("gem"), nil, "a kind no profession is tied to")
+    local letters = ns.RuleLetters()
+    eq(#letters, 3, "herbs and cloth to Amy, ore to Kim")
+    eq(letters[1].kind, "cloth", "in the order of the kinds"); eq(letters[2].to, "Amy"); eq(letters[2].total, 20)
+    ns.db.profs.Realm.Alliance.Tester[171] = 1
+    eq(ns.ProfAlt("herb"), nil, "an alchemist keeps their own herbs")
+end)
+
+test("the player's rules come first, a default can go off and comes back", function()
+    Fake({ db = { alts = { Realm = { Alliance = { Amy = true, Bob = true } } }, profs = { Realm = { Alliance = { Amy = { [171] = 50 } } } } },
+           bags = { [0] = { [1] = { id = 10 }, [2] = { id = 11 } } }, classes = { [10] = { 7, 9 }, [11] = { 7, 9 } } })
+    local ns = Load()
+    local rules = ns.Rules()
+    eq(#rules, 1); eq(rules[1].auto, true); eq(rules[1].to, "Amy")
+    ns.SetRuleOn(rules[1], false)
+    eq(#ns.RuleLetters(), 0, "turned off")
+    eq(ns.Rules()[1].off, true, "still listed, to turn on again")
+    ns.SetRuleOn(ns.Rules()[1], true)
+    eq(#ns.RuleLetters(), 1)
+    ns.SetRuleTo(ns.Rules()[1], "Bob")
+    rules = ns.Rules()
+    eq(#rules, 1, "the default became the player's own rule"); eq(rules[1].auto, nil); eq(rules[1].to, "Bob")
+    ns.AddRule("herb", "Cy")
+    eq(ns.RuleLetters()[1].total, 2, "an item goes to the first rule only")
+    eq(#ns.RuleLetters(), 1)
+    ns.RemoveRule(1); ns.RemoveRule(1)
+    eq(ns.Rules()[1].auto, true, "no rule of its own: the profession rule is back")
+    ns.AddRule("herb", "Tester")
+    eq(#ns.RuleLetters(), 0, "nothing goes to the character playing, and the default stays behind the own rule")
+end)
+
+test("fill puts one letter of a rule together, up to twelve; the player sends it", function()
+    local bag = {}
+    for i = 1, 14 do bag[i] = { id = 10 } end
+    Fake({ db = { rules = { { kind = "cloth", to = "Bob" } } }, bags = { [0] = bag }, classes = { [10] = { 7, 5 } } })
+    local ns = Load()
+    eq(ns.FillRule(1), 0, "away from a mailbox nothing happens")
+    W.Fire("MAIL_SHOW")
+    eq(ns.RuleLetters()[1].letters, 2)
+    eq(ns.FillRule(1), 12)
+    eq(W.to, "Bob"); eq(SendMailFrame:IsShown(), true)
+    eq(W.sends, 0, "never sent without the player's click")
+    eq(ns.RuleLetters()[1].stacks, 2)
+end)
+
+test("Chores' snapshot fills in a character Mail has not seen yet", function()
+    Fake({ db = { alts = { Realm = { Alliance = { ["Amy Rose"] = true } } } } })
+    GulliChoresDB = { chars = { ["Amy-Realm"] = { name = "Amy", faction = "Alliance", profs = { { name = "Tailoring", line = 197, skill = 80 } } } } }
+    local ns = Load()
+    eq((ns.ProfAlt("cloth")), "Amy Rose")
+    GulliChoresDB = nil
 end)
 
 W.finish()

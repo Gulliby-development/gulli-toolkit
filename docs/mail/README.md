@@ -28,6 +28,7 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 - **Names to tap.** Your other characters on this realm and faction, the last 10 players you wrote to or took a letter from, your friends and your guild. Type to search.
 - **Faster sending.** Put all cloth, herbs, ore, leather, elemental, dust, gems or consumables (or all trade goods) into the letter with one tap. Each tile shows the item you have most of and how many stacks go; hover it to see the list; the **Auction** tile puts in everything a price addon (Auctionator, auxForever, Naowh Forever, TradeSkillMaster or Hammerprice) says sells for more at the auction than at a vendor, after the auction's cut, for the character who sells there; **All gold** puts in all your gold (the postage stays, so the letter can be sent) and shows the amount before you tap. A tap on a tile or on **All gold** opens the game's send tab by itself.
 - **Send in the panel.** A line says who gets the letter and what is in it, and **Send** beside it sends it. The name stays after the letter went, so the next one to the same character needs no new tap. Nothing is sent without your tap on **Send**.
+- **Mailing rules.** Each kind of goods goes to one of your characters: herbs to your alchemist, cloth to your tailor, leather to your leatherworker, ore to your blacksmith or engineer, dust to your enchanter. You need to set nothing: Gulli Mail knows the professions of each character you logged in with and picks the one with the highest skill. Change the recipient, turn a rule off or add your own (any kind, any character) on the **Mailing rules** page. At the mailbox, **By rules** on the **Write** tab lists what would go and to whom; **Fill** puts one letter together, and you press **Send**.
 - **A subject is never missing.** A letter with only gold gets its subject filled in with the amount, and a letter with items the first item's name when the game left it empty, so **Send** works right away. Change it if you like; a subject you typed stays.
 - **A log** of the last 50 letters you took from.
 
@@ -42,7 +43,8 @@ Ten letters from the auction house mean ten taps per letter. Gulli Mail takes th
 1. Open a mailbox. The panel opens next to it, and closes by itself when you close the mailbox or walk away.
 2. Tap **Take all**, a tile under it (such as **Herbs**) for only that kind, or **Take** on one letter.
 3. To write, open **Write** and tap a name. Use the tiles under the names to fill the letter, then press **Send**.
-4. Type `/gml` away from a mailbox for the panel's switch and the log.
+4. To send your goods to your crafters, tap **Fill** beside a line under **By rules**, then press **Send**. Tap **Fill** again for the next letter.
+5. Type `/gml` away from a mailbox for the panel's switch, the mailing rules and the log.
 
 ## FAQ
 
@@ -59,9 +61,15 @@ Type `/gml` away from a mailbox and switch off **Show the panel at the mailbox**
 </details>
 
 <details>
-<summary><b>Where are the Take all switches and the mailing rules?</b></summary>
+<summary><b>Where are the Take all switches?</b></summary>
 
 They are gone since 1.16.0. **Take all** takes everything but cash on delivery and GM letters. To take only some things, use the tiles under it or **Take** on one letter.
+</details>
+
+<details>
+<summary><b>Herbs do not go to my alchemist</b></summary>
+
+Log in once with your alchemist, with the addon on: then Gulli Mail knows that character's professions. A character who has the profession itself keeps its goods, and nothing is ever sent to the character you play. Rules made before 1.16.0 were removed with that version; add them again on the **Mailing rules** page.
 </details>
 
 <details>
