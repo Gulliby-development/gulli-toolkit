@@ -110,7 +110,9 @@ def todo(path, limit=MAX_PAGES):
     snap = m["djc"].load()
     for qid in m["djc"].quests():
         for site, base in m["djc"].SITES.items():
-            if site != "forever" and qid >= 90000:
+            # WoW Forever's own quests are only on its site, and the main site keeps only the
+            # quests of the original game (its oldest comments); Season of Discovery is on classic.
+            if (site != "forever" and qid >= 90000) or (site == "main" and qid >= 30000):
                 continue
             if site not in snap["quests"].get(str(qid), {}):
                 add("%s/quest=%d" % (base, qid), "djc:" + site, qid)

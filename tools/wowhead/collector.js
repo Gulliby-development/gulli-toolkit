@@ -28,7 +28,9 @@
     if (d < 0 || d - at > 3000) return null;
     try { return JSON.parse(arrayAt(t, d)); } catch (e) { return null; }
   };
-  const blocked = (t) => /Human Verification|challenge-platform|cf-chl-/i.test(t) && !/lv_comments0|g_npcs|setupScalingRewards/.test(t);
+  // A refused page: the status, or a challenge page's title (every page carries Cloudflare's scripts).
+  const blocked = (t, status) => status === 403 || status === 429 || status === 503 ||
+    /<title>\s*(Just a moment|Human Verification|Attention Required)/i.test(t);
   const plain = (h) => { const d = document.createElement("div"); d.innerHTML = h.replace(/<(script|style|table)[^>]*>[^]*?<\/\1>/gi, "").replace(/<br\s*\/?>/gi, "\n"); return d.textContent.trim(); };
   // A quest page as { own, name, objective, description, xp, comments }: own is false when Wowhead
   // sent another page (an unknown quest goes to the quest list), xp the experience at the quest's level.
@@ -72,10 +74,10 @@
         task = { key: url, url, kind: task[1], id: task[2] };
       }
       if (s.pages && s.pages[task.key]) { s.state.done++; continue; }
-      let t = "";
-      try { t = await fetch(task.url, { credentials: "include" }).then((r) => r.text()); }
+      let t = "", status = 0;
+      try { const r = await fetch(task.url, { credentials: "include" }); status = r.status; t = await r.text(); }
       catch (e) { s.state.failed++; save(s); await new Promise((r) => setTimeout(r, PAUSE)); continue; }
-      if (blocked(t)) { s.state.stopped = "verification at " + task.url; save(s); return s.state; }
+      if (blocked(t, status)) { s.state.stopped = "verification at " + task.url; save(s); return s.state; }
       const got = task.kind === "npc" ? npc(t) : quest(t, task.id);
       (s.pages = s.pages || {})[task.key] = got;
       s.state.done++;
