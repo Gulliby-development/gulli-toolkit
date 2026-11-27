@@ -487,9 +487,10 @@ driver:SetScript("OnEvent", function(_, event, unit, ...)
         ns.Refresh()
     elseif event == "UI_ERROR_MESSAGE" then
         local msg = ...
+        if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then msg = nil end
         -- A stronger buff is already on (Camp Benefits and the like): not that buff there for now.
         if lastCast.unit and lastCast.spell and now() - (lastCast.t or 0) < 1.5
-            and msg == _G.SPELL_FAILED_AURA_BOUNCED then
+            and msg ~= nil and msg == _G.SPELL_FAILED_AURA_BOUNCED then
             ns.Bounced(lastCast.unit, lastCast.spell)
             dirty = true
         end

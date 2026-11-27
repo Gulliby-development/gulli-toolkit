@@ -488,6 +488,7 @@ f:SetScript("OnEvent", function(self, event, a1, ...)
     if event == "UI_ERROR_MESSAGE" then
         -- Retail sends (type, message), older clients only the message.
         local msg = (...) or a1
+        if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return end
         if ns.db.popup and (msg == ERR_INV_FULL or msg == ERR_BAG_FULL) and not InCombatLockdown()
             and ns.ShowPopup then
             ns.ShowPopup()

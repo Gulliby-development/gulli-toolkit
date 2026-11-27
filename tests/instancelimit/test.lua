@@ -31,6 +31,21 @@ test("a reset or a new group makes the same dungeon count again", function()
     eq(#ns.db.entries, 3)
 end)
 
+test("a secret system or error line is left alone", function()
+    Fake({})
+    local ns = Load()
+    W.Go("The Deadmines", "party", 36)
+    W.Go("Westfall", "none", 0)
+    local limit = ns.db.limit
+    issecretvalue = function(v) return type(v) == "string" end
+    W.Fire("CHAT_MSG_SYSTEM", "The Deadmines has been reset.")
+    W.Fire("UI_ERROR_MESSAGE", 0, TRANSFER_ABORT_TOO_MANY_INSTANCES or "You have entered too many instances recently.")
+    issecretvalue = nil
+    W.Go("The Deadmines", "party", 36)
+    eq(#ns.db.entries, 1, "a secret reset line does not reopen the dungeon")
+    eq(ns.db.limit, limit, "a secret refusal does not change the limit")
+end)
+
 test("the same dungeon counts again after an hour", function()
     Fake({ now = 1000 })
     local ns = Load()

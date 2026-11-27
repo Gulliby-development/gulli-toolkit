@@ -660,7 +660,7 @@ end
 
 -- Reads one system message; returns the member and what happened when it is a share reply.
 function ns.ShareReply(msg)
-    if type(msg) ~= "string" then return end
+    if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return end
     for _, r in ipairs(SHARE_REPLIES) do
         local g = _G[r[1]]
         if type(g) == "string" then

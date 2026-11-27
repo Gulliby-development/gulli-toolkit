@@ -324,7 +324,8 @@ end
 
 -- Called with each UI error; a refused cast right after a click blocks that reminder.
 function ns.OnError(msg)
-    if msg and msg == _G.SPELL_FAILED_AURA_BOUNCED and lastClick.key and now() - (lastClick.t or 0) < 1.5 then
+    if type(msg) ~= "string" or secret(msg) then return false end
+    if msg == _G.SPELL_FAILED_AURA_BOUNCED and lastClick.key and now() - (lastClick.t or 0) < 1.5 then
         ns.Bounced(lastClick.key)
         lastClick.key = nil
         return true
