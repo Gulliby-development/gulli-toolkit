@@ -100,8 +100,27 @@ LEVELS = {
     # zone page does not rank a boss (her NPC page is merged by merge_npcs.py)
     8929: 58,
 }
-RARES = {247032, 262716, 269111}       # Lyn the Ignored, Kroog, Gortek the Apprentice
-NAMES = {253214: "Izha'Rel and Tor'Rel"}  # ATT: Ravasaur Hunters
+# Classic bosses and rares in the AllTheThings order that Wowhead's zone page does not rank
+# (summoned, event or quest bosses): npc -> level. The rest of the ATT order (trash, quest
+# NPCs) stays out; a boss of the order the journal misses gets its level here.
+CLASSIC = {
+    # Scholomance: the bosses of the Viewing Room ring before Gandling, and Darkreaver
+    10505: 60, 11261: 60, 10507: 60, 10504: 60, 14516: 62,
+    12876: 28,                                  # Blackfathom Deeps: Baron Aquanis
+    10096: 59, 16059: 60, 9476: 60, 9039: 58,   # Blackrock Depths: Grimstone, Theldren, Doomgrip, Doom'rel
+    10264: 60,                                  # Blackrock Spire: Solakar Flamewreath
+    14349: 57, 14326: 59, 14321: 59, 14323: 59, 14322: 59, 11467: 59,  # Dire Maul
+    599: 18, 596: 18,                           # Deadmines: Marisa du'Paige, Brainwashed Noble
+    6231: 26,                                   # Gnomeregan: Techbot
+    7057: 38,                                   # Uldaman: Digmaster Shovelphlange
+    8443: 55, 5722: 53, 5719: 52, 5720: 51,     # Sunken Temple: Avatar of Hakkar, the dragons
+    11143: 60, 16102: 62,                       # Stratholme: Postmaster Malown, Sothos
+}
+LEVELS.update(CLASSIC)
+RARES = {247032, 262716, 269111,       # Lyn the Ignored, Kroog, Gortek the Apprentice
+         599, 596, 6231, 7057, 11467}   # Marisa du'Paige, Brainwashed Noble, Techbot, Digmaster, Tsu'zee
+NAMES = {253214: "Izha'Rel and Tor'Rel",  # ATT: Ravasaur Hunters
+         14322: "Stomper Kreeg", 16102: "Jarien and Sothos", 9039: "The Seven"}
 SKIP = {262688}                         # the second Ravasaur Hunter of that encounter
 # Bosses and rares the game shows that neither Wowhead's zone page nor ATT lists:
 # dungeon -> [(npc, name, rare)], placed after the others.
@@ -259,6 +278,7 @@ def build(snapshot, walk=None):
         # zone page had no NPC of); elsewhere only those the game showed with a level, so
         # trash in the order stays out.
         alone = not (bosses or rares)
+        snap = {as_int(b.get("id")): b for b in (d.get("bosses") or []) + (d.get("rares") or [])}
         have = {as_int(b.get("id")) for b in bosses + rares}
         seen_names = {NAMES.get(as_int(b.get("id")), b.get("name")) for b in bosses + rares}
         names, att_loot = w.get("names") or {}, w.get("loot") or {}
@@ -267,6 +287,13 @@ def build(snapshot, walk=None):
                 continue
             if alone or npc in LEVELS:
                 b = att_boss(npc, names.get(str(npc)) or str(npc), att_loot.get(str(npc)) or [], npc in RARES)
+                # Wowhead knows it, though not as a boss: its model, abilities and chances.
+                if npc in snap:
+                    w_b = dict(snap[npc], rare=npc in RARES)
+                    if any(keep_drop(x, own) for x in w_b.get("drops") or []):
+                        b = w_b
+                    else:
+                        b = dict(w_b, att=b["att"])
                 if b["name"] in seen_names:
                     continue
                 seen_names.add(b["name"])
@@ -291,6 +318,7 @@ def build(snapshot, walk=None):
         listed = set()
         for b in bosses + rares:
             listed.update(as_int(x.get("id")) for x in b.get("drops") or [] if keep_drop(x, own))
+            listed.update(as_int(x.get("id")) for x in b.get("att") or [])
         named = {as_int(b.get("id")) for b in bosses + rares}
         zone, got = [], set()
         for z in d.get("zoneDrops") or []:

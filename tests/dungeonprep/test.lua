@@ -525,11 +525,18 @@ test("the journal data: bosses in the order of the way, the skull boss at level 
     local dm = ns.Data.boss.DM
     assert(dm and #dm >= 8, "the Deadmines has its bosses")
     eq(dm[1][2], "Rhahk'Zor", "the first boss first")
-    local names = {}
-    for _, b in ipairs(ns.Bosses("DM")) do names[#names + 1] = b.name end
-    eq(names[#names], "Miner Johnson", "the rare comes last")
-    eq(names[#names - 2], "Edwin VanCleef", "VanCleef on his ship")
-    eq(names[#names - 1], "Cookie", "the cook comes after him, before the rares")
+    local names, rares = {}, {}
+    for _, b in ipairs(ns.Bosses("DM")) do
+        if b.rare then rares[b.name] = true else assert(not next(rares), "the rares come last"); names[#names + 1] = b.name end
+    end
+    assert(rares["Miner Johnson"], "the rare comes last")
+    eq(names[#names - 1], "Edwin VanCleef", "VanCleef on his ship")
+    eq(names[#names], "Cookie", "the cook comes after him, before the rares")
+    -- Scholomance: the bosses of the ring before Gandling, which Wowhead's zone page does not rank.
+    local scholo = {}
+    for _, b in ipairs(ns.Bosses("SCHOLO")) do scholo[#scholo + 1] = b.name end
+    eq(table.concat(scholo, ", ", #scholo - 5), "Instructor Malicia, Doctor Theolen Krastinov, Lorekeeper Polkelt, "
+        .. "The Ravenian, Lord Alexi Barov, Darkmaster Gandling", "the ring, then Gandling last")
     local zf = ns.Bosses("ZF")
     eq(zf[1].name, "Theka the Martyr", "not Sergeant Bly, the lowest level")
     eq(zf[10].name, "Chief Ukorz Sandscalp", "the last boss last")
