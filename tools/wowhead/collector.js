@@ -67,7 +67,10 @@
     s.state = { total: tasks.length, done: 0, failed: 0, stopped: "", started: Date.now() };
     save(s);
     for (let task of tasks) {
-      if (Array.isArray(task)) task = { key: task[0], url: task[0], kind: task[1], id: task[2] };
+      if (Array.isArray(task)) {
+        const url = task[0].replace(/^~/, "https://www.wowhead.com");   // weekly.py tasks writes ~ for the site
+        task = { key: url, url, kind: task[1], id: task[2] };
+      }
       if (s.pages && s.pages[task.key]) { s.state.done++; continue; }
       let t = "";
       try { t = await fetch(task.url, { credentials: "include" }).then((r) => r.text()); }

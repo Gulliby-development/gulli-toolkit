@@ -193,8 +193,9 @@ def merge(path):
 
 
 def compact():
-    """The tasks of todo.json as [url, kind, id], for gulliWH()."""
-    return [[t["url"], t["kind"], t["id"]] for t in json.load(open(TODO, encoding="utf-8"))]
+    """The tasks of todo.json as [url, kind, id], for gulliWH(); ~ stands for https://www.wowhead.com."""
+    return [[t["url"].replace("https://www.wowhead.com", "~", 1), t["kind"], t["id"]]
+            for t in json.load(open(TODO, encoding="utf-8"))]
 
 
 def script(out):
