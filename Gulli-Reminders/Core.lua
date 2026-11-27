@@ -147,14 +147,26 @@ local function spellIcon(id)
     if C_Spell and C_Spell.GetSpellTexture then return C_Spell.GetSpellTexture(id) end
     return GetSpellInfo and select(3, GetSpellInfo(id)) or nil
 end
--- Known by id, or by name in the spellbook (a client may know a higher rank only).
+-- Known by id, or by name in the spellbook (a client may know a higher rank only). The
+-- spellbook also lists spells still to learn (a level 7 hunter's Aspect of the Hawk): such a
+-- slot is never known, whatever else says so, or the click would cast a spell the player lacks.
+local FUTURE = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.FutureSpell or 2
+local function bookSlot(id)
+    if not (C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell) then return nil end
+    local ok, slot, bank = pcall(C_SpellBook.FindSpellBookSlotForSpell, id, false, true, true)
+    if not ok or not slot or (issecretvalue and issecretvalue(slot)) then return nil end
+    if C_SpellBook.GetSpellBookItemType then
+        local ok2, kind = pcall(C_SpellBook.GetSpellBookItemType, slot, bank)
+        if ok2 and kind == FUTURE then return "future" end
+    end
+    return "known"
+end
 local function knows(id)
+    local book = bookSlot(id)
+    if book == "future" then return false end
     if IsPlayerSpell and IsPlayerSpell(id) then return true end
     if IsSpellKnown and IsSpellKnown(id) then return true end
-    if C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell then
-        return C_SpellBook.FindSpellBookSlotForSpell(id) ~= nil
-    end
-    return false
+    return book == "known"
 end
 ns.Knows = knows
 ns.SpellNameOf, ns.SpellIconOf = spellName, spellIcon
