@@ -1647,6 +1647,17 @@ S.mobfinder.mobs = { spec = { level = 14 }, open = function(ns)
     ns.Info("Sandfury Guardian").count = 2; ns.Info("Sandfury Guardian").zone = "Tanaris"
     ns.Toggle(); ns.ShowPage(1)
 end }
+-- The quest mobs nearby from Auto Quest's quest mob button, over the player's own list.
+S.mobfinder.quest = { spec = { level = 14 }, open = function(ns)
+    ns.db.names = { "Sandfury Guardian" }
+    ns.Info("Sandfury Guardian").count = 2; ns.Info("Sandfury Guardian").zone = "Tanaris"
+    GulliAutoQuest = { QuestMobs = function()
+        return { { name = "Hippogryph Matriarch", have = 0, need = 1 },
+                 { name = "Hippogryph Protector", have = 2, need = 6 },
+                 { name = "Shen'dar Harpy Windcaller", have = 3, need = 8, item = 731 } }
+    end }
+    ns.Toggle(); ns.ShowPage(1)
+end }
 S.mobfinder.settings = { spec = { level = 14 }, open = function(ns) ns.Toggle(); ns.ShowPage(3) end }
 -- Crates: two Flowering crates, Apprentice Herbs and Expert Ore at the auction house, with some
 -- herbs in the bags and the bank, after Calculate and the first price asked.

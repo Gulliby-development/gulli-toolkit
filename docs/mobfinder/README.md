@@ -10,6 +10,7 @@ Type the mobs you look for. When one of them shows its nameplate, you hear a sou
 
 - **Add a mob with one click.** Hold **Alt** and click a mob or its corpse: it goes on the list, and a notice with **Undo** shows. Or right-click the target's portrait and choose **Look for this mob**.
 - **A list of mobs.** Type a name, take your target, or press **Zone rares** to add every rare of the zone you are in. A part of the name is enough, and the case does not matter (also in Russian); a mob taken from your target is looked for by its whole name. Each mob on the **Mobs** page has its own switch and shows how often and where it was found.
+- **Quest mobs in one click.** With Auto Quest on, the **Mobs** page lists the quest mobs near you that your quest mob button looks for. Press **Add** beside one, or **Add all**.
 - **Zone rares in every language.** Rares are found by their game id, so the list works in any client language.
 - **A card when a mob is found.** It shows the portrait, name, level and rare or elite, with your Target key on the button. **Target** takes the mob as your target, **Tell group** writes where it is in the group chat, **Pin** puts a pin on the map. The card closes itself after 30 seconds. Place it in **Unlock frames** in `/gulli`.
 - **A key for Target.** Bind one key in the window; it targets the last mob found.

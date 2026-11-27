@@ -402,6 +402,32 @@ test("the window builds and shows the saved settings", function()
     for i = 1, 3 do if ns.ShowPage then ns.ShowPage(i) end; ns.Refresh() end
 end)
 
+test("quest mobs from Auto Quest: listed when not on the list yet, added one by one or all", function()
+    Fake { db = { names = { "Kobold Vermin" }, enabled = true } }
+    local ns = Load()
+    GulliAutoQuest = nil
+    eq(#ns.QuestMobs(), 0, "without Auto Quest")
+    GulliAutoQuest = { QuestMobs = function()
+        return { { name = "kobold vermin", have = 1, need = 5 }, { name = "Hippogryph Matriarch", have = 0, need = 1 },
+                 { name = "Murloc Forager", have = 2, need = 8, item = 731 }, { name = "" } }
+    end }
+    local q = ns.QuestMobs()
+    eq(#q, 2, "one already on the list (any case), one without a name")
+    eq(q[1].name .. " " .. q[1].have .. "/" .. q[1].need, "Hippogryph Matriarch 0/1")
+    eq(q[2].drop, 731, "a dropper keeps its item")
+    ns.Toggle(); ns.ShowPage(1); ns.Refresh()
+    eq(ns.AddName(q[1].name), true)
+    eq(ns.Info("Hippogryph Matriarch").exact, true, "added by its whole name")
+    eq(#ns.QuestMobs(), 1)
+    eq(ns.AddQuestMobs(), 1)
+    eq(#ns.QuestMobs(), 0)
+    eq(table.concat(ns.db.names, ","), "Kobold Vermin,Hippogryph Matriarch,Murloc Forager")
+    ns.Refresh()
+    GulliAutoQuest = { QuestMobs = function() error("broken") end }
+    eq(#ns.QuestMobs(), 0, "an error in Auto Quest shows nothing")
+    GulliAutoQuest = nil
+end)
+
 test("registers with Gulli Toolkit when the core is loaded", function()
     local got
     Fake { toolkit = { Register = function(m) got = m end } }

@@ -427,6 +427,34 @@ function ns.RemoveName(name)
     return true
 end
 
+-- The quest mobs nearby that Auto Quest's quest mob button lists and that are not on the list
+-- yet, at most ns.QUEST_MAX: { name, have, need, drop } (drop: the quest item it drops). Empty without Auto Quest.
+ns.QUEST_MAX = 6
+function ns.QuestMobs()
+    if not ns.db then return {} end
+    local api = GulliAutoQuest and GulliAutoQuest.QuestMobs
+    if type(api) ~= "function" then return {} end
+    local ok, list = pcall(api)
+    if not ok or type(list) ~= "table" then return {} end
+    local out = {}
+    for _, m in ipairs(list) do
+        if type(m) == "table" and readable(m.name) and m.name ~= "" and not ns.OnList(m.name) then
+            out[#out + 1] = { name = m.name, have = tonumber(m.have), need = tonumber(m.need), drop = tonumber(m.item) }
+            if #out >= ns.QUEST_MAX then break end
+        end
+    end
+    return out
+end
+
+-- Adds every quest mob of ns.QuestMobs: how many were new.
+function ns.AddQuestMobs()
+    local n = 0
+    for _, m in ipairs(ns.QuestMobs()) do
+        if ns.AddName(m.name) then n = n + 1 end
+    end
+    return n
+end
+
 -- Adds a unit (the target by default): its name, and whether it was new.
 function ns.QuickAdd(unit)
     local name, guid = ns.Addable(unit or "target")

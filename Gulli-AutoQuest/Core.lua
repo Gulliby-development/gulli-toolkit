@@ -551,6 +551,18 @@ function ns.QuestMobs()
     return names
 end
 
+-- For other modules (Mob Finder): the quest mobs nearby as copies { name, have, need, item },
+-- never the tables the button keeps.
+GulliAutoQuest = GulliAutoQuest or {}
+function GulliAutoQuest.QuestMobs()
+    if not ns.db then return {} end
+    local out = {}
+    for i, m in ipairs(ns.QuestMobList()) do
+        out[i] = { name = m.name, have = m.have, need = m.need, item = m.item }
+    end
+    return out
+end
+
 -- The macro for names, tried from names[first] on, round the list. Out of a fight it starts with
 -- no target, so a target that is none of the names never stops it; in a fight the target stays
 -- (clearing it would stop the attack). /targetexact takes the nearest of a name, a corpse too, so
