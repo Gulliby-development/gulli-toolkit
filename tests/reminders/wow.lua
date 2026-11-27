@@ -143,6 +143,15 @@ function Fake(spec)
         return 1, W.form == i, true, id
     end
     IsPlayerSpell = function(id) for _, k in ipairs(W.known) do if k == id then return true end end return false end
+    -- W.book[id]: "spell" or "future" (the spellbook lists a spell still to learn too).
+    W.book = spec.book or {}
+    C_SpellBook = {
+        FindSpellBookSlotForSpell = function(id, _, _, future)
+            local kind = W.book[id]
+            if kind == "spell" or (kind == "future" and future) then return id, 0 end
+        end,
+        GetSpellBookItemType = function(slot) return W.book[slot] == "future" and 2 or 1, slot, slot end,
+    }
     C_Spell = { GetSpellName = function(id) return "Spell" .. id end, GetSpellTexture = function() return 1 end }
     W.left, W.pet, W.dead = spec.left or {}, spec.pet or false, false
     -- W.secret[name]: the game refuses that aura by index, as in a fight (an error, like the client);

@@ -781,4 +781,24 @@ test("the hub gets a summary, move and reset", function()
     GulliToolkit = nil
 end)
 
+test("a hunter's aspect click casts the aspect the hunter knows, not one still to learn", function()
+    -- Level 7: the spellbook lists Aspect of the Hawk to learn, and the game may still call it known.
+    Fake({ class = "HUNTER", known = { 13165, 13163 }, book = { [13165] = "future", [13163] = "spell" } })
+    local ns = Load()
+    local aspect
+    for _, b in ipairs(ns.ClassBuffs("HUNTER")) do if b.key == "ASPECT" then aspect = b end end
+    eq(aspect.known, 13163, "Monkey is the one known")
+    local m
+    for _, e in ipairs(ns.Missing()) do if e.key == "ASPECT" then m = e end end
+    eq(m.act.spell, "Spell13163", "the click casts Aspect of the Monkey")
+    -- No aspect learned at all: no reminder.
+    Fake({ class = "HUNTER", known = { 13165 }, book = { [13165] = "future" } })
+    ns = Load()
+    for _, e in ipairs(ns.Missing()) do assert(e.key ~= "ASPECT", "no aspect known, no reminder") end
+    -- A rank the spellbook finds by its rank 1 id still counts.
+    Fake({ class = "HUNTER", book = { [13163] = "spell" } })
+    ns = Load()
+    for _, b in ipairs(ns.ClassBuffs("HUNTER")) do if b.key == "ASPECT" then eq(b.known, 13163) end end
+end)
+
 W.finish()
