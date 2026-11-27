@@ -385,7 +385,8 @@ local function patterns()
 end
 
 function ns.System(msg)
-    if type(msg) ~= "string" then return end
+    -- System and error lines can be secret values (in a fight, in an instance): leave them alone.
+    if type(msg) ~= "string" or secret(msg) then return end
     patterns()
     local name = msg:match(resetPattern)
     if name then
