@@ -17,6 +17,6 @@ ns.EVENT_QUESTS = {
     [6847]=true,[6848]=true,[6981]=true,[7001]=true,[7027]=true,[7046]=true,[7141]=true,[7142]=true,[7481]=true,[7482]=true,
     [7843]=true,[8114]=true,[8115]=true,[8121]=true,[8122]=true,[8149]=true,[8150]=true,[8240]=true,[8373]=true,[8447]=true,
     [8519]=true,[8736]=true,[8868]=true,[86796]=true,[87491]=true,[88857]=true,[91696]=true,[93125]=true,[93572]=true,[93585]=true,
-    [94556]=true,[94927]=true,[94969]=true,[95056]=true,[96811]=true,[97331]=true,[98430]=true,[99053]=true,[99123]=true,[99144]=true,
-    [99435]=true,
+    [94556]=true,[94927]=true,[94963]=true,[94969]=true,[95056]=true,[96811]=true,[97331]=true,[98430]=true,[99053]=true,[99123]=true,
+    [99144]=true,[99435]=true,
 }
