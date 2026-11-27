@@ -5,7 +5,7 @@
 // weekly.py merge needs, so the results stay small (localStorage holds a few MB).
 // Page text is untrusted: it is only cut and parsed as JSON, never run.
 (() => {
-  const PAUSE = 4000, STORE = "gulliWH", KEEP = 12, BODY = 1000;
+  const PAUSE = 4000, WAIT = 60000, RETRIES = 3, STORE = "gulliWH", KEEP = 12, BODY = 1000;
   const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { return {}; } };
   const save = (s) => localStorage.setItem(STORE, JSON.stringify(s));
   // The JSON array that starts at the first "[" after `from`, brackets matched outside strings.
@@ -68,7 +68,10 @@
     const s = load();
     s.state = { total: tasks.length, done: 0, failed: 0, stopped: "", started: Date.now() };
     save(s);
-    for (let task of tasks) {
+    let tries = 0, redo = false;
+    for (let i = 0; i < tasks.length; i++) {
+      if (redo) { redo = false; i--; }
+      let task = tasks[i];
       if (Array.isArray(task)) {
         const url = task[0].replace(/^~/, "https://www.wowhead.com");   // weekly.py tasks writes ~ for the site
         task = { key: url, url, kind: task[1], id: task[2] };
@@ -77,7 +80,15 @@
       let t = "", status = 0;
       try { const r = await fetch(task.url, { credentials: "include" }); status = r.status; t = await r.text(); }
       catch (e) { s.state.failed++; save(s); await new Promise((r) => setTimeout(r, PAUSE)); continue; }
-      if (blocked(t, status)) { s.state.stopped = "verification at " + task.url; save(s); return s.state; }
+      // A busy site (429, 503) often answers again a minute later: wait, then try that page again.
+      if (blocked(t, status)) {
+        tries++;
+        if (tries > RETRIES) { s.state.stopped = "verification (" + status + ") at " + task.url; save(s); return s.state; }
+        s.state.waiting = status; save(s);
+        await new Promise((r) => setTimeout(r, WAIT * tries));
+        redo = true; continue;
+      }
+      tries = 0; s.state.waiting = 0;
       const got = task.kind === "npc" ? npc(t) : quest(t, task.id);
       (s.pages = s.pages || {})[task.key] = got;
       s.state.done++;
