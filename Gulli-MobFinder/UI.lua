@@ -301,13 +301,23 @@ end
 
 ---- Refresh ------------------------------------------------------------------------
 
+-- The quest mobs nearby first (from Auto Quest's quest mob button, each with Add), under a head
+-- with Add all, then the player's own list under its head; no heads without quest mobs.
 local function mobItems()
     local items = {}
+    local quest = ns.QuestMobs()
+    if #quest > 0 then
+        items[1] = { head = "quest", n = #quest }
+        for _, m in ipairs(quest) do items[#items + 1] = { quest = m, name = m.name } end
+        items[#items + 1] = { head = "list" }
+    end
+    local mine = #items
     for i, n in ipairs(ns.db.names) do items[#items + 1] = { name = n, i = i } end
     local ids = {}
     for id, name in pairs(ns.db.ids) do ids[#ids + 1] = { name = name, id = id } end
     table.sort(ids, function(a, b) return a.name < b.name end)
     for _, e in ipairs(ids) do items[#items + 1] = e end
+    if mine > 0 and #items == mine then items[mine] = nil end
     return items
 end
 
@@ -430,7 +440,29 @@ local function buildSettings(page, width)
     return st:Height()
 end
 
+local HEAD_H, ROW_H = 30, 40
+local KILL_ICON = "Interface\\Icons\\INV_Sword_04"
+
 local function makeMobRow(r)
+    r.head = S.Text(r, 12, S.GOLD_DIM, "bold")
+    r.head:SetPoint("LEFT", 2, 0)
+    r.head:SetWordWrap(false)
+    r.addAll = S.FitButton(r, L.ADD_ALL, 26, 80)
+    r.addAll:SetPoint("RIGHT", 0, 0)
+    r.addAll:SetScript("OnClick", function()
+        ns.AddQuestMobs()
+        ns.Refresh()
+    end)
+    r.head:SetPoint("RIGHT", r.addAll, "LEFT", -8, 0)
+    r.add = S.FitButton(r, L.ADD, 28, 80)
+    r.add:SetPoint("RIGHT", 0, 0)
+    r.add:SetScript("OnClick", function(self)
+        local e = self:GetParent().entry
+        if e and e.quest then ns.AddName(e.quest.name) end
+        ns.Refresh()
+    end)
+    r.icon = S.IconBox(r, 26)
+    r.icon:SetPoint("LEFT", 6, 0)
     r.toggle = S.Switch(r)
     r.toggle:SetPoint("LEFT", 0, 0)
     r.remove = S.Close(r, function(self)
@@ -459,8 +491,45 @@ local function makeMobRow(r)
     r.sub:SetWordWrap(false)
 end
 
+local function showParts(r, kind)
+    r.head:SetShown(kind == "head")
+    r.addAll:SetShown(kind == "head" and r.entry.head == "quest")
+    r.add:SetShown(kind == "quest")
+    r.icon:SetShown(kind == "quest")
+    r.text:SetShown(kind ~= "head")
+    r.sub:SetShown(kind ~= "head")
+    r.remove:SetShown(kind == "mob")
+    -- Text and the line under it end before the button of the row.
+    local right = kind == "quest" and r.add or r.remove
+    r.text:ClearAllPoints()
+    r.text:SetPoint("TOPLEFT", kind == "quest" and r.icon or r.toggle, "TOPRIGHT", 10, kind == "quest" and 2 or 0)
+    r.text:SetPoint("RIGHT", right, "LEFT", -8, 0)
+    r.sub:ClearAllPoints()
+    r.sub:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -2)
+    r.sub:SetPoint("RIGHT", right, "LEFT", -8, 0)
+end
+
 local function fillMobRow(r, e)
     r.entry = e
+    if e.head then
+        showParts(r, "head")
+        r.toggle:Hide()
+        r.head:SetText(S.Upper(e.head == "quest" and L.QUEST_HEAD or L.LIST_HEAD))
+        return
+    end
+    if e.quest then
+        showParts(r, "quest")
+        r.toggle:Hide()
+        local m = e.quest
+        local icon = m.drop and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(m.drop)
+        r.icon:SetIcon(icon or KILL_ICON)
+        r.text:SetText(m.name)
+        local line = m.drop and L.QUEST_DROP or L.QUEST_KILL
+        if m.have and m.need then line = line .. S.DOT .. m.have .. "/" .. m.need end
+        r.sub:SetText(line)
+        return
+    end
+    showParts(r, "mob")
     r.text:SetText(e.name)
     if e.id then
         r.toggle:Hide()
@@ -525,7 +594,8 @@ local function buildMobs(page, width)
     hint:SetPoint("RIGHT")
     hint:SetWordWrap(false)
     hint:SetText(L.QUICK_HINT)
-    mobList = S.List(page, 40, makeMobRow, fillMobRow)
+    mobList = S.List(page, ROW_H, makeMobRow, fillMobRow)
+    mobList.heightOf = function(item) return item.head and HEAD_H or ROW_H end
     mobList:SetPoint("TOPLEFT", 0, -(top + 98))
     mobList:SetPoint("BOTTOMRIGHT", -10, 0)
     mobEmpty = S.Empty(mobList)
@@ -600,6 +670,17 @@ function ns.ShowPage(i)
     for j, p in ipairs(pages) do p:SetShown(j == i) end
     ns.Refresh()
 end
+
+-- The quest mobs follow the quest log and the zone while the window shows; a burst redraws once.
+local questWatch = CreateFrame("Frame")
+for _, e in ipairs({ "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA" }) do questWatch:RegisterEvent(e) end
+local questSoon
+questWatch:SetScript("OnEvent", function()
+    if questSoon or not frame or not frame:IsShown() or not pages[1]:IsShown() then return end
+    questSoon = true
+    local function go() questSoon = nil; ns.Refresh() end
+    if C_Timer and C_Timer.After then C_Timer.After(0.5, go) else go() end
+end)
 
 -- Applies a Target macro and the key that waited for the end of a fight.
 local regen = CreateFrame("Frame")

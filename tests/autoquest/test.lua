@@ -350,6 +350,11 @@ test("quest mob key: names and counts from the objectives of the zone only, boun
     eq(#list, 2)
     W.zone = "Tanaris"
     eq(#ns.QuestMobList(), 0, "no quest of the zone, no mob")
+    eq(#GulliAutoQuest.QuestMobs(), 0, "the public list follows the zone too")
+    W.zone = "Westfall"
+    local pub = GulliAutoQuest.QuestMobs()
+    eq(pub[1].name .. " " .. pub[1].have .. "/" .. pub[1].need, "Harvest Watcher 2/8", "public copies for Mob Finder")
+    W.zone = "Tanaris"
     W.zone = nil
     mobs = { "Kobold Vermin", "Harvest Watcher" }
     eq(ns.TargetMacro(mobs), mac(false, "Kobold Vermin", "Harvest Watcher"))
