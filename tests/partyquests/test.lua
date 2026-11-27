@@ -158,6 +158,16 @@ test("a member who turned in a quest is not offered it; the game's share reply t
     eq(ns.turnedByShare.Bob[155], true)
 end)
 
+test("a secret system line is no share reply", function()
+    Fake({ quests = LOG, party = { { name = "Ann", quests = {} } } })
+    local ns = Load()
+    issecretvalue = function(v) return type(v) == "string" and v:find("completed") ~= nil end
+    local who = ns.ShareReply("Bob has completed that quest.")
+    W.Fire("CHAT_MSG_SYSTEM", "Bob has completed that quest.")
+    issecretvalue = nil
+    eq(who, nil)
+end)
+
 test("Share all shares each missing quest one second apart; auto share waits for its switch", function()
     Fake({ quests = LOG, party = { { name = "Ann", quests = {} } } })
     local ns = Load()
