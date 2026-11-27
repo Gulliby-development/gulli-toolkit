@@ -1,7 +1,8 @@
 -- Equip new bags: a plain bag that comes into the bags goes into an empty bag slot at once (out
 -- of a fight; Shift skips it). With no slot free, a bigger bag than the smallest worn one gets a
--- notice, and its button swaps them when the smaller bag is empty. Only a worn plain bag is ever
--- offered for a swap: a quiver, an ammo pouch or a soul bag gives what a plain bag cannot.
+-- notice, and its button swaps them when the smaller bag is empty. A special bag (a quiver, an ammo
+-- pouch, a soul, herb, enchanting or reagent bag) is only ever offered for a worn bag of its own
+-- kind, and a plain bag only for a plain one: a quiver gives what a plain bag cannot.
 
 local _, ns = ...
 
@@ -22,16 +23,19 @@ local function invSlot(bag)
 end
 local function pickup(bag, slot) local C = C_Container or {}; (C.PickupContainerItem or PickupContainerItem)(bag, slot) end
 
--- A plain bag (class Container, subclass Bag): never a quiver, a soul bag or a herb bag.
-local function isPlainBag(id)
-    if not id then return false end
-    local classID, subclassID
-    if C_Item and C_Item.GetItemInfoInstant then
-        local _, _, _, _, _, c, s = C_Item.GetItemInfoInstant(id)
-        classID, subclassID = c, s
-    end
-    return classID == ITEM_CONTAINER and subclassID == 0
+local ITEM_QUIVER = 11
+
+-- The kind of a bag item: "c<subclass>" for a container (c0 a plain bag, others soul, herb,
+-- enchanting, reagent ...), "q<subclass>" for a quiver or an ammo pouch, nil for anything else.
+function ns.BagKind(id)
+    if not id or not (C_Item and C_Item.GetItemInfoInstant) then return nil end
+    local _, _, _, _, _, c, s = C_Item.GetItemInfoInstant(id)
+    if c == ITEM_CONTAINER then return "c" .. tostring(s or 0) end
+    if c == ITEM_QUIVER then return "q" .. tostring(s or 0) end
+    return nil
 end
+
+local function isPlainBag(id) return ns.BagKind(id) == "c0" end
 
 local slotsPattern
 local function pattern()
@@ -57,12 +61,13 @@ function ns.BagItemSlots(id)
 end
 
 local function bagCount() return NUM_BAG_SLOTS or 4 end
+-- With WoW Forever's reagent bag slot (5) too.
+local function wornCount() return math.max(NUM_TOTAL_EQUIPPED_BAG_SLOTS or 0, bagCount()) end
 
--- The worn bag slots: { bag, inv, empty, slots, free } for bags 1 .. NUM_BAG_SLOTS (the reagent
--- bag slot takes only reagent bags).
+-- The worn bag slots: { bag, inv, empty, id, slots, free } for bags 1 .. the last worn bag slot.
 function ns.WornBags()
     local out = {}
-    for bag = 1, bagCount() do
+    for bag = 1, wornCount() do
         local inv = invSlot(bag)
         if inv then
             local worn = GetInventoryItemID and GetInventoryItemID("player", inv)
@@ -80,13 +85,13 @@ local function put(bag, slot, inv)
     if ClearCursor and CursorHasItem and CursorHasItem() then ClearCursor() end
 end
 
--- The plain bags that came into the bags since the last look: { bag, slot, id }.
+-- The bags of any kind that came into the bags since the last look: { bag, slot, id }.
 local function arrivals()
     local now, out = {}, {}
     for bag = 0, bagCount() do
         for slot = 1, numSlots(bag) do
             local id = itemID(bag, slot)
-            if isPlainBag(id) then
+            if ns.BagKind(id) then
                 local key = bag * 100 + slot
                 now[key] = id
                 if seen and seen[key] ~= id then out[#out + 1] = { bag = bag, slot = slot, id = id } end
@@ -116,7 +121,8 @@ local function offerSwap(new, worn)
               buttons = buttons, seconds = 20 })
 end
 
--- Puts every new plain bag on: an empty slot first, else offers to swap the smallest worn bag.
+-- Puts every new plain bag on: an empty slot first, else offers to swap the smallest worn bag of
+-- the same kind (a special bag only ever for one of its own kind).
 function ns.EquipNewBags()
     -- In a fight nothing is looked at, so a bag that comes in then is still new afterwards.
     if InCombatLockdown and InCombatLockdown() then return 0 end
@@ -124,8 +130,12 @@ function ns.EquipNewBags()
     if #new == 0 or ns.TweakSkip() then return 0 end
     local done = 0
     for _, e in ipairs(new) do
-        local slot
-        for _, w in ipairs(ns.WornBags()) do if w.empty then slot = w break end end
+        local kind, slot = ns.BagKind(e.id), nil
+        if kind == "c0" then
+            for _, w in ipairs(ns.WornBags()) do
+                if w.empty and w.bag <= bagCount() then slot = w break end
+            end
+        end
         if slot then
             put(e.bag, e.slot, slot.inv)
             done = done + 1
@@ -133,7 +143,7 @@ function ns.EquipNewBags()
             local size = ns.BagItemSlots(e.id)
             local small
             for _, w in ipairs(ns.WornBags()) do
-                if isPlainBag(w.id) and (not small or w.slots < small.slots) then small = w end
+                if not w.empty and ns.BagKind(w.id) == kind and (not small or w.slots < small.slots) then small = w end
             end
             if size and small and size > small.slots then offerSwap(e, small) end
         end

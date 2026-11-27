@@ -2501,7 +2501,7 @@ test("appearance collector: new looks get a line and keep junk selling away, by 
     C_TransmogCollection = nil
 end)
 
-test("equip new bags: a new plain bag goes into an empty slot, never in a fight or with Shift", function()
+test("equip new bags: a new plain bag goes into an empty slot, a special bag only swaps its own kind", function()
     local ns = tweakNs()
     local bags = { [0] = { 101 }, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
     local worn = { [31] = 150, [32] = 150, [33] = 150 }   -- the fourth bag slot is empty
@@ -2550,6 +2550,42 @@ test("equip new bags: a new plain bag goes into an empty slot, never in a fight 
     eq(ns.EquipNewBags(), 0)
     eq(#toasts, 1, "the smallest plain bag is")
     eq(toasts[1].buttons, nil, "a bag with items in it cannot swap")
+    -- A special bag is offered only for a worn one of its own kind, and only when it is bigger.
+    local kinds = { [120] = { 11, 2, 8 }, [121] = { 11, 2, 16 }, [122] = { 11, 3, 16 }, [123] = { 1, 1, 20 },
+                    [124] = { 1, 11, 24 }, [125] = { 1, 11, 12 } }
+    C_Item.GetItemInfoInstant = function(id)
+        if kinds[id] then return id, nil, nil, nil, nil, kinds[id][1], kinds[id][2] end
+        return id, nil, nil, nil, nil, (id >= 100 and 1 or 4), (id == 102 and 2 or 0)
+    end
+    C_TooltipInfo = { GetItemByID = function(id)
+        return { lines = { { leftText = ((kinds[id] and kinds[id][3]) or 10) .. " Slot Bag" } } } end }
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = 5
+    worn = { [31] = 120, [32] = 150, [33] = 150, [34] = 150, [35] = 125 }
+    size = { [31] = 8, [32] = 10, [33] = 10, [34] = 10, [35] = 12 }
+    bags[1], bags[5] = {}, {}
+    bags[0] = { 1 }
+    ns.EquipNewBags()
+    toasts = {}
+    bags[0][2] = 121
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 1, "a bigger quiver is offered for the smaller quiver")
+    eq(toasts[1].buttons ~= nil, true, "the quiver is empty: it can swap")
+    toasts[1].buttons[1].onClick()
+    eq(put[#put], 31, "into the quiver's slot")
+    worn[31] = 120
+    toasts = {}
+    bags[0][3] = 122
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 0, "an ammo pouch is never offered for a quiver")
+    bags[0][4] = 123
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 0, "a soul bag is never offered for a plain bag, however big")
+    bags[0][5] = 124
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 1, "a bigger reagent bag is offered for the worn reagent bag")
+    toasts[1].buttons[1].onClick()
+    eq(put[#put], 35, "into the reagent bag slot")
+    NUM_TOTAL_EQUIPPED_BAG_SLOTS = nil
     ns.SetTweak("autoBags", false)
     C_Container, GetInventoryItemID, PutItemInBag, C_TooltipInfo, C_Item.GetItemInfoInstant = nil, nil, nil, nil, nil
 end)
