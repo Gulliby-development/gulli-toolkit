@@ -2504,10 +2504,11 @@ end)
 test("equip new bags: a new plain bag goes into an empty slot, never in a fight or with Shift", function()
     local ns = tweakNs()
     local bags = { [0] = { 101 }, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
-    local worn = { [31] = 50, [32] = 50, [33] = 50 }   -- the fourth bag slot is empty
+    local worn = { [31] = 150, [32] = 150, [33] = 150 }   -- the fourth bag slot is empty
+    local size = {}
     local put = {}
     C_Container = {
-        GetContainerNumSlots = function(b) return (b == 0 and 16) or (worn[30 + b] and 6) or 0 end,
+        GetContainerNumSlots = function(b) return (b == 0 and 16) or (worn[30 + b] and (size[30 + b] or 6)) or 0 end,
         GetContainerItemID = function(b, s) return bags[b] and bags[b][s] end,
         ContainerIDToInventoryID = function(b) return 30 + b end,
         PickupContainerItem = function(b, s) put.from = bags[b][s] end,
@@ -2536,6 +2537,19 @@ test("equip new bags: a new plain bag goes into an empty slot, never in a fight 
     eq(toasts[1].buttons[1] ~= nil, true, "the smaller bag is empty: it can swap")
     toasts[1].buttons[1].onClick()
     eq(put[2], 31)
+    -- A worn quiver is never swapped for a bag, however small it is: it gives the hunter haste.
+    worn = { [31] = 102, [32] = 150, [33] = 150, [34] = 150 }
+    size = { [31] = 6, [32] = 10, [33] = 10, [34] = 10 }
+    bags[1], bags[2], bags[3], bags[4] = { 1 }, { 1 }, { 1 }, { 1 }
+    bags[0][6] = 106
+    toasts = {}
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 0, "the quiver is not offered for a swap")
+    size[32] = 8
+    bags[0][7] = 107
+    eq(ns.EquipNewBags(), 0)
+    eq(#toasts, 1, "the smallest plain bag is")
+    eq(toasts[1].buttons, nil, "a bag with items in it cannot swap")
     ns.SetTweak("autoBags", false)
     C_Container, GetInventoryItemID, PutItemInBag, C_TooltipInfo, C_Item.GetItemInfoInstant = nil, nil, nil, nil, nil
 end)

@@ -1,6 +1,7 @@
 -- Equip new bags: a plain bag that comes into the bags goes into an empty bag slot at once (out
 -- of a fight; Shift skips it). With no slot free, a bigger bag than the smallest worn one gets a
--- notice, and its button swaps them when the smaller bag is empty.
+-- notice, and its button swaps them when the smaller bag is empty. Only a worn plain bag is ever
+-- offered for a swap: a quiver, an ammo pouch or a soul bag gives what a plain bag cannot.
 
 local _, ns = ...
 
@@ -132,7 +133,7 @@ function ns.EquipNewBags()
             local size = ns.BagItemSlots(e.id)
             local small
             for _, w in ipairs(ns.WornBags()) do
-                if not small or w.slots < small.slots then small = w end
+                if isPlainBag(w.id) and (not small or w.slots < small.slots) then small = w end
             end
             if size and small and size > small.slots then offerSwap(e, small) end
         end
