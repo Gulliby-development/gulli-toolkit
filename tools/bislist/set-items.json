@@ -87,10 +87,6 @@
 16680,
 "mail"
 ],
-"Beaststalker's Gloves": [
-16676,
-"mail"
-],
 "Beaststalker's Mantle": [
 16679,
 "mail"
@@ -114,6 +110,10 @@
 "Belt of Transcendence": [
 16925,
 "cloth"
+],
+"Bindings of Elements": [
+16671,
+"mail"
 ],
 "Bindings of Faith": [
 22519,
@@ -943,10 +943,6 @@
 21326,
 ""
 ],
-"Defiler's Chain Girdle": [
-20150,
-"mail"
-],
 "Defiler's Chain Greaves": [
 20154,
 "mail"
@@ -959,20 +955,12 @@
 20159,
 "cloth"
 ],
-"Defiler's Cloth Girdle": [
-20163,
-"cloth"
-],
 "Defiler's Epaulets": [
 20176,
 "cloth"
 ],
 "Defiler's Leather Boots": [
 20186,
-"leather"
-],
-"Defiler's Leather Girdle": [
-20190,
 "leather"
 ],
 "Defiler's Leather Shoulders": [
@@ -2315,6 +2303,10 @@
 19605,
 ""
 ],
+"Kilt of Elements": [
+16668,
+"mail"
+],
 "Kingsfall": [
 22802,
 ""
@@ -3247,10 +3239,6 @@
 14632,
 "cloth"
 ],
-"Necropile Mantle": [
-14633,
-"cloth"
-],
 "Necropile Robe": [
 14626,
 "cloth"
@@ -3615,10 +3603,6 @@
 272775,
 "mail"
 ],
-"Premier Field Marshal's Chainmail Helm": [
-272774,
-"mail"
-],
 "Premier Field Marshal's Dreadweave Coronal": [
 272802,
 "cloth"
@@ -3747,10 +3731,6 @@
 272545,
 "mail"
 ],
-"Premier General's Magus Amice": [
-272501,
-"cloth"
-],
 "Premier General's Mail Spaulders": [
 273343,
 "mail"
@@ -3786,10 +3766,6 @@
 "Premier Knight-Champion's Beasthide Boots": [
 272768,
 "leather"
-],
-"Premier Knight-Champion's Chainmail Boots": [
-272771,
-"mail"
 ],
 "Premier Knight-Champion's Dreadweave Boots": [
 272807,
@@ -4051,6 +4027,10 @@
 272453,
 "cloth"
 ],
+"Premier Magus Gloves": [
+272455,
+"cloth"
+],
 "Premier Magus Hood": [
 272457,
 "cloth"
@@ -4103,10 +4083,6 @@
 272803,
 "cloth"
 ],
-"Premier Marshal's Dreadweave Shoulders": [
-272804,
-"cloth"
-],
 "Premier Marshal's Dreamhide Legguards": [
 273401,
 "leather"
@@ -4122,10 +4098,6 @@
 "Premier Marshal's Flatmail Spaulders": [
 274190,
 "mail"
-],
-"Premier Marshal's Leather Epaulets": [
-272766,
-"leather"
 ],
 "Premier Marshal's Leather Leggings": [
 272765,
