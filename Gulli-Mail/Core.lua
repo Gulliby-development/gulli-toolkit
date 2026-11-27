@@ -1,6 +1,7 @@
 -- The mailbox: Take all, take by kind, one letter's Take and Return, a visit total, warnings
 -- about letters that run out (on every character), a log, and the send side: names to tap,
--- quick attach by kind, all gold to another character and a Send button of its own.
+-- quick attach by kind, all gold to another character, mailing rules (by default: the goods go to
+-- the own character whose profession uses them) and a Send button of its own.
 -- Nothing is ever sent without the player's own click on Send.
 
 local ADDON, ns = ...
@@ -881,12 +882,195 @@ function ns.Sent()
     if ns.RefreshSend then ns.RefreshSend() end
 end
 
+-- Mailing rules -------------------------------------------------------------------------------
+-- A rule sends one kind of goods to one character: { kind = "herb", to = "Name", off = true }.
+-- A kind with no rule of its own goes to the player's own character with the profession that
+-- uses it (by skill line, the highest rank first), unless the player turned that one off
+-- (db.ruleOff) or this character has the profession itself.
+ns.PROF_KINDS = { herb = { 171 }, cloth = { 197 }, leather = { 165 }, ore = { 164, 202 }, enchanting = { 333 } }
+
+local function first(name) return name and (name:match("^(%S+)") or name) end
+
+-- This character's professions as skill line -> rank, kept per realm and faction by its whole
+-- name, so the other characters know who crafts what.
+function ns.NoteProfs()
+    if not (GetProfessions and GetProfessionInfo) then return end
+    local out = {}
+    for _, i in ipairs({ GetProfessions() }) do
+        local _, _, rank, _, _, _, line = GetProfessionInfo(i)
+        if line then out[line] = rank or 0 end
+    end
+    local r, faction = realm(), UnitFactionGroup("player") or "?"
+    ns.db.profs = ns.db.profs or {}
+    ns.db.profs[r] = ns.db.profs[r] or {}
+    ns.db.profs[r][faction] = ns.db.profs[r][faction] or {}
+    ns.db.profs[r][faction][me()] = out
+end
+
+-- Skill line -> rank of one of the player's characters: Mail's own note, else what Gulli
+-- Chores saved of a character of that first name (read only).
+function ns.ProfsOf(name)
+    local r, faction = realm(), UnitFactionGroup("player") or "?"
+    local own = ns.db.profs and ns.db.profs[r] and ns.db.profs[r][faction] and ns.db.profs[r][faction][name]
+    if own then return own end
+    local db = GulliChoresDB
+    if type(db) ~= "table" or type(db.chars) ~= "table" then return {} end
+    for key, c in pairs(db.chars) do
+        local n, kr = tostring(key):match("^(.-)%-(.*)$")
+        if (n == name or n == first(name)) and (kr == r or kr == "") and type(c) == "table" and type(c.profs) == "table"
+            and (not c.faction or c.faction == faction) then
+            local out = {}
+            for _, p in ipairs(c.profs) do if p.line then out[p.line] = p.skill or 0 end end
+            return out
+        end
+    end
+    return {}
+end
+
+-- The player's own character that should get a kind: (name, skill line, rank) or nil.
+function ns.ProfAlt(key)
+    local lines = ns.PROF_KINDS[key]
+    if not lines then return nil end
+    local self = ns.ProfsOf(me())
+    for _, line in ipairs(lines) do if self[line] then return nil end end
+    local r, faction = realm(), UnitFactionGroup("player") or "?"
+    local alts = ns.db.alts[r] and ns.db.alts[r][faction] or {}
+    local best, bestLine, bestRank
+    local names = {}
+    for name in pairs(alts) do names[#names + 1] = name end
+    table.sort(names)
+    for _, name in ipairs(names) do
+        if name:lower() ~= me():lower() then
+            local p = ns.ProfsOf(name)
+            for _, line in ipairs(lines) do
+                local rank = p[line]
+                if rank and (not bestRank or rank > bestRank) then best, bestLine, bestRank = name, line, rank end
+            end
+        end
+    end
+    return best, bestLine, bestRank
+end
+
+-- Every rule in order: the player's own ({ kind, to, off, index }), then a profession rule
+-- ({ kind, to, auto, line, rank, off }) for each kind that has none.
+function ns.Rules()
+    local out, has = {}, {}
+    for i, r in ipairs(ns.db.rules or {}) do
+        out[#out + 1] = { kind = r.kind, to = r.to or "", off = r.off and true or nil, index = i }
+        has[r.kind] = true
+    end
+    for _, k in ipairs(ns.ATTACH_KINDS) do
+        if ns.PROF_KINDS[k.key] and not has[k.key] then
+            local to, line, rank = ns.ProfAlt(k.key)
+            if to then
+                out[#out + 1] = { kind = k.key, to = to, auto = true, line = line, rank = rank,
+                                  off = ns.db.ruleOff and ns.db.ruleOff[k.key] or nil }
+            end
+        end
+    end
+    return out
+end
+
+-- What the rules would send now, one entry per rule with something in the bags:
+-- { rule, to, kind, items = { { bag, slot, id } }, stacks, total, letters }. An item goes to the
+-- first rule that takes it; nothing goes to the character playing.
+function ns.RuleLetters()
+    local out, claimed = {}, {}
+    for _, r in ipairs(ns.Rules()) do
+        if not r.off and r.to ~= "" and r.to:lower() ~= me():lower() and r.to:lower() ~= (UnitName("player") or ""):lower() then
+            local e = { rule = r, to = r.to, kind = r.kind, items = {}, stacks = 0, total = 0 }
+            for _, it in ipairs(ns.ItemsOfKind(r.kind)) do
+                local key = it.bag .. ":" .. it.slot
+                if not claimed[key] then
+                    claimed[key] = true
+                    e.items[#e.items + 1] = it
+                    e.total = e.total + stackCount(it.bag, it.slot)
+                end
+            end
+            e.stacks = #e.items
+            if e.stacks > 0 then
+                e.letters = math.ceil(e.stacks / SEND_MAX)
+                out[#out + 1] = e
+            end
+        end
+    end
+    return out
+end
+
+-- Puts one letter of a rule together: the recipient and as many of its items as fit. The
+-- player presses Send. Returns how many items went in.
+function ns.FillRule(i)
+    local e = ns.RuleLetters()[i]
+    if not e or not ns.OpenSend() then return 0 end
+    ns.Pick(e.to)
+    local room, n = ns.Room(), 0
+    for _, it in ipairs(e.items) do
+        if n >= room then break end
+        if slotItem(it.bag, it.slot) == it.id then
+            useItem(it.bag, it.slot)
+            n = n + 1
+        end
+    end
+    if ns.RefreshSend then ns.RefreshSend() end
+    return n
+end
+
+-- Editing. A profession rule becomes the player's own once its recipient changes.
+function ns.AddRule(kind, to)
+    ns.db.rules = ns.db.rules or {}
+    ns.db.rules[#ns.db.rules + 1] = { kind = kind or ns.ATTACH_KINDS[1].key, to = to or "" }
+    return #ns.db.rules
+end
+function ns.RemoveRule(i) if ns.db.rules and ns.db.rules[i] then table.remove(ns.db.rules, i) end end
+function ns.SetRuleTo(r, to)
+    to = strtrim(to or "")
+    if r.auto then
+        if to == r.to then return end
+        r.index = ns.AddRule(r.kind, to)
+        r.auto = nil
+    end
+    if ns.db.rules[r.index] then ns.db.rules[r.index].to = to end
+    r.to = to
+end
+function ns.SetRuleOn(r, on)
+    if r.auto then
+        ns.db.ruleOff = ns.db.ruleOff or {}
+        ns.db.ruleOff[r.kind] = (not on) or nil
+    elseif ns.db.rules[r.index] then
+        ns.db.rules[r.index].off = (not on) or nil
+    end
+    r.off = (not on) or nil
+end
+-- The next (or, with back, the one before) kind of the player's own rule.
+function ns.CycleRuleKind(i, back)
+    local r = ns.db.rules[i]
+    if not r then return end
+    local idx = 1
+    for k, kind in ipairs(ns.ATTACH_KINDS) do if kind.key == r.kind then idx = k end end
+    local n = #ns.ATTACH_KINDS
+    r.kind = ns.ATTACH_KINDS[(idx - 1 + (back and -1 or 1)) % n + 1].key
+end
+-- The player's other characters, for the recipient picker.
+function ns.OwnNames()
+    local out = {}
+    for _, e in ipairs(ns.Names()) do if e.group == "alt" then out[#out + 1] = e.name end end
+    return out
+end
+-- The next own character after the rule's recipient.
+function ns.CycleRuleTo(r)
+    local names = ns.OwnNames()
+    if #names == 0 then return end
+    local at = 0
+    for k, n in ipairs(names) do if n:lower() == (r.to or ""):lower() then at = k end end
+    ns.SetRuleTo(r, names[at % #names + 1])
+end
+
 -- Events -------------------------------------------------------------------------------------
 
 ns.DEFAULTS = { panel = true }
--- Settings of older versions: Take all takes everything, the subject is always filled, the
--- mailing rules are gone. Dropped on load.
-local GONE = { "money", "sold", "bought", "expired", "player", "keepFree", "keepGold", "subject", "rules" }
+-- Settings of older versions: Take all takes everything, the subject is always filled. Dropped
+-- on load.
+local GONE = { "money", "sold", "bought", "expired", "player", "keepFree", "keepGold", "subject" }
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -899,6 +1083,9 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.db.alts = ns.db.alts or {}
         ns.db.chars = ns.db.chars or {}
         ns.db.log = ns.db.log or {}
+        ns.db.rules = ns.db.rules or {}
+        ns.db.ruleOff = ns.db.ruleOff or {}
+        ns.db.profs = ns.db.profs or {}
         for _, k in ipairs(GONE) do ns.db[k] = nil end
         for k, v in pairs(ns.DEFAULTS) do if ns.db[k] == nil then ns.db[k] = v end end
         ns.MergeRealmless()
@@ -936,6 +1123,7 @@ f:SetScript("OnEvent", function(self, event, a1)
             end
         end
         ns.db.alts[r][faction][full] = true
+        ns.NoteProfs()
         warnOthers()
     elseif event == "MAIL_SEND_SUCCESS" then
         -- after the game's own handler emptied the letter
@@ -945,6 +1133,7 @@ f:SetScript("OnEvent", function(self, event, a1)
         ns.to, ns.sentTo = nil, nil
         ns.visit = { money = 0, sold = 0, items = 0 }
         ns.warned = false
+        ns.NoteProfs()
         ns.HookSubject()
         if ns.db.panel and ns.ShowPanel then ns.ShowPanel() end
     elseif event == "MAIL_INBOX_UPDATE" then
