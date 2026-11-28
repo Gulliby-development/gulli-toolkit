@@ -82,6 +82,24 @@ test("class reagents follow the level and keep only the best seed", function()
     eq(Load().AddPreset(), 0)
 end)
 
+test("class reagents follow the highest rank the priest knows", function()
+    Fake({ class = "PRIEST", level = 58 })
+    local ns = Load()
+    local known = { [21562] = true, [27683] = true }
+    IsPlayerSpell = function(id) return known[id] == true end
+    eq(ns.AddPreset(), 2, "Prayer of Fortitude 1 and Prayer of Shadow Protection")
+    eq(ns.char.list[17028], 20, "Holy Candle for Prayer of Fortitude 1")
+    eq(ns.char.list[17029], 20, "Sacred Candle for Prayer of Shadow Protection")
+    ns.char.list[17028], ns.char.list[17029] = nil, nil
+    known[21564] = true
+    eq(ns.AddPreset(), 1, "rank 2 takes a Sacred Candle too")
+    eq(ns.char.list[17028], nil, "no Holy Candle once rank 2 is known")
+    known = {}
+    ns.char.list[17029] = nil
+    eq(ns.AddPreset(), 0, "no prayer known, no candles, whatever the level")
+    IsPlayerSpell = nil
+end)
+
 test("Legacy's Reagent Economy: class reagents are not bought, checked or added; Flash Powder stays", function()
     Fake({ class = "MAGE", level = 60, bags = { [17020] = 0 } })
     local ns = Load()
