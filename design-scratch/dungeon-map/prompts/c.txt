@@ -1,0 +1,1 @@
+Style variant C: dark background #17110c with slight isometric depth, so the three levels read as stacked layers: the upper mine tunnels as the top layer, the lower foundry and smelting rooms one layer down, and the sea cove with the ship lowest, each layer with a visible thin side wall or drop shadow so the height steps are obvious. Keep it clean, flat-shaded and readable.
