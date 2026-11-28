@@ -637,7 +637,7 @@ function ns.QuestBosses(q, key)
         for _, b in ipairs(list) do
             if b[7] ~= 1 then n = n + 1 end
             if b[2] == name then
-                out[#out + 1] = { npc = b[1], name = b[2], min = b[4] or 0, max = b[5] or 0, display = b[6] or 0,
+                out[#out + 1] = { npc = b[1], name = b[2], min = b[4] or 0, max = b[5] or 0, display = ns.DisplayOf and ns.DisplayOf(b) or b[6] or 0,
                                   rare = b[7] == 1, n = n, of = of }
                 break
             end
@@ -1323,6 +1323,10 @@ f:SetScript("OnEvent", function(self, event, a1)
         self:RegisterEvent("BAG_UPDATE_DELAYED")
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         self:RegisterEvent("LOOT_READY")
+        self:RegisterEvent("PLAYER_TARGET_CHANGED")
+        self:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+        self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+        self:RegisterEvent("ENCOUNTER_START")
         self:RegisterEvent("QUEST_ACCEPTED")
         self:RegisterEvent("QUEST_TURNED_IN")
         return
@@ -1334,6 +1338,16 @@ f:SetScript("OnEvent", function(self, event, a1)
     if event == "LOOT_READY" then
         if ns.OnLoot then ns.OnLoot() end
         return
+    end
+    -- A boss the data has no model for: its model is noted the first time it is seen.
+    if ns.NoteModel then
+        if event == "PLAYER_TARGET_CHANGED" then ns.NoteModel("target") return end
+        if event == "UPDATE_MOUSEOVER_UNIT" then ns.NoteModel("mouseover") return end
+        if event == "NAME_PLATE_UNIT_ADDED" then ns.NoteModel(a1) return end
+        if event == "ENCOUNTER_START" then
+            for i = 1, 5 do ns.NoteModel("boss" .. i) end
+            return
+        end
     end
     if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns.guide and ns.StepGuide then ns.StepGuide() end
     -- A big dungeon asks for hundreds of loot items at once and each answer is an event:
