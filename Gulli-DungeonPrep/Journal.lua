@@ -64,6 +64,49 @@ function ns.BossDungeon(npc)
     return x and x.key
 end
 
+-- The model of a boss the data has none for: the display id the game showed for that unit,
+-- read once through a hidden model (SetUnit, then GetDisplayInfo) and kept in `models`, so
+-- the boss shows its model from then on, and the ids can go into the data for everyone.
+function ns.SeenModel(npc) return ns.db and ns.db.models and ns.db.models[npc] end
+function ns.DisplayOf(row)
+    local d = row[6] or 0
+    if d > 0 then return d end
+    return ns.SeenModel(row[1]) or 0
+end
+
+local reader
+local function readDisplay(unit)
+    if not reader then
+        local ok, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+        if not ok or type(m) ~= "table" then return nil end
+        reader = m
+        if m.SetSize then m:SetSize(2, 2) end
+        if m.SetAlpha then m:SetAlpha(0) end
+        if m.SetPoint then m:SetPoint("TOPLEFT", UIParent, "BOTTOMRIGHT", 10, -10) end
+    end
+    if not (reader.SetUnit and reader.GetDisplayInfo) then return nil end
+    if not pcall(reader.SetUnit, reader, unit) then return nil end
+    local fine, id = pcall(reader.GetDisplayInfo, reader)
+    if reader.ClearModel then pcall(reader.ClearModel, reader) end
+    if not fine or type(id) ~= "number" or secret(id) or id <= 0 then return nil end
+    return id
+end
+
+-- Notes the model of a boss in `unit` (target, mouseover, a nameplate, boss1..) once, when the
+-- data lacks it. Behind the learn switch, like the kills.
+function ns.NoteModel(unit)
+    if type(unit) ~= "string" or not ns.Get("learn") or not UnitGUID then return end
+    local guid = UnitGUID(unit)
+    if secret(guid) then return end
+    local npc = ns.NpcOf(guid)
+    local x = npc and npcIndex()[npc]
+    if not x or (x.row[6] or 0) > 0 or ns.SeenModel(npc) then return end
+    local id = readDisplay(unit)
+    if not id then return end
+    db("models")[npc] = id
+    if ns.Refresh then ns.Refresh() end
+end
+
 -- The player's own numbers for one boss: kills, and drops by item.
 function ns.Kills(npc) return db("kills")[npc] or 0 end
 local function ownDrops(npc) return db("drops")[npc] or {} end
@@ -168,7 +211,7 @@ function ns.Bosses(key)
     local out = {}
     for i, b in ipairs((data().boss or {})[key] or {}) do
         local x = { npc = b[1], name = b[2], tag = b[3] or "", min = b[4] or 0, max = b[5] or 0,
-                    display = b[6] or 0, rare = b[7] == 1, n = i, wing = b[10] or "", spells = {}, loot = {} }
+                    display = ns.DisplayOf(b), rare = b[7] == 1, n = i, wing = b[10] or "", spells = {}, loot = {} }
         x.kills = ns.Kills(x.npc)
         -- One line per name: the data has a spell's ranks under several ids.
         local named = {}

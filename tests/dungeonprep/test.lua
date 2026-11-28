@@ -622,6 +622,47 @@ test("own drops: kills count once per corpse, chances take over after 10, unknow
     eq(ns.Kills(644), 0, "the switch stops the counting")
 end)
 
+test("a boss without a model in the data: the model the game shows is noted once and kept", function()
+    local W = Fake({})
+    local ns = Load()
+    journal(ns)
+    local units = { target = "Creature-0-1-2-3-596-7", mouseover = "Creature-0-1-2-3-639-1", nameplate1 = "Player-1-2" }
+    UnitGUID = function(u) return units[u] end
+    local reads, shows = 0, 4321
+    local make = CreateFrame
+    CreateFrame = function(kind, ...)
+        local f = make(kind, ...)
+        if kind == "PlayerModel" then
+            rawset(f, "SetUnit", function(_, u) rawset(f, "_unit", u) end)
+            rawset(f, "GetDisplayInfo", function() reads = reads + 1; return shows end)
+        end
+        return f
+    end
+    eq(ns.Bosses("DM")[3].display, 0, "no model in the data")
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.models[596], 4321, "noted from the target")
+    eq(ns.Bosses("DM")[3].display, 4321, "and shown from then on")
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(reads, 1, "read once")
+    W.Fire("UPDATE_MOUSEOVER_UNIT")
+    eq(ns.db.models[639], nil, "a boss the data has a model for is left alone")
+    W.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    eq(reads, 1, "a player is no boss")
+    shows = 0
+    ns.db.models = nil
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.models and ns.db.models[596], nil, "no display id, nothing kept")
+    shows = 4321
+    issecretvalue = function(v) return v == units.target end
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.models and ns.db.models[596], nil, "a secret GUID is left alone")
+    issecretvalue = nil
+    ns.Set("learn", false)
+    W.Fire("PLAYER_TARGET_CHANGED")
+    eq(ns.db.models and ns.db.models[596], nil, "the learn switch stops it")
+    CreateFrame, UnitGUID = make, nil
+end)
+
 test("a wished item that drops: chat, a sound and the hub's feed, unless switched off", function()
     local W = Fake({})
     local ns = Load()
