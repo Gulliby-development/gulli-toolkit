@@ -70,11 +70,11 @@ DUNGEONS = [
     ("LORDAERON", [16611, 16612, 16614, 16615, 16617], "Ruins of Lordaeron", 15, 20),
     ("EXCAVATION", [16732, 16877, 16878, 16879, 16880], "Excavation Site: Wetlands", 24, 29),
     ("DALARAN", [16544, 16558, 16559, 16562], "City of Dalaran", 28, 33),
-    ("DROWNED", [], "The Drowned City", 35, 40),
-    ("KROLDOK", [17780], "Krol'dok Stronghold", 40, 45),
-    ("ALCAZ", [], "Alcaz Prison", 48, 53),
-    ("BLACKMAW", [], "Blackmaw Hold", 55, 60),
-    ("SHAPERS", [16985], "Shaper's Terrace", 58, 60),
+    ("DROWNED", [16550], "The Drowned City", 35, 40),
+    ("KROLDOK", [17780, 16842], "Krol'dok Stronghold", 40, 45),
+    ("ALCAZ", [16620], "Alcaz Prison", 48, 53),
+    ("BLACKMAW", [16554], "Blackmaw Hold", 55, 60),
+    ("SHAPERS", [16985, 16667], "Shaper's Terrace", 58, 60),
 ]
 
 # The Forever dungeons' mobs have no spawns in the data, so they are named here: the bosses

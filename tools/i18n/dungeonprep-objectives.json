@@ -140,6 +140,15 @@
   "ru": "Добудьте Nefarian's Remit у General Drakkisath в Blackrock Spire, Overseer's License у Overlord Wyrmthalak в Blackrock Spire и Bronzebeard Wedding Contract у Emperor Thaurissan в Blackrock Depths и принесите их Pix Xizzix в Booty Bay.",
   "zh": "从 Blackrock Spire 的 General Drakkisath 处取得 Nefarian's Remit，从 Blackrock Spire 的 Overlord Wyrmthalak 处取得 Overseer's License，从 Blackrock Depths 的 Emperor Thaurissan 处取得 Bronzebeard Wedding Contract，交给 Booty Bay 的 Pix Xizzix。"
  },
+ "Acquire Ysera's Tear from the Shade of Eranikus in the Sunken Temple, a Mark of Xavius from Varrox Bleakhoof in Blackmaw Hold, and Freya's Sigil from Nanaya in the Shaper's Terrace, and bring them to Pix Xizzix in Booty Bay.": {
+  "de": "Beschafft Ysera's Tear vom Shade of Eranikus im Sunken Temple, ein Mark of Xavius von Varrox Bleakhoof in Blackmaw Hold und Freya's Sigil von Nanaya auf der Shaper's Terrace und bringt sie zu Pix Xizzix in Booty Bay.",
+  "es": "Consigue Ysera's Tear de Shade of Eranikus en el Sunken Temple, un Mark of Xavius de Varrox Bleakhoof en Blackmaw Hold y Freya's Sigil de Nanaya en Shaper's Terrace, y llévalos a Pix Xizzix en Booty Bay.",
+  "fr": "Obtenez Ysera's Tear auprès de Shade of Eranikus dans le Sunken Temple, une Mark of Xavius de Varrox Bleakhoof à Blackmaw Hold et Freya's Sigil de Nanaya sur Shaper's Terrace, puis apportez-les à Pix Xizzix à Booty Bay.",
+  "pl": "Zdobądź Ysera's Tear od Shade of Eranikus w Sunken Temple, Mark of Xavius od Varrox Bleakhoof w Blackmaw Hold oraz Freya's Sigil od Nanaya na Shaper's Terrace i zanieś je do Pix Xizzix w Booty Bay.",
+  "pt": "Obtenha Ysera's Tear de Shade of Eranikus no Sunken Temple, uma Mark of Xavius de Varrox Bleakhoof em Blackmaw Hold e Freya's Sigil de Nanaya no Shaper's Terrace, e leve-os a Pix Xizzix em Booty Bay.",
+  "ru": "Добудьте Ysera's Tear у Shade of Eranikus в Sunken Temple, Mark of Xavius у Varrox Bleakhoof в Blackmaw Hold и Freya's Sigil у Nanaya на Shaper's Terrace и отнесите их Pix Xizzix в Booty Bay.",
+  "zh": "从Sunken Temple的Shade of Eranikus处取得Ysera's Tear，从Blackmaw Hold的Varrox Bleakhoof处取得Mark of Xavius，从Shaper's Terrace的Nanaya处取得Freya's Sigil，然后把它们交给Booty Bay的Pix Xizzix。"
+ },
  "Acquire special horse feed used for feeding a spirit horse. Merideth Carlson in Southshore apparently is the source for such food. Travel to the Dire Maul dungeon in Feralas and slay Tendris Warpwood. Doing so will free the Ancient Equine Spirit. Feed it the special horse feed, thereby soothing the ": {
   "_need": [
    "pl"
@@ -2169,10 +2178,13 @@
   "pl": "Przekaż Marshalowi Maxwellowi złe wieści."
  },
  "Give Mokvar your Beaststalker's Cap and Beaststalker's Tunic.": {
-  "_need": [
-   "pl"
-  ],
-  "pl": "Oddaj Mokvarowi swoje Beaststalker's Cap i Beaststalker's Tunic."
+  "de": "Gebt Mokvar Eure Beaststalker's Cap und Eure Beaststalker's Tunic.",
+  "es": "Entrega a Mokvar tu Beaststalker's Cap y tu Beaststalker's Tunic.",
+  "fr": "Donnez à Mokvar votre Beaststalker's Cap et votre Beaststalker's Tunic.",
+  "pl": "Oddaj Mokvarowi swoje Beaststalker's Cap i Beaststalker's Tunic.",
+  "pt": "Entregue a Mokvar seu Beaststalker's Cap e sua Beaststalker's Tunic.",
+  "ru": "Отдайте Mokvar свои Beaststalker's Cap и Beaststalker's Tunic.",
+  "zh": "把你的Beaststalker's Cap和Beaststalker's Tunic交给Mokvar。"
  },
  "Give Mokvar your Coif of Elements and Vest of Elements.": {
   "de": "Gebt Mokvar Eure Coif of Elements und Vest of Elements.",
@@ -2998,6 +3010,15 @@
   "pt": "Volte a Deliana em Ironforge com Beaststalker's Boots, Beaststalker's Pants e Beaststalker's Mantle.",
   "ru": "Вернитесь к Deliana в Ironforge с Beaststalker's Boots, Beaststalker's Pants и Beaststalker's Mantle.",
   "zh": "带着 Beaststalker's Boots、Beaststalker's Pants 和 Beaststalker's Mantle 回到 Ironforge 的 Deliana 处。"
+ },
+ "Return to Deliana in Ironforge with a set of Boots of Elements, Kilt of Elements and Pauldrons of Elements.": {
+  "de": "Kehrt mit einem Satz aus Boots of Elements, Kilt of Elements und Pauldrons of Elements zu Deliana in Ironforge zurück.",
+  "es": "Vuelve con Deliana en Ironforge con un juego de Boots of Elements, Kilt of Elements y Pauldrons of Elements.",
+  "fr": "Retournez voir Deliana à Ironforge avec un ensemble Boots of Elements, Kilt of Elements et Pauldrons of Elements.",
+  "pl": "Wróć do Deliana w Ironforge z kompletem: Boots of Elements, Kilt of Elements i Pauldrons of Elements.",
+  "pt": "Volte a Deliana em Ironforge com um conjunto de Boots of Elements, Kilt of Elements e Pauldrons of Elements.",
+  "ru": "Вернитесь к Deliana в Ironforge с комплектом: Boots of Elements, Kilt of Elements и Pauldrons of Elements.",
+  "zh": "带着一套Boots of Elements、Kilt of Elements和Pauldrons of Elements回到Ironforge的Deliana那里。"
  },
  "Return to Deliana in Ironforge with a set of Boots of Valor, Legplates of Valor and Spaulders of Valor.": {
   "de": "Kehrt mit Boots of Valor, Legplates of Valor und Spaulders of Valor zu Deliana in Ironforge zurück.",
