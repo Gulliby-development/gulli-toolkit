@@ -163,10 +163,6 @@
 250594,
 "plate"
 ],
-"Blessed Plate Helm": [
-250593,
-"plate"
-],
 "Blessed Plate Leggings": [
 250591,
 "plate"
@@ -990,14 +986,6 @@
 "Defiler's Mail Pauldrons": [
 20203,
 "mail"
-],
-"Defiler's Plate Girdle": [
-20204,
-"plate"
-],
-"Defiler's Plate Greaves": [
-20208,
-"plate"
 ],
 "Defiler's Plate Spaulders": [
 20212,
@@ -1979,16 +1967,8 @@
 16949,
 "mail"
 ],
-"Green Dragonscale Breastplate": [
-15045,
-"mail"
-],
 "Green Dragonscale Gauntlets": [
 20296,
-"mail"
-],
-"Green Dragonscale Leggings": [
-15046,
 "mail"
 ],
 "Gri'lek's Charm of Might": [
@@ -3455,10 +3435,6 @@
 272496,
 "mail"
 ],
-"Premier Chain Breastplate": [
-272490,
-"mail"
-],
 "Premier Chain Gauntlets": [
 272495,
 "mail"
@@ -3914,10 +3890,6 @@
 "Premier Lieutenant Commander's Mooncloth Gloves": [
 273427,
 "cloth"
-],
-"Premier Lieutenant Commander's Plate Gauntlets": [
-272793,
-"plate"
 ],
 "Premier Lieutenant Commander's Scalemail Gauntlets": [
 274199,
@@ -5013,6 +4985,10 @@
 ],
 "Stormrage Pauldrons": [
 16902,
+"leather"
+],
+"Stormshroud Pants": [
+15057,
 "leather"
 ],
 "Striker's Diadem": [
