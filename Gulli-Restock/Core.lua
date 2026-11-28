@@ -6,19 +6,61 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- Class reagents: item, amount to keep, level the spell that needs it comes at.
--- A later entry with the same group replaces an earlier one once the level is reached.
+-- Class reagents: the spell families of each class, their ranks as { spell, item, level }, and
+-- how many of each item to keep. The highest rank of a family the character knows says which item
+-- it needs (Prayer of Fortitude takes a Holy Candle at rank 1 and a Sacred Candle at rank 2, which
+-- Prayer of Shadow Protection takes from its first rank). The level is only for a client that
+-- cannot tell which spells are known. The hub's Ready card keeps the same ranks.
 ns.PRESETS = {
-    MAGE = { { 17031, 10, 20 }, { 17032, 10, 40 }, { 17020, 20, 56 } },
-    PRIEST = { { 17028, 20, 48, "candle" }, { 17029, 20, 56, "candle" } },
-    PALADIN = { { 17033, 5, 30 }, { 21177, 40, 52 } },
-    DRUID = { { 17034, 5, 20, "seed" }, { 17035, 5, 30, "seed" }, { 17036, 5, 40, "seed" },
-              { 17037, 5, 50, "seed" }, { 17038, 5, 60, "seed" },
-              { 17021, 20, 50, "gift" }, { 17026, 20, 60, "gift" } },
-    SHAMAN = { { 17030, 5, 30 } },
-    WARLOCK = { { 5565, 5, 50 }, { 16583, 2, 60 } },
-    ROGUE = { { 5140, 10, 22 } },
+    MAGE = {
+        { { 3561, 17031, 20 }, { 3562, 17031, 20 }, { 3563, 17031, 20 }, { 3565, 17031, 20 },  -- Teleports
+          { 3566, 17031, 20 }, { 3567, 17031, 20 } },
+        { { 10059, 17032, 40 }, { 11416, 17032, 40 }, { 11417, 17032, 40 }, { 11418, 17032, 40 },  -- Portals
+          { 11419, 17032, 40 }, { 11420, 17032, 40 } },
+        { { 23028, 17020, 56 } } },                                 -- Arcane Brilliance
+    PRIEST = {
+        { { 21562, 17028, 48 }, { 21564, 17029, 60 } },  -- Prayer of Fortitude: Holy, then Sacred Candle
+        { { 27683, 17029, 56 } },                        -- Prayer of Shadow Protection
+        { { 27681, 17029, 60 } } },                      -- Prayer of Spirit
+    PALADIN = {
+        { { 19752, 17033, 30 } },                        -- Divine Intervention
+        { { 25782, 21177, 52 }, { 25894, 21177, 54 }, { 25898, 21177, 60 }, { 25895, 21177, 60 },  -- Greater
+          { 25890, 21177, 60 }, { 25899, 21177, 60 }, { 25916, 21177, 60 }, { 25918, 21177, 60 } } },
+    DRUID = {
+        { { 20484, 17034, 20 }, { 20739, 17035, 30 }, { 20742, 17036, 40 },  -- Rebirth: a seed per rank
+          { 20747, 17037, 50 }, { 20748, 17038, 60 } },
+        { { 21849, 17021, 50 }, { 21850, 17026, 60 } } },                    -- Gift of the Wild
+    SHAMAN = { { { 20608, 17030, 30 } } },                                   -- Reincarnation
+    WARLOCK = { { { 1122, 5565, 50 } }, { { 18540, 16583, 60 } } },          -- Inferno, Ritual of Doom
+    ROGUE = { { { 1856, 5140, 22 }, { 1857, 5140, 42 } } },                  -- Vanish
 }
+ns.PRESET_AMOUNT = {
+    [17031] = 10, [17032] = 10, [17020] = 20, [17028] = 20, [17029] = 20, [17033] = 5, [21177] = 40,
+    [17034] = 5, [17035] = 5, [17036] = 5, [17037] = 5, [17038] = 5, [17021] = 20, [17026] = 20,
+    [17030] = 5, [5565] = 5, [16583] = 2, [5140] = 10,
+}
+
+-- Whether the character knows a spell: true, false, or nil when the client cannot tell.
+local function knows(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then return C_SpellBook.IsSpellKnown(id) and true or false end
+    if IsPlayerSpell then return IsPlayerSpell(id) and true or false end
+    if IsSpellKnown then return IsSpellKnown(id) and true or false end
+end
+
+-- The reagent items a class needs now, in the order of its families, each once.
+function ns.ClassReagents(class, level)
+    local out, seen = {}, {}
+    for _, family in ipairs(ns.PRESETS[class or ""] or {}) do
+        local item
+        for _, r in ipairs(family) do
+            local k = knows(r[1])
+            if k == nil then k = (level or 1) >= r[3] end
+            if k then item = r[2] end
+        end
+        if item and not seen[item] then seen[item] = true; out[#out + 1] = item end
+    end
+    return out
+end
 
 -- Legacy's Reagent Economy (a node each character takes on its own): class spells need no reagent
 -- a vendor sells. The game gives no way to read it yet, so the player says so (`reagentEconomy`
@@ -26,10 +68,8 @@ ns.PRESETS = {
 -- uses it with the node (a WoW Forever bug of 2026-11).
 ns.ECONOMY_KEEPS = { [5140] = true }
 ns.VENDOR_REAGENTS = {}
-for _, list in pairs(ns.PRESETS) do
-    for _, p in ipairs(list) do
-        if not ns.ECONOMY_KEEPS[p[1]] then ns.VENDOR_REAGENTS[p[1]] = true end
-    end
+for id in pairs(ns.PRESET_AMOUNT) do
+    if not ns.ECONOMY_KEEPS[id] then ns.VENDOR_REAGENTS[id] = true end
 end
 function ns.ReagentEconomy() return ns.char ~= nil and ns.char.reagentEconomy == true end
 function ns.SetReagentEconomy(on, quiet)
@@ -224,21 +264,15 @@ function ns.AddFromText(text, amount)
     return key
 end
 
--- Adds the reagents of the player's class for its level. Returns how many were added.
+-- Adds the reagents of the player's class for the spells it knows. Returns how many were added.
 function ns.AddPreset()
     local _, class = UnitClass("player")
-    local level = UnitLevel("player")
-    local best = {}
     local added = 0
-    for _, p in ipairs(ns.PRESETS[class] or {}) do
-        if level >= p[3] and not ns.NotNeeded(p[1]) then
-            if p[4] then best[p[4]] = p else
-                if not ns.char.list[p[1]] then ns.char.list[p[1]] = p[2]; added = added + 1 end
-            end
+    for _, id in ipairs(ns.ClassReagents(class, UnitLevel("player"))) do
+        if not ns.NotNeeded(id) and not ns.char.list[id] then
+            ns.char.list[id] = ns.PRESET_AMOUNT[id] or 5
+            added = added + 1
         end
-    end
-    for _, p in pairs(best) do
-        if not ns.char.list[p[1]] then ns.char.list[p[1]] = p[2]; added = added + 1 end
     end
     if ns.Refresh then ns.Refresh() end
     return added

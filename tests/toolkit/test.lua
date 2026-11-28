@@ -1731,6 +1731,7 @@ test("Ready: repairs, bags, food and drink apart, the hearthstone and class supp
     for _, c in ipairs(ns.Readiness()) do by[c.key] = c end
     assert(by.REAGENT, "Vanish still takes Flash Powder")
     UnitClass = function() return "Priest", "PRIEST" end
+    UnitClass = function() return "Priest", "PRIEST" end
     -- Gulli Restock keeps the same switch: its answer counts, and a change goes to it too
     local restockOn
     GulliRestock = { ReagentEconomy = function() return restockOn == true end,
@@ -1741,6 +1742,25 @@ test("Ready: repairs, bags, food and drink apart, the hearthstone and class supp
     GulliRestock = nil
     ns.SetReagentEconomy(false)
     eq(GulliToolkitCharDB.reagentEconomy, nil)
+    -- the highest rank the priest knows says which candle: Shadow Protection takes Sacred Candles
+    local known = { [21562] = true, [27683] = true }
+    IsPlayerSpell = function(id) return known[id] == true end
+    local items = {}
+    for _, c in ipairs(ns.Readiness()) do if c.key == "REAGENT" then items[#items + 1] = c.item end end
+    eq(table.concat(items, ","), "17028,17029", "Holy Candle for Fortitude 1, Sacred Candle for Shadow Protection")
+    known[21564] = true
+    items = {}
+    for _, c in ipairs(ns.Readiness()) do if c.key == "REAGENT" then items[#items + 1] = c.item end end
+    eq(table.concat(items, ","), "17029", "rank 2 of Fortitude leaves the Holy Candle out")
+    known = {}
+    items = {}
+    for _, c in ipairs(ns.Readiness()) do if c.key == "REAGENT" then items[#items + 1] = c.item end end
+    eq(#items, 0, "no prayer known, no candle")
+    UnitClass = function() return "Druid", "DRUID" end
+    known = { [20484] = true, [20739] = true, [21849] = true }
+    eq(table.concat(ns.ClassReagents("DRUID", 60), ","), "17035,17021", "the seed of the highest Rebirth")
+    IsPlayerSpell = nil
+    UnitClass = function() return "Priest", "PRIEST" end
     ns.ReadySet("durMin", 30)
     ns.ReadySet("bagsMin", 5)
     by = {}

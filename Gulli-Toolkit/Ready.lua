@@ -105,16 +105,53 @@ end
 -- Classes that drink: everyone with mana.
 local NO_MANA = { WARRIOR = true, ROGUE = true, DEATHKNIGHT = true }
 
--- What each class brings along: a reagent from the level its spell comes, or shards.
+-- What each class brings along: the reagents of its spells, and shards. Each spell family lists
+-- its ranks as { spell, item, level }: the highest rank the character knows says which item it
+-- needs (Prayer of Fortitude takes a Holy Candle at rank 1 and a Sacred Candle at rank 2, which
+-- Prayer of Shadow Protection takes from its first rank). The level is only for a client that
+-- cannot tell which spells are known. `vendor`: a vendor sells it (Reagent Economy covers it).
 ns.READY_CLASS_ITEMS = {
-    PRIEST = { id = 17028, level = 48, vendor = true },  -- Holy Candle
-    MAGE = { id = 17020, level = 56, vendor = true },    -- Arcane Powder
-    SHAMAN = { id = 17030, level = 30, vendor = true },  -- Ankh
-    DRUID = { id = 17034, level = 20, vendor = true },   -- Maple Seed
-    ROGUE = { id = 5140, level = 22 },    -- Flash Powder: Vanish takes it even with Reagent Economy
-    PALADIN = { id = 21177, level = 52, vendor = true }, -- Symbol of Kings
-    WARLOCK = { id = 6265, level = 1, key = "SHARDS" }, -- Soul Shard
+    PRIEST = { vendor = true,
+        { { 21562, 17028, 48 }, { 21564, 17029, 60 } },  -- Prayer of Fortitude: Holy, then Sacred Candle
+        { { 27683, 17029, 56 } },                        -- Prayer of Shadow Protection: Sacred Candle
+        { { 27681, 17029, 60 } } },                      -- Prayer of Spirit: Sacred Candle
+    MAGE = { vendor = true, { { 23028, 17020, 56 } } },   -- Arcane Brilliance: Arcane Powder
+    SHAMAN = { vendor = true, { { 20608, 17030, 30 } } }, -- Reincarnation: Ankh
+    DRUID = { vendor = true,
+        { { 20484, 17034, 20 }, { 20739, 17035, 30 }, { 20742, 17036, 40 },  -- Rebirth: a seed per rank
+          { 20747, 17037, 50 }, { 20748, 17038, 60 } },
+        { { 21849, 17021, 50 }, { 21850, 17026, 60 } } },                    -- Gift of the Wild
+    -- Flash Powder: Vanish takes it even with Reagent Economy
+    ROGUE = { { { 1856, 5140, 22 }, { 1857, 5140, 42 } } },
+    PALADIN = { vendor = true,  -- the Greater Blessings: Symbol of Kings
+        { { 25782, 21177, 52 }, { 25894, 21177, 54 }, { 25898, 21177, 60 }, { 25895, 21177, 60 },
+          { 25890, 21177, 60 }, { 25899, 21177, 60 }, { 25916, 21177, 60 }, { 25918, 21177, 60 } } },
+    WARLOCK = { key = "SHARDS", { { nil, 6265, 1 } } },   -- Soul Shard
 }
+
+-- Whether the character knows a spell: true, false, or nil when the client cannot tell.
+local function knows(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then return C_SpellBook.IsSpellKnown(id) and true or false end
+    if IsPlayerSpell then return IsPlayerSpell(id) and true or false end
+    if IsSpellKnown then return IsSpellKnown(id) and true or false end
+end
+
+-- The reagent items a class needs now, in the order of its families, each once.
+function ns.ClassReagents(class, level)
+    local c = ns.READY_CLASS_ITEMS[class or ""]
+    local out, seen = {}, {}
+    if not c then return out end
+    for _, family in ipairs(c) do
+        local item
+        for _, r in ipairs(family) do
+            local k = r[1] and knows(r[1])
+            if k == nil then k = level >= r[3] end
+            if k then item = r[2] end
+        end
+        if item and not seen[item] then seen[item] = true; out[#out + 1] = item end
+    end
+    return out
+end
 
 ns.READY_ICON = {
     REPAIR = "Interface\\Icons\\Trade_BlackSmithing", BAGS = "Interface\\Icons\\INV_Misc_Bag_10",
@@ -206,12 +243,15 @@ function ns.Readiness()
                 against(ammo, ns.ReadyGet("ammoMin")))
         end
         local c = ns.READY_CLASS_ITEMS[class or ""]
-        if c and level >= c.level and not (c.vendor and ns.ReagentEconomy()) then
-            local n = itemCount(c.id)
+        if c and not (c.vendor and ns.ReagentEconomy()) then
             local min = ns.ReadyGet(c.key == "SHARDS" and "shardsMin" or "reagentMin")
-            local frac, mark = against(n, min)
-            add(c.key or "REAGENT", n >= min, tostring(n), L.RD_ITEM:format(n, itemName(c.id)), itemIcon(c.id),
-                frac, mark, itemName(c.id))
+            for _, id in ipairs(ns.ClassReagents(class, level)) do
+                local n = itemCount(id)
+                local frac, mark = against(n, min)
+                add(c.key or "REAGENT", n >= min, tostring(n), L.RD_ITEM:format(n, itemName(id)), itemIcon(id),
+                    frac, mark, itemName(id))
+                out[#out].item = id
+            end
         end
     end
 
